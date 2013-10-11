@@ -1,0 +1,3 @@
+packages="
+	github.com/coreos/go-systemd
+"
