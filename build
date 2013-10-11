@@ -1,17 +1,17 @@
 #!/bin/sh
 
-ETCD_PACKAGE=github.com/coreos/etcd
+MUFFINS_PACKAGE=github.com/coreos/muffins
 export GOPATH="${PWD}"
 SRC_DIR="$GOPATH/src"
-ETCD_DIR="$SRC_DIR/$ETCD_PACKAGE"
+MUFFINS_DIR="$SRC_DIR/$MUFFINS_PACKAGE"
 
-ETCD_BASE=$(dirname "${ETCD_DIR}")
-if [ ! -d "${ETCD_BASE}" ]; then
-	mkdir -p "${ETCD_BASE}"
+MUFFINS_BASE=$(dirname "${MUFFINS_DIR}")
+if [ ! -d "${MUFFINS_BASE}" ]; then
+	mkdir -p "${MUFFINS_BASE}"
 fi
 
-if [ ! -h "${ETCD_DIR}" ]; then
-	ln -s ../../../ "${ETCD_DIR}"
+if [ ! -h "${MUFFINS_DIR}" ]; then
+	ln -s ../../../ "${MUFFINS_DIR}"
 fi
 
 for i in third_party/*; do
@@ -21,5 +21,4 @@ for i in third_party/*; do
 	cp -R "$i" src/
 done
 
-./scripts/release-version > release_version.go
-go build "${ETCD_PACKAGE}"
+go build "${MUFFINS_PACKAGE}"
