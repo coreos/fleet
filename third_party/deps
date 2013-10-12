@@ -1,5 +1,7 @@
 packages="
+	github.com/coreos/etcd/store
 	github.com/coreos/go-etcd
+	github.com/coreos/go-log/log
 	github.com/coreos/go-systemd
 	github.com/guelfey/go.dbus
 "
