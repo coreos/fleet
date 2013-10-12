@@ -53,11 +53,10 @@ func (i *Init) SetAllUnits() {
 		panic(err)
 	}
 
-	prefix := path.Join(keyPrefix, i.Machine.BootId)
 	for _, u := range(units) {
 		if u.ActiveState == "active" {
 			println(u.Name, u.ActiveState)
-			key := path.Join(prefix, u.Name)
+			key := path.Join(keyPrefix, u.Name, i.Machine.BootId)
 			i.Etcd.Set(key, "active", 0)
 		}
 	}
