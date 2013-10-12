@@ -1,4 +1,5 @@
 packages="
+	github.com/coreos/go-etcd
 	github.com/coreos/go-systemd
 	github.com/guelfey/go.dbus
 "
