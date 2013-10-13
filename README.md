@@ -1,15 +1,8 @@
-## Muffins
+## coreinit - a distributed init system.
 
-We will not build cakes but instead use a collection of independent muffins.
+coreinit ties together systemd and etcd into a distributed init system.
 
-```
-            .-"`"`"`"-.
-           /.'''`.'`.'`\
-          /`.'`.`'.`'`.'\
-         (`'.`'.'`.'`.`'.)
-          ~|||||||||||||~
-           |||||||||||||
-           `"""""""""""`
-```
+### Assumptions
 
-A distributed init system.
+Machines have truly unique UUIDs and their metadata is perfectly cacheable.
+If a machine changes IP addresses, etc it *must* have a new UUID.
