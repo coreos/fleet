@@ -4,57 +4,111 @@ package registry
 import (
 	"path"
 	"time"
+	"net"
+	"strings"
 
-	"github.com/coreos/muffins/machine"
+	"github.com/coreos/coreinit/machine"
 	"github.com/coreos/go-etcd/etcd"
 	"github.com/coreos/go-systemd/dbus"
 )
 
-const keyPrefix = "/core-registry/system/"
-// TODO: Make this a variable
-const DefaultServiceTTL = 10
+const (
+	DefaultServiceTTL = "10s"
+	DefaultMachineTTL = "20m"
+	keyPrefix = "/github.com/coreos/coreinit/"
+	machinePrefix = "/machines/"
+	systemPrefix = "/system/"
+	refreshInterval = 2 // Refresh TTLs at 1/2 the TTL length
+)
 
 type Registry struct {
 	Etcd *etcd.Client
 	Systemd *dbus.Conn
 	Machine *machine.Machine
-	ServiceTTL uint64
+	ServiceTTL string
 }
 
-// heartbeat ensures that all of the units 
-func (i *Registry) StartHeartbeat() {
-	// TODO: Use the new directory TTL in the v2 API instead of
-	// heartbeating all of the units
-	interval := i.ServiceTTL / 2.0
-	
-	c := time.Tick(time.Duration(interval) * time.Second)
-	for now := range c {
-		println(now.String())
-		go i.SetAllUnits()
-	}
+// DoHeartbeat ensures that all of the units are registered at an interval of
+// half of the TTL.
+func (r *Registry) DoHeartbeat() {
+	go r.doServiceHeartbeat()
+	r.doMachineHeartbeat()
+	return
 }
 
-func (i *Registry) SetAllUnits() {
-	units, err := i.Systemd.ListUnits()
+func parseDuration(d string) time.Duration {
+	duration, err := time.ParseDuration(d)
 	if err != nil {
 		panic(err)
 	}
 
+	return duration
+}
+
+func intervalFromTTL(ttl string) time.Duration {
+	duration := parseDuration(ttl)
+	return duration / refreshInterval
+}
+
+func (r *Registry) doServiceHeartbeat() {
+	interval := intervalFromTTL(r.ServiceTTL)
+	
+	c := time.Tick(interval)
+	for now := range c {
+		println(now.String())
+		r.SetAllUnits()
+	}
+}
+
+func (r *Registry) doMachineHeartbeat() {
+	interval := intervalFromTTL(DefaultMachineTTL)
+	
+	c := time.Tick(interval)
+	for now := range c {
+		println(now.String())
+		r.SetAllUnits()
+	}
+}
+
+func (r *Registry) SetMachine() {
+	list := []string{}
+	ifs, err := net.InterfaceAddrs()
+
+	if err != nil {
+		panic(err)
+	}
+
+	for _, k := range(ifs) {
+		list = append(list, k.String())
+	}
+	
+	key := path.Join(keyPrefix, machinePrefix, r.Machine.BootId, "network")
+	d := parseDuration(DefaultMachineTTL)
+	r.Etcd.Set(key, strings.Join(list, ","), uint64(d.Seconds()))
+}
+
+func (r *Registry) SetAllUnits() {
+	units, err := r.Systemd.ListUnits()
+	if err != nil {
+		panic(err)
+	}
+
+	d := parseDuration(r.ServiceTTL)
 	for _, u := range(units) {
 		if u.ActiveState == "active" {
 			println(u.Name, u.ActiveState)
-			key := path.Join(keyPrefix, u.Name, i.Machine.BootId)
-			i.Etcd.Set(key, "active", i.ServiceTTL)
+			key := path.Join(keyPrefix, systemPrefix, u.Name, r.Machine.BootId)
+			r.Etcd.Set(key, "active", uint64(d.Seconds()))
 		}
 	}
 }
 
-func NewRegistry(ttl uint64) (registry *Registry) {
+func NewRegistry(ttl string) (registry *Registry) {
 	etcdC := etcd.NewClient(nil)
 	mach := machine.NewMachine("")
 	systemd := dbus.New()
 
-	if ttl == 0 {
+	if ttl == "" {
 		ttl = DefaultServiceTTL
 	}
 
