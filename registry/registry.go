@@ -2,10 +2,11 @@
 package registry
 
 import (
+	"encoding/json"
 	"path"
+	"strings"
 	"time"
 	"net"
-	"strings"
 
 	"github.com/coreos/coreinit/machine"
 	"github.com/coreos/go-etcd/etcd"
@@ -71,20 +72,47 @@ func (r *Registry) doMachineHeartbeat() {
 }
 
 func (r *Registry) SetMachine() {
-	list := []string{}
-	ifs, err := net.InterfaceAddrs()
+	var addrs []Addr
+	ifs, err := net.Interfaces()
 
 	if err != nil {
 		panic(err)
 	}
 
+	shouldAppend := func(i net.Interface) bool {
+		if (i.Flags & net.FlagLoopback) == net.FlagLoopback {
+			return false
+		}
+
+		if (i.Flags & net.FlagUp) != net.FlagUp {
+			return false
+		}
+
+		return true
+	}
+
 	for _, k := range(ifs) {
-		list = append(list, k.String())
+		if shouldAppend(k) != true {
+			continue
+		}
+		kaddrs, _ := k.Addrs()
+		for _, j := range(kaddrs) {
+			if strings.HasPrefix(j.String(), "fe80::") == true {
+				continue
+			}
+			addrs = append(addrs, Addr{j.String(), j.Network()})
+		}
 	}
 	
-	key := path.Join(keyPrefix, machinePrefix, r.Machine.BootId, "network")
+	addrsjson, err := json.Marshal(addrs)
+	if err != nil {
+		panic(err)
+	}
+
+	key := path.Join(keyPrefix, machinePrefix, r.Machine.BootId, "addrs")
 	d := parseDuration(DefaultMachineTTL)
-	r.Etcd.Set(key, strings.Join(list, ","), uint64(d.Seconds()))
+
+	r.Etcd.Set(key, string(addrsjson), uint64(d.Seconds()))
 }
 
 func (r *Registry) SetAllUnits() {
