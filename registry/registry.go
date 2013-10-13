@@ -15,7 +15,7 @@ import (
 const (
 	DefaultServiceTTL = "10s"
 	DefaultMachineTTL = "20m"
-	keyPrefix = "/github.com/coreos/coreinit/"
+	keyPrefix = "/coreos.com/coreinit/"
 	machinePrefix = "/machines/"
 	systemPrefix = "/system/"
 	refreshInterval = 2 // Refresh TTLs at 1/2 the TTL length
