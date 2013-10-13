@@ -1,5 +1,5 @@
 src/
 pkg/
-/muffins
+/coreinit
 release_version.go
 *.swp

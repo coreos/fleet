@@ -1,17 +1,17 @@
 #!/bin/sh
 
-MUFFINS_PACKAGE=github.com/coreos/muffins
+COREINIT_PACKAGE=github.com/coreos/coreinit
 export GOPATH="${PWD}"
 SRC_DIR="$GOPATH/src"
-MUFFINS_DIR="$SRC_DIR/$MUFFINS_PACKAGE"
+COREINIT_DIR="$SRC_DIR/$COREINIT_PACKAGE"
 
-MUFFINS_BASE=$(dirname "${MUFFINS_DIR}")
-if [ ! -d "${MUFFINS_BASE}" ]; then
-	mkdir -p "${MUFFINS_BASE}"
+COREINIT_BASE=$(dirname "${COREINIT_DIR}")
+if [ ! -d "${COREINIT_BASE}" ]; then
+	mkdir -p "${COREINIT_BASE}"
 fi
 
-if [ ! -h "${MUFFINS_DIR}" ]; then
-	ln -s ../../../ "${MUFFINS_DIR}"
+if [ ! -h "${COREINIT_DIR}" ]; then
+	ln -s ../../../ "${COREINIT_DIR}"
 fi
 
 for i in third_party/*; do
@@ -21,4 +21,4 @@ for i in third_party/*; do
 	cp -R "$i" src/
 done
 
-go build "${MUFFINS_PACKAGE}"
+go build "${COREINIT_PACKAGE}"
