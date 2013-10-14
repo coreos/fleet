@@ -67,7 +67,7 @@ func (r *Registry) doMachineHeartbeat() {
 	c := time.Tick(interval)
 	for now := range c {
 		println(now.String())
-		r.SetAllUnits()
+		r.SetMachine()
 	}
 }
 
