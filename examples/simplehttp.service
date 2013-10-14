@@ -1,0 +1,8 @@
+[Unit]
+Description=Serves stuff over http
+
+[Service]
+ExecStart=/usr/bin/python -m SimpleHTTPServer
+
+[Install]
+WantedBy=local.target
