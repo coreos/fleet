@@ -10,7 +10,8 @@ import (
 
 	"github.com/coreos/coreinit/machine"
 	"github.com/coreos/go-etcd/etcd"
-	"github.com/coreos/go-systemd/dbus"
+	systemdDbus "github.com/coreos/go-systemd/dbus"
+	"github.com/guelfey/go.dbus"
 )
 
 const (
@@ -24,7 +25,7 @@ const (
 
 type Registry struct {
 	Etcd *etcd.Client
-	Systemd *dbus.Conn
+	Systemd *systemdDbus.Conn
 	Machine *machine.Machine
 	ServiceTTL string
 }
@@ -115,17 +116,35 @@ func (r *Registry) SetMachine() {
 	r.Etcd.Set(key, string(addrsjson), uint64(d.Seconds()))
 }
 
+func unitPath(unit string) dbus.ObjectPath {
+	prefix := "/org/freedesktop/systemd1/unit/"
+	split := strings.Split(unit, ".")
+	unit = strings.Join(split, "_2e")
+	unitPath := path.Join(prefix, unit)
+	return dbus.ObjectPath(unitPath)
+}
+
 func (r *Registry) SetAllUnits() {
-	units, err := r.Systemd.ListUnits()
+	object := unitPath("local.target")
+	info, err := r.Systemd.GetUnitInfo(object)
 	if err != nil {
 		panic(err)
 	}
 
+	localUnits := info["Wants"].Value().([]string)
+
 	d := parseDuration(r.ServiceTTL)
-	for _, u := range(units) {
-		if u.ActiveState == "active" {
-			println(u.Name, u.ActiveState)
-			key := path.Join(keyPrefix, systemPrefix, u.Name, r.Machine.BootId)
+	for _, u := range(localUnits) {
+		info, err := r.Systemd.GetUnitInfo(unitPath(u))
+		if err != nil {
+			panic(err)
+		}
+
+		state := info["ActiveState"].Value().(string)
+
+		if state == "active" {
+			println(u, state)
+			key := path.Join(keyPrefix, systemPrefix, u, r.Machine.BootId)
 			r.Etcd.Set(key, "active", uint64(d.Seconds()))
 		}
 	}
@@ -134,7 +153,7 @@ func (r *Registry) SetAllUnits() {
 func NewRegistry(ttl string) (registry *Registry) {
 	etcdC := etcd.NewClient(nil)
 	mach := machine.NewMachine("")
-	systemd := dbus.New()
+	systemd := systemdDbus.New()
 
 	if ttl == "" {
 		ttl = DefaultServiceTTL
