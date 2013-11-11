@@ -8,7 +8,6 @@ import (
 	"time"
 	"net"
 
-	"github.com/coreos/coreinit/machine"
 	"github.com/coreos/go-etcd/etcd"
 	systemdDbus "github.com/coreos/go-systemd/dbus"
 	"github.com/guelfey/go.dbus"
@@ -26,7 +25,7 @@ const (
 type Registry struct {
 	Etcd *etcd.Client
 	Systemd *systemdDbus.Conn
-	Machine *machine.Machine
+	Machine *Machine
 	ServiceTTL string
 }
 
@@ -54,7 +53,7 @@ func intervalFromTTL(ttl string) time.Duration {
 
 func (r *Registry) doServiceHeartbeat() {
 	interval := intervalFromTTL(r.ServiceTTL)
-	
+
 	c := time.Tick(interval)
 	for now := range c {
 		println(now.String())
@@ -64,7 +63,7 @@ func (r *Registry) doServiceHeartbeat() {
 
 func (r *Registry) doMachineHeartbeat() {
 	interval := intervalFromTTL(DefaultMachineTTL)
-	
+
 	c := time.Tick(interval)
 	for now := range c {
 		println(now.String())
@@ -104,7 +103,7 @@ func (r *Registry) SetMachine() {
 			addrs = append(addrs, Addr{j.String(), j.Network()})
 		}
 	}
-	
+
 	addrsjson, err := json.Marshal(addrs)
 	if err != nil {
 		panic(err)
@@ -152,7 +151,7 @@ func (r *Registry) SetAllUnits() {
 
 func NewRegistry(ttl string) (registry *Registry) {
 	etcdC := etcd.NewClient(nil)
-	mach := machine.NewMachine("")
+	mach := NewMachine("")
 	systemd := systemdDbus.New()
 
 	if ttl == "" {
