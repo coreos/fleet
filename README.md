@@ -7,7 +7,7 @@ coreinit ties together systemd and etcd into a distributed init system.
 ```
 ./build
 etcd -f -v
-systemctl enable --runtime examples/*
+systemctl enable --runtime `pwd`/examples/*
 systemctl start simplehttp.service
 ./coreinit
 curl http://127.0.0.1:4001/v1/keys/coreos.com/coreinit/system/simplehttp.service/
