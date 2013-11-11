@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 	"net"
+	"os"
 
 	"github.com/coreos/go-etcd/etcd"
 	systemdDbus "github.com/coreos/go-systemd/dbus"
@@ -16,10 +17,13 @@ import (
 const (
 	DefaultServiceTTL = "10s"
 	DefaultMachineTTL = "20m"
+	DefaultScheduleTTL = "1s"
 	keyPrefix = "/coreos.com/coreinit/"
 	machinePrefix = "/machines/"
 	systemPrefix = "/system/"
+	schedulePrefix = "/schedule/"
 	refreshInterval = 2 // Refresh TTLs at 1/2 the TTL length
+	systemdPath = "/run/systemd/system/"
 )
 
 type Registry struct {
@@ -33,7 +37,8 @@ type Registry struct {
 // half of the TTL.
 func (r *Registry) DoHeartbeat() {
 	go r.doServiceHeartbeat()
-	r.doMachineHeartbeat()
+	go r.doMachineHeartbeat()
+	r.doScheduler()
 	return
 }
 
@@ -149,6 +154,43 @@ func (r *Registry) SetAllUnits() {
 	}
 }
 
+func (r *Registry) doScheduler() {
+	interval := intervalFromTTL(DefaultScheduleTTL)
+
+	c := time.Tick(interval)
+	for now := range c {
+		r.scheduleUnits()
+	}
+}
+
+func (r *Registry) scheduleUnits() {
+	key := path.Join(keyPrefix, schedulePrefix)
+	objects, _ := r.Etcd.Get(key)
+	for _, obj := range objects {
+		_, unitName := path.Split(obj.Key)
+		createUnit(unitName, obj.Value)
+		r.startUnit(unitName)
+		r.Etcd.Delete(obj.Key)
+	}
+}
+
+func createUnit(name string, contents string) {
+	path := path.Join(systemdPath, name)
+	file, err := os.Create(path)
+	if err != nil {
+		panic(err)
+	}
+	file.WriteString(contents)
+	file.Close()
+}
+
+func (r *Registry) startUnit(name string) {
+	files := []string{name}
+	a.Systemd.EnableUnitFiles(files, true, false)
+
+	r.Systemd.StartUnit(name, "replace")
+}
+
 func NewRegistry(ttl string) (registry *Registry) {
 	etcdC := etcd.NewClient(nil)
 	mach := NewMachine("")
@@ -162,15 +204,3 @@ func NewRegistry(ttl string) (registry *Registry) {
 
 	return registry
 }
-
-/*
-func startUnit() {
-	script := []string{"/bin/sh", "-c",
-		"while true; do echo goodbye world; sleep 1; done"}
-
-	jobid, err := i.Systemd.StartTransientUnit("hello.service",
-		"replace",
-		dbus.PropExecStart(script, false))
-	fmt.Println(jobid, err)
-}
-*/
