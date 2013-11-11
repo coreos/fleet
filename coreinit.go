@@ -5,12 +5,13 @@ import (
 )
 
 func main() {
-	r := registry.NewRegistry("")
+	r := registry.NewRegistry()
+	a := registry.NewAgent(r, "")
 
 	// Push the initial state to the registry
-	r.SetAllUnits()
-	r.SetMachine()
+	a.SetAllUnits()
+	a.SetMachine()
 
 	// Kick off the heartbeating process
-	r.DoHeartbeat()
+	a.DoHeartbeat()
 }
