@@ -1,7 +1,6 @@
 package registry
 
 import (
-	"encoding/json"
 	"path"
 	"strings"
 	"time"
@@ -103,15 +102,7 @@ func (a *Agent) SetMachine() {
 		}
 	}
 
-	addrsjson, err := json.Marshal(addrs)
-	if err != nil {
-		panic(err)
-	}
-
-	key := path.Join(keyPrefix, machinePrefix, a.Machine.BootId, "addrs")
-	d := parseDuration(DefaultMachineTTL)
-
-	a.Registry.Etcd.Set(key, string(addrsjson), uint64(d.Seconds()))
+	a.Registry.SetMachineAddrs(a.Machine, addrs)
 }
 
 func unitPath(unit string) dbus.ObjectPath {
@@ -193,8 +184,7 @@ func (a *Agent) SetAllUnits() {
 
 		if state == "active" {
 			println(u, state)
-			key := path.Join(keyPrefix, systemPrefix, u, a.Machine.BootId)
-			a.Registry.Etcd.Set(key, "active", uint64(d.Seconds()))
+			a.Registry.SetUnitState(a.Machine, u, state, uint64(d.Seconds()))
 		}
 	}
 }
