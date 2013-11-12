@@ -77,6 +77,7 @@ func (a *Agent) doMachineHeartbeat() {
 func (a *Agent) SetMachine() {
 	addrs := a.Machine.GetAddresses()
 	ttl := parseDuration(DefaultMachineTTL)
+	log.Println("Updating machine", a.Machine, "with addrs", addrs)
 	a.Registry.SetMachineAddrs(a.Machine, addrs, ttl)
 }
 
@@ -124,6 +125,7 @@ func NewAgent(registry *registry.Registry, ttl string) (*Agent) {
 }
 
 func createUnit(name string, contents string) {
+	log.Println("Creating unit", name)
 	path := path.Join(systemdRuntimePath, name)
 	file, err := os.Create(path)
 	if err != nil {
@@ -134,6 +136,8 @@ func createUnit(name string, contents string) {
 }
 
 func (a *Agent) startUnit(name string) {
+	log.Println("Starting unit", name)
+
 	files := []string{name}
 	a.Systemd.EnableUnitFiles(files, true, false)
 
@@ -159,7 +163,7 @@ func (a *Agent) SetAllUnits() {
 		state := info["ActiveState"].Value().(string)
 
 		if state == "active" {
-			log.Println(u, state)
+			log.Println("Updating unit state:", u, state)
 			a.Registry.SetUnitState(a.Machine, u, state, uint64(d.Seconds()))
 		}
 	}
