@@ -1,4 +1,3 @@
-// Package registry is the primary object of coreos-registry
 package registry
 
 import (
