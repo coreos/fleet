@@ -103,11 +103,11 @@ func (a *Agent) doScheduler() {
 // starts them on the local machine and deletes the key from the list. This is
 // quite dumb and prone to race conditions.
 func (a *Agent) scheduleUnits() {
-	units := a.Registry.GetUnits()
+	units := a.Registry.GetMachineUnits(a.Machine)
 	for unitName, unitValue := range units {
 		createUnit(unitName, unitValue)
 		a.startUnit(unitName)
-		a.Registry.DeleteUnit(unitName)
+		a.Registry.DeleteMachineUnit(a.Machine, unitName)
 	}
 }
 
@@ -164,7 +164,7 @@ func (a *Agent) SetAllUnits() {
 
 		if state == "active" {
 			log.Println("Updating unit state:", u, state)
-			a.Registry.SetUnitState(a.Machine, u, state, uint64(d.Seconds()))
+			a.Registry.SetMachineUnitState(a.Machine, u, state, uint64(d.Seconds()))
 		}
 	}
 }

@@ -13,8 +13,7 @@ import (
 const (
 	keyPrefix = "/coreos.com/coreinit/"
 	machinePrefix = "/machines/"
-	systemPrefix = "/system/"
-	schedulePrefix = "/schedule/"
+	unitPrefix = "/units/"
 )
 
 type Registry struct {
@@ -37,8 +36,8 @@ func (r *Registry) SetMachineAddrs(machine *machine.Machine, addrs []machine.Add
 	r.Etcd.Set(key, string(addrsjson), uint64(ttl.Seconds()))
 }
 
-func (r *Registry) GetUnits() map[string]string {
-	key := path.Join(keyPrefix, schedulePrefix)
+func (r *Registry) GetMachineUnits(machine *machine.Machine) map[string]string {
+	key := path.Join(keyPrefix, machinePrefix, machine.BootId, unitPrefix)
 	objects, _ := r.Etcd.Get(key)
 	units := make(map[string]string, len(objects))
 	for _, obj := range objects {
@@ -48,13 +47,13 @@ func (r *Registry) GetUnits() map[string]string {
 	return units
 }
 
-func (r *Registry) SetUnitState(machine *machine.Machine, unit string, state string, ttl uint64) {
-	key := path.Join(keyPrefix, systemPrefix, unit, machine.BootId)
+func (r *Registry) SetMachineUnitState(machine *machine.Machine, unit string, state string, ttl uint64) {
+	key := path.Join(keyPrefix, machinePrefix, machine.BootId, unitPrefix, unit)
 	log.Println("Setting unit state")
 	r.Etcd.Set(key, state, ttl)
 }
 
-func (r *Registry) DeleteUnit(unit string) {
-	key := path.Join(keyPrefix, schedulePrefix, unit)
+func (r *Registry) DeleteMachineUnit(machine *machine.Machine, unit string) {
+	key := path.Join(keyPrefix, machinePrefix, machine.BootId, unitPrefix, unit)
 	r.Etcd.Delete(key)
 }
