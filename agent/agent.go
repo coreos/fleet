@@ -1,4 +1,4 @@
-package registry
+package agent
 
 import (
 	"log"
@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/coreos/coreinit/machine"
+	"github.com/coreos/coreinit/registry"
 	"github.com/guelfey/go.dbus"
 	systemdDbus "github.com/coreos/go-systemd/dbus"
 )
@@ -17,15 +19,19 @@ const (
 	DefaultScheduleTTL = "1s"
 	refreshInterval = 2 // Refresh TTLs at 1/2 the TTL length
 	systemdRuntimePath = "/run/systemd/system/"
+
+	// These do not belong here. Future refactoring will fix this.
+	keyPrefix = "/coreos.com/coreinit/"
+	schedulePrefix = "/schedule/"
 )
 
 // The Agent owns all of the coordination between the Registry and
 // local services like systemd. Additionally, it handles the local Machine
 // heartbeat and statistics.
 type Agent struct {
-	Registry *Registry
+	Registry *registry.Registry
 	Systemd *systemdDbus.Conn
-	Machine *Machine
+	Machine *machine.Machine
 	ServiceTTL string
 }
 
@@ -74,7 +80,8 @@ func (a *Agent) doMachineHeartbeat() {
 
 func (a *Agent) SetMachine() {
 	addrs := a.Machine.GetAddresses()
-	a.Registry.SetMachineAddrs(a.Machine, addrs)
+	ttl := parseDuration(DefaultMachineTTL)
+	a.Registry.SetMachineAddrs(a.Machine, addrs, ttl)
 }
 
 func unitPath(unit string) dbus.ObjectPath {
@@ -109,8 +116,8 @@ func (a *Agent) scheduleUnits() {
 	}
 }
 
-func NewAgent(registry *Registry, ttl string) (*Agent) {
-	mach := NewMachine("")
+func NewAgent(registry *registry.Registry, ttl string) (*Agent) {
+	mach := machine.NewMachine("")
 	systemd := systemdDbus.New()
 
 	if ttl == "" {

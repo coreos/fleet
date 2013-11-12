@@ -1,12 +1,13 @@
 package main
 
 import (
+	"github.com/coreos/coreinit/agent"
 	"github.com/coreos/coreinit/registry"
 )
 
 func main() {
 	r := registry.NewRegistry()
-	a := registry.NewAgent(r, "")
+	a := agent.NewAgent(r, "")
 
 	// Push the initial state to the registry
 	a.SetAllUnits()

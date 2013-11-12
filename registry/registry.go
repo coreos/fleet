@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"log"
 	"path"
+	"time"
 
+	"github.com/coreos/coreinit/machine"
 	"github.com/coreos/go-etcd/etcd"
 )
 
@@ -26,19 +28,17 @@ func NewRegistry() (registry *Registry) {
 	return registry
 }
 
-func (r *Registry) SetMachineAddrs(machine *Machine, addrs []Addr) {
+func (r *Registry) SetMachineAddrs(machine *machine.Machine, addrs []machine.Addr, ttl time.Duration) {
 	addrsjson, err := json.Marshal(addrs)
 	if err != nil {
 		panic(err)
 	}
 
 	key := path.Join(keyPrefix, machinePrefix, machine.BootId, "addrs")
-	d := parseDuration(DefaultMachineTTL)
-
-	r.Etcd.Set(key, string(addrsjson), uint64(d.Seconds()))
+	r.Etcd.Set(key, string(addrsjson), uint64(ttl.Seconds()))
 }
 
-func (r *Registry) SetUnitState(machine *Machine, unit string, state string, ttl uint64) {
+func (r *Registry) SetUnitState(machine *machine.Machine, unit string, state string, ttl uint64) {
 	key := path.Join(keyPrefix, systemPrefix, unit, machine.BootId)
 	log.Println("Setting unit state")
 	r.Etcd.Set(key, state, ttl)
