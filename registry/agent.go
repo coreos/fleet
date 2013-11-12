@@ -1,14 +1,14 @@
 package registry
 
 import (
+	"net"
+	"os"
 	"path"
 	"strings"
 	"time"
-	"net"
-	"os"
 
-	systemdDbus "github.com/coreos/go-systemd/dbus"
 	"github.com/guelfey/go.dbus"
+	systemdDbus "github.com/coreos/go-systemd/dbus"
 )
 
 const (
