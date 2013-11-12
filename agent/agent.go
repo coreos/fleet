@@ -19,10 +19,6 @@ const (
 	DefaultScheduleTTL = "1s"
 	refreshInterval = 2 // Refresh TTLs at 1/2 the TTL length
 	systemdRuntimePath = "/run/systemd/system/"
-
-	// These do not belong here. Future refactoring will fix this.
-	keyPrefix = "/coreos.com/coreinit/"
-	schedulePrefix = "/schedule/"
 )
 
 // The Agent owns all of the coordination between the Registry and
@@ -106,13 +102,11 @@ func (a *Agent) doScheduler() {
 // starts them on the local machine and deletes the key from the list. This is
 // quite dumb and prone to race conditions.
 func (a *Agent) scheduleUnits() {
-	key := path.Join(keyPrefix, schedulePrefix)
-	objects, _ := a.Registry.Etcd.Get(key)
-	for _, obj := range objects {
-		_, unitName := path.Split(obj.Key)
-		createUnit(unitName, obj.Value)
+	units := a.Registry.GetUnits()
+	for unitName, unitValue := range units {
+		createUnit(unitName, unitValue)
 		a.startUnit(unitName)
-		a.Registry.Etcd.Delete(obj.Key)
+		a.Registry.DeleteUnit(unitName)
 	}
 }
 
