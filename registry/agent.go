@@ -19,6 +19,9 @@ const (
 	systemdRuntimePath = "/run/systemd/system/"
 )
 
+// The Agent owns all of the coordination between the Registry and
+// local services like systemd. Additionally, it handles the local Machine
+// heartbeat and statistics.
 type Agent struct {
 	Registry *Registry
 	Systemd *systemdDbus.Conn
@@ -92,6 +95,9 @@ func (a *Agent) doScheduler() {
 	}
 }
 
+// This simply pops all of the service files from a known location in etcd and
+// starts them on the local machine and deletes the key from the list. This is
+// quite dumb and prone to race conditions.
 func (a *Agent) scheduleUnits() {
 	key := path.Join(keyPrefix, schedulePrefix)
 	objects, _ := a.Registry.Etcd.Get(key)
