@@ -10,8 +10,8 @@ func main() {
 	a := agent.NewAgent(r, "")
 
 	// Push the initial state to the registry
-	a.SetAllUnits()
-	a.SetMachine()
+	a.UpdateUnits()
+	a.UpdateMachine()
 
 	// Kick off the heartbeating process
 	a.DoHeartbeat()
