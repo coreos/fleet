@@ -3,6 +3,7 @@ package registry
 
 import (
 	"encoding/json"
+	"log"
 	"path"
 
 	"github.com/coreos/go-etcd/etcd"
@@ -39,6 +40,6 @@ func (r *Registry) SetMachineAddrs(machine *Machine, addrs []Addr) {
 
 func (r *Registry) SetUnitState(machine *Machine, unit string, state string, ttl uint64) {
 	key := path.Join(keyPrefix, systemPrefix, unit, machine.BootId)
-	println("Setting unit state")
+	log.Println("Setting unit state")
 	r.Etcd.Set(key, state, ttl)
 }

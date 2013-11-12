@@ -2,6 +2,7 @@ package registry
 
 import (
 	"net"
+	"log"
 	"os"
 	"path"
 	"strings"
@@ -53,8 +54,8 @@ func (a *Agent) doServiceHeartbeat() {
 	interval := intervalFromTTL(a.ServiceTTL)
 
 	c := time.Tick(interval)
-	for now := range c {
-		println(now.String())
+	for _ = range c {
+		log.Println("tick service heartbeat")
 		a.SetAllUnits()
 	}
 }
@@ -63,8 +64,8 @@ func (a *Agent) doMachineHeartbeat() {
 	interval := intervalFromTTL(DefaultMachineTTL)
 
 	c := time.Tick(interval)
-	for now := range c {
-		println(now.String())
+	for _ = range c {
+		log.Println("tick machine heartbeat")
 		a.SetMachine()
 	}
 }
@@ -117,8 +118,8 @@ func (a *Agent) doScheduler() {
 	interval := intervalFromTTL(DefaultScheduleTTL)
 
 	c := time.Tick(interval)
-	for now := range c {
-		println(now.String() + " scheduling")
+	for _ = range c {
+		log.Println("tick scheduler heartbeat")
 		a.scheduleUnits()
 	}
 }
@@ -183,7 +184,7 @@ func (a *Agent) SetAllUnits() {
 		state := info["ActiveState"].Value().(string)
 
 		if state == "active" {
-			println(u, state)
+			log.Println(u, state)
 			a.Registry.SetUnitState(a.Machine, u, state, uint64(d.Seconds()))
 		}
 	}
