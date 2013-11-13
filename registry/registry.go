@@ -1,176 +1,54 @@
-// Package registry is the primary object of coreos-registry
 package registry
 
 import (
 	"encoding/json"
 	"path"
-	"strings"
 	"time"
-	"net"
 
+	"github.com/coreos/coreinit/machine"
 	"github.com/coreos/go-etcd/etcd"
-	systemdDbus "github.com/coreos/go-systemd/dbus"
-	"github.com/guelfey/go.dbus"
 )
 
 const (
-	DefaultServiceTTL = "10s"
-	DefaultMachineTTL = "20m"
 	keyPrefix = "/coreos.com/coreinit/"
 	machinePrefix = "/machines/"
-	systemPrefix = "/system/"
-	refreshInterval = 2 // Refresh TTLs at 1/2 the TTL length
+	schedulePrefix = "/schedule/"
+	unitPrefix = "/units/"
 )
 
 type Registry struct {
 	Etcd *etcd.Client
-	Systemd *systemdDbus.Conn
-	Machine *Machine
-	ServiceTTL string
 }
 
-// DoHeartbeat ensures that all of the units are registered at an interval of
-// half of the TTL.
-func (r *Registry) DoHeartbeat() {
-	go r.doServiceHeartbeat()
-	r.doMachineHeartbeat()
-	return
+func New() (registry *Registry) {
+	etcdC := etcd.NewClient(nil)
+	registry = &Registry{etcdC}
+	return registry
 }
 
-func parseDuration(d string) time.Duration {
-	duration, err := time.ParseDuration(d)
-	if err != nil {
-		panic(err)
-	}
-
-	return duration
-}
-
-func intervalFromTTL(ttl string) time.Duration {
-	duration := parseDuration(ttl)
-	return duration / refreshInterval
-}
-
-func (r *Registry) doServiceHeartbeat() {
-	interval := intervalFromTTL(r.ServiceTTL)
-
-	c := time.Tick(interval)
-	for now := range c {
-		println(now.String())
-		r.SetAllUnits()
-	}
-}
-
-func (r *Registry) doMachineHeartbeat() {
-	interval := intervalFromTTL(DefaultMachineTTL)
-
-	c := time.Tick(interval)
-	for now := range c {
-		println(now.String())
-		r.SetMachine()
-	}
-}
-
-func (r *Registry) SetMachine() {
-	var addrs []Addr
-	ifs, err := net.Interfaces()
-
-	if err != nil {
-		panic(err)
-	}
-
-	shouldAppend := func(i net.Interface) bool {
-		if (i.Flags & net.FlagLoopback) == net.FlagLoopback {
-			return false
-		}
-
-		if (i.Flags & net.FlagUp) != net.FlagUp {
-			return false
-		}
-
-		return true
-	}
-
-	for _, k := range(ifs) {
-		if shouldAppend(k) != true {
-			continue
-		}
-		kaddrs, _ := k.Addrs()
-		for _, j := range(kaddrs) {
-			if strings.HasPrefix(j.String(), "fe80::") == true {
-				continue
-			}
-			addrs = append(addrs, Addr{j.String(), j.Network()})
-		}
-	}
-
+func (r *Registry) SetMachineAddrs(machine *machine.Machine, addrs []machine.Addr, ttl time.Duration) {
 	addrsjson, err := json.Marshal(addrs)
 	if err != nil {
 		panic(err)
 	}
 
-	key := path.Join(keyPrefix, machinePrefix, r.Machine.BootId, "addrs")
-	d := parseDuration(DefaultMachineTTL)
-
-	r.Etcd.Set(key, string(addrsjson), uint64(d.Seconds()))
+	key := path.Join(keyPrefix, machinePrefix, machine.BootId, "addrs")
+	r.Etcd.Set(key, string(addrsjson), uint64(ttl.Seconds()))
 }
 
-func unitPath(unit string) dbus.ObjectPath {
-	prefix := "/org/freedesktop/systemd1/unit/"
-	split := strings.Split(unit, ".")
-	unit = strings.Join(split, "_2e")
-	unitPath := path.Join(prefix, unit)
-	return dbus.ObjectPath(unitPath)
-}
-
-func (r *Registry) SetAllUnits() {
-	object := unitPath("local.target")
-	info, err := r.Systemd.GetUnitInfo(object)
-	if err != nil {
-		panic(err)
+func (r *Registry) GetScheduledUnits(machine *machine.Machine) map[string]string {
+	key := path.Join(keyPrefix, machinePrefix, machine.BootId, schedulePrefix)
+	objects, _ := r.Etcd.Get(key)
+	units := make(map[string]string, len(objects))
+	for _, obj := range objects {
+		_, unitName := path.Split(obj.Key)
+		units[unitName] = obj.Value
 	}
 
-	localUnits := info["Wants"].Value().([]string)
-
-	d := parseDuration(r.ServiceTTL)
-	for _, u := range(localUnits) {
-		info, err := r.Systemd.GetUnitInfo(unitPath(u))
-		if err != nil {
-			panic(err)
-		}
-
-		state := info["ActiveState"].Value().(string)
-
-		if state == "active" {
-			println(u, state)
-			key := path.Join(keyPrefix, systemPrefix, u, r.Machine.BootId)
-			r.Etcd.Set(key, "active", uint64(d.Seconds()))
-		}
-	}
+	return units
 }
 
-func NewRegistry(ttl string) (registry *Registry) {
-	etcdC := etcd.NewClient(nil)
-	mach := NewMachine("")
-	systemd := systemdDbus.New()
-
-	if ttl == "" {
-		ttl = DefaultServiceTTL
-	}
-
-	registry = &Registry{etcdC, systemd, mach, ttl}
-
-	return registry
+func (r *Registry) SetUnitState(machine *machine.Machine, unit string, state string, ttl uint64) {
+	key := path.Join(keyPrefix, machinePrefix, machine.BootId, unitPrefix, unit)
+	r.Etcd.Set(key, state, ttl)
 }
-
-/*
-func startUnit() {
-	script := []string{"/bin/sh", "-c",
-		"while true; do echo goodbye world; sleep 1; done"}
-
-	jobid, err := i.Systemd.StartTransientUnit("hello.service",
-		"replace",
-		dbus.PropExecStart(script, false))
-	fmt.Println(jobid, err)
-}
-*/
