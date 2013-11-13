@@ -72,8 +72,14 @@ func (a *Agent) UpdateUnits() {
 	localUnits := a.getLocalUnits()
 
 	for unitName, unitValue := range registeredUnits {
-		writeLocalUnit(unitName, unitValue)
-		a.startUnit(unitName)
+		if _, ok := localUnits[unitName]; !ok {
+			writeLocalUnit(unitName, unitValue)
+		}
+
+		if state := a.getLocalUnitState(unitName); state != "active" {
+			a.startUnit(unitName)
+		}
+
 	}
 
 	d := parseDuration(a.ServiceTTL)
