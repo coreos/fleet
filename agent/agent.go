@@ -143,8 +143,8 @@ func (a *Agent) stopUnit(name string) {
 	//a.Systemd.DisableUnitFiles(files, true, false)
 }
 
-func NewAgent(registry *registry.Registry, ttl string) (*Agent) {
-	mach := machine.NewMachine("")
+func New(registry *registry.Registry, ttl string) (*Agent) {
+	mach := machine.New("")
 	systemd := systemdDbus.New()
 
 	if ttl == "" {

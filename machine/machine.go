@@ -57,7 +57,7 @@ func (m *Machine) GetAddresses() []Addr {
 	return addrs
 }
 
-func NewMachine(bootId string) (m *Machine) {
+func New(bootId string) (m *Machine) {
 	m = &Machine{}
 
 	if len(bootId) != 0 {

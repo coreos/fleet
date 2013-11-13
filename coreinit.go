@@ -6,8 +6,8 @@ import (
 )
 
 func main() {
-	r := registry.NewRegistry()
-	a := agent.NewAgent(r, "")
+	r := registry.New()
+	a := agent.New(r, "")
 
 	// Push the initial state to the registry
 	a.UpdateUnits()

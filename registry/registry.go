@@ -20,7 +20,7 @@ type Registry struct {
 	Etcd *etcd.Client
 }
 
-func NewRegistry() (registry *Registry) {
+func New() (registry *Registry) {
 	etcdC := etcd.NewClient(nil)
 	registry = &Registry{etcdC}
 	return registry
