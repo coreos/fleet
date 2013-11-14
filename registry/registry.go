@@ -37,9 +37,9 @@ func (r *Registry) SetMachineAddrs(machine *machine.Machine, addrs []machine.Add
 	r.Etcd.Set(key, string(addrsjson), uint64(ttl.Seconds()))
 }
 
-// Descibe the list of jobs a given Machine is scheduled to run
-func (r *Registry) GetMachineJobs(machine *machine.Machine) map[string]job.Job {
-	key := path.Join(keyPrefix, machinePrefix, machine.BootId, schedulePrefix)
+// Private helper method that takes a path to an Etcd directory and returns
+// all of the items as job.Job objects.
+func (r *Registry) getJobsAtPath(key string) map[string]job.Job {
 	resp, err := r.Etcd.Get(key, false)
 
 	// Assume the error was KeyNotFound and return an empty data structure
@@ -56,6 +56,18 @@ func (r *Registry) GetMachineJobs(machine *machine.Machine) map[string]job.Job {
 	}
 
 	return jobs
+}
+
+// Describe the list of jobs that have not yet been scheduled to a Machine
+func (r *Registry) GetUnscheduledJobs() map[string]job.Job {
+	key := path.Join(keyPrefix, schedulePrefix)
+	return r.getJobsAtPath(key)
+}
+
+// Describe the list of jobs a given Machine is scheduled to run
+func (r *Registry) GetMachineJobs(machine *machine.Machine) map[string]job.Job {
+	key := path.Join(keyPrefix, machinePrefix, machine.BootId, schedulePrefix)
+	return r.getJobsAtPath(key)
 }
 
 // Persist the changes in a provided Machine's Job to Etcd with the provided TTL
