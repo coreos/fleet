@@ -60,7 +60,7 @@ func (a *Agent) doServiceHeartbeat() {
 }
 
 func (a *Agent) UpdateJobs() {
-	registeredJobs := a.Registry.GetJobs(a.Machine)
+	registeredJobs := a.Registry.GetMachineJobs(a.Machine)
 	localJobs := a.Target.GetJobs()
 
 	for _, job := range registeredJobs {
@@ -77,7 +77,7 @@ func (a *Agent) UpdateJobs() {
 		_, ok := registeredJobs[job.Name]
 
 		if ok {
-			a.Registry.UpdateJob(a.Machine, &job, ttl)
+			a.Registry.UpdateMachineJob(a.Machine, &job, ttl)
 		} else {
 			a.Target.StopJob(&job)
 		}

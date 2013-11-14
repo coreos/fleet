@@ -37,7 +37,8 @@ func (r *Registry) SetMachineAddrs(machine *machine.Machine, addrs []machine.Add
 	r.Etcd.Set(key, string(addrsjson), uint64(ttl.Seconds()))
 }
 
-func (r *Registry) GetJobs(machine *machine.Machine) map[string]job.Job {
+// Descibe the list of jobs a given Machine is scheduled to run
+func (r *Registry) GetMachineJobs(machine *machine.Machine) map[string]job.Job {
 	key := path.Join(keyPrefix, machinePrefix, machine.BootId, schedulePrefix)
 	resp, err := r.Etcd.Get(key, false)
 
@@ -57,7 +58,8 @@ func (r *Registry) GetJobs(machine *machine.Machine) map[string]job.Job {
 	return jobs
 }
 
-func (r *Registry) UpdateJob(machine *machine.Machine, job *job.Job, ttl uint64) {
+// Persist the changes in a provided Machine's Job to Etcd with the provided TTL
+func (r *Registry) UpdateMachineJob(machine *machine.Machine, job *job.Job, ttl uint64) {
 	key := path.Join(keyPrefix, machinePrefix, machine.BootId, statePrefix, job.Name)
 	r.Etcd.Set(key, job.State.State, ttl)
 }
