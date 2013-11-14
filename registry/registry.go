@@ -91,6 +91,14 @@ func (r *Registry) GetMachineJobs(machine *machine.Machine) map[string]job.Job {
 	return r.getJobsAtPath(key)
 }
 
+func (r *Registry) ScheduleJob(job *job.Job, machine *machine.Machine) {
+	key := path.Join(keyPrefix, machinePrefix, machine.BootId, schedulePrefix, job.Name)
+	r.Etcd.Set(key, job.Payload.Value, 0)
+
+	key = path.Join(keyPrefix, schedulePrefix, job.Name)
+	r.Etcd.Delete(key)
+}
+
 // Persist the changes in a provided Machine's Job to Etcd with the provided TTL
 func (r *Registry) UpdateMachineJob(machine *machine.Machine, job *job.Job, ttl uint64) {
 	key := path.Join(keyPrefix, machinePrefix, machine.BootId, statePrefix, job.Name)
