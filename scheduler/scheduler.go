@@ -43,6 +43,12 @@ func (s *Scheduler) DoSchedule() {
 			continue
 		}
 
+		// If someone has reported state for this job, we assume
+		// it's good to go.
+		if jobState := s.Registry.GetJobState(job); jobState != nil {
+			continue
+		}
+
 		// For now, we assume that if we can initially acquire the lock
 		// we're safe to move forward with scheduling. This is not ideal.
 		s.ScheduleJob(job, machines)
