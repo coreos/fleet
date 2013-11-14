@@ -1,34 +1,26 @@
 package agent
 
 import (
-	"io/ioutil"
 	"log"
-	"os"
-	"path"
-	"strings"
-	"syscall"
 	"time"
 
 	"github.com/coreos/coreinit/machine"
 	"github.com/coreos/coreinit/registry"
-	"github.com/guelfey/go.dbus"
-	systemdDbus "github.com/coreos/go-systemd/dbus"
+	"github.com/coreos/coreinit/target"
 )
 
 const (
 	DefaultServiceTTL = "2s"
 	DefaultMachineTTL = "10s"
-	refreshInterval = 2 // Refresh TTLs at 1/2 the TTL length
-	systemdRuntimePath = "/run/systemd/system/"
+	refreshInterval   = 2 // Refresh TTLs at 1/2 the TTL length
 )
 
-// The Agent owns all of the coordination between the Registry and
-// local services like systemd. Additionally, it handles the local Machine
-// heartbeat and statistics.
+// The Agent owns all of the coordination between the Registry, the local
+// Machine, and any local Targets.
 type Agent struct {
-	Registry *registry.Registry
-	Systemd *systemdDbus.Conn
-	Machine *machine.Machine
+	Registry   *registry.Registry
+	Target     *target.Target
+	Machine    *machine.Machine
 	ServiceTTL string
 }
 
@@ -63,120 +55,46 @@ func (a *Agent) doServiceHeartbeat() {
 	c := time.Tick(interval)
 	for _ = range c {
 		log.Println("tick service heartbeat")
-		a.UpdateUnits()
+		a.UpdateJobs()
 	}
 }
 
-func (a *Agent) UpdateUnits() {
-	registeredUnits := a.Registry.GetScheduledUnits(a.Machine)
-	localUnits := a.getLocalUnits()
+func (a *Agent) UpdateJobs() {
+	registeredJobs := a.Registry.GetJobs(a.Machine)
+	localJobs := a.Target.GetJobs()
 
-	for unitName, unitValue := range registeredUnits {
-		if _, ok := localUnits[unitName]; !ok {
-			writeLocalUnit(unitName, unitValue)
+	for _, job := range registeredJobs {
+		if state := a.Target.GetJobState(job.Name); state.State != "active" {
+			a.Target.StartJob(&job)
 		}
-
-		if state := a.getLocalUnitState(unitName); state != "active" {
-			a.startUnit(unitName)
-		}
-
 	}
 
-	d := parseDuration(a.ServiceTTL)
-	for u, _ := range(localUnits) {
-		_, ok := registeredUnits[u]
+	// Fetch local jobs again since state may have changed above
+	localJobs = a.Target.GetJobs()
+
+	ttl := uint64(parseDuration(a.ServiceTTL).Seconds())
+	for _, job := range localJobs {
+		_, ok := registeredJobs[job.Name]
 
 		if ok {
-			state := a.getLocalUnitState(u)
-
-			if state == "active" {
-				log.Println("Updating unit state:", u, state)
-				a.Registry.SetUnitState(a.Machine, u, state, uint64(d.Seconds()))
-			}
+			a.Registry.UpdateJob(a.Machine, &job, ttl)
 		} else {
-			a.stopUnit(u)
+			a.Target.StopJob(&job)
 		}
 	}
 }
 
-func (a *Agent) getLocalUnits() map[string]string {
-	object := unitPath("local.target")
-	info, err := a.Systemd.GetUnitInfo(object)
-
-	if err != nil {
-		panic(err)
-	}
-
-	names := info["Wants"].Value().([]string)
-	units := make(map[string]string, len(names))
-
-	for _, name := range names {
-		units[name] = readLocalUnit(name)
-	}
-
-	return units
-}
-
-func (a *Agent) getLocalUnitState(name string) string {
-	info, err := a.Systemd.GetUnitInfo(unitPath(name))
-	if err != nil {
-		panic(err)
-	}
-
-	return info["ActiveState"].Value().(string)
-}
-
-func (a *Agent) startUnit(name string) {
-	log.Println("Starting unit", name)
-
-	files := []string{name}
-	a.Systemd.EnableUnitFiles(files, true, false)
-
-	a.Systemd.StartUnit(name, "replace")
-}
-
-func (a *Agent) stopUnit(name string) {
-	log.Println("Stopping unit", name)
-
-	a.Systemd.StopUnit(name, "replace")
-
-	link := path.Join(systemdRuntimePath, "local.target.wants", name)
-	syscall.Unlink(link)
-
-	// This is probably the better way to remove a unit file from the
-	// system, but go-systemd does not yet have this implemented.
-	//files := []string{name}
-	//a.Systemd.DisableUnitFiles(files, true, false)
-}
-
-func New(registry *registry.Registry, ttl string) (*Agent) {
+func New(registry *registry.Registry, ttl string) *Agent {
 	mach := machine.New("")
-	systemd := systemdDbus.New()
+	target := target.New()
 
 	if ttl == "" {
 		ttl = DefaultServiceTTL
 	}
 
-	agent := &Agent{registry, systemd, mach, ttl}
+	agent := &Agent{registry, target, mach, ttl}
 
 	return agent
-}
-
-func writeLocalUnit(name string, contents string) {
-	log.Println("Creating unit", name)
-	path := path.Join(systemdRuntimePath, name)
-	file, err := os.Create(path)
-	if err != nil {
-		panic(err)
-	}
-	file.WriteString(contents)
-	file.Close()
-}
-
-func readLocalUnit(name string) string {
-	path := path.Join(systemdRuntimePath, name)
-	contents, _ := ioutil.ReadFile(path)
-	return string(contents)
 }
 
 func parseDuration(d string) time.Duration {
@@ -191,12 +109,4 @@ func parseDuration(d string) time.Duration {
 func intervalFromTTL(ttl string) time.Duration {
 	duration := parseDuration(ttl)
 	return duration / refreshInterval
-}
-
-func unitPath(unit string) dbus.ObjectPath {
-	prefix := "/org/freedesktop/systemd1/unit/"
-	split := strings.Split(unit, ".")
-	unit = strings.Join(split, "_2e")
-	unitPath := path.Join(prefix, unit)
-	return dbus.ObjectPath(unitPath)
 }

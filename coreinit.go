@@ -10,7 +10,7 @@ func main() {
 	a := agent.New(r, "")
 
 	// Push the initial state to the registry
-	a.UpdateUnits()
+	a.UpdateJobs()
 	a.UpdateMachine()
 
 	// Kick off the heartbeating process
