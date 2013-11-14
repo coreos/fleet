@@ -117,8 +117,8 @@ func unitPath(unit string) dbus.ObjectPath {
 
 	// This encoding should move to go-systemd.
 	// See https://github.com/coreos/go-systemd/issues/13
-	split := strings.Split(unit, ".")
-	unit = strings.Join(split, "_2e")
+	unit = strings.Replace(unit, ".", "_2e", -1)
+	unit = strings.Replace(unit, "-", "_2d", -1)
 
 	unitPath := path.Join(prefix, unit)
 	return dbus.ObjectPath(unitPath)
