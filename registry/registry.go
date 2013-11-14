@@ -100,9 +100,13 @@ func (r *Registry) ScheduleJob(job *job.Job, machine *machine.Machine) {
 }
 
 // Persist the changes in a provided Machine's Job to Etcd with the provided TTL
-func (r *Registry) UpdateMachineJob(machine *machine.Machine, job *job.Job, ttl uint64) {
-	key := path.Join(keyPrefix, machinePrefix, machine.BootId, statePrefix, job.Name)
-	r.Etcd.Set(key, job.State.State, ttl)
+func (r *Registry) UpdateJob(job *job.Job, ttl uint64) {
+	key := path.Join(keyPrefix, statePrefix, job.Name)
+	encoded, err := json.Marshal(job.State)
+	if err != nil {
+		panic(err)
+	}
+	r.Etcd.Set(key, string(encoded), ttl)
 }
 
 // Attempt to acquire a lock in Etcd on an arbitrary string. Returns true if

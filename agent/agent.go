@@ -77,7 +77,7 @@ func (a *Agent) UpdateJobs() {
 		_, ok := registeredJobs[job.Name]
 
 		if ok {
-			a.Registry.UpdateMachineJob(a.Machine, &job, ttl)
+			a.Registry.UpdateJob(&job, ttl)
 		} else {
 			a.Target.StopJob(&job)
 		}
