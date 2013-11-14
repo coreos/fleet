@@ -9,7 +9,7 @@ import (
 const boot_id_path = "/proc/sys/kernel/random/boot_id"
 
 type Addr struct {
-	Addr string `json:"addr"`
+	Addr    string `json:"addr"`
 	Network string `json:"network"`
 }
 
@@ -41,12 +41,12 @@ func (m *Machine) GetAddresses() []Addr {
 		return true
 	}
 
-	for _, k := range(ifs) {
+	for _, k := range ifs {
 		if shouldAppend(k) != true {
 			continue
 		}
 		kaddrs, _ := k.Addrs()
-		for _, j := range(kaddrs) {
+		for _, j := range kaddrs {
 			if strings.HasPrefix(j.String(), "fe80::") == true {
 				continue
 			}

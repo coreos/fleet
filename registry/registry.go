@@ -5,15 +5,16 @@ import (
 	"path"
 	"time"
 
+	"github.com/coreos/coreinit/job"
 	"github.com/coreos/coreinit/machine"
 	"github.com/coreos/go-etcd/etcd"
 )
 
 const (
-	keyPrefix = "/coreos.com/coreinit/"
-	machinePrefix = "/machines/"
+	keyPrefix      = "/coreos.com/coreinit/"
+	machinePrefix  = "/machines/"
 	schedulePrefix = "/schedule/"
-	unitPrefix = "/units/"
+	statePrefix     = "/state/"
 )
 
 type Registry struct {
@@ -36,19 +37,27 @@ func (r *Registry) SetMachineAddrs(machine *machine.Machine, addrs []machine.Add
 	r.Etcd.Set(key, string(addrsjson), uint64(ttl.Seconds()))
 }
 
-func (r *Registry) GetScheduledUnits(machine *machine.Machine) map[string]string {
+func (r *Registry) GetJobs(machine *machine.Machine) map[string]job.Job {
 	key := path.Join(keyPrefix, machinePrefix, machine.BootId, schedulePrefix)
-	objects, _ := r.Etcd.Get(key)
-	units := make(map[string]string, len(objects))
-	for _, obj := range objects {
-		_, unitName := path.Split(obj.Key)
-		units[unitName] = obj.Value
+	resp, err := r.Etcd.Get(key, false)
+
+	// Assume the error was KeyNotFound and return an empty data structure
+	if err != nil {
+		return make(map[string]job.Job, 0)
 	}
 
-	return units
+	jobs := make(map[string]job.Job, len(resp.Kvs))
+	for _, kv := range resp.Kvs {
+		_, name := path.Split(kv.Key)
+		payload := job.NewJobPayload(kv.Value)
+		job := job.NewJob(name, nil, payload)
+		jobs[job.Name] = *job
+	}
+
+	return jobs
 }
 
-func (r *Registry) SetUnitState(machine *machine.Machine, unit string, state string, ttl uint64) {
-	key := path.Join(keyPrefix, machinePrefix, machine.BootId, unitPrefix, unit)
-	r.Etcd.Set(key, state, ttl)
+func (r *Registry) UpdateJob(machine *machine.Machine, job *job.Job, ttl uint64) {
+	key := path.Join(keyPrefix, machinePrefix, machine.BootId, statePrefix, job.Name)
+	r.Etcd.Set(key, job.State.State, ttl)
 }
