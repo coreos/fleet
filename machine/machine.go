@@ -62,13 +62,13 @@ func New(bootId string) (m *Machine) {
 
 	if len(bootId) != 0 {
 		m.BootId = bootId
+	} else {
+		id, err := ioutil.ReadFile(boot_id_path)
+		if err != nil {
+			panic(err)
+		}
+		m.BootId = strings.TrimSpace(string(id))
 	}
-
-	id, err := ioutil.ReadFile(boot_id_path)
-	if err != nil {
-		panic(err)
-	}
-	m.BootId = strings.TrimSpace(string(id))
 
 	return m
 }
