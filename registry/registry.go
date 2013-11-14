@@ -80,7 +80,7 @@ func (r *Registry) getJobsAtPath(key string) map[string]job.Job {
 }
 
 // Describe the list of jobs that have not yet been scheduled to a Machine
-func (r *Registry) GetUnscheduledJobs() map[string]job.Job {
+func (r *Registry) GetGlobalJobs() map[string]job.Job {
 	key := path.Join(keyPrefix, schedulePrefix)
 	return r.getJobsAtPath(key)
 }

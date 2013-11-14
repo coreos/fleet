@@ -31,7 +31,7 @@ func (s *Scheduler) DoSchedule() {
 		// Let's not be a job-hog
 		time.Sleep(time.Second)
 
-		jobs := s.Registry.GetUnscheduledJobs()
+		jobs := s.Registry.GetGlobalJobs()
 		if len(jobs) == 0 {
 			continue
 		}
