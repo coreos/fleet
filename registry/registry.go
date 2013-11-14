@@ -12,6 +12,7 @@ import (
 
 const (
 	keyPrefix      = "/coreos.com/coreinit/"
+	lockPrefix     = "/locks/"
 	machinePrefix  = "/machines/"
 	schedulePrefix = "/schedule/"
 	statePrefix    = "/state/"
@@ -94,4 +95,12 @@ func (r *Registry) GetMachineJobs(machine *machine.Machine) map[string]job.Job {
 func (r *Registry) UpdateMachineJob(machine *machine.Machine, job *job.Job, ttl uint64) {
 	key := path.Join(keyPrefix, machinePrefix, machine.BootId, statePrefix, job.Name)
 	r.Etcd.Set(key, job.State.State, ttl)
+}
+
+// Attempt to acquire a lock in Etcd on an arbitrary string. Returns true if
+// successful, otherwise false.
+func (r *Registry) AcquireLock(name string, context string, ttl time.Duration) bool {
+	key := path.Join(keyPrefix, lockPrefix, name)
+	_, err := r.Etcd.Create(key, context, uint64(ttl.Seconds()))
+	return err == nil
 }
