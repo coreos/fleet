@@ -91,6 +91,20 @@ func (r *Registry) GetMachineJobs(machine *machine.Machine) map[string]job.Job {
 	return r.getJobsAtPath(key)
 }
 
+func (r *Registry) GetJobState(j *job.Job) *job.JobState {
+	key := path.Join(keyPrefix, statePrefix, j.Name)
+	resp, err := r.Etcd.Get(key, false)
+
+	// Assume the error was KeyNotFound and return an empty data structure
+	if err != nil {
+		return nil
+	}
+
+	var state job.JobState
+	json.Unmarshal([]byte(resp.Value), &state)
+	return &state
+}
+
 func (r *Registry) ScheduleJob(job *job.Job, machine *machine.Machine) {
 	key := path.Join(keyPrefix, machinePrefix, machine.BootId, schedulePrefix, job.Name)
 	r.Etcd.Set(key, job.Payload.Value, 0)
