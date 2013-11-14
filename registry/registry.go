@@ -14,7 +14,7 @@ const (
 	keyPrefix      = "/coreos.com/coreinit/"
 	machinePrefix  = "/machines/"
 	schedulePrefix = "/schedule/"
-	statePrefix     = "/state/"
+	statePrefix    = "/state/"
 )
 
 type Registry struct {
