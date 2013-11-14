@@ -86,7 +86,7 @@ func (a *Agent) UpdateJobs() {
 
 func New(registry *registry.Registry, ttl string) *Agent {
 	mach := machine.New("")
-	target := target.New()
+	target := target.New(mach)
 
 	if ttl == "" {
 		ttl = DefaultServiceTTL

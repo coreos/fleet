@@ -12,6 +12,7 @@ import (
 	"github.com/guelfey/go.dbus"
 
 	"github.com/coreos/coreinit/job"
+	"github.com/coreos/coreinit/machine"
 )
 
 const (
@@ -20,11 +21,12 @@ const (
 
 type Target struct {
 	Systemd *systemdDbus.Conn
+	Machine *machine.Machine
 }
 
-func New() *Target {
+func New(machine *machine.Machine) *Target {
 	systemd := systemdDbus.New()
-	return &Target{systemd}
+	return &Target{systemd, machine}
 }
 
 func (t *Target) GetJobs() map[string]job.Job {
@@ -55,7 +57,7 @@ func (t *Target) GetJobState(name string) *job.JobState {
 	}
 
 	stateString := info["ActiveState"].Value().(string)
-	return job.NewJobState(stateString)
+	return job.NewJobState(stateString, t.Machine)
 }
 
 func (t *Target) StartJob(job *job.Job) {

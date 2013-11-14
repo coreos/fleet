@@ -1,5 +1,9 @@
 package job
 
+import (
+	"github.com/coreos/coreinit/machine"
+)
+
 type Job struct {
 	Name    string      `json:"name"`
 	State   *JobState   `json:"state"`
@@ -25,9 +29,10 @@ func NewJobPayload(value string) *JobPayload {
 // the job. This will be extended with other data in the future (i.e. ports,
 // memory usage, etc).
 type JobState struct {
-	State string `json:"state"`
+	State   string           `json:"state"`
+	Machine *machine.Machine `json:"machine"`
 }
 
-func NewJobState(state string) *JobState {
-	return &JobState{state}
+func NewJobState(state string, machine *machine.Machine) *JobState {
+	return &JobState{state, machine}
 }
