@@ -27,6 +27,26 @@ func New() (registry *Registry) {
 	return registry
 }
 
+// Describe the list of all known Machines
+func (r *Registry) GetAllMachines() map[string]machine.Machine {
+	key := path.Join(keyPrefix, machinePrefix)
+	resp, err := r.Etcd.Get(key, false)
+
+	// Assume the error was KeyNotFound and return an empty data structure
+	if err != nil {
+		return make(map[string]machine.Machine, 0)
+	}
+
+	machines := make(map[string]machine.Machine, len(resp.Kvs))
+	for _, kv := range resp.Kvs {
+		_, bootId := path.Split(kv.Key)
+		machine := machine.New(bootId)
+		machines[machine.BootId] = *machine
+	}
+
+	return machines
+}
+
 func (r *Registry) SetMachineAddrs(machine *machine.Machine, addrs []machine.Addr, ttl time.Duration) {
 	addrsjson, err := json.Marshal(addrs)
 	if err != nil {
