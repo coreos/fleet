@@ -68,6 +68,6 @@ func (s *Scheduler) ScheduleJob(job *job.Job, machines map[string]machine.Machin
 	target := rand.Intn(len(machineSlice))
 	machine := machineSlice[target]
 
-	println("Scheduling job", job.Name, "to machine", machine.BootId)
+	log.Println("Scheduling job", job.Name, "to machine", machine.BootId)
 	s.Registry.ScheduleJob(job, &machine)
 }
