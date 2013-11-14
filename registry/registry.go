@@ -38,9 +38,15 @@ func (r *Registry) SetMachineAddrs(machine *machine.Machine, addrs []machine.Add
 
 func (r *Registry) GetScheduledUnits(machine *machine.Machine) map[string]string {
 	key := path.Join(keyPrefix, machinePrefix, machine.BootId, schedulePrefix)
-	objects, _ := r.Etcd.Get(key)
-	units := make(map[string]string, len(objects))
-	for _, obj := range objects {
+	resp, err := r.Etcd.Get(key, false)
+
+	// Assume the error was KeyNotFound and return an empty data structure
+	if err != nil {
+		return make(map[string]string, 0)
+	}
+
+	units := make(map[string]string, len(resp.Kvs))
+	for _, obj := range resp.Kvs {
 		_, unitName := path.Split(obj.Key)
 		units[unitName] = obj.Value
 	}
