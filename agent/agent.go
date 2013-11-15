@@ -64,7 +64,10 @@ func (a *Agent) UpdateJobs() {
 	localJobs := a.Target.GetJobs()
 
 	for _, job := range registeredJobs {
-		if state := a.Target.GetJobState(job.Name); state == nil || state.State != "active" {
+		_, ok := localJobs[job.Name]
+		if !ok {
+			a.Target.StartJob(&job)
+		} else if state := a.Target.GetJobState(job.Name); state == nil || state.State != "active" {
 			a.Target.StartJob(&job)
 		}
 	}
