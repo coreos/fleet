@@ -29,7 +29,7 @@ func New() (registry *Registry) {
 }
 
 // Describe the list of all known Machines
-func (r *Registry) GetAllMachines() map[string]machine.Machine {
+func (r *Registry) GetActiveMachines() map[string]machine.Machine {
 	key := path.Join(keyPrefix, machinePrefix)
 	resp, err := r.Etcd.Get(key, false)
 
@@ -42,10 +42,31 @@ func (r *Registry) GetAllMachines() map[string]machine.Machine {
 	for _, kv := range resp.Kvs {
 		_, bootId := path.Split(kv.Key)
 		machine := machine.New(bootId)
-		machines[machine.BootId] = *machine
+
+		// This is a hacky way of telling if a Machine is reporting state
+		addrs := r.GetMachineAddrs(machine)
+		if len(addrs) > 0 {
+			machines[machine.BootId] = *machine
+		}
 	}
 
 	return machines
+}
+
+func (r *Registry) GetMachineAddrs(m *machine.Machine) []machine.Addr {
+	key := path.Join(keyPrefix, machinePrefix, m.BootId, "addrs")
+	resp, err :=r.Etcd.Get(key, false)
+
+	addrs := make([]machine.Addr, 0)
+
+	// Assume this is KeyNotFound and return an empty data structure
+	if err != nil {
+		return addrs
+	}
+
+	json.Unmarshal([]byte(resp.Value), &addrs)
+
+	return addrs
 }
 
 func (r *Registry) SetMachineAddrs(machine *machine.Machine, addrs []machine.Addr, ttl time.Duration) {

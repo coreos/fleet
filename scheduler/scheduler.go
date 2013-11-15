@@ -35,7 +35,7 @@ func (s *Scheduler) DoSchedule() {
 			continue
 		}
 
-		machines := s.Registry.GetAllMachines()
+		machines := s.Registry.GetActiveMachines()
 
 		job := s.ClaimJob(jobs)
 		if job == nil {
