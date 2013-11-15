@@ -20,8 +20,7 @@ type Scheduler struct {
 	ClaimTTL time.Duration
 }
 
-func New(registry *registry.Registry) *Scheduler {
-	machine := machine.New("")
+func New(registry *registry.Registry, machine *machine.Machine) *Scheduler {
 	claimTTL, _ := time.ParseDuration(DefaultClaimTTL)
 	return &Scheduler{registry, machine, claimTTL}
 }

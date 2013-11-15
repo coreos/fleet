@@ -58,17 +58,13 @@ func (m *Machine) GetAddresses() []Addr {
 }
 
 func New(bootId string) (m *Machine) {
-	m = &Machine{}
+	return &Machine{bootId}
+}
 
-	if len(bootId) != 0 {
-		m.BootId = bootId
-	} else {
-		id, err := ioutil.ReadFile(boot_id_path)
-		if err != nil {
-			panic(err)
-		}
-		m.BootId = strings.TrimSpace(string(id))
+func ReadLocalBootId() string {
+	id, err := ioutil.ReadFile(boot_id_path)
+	if err != nil {
+		panic(err)
 	}
-
-	return m
+	return strings.TrimSpace(string(id))
 }
