@@ -39,12 +39,16 @@ func New(machine *machine.Machine) *Target {
 	name := "coreinit-" + machine.BootId
 	systemd := systemdDbus.New()
 	target := &Target{name, systemd, machine}
-	target.createSystemdTarget(name)
+	target.createSystemdTarget()
 	return target
 }
 
+func (t *Target) GetSystemdTargetName() string {
+	return t.Name + ".target"
+}
+
 func (t *Target) GetJobs() map[string]job.Job {
-	object := unitPath(t.Name + ".target")
+	object := unitPath(t.GetSystemdTargetName())
 	info, err := t.Systemd.GetUnitInfo(object)
 
 	if err != nil {
@@ -76,8 +80,7 @@ func (t *Target) GetJobState(name string) *job.JobState {
 }
 
 func (t *Target) StartJob(job *job.Job) {
-	targetName := t.Name + ".target"
-	writeUnit(job.Name + ".service", job.Payload.Value, targetName)
+	writeUnit(job.Name + ".service", job.Payload.Value, t.GetSystemdTargetName())
 	t.startUnit(job.Name + ".service")
 }
 
@@ -126,8 +129,9 @@ func writeUnit(name string, command string, target string) {
 	tmpl.Execute(file, context)
 }
 
-func (t *Target) createSystemdTarget(name string) {
-	path := path.Join(systemdRuntimePath, name + ".target")
+func (t *Target) createSystemdTarget() {
+	name := t.GetSystemdTargetName()
+	path := path.Join(systemdRuntimePath, name)
 	file, err := os.Create(path)
 	if err != nil {
 		panic(err)
@@ -139,7 +143,7 @@ func (t *Target) createSystemdTarget(name string) {
 
 func (t *Target) removeUnit(name string) {
 	log.Println("Removing systemd unit", name)
-	link := path.Join(systemdRuntimePath, t.Name + ".target.wants", name)
+	link := path.Join(systemdRuntimePath, t.GetSystemdTargetName() + ".wants", name)
 	syscall.Unlink(link)
 }
 
