@@ -7,6 +7,7 @@ import (
 	"path"
 	"strings"
 	"syscall"
+	"text/template"
 
 	systemdDbus "github.com/coreos/go-systemd/dbus"
 	"github.com/guelfey/go.dbus"
@@ -19,18 +20,31 @@ const (
 	systemdRuntimePath = "/run/systemd/system/"
 )
 
+const unitTemplate = `[Unit]
+Description=coreinit job {{ .Name }}
+
+[Service]
+ExecStart={{ .Command }}
+
+[Install]
+WantedBy={{ .Target }}`
+
 type Target struct {
+	Name	string
 	Systemd *systemdDbus.Conn
 	Machine *machine.Machine
 }
 
 func New(machine *machine.Machine) *Target {
+	name := "coreinit-" + machine.BootId
 	systemd := systemdDbus.New()
-	return &Target{systemd, machine}
+	target := &Target{name, systemd, machine}
+	target.createSystemdTarget(name)
+	return target
 }
 
 func (t *Target) GetJobs() map[string]job.Job {
-	object := unitPath("local.target")
+	object := unitPath(t.Name + ".target")
 	info, err := t.Systemd.GetUnitInfo(object)
 
 	if err != nil {
@@ -42,6 +56,7 @@ func (t *Target) GetJobs() map[string]job.Job {
 
 	for _, name := range names {
 		payload := job.NewJobPayload(readUnit(name))
+		name = strings.TrimSuffix(name, ".service")
 		state := t.GetJobState(name)
 		jobs[name] = *job.NewJob(name, state, payload)
 	}
@@ -50,10 +65,10 @@ func (t *Target) GetJobs() map[string]job.Job {
 }
 
 func (t *Target) GetJobState(name string) *job.JobState {
-	info, err := t.Systemd.GetUnitInfo(unitPath(name))
+	info, err := t.Systemd.GetUnitInfo(unitPath(name + ".service"))
 
 	if err != nil {
-		panic(err)
+		return nil
 	}
 
 	stateString := info["ActiveState"].Value().(string)
@@ -61,13 +76,14 @@ func (t *Target) GetJobState(name string) *job.JobState {
 }
 
 func (t *Target) StartJob(job *job.Job) {
-	writeUnit(job.Name, job.Payload.Value)
-	t.startUnit(job.Name)
+	targetName := t.Name + ".target"
+	writeUnit(job.Name + ".service", job.Payload.Value, targetName)
+	t.startUnit(job.Name + ".service")
 }
 
 func (t *Target) StopJob(job *job.Job) {
-	t.stopUnit(job.Name)
-	removeUnit(job.Name)
+	t.stopUnit(job.Name + ".service")
+	t.removeUnit(job.Name + ".service")
 }
 
 func (t *Target) startUnit(name string) {
@@ -89,20 +105,41 @@ func (t *Target) stopUnit(name string) {
 	//t.Systemd.DisableUnitFiles(files, true, false)
 }
 
-func writeUnit(name string, contents string) {
+func writeUnit(name string, command string, target string) {
 	log.Println("Writing systemd unit", name)
+
 	path := path.Join(systemdRuntimePath, name)
 	file, err := os.Create(path)
 	if err != nil {
 		panic(err)
 	}
-	file.WriteString(contents)
-	file.Close()
+
+	defer file.Close()
+
+	tmpl, _ := template.New("unitTemplate").Parse(unitTemplate)
+	type Data struct {
+		Name string
+		Command string
+		Target string
+	}
+	context := Data{name, command, target}
+	tmpl.Execute(file, context)
 }
 
-func removeUnit(name string) {
+func (t *Target) createSystemdTarget(name string) {
+	path := path.Join(systemdRuntimePath, name + ".target")
+	file, err := os.Create(path)
+	if err != nil {
+		panic(err)
+	}
+	file.Close()
+
+	t.Systemd.EnableUnitFiles([]string{path}, true, false)
+}
+
+func (t *Target) removeUnit(name string) {
 	log.Println("Removing systemd unit", name)
-	link := path.Join(systemdRuntimePath, "local.target.wants", name)
+	link := path.Join(systemdRuntimePath, t.Name + ".target.wants", name)
 	syscall.Unlink(link)
 }
 
