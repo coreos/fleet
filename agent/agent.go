@@ -64,7 +64,10 @@ func (a *Agent) UpdateJobs() {
 	localJobs := a.Target.GetJobs()
 
 	for _, job := range registeredJobs {
-		if state := a.Target.GetJobState(job.Name); state.State != "active" {
+		_, ok := localJobs[job.Name]
+		if !ok {
+			a.Target.StartJob(&job)
+		} else if state := a.Target.GetJobState(job.Name); state == nil || state.State != "active" {
 			a.Target.StartJob(&job)
 		}
 	}
@@ -77,22 +80,21 @@ func (a *Agent) UpdateJobs() {
 		_, ok := registeredJobs[job.Name]
 
 		if ok {
-			a.Registry.UpdateMachineJob(a.Machine, &job, ttl)
+			a.Registry.UpdateJob(&job, ttl)
 		} else {
 			a.Target.StopJob(&job)
 		}
 	}
 }
 
-func New(registry *registry.Registry, ttl string) *Agent {
-	mach := machine.New("")
-	target := target.New()
+func New(registry *registry.Registry, machine *machine.Machine, ttl string) *Agent {
+	target := target.New(machine)
 
 	if ttl == "" {
 		ttl = DefaultServiceTTL
 	}
 
-	agent := &Agent{registry, target, mach, ttl}
+	agent := &Agent{registry, target, machine, ttl}
 
 	return agent
 }

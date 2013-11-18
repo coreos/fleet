@@ -20,8 +20,7 @@ type Scheduler struct {
 	ClaimTTL time.Duration
 }
 
-func New(registry *registry.Registry) *Scheduler {
-	machine := machine.New("")
+func New(registry *registry.Registry, machine *machine.Machine) *Scheduler {
 	claimTTL, _ := time.ParseDuration(DefaultClaimTTL)
 	return &Scheduler{registry, machine, claimTTL}
 }
@@ -31,15 +30,21 @@ func (s *Scheduler) DoSchedule() {
 		// Let's not be a job-hog
 		time.Sleep(time.Second)
 
-		jobs := s.Registry.GetUnscheduledJobs()
+		jobs := s.Registry.GetGlobalJobs()
 		if len(jobs) == 0 {
 			continue
 		}
 
-		machines := s.Registry.GetAllMachines()
+		machines := s.Registry.GetActiveMachines()
 
 		job := s.ClaimJob(jobs)
 		if job == nil {
+			continue
+		}
+
+		// If someone has reported state for this job, we assume
+		// it's good to go.
+		if jobState := s.Registry.GetJobState(job); jobState != nil {
 			continue
 		}
 
@@ -68,6 +73,6 @@ func (s *Scheduler) ScheduleJob(job *job.Job, machines map[string]machine.Machin
 	target := rand.Intn(len(machineSlice))
 	machine := machineSlice[target]
 
-	println("Scheduling job", job.Name, "to machine", machine.BootId)
+	log.Println("Scheduling job", job.Name, "to machine", machine.BootId)
 	s.Registry.ScheduleJob(job, &machine)
 }

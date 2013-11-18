@@ -29,7 +29,7 @@ func New() (registry *Registry) {
 }
 
 // Describe the list of all known Machines
-func (r *Registry) GetAllMachines() map[string]machine.Machine {
+func (r *Registry) GetActiveMachines() map[string]machine.Machine {
 	key := path.Join(keyPrefix, machinePrefix)
 	resp, err := r.Etcd.Get(key, false)
 
@@ -42,10 +42,31 @@ func (r *Registry) GetAllMachines() map[string]machine.Machine {
 	for _, kv := range resp.Kvs {
 		_, bootId := path.Split(kv.Key)
 		machine := machine.New(bootId)
-		machines[machine.BootId] = *machine
+
+		// This is a hacky way of telling if a Machine is reporting state
+		addrs := r.GetMachineAddrs(machine)
+		if len(addrs) > 0 {
+			machines[machine.BootId] = *machine
+		}
 	}
 
 	return machines
+}
+
+func (r *Registry) GetMachineAddrs(m *machine.Machine) []machine.Addr {
+	key := path.Join(keyPrefix, machinePrefix, m.BootId, "addrs")
+	resp, err :=r.Etcd.Get(key, false)
+
+	addrs := make([]machine.Addr, 0)
+
+	// Assume this is KeyNotFound and return an empty data structure
+	if err != nil {
+		return addrs
+	}
+
+	json.Unmarshal([]byte(resp.Value), &addrs)
+
+	return addrs
 }
 
 func (r *Registry) SetMachineAddrs(machine *machine.Machine, addrs []machine.Addr, ttl time.Duration) {
@@ -80,7 +101,7 @@ func (r *Registry) getJobsAtPath(key string) map[string]job.Job {
 }
 
 // Describe the list of jobs that have not yet been scheduled to a Machine
-func (r *Registry) GetUnscheduledJobs() map[string]job.Job {
+func (r *Registry) GetGlobalJobs() map[string]job.Job {
 	key := path.Join(keyPrefix, schedulePrefix)
 	return r.getJobsAtPath(key)
 }
@@ -91,18 +112,33 @@ func (r *Registry) GetMachineJobs(machine *machine.Machine) map[string]job.Job {
 	return r.getJobsAtPath(key)
 }
 
+func (r *Registry) GetJobState(j *job.Job) *job.JobState {
+	key := path.Join(keyPrefix, statePrefix, j.Name)
+	resp, err := r.Etcd.Get(key, false)
+
+	// Assume the error was KeyNotFound and return an empty data structure
+	if err != nil {
+		return nil
+	}
+
+	var state job.JobState
+	json.Unmarshal([]byte(resp.Value), &state)
+	return &state
+}
+
 func (r *Registry) ScheduleJob(job *job.Job, machine *machine.Machine) {
 	key := path.Join(keyPrefix, machinePrefix, machine.BootId, schedulePrefix, job.Name)
 	r.Etcd.Set(key, job.Payload.Value, 0)
-
-	key = path.Join(keyPrefix, schedulePrefix, job.Name)
-	r.Etcd.Delete(key)
 }
 
 // Persist the changes in a provided Machine's Job to Etcd with the provided TTL
-func (r *Registry) UpdateMachineJob(machine *machine.Machine, job *job.Job, ttl uint64) {
-	key := path.Join(keyPrefix, machinePrefix, machine.BootId, statePrefix, job.Name)
-	r.Etcd.Set(key, job.State.State, ttl)
+func (r *Registry) UpdateJob(job *job.Job, ttl uint64) {
+	key := path.Join(keyPrefix, statePrefix, job.Name)
+	encoded, err := json.Marshal(job.State)
+	if err != nil {
+		panic(err)
+	}
+	r.Etcd.Set(key, string(encoded), ttl)
 }
 
 // Attempt to acquire a lock in Etcd on an arbitrary string. Returns true if
