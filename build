@@ -22,3 +22,4 @@ for i in third_party/*; do
 done
 
 go build "${COREINIT_PACKAGE}"
+go build -o corectl "${COREINIT_PACKAGE}"/cmd
