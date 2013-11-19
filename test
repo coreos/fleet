@@ -1,5 +1,7 @@
 #!/bin/sh -e
 
+export GOPATH="${PWD}"
+
 PKG="github.com/coreos/coreinit"
 
 rm -R src
