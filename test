@@ -9,3 +9,4 @@ mkdir -p src/$(dirname $PKG)
 ln -s ../../../ src/$PKG
 
 go test -v ${PKG}/job
+go test -v ${PKG}/machine
