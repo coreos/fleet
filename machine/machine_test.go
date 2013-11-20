@@ -16,3 +16,12 @@ func TestNew(t *testing.T) {
 		t.Fatal("machine.Machine.BootId != 'XXX'")
 	}
 }
+
+func TestStringEncoding(t *testing.T) {
+	m1 := Machine{"XXX"}
+	result := m1.String()
+	expect := "XXX"
+	if result != expect {
+		t.Fatalf("machine.Machine.String() returned '%s', expected '%s'", result, expect)
+	}
+}
