@@ -7,7 +7,6 @@ import (
 	"path"
 	"strings"
 	"syscall"
-	"text/template"
 
 	systemdDbus "github.com/coreos/go-systemd/dbus"
 	"github.com/guelfey/go.dbus"
@@ -19,15 +18,6 @@ import (
 const (
 	systemdRuntimePath = "/run/systemd/system/"
 )
-
-const unitTemplate = `[Unit]
-Description=coreinit job {{ .Name }}
-
-[Service]
-ExecStart={{ .Command }}
-
-[Install]
-WantedBy={{ .Target }}`
 
 type Target struct {
 	Name	string
@@ -80,7 +70,7 @@ func (t *Target) GetJobState(name string) *job.JobState {
 }
 
 func (t *Target) StartJob(job *job.Job) {
-	writeUnit(job.Name + ".service", job.Payload.Value, t.GetSystemdTargetName())
+	createSystemdService(job.Name + ".service", job.Payload.Value, t.GetSystemdTargetName())
 	t.startUnit(job.Name + ".service")
 }
 
@@ -108,8 +98,8 @@ func (t *Target) stopUnit(name string) {
 	//t.Systemd.DisableUnitFiles(files, true, false)
 }
 
-func writeUnit(name string, command string, target string) {
-	log.Println("Writing systemd unit", name)
+func createSystemdService(name string, contents string, target string) {
+	log.Println("Writing systemd service file", name)
 
 	path := path.Join(systemdRuntimePath, name)
 	file, err := os.Create(path)
@@ -119,14 +109,9 @@ func writeUnit(name string, command string, target string) {
 
 	defer file.Close()
 
-	tmpl, _ := template.New("unitTemplate").Parse(unitTemplate)
-	type Data struct {
-		Name string
-		Command string
-		Target string
-	}
-	context := Data{name, command, target}
-	tmpl.Execute(file, context)
+	contents += "\r\n\r\n[Install]\r\nWantedBy=" + target
+
+	file.Write([]byte(contents))
 }
 
 func (t *Target) createSystemdTarget() {
