@@ -1,8 +1,8 @@
 package main
 
 import (
-	"os"
 	"github.com/codegangsta/cli"
+	"os"
 )
 
 func main() {
@@ -13,9 +13,14 @@ func main() {
 
 	app.Commands = []cli.Command{
 		{
-			Name:      "list-units",
-			Usage:     "List installed unit files",
+			Name:   "list-units",
+			Usage:  "List installed unit files",
 			Action: listUnits,
+		},
+		{
+			Name:   "start",
+			Usage:  "Start (activate) one or more units",
+			Action: startUnit,
 		},
 	}
 
