@@ -26,19 +26,17 @@ type Target struct {
 }
 
 func New(machine *machine.Machine) *Target {
-	name := "coreinit-" + machine.BootId
 	systemd := systemdDbus.New()
+
+	name := "coreinit-" + machine.BootId + ".target"
 	target := &Target{name, systemd, machine}
-	target.createSystemdTarget()
+	createSystemdTarget(name)
+
 	return target
 }
 
-func (t *Target) GetSystemdTargetName() string {
-	return t.Name + ".target"
-}
-
 func (t *Target) GetJobs() map[string]job.Job {
-	object := unitPath(t.GetSystemdTargetName())
+	object := unitPath(t.Name)
 	info, err := t.Systemd.GetUnitInfo(object)
 
 	if err != nil {
@@ -50,7 +48,6 @@ func (t *Target) GetJobs() map[string]job.Job {
 
 	for _, name := range names {
 		payload := job.NewJobPayload(readUnit(name))
-		name = strings.TrimSuffix(name, ".service")
 		state := t.GetJobState(name)
 		jobs[name] = *job.NewJob(name, state, payload)
 	}
@@ -59,7 +56,7 @@ func (t *Target) GetJobs() map[string]job.Job {
 }
 
 func (t *Target) GetJobState(name string) *job.JobState {
-	info, err := t.Systemd.GetUnitInfo(unitPath(name + ".service"))
+	info, err := t.Systemd.GetUnitInfo(unitPath(name))
 
 	if err != nil {
 		return nil
@@ -70,13 +67,13 @@ func (t *Target) GetJobState(name string) *job.JobState {
 }
 
 func (t *Target) StartJob(job *job.Job) {
-	createSystemdService(job.Name + ".service", job.Payload.Value, t.GetSystemdTargetName())
-	t.startUnit(job.Name + ".service")
+	createSystemdService(job.Name, job.Payload.Value, t.Name)
+	t.startUnit(job.Name)
 }
 
 func (t *Target) StopJob(job *job.Job) {
-	t.stopUnit(job.Name + ".service")
-	t.removeUnit(job.Name + ".service")
+	t.stopUnit(job.Name)
+	t.removeUnit(job.Name)
 }
 
 func (t *Target) startUnit(name string) {
@@ -114,21 +111,20 @@ func createSystemdService(name string, contents string, target string) {
 	file.Write([]byte(contents))
 }
 
-func (t *Target) createSystemdTarget() {
-	name := t.GetSystemdTargetName()
+// Ensure a local systemd target file exists. The name
+// argument must end with '.target'
+func createSystemdTarget(name string) {
 	path := path.Join(systemdRuntimePath, name)
 	file, err := os.Create(path)
 	if err != nil {
 		panic(err)
 	}
 	file.Close()
-
-	t.Systemd.EnableUnitFiles([]string{path}, true, false)
 }
 
 func (t *Target) removeUnit(name string) {
-	log.Println("Removing systemd unit", name)
-	link := path.Join(systemdRuntimePath, t.GetSystemdTargetName() + ".wants", name)
+	log.Printf("Unlinking systemd unit %s from target %s", name, t.Name)
+	link := path.Join(systemdRuntimePath, t.Name + ".wants", name)
 	syscall.Unlink(link)
 }
 
