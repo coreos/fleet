@@ -131,6 +131,12 @@ func (r *Registry) ScheduleJob(job *job.Job, machine *machine.Machine) {
 	r.Etcd.Set(key, job.Payload.Value, 0)
 }
 
+// StartJob adds a job to the schedule to be started.
+func (r *Registry) StartJob(job *job.Job) {
+	key := path.Join(keyPrefix, schedulePrefix, job.Name)
+	r.Etcd.Set(key, job.Payload.Value, 0)
+}
+
 // Persist the changes in a provided Machine's Job to Etcd with the provided TTL
 func (r *Registry) UpdateJob(job *job.Job, ttl uint64) {
 	key := path.Join(keyPrefix, statePrefix, job.Name)
