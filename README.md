@@ -18,6 +18,8 @@ web@8000.service	web@8001.service	web@8002.service
 $ corectl start examples/*
 $ corectl list-units
 UNIT	LOAD	ACTIVE	SUB	DESC	MACHINE
+socket-activated.service	loaded	active	-	Socket-Activated Web Service	491586a6-508f-4583-a71d-bfc4d146e996
+socket-activated.socket	loaded	active	listening	Socket-Activated Web Service	491586a6-508f-4583-a71d-bfc4d146e996
 web@8000.service	loaded	active	-	Web Service	491586a6-508f-4583-a71d-bfc4d146e996
 web@8001.service	loaded	active	-	Web Service	491586a6-508f-4583-a71d-bfc4d146e996
 web@8002.service	loaded	active	-	Web Service	491586a6-508f-4583-a71d-bfc4d146e996
