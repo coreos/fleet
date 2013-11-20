@@ -2,6 +2,7 @@ package main
 
 import (
 	"io/ioutil"
+	"path"
 
 	"github.com/codegangsta/cli"
 
@@ -18,7 +19,8 @@ func startUnit(c *cli.Context) {
 			logger.Fatalf("%s: No such file or directory\n", v)
 		}
 		payload := job.NewJobPayload(string(out))
-		job := job.NewJob(v, nil, payload)
+		baseName := path.Base(v)
+		job := job.NewJob(baseName, nil, payload)
 		r.StartJob(job)
 	}
 }
