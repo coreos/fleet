@@ -48,7 +48,6 @@ func (t *Target) GetJobs() map[string]job.Job {
 
 	for _, name := range names {
 		payload := job.NewJobPayload(readUnit(name))
-		name = strings.TrimSuffix(name, ".service")
 		state := t.GetJobState(name)
 		jobs[name] = *job.NewJob(name, state, payload)
 	}
@@ -57,7 +56,7 @@ func (t *Target) GetJobs() map[string]job.Job {
 }
 
 func (t *Target) GetJobState(name string) *job.JobState {
-	info, err := t.Systemd.GetUnitInfo(unitPath(name + ".service"))
+	info, err := t.Systemd.GetUnitInfo(unitPath(name))
 
 	if err != nil {
 		return nil
@@ -68,13 +67,13 @@ func (t *Target) GetJobState(name string) *job.JobState {
 }
 
 func (t *Target) StartJob(job *job.Job) {
-	createSystemdService(job.Name + ".service", job.Payload.Value, t.Name)
-	t.startUnit(job.Name + ".service")
+	createSystemdService(job.Name, job.Payload.Value, t.Name)
+	t.startUnit(job.Name)
 }
 
 func (t *Target) StopJob(job *job.Job) {
-	t.stopUnit(job.Name + ".service")
-	t.removeUnit(job.Name + ".service")
+	t.stopUnit(job.Name)
+	t.removeUnit(job.Name)
 }
 
 func (t *Target) startUnit(name string) {
