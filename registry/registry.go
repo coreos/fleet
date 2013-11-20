@@ -1,6 +1,7 @@
 package registry
 
 import (
+	"bytes"
 	"encoding/json"
 	"path"
 	"time"
@@ -91,8 +92,20 @@ func (r *Registry) getJobsAtPath(key string) map[string]job.Job {
 
 	jobs := make(map[string]job.Job, len(resp.Kvs))
 	for _, kv := range resp.Kvs {
-		_, name := path.Split(kv.Key)
-		payload := job.NewJobPayload(kv.Value)
+		name := path.Base(kv.Key)
+		nameBytes := []byte(name)
+
+		var payloadType string
+		if bytes.HasSuffix(nameBytes, []byte(".service")) {
+			payloadType = "systemd-service"
+		} else if bytes.HasSuffix(nameBytes, []byte(".socket")) {
+			payloadType = "systemd-socket"
+		} else {
+			// Unable to handle this job type
+			continue
+		}
+
+		payload := job.NewJobPayload(payloadType, kv.Value)
 		job := job.NewJob(name, nil, payload)
 		jobs[job.Name] = *job
 	}

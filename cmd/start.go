@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"io/ioutil"
 	"path"
 
@@ -18,9 +19,23 @@ func startUnit(c *cli.Context) {
 		if err != nil {
 			logger.Fatalf("%s: No such file or directory\n", v)
 		}
-		payload := job.NewJobPayload(string(out))
-		baseName := path.Base(v)
-		job := job.NewJob(baseName, nil, payload)
+
+		name := path.Base(v)
+		nameBytes := []byte(name)
+
+		var payloadType string
+		if bytes.HasSuffix(nameBytes, []byte(".service")) {
+			payloadType = "systemd-service"
+		} else if bytes.HasSuffix(nameBytes, []byte(".socket")) {
+			payloadType = "systemd-socket"
+		} else {
+			// Unable to handle this job type
+			logger.Fatalf("Unrecognized systemd unit: %s\n", v)
+			continue
+		}
+
+		payload := job.NewJobPayload(payloadType, string(out))
+		job := job.NewJob(name, nil, payload)
 		r.StartJob(job)
 	}
 }
