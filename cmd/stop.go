@@ -1,6 +1,8 @@
 package main
 
 import (
+	"path"
+
 	"github.com/codegangsta/cli"
 
 	"github.com/coreos/coreinit/job"
@@ -11,7 +13,8 @@ func stopUnit(c *cli.Context) {
 	r := registry.New()
 
 	for _, v := range c.Args() {
-		job := job.NewJob(v, nil, nil)
+		baseName := path.Base(v)
+		job := job.NewJob(baseName, nil, nil)
 		r.StopJob(job)
 	}
 }

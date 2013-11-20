@@ -13,20 +13,17 @@ If a machine changes IP addresses, etc it *must* have a new UUID.
 
 ### (WIP) Using corectl
 ```
-$ ls services/
-web.1.service	web.2.service	web.3.service
-$ corectl start services/*
+$ ls examples/
+web@8000.service	web@8001.service	web@8002.service
+$ corectl start examples/*
 $ corectl list-units
 UNIT	LOAD	ACTIVE	SUB	DESC	MACHINE
-web.1.service	loaded	inactive	-			My Website  mach2
-web.2.service	loaded	inactive	-			My Website  mach2
-web.3.service	loaded	active	active		My Website  mach1
-web.1.socket	loaded  active 	listening	My Website 	mach2
-web.2.socket	loaded  active	listening	My Website 	mach2
-web.3.socket	loaded  active  listening  	My Website 	mach1
-$ corectl status web.1.service
-web.1.service - CoreOS Website
+web@8000.service	loaded	active	-	Web Service	491586a6-508f-4583-a71d-bfc4d146e996
+web@8001.service	loaded	active	-	Web Service	491586a6-508f-4583-a71d-bfc4d146e996
+web@8002.service	loaded	active	-	Web Service	491586a6-508f-4583-a71d-bfc4d146e996
+$ corectl status web@8000.service
+web@8000.service - Web Service
 	Loaded: loaded (...)
 	Active: active (running)
-$ corectl stop web.1.service
+$ corectl stop web@8000.service
 ```

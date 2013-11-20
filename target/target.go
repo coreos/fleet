@@ -141,6 +141,7 @@ func unitPath(unit string) dbus.ObjectPath {
 	// See https://github.com/coreos/go-systemd/issues/13
 	unit = strings.Replace(unit, ".", "_2e", -1)
 	unit = strings.Replace(unit, "-", "_2d", -1)
+	unit = strings.Replace(unit, "@", "_40", -1)
 
 	unitPath := path.Join(prefix, unit)
 	return dbus.ObjectPath(unitPath)
