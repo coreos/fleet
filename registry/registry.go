@@ -53,11 +53,11 @@ func (r *Registry) GetActiveMachines() map[string]machine.Machine {
 	return machines
 }
 
-func (r *Registry) GetMachineAddrs(m *machine.Machine) []machine.Addr {
+func (r *Registry) GetMachineAddrs(m *machine.Machine) []machine.IPAddress {
 	key := path.Join(keyPrefix, machinePrefix, m.BootId, "addrs")
 	resp, err :=r.Etcd.Get(key, false)
 
-	addrs := make([]machine.Addr, 0)
+	addrs := make([]machine.IPAddress, 0)
 
 	// Assume this is KeyNotFound and return an empty data structure
 	if err != nil {
@@ -69,7 +69,7 @@ func (r *Registry) GetMachineAddrs(m *machine.Machine) []machine.Addr {
 	return addrs
 }
 
-func (r *Registry) SetMachineAddrs(machine *machine.Machine, addrs []machine.Addr, ttl time.Duration) {
+func (r *Registry) SetMachineAddrs(machine *machine.Machine, addrs []machine.IPAddress, ttl time.Duration) {
 	addrsjson, err := json.Marshal(addrs)
 	if err != nil {
 		panic(err)

@@ -25,15 +25,3 @@ func TestStringEncoding(t *testing.T) {
 		t.Fatalf("machine.Machine.String() returned '%s', expected '%s'", result, expect)
 	}
 }
-
-func TestAddr(t *testing.T) {
-	addr := Addr{"127.0.0.1/32", "ip+net"}
-
-	if addr.Addr != "127.0.0.1/32" {
-		t.Fatal("addr.Addr != '127.0.0.1/32'")
-	}
-
-	if addr.Network != "ip+net" {
-		t.Fatal("addr.Network != 'ip+net'")
-	}
-}
