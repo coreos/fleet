@@ -1,5 +1,0 @@
-[Unit]
-Description=Web Service
-
-[Service]
-ExecStart=/usr/bin/python -m SimpleHTTPServer
