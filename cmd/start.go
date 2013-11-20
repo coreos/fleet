@@ -1,7 +1,7 @@
 package main
 
 import (
-	"strings"
+	"io/ioutil"
 
 	"github.com/codegangsta/cli"
 
@@ -12,10 +12,13 @@ import (
 func startUnit(c *cli.Context) {
 	r := registry.New()
 
-	args := c.Args()
-	exec := args[1:]
-	payload := job.NewJobPayload(strings.Join(exec, " "))
-	job := job.NewJob(args[0], nil, payload)
-
-	r.StartJob(job)
+	for _, v := range c.Args() {
+		out, err := ioutil.ReadFile(v)
+		if err != nil {
+			logger.Fatalf("%s: No such file or directory\n", v)
+		}
+		payload := job.NewJobPayload(string(out))
+		job := job.NewJob(v, nil, payload)
+		r.StartJob(job)
+	}
 }
