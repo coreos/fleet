@@ -47,9 +47,8 @@ func (t *Target) GetJobs() map[string]job.Job {
 	jobs := make(map[string]job.Job, len(names))
 
 	for _, name := range names {
-		payload := job.NewJobPayload(readUnit(name))
 		state := t.GetJobState(name)
-		jobs[name] = *job.NewJob(name, state, payload)
+		jobs[name] = *job.NewJob(name, state, nil)
 	}
 
 	return jobs
