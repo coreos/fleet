@@ -1,5 +1,6 @@
 src/
 pkg/
 /coreinit
+/corectl
 release_version.go
 *.swp

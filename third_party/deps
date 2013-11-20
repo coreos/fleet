@@ -6,4 +6,6 @@ packages="
 	github.com/coreos/go-log/log
 	github.com/coreos/go-systemd
 	github.com/guelfey/go.dbus
+
+	github.com/codegangsta/cli
 "
