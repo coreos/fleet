@@ -1,8 +1,8 @@
 package main
 
 import (
-	"os"
 	"flag"
+	"os"
 
 	"github.com/coreos/coreinit/agent"
 	"github.com/coreos/coreinit/machine"
