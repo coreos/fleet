@@ -137,6 +137,19 @@ func (r *Registry) StartJob(job *job.Job) {
 	r.Etcd.Set(key, job.Payload.Value, 0)
 }
 
+// StopJob removes the job from the global and machine schedule.
+func (r *Registry) StopJob(job *job.Job) {
+	key := path.Join(keyPrefix, schedulePrefix, job.Name)
+	r.Etcd.Delete(key)
+
+	state := r.GetJobState(job)
+
+	if state != nil {
+		key := path.Join(keyPrefix, machinePrefix, state.Machine.BootId, schedulePrefix, job.Name)
+		r.Etcd.Delete(key)
+	}
+}
+
 // Persist the changes in a provided Machine's Job to Etcd with the provided TTL
 func (r *Registry) UpdateJob(job *job.Job, ttl uint64) {
 	key := path.Join(keyPrefix, statePrefix, job.Name)

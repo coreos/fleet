@@ -33,6 +33,12 @@ Once scheduled the cluster will ensure that the unit is
 running on one machine.`,
 			Action: startUnit,
 		},
+		{
+			Name:   "stop",
+			Usage:  "Stop one or more units",
+			Description: `Remove one or more jobs from the cluster schedule.`,
+			Action: stopUnit,
+		},
 	}
 
 	app.Run(os.Args)
