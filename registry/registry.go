@@ -181,10 +181,10 @@ func (r *Registry) AcquireLock(name string, context string, ttl time.Duration) b
 
 func marshal(obj interface{}) (string, error) {
 	encoded, err := json.Marshal(obj)
-	if err != nil {
-		return "", errors.New("Unable to JSON-serialize object")
-	} else {
+	if err == nil {
 		return string(encoded), nil
+	} else {
+		return "", errors.New(fmt.Sprintf("Unable to JSON-serialize object: %s", err))
 	}
 }
 
@@ -193,6 +193,6 @@ func unmarshal(val string, obj interface{}) (error) {
 	if err == nil {
 		return nil
 	} else {
-		return errors.New("Unable to JSON-deserialize object")
+		return errors.New(fmt.Sprintf("Unable to JSON-deserialize object: %s", err))
 	}
 }
