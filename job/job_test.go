@@ -89,7 +89,7 @@ func TestJobStateNilMachine(t *testing.T) {
 	}
 }
 
-func TestJobPayload(t *testing.T) {
+func TestNewJobPayload(t *testing.T) {
 	jp1, _ := NewJobPayload("systemd-service", "echo")
 	jp2 := JobPayload{"systemd-service", "echo"}
 
@@ -103,5 +103,17 @@ func TestJobPayload(t *testing.T) {
 
 	if jp1.Value != "echo" {
 		t.Fatal("job.JobPayload.Value != 'echo'")
+	}
+}
+
+func TestNewJobPayloadBadType(t *testing.T) {
+	jp, err := NewJobPayload("bad-type", "echo")
+
+	if err == nil {
+		t.Fatal("Expected non-nil error")
+	}
+
+	if jp != nil {
+		t.Fatal("Expected nil *JobPayload")
 	}
 }
