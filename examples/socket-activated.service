@@ -1,0 +1,5 @@
+[Unit]
+Description=Socket-Activated Web Service
+
+[Service]
+ExecStart=/usr/bin/python -c "import socket; import os; fd = 3 + int(os.environ.get(\"LISTEN_FDS\")) -1; s = socket.fromfd(fd, socket.AF_INET, socket.SOCK_STREAM); s.listen(1); client, _ = s.accept(); client.send(\"HTTP/1.1 200 OK\\r\\nContent-Length: 3\\r\\n\\r\\nXXX\\r\\n\\r\\n\"); client.close()"

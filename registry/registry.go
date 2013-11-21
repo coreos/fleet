@@ -2,6 +2,7 @@ package registry
 
 import (
 	"encoding/json"
+	"log"
 	"path"
 	"time"
 
@@ -91,10 +92,17 @@ func (r *Registry) getJobsAtPath(key string) map[string]job.Job {
 
 	jobs := make(map[string]job.Job, len(resp.Kvs))
 	for _, kv := range resp.Kvs {
-		_, name := path.Split(kv.Key)
-		payload := job.NewJobPayload(kv.Value)
-		job := job.NewJob(name, nil, payload)
-		jobs[job.Name] = *job
+		name := path.Base(kv.Key)
+
+		//TODO: Use a bare NewJobPayload call here
+		payload, err := job.NewJobPayloadFromSystemdUnit(name, kv.Value)
+
+		if err == nil {
+			job := job.NewJob(name, nil, payload)
+			jobs[job.Name] = *job
+		} else {
+			log.Print(err)
+		}
 	}
 
 	return jobs

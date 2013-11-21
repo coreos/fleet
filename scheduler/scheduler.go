@@ -3,6 +3,7 @@ package scheduler
 import (
 	"log"
 	"math/rand"
+	"regexp"
 	"time"
 
 	"github.com/coreos/coreinit/job"
@@ -64,15 +65,43 @@ func (s *Scheduler) ClaimJob(jobs map[string]job.Job) *job.Job {
 	return nil
 }
 
-func (s *Scheduler) ScheduleJob(job *job.Job, machines map[string]machine.Machine) {
+func (s *Scheduler) ScheduleJob(j *job.Job, machines map[string]machine.Machine) {
+	var mach *machine.Machine
+	// If the Job being scheduled is a systemd service unit, we assume we
+	// can put it anywhere. If not, we must find the machine where the
+	// Job's related service file is currently scheuled.
+	if j.Payload.Type == "systemd-service" {
+		mach = pickRandomMachine(machines)
+	} else {
+		// This is intended to match a standard filetype (i.e. '.socket' in 'web.socket')
+		re := regexp.MustCompile("\\.(.[a-z]*)$")
+		serviceName := re.ReplaceAllString(j.Name, ".service")
+
+		service := job.NewJob(serviceName, nil, nil)
+		state := s.Registry.GetJobState(service)
+
+		if state == nil {
+			log.Printf("Unable to schedule job %s since corresponding " +
+			           "service job %s could not be found", j.Name, serviceName)
+		} else {
+			mach = state.Machine
+		}
+	}
+
+	if mach == nil {
+		log.Printf("Not scheduling job %s", j.Name)
+	} else {
+		log.Println("Scheduling job", j.Name, "to machine", mach.BootId)
+		s.Registry.ScheduleJob(j, mach)
+	}
+}
+
+func pickRandomMachine(machines map[string]machine.Machine) *machine.Machine{
 	machineSlice := make([]machine.Machine, 0)
 	for _, v := range machines {
 		machineSlice = append(machineSlice, v)
 	}
 
 	target := rand.Intn(len(machineSlice))
-	machine := machineSlice[target]
-
-	log.Println("Scheduling job", job.Name, "to machine", machine.BootId)
-	s.Registry.ScheduleJob(job, &machine)
+	return &machineSlice[target]
 }

@@ -31,7 +31,7 @@ func TestJobNilStateNilPayload(t *testing.T) {
 func TestJob(t *testing.T) {
 	mach := machine.New("XXX")
 	js1 := NewJobState("inactive", mach)
-	jp1 := NewJobPayload("echo")
+	jp1 := NewJobPayload("systemd-service", "echo")
 
 	j1 := NewJob("pong", js1, jp1)
 	j2 := Job{"pong", js1, jp1}
@@ -90,15 +90,15 @@ func TestJobStateNilMachine(t *testing.T) {
 }
 
 func TestJobPayload(t *testing.T) {
-	jp1 := NewJobPayload("echo")
-	jp2 := JobPayload{"systemd", "echo"}
+	jp1 := NewJobPayload("systemd-service", "echo")
+	jp2 := JobPayload{"systemd-service", "echo"}
 
 	if *jp1 != jp2 {
 		t.Error("job.NewJobPayload factory failed to produce appropriate job.JobPayload")
 	}
 
-	if jp1.Type != "systemd" {
-		t.Fatal("job.JobPayload.Type != 'systemd'")
+	if jp1.Type != "systemd-service" {
+		t.Fatal("job.JobPayload.Type != 'systemd-service'")
 	}
 
 	if jp1.Value != "echo" {

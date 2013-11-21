@@ -18,9 +18,14 @@ func startUnit(c *cli.Context) {
 		if err != nil {
 			logger.Fatalf("%s: No such file or directory\n", v)
 		}
-		payload := job.NewJobPayload(string(out))
-		baseName := path.Base(v)
-		job := job.NewJob(baseName, nil, payload)
-		r.StartJob(job)
+
+		name := path.Base(v)
+		payload, err := job.NewJobPayloadFromSystemdUnit(name, string(out))
+		if err != nil {
+			logger.Print(err)
+		} else {
+			job := job.NewJob(name, nil, payload)
+			r.StartJob(job)
+		}
 	}
 }
