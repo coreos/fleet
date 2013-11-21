@@ -1,12 +1,12 @@
-#!/bin/sh -e
+#!/bin/sh
+set -e
 
+if [ -f .buildenv ]; then
+        source .buildenv
+fi
+
+PKG=github.com/coreos/coreinit
 export GOPATH="${PWD}"
-
-PKG="github.com/coreos/coreinit"
-
-rm -R src
-mkdir -p src/$(dirname $PKG)
-ln -s ../../../ src/$PKG
 
 go test -v ${PKG}/job
 go test -v ${PKG}/machine
