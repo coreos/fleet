@@ -16,7 +16,15 @@ func listUnits(c *cli.Context) {
 
 	for _, m := range machines {
 		for _, j := range r.GetMachineJobs(&m) {
-			fmt.Printf("%s\t\t\t\t\t%s\n", j.Name, m.String())
+			js := r.GetJobState(&j)
+			var state string
+			if js != nil {
+				state = js.State
+			} else {
+				state = "-"
+			}
+
+			fmt.Printf("%s\tloaded\t%s\t-\t-\t%s\n", j.Name, state, m.String())
 		}
 	}
 }
