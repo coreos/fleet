@@ -10,13 +10,21 @@ import (
 func listUnits(c *cli.Context) {
 	r := registry.New()
 
-	machines := r.GetActiveMachines()
-
 	println("UNIT\tLOAD\tACTIVE\tSUB\tDESC\tMACHINE")
 
-	for _, m := range machines {
-		for _, j := range r.GetMachineJobs(&m) {
-			fmt.Printf("%s\t\t\t\t\t%s\n", j.Name, m.String())
+	for _, j := range r.GetGlobalJobs() {
+		js := r.GetJobState(&j)
+
+		var state string
+		var mach string
+		if js != nil {
+			state = js.State
+			mach = js.Machine.String()
+		} else {
+			state = "-"
+			mach = "-"
 		}
+
+		fmt.Printf("%s\tloaded\t%s\t-\t-\t%s\n", j.Name, state, mach)
 	}
 }
