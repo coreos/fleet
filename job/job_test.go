@@ -89,7 +89,7 @@ func TestJobStateNilMachine(t *testing.T) {
 	}
 }
 
-func TestJobPayload(t *testing.T) {
+func TestNewJobPayload(t *testing.T) {
 	jp1, _ := NewJobPayload("systemd-service", "echo")
 	jp2 := JobPayload{"systemd-service", "echo"}
 
@@ -103,5 +103,63 @@ func TestJobPayload(t *testing.T) {
 
 	if jp1.Value != "echo" {
 		t.Fatal("job.JobPayload.Value != 'echo'")
+	}
+}
+
+func TestNewJobPayloadBadType(t *testing.T) {
+	jp, err := NewJobPayload("bad-type", "echo")
+
+	if err == nil {
+		t.Fatal("Expected non-nil error")
+	}
+
+	if jp != nil {
+		t.Fatal("Expected nil *JobPayload")
+	}
+}
+
+func TestNewJobPayloadFromSystemdUnitService(t *testing.T) {
+	jp1, _ := NewJobPayloadFromSystemdUnit("echo.service", "echo")
+	jp2 := JobPayload{"systemd-service", "echo"}
+
+	if *jp1 != jp2 {
+		t.Error("job.NewJobPayload factory failed to produce appropriate job.JobPayload")
+	}
+
+	if jp1.Type != "systemd-service" {
+		t.Fatal("job.JobPayload.Type != 'systemd-service'")
+	}
+
+	if jp1.Value != "echo" {
+		t.Fatal("job.JobPayload.Value != 'echo'")
+	}
+}
+
+func TestNewJobPayloadFromSystemdUnitSocket(t *testing.T) {
+	jp1, _ := NewJobPayloadFromSystemdUnit("echo.socket", "echo")
+	jp2 := JobPayload{"systemd-socket", "echo"}
+
+	if *jp1 != jp2 {
+		t.Error("job.NewJobPayload factory failed to produce appropriate job.JobPayload")
+	}
+
+	if jp1.Type != "systemd-socket" {
+		t.Fatal("job.JobPayload.Type != 'systemd-socket'")
+	}
+
+	if jp1.Value != "echo" {
+		t.Fatal("job.JobPayload.Value != 'echo'")
+	}
+}
+
+func TestNewJobPayloadFromSystemdUnitUnknown(t *testing.T) {
+	jp, err := NewJobPayloadFromSystemdUnit("echo.target", "echo")
+
+	if err == nil {
+		t.Fatal("Expected non-nil error")
+	}
+
+	if jp != nil {
+		t.Fatal("Expected nil *JobPayload")
 	}
 }
