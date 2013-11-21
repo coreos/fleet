@@ -14,7 +14,7 @@ func stopUnit(c *cli.Context) {
 
 	for _, v := range c.Args() {
 		baseName := path.Base(v)
-		job := job.NewJob(baseName, nil, nil)
-		r.StopJob(job)
+		j, _ := job.NewJob(baseName, nil, nil)
+		r.StopJob(j)
 	}
 }

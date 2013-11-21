@@ -7,16 +7,20 @@ import (
 )
 
 
-func TestJobNilStateNilPayload(t *testing.T) {
-	j1 := NewJob("ping", nil, nil)
-	j2 := Job{"ping", nil, nil}
+func TestNewJobNilStateNilPayload(t *testing.T) {
+	j1, _ := NewJob("ping.service", nil, nil)
+	j2 := Job{"ping.service", "systemd-service", nil, nil}
 
 	if *j1 != j2 {
 		t.Error("job.NewJob factory failed to produce appropriate job.Job")
 	}
 
-	if j1.Name != "ping" {
-		t.Fatal("job.Job.Name != 'ping'")
+	if j1.Name != "ping.service" {
+		t.Fatal("job.Job.Name != 'ping.service'")
+	}
+
+	if j1.Type != "systemd-service" {
+		t.Fatal("job.Job.Name != 'systemd-service'")
 	}
 
 	if j1.State != nil {
@@ -28,20 +32,24 @@ func TestJobNilStateNilPayload(t *testing.T) {
 	}
 }
 
-func TestJob(t *testing.T) {
+func TestNewJob(t *testing.T) {
 	mach := machine.New("XXX")
 	js1 := NewJobState("inactive", mach)
-	jp1, _ := NewJobPayload("systemd-service", "echo")
+	jp1 := &JobPayload{"echo"}
 
-	j1 := NewJob("pong", js1, jp1)
-	j2 := Job{"pong", js1, jp1}
+	j1, _ := NewJob("pong.service", js1, jp1)
+	j2 := Job{"pong.service", "systemd-service", js1, jp1}
 
 	if *j1 != j2 {
 		t.Error("job.NewJob factory failed to produce appropriate job.Job")
 	}
 
-	if j1.Name != "pong" {
-		t.Fatal("job.Job.Name != 'pong'")
+	if j1.Name != "pong.service" {
+		t.Fatal("job.Job.Name != 'pong.service'")
+	}
+
+	if j1.Type != "systemd-service" {
+		t.Fatal("job.Job.Name != 'systemd-service'")
 	}
 
 	if j1.State != js1 {
@@ -52,6 +60,18 @@ func TestJob(t *testing.T) {
 		t.Fatal("job.Job.Payload does not match expected value")
 	}
 
+}
+
+func TestNewJobBadType(t *testing.T) {
+	j, err := NewJob("bad-type", nil, nil)
+
+	if err == nil {
+		t.Fatal("Expected non-nil error")
+	}
+
+	if j != nil {
+		t.Fatal("Expected nil response")
+	}
 }
 
 func TestJobState(t *testing.T) {
@@ -86,34 +106,5 @@ func TestJobStateNilMachine(t *testing.T) {
 
 	if js1.Machine != nil {
 		t.Fatal("job.JobState.Machine != nil")
-	}
-}
-
-func TestNewJobPayload(t *testing.T) {
-	jp1, _ := NewJobPayload("systemd-service", "echo")
-	jp2 := JobPayload{"systemd-service", "echo"}
-
-	if *jp1 != jp2 {
-		t.Error("job.NewJobPayload factory failed to produce appropriate job.JobPayload")
-	}
-
-	if jp1.Type != "systemd-service" {
-		t.Fatal("job.JobPayload.Type != 'systemd-service'")
-	}
-
-	if jp1.Value != "echo" {
-		t.Fatal("job.JobPayload.Value != 'echo'")
-	}
-}
-
-func TestNewJobPayloadBadType(t *testing.T) {
-	jp, err := NewJobPayload("bad-type", "echo")
-
-	if err == nil {
-		t.Fatal("Expected non-nil error")
-	}
-
-	if jp != nil {
-		t.Fatal("Expected nil *JobPayload")
 	}
 }
