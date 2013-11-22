@@ -23,11 +23,24 @@ func getUnitsStatus(c *cli.Context) {
 		j, _ := job.NewJob(name, nil, nil)
 		j.State = r.GetJobState(j)
 
+		var loadState string
+		var activeState string
+
+		if j.State == nil {
+			loadState = "-"
+			activeState = "-"
+		} else {
+			loadState = "loaded"
+			activeState = j.State.State
+		}
+
 		fmt.Printf("%s\n", j.Name)
-		fmt.Print("\tLoaded: loaded\n")
-		fmt.Printf("\tActive: %s\n", j.State.State)
-		for _, sock := range j.State.Sockets {
-			fmt.Printf("\tListen: %s\n", sock)
+		fmt.Printf("\tLoaded: %s\n", loadState)
+		fmt.Printf("\tActive: %s\n", activeState)
+		if j.State != nil {
+			for _, sock := range j.State.Sockets {
+				fmt.Printf("\tListen: %s\n", sock)
+			}
 		}
 		fmt.Print("\n")
 	}
