@@ -10,23 +10,10 @@ import (
 type SystemdSocket struct {
 	manager *SystemdManager
 	name string
-	Sockets []ListenSocket
 }
 
-func NewSystemdSocket(manager *SystemdManager, name string, contents string) *SystemdSocket {
-	lines := strings.Split(contents, "\n")
-	listenLines := filterListenLines(lines)
-	sockets := make([]ListenSocket, 0)
-	for _, line := range listenLines {
-		socket, err := NewListenSocketFromListenConfig(line)
-		//TODO: do something more with this err
-		if err == nil {
-			sockets = append(sockets, *socket)
-		} else {
-			log.Printf("Unable to parse Listen line in socket file: %s", err)
-		}
-	}
-	return &SystemdSocket{manager, name, sockets}
+func NewSystemdSocket(manager *SystemdManager, name string) *SystemdSocket {
+	return &SystemdSocket{manager, name}
 }
 
 func (ss *SystemdSocket) Name() string {
@@ -39,12 +26,34 @@ func (ss *SystemdSocket) State() (string, []string, error) {
 		return "", nil, err
 	}
 
+	payload, _ := ss.Payload()
+	sockets := parseSocketFile(payload)
 	sockStrings := []string{}
-	for _, sock := range ss.Sockets {
+	for _, sock := range sockets {
 		sockStrings = append(sockStrings, sock.String())
 	}
 
 	return state, sockStrings, nil
+}
+
+func (ss *SystemdSocket) Payload() (string, error) {
+	return ss.manager.readUnit(ss.Name())
+}
+
+func parseSocketFile(contents string) []ListenSocket {
+	lines := strings.Split(contents, "\n")
+	listenLines := filterListenLines(lines)
+	sockets := make([]ListenSocket, 0)
+	for _, line := range listenLines {
+		socket, err := NewListenSocketFromListenConfig(line)
+		//TODO: do something more with this err
+		if err == nil {
+			sockets = append(sockets, *socket)
+		} else {
+			log.Printf("Unable to parse Listen line in socket file: %s", err)
+		}
+	}
+	return sockets
 }
 
 type ListenSocket struct {

@@ -44,17 +44,11 @@ func NewSystemdManager(machine *machine.Machine) *SystemdManager {
 }
 
 func (m *SystemdManager) getUnitByName(name string) (*SystemdUnit, error) {
-	localPayload, err := m.readUnit(name)
-
-	if err != nil {
-		return nil, err
-	}
-
 	var unit SystemdUnit
 	if strings.HasSuffix(name, ".service") {
-		unit = NewSystemdService(m, name, localPayload)
+		unit = NewSystemdService(m, name)
 	} else if strings.HasSuffix(name, ".socket") {
-		unit = NewSystemdSocket(m, name, localPayload)
+		unit = NewSystemdSocket(m, name)
 	} else {
 		panic("WAT")
 	}
@@ -122,9 +116,8 @@ func (m *SystemdManager) StartJob(job *job.Job) {
 	// WantedBy our systemd target
 	job.Payload.Value += "\r\n\r\n[Install]\r\nWantedBy=" + m.Target.Name()
 
-	ss := NewSystemdService(m, job.Name, job.Payload.Value)
-	m.writeUnit(ss.Name(), job.Payload.Value)
-	m.startUnit(ss.Name())
+	m.writeUnit(job.Name, job.Payload.Value)
+	m.startUnit(job.Name)
 }
 
 func (m *SystemdManager) StopJob(job *job.Job) {

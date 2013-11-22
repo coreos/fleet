@@ -15,3 +15,7 @@ func (st *SystemdTarget) Name() string {
 func (st *SystemdTarget) State() (string, []string, error) {
 	return "active", []string{}, nil
 }
+
+func (st *SystemdTarget) Payload() (string, error) {
+	return "", nil
+}
