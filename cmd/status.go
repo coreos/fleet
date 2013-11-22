@@ -1,0 +1,47 @@
+package main
+
+import (
+	"fmt"
+	"path"
+
+	"github.com/codegangsta/cli"
+
+	"github.com/coreos/coreinit/job"
+	"github.com/coreos/coreinit/registry"
+)
+
+func getUnitsStatus(c *cli.Context) {
+	r := registry.New()
+
+	for i, v := range c.Args() {
+		// This extra newline here to match systemctl status output
+		if i != 0 {
+			fmt.Printf("\n")
+		}
+
+		name := path.Base(v)
+		j, _ := job.NewJob(name, nil, nil)
+		j.State = r.GetJobState(j)
+
+		var loadState string
+		var activeState string
+
+		if j.State == nil {
+			loadState = "-"
+			activeState = "-"
+		} else {
+			loadState = "loaded"
+			activeState = j.State.State
+		}
+
+		fmt.Printf("%s\n", j.Name)
+		fmt.Printf("\tLoaded: %s\n", loadState)
+		fmt.Printf("\tActive: %s\n", activeState)
+		if j.State != nil {
+			for _, sock := range j.State.Sockets {
+				fmt.Printf("\tListen: %s\n", sock)
+			}
+		}
+		fmt.Print("\n")
+	}
+}

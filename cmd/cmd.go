@@ -46,6 +46,12 @@ running on one machine.`,
 			Description: `Remove one or more jobs from the cluster schedule.`,
 			Action:      stopUnit,
 		},
+		{
+			Name:        "status",
+			Usage:       "Fetch the status of one or more units",
+			Description: ``,
+			Action:      getUnitsStatus,
+		},
 	}
 
 	app.Run(os.Args)
