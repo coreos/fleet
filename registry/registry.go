@@ -98,7 +98,7 @@ func (r *Registry) getJobsAtPath(key string) map[string]job.Job {
 		err := unmarshal(kv.Value, &payload)
 
 		if err == nil {
-			job := job.NewJob(name, nil, &payload)
+			job, _ := job.NewJob(name, nil, &payload)
 			jobs[job.Name] = *job
 		} else {
 			log.Print(err)

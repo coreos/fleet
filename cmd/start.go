@@ -20,12 +20,12 @@ func startUnit(c *cli.Context) {
 		}
 
 		name := path.Base(v)
-		payload, err := job.NewJobPayloadFromSystemdUnit(name, string(out))
+		payload := job.JobPayload{string(out)}
 		if err != nil {
 			logger.Print(err)
 		} else {
-			job := job.NewJob(name, nil, payload)
-			r.StartJob(job)
+			j, _ := job.NewJob(name, nil, &payload)
+			r.StartJob(j)
 		}
 	}
 }

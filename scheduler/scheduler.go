@@ -70,14 +70,14 @@ func (s *Scheduler) ScheduleJob(j *job.Job, machines map[string]machine.Machine)
 	// If the Job being scheduled is a systemd service unit, we assume we
 	// can put it anywhere. If not, we must find the machine where the
 	// Job's related service file is currently scheuled.
-	if j.Payload.Type == "systemd-service" {
+	if j.Type == "systemd-service" {
 		mach = pickRandomMachine(machines)
 	} else {
 		// This is intended to match a standard filetype (i.e. '.socket' in 'web.socket')
 		re := regexp.MustCompile("\\.(.[a-z]*)$")
 		serviceName := re.ReplaceAllString(j.Name, ".service")
 
-		service := job.NewJob(serviceName, nil, nil)
+		service, _ := job.NewJob(serviceName, nil, nil)
 		state := s.Registry.GetJobState(service)
 
 		if state == nil {
