@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+
 	"github.com/codegangsta/cli"
 
 	"github.com/coreos/coreinit/registry"
@@ -10,7 +11,7 @@ import (
 func listUnits(c *cli.Context) {
 	r := registry.New()
 
-	println("UNIT\tLOAD\tACTIVE\tSUB\tDESC\tMACHINE")
+	fmt.Fprintln(out, "UNIT\tLOAD\tACTIVE\tSUB\tDESC\tMACHINE")
 
 	for _, j := range r.GetGlobalJobs() {
 		js := r.GetJobState(&j)
@@ -25,6 +26,8 @@ func listUnits(c *cli.Context) {
 			mach = "-"
 		}
 
-		fmt.Printf("%s\tloaded\t%s\t-\t-\t%s\n", j.Name, state, mach)
+		fmt.Fprintf(out, "%s\tloaded\t%s\t-\t-\t%s\n", j.Name, state, mach)
 	}
+
+	out.Flush()
 }
