@@ -67,7 +67,7 @@ func (a *Agent) UpdateJobs() {
 		_, ok := localJobs[job.Name]
 		if !ok {
 			a.Manager.StartJob(&job)
-		} else if state := a.Manager.GetJobState(job.Name); state == nil || state.State != "active" {
+		} else if state := a.Manager.GetJobState(&job); state == nil || state.State != "active" {
 			a.Manager.StartJob(&job)
 		}
 	}

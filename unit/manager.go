@@ -1,6 +1,8 @@
 package unit
 
 import (
+	"errors"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
@@ -41,21 +43,27 @@ func NewSystemdManager(machine *machine.Machine) *SystemdManager {
 	return mgr
 }
 
-func UnitFactory(manager *SystemdManager, name string) *SystemdUnit {
+func (m *SystemdManager) getUnitByName(name string) (*SystemdUnit, error) {
+	localPayload, err := m.readUnit(name)
+
+	if err != nil {
+		return nil, err
+	}
+
 	var unit SystemdUnit
-	contents := manager.readUnit(name)
 	if strings.HasSuffix(name, ".service") {
-		unit = NewSystemdService(manager, name, contents)
+		unit = NewSystemdService(m, name, localPayload)
 	} else if strings.HasSuffix(name, ".socket") {
-		unit = NewSystemdSocket(manager, name, contents)
+		unit = NewSystemdSocket(m, name, localPayload)
 	} else {
 		panic("WAT")
 	}
-	return &unit
+
+	return &unit, nil
 }
 
-func (m *SystemdManager) GetJobs() map[string]job.Job {
-	object := m.getDbusPath(m.Target.Name())
+func (m *SystemdManager) getUnitsByTarget(target *SystemdTarget) []SystemdUnit {
+	object := m.getDbusPath(target.Name())
 	info, err := m.Systemd.GetUnitInfo(object)
 
 	if err != nil {
@@ -63,26 +71,50 @@ func (m *SystemdManager) GetJobs() map[string]job.Job {
 	}
 
 	names := info["Wants"].Value().([]string)
-	jobs := make(map[string]job.Job, len(names))
 
+	var units []SystemdUnit
 	for _, name := range names {
-		state := m.GetJobState(name)
-		j, _ := job.NewJob(name, state, nil)
-		jobs[name] = *j
+		unit, err := m.getUnitByName(name)
+		if err == nil {
+			units = append(units, *unit)
+		} else {
+			log.Printf("Unit %s seems to exist, yet unable to get corresponding SystemdUnit object", name)
+		}
+	}
+
+	return units
+}
+
+func (m *SystemdManager) GetJobs() map[string]job.Job {
+	units := m.getUnitsByTarget(m.Target)
+	jobs := make(map[string]job.Job, len(units))
+	for _, u := range units {
+		state := m.getJobStateFromUnit(&u)
+		j, _ := job.NewJob(u.Name(), state, nil)
+		jobs[j.Name] = *j
 	}
 
 	return jobs
 }
 
-func (m *SystemdManager) GetJobState(name string) *job.JobState {
-	unit := *UnitFactory(m, name)
-	state, sockets, err := unit.State()
+func (m *SystemdManager) getJobStateFromUnit(u *SystemdUnit) *job.JobState {
+	state, sockets, err := (*u).State()
 	if err != nil {
-		log.Printf("Failed to get state for job %s", name)
+		log.Printf("Failed to get state for unit %s", (*u).Name())
 		return nil
 	} else {
 		return job.NewJobState(state, sockets, m.Machine)
 	}
+}
+
+func (m *SystemdManager) GetJobState(j *job.Job) *job.JobState {
+	unit, err := m.getUnitByName(j.Name)
+	if err != nil {
+		log.Printf("No local unit corresponding to job %s", j.Name)
+		return nil
+	}
+
+	return m.getJobStateFromUnit(unit)
 }
 
 func (m *SystemdManager) StartJob(job *job.Job) {
@@ -131,14 +163,18 @@ func (m *SystemdManager) stopUnit(name string) {
 
 func (m *SystemdManager) removeUnit(name string) {
 	log.Printf("Unlinking systemd unit %s from target %s", name, m.Target.Name())
-	link := m.getLocalPath(path.Join(m.Target.Name() + ".wants", name))
+	link := m.getLocalPath(path.Join(m.Target.Name()+".wants", name))
 	syscall.Unlink(link)
 }
 
-func (m *SystemdManager) readUnit(name string) string {
+func (m *SystemdManager) readUnit(name string) (string, error) {
 	path := m.getLocalPath(name)
-	contents, _ := ioutil.ReadFile(path)
-	return string(contents)
+	contents, err := ioutil.ReadFile(path)
+	if err == nil {
+		return string(contents), nil
+	} else {
+		return "", errors.New(fmt.Sprintf("No unit file at local path %s", path))
+	}
 }
 
 func (m *SystemdManager) writeUnit(name string, contents string) error {
