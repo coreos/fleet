@@ -6,7 +6,7 @@ import (
 
 	"github.com/coreos/coreinit/machine"
 	"github.com/coreos/coreinit/registry"
-	"github.com/coreos/coreinit/target"
+	"github.com/coreos/coreinit/unit"
 )
 
 const (
@@ -19,7 +19,7 @@ const (
 // Machine, and any local Targets.
 type Agent struct {
 	Registry   *registry.Registry
-	Target     *target.Target
+	Target     *unit.Target
 	Machine    *machine.Machine
 	ServiceTTL string
 }
@@ -88,7 +88,7 @@ func (a *Agent) UpdateJobs() {
 }
 
 func New(registry *registry.Registry, machine *machine.Machine, ttl string) *Agent {
-	target := target.New(machine)
+	target := unit.New(machine)
 
 	if ttl == "" {
 		ttl = DefaultServiceTTL

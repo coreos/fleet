@@ -1,4 +1,4 @@
-package target
+package unit
 
 import (
 	systemdDbus "github.com/coreos/go-systemd/dbus"
