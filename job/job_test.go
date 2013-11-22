@@ -34,7 +34,7 @@ func TestNewJobNilStateNilPayload(t *testing.T) {
 
 func TestNewJob(t *testing.T) {
 	mach := machine.New("XXX")
-	js1 := NewJobState("inactive", []string{}, mach)
+	js1 := NewJobState("loaded", "inactive", "running", []string{}, mach)
 	jp1 := &JobPayload{"echo"}
 
 	j1, _ := NewJob("pong.service", js1, jp1)
@@ -76,10 +76,18 @@ func TestNewJobBadType(t *testing.T) {
 
 func TestJobState(t *testing.T) {
 	mach := machine.New("XXX")
-	js1 := NewJobState("inactive", []string{}, mach)
+	js1 := NewJobState("loaded", "inactive", "dead", []string{}, mach)
 
-	if js1.State != "inactive" {
-		t.Fatal("job.JobState.State != 'inactive'")
+	if js1.LoadState != "loaded" {
+		t.Fatal("job.JobState.LoadState != 'loaded'")
+	}
+
+	if js1.ActiveState != "inactive" {
+		t.Fatal("job.JobState.ActiveState != 'inactive'")
+	}
+
+	if js1.SubState != "dead" {
+		t.Fatal("job.JobState.SubState != 'dead'")
 	}
 
 	if len(js1.Sockets) != 0 {
@@ -92,10 +100,18 @@ func TestJobState(t *testing.T) {
 }
 
 func TestJobStateNilMachine(t *testing.T) {
-	js1 := NewJobState("active", []string{}, nil)
+	js1 := NewJobState("loaded", "active", "listening", []string{}, nil)
 
-	if js1.State != "active" {
-		t.Fatal("job.JobState.State != 'active'")
+	if js1.LoadState != "loaded" {
+		t.Fatal("job.JobState.LoadState != 'loaded'")
+	}
+
+	if js1.ActiveState != "active" {
+		t.Fatal("job.JobState.ActiveState != 'active'")
+	}
+
+	if js1.SubState != "listening" {
+		t.Fatal("job.JobState.SubState != 'listening'")
 	}
 
 	if len(js1.Sockets) != 0 {

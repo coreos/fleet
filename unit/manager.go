@@ -92,12 +92,12 @@ func (m *SystemdManager) GetJobs() map[string]job.Job {
 }
 
 func (m *SystemdManager) getJobStateFromUnit(u *SystemdUnit) *job.JobState {
-	state, sockets, err := (*u).State()
+	loadState, activeState, subState, sockets, err := (*u).State()
 	if err != nil {
 		log.Printf("Failed to get state for unit %s", (*u).Name())
 		return nil
 	} else {
-		return job.NewJobState(state, sockets, m.Machine)
+		return job.NewJobState(loadState, activeState, subState, sockets, m.Machine)
 	}
 }
 
@@ -125,13 +125,16 @@ func (m *SystemdManager) StopJob(job *job.Job) {
 	m.removeUnit(job.Name)
 }
 
-func (m *SystemdManager) getUnitState(name string) (string, error) {
+func (m *SystemdManager) getUnitStates(name string) (string, string, string, error) {
 	info, err := m.Systemd.GetUnitInfo(m.getDbusPath(name))
 
 	if err != nil {
-		return "", err
+		return "", "", "", err
 	} else {
-		return info["ActiveState"].Value().(string), nil
+		loadState := info["LoadState"].Value().(string)
+		activeState := info["ActiveState"].Value().(string)
+		subState := info["SubState"].Value().(string)
+		return loadState, activeState, subState, nil
 	}
 }
 
