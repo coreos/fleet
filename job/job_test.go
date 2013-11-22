@@ -34,7 +34,7 @@ func TestNewJobNilStateNilPayload(t *testing.T) {
 
 func TestNewJob(t *testing.T) {
 	mach := machine.New("XXX")
-	js1 := NewJobState("inactive", mach)
+	js1 := NewJobState("inactive", []string{}, mach)
 	jp1 := &JobPayload{"echo"}
 
 	j1, _ := NewJob("pong.service", js1, jp1)
@@ -76,15 +76,14 @@ func TestNewJobBadType(t *testing.T) {
 
 func TestJobState(t *testing.T) {
 	mach := machine.New("XXX")
-	js1 := NewJobState("inactive", mach)
-	js2 := JobState{"inactive", mach}
-
-	if *js1 != js2 {
-		t.Error("job.NewJobState factory failed to produce appropriate job.JobState")
-	}
+	js1 := NewJobState("inactive", []string{}, mach)
 
 	if js1.State != "inactive" {
 		t.Fatal("job.JobState.State != 'inactive'")
+	}
+
+	if len(js1.Sockets) != 0 {
+		t.Fatal("job.JobState.Sockets does not match expected length")
 	}
 
 	if js1.Machine != mach {
@@ -93,15 +92,14 @@ func TestJobState(t *testing.T) {
 }
 
 func TestJobStateNilMachine(t *testing.T) {
-	js1 := NewJobState("active", nil)
-	js2 := JobState{"active", nil}
-
-	if *js1 != js2 {
-		t.Error("job.NewJobState factory failed to produce appropriate job.JobState")
-	}
+	js1 := NewJobState("active", []string{}, nil)
 
 	if js1.State != "active" {
 		t.Fatal("job.JobState.State != 'active'")
+	}
+
+	if len(js1.Sockets) != 0 {
+		t.Fatal("job.JobState.Sockets does not match expected length")
 	}
 
 	if js1.Machine != nil {

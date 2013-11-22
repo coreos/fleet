@@ -1,15 +1,10 @@
 package target
 
 import (
-	"io/ioutil"
 	"log"
-	"os"
-	"path"
 	"strings"
-	"syscall"
 
 	systemdDbus "github.com/coreos/go-systemd/dbus"
-	"github.com/guelfey/go.dbus"
 
 	"github.com/coreos/coreinit/job"
 	"github.com/coreos/coreinit/machine"
@@ -22,6 +17,7 @@ const (
 type Target struct {
 	Name	string
 	Systemd *systemdDbus.Conn
+	SystemdTarget *SystemdTarget
 	Machine *machine.Machine
 }
 
@@ -29,10 +25,23 @@ func New(machine *machine.Machine) *Target {
 	systemd := systemdDbus.New()
 
 	name := "coreinit-" + machine.BootId + ".target"
-	target := &Target{name, systemd, machine}
-	createSystemdTarget(name)
+	st := NewSystemdTarget(name)
+	target := &Target{name, systemd, st, machine}
 
 	return target
+}
+
+func UnitFactory(systemd *systemdDbus.Conn, name string) *SystemdUnit {
+	var unit SystemdUnit
+	contents := readUnit(name)
+	if strings.HasSuffix(name, ".service") {
+		unit = NewSystemdService(systemd, name, contents)
+	} else if strings.HasSuffix(name, ".socket") {
+		unit = NewSystemdSocket(systemd, name, contents)
+	} else {
+		panic("WAT")
+	}
+	return &unit
 }
 
 func (t *Target) GetJobs() map[string]job.Job {
@@ -56,93 +65,41 @@ func (t *Target) GetJobs() map[string]job.Job {
 }
 
 func (t *Target) GetJobState(name string) *job.JobState {
-	info, err := t.Systemd.GetUnitInfo(unitPath(name))
-
+	unit := *UnitFactory(t.Systemd, name)
+	state, sockets, err := unit.State()
 	if err != nil {
+		log.Printf("Failed to get state for job %s", name)
 		return nil
+	} else {
+		return job.NewJobState(state, sockets, t.Machine)
 	}
-
-	stateString := info["ActiveState"].Value().(string)
-	return job.NewJobState(stateString, t.Machine)
 }
 
 func (t *Target) StartJob(job *job.Job) {
-	createSystemdService(job.Name, job.Payload.Value, t.Name)
-	t.startUnit(job.Name)
+	//This is probably not the right place to force the service to be
+	// WantedBy our systemd target
+	job.Payload.Value += "\r\n\r\n[Install]\r\nWantedBy=" + t.Name
+
+	ss := NewSystemdService(t.Systemd, job.Name, job.Payload.Value)
+	writeUnit(ss.Name(), job.Payload.Value)
+	startUnit(ss.Name(), t.Systemd)
 }
 
 func (t *Target) StopJob(job *job.Job) {
-	t.stopUnit(job.Name)
-	t.removeUnit(job.Name)
+	stopUnit(job.Name, t.Systemd)
+	removeUnit(job.Name, t.Name)
 }
 
-func (t *Target) startUnit(name string) {
-	log.Println("Starting systemd unit", name)
-
-	files := []string{name}
-	t.Systemd.EnableUnitFiles(files, true, false)
-
-	t.Systemd.StartUnit(name, "replace")
+type SystemdTarget struct {
+	Name string
 }
 
-func (t *Target) stopUnit(name string) {
-	log.Println("Stopping systemd unit", name)
-
-	t.Systemd.StopUnit(name, "replace")
-
-	// go-systemd does not yet have this implemented
-	//files := []string{name}
-	//t.Systemd.DisableUnitFiles(files, true, false)
+func NewSystemdTarget(name string) *SystemdTarget {
+	tgt := SystemdTarget{name}
+	tgt.persist()
+	return &tgt
 }
 
-func createSystemdService(name string, contents string, target string) {
-	log.Println("Writing systemd service file", name)
-
-	path := path.Join(systemdRuntimePath, name)
-	file, err := os.Create(path)
-	if err != nil {
-		panic(err)
-	}
-
-	defer file.Close()
-
-	contents += "\r\n\r\n[Install]\r\nWantedBy=" + target
-
-	file.Write([]byte(contents))
-}
-
-// Ensure a local systemd target file exists. The name
-// argument must end with '.target'
-func createSystemdTarget(name string) {
-	path := path.Join(systemdRuntimePath, name)
-	file, err := os.Create(path)
-	if err != nil {
-		panic(err)
-	}
-	file.Close()
-}
-
-func (t *Target) removeUnit(name string) {
-	log.Printf("Unlinking systemd unit %s from target %s", name, t.Name)
-	link := path.Join(systemdRuntimePath, t.Name + ".wants", name)
-	syscall.Unlink(link)
-}
-
-func readUnit(name string) string {
-	path := path.Join(systemdRuntimePath, name)
-	contents, _ := ioutil.ReadFile(path)
-	return string(contents)
-}
-
-func unitPath(unit string) dbus.ObjectPath {
-	prefix := "/org/freedesktop/systemd1/unit/"
-
-	// This encoding should move to go-systemd.
-	// See https://github.com/coreos/go-systemd/issues/13
-	unit = strings.Replace(unit, ".", "_2e", -1)
-	unit = strings.Replace(unit, "-", "_2d", -1)
-	unit = strings.Replace(unit, "@", "_40", -1)
-
-	unitPath := path.Join(prefix, unit)
-	return dbus.ObjectPath(unitPath)
+func (st *SystemdTarget) persist() error {
+	return writeUnit(st.Name, "")
 }
