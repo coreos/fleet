@@ -16,20 +16,19 @@ func listUnits(c *cli.Context) {
 	for _, j := range r.GetGlobalJobs() {
 		js := r.GetJobState(&j)
 
-		var activeState string
-		var loadState string
-		var mach string
+		loadState := "-"
+		activeState := "-"
+		subState := "-"
+		mach := "-"
+
 		if js != nil {
-			activeState = js.State
-			loadState = "loaded"
+			loadState = js.LoadState
+			activeState = js.ActiveState
+			subState = js.SubState
 			mach = js.Machine.String()
-		} else {
-			activeState = "-"
-			loadState = "-"
-			mach = "-"
 		}
 
-		fmt.Fprintf(out, "%s\t%s\t%s\t-\t-\t%s\n", j.Name, loadState, activeState, mach)
+		fmt.Fprintf(out, "%s\t%s\t%s\t%s\t-\t%s\n", j.Name, loadState, activeState, subState, mach)
 	}
 
 	out.Flush()

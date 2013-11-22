@@ -20,10 +20,10 @@ func (ss *SystemdSocket) Name() string {
 	return ss.name
 }
 
-func (ss *SystemdSocket) State() (string, []string, error) {
-	state, err := ss.manager.getUnitState(ss.name)
+func (ss *SystemdSocket) State() (string, string, string, []string, error) {
+	loadState, activeState, subState, err := ss.manager.getUnitStates(ss.name)
 	if err != nil {
-		return "", nil, err
+		return "", "", "", nil, err
 	}
 
 	payload, _ := ss.Payload()
@@ -33,7 +33,7 @@ func (ss *SystemdSocket) State() (string, []string, error) {
 		sockStrings = append(sockStrings, sock.String())
 	}
 
-	return state, sockStrings, nil
+	return loadState, activeState, subState, sockStrings, nil
 }
 
 func (ss *SystemdSocket) Payload() (string, error) {
