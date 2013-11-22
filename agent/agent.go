@@ -6,7 +6,7 @@ import (
 
 	"github.com/coreos/coreinit/machine"
 	"github.com/coreos/coreinit/registry"
-	"github.com/coreos/coreinit/target"
+	"github.com/coreos/coreinit/unit"
 )
 
 const (
@@ -16,10 +16,10 @@ const (
 )
 
 // The Agent owns all of the coordination between the Registry, the local
-// Machine, and any local Targets.
+// Machine, and the local SystemdManager.
 type Agent struct {
 	Registry   *registry.Registry
-	Target     *target.Target
+	Manager    *unit.SystemdManager
 	Machine    *machine.Machine
 	ServiceTTL string
 }
@@ -61,19 +61,19 @@ func (a *Agent) doServiceHeartbeat() {
 
 func (a *Agent) UpdateJobs() {
 	registeredJobs := a.Registry.GetMachineJobs(a.Machine)
-	localJobs := a.Target.GetJobs()
+	localJobs := a.Manager.GetJobs()
 
 	for _, job := range registeredJobs {
 		_, ok := localJobs[job.Name]
 		if !ok {
-			a.Target.StartJob(&job)
-		} else if state := a.Target.GetJobState(job.Name); state == nil || state.State != "active" {
-			a.Target.StartJob(&job)
+			a.Manager.StartJob(&job)
+		} else if state := a.Manager.GetJobState(&job); state == nil || state.State != "active" {
+			a.Manager.StartJob(&job)
 		}
 	}
 
 	// Fetch local jobs again since state may have changed above
-	localJobs = a.Target.GetJobs()
+	localJobs = a.Manager.GetJobs()
 
 	ttl := uint64(parseDuration(a.ServiceTTL).Seconds())
 	for _, job := range localJobs {
@@ -82,19 +82,19 @@ func (a *Agent) UpdateJobs() {
 		if ok {
 			a.Registry.UpdateJob(&job, ttl)
 		} else {
-			a.Target.StopJob(&job)
+			a.Manager.StopJob(&job)
 		}
 	}
 }
 
 func New(registry *registry.Registry, machine *machine.Machine, ttl string) *Agent {
-	target := target.New(machine)
+	mgr := unit.NewSystemdManager(machine)
 
 	if ttl == "" {
 		ttl = DefaultServiceTTL
 	}
 
-	agent := &Agent{registry, target, machine, ttl}
+	agent := &Agent{registry, mgr, machine, ttl}
 
 	return agent
 }

@@ -1,21 +1,46 @@
-package target
+package unit
 
 import (
 	"fmt"
 	"errors"
 	"strings"
 	"log"
-
-	systemdDbus "github.com/coreos/go-systemd/dbus"
 )
 
 type SystemdSocket struct {
-	Systemd *systemdDbus.Conn
+	manager *SystemdManager
 	name string
-	Sockets []ListenSocket
 }
 
-func NewSystemdSocket(systemd *systemdDbus.Conn, name string, contents string) *SystemdSocket {
+func NewSystemdSocket(manager *SystemdManager, name string) *SystemdSocket {
+	return &SystemdSocket{manager, name}
+}
+
+func (ss *SystemdSocket) Name() string {
+	return ss.name
+}
+
+func (ss *SystemdSocket) State() (string, []string, error) {
+	state, err := ss.manager.getUnitState(ss.name)
+	if err != nil {
+		return "", nil, err
+	}
+
+	payload, _ := ss.Payload()
+	sockets := parseSocketFile(payload)
+	sockStrings := []string{}
+	for _, sock := range sockets {
+		sockStrings = append(sockStrings, sock.String())
+	}
+
+	return state, sockStrings, nil
+}
+
+func (ss *SystemdSocket) Payload() (string, error) {
+	return ss.manager.readUnit(ss.Name())
+}
+
+func parseSocketFile(contents string) []ListenSocket {
 	lines := strings.Split(contents, "\n")
 	listenLines := filterListenLines(lines)
 	sockets := make([]ListenSocket, 0)
@@ -28,25 +53,7 @@ func NewSystemdSocket(systemd *systemdDbus.Conn, name string, contents string) *
 			log.Printf("Unable to parse Listen line in socket file: %s", err)
 		}
 	}
-	return &SystemdSocket{systemd, name, sockets}
-}
-
-func (ss *SystemdSocket) Name() string {
-	return ss.name
-}
-
-func (ss *SystemdSocket) State() (string, []string, error) {
-	state, err := getUnitState(ss.name, ss.Systemd)
-	if err != nil {
-		return "", nil, err
-	}
-
-	sockStrings := []string{}
-	for _, sock := range ss.Sockets {
-		sockStrings = append(sockStrings, sock.String())
-	}
-
-	return state, sockStrings, nil
+	return sockets
 }
 
 type ListenSocket struct {

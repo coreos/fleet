@@ -1,10 +1,10 @@
-package target
+package unit
 
 import (
 	"testing"
 )
 
-func TestNewSystemdSockete(t *testing.T) {
+func TestParseSocketFile(t *testing.T) {
 	contents := `[Unit]
 Description=Example Socket File
 
@@ -14,7 +14,7 @@ ListenDatagram=1.2.3.4:24
 #ListenDatagram=1.2.3.4:25
 ListenSequentialPacket=/var/run/mysqld.sock
 `
-	sf := NewSystemdSocket(nil, "foo.socket", contents)
+	sockets := parseSocketFile(contents)
 
 	expected := []ListenSocket{
 		ListenSocket{"tcp", "1.2.3.4:23"},
@@ -22,21 +22,17 @@ ListenSequentialPacket=/var/run/mysqld.sock
 		ListenSocket{"unix", "/var/run/mysqld.sock"},
 	}
 
-	if len(sf.Sockets) != len(expected) {
-		t.Fatalf("Expected %d sockets, received %d", len(expected), len(sf.Sockets))
-	}
-
-	if sf.Name() != "foo.socket" {
-		t.Errorf("SystemdSocket has incorrect name")
+	if len(sockets) != len(expected) {
+		t.Fatalf("Expected %d sockets, received %d", len(expected), len(sockets))
 	}
 
 	for i, expect := range expected {
-		if sf.Sockets[i].Type != expect.Type {
-			t.Errorf("Socket type '%s' does not match expected '%s'", sf.Sockets[i].Type, expect.Type)
+		if sockets[i].Type != expect.Type {
+			t.Errorf("Socket type '%s' does not match expected '%s'", sockets[i].Type, expect.Type)
 		}
 
-		if sf.Sockets[i].Address != expect.Address {
-			t.Errorf("Socket type '%s' does not match expected '%s'", sf.Sockets[i].Address, expect.Address)
+		if sockets[i].Address != expect.Address {
+			t.Errorf("Socket type '%s' does not match expected '%s'", sockets[i].Address, expect.Address)
 		}
 	}
 }
