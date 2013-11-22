@@ -10,21 +10,21 @@ import (
 	"github.com/coreos/coreinit/machine"
 )
 
-type Target struct {
-	Name	string
+type SystemdManager struct {
 	Systemd *systemdDbus.Conn
 	SystemdTarget *SystemdTarget
 	Machine *machine.Machine
 }
 
-func New(machine *machine.Machine) *Target {
+func NewSystemdManager(machine *machine.Machine) *SystemdManager {
 	systemd := systemdDbus.New()
 
 	name := "coreinit-" + machine.BootId + ".target"
-	st := NewSystemdTarget(name)
-	target := &Target{name, systemd, st, machine}
+	target := NewSystemdTarget(name)
 
-	return target
+	mgr := &SystemdManager{systemd, target, machine}
+
+	return mgr
 }
 
 func UnitFactory(systemd *systemdDbus.Conn, name string) *SystemdUnit {
@@ -40,9 +40,9 @@ func UnitFactory(systemd *systemdDbus.Conn, name string) *SystemdUnit {
 	return &unit
 }
 
-func (t *Target) GetJobs() map[string]job.Job {
-	object := unitPath(t.Name)
-	info, err := t.Systemd.GetUnitInfo(object)
+func (m *SystemdManager) GetJobs() map[string]job.Job {
+	object := unitPath(m.SystemdTarget.Name)
+	info, err := m.Systemd.GetUnitInfo(object)
 
 	if err != nil {
 		panic(err)
@@ -52,7 +52,7 @@ func (t *Target) GetJobs() map[string]job.Job {
 	jobs := make(map[string]job.Job, len(names))
 
 	for _, name := range names {
-		state := t.GetJobState(name)
+		state := m.GetJobState(name)
 		j, _ := job.NewJob(name, state, nil)
 		jobs[name] = *j
 	}
@@ -60,28 +60,28 @@ func (t *Target) GetJobs() map[string]job.Job {
 	return jobs
 }
 
-func (t *Target) GetJobState(name string) *job.JobState {
-	unit := *UnitFactory(t.Systemd, name)
+func (m *SystemdManager) GetJobState(name string) *job.JobState {
+	unit := *UnitFactory(m.Systemd, name)
 	state, sockets, err := unit.State()
 	if err != nil {
 		log.Printf("Failed to get state for job %s", name)
 		return nil
 	} else {
-		return job.NewJobState(state, sockets, t.Machine)
+		return job.NewJobState(state, sockets, m.Machine)
 	}
 }
 
-func (t *Target) StartJob(job *job.Job) {
+func (m *SystemdManager) StartJob(job *job.Job) {
 	//This is probably not the right place to force the service to be
 	// WantedBy our systemd target
-	job.Payload.Value += "\r\n\r\n[Install]\r\nWantedBy=" + t.Name
+	job.Payload.Value += "\r\n\r\n[Install]\r\nWantedBy=" + m.SystemdTarget.Name
 
-	ss := NewSystemdService(t.Systemd, job.Name, job.Payload.Value)
+	ss := NewSystemdService(m.Systemd, job.Name, job.Payload.Value)
 	writeUnit(ss.Name(), job.Payload.Value)
-	startUnit(ss.Name(), t.Systemd)
+	startUnit(ss.Name(), m.Systemd)
 }
 
-func (t *Target) StopJob(job *job.Job) {
-	stopUnit(job.Name, t.Systemd)
-	removeUnit(job.Name, t.Name)
+func (m *SystemdManager) StopJob(job *job.Job) {
+	stopUnit(job.Name, m.Systemd)
+	removeUnit(job.Name, m.SystemdTarget.Name)
 }
