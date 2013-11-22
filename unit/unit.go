@@ -12,6 +12,10 @@ import (
 	"github.com/guelfey/go.dbus"
 )
 
+const (
+	systemdRuntimePath = "/run/systemd/system/"
+)
+
 type SystemdUnit interface {
 	Name() string
 	State() (string, []string, error)
