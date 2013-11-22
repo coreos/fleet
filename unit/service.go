@@ -1,17 +1,12 @@
 package unit
 
-import (
-	systemdDbus "github.com/coreos/go-systemd/dbus"
-)
-
-
 type SystemdService struct {
-	Systemd *systemdDbus.Conn
+	manager *SystemdManager
 	name string
 }
 
-func NewSystemdService(systemd *systemdDbus.Conn, name string, contents string) *SystemdService {
-	return &SystemdService{systemd, name}
+func NewSystemdService(manager *SystemdManager, name string, contents string) *SystemdService {
+	return &SystemdService{manager, name}
 }
 
 func (ss *SystemdService) Name() string {
@@ -19,7 +14,7 @@ func (ss *SystemdService) Name() string {
 }
 
 func (ss *SystemdService) State() (string, []string, error) {
-	state, err := getUnitState(ss.name, ss.Systemd)
+	state, err := ss.manager.getUnitState(ss.name)
 	if err != nil {
 		return "", nil, err
 	}

@@ -1,15 +1,17 @@
 package unit
 
 type SystemdTarget struct {
-	Name string
+	name string
 }
 
 func NewSystemdTarget(name string) *SystemdTarget {
-	tgt := SystemdTarget{name}
-	tgt.persist()
-	return &tgt
+	return &SystemdTarget{name}
 }
 
-func (st *SystemdTarget) persist() error {
-	return writeUnit(st.Name, "")
+func (st *SystemdTarget) Name() string {
+	return st.name
+}
+
+func (st *SystemdTarget) State() (string, []string, error) {
+	return "active", []string{}, nil
 }

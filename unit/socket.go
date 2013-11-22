@@ -5,17 +5,15 @@ import (
 	"errors"
 	"strings"
 	"log"
-
-	systemdDbus "github.com/coreos/go-systemd/dbus"
 )
 
 type SystemdSocket struct {
-	Systemd *systemdDbus.Conn
+	manager *SystemdManager
 	name string
 	Sockets []ListenSocket
 }
 
-func NewSystemdSocket(systemd *systemdDbus.Conn, name string, contents string) *SystemdSocket {
+func NewSystemdSocket(manager *SystemdManager, name string, contents string) *SystemdSocket {
 	lines := strings.Split(contents, "\n")
 	listenLines := filterListenLines(lines)
 	sockets := make([]ListenSocket, 0)
@@ -28,7 +26,7 @@ func NewSystemdSocket(systemd *systemdDbus.Conn, name string, contents string) *
 			log.Printf("Unable to parse Listen line in socket file: %s", err)
 		}
 	}
-	return &SystemdSocket{systemd, name, sockets}
+	return &SystemdSocket{manager, name, sockets}
 }
 
 func (ss *SystemdSocket) Name() string {
@@ -36,7 +34,7 @@ func (ss *SystemdSocket) Name() string {
 }
 
 func (ss *SystemdSocket) State() (string, []string, error) {
-	state, err := getUnitState(ss.name, ss.Systemd)
+	state, err := ss.manager.getUnitState(ss.name)
 	if err != nil {
 		return "", nil, err
 	}
