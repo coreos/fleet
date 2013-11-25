@@ -52,6 +52,12 @@ running on one machine.`,
 			Description: ``,
 			Action:      getUnitsStatus,
 		},
+		{
+			Name:        "cat",
+			Usage:       "Print the contents of a unit file to stdout.",
+			Description: ``,
+			Action:      printUnit,
+		},
 	}
 
 	app.Run(os.Args)
