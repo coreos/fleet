@@ -81,8 +81,8 @@ func (s *Scheduler) ScheduleJob(j *job.Job, machines map[string]machine.Machine)
 		state := s.Registry.GetJobState(service)
 
 		if state == nil {
-			log.Printf("Unable to schedule job %s since corresponding " +
-			           "service job %s could not be found", j.Name, serviceName)
+			log.Printf("Unable to schedule job %s since corresponding "+
+				"service job %s could not be found", j.Name, serviceName)
 		} else {
 			mach = state.Machine
 		}
@@ -96,7 +96,7 @@ func (s *Scheduler) ScheduleJob(j *job.Job, machines map[string]machine.Machine)
 	}
 }
 
-func pickRandomMachine(machines map[string]machine.Machine) *machine.Machine{
+func pickRandomMachine(machines map[string]machine.Machine) *machine.Machine {
 	machineSlice := make([]machine.Machine, 0)
 	for _, v := range machines {
 		machineSlice = append(machineSlice, v)

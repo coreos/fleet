@@ -6,7 +6,6 @@ import (
 	"github.com/coreos/coreinit/machine"
 )
 
-
 func TestNewJobNilStateNilPayload(t *testing.T) {
 	j1, _ := NewJob("ping.service", nil, nil)
 	j2 := Job{"ping.service", "systemd-service", nil, nil}

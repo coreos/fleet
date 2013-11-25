@@ -7,7 +7,7 @@ import (
 )
 
 type IPAddress struct {
-	address    string `json:"address"`
+	address string `json:"address"`
 	network string `json:"network"`
 }
 

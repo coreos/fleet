@@ -69,7 +69,7 @@ func TestFilterInterfaces(t *testing.T) {
 
 	output := filterInterfaces(ifaces)
 
-	if len(output) != 1 || output[0].Name != "eth2"{
+	if len(output) != 1 || output[0].Name != "eth2" {
 		t.Error("filterInterfaces failed to return proper net.Interface objects")
 	}
 }
