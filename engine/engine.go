@@ -1,4 +1,4 @@
-package scheduler
+package engine
 
 import (
 	"log"
@@ -21,7 +21,7 @@ type Scheduler struct {
 	ClaimTTL time.Duration
 }
 
-func New(registry *registry.Registry, machine *machine.Machine) *Scheduler {
+func NewScheduler(registry *registry.Registry, machine *machine.Machine) *Scheduler {
 	claimTTL, _ := time.ParseDuration(DefaultClaimTTL)
 	return &Scheduler{registry, machine, claimTTL}
 }

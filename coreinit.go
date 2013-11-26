@@ -7,7 +7,7 @@ import (
 	"github.com/coreos/coreinit/agent"
 	"github.com/coreos/coreinit/machine"
 	"github.com/coreos/coreinit/registry"
-	"github.com/coreos/coreinit/scheduler"
+	"github.com/coreos/coreinit/engine"
 )
 
 func main() {
@@ -32,6 +32,6 @@ func main() {
 	// Kick off the heartbeating process
 	go a.DoHeartbeat()
 
-	s := scheduler.New(r, m)
+	s := engine.NewScheduler(r, m)
 	s.DoSchedule()
 }
