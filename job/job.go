@@ -4,8 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-
-	"github.com/coreos/coreinit/machine"
 )
 
 type Job struct {
@@ -13,10 +11,6 @@ type Job struct {
 	Type    string      `json:"type"`
 	State   *JobState   `json:"state"`
 	Payload *JobPayload `json:"payload"`
-}
-
-type JobPayload struct {
-	Value string `json:"value"`
 }
 
 func NewJob(name string, state *JobState, payload *JobPayload) (*Job, error) {
@@ -30,16 +24,4 @@ func NewJob(name string, state *JobState, payload *JobPayload) (*Job, error) {
 	}
 
 	return &Job{name, payloadType, state, payload}, nil
-}
-
-type JobState struct {
-	LoadState   string           `json:"loadState"`
-	ActiveState string           `json:"activeState"`
-	SubState    string           `json:"subState"`
-	Sockets     []string         `json:"sockets"`
-	Machine     *machine.Machine `json:"machine"`
-}
-
-func NewJobState(loadState, activeState, subState string, sockets []string, machine *machine.Machine) *JobState {
-	return &JobState{loadState, activeState, subState, sockets, machine}
 }
