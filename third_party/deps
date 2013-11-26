@@ -8,4 +8,5 @@ packages="
 	github.com/guelfey/go.dbus
 
 	github.com/codegangsta/cli
+	github.com/nu7hatch/gouuid
 "
