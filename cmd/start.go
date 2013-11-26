@@ -20,7 +20,7 @@ func startUnit(c *cli.Context) {
 		}
 
 		name := path.Base(v)
-		payload := job.JobPayload{string(out)}
+		payload := job.JobPayload{name, string(out)}
 		if err != nil {
 			logger.Print(err)
 		} else {
