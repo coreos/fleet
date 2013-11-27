@@ -8,7 +8,17 @@ import (
 	"github.com/coreos/coreinit/registry"
 )
 
-func listUnits(c *cli.Context) {
+func newListUnitsCommand() cli.Command {
+	return cli.Command{
+		Name:  "list-units",
+		Usage: "List installed unit files",
+		Description: `List all of the units that are scheduled on the
+	cluster and their current state.`,
+		Action: listUnitsAction,
+	}
+}
+
+func listUnitsAction(c *cli.Context) {
 	r := registry.New()
 
 	fmt.Fprintln(out, "UNIT\tLOAD\tACTIVE\tSUB\tDESC\tMACHINE")
