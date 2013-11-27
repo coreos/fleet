@@ -13,7 +13,9 @@ import (
 func startUnit(c *cli.Context) {
 	r := registry.New()
 
-	for _, v := range c.Args() {
+	payloads := make([]job.JobPayload, len(c.Args()))
+
+	for i, v := range c.Args() {
 		out, err := ioutil.ReadFile(v)
 		if err != nil {
 			logger.Fatalf("%s: No such file or directory\n", v)
@@ -22,10 +24,18 @@ func startUnit(c *cli.Context) {
 		name := path.Base(v)
 		payload := job.JobPayload{name, string(out)}
 		if err != nil {
-			logger.Print(err)
+			logger.Fatal(err)
 		} else {
-			j, _ := job.NewJob(name, nil, &payload)
-			r.StartJob(j)
+			payloads[i] = payload
 		}
 	}
+
+	for _, p := range payloads {
+		println(p.Name)
+		println(p.Value)
+	}
+
+	//TODO: Handle error response from NewJobRequest
+	req, _ := job.NewJobRequest(payloads, nil)
+	r.AddRequest(req)
 }

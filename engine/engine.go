@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"errors"
 	"log"
 	"math/rand"
 	"regexp"
@@ -31,69 +32,105 @@ func (s *Scheduler) DoSchedule() {
 		// Let's not be a job-hog
 		time.Sleep(time.Second)
 
-		jobs := s.Registry.GetGlobalJobs()
-		if len(jobs) == 0 {
+		req := s.Registry.ClaimRequest(s.Machine, s.ClaimTTL)
+		if req == nil {
+			continue
+		}
+
+		jobs, err := job.NewJobsFromRequest(req)
+		if err != nil {
+			log.Printf("Unable to resolve request %s: %s", req.ID, err)
 			continue
 		}
 
 		machines := s.Registry.GetActiveMachines()
 
-		job := s.ClaimJob(jobs)
-		if job == nil {
-			continue
-		}
-
-		// If someone has reported state for this job, we assume
-		// it's good to go.
-		if jobState := s.Registry.GetJobState(job); jobState != nil {
+		sched, err := s.BuildSchedule(jobs, machines)
+		if err != nil {
+			log.Print(err)
 			continue
 		}
 
 		// For now, we assume that if we can initially acquire the lock
 		// we're safe to move forward with scheduling. This is not ideal.
-		s.ScheduleJob(job, machines)
-	}
-}
-
-func (s *Scheduler) ClaimJob(jobs map[string]job.Job) *job.Job {
-	for _, job := range jobs {
-		if s.Registry.AcquireLock(job.Name, s.Machine.BootId, s.ClaimTTL) {
-			log.Println("Acquired lock on job", job.Name)
-			return &job
+		for j, m := range sched {
+			s.Registry.ScheduleJob(&j, m)
 		}
+
+		s.Registry.ResolveRequest(req)
 	}
-	return nil
 }
 
-func (s *Scheduler) ScheduleJob(j *job.Job, machines map[string]machine.Machine) {
-	var mach *machine.Machine
-	// If the Job being scheduled is a systemd service unit, we assume we
-	// can put it anywhere. If not, we must find the machine where the
-	// Job's related service file is currently scheuled.
-	if j.Type == "systemd-service" {
-		mach = pickRandomMachine(machines)
-	} else {
-		// This is intended to match a standard filetype (i.e. '.socket' in 'web.socket')
-		re := regexp.MustCompile("\\.(.[a-z]*)$")
-		serviceName := re.ReplaceAllString(j.Name, ".service")
+func (s *Scheduler) BuildSchedule(jobs []job.Job, machines map[string]machine.Machine) (map[job.Job]*machine.Machine, error) {
+	sched := map[job.Job]*machine.Machine{}
 
-		service, _ := job.NewJob(serviceName, nil, nil)
-		state := s.Registry.GetJobState(service)
-
-		if state == nil {
-			log.Printf("Unable to schedule job %s since corresponding "+
-				"service job %s could not be found", j.Name, serviceName)
+	decide := func(j *job.Job) *machine.Machine {
+		var mach *machine.Machine
+		// If the Job being scheduled is a systemd service unit, we assume we
+		// can put it anywhere. If not, we must find the machine where the
+		// Job's related service file is currently scheduled.
+		if j.Type == "systemd-service" {
+			mach = pickRandomMachine(machines)
 		} else {
-			mach = state.Machine
+			// This is intended to match a standard filetype (i.e. '.socket' in 'web.socket')
+			re := regexp.MustCompile("\\.(.[a-z]*)$")
+			serviceName := re.ReplaceAllString(j.Name, ".service")
+
+			// Check if the corresponding systemd-service job has been scheduled
+			// within this context
+			for j2, m := range sched {
+				if serviceName == j2.Name {
+					mach = m
+				}
+			}
+
+			if mach == nil {
+				service, _ := job.NewJob(serviceName, nil, nil)
+				if state := s.Registry.GetJobState(service); state != nil {
+					mach = state.Machine
+				}
+			}
+
+			if mach == nil {
+				log.Printf("Unable to schedule job %s since corresponding "+
+					"service job %s could not be found", j.Name, serviceName)
+			}
+		}
+
+		if mach == nil {
+			log.Printf("Not scheduling job %s", j.Name)
+			return nil
+		} else {
+			log.Println("Scheduling job", j.Name, "to machine", mach.BootId)
+			return mach
 		}
 	}
 
-	if mach == nil {
-		log.Printf("Not scheduling job %s", j.Name)
-	} else {
-		log.Println("Scheduling job", j.Name, "to machine", mach.BootId)
-		s.Registry.ScheduleJob(j, mach)
+	undecided := make([]job.Job, len(jobs))
+	copy(undecided, jobs)
+
+	// Iterate over the submitted set of jobs up to N+1 times where N=len(jobs). We assume
+	// that N+1 is the theoretical maximum number of attempts that we could possibly take.
+	// This is not proven to be true...
+	for i := 0; i < len(jobs)+1; i++ {
+		decisions := 0
+
+		for i := 0; i < len(undecided); i++ {
+			job := undecided[i-decisions]
+			mach := decide(&job)
+			if mach != nil {
+				sched[job] = mach
+				undecided = append(undecided[0:i-decisions], undecided[i-decisions+1:]...)
+				decisions++
+			}
+		}
 	}
+
+	if len(undecided) > 0 {
+		return nil, errors.New("Unable to decide how to schedule all jobs")
+	}
+
+	return sched, nil
 }
 
 func pickRandomMachine(machines map[string]machine.Machine) *machine.Machine {
