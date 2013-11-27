@@ -25,17 +25,3 @@ func NewJob(name string, state *JobState, payload *JobPayload) (*Job, error) {
 
 	return &Job{name, payloadType, state, payload}, nil
 }
-
-func NewJobsFromRequest(req *JobRequest) ([]Job, error) {
-	jobs := []Job{}
-	for i := 0; i < len(req.Payloads); i++ {
-		payload := req.Payloads[i]
-		job, err := NewJob(payload.Name, nil, &payload)
-		if err != nil {
-			return nil, err
-		} else {
-			jobs = append(jobs, *job)
-		}
-	}
-	return jobs, nil
-}

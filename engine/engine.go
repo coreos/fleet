@@ -2,6 +2,7 @@ package engine
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"math/rand"
 	"regexp"
@@ -37,15 +38,21 @@ func (s *Scheduler) DoSchedule() {
 			continue
 		}
 
-		jobs, err := job.NewJobsFromRequest(req)
+		machineMap := s.Registry.GetActiveMachines()
+		machines := make([]machine.Machine, len(machineMap))
+		idx := 0
+		for _, m := range(machineMap) {
+			machines[idx] = m
+			idx++
+		}
+
+		jobs, err := buildScheduleFromRequest(req, machines)
 		if err != nil {
 			log.Printf("Unable to resolve request %s: %s", req.ID, err)
 			continue
 		}
 
-		machines := s.Registry.GetActiveMachines()
-
-		sched, err := s.BuildSchedule(jobs, machines)
+		sched, err := s.completeSchedule(jobs, machines)
 		if err != nil {
 			log.Print(err)
 			continue
@@ -61,9 +68,44 @@ func (s *Scheduler) DoSchedule() {
 	}
 }
 
-func (s *Scheduler) BuildSchedule(jobs []job.Job, machines map[string]machine.Machine) (map[job.Job]*machine.Machine, error) {
-	sched := map[job.Job]*machine.Machine{}
+func buildScheduleFromRequest(req *job.JobRequest, machines []machine.Machine) (map[job.Job]*machine.Machine, error) {
+	sched := make(map[job.Job]*machine.Machine, 0)
 
+	for i := 0; i < len(req.Payloads); i++ {
+		// Manually create the payload variable so we get a full copy
+		// of the data, not just a shallow copy.
+		payload := req.Payloads[i]
+
+		if req.IsFlagSet(job.RequestAllMachines) {
+			log.Printf("Scheduler asked to schedule to all machines")
+			for ii := 0; ii < len(machines); ii++ {
+				// Manually create the m variable so we get a full copy
+				// of the data, not just a shallow copy.
+				m := machines[ii]
+
+				//FIXME: This is probably not the correct format for a job name scoped to a given machine.
+				jobName := fmt.Sprintf("%s.%s", m.BootId, payload.Name)
+
+				job, err := job.NewJob(jobName, nil, &payload)
+				if err != nil {
+					return nil, err
+				} else {
+					sched[*job] = &m
+				}
+			}
+		} else {
+			job, err := job.NewJob(payload.Name, nil, &payload)
+			if err != nil {
+				return nil, err
+			} else {
+				sched[*job] = nil
+			}
+		}
+	}
+	return sched, nil
+}
+
+func (s *Scheduler) completeSchedule(sched map[job.Job]*machine.Machine, machines []machine.Machine) (map[job.Job]*machine.Machine, error) {
 	decide := func(j *job.Job) *machine.Machine {
 		var mach *machine.Machine
 		// If the Job being scheduled is a systemd service unit, we assume we
@@ -106,13 +148,21 @@ func (s *Scheduler) BuildSchedule(jobs []job.Job, machines map[string]machine.Ma
 		}
 	}
 
-	undecided := make([]job.Job, len(jobs))
-	copy(undecided, jobs)
+	var undecided []job.Job
+	for j, m := range sched {
+		// The schedule may come in partially-completed. We assume any previous
+		// decisions cannot be changed.
+		if m == nil {
+			undecided = append(undecided, j)
+		}
+	}
 
-	// Iterate over the submitted set of jobs up to N+1 times where N=len(jobs). We assume
-	// that N+1 is the theoretical maximum number of attempts that we could possibly take.
-	// This is not proven to be true...
-	for i := 0; i < len(jobs)+1; i++ {
+	// Iterate over the submitted set of undecided jobs up to N+1 times where N=len(jobs).
+	// We assume that N+1 is the theoretical maximum number of attempts that we could possibly
+	// take. This is not proven to be true...
+	iterMax := len(undecided) + 1
+
+	for i := 0; i < iterMax; i++ {
 		decisions := 0
 
 		for i := 0; i < len(undecided); i++ {
@@ -133,12 +183,7 @@ func (s *Scheduler) BuildSchedule(jobs []job.Job, machines map[string]machine.Ma
 	return sched, nil
 }
 
-func pickRandomMachine(machines map[string]machine.Machine) *machine.Machine {
-	machineSlice := make([]machine.Machine, 0)
-	for _, v := range machines {
-		machineSlice = append(machineSlice, v)
-	}
-
-	target := rand.Intn(len(machineSlice))
-	return &machineSlice[target]
+func pickRandomMachine(machines []machine.Machine) *machine.Machine {
+	target := rand.Intn(len(machines))
+	return &machines[target]
 }
