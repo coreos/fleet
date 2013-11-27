@@ -41,11 +41,6 @@ func startUnitAction(c *cli.Context) {
 		}
 	}
 
-	for _, p := range payloads {
-		println(p.Name)
-		println(p.Value)
-	}
-
 	//TODO: Handle error response from NewJobRequest
 	req, _ := job.NewJobRequest(payloads, nil)
 	r.AddRequest(req)
