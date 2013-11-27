@@ -10,7 +10,18 @@ import (
 	"github.com/coreos/coreinit/registry"
 )
 
-func startUnit(c *cli.Context) {
+func newStartUnitCommand() cli.Command {
+	return cli.Command{
+		Name:  "start",
+		Usage: "Start (activate) one or more units",
+		Description: `Start adds one or more units to the cluster schedule.
+Once scheduled the cluster will ensure that the unit is
+running on one machine.`,
+		Action: startUnitAction,
+	}
+}
+
+func startUnitAction(c *cli.Context) {
 	r := registry.New()
 
 	payloads := make([]job.JobPayload, len(c.Args()))

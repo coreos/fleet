@@ -10,7 +10,16 @@ import (
 	"github.com/coreos/coreinit/registry"
 )
 
-func getUnitsStatus(c *cli.Context) {
+func newStatusUnitsCommand() cli.Command {
+	return cli.Command{
+		Name:        "status",
+		Usage:       "Fetch the status of one or more units",
+		Description: ``,
+		Action:      statusUnitsAction,
+	}
+}
+
+func statusUnitsAction(c *cli.Context) {
 	r := registry.New()
 
 	for i, v := range c.Args() {

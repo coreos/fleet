@@ -11,7 +11,16 @@ import (
 	"github.com/coreos/coreinit/registry"
 )
 
-func printUnit(c *cli.Context) {
+func newCatUnitCommand() cli.Command {
+	return cli.Command{
+		Name:        "cat",
+		Usage:       "Print the contents of a unit file to stdout.",
+		Description: ``,
+		Action:      printUnitAction,
+	}
+}
+
+func printUnitAction(c *cli.Context) {
 	r := registry.New()
 
 	if len(c.Args()) != 1 {
