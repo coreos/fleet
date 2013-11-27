@@ -13,10 +13,10 @@ import (
 func newStartUnitCommand() cli.Command {
 	return cli.Command{
 		Name:  "start",
+		Flags: []cli.Flag{
+			cli.BoolFlag{"all-machines", "Run units on all machines."},
+		},
 		Usage: "Start (activate) one or more units",
-		Description: `Start adds one or more units to the cluster schedule.
-Once scheduled the cluster will ensure that the unit is
-running on one machine.`,
 		Action: startUnitAction,
 	}
 }
@@ -43,5 +43,10 @@ func startUnitAction(c *cli.Context) {
 
 	//TODO: Handle error response from NewJobRequest
 	req, _ := job.NewJobRequest(payloads, nil)
+
+	if c.Bool("all-machines") {
+		req.SetFlag(job.RequestAllMachines)
+	}
+
 	r.AddRequest(req)
 }

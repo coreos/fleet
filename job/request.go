@@ -8,10 +8,15 @@ import (
 	"github.com/coreos/coreinit/machine"
 )
 
+const (
+	RequestAllMachines = 1 << iota
+)
+
 type JobRequest struct {
 	ID       gouuid.UUID
 	Payloads []JobPayload
 	Machines []machine.Machine
+	Flags	 int
 }
 
 func NewJobRequest(payloads []JobPayload, machines []machine.Machine) (*JobRequest, error) {
@@ -24,5 +29,13 @@ func NewJobRequest(payloads []JobPayload, machines []machine.Machine) (*JobReque
 		return nil, errors.New("Failed to generate JobRequest.ID")
 	}
 
-	return &JobRequest{*uuid, payloads, machines}, nil
+	return &JobRequest{*uuid, payloads, machines, 0}, nil
+}
+
+func (jr *JobRequest) SetFlag(flag int) {
+	jr.Flags |= flag
+}
+
+func (jr *JobRequest) IsFlagSet(flag int) bool {
+	return (jr.Flags & flag) == flag
 }
