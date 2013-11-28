@@ -2,7 +2,6 @@ package engine
 
 import (
 	"errors"
-	"fmt"
 	"log"
 	"math/rand"
 	"regexp"
@@ -38,23 +37,27 @@ func (scheduler *Scheduler) DoSchedule() {
 			continue
 		}
 
-		machines := scheduler.getMachines()
+		if request.IsFlagSet(job.RequestAllMachines) {
+			scheduler.persistClusterJobs(request)
+		} else {
+			machines := scheduler.getMachines()
 
-		schedule, err := NewScheduleFromJobRequest(request, machines)
-		if err != nil {
-			log.Printf("Unable to resolve job request %s: %s", request.ID, err)
-			continue
-		}
+			schedule, err := NewScheduleFromJobRequest(request, machines)
+			if err != nil {
+				log.Printf("Unable to resolve job request %s: %s", request.ID, err)
+				continue
+			}
 
-		err = scheduler.finalizeSchedule(&schedule, machines)
-		if err != nil {
-			log.Printf("Failed to finalize schedule for job request %s: %s", request.ID, err)
-			continue
-		}
+			err = scheduler.finalizeSchedule(&schedule, machines)
+			if err != nil {
+				log.Printf("Failed to finalize schedule for job request %s: %s", request.ID, err)
+				continue
+			}
 
-		err = scheduler.resolveSchedule(request, &schedule)
-		if err != nil {
-			log.Printf("Failed to resolve schedule for job request %s: %s", request.ID, err)
+			err = scheduler.resolveSchedule(request, &schedule)
+			if err != nil {
+				log.Printf("Failed to resolve schedule for job request %s: %s", request.ID, err)
+			}
 		}
 	}
 }
@@ -162,12 +165,25 @@ func (scheduler *Scheduler) resolveSchedule(request *job.JobRequest, schedule *S
 	// For now, we assume that if we can initially acquire the lock
 	// we're safe to move forward with scheduling. This is not ideal.
 	for j, m := range *schedule {
-		scheduler.Registry.ScheduleJob(&j, m)
+		scheduler.Registry.ScheduleMachineJob(&j, m)
 	}
 
 	scheduler.Registry.ResolveRequest(request)
 
 	return nil
+}
+
+func (scheduler *Scheduler) persistClusterJobs(request *job.JobRequest) {
+	for i := 0; i < len(request.Payloads); i++ {
+		// Manually create the payload variable so we get a full copy
+		// of the data, not just a shallow copy.
+		payload := request.Payloads[i]
+
+		//TODO: Handle error from NewJob
+		job, _ := job.NewJob(payload.Name, nil, &payload)
+		scheduler.Registry.ScheduleClusterJob(job)
+	}
+	scheduler.Registry.ResolveRequest(request)
 }
 
 type Schedule map[job.Job]*machine.Machine
@@ -180,30 +196,11 @@ func NewScheduleFromJobRequest(req *job.JobRequest, machines []machine.Machine) 
 		// of the data, not just a shallow copy.
 		payload := req.Payloads[i]
 
-		if req.IsFlagSet(job.RequestAllMachines) {
-			log.Printf("Scheduler asked to schedule to all machines")
-			for ii := 0; ii < len(machines); ii++ {
-				// Manually create the m variable so we get a full copy
-				// of the data, not just a shallow copy.
-				m := machines[ii]
-
-				//FIXME: This is probably not the correct format for a job name scoped to a given machine.
-				jobName := fmt.Sprintf("%s.%s", m.BootId, payload.Name)
-
-				job, err := job.NewJob(jobName, nil, &payload)
-				if err != nil {
-					return nil, err
-				} else {
-					sched[*job] = &m
-				}
-			}
+		job, err := job.NewJob(payload.Name, nil, &payload)
+		if err != nil {
+			return nil, err
 		} else {
-			job, err := job.NewJob(payload.Name, nil, &payload)
-			if err != nil {
-				return nil, err
-			} else {
-				sched[*job] = nil
-			}
+			sched[*job] = nil
 		}
 	}
 	return sched, nil

@@ -33,5 +33,7 @@ func main() {
 	go a.DoHeartbeat()
 
 	s := engine.NewScheduler(r, m)
-	s.DoSchedule()
+	go s.DoSchedule()
+
+	engine.DoEventListener(r)
 }
