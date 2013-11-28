@@ -8,11 +8,6 @@ import (
 	"github.com/coreos/coreinit/registry"
 )
 
-func DoEventListener(reg *registry.Registry) {
-	consumer := NewEventConsumer(reg)
-	consumer.listen()
-}
-
 type EventConsumer struct {
 	registry *registry.Registry
 	jobs     []job.Job
@@ -23,7 +18,7 @@ func NewEventConsumer(reg *registry.Registry) *EventConsumer {
 	return &EventConsumer{registry: reg}
 }
 
-func (ec *EventConsumer) listen() {
+func (ec *EventConsumer) Listen() {
 	go ec.listenForJobEvents()
 	ec.listenForMachineEvents()
 }
