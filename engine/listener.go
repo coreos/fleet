@@ -49,6 +49,7 @@ func (el *EventListener) listenForMachineEvents() {
 		event := <-eventchan
 		m := event.Payload
 		if event.Type == registry.EventMachineCreated {
+			el.machines = append(el.machines, *m)
 			for _, clusterJob := range el.jobs {
 				name := fmt.Sprintf("%s.%s", m.BootId, clusterJob.Name)
 				j, _ := job.NewJob(name, nil, clusterJob.Payload)
