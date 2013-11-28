@@ -8,51 +8,51 @@ import (
 	"github.com/coreos/coreinit/registry"
 )
 
-type EventConsumer struct {
+type EventListener struct {
 	registry *registry.Registry
 	jobs     []job.Job
 	machines []machine.Machine
 }
 
-func NewEventConsumer(reg *registry.Registry) *EventConsumer {
-	return &EventConsumer{registry: reg}
+func NewEventListener(reg *registry.Registry) *EventListener {
+	return &EventListener{registry: reg}
 }
 
-func (ec *EventConsumer) Listen() {
-	go ec.listenForJobEvents()
-	ec.listenForMachineEvents()
+func (el *EventListener) Listen() {
+	go el.listenForJobEvents()
+	el.listenForMachineEvents()
 }
 
-func (ec *EventConsumer) listenForJobEvents() {
+func (el *EventListener) listenForJobEvents() {
 	eventchan := make(chan registry.JobEvent)
-	ec.registry.RegisterJobListener(eventchan)
+	el.registry.RegisterJobListener(eventchan)
 
 	for true {
 		event := <-eventchan
 		clusterJob := event.Payload
 		if event.Type == registry.EventJobCreated {
-			ec.jobs = append(ec.jobs, *clusterJob)
-			for _, m := range ec.registry.GetActiveMachines() {
+			el.jobs = append(el.jobs, *clusterJob)
+			for _, m := range el.registry.GetActiveMachines() {
 				name := fmt.Sprintf("%s.%s", m.BootId, clusterJob.Name)
 				job, _ := job.NewJob(name, nil, clusterJob.Payload)
-				ec.registry.ScheduleMachineJob(job, &m)
+				el.registry.ScheduleMachineJob(job, &m)
 			}
 		}
 	}
 }
 
-func (ec *EventConsumer) listenForMachineEvents() {
+func (el *EventListener) listenForMachineEvents() {
 	eventchan := make(chan registry.MachineEvent)
-	ec.registry.RegisterMachineListener(eventchan)
+	el.registry.RegisterMachineListener(eventchan)
 
 	for true {
 		event := <-eventchan
 		m := event.Payload
 		if event.Type == registry.EventMachineCreated {
-			for _, clusterJob := range ec.jobs {
+			for _, clusterJob := range el.jobs {
 				name := fmt.Sprintf("%s.%s", m.BootId, clusterJob.Name)
 				j, _ := job.NewJob(name, nil, clusterJob.Payload)
-				ec.registry.ScheduleMachineJob(j, m)
+				el.registry.ScheduleMachineJob(j, m)
 			}
 		}
 	}

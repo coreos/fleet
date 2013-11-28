@@ -7,13 +7,13 @@ import (
 
 type Engine struct {
 	scheduler *Scheduler
-	listener  *EventConsumer
+	listener  *EventListener
 	machine   *machine.Machine
 }
 
 func New(reg *registry.Registry, mach *machine.Machine) *Engine {
 	scheduler := NewScheduler(reg, mach)
-	listener := NewEventConsumer(reg)
+	listener := NewEventListener(reg)
 	engine := Engine{scheduler, listener, mach}
 	return &engine
 }
