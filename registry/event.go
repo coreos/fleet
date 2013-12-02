@@ -13,7 +13,10 @@ import (
 const (
 	EventJobCreated int = iota
 	EventJobDeleted
+	EventJobWatchCreated
+	EventJobWatchDeleted
 	EventMachineCreated
+	EventMachineUpdated
 	EventMachineDeleted
 	EventRequestCreated
 )
@@ -33,122 +36,139 @@ func NewEventStream() *EventStream {
 	return &EventStream{etcd: etcd}
 }
 
-func (self *EventStream) RegisterMachineJobEventListener(eventchan chan Event, m *machine.Machine) {
-	key := path.Join(keyPrefix, machinePrefix, m.BootId, schedulePrefix)
-	self.registerJobEventGenerator(eventchan, key)
-}
+func (self *EventStream) RegisterJobEventListener(eventchan chan Event, m *machine.Machine) {
+	translate := func(resp *etcd.Response) *Event {
+		name := path.Base(resp.Key)
 
-func (self *EventStream) RegisterGlobalEventListener(eventchan chan Event) {
-	self.registerMachineEventGenerator(eventchan)
-	self.registerRequestEventGenerator(eventchan)
+		var eventType int
+		var value string
 
-	key := path.Join(keyPrefix, scheduleAllPrefix)
-	self.registerJobEventGenerator(eventchan, key)
-}
-
-func (self *EventStream) registerJobEventGenerator(eventchan chan Event, key string) {
-	etcdchan := make(chan *etcd.Response)
-
-	eventTranslater := func() {
-		for true {
-			resp := <-etcdchan
-			log.Println("Registry JobEventGenerator etcd watcher got event")
-
-			name := path.Base(resp.Key)
-
-			var eventType int
-			var value string
-			if resp.Action == "set" && resp.PrevValue == "" {
-				eventType = EventJobCreated
-				value = resp.Value
-			} else if resp.Action == "expire" || resp.Action == "delete" {
-				eventType = EventJobDeleted
-				value = resp.PrevValue
-			} else {
-				continue
-			}
-
-			var jp job.JobPayload
-			err := unmarshal(value, &jp)
-			if err != nil {
-				log.Printf("Failed to deserialize payload for job '%s'", name)
-				continue
-			}
-
-			j, _ := job.NewJob(name, nil, &jp)
-			event := Event{eventType, *j}
-
-			eventchan <- event
+		if resp.Action == "set" && resp.PrevValue == "" {
+			eventType = EventJobCreated
+			value = resp.Value
+		} else if resp.Action == "expire" || resp.Action == "delete" {
+			eventType = EventJobDeleted
+			value = resp.PrevValue
+		} else {
+			return nil
 		}
+
+		var jp job.JobPayload
+		err := unmarshal(value, &jp)
+		if err != nil {
+			log.Printf("Failed to deserialize payload for job '%s'", name)
+			return nil
+		}
+
+		j, _ := job.NewJob(name, nil, &jp)
+		return &Event{eventType, *j}
 	}
 
-	go eventTranslater()
+	etcdchan := make(chan *etcd.Response)
+	go pipe(etcdchan, translate, eventchan)
+
+	key := path.Join(keyPrefix, machinePrefix, m.BootId, schedulePrefix)
+	go self.etcd.Watch(key, 0, true, etcdchan, nil)
+}
+
+func (self *EventStream) registerJobWatchEventGenerator(eventchan chan Event) {
+	translate := func(resp *etcd.Response) *Event {
+		var eventType int
+		var value string
+
+		if resp.Action == "set" && resp.PrevValue == "" {
+			eventType = EventJobWatchCreated
+			value = resp.Value
+		} else if resp.Action == "expire" || resp.Action == "delete" {
+			eventType = EventJobWatchDeleted
+			value = resp.PrevValue
+		} else {
+			return nil
+		}
+
+		var jw job.JobWatch
+		err := unmarshal(value, &jw)
+		if err != nil {
+			log.Printf("Failed to deserialize JobWatch")
+			return nil
+		}
+
+		return &Event{eventType, jw}
+	}
+
+	etcdchan := make(chan *etcd.Response)
+	go pipe(etcdchan, translate, eventchan)
+
+	key := path.Join(keyPrefix, jobWatchPrefix)
 	go self.etcd.Watch(key, 0, true, etcdchan, nil)
 }
 
 func (self *EventStream) registerMachineEventGenerator(eventchan chan Event) {
-	etcdchan := make(chan *etcd.Response)
-
-	eventTranslater := func() {
-		for true {
-			resp := <-etcdchan
-			log.Println("Registry MachineEventGenerator etcd watcher got event")
-
-			dir, base := path.Split(resp.Key)
-			if base != "addrs" {
-				continue
-			}
-
-			var eventType int
-			if resp.Action == "set" && resp.PrevValue == "" {
-				eventType = EventMachineCreated
-			} else if resp.Action == "expire" || resp.Action == "delete" {
-				eventType = EventMachineDeleted
-			} else {
-				continue
-			}
-
-			name := path.Base(dir)
-			m := machine.New(name)
-			event := Event{eventType, *m}
-
-			eventchan <- event
+	translate := func(resp *etcd.Response) *Event {
+		dir, base := path.Split(resp.Key)
+		if base != "addrs" {
+			return nil
 		}
+
+		var eventType int
+		if resp.Action == "set" && resp.PrevValue == "" {
+			eventType = EventMachineCreated
+		} else if resp.Action == "set" && resp.PrevValue != "" {
+			eventType = EventMachineUpdated
+		} else if resp.Action == "expire" || resp.Action == "delete" {
+			eventType = EventMachineDeleted
+		} else {
+			return nil
+		}
+
+		name := path.Base(dir)
+		m := machine.New(name)
+		return &Event{eventType, *m}
 	}
 
-	go eventTranslater()
+	etcdchan := make(chan *etcd.Response)
+	go pipe(etcdchan, translate, eventchan)
 
 	key := path.Join(keyPrefix, machinePrefix)
 	go self.etcd.Watch(key, 0, true, etcdchan, nil)
 }
 
 func (self *EventStream) registerRequestEventGenerator(eventchan chan Event) {
-	etcdchan := make(chan *etcd.Response)
-
-	eventTranslater := func() {
-		for true {
-			resp := <-etcdchan
-			log.Println("Registry RequestEventGenerator etcd watcher got event")
-
-			var eventType int
-			if resp.Action == "set" && resp.PrevValue == "" {
-				eventType = EventRequestCreated
-			} else {
-				continue
-			}
-
-			var request job.JobRequest
-			if err := unmarshal(resp.Value, &request); err != nil {
-				log.Print(err)
-			}
-
-			event := Event{eventType, request}
-			eventchan <- event
+	translate := func(resp *etcd.Response) *Event {
+		var eventType int
+		if resp.Action == "set" && resp.PrevValue == "" {
+			eventType = EventRequestCreated
+		} else {
+			return nil
 		}
+
+		var request job.JobRequest
+		if err := unmarshal(resp.Value, &request); err != nil {
+			log.Print(err)
+			return nil
+		}
+
+		return &Event{eventType, request}
 	}
 
-	go eventTranslater()
+	etcdchan := make(chan *etcd.Response)
+	go pipe(etcdchan, translate, eventchan)
 
 	key := path.Join(keyPrefix, requestPrefix)
 	go self.etcd.Watch(key, 0, true, etcdchan, nil)
+}
+
+func (self *EventStream) RegisterGlobalEventListener(eventchan chan Event) {
+	self.registerMachineEventGenerator(eventchan)
+	self.registerRequestEventGenerator(eventchan)
+	self.registerJobWatchEventGenerator(eventchan)
+}
+
+func pipe(etcdchan chan *etcd.Response, translate func(resp *etcd.Response) *Event, eventchan chan Event) {
+	for true {
+		event := translate(<-etcdchan)
+		if event != nil {
+			eventchan <- *event
+		}
+	}
 }

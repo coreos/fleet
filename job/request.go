@@ -16,6 +16,7 @@ type JobRequest struct {
 	ID       gouuid.UUID
 	Payloads []JobPayload
 	Machines []machine.Machine
+	Count    int
 	Flags	 int
 }
 
@@ -29,7 +30,7 @@ func NewJobRequest(payloads []JobPayload, machines []machine.Machine) (*JobReque
 		return nil, errors.New("Failed to generate JobRequest.ID")
 	}
 
-	return &JobRequest{*uuid, payloads, machines, 0}, nil
+	return &JobRequest{*uuid, payloads, machines, 1, 0}, nil
 }
 
 func (jr *JobRequest) SetFlag(flag int) {

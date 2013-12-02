@@ -72,7 +72,7 @@ func (a *Agent) doServiceHeartbeat() {
 
 func (a *Agent) startEventListeners() {
 	eventchan := make(chan registry.Event)
-	a.events.RegisterMachineJobEventListener(eventchan, a.Machine)
+	a.events.RegisterJobEventListener(eventchan, a.Machine)
 
 	handlers := map[int]func(registry.Event){
 		registry.EventJobCreated: a.handleEventJobCreated,
