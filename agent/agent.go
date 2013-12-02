@@ -74,14 +74,14 @@ func (a *Agent) startEventListeners() {
 	eventchan := make(chan registry.Event)
 	a.events.RegisterMachineJobEventListener(eventchan, a.Machine)
 
+	handlers := map[int]func(registry.Event){
+		registry.EventJobCreated: a.handleEventJobCreated,
+		registry.EventJobDeleted: a.handleEventJobDeleted,
+	}
+
 	for true {
 		event := <-eventchan
 		log.Printf("Event received: Type=%d", event.Type)
-
-		handlers := map[int]func(registry.Event){
-			registry.EventJobCreated: a.handleEventJobCreated,
-			registry.EventJobDeleted: a.handleEventJobDeleted,
-		}
 
 		log.Printf("Event handler begin")
 		handlers[event.Type](event)
