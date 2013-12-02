@@ -45,16 +45,16 @@ func (self *Dispatcher) startEventListeners() {
 	eventchan := make(chan registry.Event)
 	self.events.RegisterGlobalEventListener(eventchan)
 
+	handlers := map[int]func(registry.Event){
+		registry.EventJobCreated:     self.handleEventJobCreated,
+		registry.EventMachineCreated: self.handleEventMachineCreated,
+		registry.EventMachineDeleted: self.handleEventMachineDeleted,
+		registry.EventRequestCreated: self.handleEventRequestCreated,
+	}
+
 	for true {
 		event := <-eventchan
 		log.Printf("Event received: Type=%d", event.Type)
-
-		handlers := map[int]func(registry.Event){
-			registry.EventJobCreated:     self.handleEventJobCreated,
-			registry.EventMachineCreated: self.handleEventMachineCreated,
-			registry.EventMachineDeleted: self.handleEventMachineDeleted,
-			registry.EventRequestCreated: self.handleEventRequestCreated,
-		}
 
 		log.Printf("Event handler begin")
 		handlers[event.Type](event)
