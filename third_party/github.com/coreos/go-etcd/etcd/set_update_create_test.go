@@ -7,7 +7,7 @@ import (
 func TestSet(t *testing.T) {
 	c := NewClient(nil)
 	defer func() {
-		c.DeleteAll("foo")
+		c.Delete("foo", true)
 	}()
 
 	resp, err := c.Set("foo", "bar", 5)
@@ -31,12 +31,12 @@ func TestSet(t *testing.T) {
 func TestUpdate(t *testing.T) {
 	c := NewClient(nil)
 	defer func() {
-		c.DeleteAll("foo")
-		c.DeleteAll("nonexistent")
+		c.Delete("foo", true)
+		c.Delete("nonexistent", true)
 	}()
 
 	resp, err := c.Set("foo", "bar", 5)
-	t.Logf("%#v", resp)
+
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -63,7 +63,7 @@ func TestUpdate(t *testing.T) {
 func TestCreate(t *testing.T) {
 	c := NewClient(nil)
 	defer func() {
-		c.DeleteAll("newKey")
+		c.Delete("newKey", true)
 	}()
 
 	newKey := "/newKey"
@@ -91,8 +91,8 @@ func TestCreate(t *testing.T) {
 func TestSetDir(t *testing.T) {
 	c := NewClient(nil)
 	defer func() {
-		c.DeleteAll("foo")
-		c.DeleteAll("fooDir")
+		c.Delete("foo", true)
+		c.Delete("fooDir", true)
 	}()
 
 	resp, err := c.SetDir("fooDir", 5)
@@ -129,11 +129,10 @@ func TestSetDir(t *testing.T) {
 func TestUpdateDir(t *testing.T) {
 	c := NewClient(nil)
 	defer func() {
-		c.DeleteAll("fooDir")
+		c.Delete("fooDir", true)
 	}()
 
 	resp, err := c.SetDir("fooDir", 5)
-	t.Logf("%#v", resp)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -160,7 +159,7 @@ func TestUpdateDir(t *testing.T) {
 func TestCreateDir(t *testing.T) {
 	c := NewClient(nil)
 	defer func() {
-		c.DeleteAll("fooDir")
+		c.Delete("fooDir", true)
 	}()
 
 	// This should succeed

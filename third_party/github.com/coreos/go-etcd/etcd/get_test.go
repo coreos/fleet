@@ -8,12 +8,12 @@ import (
 func TestGet(t *testing.T) {
 	c := NewClient(nil)
 	defer func() {
-		c.DeleteAll("foo")
+		c.Delete("foo", true)
 	}()
 
 	c.Set("foo", "bar", 5)
 
-	result, err := c.Get("foo", false)
+	result, err := c.Get("foo", false, false)
 
 	if err != nil {
 		t.Fatal(err)
@@ -23,7 +23,7 @@ func TestGet(t *testing.T) {
 		t.Fatalf("Get failed with %s %s %v", result.Key, result.Value, result.TTL)
 	}
 
-	result, err = c.Get("goo", false)
+	result, err = c.Get("goo", false, false)
 	if err == nil {
 		t.Fatalf("should not be able to get non-exist key")
 	}
@@ -32,7 +32,7 @@ func TestGet(t *testing.T) {
 func TestGetAll(t *testing.T) {
 	c := NewClient(nil)
 	defer func() {
-		c.DeleteAll("fooDir")
+		c.Delete("fooDir", true)
 	}()
 
 	c.SetDir("fooDir", 5)
@@ -40,7 +40,7 @@ func TestGetAll(t *testing.T) {
 	c.Set("fooDir/k1", "v1", 5)
 
 	// Return kv-pairs in sorted order
-	result, err := c.Get("fooDir", true)
+	result, err := c.Get("fooDir", true, false)
 
 	if err != nil {
 		t.Fatal(err)
@@ -50,10 +50,12 @@ func TestGetAll(t *testing.T) {
 		KeyValuePair{
 			Key:   "/fooDir/k0",
 			Value: "v0",
+			TTL:   5,
 		},
 		KeyValuePair{
 			Key:   "/fooDir/k1",
 			Value: "v1",
+			TTL:   5,
 		},
 	}
 
@@ -66,7 +68,7 @@ func TestGetAll(t *testing.T) {
 	c.Set("fooDir/childDir/k2", "v2", 5)
 
 	// Return kv-pairs in sorted order
-	result, err = c.GetAll("fooDir", true)
+	result, err = c.Get("fooDir", true, true)
 
 	if err != nil {
 		t.Fatal(err)
@@ -80,20 +82,24 @@ func TestGetAll(t *testing.T) {
 				KeyValuePair{
 					Key:   "/fooDir/childDir/k2",
 					Value: "v2",
+					TTL:   5,
 				},
 			},
+			TTL: 5,
 		},
 		KeyValuePair{
 			Key:   "/fooDir/k0",
 			Value: "v0",
+			TTL:   5,
 		},
 		KeyValuePair{
 			Key:   "/fooDir/k1",
 			Value: "v1",
+			TTL:   5,
 		},
 	}
 
 	if !reflect.DeepEqual(result.Kvs, expected) {
-		t.Fatalf("(actual) %v != (expected) %v", result.Kvs)
+		t.Fatalf("(actual) %v != (expected) %v", result.Kvs, expected)
 	}
 }

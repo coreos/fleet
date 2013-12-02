@@ -7,7 +7,7 @@ import (
 func TestCompareAndSwap(t *testing.T) {
 	c := NewClient(nil)
 	defer func() {
-		c.DeleteAll("foo")
+		c.Delete("foo", true)
 	}()
 
 	c.Set("foo", "bar", 5)
@@ -34,7 +34,7 @@ func TestCompareAndSwap(t *testing.T) {
 	}
 
 	// This should succeed
-	resp, err = c.CompareAndSwap("foo", "bar2", 5, "", resp.Index)
+	resp, err = c.CompareAndSwap("foo", "bar2", 5, "", resp.ModifiedIndex)
 	if err != nil {
 		t.Fatal(err)
 	}
