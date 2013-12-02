@@ -15,17 +15,17 @@ import (
 )
 
 const (
-	keyPrefix      = "/coreos.com/coreinit/"
-	lockPrefix     = "/locks/"
-	machinePrefix  = "/machines/"
-	requestPrefix = "/request/"
-	schedulePrefix = "/schedule/"
+	keyPrefix         = "/coreos.com/coreinit/"
+	lockPrefix        = "/locks/"
+	machinePrefix     = "/machines/"
+	requestPrefix     = "/request/"
+	schedulePrefix    = "/schedule/"
 	scheduleAllPrefix = "/schedule-all/"
-	statePrefix    = "/state/"
+	statePrefix       = "/state/"
 )
 
 type Registry struct {
-	Etcd   *etcd.Client
+	Etcd *etcd.Client
 }
 
 func New() (registry *Registry) {
@@ -34,16 +34,16 @@ func New() (registry *Registry) {
 }
 
 // Describe the list of all known Machines
-func (r *Registry) GetActiveMachines() map[string]machine.Machine {
+func (r *Registry) GetActiveMachines() []machine.Machine {
 	key := path.Join(keyPrefix, machinePrefix)
 	resp, err := r.Etcd.Get(key, false)
 
 	// Assume the error was KeyNotFound and return an empty data structure
 	if err != nil {
-		return make(map[string]machine.Machine, 0)
+		return make([]machine.Machine, 0)
 	}
 
-	machines := make(map[string]machine.Machine, len(resp.Kvs))
+	machines := make([]machine.Machine, 0)
 	for _, kv := range resp.Kvs {
 		_, bootId := path.Split(kv.Key)
 		machine := machine.New(bootId)
@@ -51,7 +51,7 @@ func (r *Registry) GetActiveMachines() map[string]machine.Machine {
 		// This is a hacky way of telling if a Machine is reporting state
 		addrs := r.GetMachineAddrs(machine)
 		if len(addrs) > 0 {
-			machines[machine.BootId] = *machine
+			machines = append(machines, *machine)
 		}
 	}
 
@@ -89,55 +89,12 @@ func (r *Registry) AddRequest(req *job.JobRequest) {
 	r.Etcd.Set(key, json, 0)
 }
 
-func (r *Registry) ClaimRequest(m *machine.Machine, ttl time.Duration) *job.JobRequest {
-	key := path.Join(keyPrefix, requestPrefix)
-	resp, err := r.Etcd.Get(key, false)
-
-	// Assume the error was KeyNotFound and return an empty data structure
-	if err != nil {
-		return nil
-	}
-
-	var request job.JobRequest
-
-	// Attempt to lock each JobRequest, returning when a lock is acquired
-	for _, kv := range resp.Kvs {
-		if !r.AcquireLock(kv.Key, m.BootId, ttl) {
-			continue
-		}
-
-		if err := unmarshal(kv.Value, &request); err == nil {
-			return &request
-		} else {
-			log.Print(err)
-		}
-	}
-
-	// No jobs to claim
-	return nil
-}
-
 func (r *Registry) ResolveRequest(req *job.JobRequest) {
 	key := path.Join(keyPrefix, requestPrefix, req.ID.String())
 	r.Etcd.Delete(key)
-	log.Printf("Resolved job request %s", req.ID.String())
 }
 
-func (r *Registry) GetGlobalJobs() map[string]job.Job {
-	machines := r.GetActiveMachines()
-	jobs := map[string]job.Job{}
-	for _, mach := range machines {
-		for name, value := range r.GetMachineJobs(&mach) {
-			//FIXME: This will hide duplicate jobs!
-			jobs[name] = value
-		}
-	}
-	return jobs
-}
-
-// Describe the list of jobs a given Machine is scheduled to run
-func (r *Registry) GetMachineJobs(machine *machine.Machine) map[string]job.Job {
-	key := path.Join(keyPrefix, machinePrefix, machine.BootId, schedulePrefix)
+func (r *Registry) getJobsAtKey(key string) map[string]job.Job {
 	resp, err := r.Etcd.Get(key, false)
 
 	// Assume the error was KeyNotFound and return an empty data structure
@@ -153,10 +110,34 @@ func (r *Registry) GetMachineJobs(machine *machine.Machine) map[string]job.Job {
 		err := unmarshal(kv.Value, &payload)
 
 		if err == nil {
-			job, _ := job.NewJob(name, nil, &payload)
-			jobs[job.Name] = *job
+			j, _ := job.NewJob(name, nil, &payload)
+			//FIXME: This will hide duplicate jobs!
+			jobs[j.Name] = *j
 		} else {
 			log.Print(err)
+		}
+	}
+	return jobs
+}
+
+// Describe the list of jobs a given Machine is scheduled to run
+func (r *Registry) GetMachineJobs(machine *machine.Machine) map[string]job.Job {
+	key := path.Join(keyPrefix, machinePrefix, machine.BootId, schedulePrefix)
+	return r.getJobsAtKey(key)
+}
+
+func (r *Registry) GetClusterJobs() map[string]job.Job {
+	key := path.Join(keyPrefix, scheduleAllPrefix)
+	return r.getJobsAtKey(key)
+}
+
+func (r *Registry) GetGlobalJobs() map[string]job.Job {
+	machines := r.GetActiveMachines()
+	jobs := map[string]job.Job{}
+	for _, mach := range machines {
+		for name, j := range r.GetMachineJobs(&mach) {
+			//FIXME: This will hide duplicate jobs!
+			jobs[name] = j
 		}
 	}
 	return jobs
@@ -199,79 +180,11 @@ func (r *Registry) ScheduleClusterJob(job *job.Job) {
 	r.Etcd.Set(key, json, 0)
 }
 
-func (r *Registry) RegisterJobListener(eventchan chan JobEvent) {
-	etcdchan := make(chan *etcd.Response)
-
-	eventTranslater := func() {
-		for true {
-			resp := <-etcdchan
-
-			name := path.Base(resp.Key)
-
-			var eventType int
-			if len(resp.PrevValue) == 0 {
-				eventType = EventJobCreated
-			} else {
-				eventType = EventJobDeleted
-			}
-
-			var jp job.JobPayload
-			err := unmarshal(resp.Value, &jp)
-			if err != nil {
-				log.Printf("Failed to deserialize payload for job '%s'", name)
-				continue
-			}
-
-			j, _ := job.NewJob(name, nil, &jp)
-			event := JobEvent{eventType, j}
-
-			eventchan<- event
-		}
-	}
-
-	go eventTranslater()
-
-	key := path.Join(keyPrefix, scheduleAllPrefix)
-	go r.Etcd.WatchAll(key, 0, etcdchan, nil)
-}
-
-func (r *Registry) RegisterMachineListener(eventchan chan MachineEvent) {
-	etcdchan := make(chan *etcd.Response)
-
-	eventTranslater := func() {
-		for true {
-			resp := <-etcdchan
-
-			dir, base := path.Split(resp.Key)
-			if base != "addrs" {
-				continue
-			}
-
-			var eventType int
-			if resp.PrevValue == "" {
-				eventType = EventMachineCreated
-			} else {
-				eventType = EventMachineDeleted
-			}
-
-			name := path.Base(dir)
-			m := machine.New(name)
-			event := MachineEvent{eventType, m}
-
-			eventchan<- event
-		}
-	}
-
-	go eventTranslater()
-
-	key := path.Join(keyPrefix, machinePrefix)
-	go r.Etcd.WatchAll(key, 0, etcdchan, nil)
-}
-
 func (r *Registry) ScheduleMachineJob(job *job.Job, machine *machine.Machine) {
 	key := path.Join(keyPrefix, machinePrefix, machine.BootId, schedulePrefix, job.Name)
 	//TODO: Handle the error generated by marshal
 	json, _ := marshal(job.Payload)
+	log.Printf("Registry: setting key %s to value %s", key, json)
 	r.Etcd.Set(key, json, 0)
 }
 
@@ -289,11 +202,11 @@ func (r *Registry) StopJob(job *job.Job) {
 }
 
 // Persist the changes in a provided Machine's Job to Etcd with the provided TTL
-func (r *Registry) UpdateJob(job *job.Job, ttl uint64) {
+func (r *Registry) UpdateJob(job *job.Job, ttl time.Duration) {
 	key := path.Join(keyPrefix, statePrefix, job.Name)
 	//TODO: Handle the error generated by marshal
 	json, _ := marshal(job.State)
-	r.Etcd.Set(key, json, ttl)
+	r.Etcd.Set(key, json, uint64(ttl.Seconds()))
 }
 
 // Attempt to acquire a lock in Etcd on an arbitrary string. Returns true if

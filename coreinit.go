@@ -23,15 +23,11 @@ func main() {
 
 	m := machine.New(bootId)
 	r := registry.New()
-	a := agent.New(r, m, "")
+	es := registry.NewEventStream()
 
-	// Push the initial state to the registry
-	a.UpdateJobs()
-	a.UpdateMachine()
+	a := agent.New(r, es, m, "")
+	go a.Run()
 
-	// Kick off the heartbeating process
-	go a.DoHeartbeat()
-
-	e := engine.New(r, m)
+	e := engine.New(r, es, m)
 	e.Run()
 }

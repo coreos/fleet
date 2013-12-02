@@ -6,19 +6,19 @@ import (
 )
 
 type Engine struct {
-	scheduler *Scheduler
-	listener  *EventListener
-	machine   *machine.Machine
+	dispatcher *Dispatcher
+	scheduler  *Scheduler
+	machine    *machine.Machine
+	registry   *registry.Registry
 }
 
-func New(reg *registry.Registry, mach *machine.Machine) *Engine {
-	scheduler := NewScheduler(reg, mach)
-	listener := NewEventListener(reg)
-	engine := Engine{scheduler, listener, mach}
+func New(reg *registry.Registry, events *registry.EventStream, mach *machine.Machine) *Engine {
+	scheduler := NewScheduler()
+	dispatcher := NewDispatcher(reg, events, scheduler, mach)
+	engine := Engine{dispatcher, scheduler, mach, reg}
 	return &engine
 }
 
 func (engine *Engine) Run() {
-	go engine.scheduler.Schedule()
-	engine.listener.Listen()
+	engine.dispatcher.Listen()
 }
