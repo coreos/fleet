@@ -36,7 +36,7 @@ func New() (registry *Registry) {
 // Describe the list of all known Machines
 func (r *Registry) GetActiveMachines() []machine.Machine {
 	key := path.Join(keyPrefix, machinePrefix)
-	resp, err := r.Etcd.Get(key, false)
+	resp, err := r.Etcd.Get(key, false, true)
 
 	// Assume the error was KeyNotFound and return an empty data structure
 	if err != nil {
@@ -60,7 +60,7 @@ func (r *Registry) GetActiveMachines() []machine.Machine {
 
 func (r *Registry) GetMachineAddrs(m *machine.Machine) []machine.IPAddress {
 	key := path.Join(keyPrefix, machinePrefix, m.BootId, "addrs")
-	resp, err := r.Etcd.Get(key, false)
+	resp, err := r.Etcd.Get(key, false, true)
 
 	addrs := make([]machine.IPAddress, 0)
 
@@ -91,11 +91,11 @@ func (r *Registry) AddRequest(req *job.JobRequest) {
 
 func (r *Registry) ResolveRequest(req *job.JobRequest) {
 	key := path.Join(keyPrefix, requestPrefix, req.ID.String())
-	r.Etcd.Delete(key)
+	r.Etcd.Delete(key, true)
 }
 
 func (r *Registry) getJobsAtKey(key string) map[string]job.Job {
-	resp, err := r.Etcd.Get(key, false)
+	resp, err := r.Etcd.Get(key, false, true)
 
 	// Assume the error was KeyNotFound and return an empty data structure
 	if err != nil {
@@ -145,7 +145,7 @@ func (r *Registry) GetGlobalJobs() map[string]job.Job {
 
 func (r *Registry) GetJobPayload(j *job.Job) *job.JobPayload {
 	key := path.Join(keyPrefix, schedulePrefix, j.Name)
-	resp, err := r.Etcd.Get(key, false)
+	resp, err := r.Etcd.Get(key, false, true)
 
 	// Assume the error was KeyNotFound and return an empty data structure
 	if err != nil {
@@ -160,7 +160,7 @@ func (r *Registry) GetJobPayload(j *job.Job) *job.JobPayload {
 
 func (r *Registry) GetJobState(j *job.Job) *job.JobState {
 	key := path.Join(keyPrefix, statePrefix, j.Name)
-	resp, err := r.Etcd.Get(key, false)
+	resp, err := r.Etcd.Get(key, false, true)
 
 	// Assume the error was KeyNotFound and return an empty data structure
 	if err != nil {
@@ -191,13 +191,13 @@ func (r *Registry) ScheduleMachineJob(job *job.Job, machine *machine.Machine) {
 // StopJob removes the job from the global and machine schedule.
 func (r *Registry) StopJob(job *job.Job) {
 	key := path.Join(keyPrefix, schedulePrefix, job.Name)
-	r.Etcd.Delete(key)
+	r.Etcd.Delete(key, true)
 
 	state := r.GetJobState(job)
 
 	if state != nil {
 		key := path.Join(keyPrefix, machinePrefix, state.Machine.BootId, schedulePrefix, job.Name)
-		r.Etcd.Delete(key)
+		r.Etcd.Delete(key, true)
 	}
 }
 

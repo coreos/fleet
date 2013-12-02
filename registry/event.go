@@ -83,7 +83,7 @@ func (self *EventStream) registerJobEventGenerator(eventchan chan Event, key str
 	}
 
 	go eventTranslater()
-	go self.etcd.WatchAll(key, 0, etcdchan, nil)
+	go self.etcd.Watch(key, 0, true, etcdchan, nil)
 }
 
 func (self *EventStream) registerMachineEventGenerator(eventchan chan Event) {
@@ -119,7 +119,7 @@ func (self *EventStream) registerMachineEventGenerator(eventchan chan Event) {
 	go eventTranslater()
 
 	key := path.Join(keyPrefix, machinePrefix)
-	go self.etcd.WatchAll(key, 0, etcdchan, nil)
+	go self.etcd.Watch(key, 0, true, etcdchan, nil)
 }
 
 func (self *EventStream) registerRequestEventGenerator(eventchan chan Event) {
@@ -150,5 +150,5 @@ func (self *EventStream) registerRequestEventGenerator(eventchan chan Event) {
 	go eventTranslater()
 
 	key := path.Join(keyPrefix, requestPrefix)
-	go self.etcd.WatchAll(key, 0, etcdchan, nil)
+	go self.etcd.Watch(key, 0, true, etcdchan, nil)
 }
