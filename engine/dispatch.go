@@ -120,7 +120,7 @@ func (self *Dispatcher) handleEventJobWatchCreated(event registry.Event) {
 	watch := event.Payload.(job.JobWatch)
 
 	if !self.registry.ClaimJobWatch(&watch, self.machine) {
-		log.Printf("EventJobCreated(%s): failed to claim job, discarding event", watch.Payload.Name)
+		log.Printf("EventJobWatchCreated(%s): failed to claim job, discarding event", watch.Payload.Name)
 		return
 	}
 
@@ -131,7 +131,7 @@ func (self *Dispatcher) handleEventJobWatchCreated(event registry.Event) {
 		for _, m := range self.machines {
 			name := fmt.Sprintf("%s.%s", m.BootId, watch.Payload.Name)
 			j, _ := job.NewJob(name, nil, watch.Payload)
-			log.Printf("EventJobCreated(%s): adding to schedule job=%s machine=%s", watch.Payload.Name, name, m.BootId)
+			log.Printf("EventJobWatchCreated(%s): adding to schedule job=%s machine=%s", watch.Payload.Name, name, m.BootId)
 			sched.Add(*j, m)
 		}
 	} else {
@@ -139,16 +139,16 @@ func (self *Dispatcher) handleEventJobWatchCreated(event registry.Event) {
 			m := pickRandomMachine(self.machines)
 			name := fmt.Sprintf("%s.%s", m.BootId, watch.Payload.Name)
 			j, _ := job.NewJob(name, nil, watch.Payload)
-			log.Printf("EventJobCreated(%s): adding to schedule job=%s machine=%s", watch.Payload.Name, name, m.BootId)
+			log.Printf("EventJobWatchCreated(%s): adding to schedule job=%s machine=%s", watch.Payload.Name, name, m.BootId)
 			sched.Add(*j, *m)
 		}
 	}
 
 	if len(sched) > 0 {
-		log.Printf("EventJobCreated(%s): submitting schedule", watch.Payload.Name)
+		log.Printf("EventJobWatchCreated(%s): submitting schedule", watch.Payload.Name)
 		self.submitSchedule(sched)
 	} else {
-		log.Printf("EventJobCreated(%s): no schedule changes made", watch.Payload.Name)
+		log.Printf("EventJobWatchCreated(%s): no schedule changes made", watch.Payload.Name)
 	}
 }
 
