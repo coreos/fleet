@@ -20,13 +20,13 @@ type Dispatcher struct {
 	scheduler *Scheduler
 	machine   *machine.Machine
 	claimTTL  time.Duration
-	watches   []job.JobWatch
+	watches   map[string]job.JobWatch
 	machines  map[string]machine.Machine
 }
 
 func NewDispatcher(registry *registry.Registry, events *registry.EventStream, scheduler *Scheduler, m *machine.Machine) *Dispatcher {
 	claimTTL, _ := time.ParseDuration(DefaultClaimTTL)
-	return &Dispatcher{registry, events, scheduler, m, claimTTL, make([]job.JobWatch, 0), make(map[string]machine.Machine, 0)}
+	return &Dispatcher{registry, events, scheduler, m, claimTTL, make(map[string]job.JobWatch, 0), make(map[string]machine.Machine, 0)}
 }
 
 func (self *Dispatcher) Listen() {
@@ -43,6 +43,7 @@ func (self *Dispatcher) startEventListeners() {
 
 	handlers := map[int]func(registry.Event){
 		registry.EventJobWatchCreated: self.handleEventJobWatchCreated,
+		registry.EventJobWatchDeleted: self.handleEventJobWatchDeleted,
 		registry.EventMachineCreated:  self.handleEventMachineCreated,
 		registry.EventMachineUpdated:  self.handleEventMachineUpdated,
 		registry.EventMachineDeleted:  self.handleEventMachineDeleted,
@@ -124,7 +125,7 @@ func (self *Dispatcher) handleEventJobWatchCreated(event registry.Event) {
 		return
 	}
 
-	self.watches = append(self.watches, watch)
+	self.watches[watch.Payload.Name] = watch
 	sched := NewSchedule()
 
 	if watch.Count == -1 {
@@ -150,6 +151,17 @@ func (self *Dispatcher) handleEventJobWatchCreated(event registry.Event) {
 	} else {
 		log.Printf("EventJobWatchCreated(%s): no schedule changes made", watch.Payload.Name)
 	}
+}
+
+func (self *Dispatcher) handleEventJobWatchDeleted(event registry.Event) {
+    watch := event.Payload.(job.JobWatch)
+    _, ok := self.watches[watch.Payload.Name]
+    if ok {
+        log.Printf("EventJobWatchDeleted(%s): removing JobWatch from dispatcher", watch.Payload.Name)
+        delete(self.watches, watch.Payload.Name)
+    } else {
+        log.Printf("EventJobWatchDeleted(%s): no ownership of JobWatch, discarding event", watch.Payload.Name)
+    }
 }
 
 func (self *Dispatcher) handleEventMachineCreated(event registry.Event) {
