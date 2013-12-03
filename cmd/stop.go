@@ -5,7 +5,6 @@ import (
 
 	"github.com/codegangsta/cli"
 
-	"github.com/coreos/coreinit/job"
 	"github.com/coreos/coreinit/registry"
 )
 
@@ -23,9 +22,6 @@ func stopUnitAction(c *cli.Context) {
 
 	for _, v := range c.Args() {
 		name := path.Base(v)
-
-		jp := &job.JobPayload{name, ""}
-		jw := job.NewJobWatch(jp, 0)
-		r.RemoveJobWatch(jw)
+		r.RemoveJobWatch(name)
 	}
 }

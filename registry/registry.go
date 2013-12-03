@@ -170,13 +170,13 @@ func (r *Registry) ClaimJobWatch(watch *job.JobWatch, m *machine.Machine, ttl ti
 }
 
 // Attempt to remove a given JobWatch from coreinit
-func (r *Registry) RemoveJobWatch(jw *job.JobWatch) {
-	key := path.Join(keyPrefix, jobWatchPrefix, jw.Payload.Name)
+func (r *Registry) RemoveJobWatch(name string) {
+	key := path.Join(keyPrefix, jobWatchPrefix, name)
 	r.etcd.Delete(key, true)
 
 	// Attempt to stop any Jobs that may have been created by the given JobWatch
 	for _, m := range r.GetActiveMachines() {
-		name := fmt.Sprintf("%s.%s", m.BootId, jw.Payload.Name)
+		name := fmt.Sprintf("%s.%s", m.BootId, name)
 		j, _ := job.NewJob(name, nil, nil)
 		r.RemoveMachineJob(j, &m)
 	}
