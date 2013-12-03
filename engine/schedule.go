@@ -7,7 +7,6 @@ import (
 	"math/rand"
 	"regexp"
 	"strings"
-	"time"
 
 	"github.com/coreos/coreinit/job"
 	"github.com/coreos/coreinit/machine"
@@ -15,12 +14,10 @@ import (
 )
 
 type Scheduler struct {
-	ClaimTTL time.Duration
 }
 
 func NewScheduler() *Scheduler {
-	claimTTL, _ := time.ParseDuration(DefaultClaimTTL)
-	return &Scheduler{claimTTL}
+	return &Scheduler{}
 }
 
 func (scheduler *Scheduler) BuildSchedule(jobs []job.Job, machines map[string]machine.Machine, reg *registry.Registry) (Schedule, error) {
