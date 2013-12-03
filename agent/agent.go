@@ -39,7 +39,7 @@ func New(registry *registry.Registry, events *registry.EventStream, machine *mac
 }
 
 func (a *Agent) Run() {
-	go a.doServiceHeartbeat()
+	a.StartServiceHeartbeatThread()
 	go a.doMachineHeartbeat()
 	a.startEventListeners()
 }
@@ -57,17 +57,26 @@ func (a *Agent) doMachineHeartbeat() {
 }
 
 // Keep the state of local units in the Registry up to date
-func (a *Agent) doServiceHeartbeat() {
-	interval := intervalFromTTL(a.ServiceTTL)
-	c := time.Tick(interval)
-	for _ = range c {
-		log.Printf("Reporting job states")
+func (a *Agent) StartServiceHeartbeatThread() {
+	heartbeat := func() {
 		localJobs := a.Manager.GetJobs()
 		ttl := parseDuration(a.ServiceTTL)
 		for _, j := range localJobs {
+			log.Printf("Reporting state of Job(%s)", j.Name)
 			a.Registry.SaveJobState(&j, ttl)
 		}
 	}
+
+	loop := func() {
+		interval := intervalFromTTL(a.ServiceTTL)
+		c := time.Tick(interval)
+		for _ = range c {
+			log.Printf("ServiceHeartbeat")
+			heartbeat()
+		}
+	}
+
+	go loop()
 }
 
 func (a *Agent) startEventListeners() {
