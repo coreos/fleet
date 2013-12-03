@@ -91,9 +91,18 @@ func (self *JobWatcher) AddJobWatch(watch *job.JobWatch) bool {
 		}
 	} else {
 		for i := 1; i <= watch.Count; i++ {
-			m := pickRandomMachine(self.machines)
 			name := fmt.Sprintf("%d.%s", i, watch.Payload.Name)
 			j, _ := job.NewJob(name, nil, watch.Payload)
+
+			var m *machine.Machine
+			// Check if this job was schedule somewhere already
+			if state := self.registry.GetJobState(j); state != nil {
+				log.Printf("Found job already schedule to machine")
+				m = state.Machine
+			} else {
+				m = pickRandomMachine(self.machines)
+			}
+
 			log.Printf("EventJobWatchCreated(%s): adding to schedule job=%s machine=%s", watch.Payload.Name, name, m.BootId)
 			sched.Add(*j, *m)
 		}
