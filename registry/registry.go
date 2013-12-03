@@ -99,7 +99,7 @@ func (r *Registry) ResolveRequest(req *job.JobRequest) {
 }
 
 // List the jobs a given Machine is scheduled to run
-func (r *Registry) GetMachineJobs(machine *machine.Machine) map[string]job.Job {
+func (r *Registry) GetScheduledJobs(machine *machine.Machine) map[string]job.Job {
 	key := path.Join(keyPrefix, machinePrefix, machine.BootId, schedulePrefix)
 	resp, err := r.etcd.Get(key, false, true)
 
@@ -131,7 +131,7 @@ func (r *Registry) GetAllScheduledJobs() map[string]job.Job {
 	machines := r.GetActiveMachines()
 	jobs := map[string]job.Job{}
 	for _, mach := range machines {
-		for name, j := range r.GetMachineJobs(&mach) {
+		for name, j := range r.GetScheduledJobs(&mach) {
 			//FIXME: This will hide duplicate jobs!
 			jobs[name] = j
 		}
