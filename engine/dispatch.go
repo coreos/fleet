@@ -112,7 +112,7 @@ func (self *Dispatcher) submitSchedule(schedule Schedule) {
 
 func (self *Dispatcher) persistJobWatches(watches []job.JobWatch) {
 	for _, jw := range watches {
-		self.registry.SaveJobWatch(&jw)
+		self.registry.AddJobWatch(&jw)
 	}
 }
 
