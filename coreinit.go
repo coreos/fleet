@@ -4,6 +4,8 @@ import (
 	"flag"
 	"os"
 
+	"github.com/coreos/go-etcd/etcd"
+
 	"github.com/coreos/coreinit/agent"
 	"github.com/coreos/coreinit/engine"
 	"github.com/coreos/coreinit/machine"
@@ -20,6 +22,8 @@ func main() {
 	if bootId == "" {
 		bootId = machine.ReadLocalBootId()
 	}
+
+	etcd.OpenDebug()
 
 	m := machine.New(bootId)
 	r := registry.New()
