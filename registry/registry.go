@@ -50,7 +50,7 @@ func (r *Registry) GetActiveMachines() []machine.Machine {
 		machine := machine.New(bootId)
 
 		// This is a hacky way of telling if a Machine is reporting state
-		addrs := r.GetMachineAddrs(machine)
+		addrs := r.getMachineAddrs(machine)
 		if len(addrs) > 0 {
 			machines = append(machines, *machine)
 		}
@@ -59,7 +59,7 @@ func (r *Registry) GetActiveMachines() []machine.Machine {
 	return machines
 }
 
-func (r *Registry) GetMachineAddrs(m *machine.Machine) []machine.IPAddress {
+func (r *Registry) getMachineAddrs(m *machine.Machine) []machine.IPAddress {
 	key := path.Join(keyPrefix, machinePrefix, m.BootId, "addrs")
 	resp, err := r.Etcd.Get(key, false, true)
 
