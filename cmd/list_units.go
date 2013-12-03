@@ -23,7 +23,7 @@ func listUnitsAction(c *cli.Context) {
 
 	fmt.Fprintln(out, "UNIT\tLOAD\tACTIVE\tSUB\tDESC\tMACHINE")
 
-	for _, j := range r.GetScheduledJobs() {
+	for _, j := range r.GetAllScheduledJobs() {
 		js := r.GetJobState(&j)
 
 		loadState := "-"

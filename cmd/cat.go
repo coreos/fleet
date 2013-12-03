@@ -29,7 +29,7 @@ func printUnitAction(c *cli.Context) {
 
 	name := path.Base(c.Args()[0])
 
-	for jobName, j := range r.GetScheduledJobs() {
+	for jobName, j := range r.GetAllScheduledJobs() {
 		if jobName == name {
 			fmt.Println(j.Payload.Value)
 			return

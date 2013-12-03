@@ -127,7 +127,7 @@ func (r *Registry) GetMachineJobs(machine *machine.Machine) map[string]job.Job {
 }
 
 // List the jobs all Machines are scheduled to run
-func (r *Registry) GetScheduledJobs() map[string]job.Job {
+func (r *Registry) GetAllScheduledJobs() map[string]job.Job {
 	machines := r.GetActiveMachines()
 	jobs := map[string]job.Job{}
 	for _, mach := range machines {
