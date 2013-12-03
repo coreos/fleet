@@ -20,8 +20,8 @@ func New(reg *registry.Registry, events *registry.EventStream, mach *machine.Mac
 }
 
 func (engine *Engine) Run() {
-	engine.dispatcher.Listen()
-
 	engine.watcher.StartHeartbeatThread()
 	engine.watcher.StartRefreshThread()
+
+	engine.dispatcher.Listen()
 }
