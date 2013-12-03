@@ -180,15 +180,15 @@ func (r *Registry) ScheduleMachineJob(job *job.Job, machine *machine.Machine) {
 	r.Etcd.Set(key, json, 0)
 }
 
-// StopJob removes the job from the global and machine schedule.
+// StopJob removes the Job from any Machine's schedule. It also removes any
+// relevant JobWatch objects.
 func (r *Registry) StopJob(job *job.Job) {
-	key := path.Join(keyPrefix, schedulePrefix, job.Name)
+	key := path.Join(keyPrefix, jobWatchPrefix, job.Name)
 	r.Etcd.Delete(key, true)
 
-	state := r.GetJobState(job)
-
-	if state != nil {
-		key := path.Join(keyPrefix, machinePrefix, state.Machine.BootId, schedulePrefix, job.Name)
+	for _, m := range r.GetActiveMachines() {
+		name := fmt.Sprintf("%s.%s", m.BootId, job.Name)
+		key := path.Join(keyPrefix, machinePrefix, m.BootId, schedulePrefix, name)
 		r.Etcd.Delete(key, true)
 	}
 }
