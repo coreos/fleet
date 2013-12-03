@@ -34,8 +34,9 @@ type EventStream struct {
 }
 
 func NewEventStream() *EventStream {
-	etcd := etcd.NewClient(nil)
-	return &EventStream{etcd: etcd}
+	client := etcd.NewClient(nil)
+	client.SetConsistency(etcd.WEAK_CONSISTENCY)
+	return &EventStream{etcd: client}
 }
 
 func (self *EventStream) RegisterJobEventListener(eventchan chan Event, m *machine.Machine) {
