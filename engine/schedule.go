@@ -22,11 +22,11 @@ func NewScheduler() *Scheduler {
 
 func (scheduler *Scheduler) BuildSchedule(jobs []job.Job, machines map[string]machine.Machine, reg *registry.Registry) (Schedule, error) {
 	schedule := NewScheduleFromJobs(jobs)
-	err := scheduler.finalizeSchedule(&schedule, machines, reg)
+	err := scheduler.FinalizeSchedule(&schedule, machines, reg)
 	return schedule, err
 }
 
-func (scheduler *Scheduler) finalizeSchedule(schedule *Schedule, machines map[string]machine.Machine, reg *registry.Registry) error {
+func (scheduler *Scheduler) FinalizeSchedule(schedule *Schedule, machines map[string]machine.Machine, reg *registry.Registry) error {
 	decide := func(j *job.Job) *machine.Machine {
 		var mach *machine.Machine
 		// If the Job being scheduled is a systemd service unit, we assume we
