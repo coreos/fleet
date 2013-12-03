@@ -40,20 +40,29 @@ func New(registry *registry.Registry, events *registry.EventStream, machine *mac
 
 func (a *Agent) Run() {
 	a.StartServiceHeartbeatThread()
-	go a.doMachineHeartbeat()
+	a.StartMachineHeartbeatThread()
 	a.startEventListeners()
 }
 
 // Keep the local statistics in the Registry up to date
-func (a *Agent) doMachineHeartbeat() {
-	interval := intervalFromTTL(DefaultMachineTTL)
-	c := time.Tick(interval)
-	for _ = range c {
-		log.Printf("Reporting machine state")
+func (a *Agent) StartMachineHeartbeatThread() {
+	ttl := parseDuration(DefaultMachineTTL)
+
+	heartbeat := func() {
 		addrs := a.Machine.GetAddresses()
-		ttl := parseDuration(DefaultMachineTTL)
 		a.Registry.SetMachineAddrs(a.Machine, addrs, ttl)
 	}
+
+	loop := func() {
+		interval := intervalFromTTL(DefaultMachineTTL)
+		c := time.Tick(interval)
+		for _ = range c {
+			log.Printf("MachineHeartbeat")
+			heartbeat()
+		}
+	}
+
+	go loop()
 }
 
 // Keep the state of local units in the Registry up to date
