@@ -69,7 +69,7 @@ func (self *EventStream) RegisterJobEventListener(eventchan chan Event, m *machi
 	go pipe(etcdchan, translate, eventchan)
 
 	key := path.Join(keyPrefix, machinePrefix, m.BootId, schedulePrefix)
-	go self.etcd.Watch(key, 0, true, etcdchan, nil)
+	go self.watch(etcdchan, key)
 }
 
 func (self *EventStream) registerJobWatchEventGenerator(eventchan chan Event) {
@@ -101,7 +101,7 @@ func (self *EventStream) registerJobWatchEventGenerator(eventchan chan Event) {
 	go pipe(etcdchan, translate, eventchan)
 
 	key := path.Join(keyPrefix, jobWatchPrefix)
-	go self.etcd.Watch(key, 0, true, etcdchan, nil)
+	go self.watch(etcdchan, key)
 }
 
 func (self *EventStream) registerMachineEventGenerator(eventchan chan Event) {
@@ -131,7 +131,7 @@ func (self *EventStream) registerMachineEventGenerator(eventchan chan Event) {
 	go pipe(etcdchan, translate, eventchan)
 
 	key := path.Join(keyPrefix, machinePrefix)
-	go self.etcd.Watch(key, 0, true, etcdchan, nil)
+	go self.watch(etcdchan, key)
 }
 
 func (self *EventStream) registerRequestEventGenerator(eventchan chan Event) {
@@ -156,7 +156,7 @@ func (self *EventStream) registerRequestEventGenerator(eventchan chan Event) {
 	go pipe(etcdchan, translate, eventchan)
 
 	key := path.Join(keyPrefix, requestPrefix)
-	go self.etcd.Watch(key, 0, true, etcdchan, nil)
+	go self.watch(etcdchan, key)
 }
 
 func (self *EventStream) RegisterGlobalEventListener(eventchan chan Event) {
@@ -176,5 +176,15 @@ func pipe(etcdchan chan *etcd.Response, translate func(resp *etcd.Response) *Eve
 		} else {
 			log.Printf("Discarding response(ModifiedIndex=%d) from etcd watcher", resp.ModifiedIndex)
 		}
+	}
+}
+
+func (self *EventStream) watch(etcdchan chan *etcd.Response, key string) {
+	for true {
+		log.Printf("Creating etcd watcher: key=%s", key)
+		self.etcd.Watch(key, 0, true, etcdchan, nil)
+		log.Printf("etcd watch exited: key=%s", key)
+
+		time.Sleep(time.Second)
 	}
 }
