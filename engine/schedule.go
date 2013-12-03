@@ -132,8 +132,8 @@ func NewScheduleFromJobs(jobs []job.Job) Schedule {
 	return schedule
 }
 
-func (self *Schedule) Add(j job.Job, m machine.Machine) {
-	(*self)[j] = &m
+func (self *Schedule) Add(j *job.Job, m *machine.Machine) {
+	(*self)[*j] = m
 }
 
 func (self *Schedule) String() string {

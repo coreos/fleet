@@ -87,7 +87,7 @@ func (self *JobWatcher) AddJobWatch(watch *job.JobWatch) bool {
 			name := fmt.Sprintf("%s.%s", m.BootId, watch.Payload.Name)
 			j, _ := job.NewJob(name, nil, watch.Payload)
 			log.Printf("EventJobWatchCreated(%s): adding to schedule job=%s machine=%s", watch.Payload.Name, name, m.BootId)
-			sched.Add(*j, m)
+			sched.Add(j, &m)
 		}
 	} else {
 		for i := 1; i <= watch.Count; i++ {
@@ -97,18 +97,17 @@ func (self *JobWatcher) AddJobWatch(watch *job.JobWatch) bool {
 			var m *machine.Machine
 			// Check if this job was schedule somewhere already
 			if state := self.registry.GetJobState(j); state != nil {
-				log.Printf("Found job already schedule to machine")
 				m = state.Machine
+				log.Printf("Job(%s) already scheduled to Machine(%s)", j.Name, m.BootId)
+				sched.Add(j, m)
 			} else {
-				m = pickRandomMachine(self.machines)
+				sched.Add(j, nil)
 			}
-
-			log.Printf("EventJobWatchCreated(%s): adding to schedule job=%s machine=%s", watch.Payload.Name, name, m.BootId)
-			sched.Add(*j, *m)
 		}
 	}
 
 	if len(sched) > 0 {
+		self.scheduler.FinalizeSchedule(&sched, self.machines, self.registry)
 		log.Printf("EventJobWatchCreated(%s): submitting schedule", watch.Payload.Name)
 		self.submitSchedule(sched)
 	} else {
@@ -150,10 +149,10 @@ func (self *JobWatcher) TrackMachine(m *machine.Machine) {
 			name := fmt.Sprintf("%s.%s", m.BootId, watch.Payload.Name)
 			j, _ := job.NewJob(name, nil, watch.Payload)
 			log.Printf("Adding to schedule job=%s machine=%s", name, m.BootId)
-			partial.Add(*j, *m)
+			partial.Add(j, m)
 
 			sched := self.schedules[watch.Payload.Name]
-			sched.Add(*j, *m)
+			sched.Add(j, m)
 		}
 	}
 
