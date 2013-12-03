@@ -35,7 +35,9 @@ func listUnitsAction(c *cli.Context) {
 			loadState = js.LoadState
 			activeState = js.ActiveState
 			subState = js.SubState
-			mach = js.Machine.String()
+			if js.Machine != nil {
+				mach = js.Machine.String()
+			}
 		}
 
 		fmt.Fprintf(out, "%s\t%s\t%s\t%s\t-\t%s\n", j.Name, loadState, activeState, subState, mach)
