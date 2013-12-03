@@ -22,13 +22,14 @@ type JobWatcher struct {
 	claimTTL        time.Duration
 	refreshInterval time.Duration
 	watches         map[string]job.JobWatch
+	schedules       map[string]Schedule
 	machines        map[string]machine.Machine
 }
 
 func NewJobWatcher(reg *registry.Registry, scheduler *Scheduler, m *machine.Machine) *JobWatcher {
 	claimTTL, _ := time.ParseDuration(DefaultJobWatchClaimTTL)
 	refreshInterval, _ := time.ParseDuration(DefaultRefreshInterval)
-	return &JobWatcher{reg, scheduler, m, claimTTL, refreshInterval, make(map[string]job.JobWatch, 0), make(map[string]machine.Machine, 0)}
+	return &JobWatcher{reg, scheduler, m, claimTTL, refreshInterval, make(map[string]job.JobWatch, 0),make(map[string]Schedule, 0), make(map[string]machine.Machine, 0)}
 }
 
 func (self *JobWatcher) StartHeartbeatThread() {
@@ -74,6 +75,7 @@ func (self *JobWatcher) AddJobWatch(watch *job.JobWatch) bool {
 
 	self.watches[watch.Payload.Name] = *watch
 	sched := NewSchedule()
+	self.schedules[watch.Payload.Name] = sched
 
 	if watch.Count == -1 {
 		for _, m := range self.machines {
@@ -83,9 +85,9 @@ func (self *JobWatcher) AddJobWatch(watch *job.JobWatch) bool {
 			sched.Add(*j, m)
 		}
 	} else {
-		for i := 0; i < watch.Count; i++ {
+		for i := 1; i <= watch.Count; i++ {
 			m := pickRandomMachine(self.machines)
-			name := fmt.Sprintf("%s.%s", m.BootId, watch.Payload.Name)
+			name := fmt.Sprintf("%d.%s", i, watch.Payload.Name)
 			j, _ := job.NewJob(name, nil, watch.Payload)
 			log.Printf("EventJobWatchCreated(%s): adding to schedule job=%s machine=%s", watch.Payload.Name, name, m.BootId)
 			sched.Add(*j, *m)
@@ -108,6 +110,14 @@ func (self *JobWatcher) RemoveJobWatch(watch *job.JobWatch) bool {
 	}
 
 	delete(self.watches, watch.Payload.Name)
+
+	watchSchedule := self.schedules[watch.Payload.Name]
+	delete(self.schedules, watch.Payload.Name)
+
+	for job, mach := range watchSchedule {
+		self.registry.RemoveMachineJob(&job, mach)
+	}
+
 	return true
 }
 
@@ -120,19 +130,22 @@ func (self *JobWatcher) submitSchedule(schedule Schedule) {
 func (self *JobWatcher) TrackMachine(m *machine.Machine) {
 	self.machines[m.BootId] = *m
 
-	sched := NewSchedule()
+	partial := NewSchedule()
 	for _, watch := range self.watches {
 		if watch.Count == -1 {
 			name := fmt.Sprintf("%s.%s", m.BootId, watch.Payload.Name)
 			j, _ := job.NewJob(name, nil, watch.Payload)
 			log.Printf("Adding to schedule job=%s machine=%s", name, m.BootId)
+			partial.Add(*j, *m)
+
+			sched := self.schedules[watch.Payload.Name]
 			sched.Add(*j, *m)
 		}
 	}
 
-	if len(sched) > 0 {
+	if len(partial) > 0 {
 		log.Printf("Submitting schedule")
-		self.submitSchedule(sched)
+		self.submitSchedule(partial)
 	} else {
 		log.Printf("No schedule changes made")
 	}
