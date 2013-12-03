@@ -164,9 +164,9 @@ func (r *Registry) AddJobWatch(watch *job.JobWatch) {
 }
 
 // Attempt to lock a JobWatch on behalf of a Machine
-func (r *Registry) ClaimJobWatch(watch *job.JobWatch, m *machine.Machine) bool {
+func (r *Registry) ClaimJobWatch(watch *job.JobWatch, m *machine.Machine, ttl time.Duration) bool {
 	//TODO: This should not claim with a TTL of zero
-	return r.AcquireLock(watch.Payload.Name, m.BootId, 0)
+	return r.AcquireLock(watch.Payload.Name, m.BootId, ttl)
 }
 
 // Attempt to remove a given JobWatch from coreinit

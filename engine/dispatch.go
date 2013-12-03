@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	DefaultClaimTTL = "5s"
+	DefaultClaimTTL = "10s"
 )
 
 type Dispatcher struct {
@@ -30,11 +30,29 @@ func NewDispatcher(registry *registry.Registry, events *registry.EventStream, sc
 }
 
 func (self *Dispatcher) Listen() {
+	self.startJobWatchHeartbeat()
 	self.startEventListeners()
 
 	for _, m := range self.registry.GetActiveMachines() {
 		self.machines[m.BootId] = m
 	}
+}
+
+func (self *Dispatcher) startJobWatchHeartbeat() {
+	heartbeat := func() {
+		for _, watch := range self.watches {
+			self.registry.ClaimJobWatch(&watch, self.machine, self.claimTTL)
+		}
+	}
+
+	loop := func() {
+		for true {
+			heartbeat()
+			time.Sleep(self.claimTTL/2)
+		}
+	}
+
+	go loop()
 }
 
 func (self *Dispatcher) startEventListeners() {
@@ -120,7 +138,7 @@ func (self *Dispatcher) persistJobWatches(watches []job.JobWatch) {
 func (self *Dispatcher) handleEventJobWatchCreated(event registry.Event) {
 	watch := event.Payload.(job.JobWatch)
 
-	if !self.registry.ClaimJobWatch(&watch, self.machine) {
+	if !self.registry.ClaimJobWatch(&watch, self.machine, self.claimTTL) {
 		log.Printf("EventJobWatchCreated(%s): failed to claim job, discarding event", watch.Payload.Name)
 		return
 	}
