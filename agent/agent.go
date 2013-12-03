@@ -62,8 +62,13 @@ func (a *Agent) StartServiceHeartbeatThread() {
 		localJobs := a.Manager.GetJobs()
 		ttl := parseDuration(a.ServiceTTL)
 		for _, j := range localJobs {
-			log.Printf("Reporting state of Job(%s)", j.Name)
-			a.Registry.SaveJobState(&j, ttl)
+			if scheduledJob := a.Registry.GetMachineJob(j.Name, a.Machine); scheduledJob != nil {
+				log.Printf("Reporting state of Job(%s)", j.Name)
+                a.Registry.SaveJobState(&j, ttl)
+            } else {
+                log.Printf("Local Job(%s) does not appear to be scheduled to this Machine(%s), stopping it", j.Name, a.Machine.BootId)
+                a.Manager.StopJob(&j)
+            }
 		}
 	}
 
