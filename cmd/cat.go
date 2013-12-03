@@ -7,7 +7,6 @@ import (
 
 	"github.com/codegangsta/cli"
 
-	"github.com/coreos/coreinit/job"
 	"github.com/coreos/coreinit/registry"
 )
 
@@ -30,18 +29,13 @@ func printUnitAction(c *cli.Context) {
 
 	name := path.Base(c.Args()[0])
 
-	j, err := job.NewJob(name, nil, nil)
-	if err != nil {
-		fmt.Println(err)
-		syscall.Exit(1)
+	for jobName, j := range r.GetScheduledJobs() {
+		if jobName == name {
+			fmt.Println(j.Payload.Value)
+			return
+		}
 	}
 
-	j.Payload = r.GetJobPayload(j)
-
-	if j.Payload == nil {
-		fmt.Println("Unit not found.")
-		syscall.Exit(1)
-	} else {
-		fmt.Println(j.Payload.Value)
-	}
+	fmt.Println("Unit not found.")
+	syscall.Exit(1)
 }
