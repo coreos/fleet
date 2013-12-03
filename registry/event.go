@@ -182,8 +182,16 @@ func pipe(etcdchan chan *etcd.Response, translate func(resp *etcd.Response) *Eve
 func (self *EventStream) watch(etcdchan chan *etcd.Response, key string) {
 	for true {
 		log.Printf("Creating etcd watcher: key=%s", key)
-		self.etcd.Watch(key, 0, true, etcdchan, nil)
-		log.Printf("etcd watch exited: key=%s", key)
+		_, err := self.etcd.Watch(key, 0, true, etcdchan, nil)
+
+		var errString string
+		if err == nil {
+			errString = "N/A"
+		} else {
+			errString = err.Error()
+		}
+
+		log.Printf("etcd watch exited: key=%s, err=\"%s\"", key, errString)
 
 		time.Sleep(time.Second)
 	}
