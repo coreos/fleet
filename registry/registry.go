@@ -163,6 +163,12 @@ func (r *Registry) AddJobWatch(watch *job.JobWatch) {
 	r.etcd.Set(key, json, 0)
 }
 
+// Attempt to lock a JobWatch on behalf of a Machine
+func (r *Registry) ClaimJobWatch(watch *job.JobWatch, m *machine.Machine) bool {
+	//TODO: This should not claim with a TTL of zero
+	return r.AcquireLock(watch.Payload.Name, m.BootId, 0)
+}
+
 // Schedule a Job to a given Machine
 func (r *Registry) ScheduleMachineJob(job *job.Job, machine *machine.Machine) {
 	key := path.Join(keyPrefix, machinePrefix, machine.BootId, schedulePrefix, job.Name)

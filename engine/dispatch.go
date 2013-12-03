@@ -119,8 +119,8 @@ func (self *Dispatcher) persistJobWatches(watches []job.JobWatch) {
 func (self *Dispatcher) handleEventJobWatchCreated(event registry.Event) {
 	watch := event.Payload.(job.JobWatch)
 
-	//TODO: This should not claim with a TTL of zero
-	if !self.registry.AcquireLock(watch.Payload.Name, self.machine.BootId, 0) {
+	if !self.registry.ClaimJobWatch(&watch, self.machine) {
+		log.Printf("EventJobCreated(%s): failed to claim job, discarding event", watch.Payload.Name)
 		return
 	}
 
