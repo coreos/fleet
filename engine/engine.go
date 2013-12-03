@@ -7,7 +7,6 @@ import (
 
 type Engine struct {
 	dispatcher *Dispatcher
-	scheduler  *Scheduler
 	machine    *machine.Machine
 	registry   *registry.Registry
 }
@@ -15,7 +14,7 @@ type Engine struct {
 func New(reg *registry.Registry, events *registry.EventStream, mach *machine.Machine) *Engine {
 	scheduler := NewScheduler()
 	dispatcher := NewDispatcher(reg, events, scheduler, mach)
-	engine := Engine{dispatcher, scheduler, mach, reg}
+	engine := Engine{dispatcher, mach, reg}
 	return &engine
 }
 
