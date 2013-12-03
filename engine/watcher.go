@@ -29,7 +29,12 @@ type JobWatcher struct {
 func NewJobWatcher(reg *registry.Registry, scheduler *Scheduler, m *machine.Machine) *JobWatcher {
 	claimTTL, _ := time.ParseDuration(DefaultJobWatchClaimTTL)
 	refreshInterval, _ := time.ParseDuration(DefaultRefreshInterval)
-	return &JobWatcher{reg, scheduler, m, claimTTL, refreshInterval, make(map[string]job.JobWatch, 0),make(map[string]Schedule, 0), make(map[string]machine.Machine, 0)}
+
+	jobs := make(map[string]job.JobWatch, 0)
+	schedules := make(map[string]Schedule, 0)
+	machines := make(map[string]machine.Machine, 0)
+
+	return &JobWatcher{reg, scheduler, m, claimTTL, refreshInterval, jobs, schedules, machines}
 }
 
 func (self *JobWatcher) StartHeartbeatThread() {
