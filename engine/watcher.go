@@ -45,9 +45,10 @@ func (self *JobWatcher) StartHeartbeatThread() {
 	}
 
 	loop := func() {
-		for true {
+		c := time.Tick(self.claimTTL / 2)
+		for _ = range c {
+			log.Printf("JobWatcher Heartbeat")
 			heartbeat()
-			time.Sleep(self.claimTTL / 2)
 		}
 	}
 
