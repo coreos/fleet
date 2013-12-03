@@ -3,6 +3,7 @@ package registry
 import (
 	"log"
 	"path"
+	"time"
 
 	"github.com/coreos/go-etcd/etcd"
 
@@ -166,9 +167,14 @@ func (self *EventStream) RegisterGlobalEventListener(eventchan chan Event) {
 
 func pipe(etcdchan chan *etcd.Response, translate func(resp *etcd.Response) *Event, eventchan chan Event) {
 	for true {
-		event := translate(<-etcdchan)
+		resp := <-etcdchan
+		log.Printf("Received response from etcd watcher: Action=%s ModifiedIndex=%d Key=%s", resp.Action, resp.ModifiedIndex, resp.Key)
+		event := translate(resp)
 		if event != nil {
+			log.Printf("Translated response(ModifiedIndex=%d) to event(Type=%d)", resp.ModifiedIndex, event.Type)
 			eventchan <- *event
+		} else {
+			log.Printf("Discarding response(ModifiedIndex=%d) from etcd watcher", resp.ModifiedIndex)
 		}
 	}
 }
