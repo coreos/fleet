@@ -17,6 +17,7 @@ const (
 	EventJobDeleted
 	EventJobWatchCreated
 	EventJobWatchDeleted
+	EventJobWatchClaimExpired
 	EventMachineCreated
 	EventMachineUpdated
 	EventMachineDeleted
@@ -82,8 +83,11 @@ func (self *EventStream) registerJobWatchEventGenerator(eventchan chan Event) {
 		if resp.Action == "set" && resp.PrevValue == "" {
 			eventType = EventJobWatchCreated
 			value = resp.Value
-		} else if resp.Action == "expire" || resp.Action == "delete" {
+		} else if resp.Action == "delete" {
 			eventType = EventJobWatchDeleted
+			value = resp.PrevValue
+		} else if resp.Action == "expire" {
+			eventType = EventJobWatchClaimExpired
 			value = resp.PrevValue
 		} else {
 			return nil

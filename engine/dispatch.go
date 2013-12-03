@@ -31,12 +31,13 @@ func (self *Dispatcher) Listen() {
 	self.events.RegisterGlobalEventListener(eventchan)
 
 	handlers := map[int]func(registry.Event){
-		registry.EventJobWatchCreated: self.handleEventJobWatchCreated,
-		registry.EventJobWatchDeleted: self.handleEventJobWatchDeleted,
-		registry.EventMachineCreated:  self.handleEventMachineCreated,
-		registry.EventMachineUpdated:  self.handleEventMachineUpdated,
-		registry.EventMachineDeleted:  self.handleEventMachineDeleted,
-		registry.EventRequestCreated:  self.handleEventRequestCreated,
+		registry.EventJobWatchCreated:      self.handleEventJobWatchCreated,
+		registry.EventJobWatchClaimExpired: self.handleEventJobWatchCreated,
+		registry.EventJobWatchDeleted:      self.handleEventJobWatchDeleted,
+		registry.EventMachineCreated:       self.handleEventMachineCreated,
+		registry.EventMachineUpdated:       self.handleEventMachineUpdated,
+		registry.EventMachineDeleted:       self.handleEventMachineDeleted,
+		registry.EventRequestCreated:       self.handleEventRequestCreated,
 	}
 
 	for true {
