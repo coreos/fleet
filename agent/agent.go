@@ -4,6 +4,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/coreos/coreinit/job"
 	"github.com/coreos/coreinit/machine"
 	"github.com/coreos/coreinit/registry"
 	"github.com/coreos/coreinit/unit"
@@ -19,84 +20,85 @@ const (
 // Machine, and the local SystemdManager.
 type Agent struct {
 	Registry   *registry.Registry
+	events     *registry.EventStream
 	Manager    *unit.SystemdManager
 	Machine    *machine.Machine
 	ServiceTTL string
 }
 
-func (a *Agent) DoHeartbeat() {
-	go a.doServiceHeartbeat()
-	a.doMachineHeartbeat()
-	return
-}
-
-// Keep the local statistics in the Registry up to date
-func (a *Agent) doMachineHeartbeat() {
-	interval := intervalFromTTL(DefaultMachineTTL)
-
-	c := time.Tick(interval)
-	for _ = range c {
-		log.Println("tick machine heartbeat")
-		a.UpdateMachine()
-	}
-}
-
-func (a *Agent) UpdateMachine() {
-	addrs := a.Machine.GetAddresses()
-	ttl := parseDuration(DefaultMachineTTL)
-	log.Println("Updating machine", a.Machine, "with addrs", addrs)
-	a.Registry.SetMachineAddrs(a.Machine, addrs, ttl)
-}
-
-// Keep the state of local units in the Registry up to date
-func (a *Agent) doServiceHeartbeat() {
-	interval := intervalFromTTL(a.ServiceTTL)
-
-	c := time.Tick(interval)
-	for _ = range c {
-		log.Println("tick service heartbeat")
-		a.UpdateJobs()
-	}
-}
-
-func (a *Agent) UpdateJobs() {
-	registeredJobs := a.Registry.GetMachineJobs(a.Machine)
-	localJobs := a.Manager.GetJobs()
-
-	for _, job := range registeredJobs {
-		_, ok := localJobs[job.Name]
-		if !ok {
-			a.Manager.StartJob(&job)
-		} else if state := a.Manager.GetJobState(&job); state == nil {
-			a.Manager.StartJob(&job)
-		}
-	}
-
-	// Fetch local jobs again since state may have changed above
-	localJobs = a.Manager.GetJobs()
-
-	ttl := uint64(parseDuration(a.ServiceTTL).Seconds())
-	for _, job := range localJobs {
-		_, ok := registeredJobs[job.Name]
-
-		if ok {
-			a.Registry.UpdateJob(&job, ttl)
-		} else {
-			a.Manager.StopJob(&job)
-		}
-	}
-}
-
-func New(registry *registry.Registry, machine *machine.Machine, ttl string) *Agent {
+func New(registry *registry.Registry, events *registry.EventStream, machine *machine.Machine, ttl string) *Agent {
 	mgr := unit.NewSystemdManager(machine)
 
 	if ttl == "" {
 		ttl = DefaultServiceTTL
 	}
 
-	agent := &Agent{registry, mgr, machine, ttl}
+	agent := &Agent{registry, events, mgr, machine, ttl}
 
 	return agent
+}
+
+func (a *Agent) Run() {
+	go a.doServiceHeartbeat()
+	go a.doMachineHeartbeat()
+	a.startEventListeners()
+}
+
+// Keep the local statistics in the Registry up to date
+func (a *Agent) doMachineHeartbeat() {
+	interval := intervalFromTTL(DefaultMachineTTL)
+	c := time.Tick(interval)
+	for _ = range c {
+		log.Printf("Reporting machine state")
+		addrs := a.Machine.GetAddresses()
+		ttl := parseDuration(DefaultMachineTTL)
+		a.Registry.SetMachineAddrs(a.Machine, addrs, ttl)
+	}
+}
+
+// Keep the state of local units in the Registry up to date
+func (a *Agent) doServiceHeartbeat() {
+	interval := intervalFromTTL(a.ServiceTTL)
+	c := time.Tick(interval)
+	for _ = range c {
+		log.Printf("Reporting job states")
+		localJobs := a.Manager.GetJobs()
+		ttl := parseDuration(a.ServiceTTL)
+		for _, j := range localJobs {
+			a.Registry.UpdateJob(&j, ttl)
+		}
+	}
+}
+
+func (a *Agent) startEventListeners() {
+	eventchan := make(chan registry.Event)
+	a.events.RegisterJobEventListener(eventchan, a.Machine)
+
+	handlers := map[int]func(registry.Event){
+		registry.EventJobCreated: a.handleEventJobCreated,
+		registry.EventJobDeleted: a.handleEventJobDeleted,
+	}
+
+	for true {
+		event := <-eventchan
+		log.Printf("Event received: Type=%d", event.Type)
+
+		log.Printf("Event handler begin")
+		handlers[event.Type](event)
+		log.Printf("Event handler complete")
+	}
+}
+
+func (a *Agent) handleEventJobCreated(event registry.Event) {
+	j := event.Payload.(job.Job)
+	log.Printf("EventJobCreated(%s): starting job", j.Name)
+	a.Manager.StartJob(&j)
+}
+
+func (a *Agent) handleEventJobDeleted(event registry.Event) {
+	j := event.Payload.(job.Job)
+	log.Printf("EventJobDeleted(%s): stopping job", j.Name)
+	a.Manager.StopJob(&j)
 }
 
 func parseDuration(d string) time.Duration {

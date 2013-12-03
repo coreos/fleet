@@ -9,12 +9,12 @@ import (
 func TestWatch(t *testing.T) {
 	c := NewClient(nil)
 	defer func() {
-		c.DeleteAll("watch_foo")
+		c.Delete("watch_foo", true)
 	}()
 
 	go setHelper("watch_foo", "bar", c)
 
-	resp, err := c.Watch("watch_foo", 0, nil, nil)
+	resp, err := c.Watch("watch_foo", 0, false, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -24,7 +24,7 @@ func TestWatch(t *testing.T) {
 
 	go setHelper("watch_foo", "bar", c)
 
-	resp, err = c.Watch("watch_foo", resp.Index, nil, nil)
+	resp, err = c.Watch("watch_foo", resp.ModifiedIndex+1, false, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -39,7 +39,7 @@ func TestWatch(t *testing.T) {
 
 	go receiver(ch, stop)
 
-	_, err = c.Watch("watch_foo", 0, ch, stop)
+	_, err = c.Watch("watch_foo", 0, false, ch, stop)
 	if err != ErrWatchStoppedByUser {
 		t.Fatalf("Watch returned a non-user stop error")
 	}
@@ -48,12 +48,12 @@ func TestWatch(t *testing.T) {
 func TestWatchAll(t *testing.T) {
 	c := NewClient(nil)
 	defer func() {
-		c.DeleteAll("watch_foo")
+		c.Delete("watch_foo", true)
 	}()
 
 	go setHelper("watch_foo/foo", "bar", c)
 
-	resp, err := c.WatchAll("watch_foo", 0, nil, nil)
+	resp, err := c.Watch("watch_foo", 0, true, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -63,7 +63,7 @@ func TestWatchAll(t *testing.T) {
 
 	go setHelper("watch_foo/foo", "bar", c)
 
-	resp, err = c.WatchAll("watch_foo", resp.Index, nil, nil)
+	resp, err = c.Watch("watch_foo", resp.ModifiedIndex+1, true, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -78,7 +78,7 @@ func TestWatchAll(t *testing.T) {
 
 	go receiver(ch, stop)
 
-	_, err = c.WatchAll("watch_foo", 0, ch, stop)
+	_, err = c.Watch("watch_foo", 0, true, ch, stop)
 	if err != ErrWatchStoppedByUser {
 		t.Fatalf("Watch returned a non-user stop error")
 	}

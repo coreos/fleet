@@ -15,6 +15,7 @@ func newStartUnitCommand() cli.Command {
 		Name:  "start",
 		Flags: []cli.Flag{
 			cli.BoolFlag{"all-machines", "Run units on all machines."},
+			cli.IntFlag{"count", 1, "Run N instances of these units."},
 		},
 		Usage: "Start (activate) one or more units",
 		Action: startUnitAction,
@@ -46,6 +47,9 @@ func startUnitAction(c *cli.Context) {
 
 	if c.Bool("all-machines") {
 		req.SetFlag(job.RequestAllMachines)
+		req.Count = 1
+	} else {
+		req.Count = c.Int("count")
 	}
 
 	r.AddRequest(req)

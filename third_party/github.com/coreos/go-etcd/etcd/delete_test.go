@@ -7,11 +7,11 @@ import (
 func TestDelete(t *testing.T) {
 	c := NewClient(nil)
 	defer func() {
-		c.DeleteAll("foo")
+		c.Delete("foo", true)
 	}()
 
 	c.Set("foo", "bar", 5)
-	resp, err := c.Delete("foo")
+	resp, err := c.Delete("foo", false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -21,7 +21,7 @@ func TestDelete(t *testing.T) {
 			resp.Value)
 	}
 
-	resp, err = c.Delete("foo")
+	resp, err = c.Delete("foo", false)
 	if err == nil {
 		t.Fatalf("Delete should have failed because the key foo did not exist.  "+
 			"The response was: %v", resp)
@@ -31,12 +31,12 @@ func TestDelete(t *testing.T) {
 func TestDeleteAll(t *testing.T) {
 	c := NewClient(nil)
 	defer func() {
-		c.DeleteAll("foo")
-		c.DeleteAll("fooDir")
+		c.Delete("foo", true)
+		c.Delete("fooDir", true)
 	}()
 
 	c.Set("foo", "bar", 5)
-	resp, err := c.DeleteAll("foo")
+	resp, err := c.Delete("foo", true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -47,7 +47,7 @@ func TestDeleteAll(t *testing.T) {
 
 	c.SetDir("fooDir", 5)
 	c.Set("fooDir/foo", "bar", 5)
-	resp, err = c.DeleteAll("fooDir")
+	resp, err = c.Delete("fooDir", true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -56,7 +56,7 @@ func TestDeleteAll(t *testing.T) {
 		t.Fatalf("DeleteAll 2 failed: %#v", resp)
 	}
 
-	resp, err = c.DeleteAll("foo")
+	resp, err = c.Delete("foo", true)
 	if err == nil {
 		t.Fatalf("DeleteAll should have failed because the key foo did not exist.  "+
 			"The response was: %v", resp)

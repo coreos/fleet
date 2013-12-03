@@ -1,8 +1,39 @@
 package etcd
 
 import (
+	"encoding/json"
+	"net/http"
 	"time"
 )
+
+const (
+	rawResponse = iota
+	normalResponse
+)
+
+type responseType int
+
+type RawResponse struct {
+	StatusCode int
+	Body       []byte
+	Header     http.Header
+}
+
+func (rr *RawResponse) toResponse() (*Response, error) {
+	if rr.StatusCode == http.StatusBadRequest {
+		return nil, handleError(rr.Body)
+	}
+
+	resp := new(Response)
+
+	err := json.Unmarshal(rr.Body, resp)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return resp, nil
+}
 
 // The response object from the server.
 type Response struct {
@@ -23,7 +54,7 @@ type Response struct {
 	TTL int64 `json:"ttl,omitempty"`
 
 	// The command index of the raft machine when the command is executed
-	Index uint64 `json:"index"`
+	ModifiedIndex uint64 `json:"modifiedIndex"`
 }
 
 // When user list a directory, we add all the node into key-value pair slice
@@ -32,6 +63,7 @@ type KeyValuePair struct {
 	Value   string  `json:"value,omitempty"`
 	Dir     bool    `json:"dir,omitempty"`
 	KVPairs kvPairs `json:"kvs,omitempty"`
+	TTL     int64   `json:"ttl,omitempty"`
 }
 
 type kvPairs []KeyValuePair
