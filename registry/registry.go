@@ -30,6 +30,7 @@ type Registry struct {
 
 func New() (registry *Registry) {
 	etcdC := etcd.NewClient(nil)
+	etcdC.SetConsistency(etcd.WEAK_CONSISTENCY)
 	return &Registry{etcdC}
 }
 
