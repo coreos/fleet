@@ -165,8 +165,28 @@ func (self *JobWatcher) TrackMachine(m *machine.Machine) {
 	}
 }
 
+func (self *JobWatcher) Evacuate(mach *machine.Machine) {
+	for _, sched := range self.schedules {
+		modified := false
+		for j, m := range sched {
+			if mach.BootId == m.BootId {
+				log.Printf("Job(%s) scheduled to Machine(%s) being evacuated, rescheduling", j.Name, mach.BootId)
+				sched[j] = nil
+				modified = true
+			}
+		}
+
+		if modified {
+			self.scheduler.FinalizeSchedule(&sched, self.machines, self.registry)
+			log.Printf("Schedule changes calculated, submitting")
+			self.submitSchedule(sched)
+		}
+	}
+}
+
 func (self *JobWatcher) DropMachine(m *machine.Machine) {
 	if _, ok := self.machines[m.BootId]; ok {
 		delete(self.machines, m.BootId)
 	}
+	self.Evacuate(m)
 }
