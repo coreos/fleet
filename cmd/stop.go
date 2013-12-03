@@ -22,8 +22,10 @@ func stopUnitAction(c *cli.Context) {
 	r := registry.New()
 
 	for _, v := range c.Args() {
-		baseName := path.Base(v)
-		j, _ := job.NewJob(baseName, nil, nil)
-		r.StopJob(j)
+		name := path.Base(v)
+
+		jp := &job.JobPayload{name, ""}
+		jw := job.NewJobWatch(jp, 0)
+		r.RemoveJobWatch(jw)
 	}
 }
