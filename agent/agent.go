@@ -65,7 +65,7 @@ func (a *Agent) doServiceHeartbeat() {
 		localJobs := a.Manager.GetJobs()
 		ttl := parseDuration(a.ServiceTTL)
 		for _, j := range localJobs {
-			a.Registry.UpdateJob(&j, ttl)
+			a.Registry.SaveJobState(&j, ttl)
 		}
 	}
 }
