@@ -3,6 +3,7 @@ package registry
 import (
 	"log"
 	"path"
+	"strings"
 	"time"
 
 	"github.com/coreos/go-etcd/etcd"
@@ -181,7 +182,7 @@ func pipe(etcdchan chan *etcd.Response, translate func(resp *etcd.Response) *Eve
 
 func (self *EventStream) watch(etcdchan chan *etcd.Response, key string) {
 	for true {
-		log.Printf("Creating etcd watcher: key=%s", key)
+		log.Printf("Creating etcd watcher: key=%s, machines=%s", key, strings.Join(self.etcd.GetCluster(), ","))
 		_, err := self.etcd.Watch(key, 0, true, etcdchan, nil)
 
 		var errString string
