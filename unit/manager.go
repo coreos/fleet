@@ -161,6 +161,10 @@ func (m *SystemdManager) removeUnit(name string) {
 	log.Printf("Unlinking systemd unit %s from target %s", name, m.Target.Name())
 	link := m.getLocalPath(path.Join(m.Target.Name()+".wants", name))
 	syscall.Unlink(link)
+
+	file := m.getLocalPath(name)
+	log.Printf("Removing systemd unit file %s", file)
+	syscall.Unlink(file)
 }
 
 func (m *SystemdManager) readUnit(name string) (string, error) {
