@@ -14,16 +14,20 @@ import (
 
 func main() {
 	var bootId string
+	var debug bool
 
 	f := flag.NewFlagSet(os.Args[0], 1)
 	f.StringVar(&bootId, "bootid", "", "Provide a user-generated boot ID. This will override the actual boot ID of the machine.")
+	f.BoolVar(&debug, "debug", false, "Generate debug-level output in server logs.")
 	f.Parse(os.Args[1:])
 
 	if bootId == "" {
 		bootId = machine.ReadLocalBootId()
 	}
 
-	etcd.OpenDebug()
+	if debug {
+		etcd.OpenDebug()
+	}
 
 	m := machine.New(bootId)
 	r := registry.New()
