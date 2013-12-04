@@ -88,7 +88,7 @@ func getJobWatchesFromRequest(req *job.JobRequest) ([]job.JobWatch, error) {
 }
 
 func (self *Dispatcher) claimRequest(request *job.JobRequest) bool {
-	return self.registry.AcquireLock(fmt.Sprintf("req-%s", request.ID.String()), self.machine.BootId, self.claimTTL)
+	return self.registry.ClaimRequest(request, self.machine, self.claimTTL)
 }
 
 func (self *Dispatcher) resolveRequest(request *job.JobRequest) {

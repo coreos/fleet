@@ -221,11 +221,26 @@ func (r *Registry) SaveJobState(j *job.Job, ttl time.Duration) {
 	r.etcd.Set(key, json, uint64(ttl.Seconds()))
 }
 
+func (r *Registry) ClaimRequest(request *job.JobRequest, m *machine.Machine, ttl time.Duration) bool {
+	key := path.Join(keyPrefix, lockPrefix, fmt.Sprintf("req-%s", request.ID.String()))
+	return r.acquireLock(key, m.BootId, ttl)
+}
+
 // Attempt to acquire a lock in etcd on an arbitrary string. Returns true if
 // successful, otherwise false.
-func (r *Registry) AcquireLock(name string, context string, ttl time.Duration) bool {
-	key := path.Join(keyPrefix, lockPrefix, name)
-	_, err := r.etcd.Create(key, context, uint64(ttl.Seconds()))
+func (r *Registry) acquireLock(key string, context string, ttl time.Duration) bool {
+	resp, err := r.etcd.Get(key, false, true)
+
+	//FIXME: Here lies a race condition!
+
+	if resp != nil {
+		if resp.Value == context {
+			_, err = r.etcd.Update(key, context, uint64(ttl.Seconds()))
+			return err == nil
+		}
+	}
+
+	_, err = r.etcd.Create(key, context, uint64(ttl.Seconds()))
 	return err == nil
 }
 
