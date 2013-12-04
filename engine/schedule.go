@@ -136,6 +136,15 @@ func (self *Schedule) Add(j *job.Job, m *machine.Machine) {
 	(*self)[*j] = m
 }
 
+func (self *Schedule) ContainsMachine(mCheck *machine.Machine) bool {
+	for _, mSched := range *self {
+		if mCheck.BootId == mSched.BootId {
+			return true
+		}
+	}
+	return false
+}
+
 func (self *Schedule) String() string {
 	entries := make([]string, len(*self))
 	idx := 0

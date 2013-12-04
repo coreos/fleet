@@ -90,7 +90,8 @@ func (self *JobWatcher) AddJobWatch(watch *job.JobWatch) bool {
 	self.schedules[watch.Payload.Name] = sched
 
 	if watch.Count == -1 {
-		for _, m := range self.machines {
+		for idx, _ := range self.machines {
+			m := self.machines[idx]
 			name := fmt.Sprintf("%s.%s", m.BootId, watch.Payload.Name)
 			j, _ := job.NewJob(name, nil, watch.Payload)
 			log.Printf("Scheduling Job(%s) to Machine(%s)", name, m.BootId)
@@ -150,12 +151,17 @@ func (self *JobWatcher) TrackMachine(m *machine.Machine) {
 	partial := NewSchedule()
 	for _, watch := range self.watches {
 		if watch.Count == -1 {
+			sched := self.schedules[watch.Payload.Name]
+
+			if sched.ContainsMachine(m) {
+				continue
+			}
+
 			name := fmt.Sprintf("%s.%s", m.BootId, watch.Payload.Name)
 			j, _ := job.NewJob(name, nil, watch.Payload)
 			log.Printf("Adding to schedule job=%s machine=%s", name, m.BootId)
 			partial.Add(j, m)
 
-			sched := self.schedules[watch.Payload.Name]
 			sched.Add(j, m)
 		}
 	}
