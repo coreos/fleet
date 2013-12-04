@@ -105,12 +105,8 @@ func (self *JobWatcher) AddJobWatch(watch *job.JobWatch) bool {
 			// Check if this job was schedule somewhere already
 			if state := self.registry.GetJobState(j); state != nil {
 				m = state.Machine
-				log.Printf("Job(%s) already scheduled to Machine(%s)", j.Name, m.BootId)
-				sched.Add(j, m)
-			} else {
-				log.Printf("Waiting for Schedule to decide where to place Job(%s)", j.Name)
-				sched.Add(j, nil)
 			}
+			sched.Add(j, m)
 		}
 	}
 
