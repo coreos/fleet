@@ -113,10 +113,10 @@ func (self *JobWatcher) AddJobWatch(watch *job.JobWatch) bool {
 
 	if len(sched) > 0 {
 		self.scheduler.FinalizeSchedule(&sched, self.machines, self.registry)
-		log.Printf("Submitting schedule to Registry", watch.Payload.Name)
+		log.Printf("Submitting schedule: %s", sched.String())
 		self.submitSchedule(sched)
 	} else {
-		log.Printf("No schedule changes made", watch.Payload.Name)
+		log.Printf("No schedule changes made")
 	}
 
 	return true
@@ -167,7 +167,7 @@ func (self *JobWatcher) TrackMachine(m *machine.Machine) {
 	}
 
 	if len(partial) > 0 {
-		log.Printf("Submitting schedule")
+		log.Printf("Submitting schedule: %s", partial.String())
 		self.submitSchedule(partial)
 	}
 }
