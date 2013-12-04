@@ -1,12 +1,12 @@
 package registry
 
 import (
-	"log"
 	"path"
 	"strings"
 	"time"
 
 	"github.com/coreos/go-etcd/etcd"
+	log "github.com/golang/glog"
 
 	"github.com/coreos/coreinit/job"
 	"github.com/coreos/coreinit/machine"
@@ -60,7 +60,7 @@ func (self *EventStream) RegisterJobEventListener(eventchan chan Event, m *machi
 		var jp job.JobPayload
 		err := unmarshal(value, &jp)
 		if err != nil {
-			log.Printf("Failed to deserialize payload for job '%s'", name)
+			log.V(1).Infof("Failed to deserialize JobPayload: %s", err)
 			return nil
 		}
 
@@ -109,7 +109,7 @@ func (self *EventStream) registerJobWatchEventGenerator(eventchan chan Event) {
 		var jw job.JobWatch
 		err := unmarshal(value, &jw)
 		if err != nil {
-			log.Printf("Failed to deserialize JobWatch")
+			log.V(1).Infof("Failed to deserialize JobWatch: %s", err)
 			return nil
 		}
 
@@ -164,7 +164,7 @@ func (self *EventStream) registerRequestEventGenerator(eventchan chan Event) {
 
 		var request job.JobRequest
 		if err := unmarshal(resp.Value, &request); err != nil {
-			log.Print(err)
+			log.V(1).Infof("Failed to deserialize JobRequest: %s", err)
 			return nil
 		}
 
@@ -187,20 +187,20 @@ func (self *EventStream) RegisterGlobalEventListener(eventchan chan Event) {
 func pipe(etcdchan chan *etcd.Response, translate func(resp *etcd.Response) *Event, eventchan chan Event) {
 	for true {
 		resp := <-etcdchan
-		log.Printf("Received response from etcd watcher: Action=%s ModifiedIndex=%d Key=%s", resp.Action, resp.ModifiedIndex, resp.Key)
+		log.V(2).Infof("Received response from etcd watcher: Action=%s ModifiedIndex=%d Key=%s", resp.Action, resp.ModifiedIndex, resp.Key)
 		event := translate(resp)
 		if event != nil {
-			log.Printf("Translated response(ModifiedIndex=%d) to event(Type=%d)", resp.ModifiedIndex, event.Type)
+			log.V(2).Infof("Translated response(ModifiedIndex=%d) to event(Type=%d)", resp.ModifiedIndex, event.Type)
 			eventchan <- *event
 		} else {
-			log.Printf("Discarding response(ModifiedIndex=%d) from etcd watcher", resp.ModifiedIndex)
+			log.V(2).Infof("Discarding response(ModifiedIndex=%d) from etcd watcher", resp.ModifiedIndex)
 		}
 	}
 }
 
 func (self *EventStream) watch(etcdchan chan *etcd.Response, key string) {
 	for true {
-		log.Printf("Creating etcd watcher: key=%s, machines=%s", key, strings.Join(self.etcd.GetCluster(), ","))
+		log.V(1).Infof("Creating etcd watcher: key=%s, machines=%s", key, strings.Join(self.etcd.GetCluster(), ","))
 		_, err := self.etcd.Watch(key, 0, true, etcdchan, nil)
 
 		var errString string
@@ -210,7 +210,7 @@ func (self *EventStream) watch(etcdchan chan *etcd.Response, key string) {
 			errString = err.Error()
 		}
 
-		log.Printf("etcd watch exited: key=%s, err=\"%s\"", key, errString)
+		log.V(1).Infof("etcd watch exited: key=%s, err=\"%s\"", key, errString)
 
 		time.Sleep(time.Second)
 	}

@@ -2,9 +2,9 @@ package main
 
 import (
 	"flag"
-	"os"
 
 	"github.com/coreos/go-etcd/etcd"
+	"github.com/golang/glog"
 
 	"github.com/coreos/coreinit/agent"
 	"github.com/coreos/coreinit/engine"
@@ -14,18 +14,15 @@ import (
 
 func main() {
 	var bootId string
-	var debug bool
 
-	f := flag.NewFlagSet(os.Args[0], 1)
-	f.StringVar(&bootId, "bootid", "", "Provide a user-generated boot ID. This will override the actual boot ID of the machine.")
-	f.BoolVar(&debug, "debug", false, "Generate debug-level output in server logs.")
-	f.Parse(os.Args[1:])
+	flag.StringVar(&bootId, "bootid", "", "Provide a user-generated boot ID. This will override the actual boot ID of the machine.")
+	flag.Parse()
 
 	if bootId == "" {
 		bootId = machine.ReadLocalBootId()
 	}
 
-	if debug {
+	if glog.V(2) {
 		etcd.OpenDebug()
 	}
 

@@ -2,8 +2,9 @@ package engine
 
 import (
 	"fmt"
-	"log"
 	"time"
+
+	log "github.com/golang/glog"
 
 	"github.com/coreos/coreinit/job"
 	"github.com/coreos/coreinit/machine"
@@ -40,9 +41,9 @@ func NewJobWatcher(reg *registry.Registry, scheduler *Scheduler, m *machine.Mach
 func (self *JobWatcher) StartHeartbeatThread() {
 	heartbeat := func() {
 		for _, watch := range self.watches {
-			log.Printf("Re-claiming JobWatch(%s)", watch.Payload.Name)
+			log.V(1).Infof("Re-claiming JobWatch(%s)", watch.Payload.Name)
 			if ok := self.registry.ClaimJobWatch(&watch, self.machine, self.claimTTL); !ok {
-				log.Printf("Failed to re-claim lock on JobWatch(%s)", watch.Payload.Name)
+				log.V(1).Infof("Failed to re-claim lock on JobWatch(%s)", watch.Payload.Name)
 			}
 		}
 	}
@@ -50,7 +51,7 @@ func (self *JobWatcher) StartHeartbeatThread() {
 	loop := func() {
 		c := time.Tick(self.claimTTL / 2)
 		for _ = range c {
-			log.Printf("JobWatcher Heartbeat")
+			log.V(1).Infof("JobWatcher Heartbeat")
 			heartbeat()
 		}
 	}
@@ -79,11 +80,11 @@ func (self *JobWatcher) StartRefreshThread() {
 
 func (self *JobWatcher) AddJobWatch(watch *job.JobWatch) bool {
 	if !self.registry.ClaimJobWatch(watch, self.machine, self.claimTTL) {
-		log.Printf("Failed to acquire lock on JobWatch(%s)", watch.Payload.Name)
+		log.V(1).Infof("Failed to acquire lock on JobWatch(%s)", watch.Payload.Name)
 		return false
 	}
 
-	log.Printf("Acquired lock on JobWatch(%s), building schedule", watch.Payload.Name)
+	log.Infof("Acquired lock on JobWatch(%s), building schedule", watch.Payload.Name)
 
 	self.watches[watch.Payload.Name] = *watch
 	sched := NewSchedule()
@@ -94,7 +95,7 @@ func (self *JobWatcher) AddJobWatch(watch *job.JobWatch) bool {
 			m := self.machines[idx]
 			name := fmt.Sprintf("%s.%s", m.BootId, watch.Payload.Name)
 			j, _ := job.NewJob(name, nil, watch.Payload)
-			log.Printf("Scheduling Job(%s) to Machine(%s)", name, m.BootId)
+			log.Infof("Scheduling Job(%s) to Machine(%s)", name, m.BootId)
 			sched.Add(j, &m)
 		}
 	} else {
@@ -113,10 +114,10 @@ func (self *JobWatcher) AddJobWatch(watch *job.JobWatch) bool {
 
 	if len(sched) > 0 {
 		self.scheduler.FinalizeSchedule(&sched, self.machines, self.registry)
-		log.Printf("Submitting schedule: %s", sched.String())
+		log.Infof("Submitting schedule: %s", sched.String())
 		self.submitSchedule(sched)
 	} else {
-		log.Printf("No schedule changes made")
+		log.Infof("No schedule changes made")
 	}
 
 	return true
@@ -159,7 +160,7 @@ func (self *JobWatcher) TrackMachine(m *machine.Machine) {
 
 			name := fmt.Sprintf("%s.%s", m.BootId, watch.Payload.Name)
 			j, _ := job.NewJob(name, nil, watch.Payload)
-			log.Printf("Adding to schedule job=%s machine=%s", name, m.BootId)
+			log.Infof("Adding to schedule job=%s machine=%s", name, m.BootId)
 			partial.Add(j, m)
 
 			sched.Add(j, m)
@@ -167,18 +168,18 @@ func (self *JobWatcher) TrackMachine(m *machine.Machine) {
 	}
 
 	if len(partial) > 0 {
-		log.Printf("Submitting schedule: %s", partial.String())
+		log.Infof("Submitting schedule: %s", partial.String())
 		self.submitSchedule(partial)
 	}
 }
 
 func (self *JobWatcher) Evacuate(mach *machine.Machine) {
-	log.Printf("Evacuating jobs from Machine(%s)", mach.BootId)
+	log.V(1).Infof("Evacuating any scheduled Jobs from Machine(%s)", mach.BootId)
 	for _, sched := range self.schedules {
 		modified := false
 		for j, m := range sched {
 			if mach.BootId == m.BootId {
-				log.Printf("Job(%s) scheduled to Machine(%s) being evacuated, rescheduling", j.Name, mach.BootId)
+				log.Infof("Job(%s) scheduled to Machine(%s) being evacuated, rescheduling", j.Name, mach.BootId)
 				self.registry.RemoveMachineJob(&j, m)
 				sched[j] = nil
 				modified = true
@@ -187,7 +188,7 @@ func (self *JobWatcher) Evacuate(mach *machine.Machine) {
 
 		if modified {
 			self.scheduler.FinalizeSchedule(&sched, self.machines, self.registry)
-			log.Printf("Schedule changes calculated, submitting")
+			log.Infof("Schedule changes calculated, submitting")
 			self.submitSchedule(sched)
 		}
 	}

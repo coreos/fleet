@@ -4,7 +4,8 @@ import (
 	"fmt"
 	"errors"
 	"strings"
-	"log"
+
+	log "github.com/golang/glog"
 )
 
 type SystemdSocket struct {
@@ -50,7 +51,7 @@ func parseSocketFile(contents string) []ListenSocket {
 		if err == nil {
 			sockets = append(sockets, *socket)
 		} else {
-			log.Printf("Unable to parse Listen line in socket file: %s", err)
+			log.V(1).Infof("Unable to parse Listen line in socket file: %s", err)
 		}
 	}
 	return sockets

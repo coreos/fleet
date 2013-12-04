@@ -1,9 +1,10 @@
 package machine
 
 import (
-	"log"
 	"net"
 	"strings"
+
+	log "github.com/golang/glog"
 )
 
 type IPAddress struct {

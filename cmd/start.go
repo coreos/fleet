@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"io/ioutil"
 	"path"
 
@@ -30,13 +31,13 @@ func startUnitAction(c *cli.Context) {
 	for i, v := range c.Args() {
 		out, err := ioutil.ReadFile(v)
 		if err != nil {
-			logger.Fatalf("%s: No such file or directory\n", v)
+			fmt.Printf("%s: No such file or directory\n", v)
 		}
 
 		name := path.Base(v)
 		payload := job.JobPayload{name, string(out)}
 		if err != nil {
-			logger.Fatal(err)
+			fmt.Print(err)
 		} else {
 			payloads[i] = payload
 		}

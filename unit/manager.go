@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
 	"path"
 	"strings"
@@ -12,6 +11,7 @@ import (
 
 	systemdDbus "github.com/coreos/go-systemd/dbus"
 	"github.com/guelfey/go.dbus"
+	log "github.com/golang/glog"
 
 	"github.com/coreos/coreinit/job"
 	"github.com/coreos/coreinit/machine"
@@ -72,7 +72,7 @@ func (m *SystemdManager) getUnitsByTarget(target *SystemdTarget) []SystemdUnit {
 		if err == nil {
 			units = append(units, *unit)
 		} else {
-			log.Printf("Unit %s seems to exist, yet unable to get corresponding SystemdUnit object", name)
+			log.V(1).Infof("Unit %s seems to exist, yet unable to get corresponding SystemdUnit object", name)
 		}
 	}
 
@@ -94,7 +94,7 @@ func (m *SystemdManager) GetJobs() map[string]job.Job {
 func (m *SystemdManager) getJobStateFromUnit(u *SystemdUnit) *job.JobState {
 	loadState, activeState, subState, sockets, err := (*u).State()
 	if err != nil {
-		log.Printf("Failed to get state for unit %s", (*u).Name())
+		log.V(1).Infof("Failed to get state for unit %s", (*u).Name())
 		return nil
 	} else {
 		return job.NewJobState(loadState, activeState, subState, sockets, m.Machine)
@@ -104,7 +104,7 @@ func (m *SystemdManager) getJobStateFromUnit(u *SystemdUnit) *job.JobState {
 func (m *SystemdManager) GetJobState(j *job.Job) *job.JobState {
 	unit, err := m.getUnitByName(j.Name)
 	if err != nil {
-		log.Printf("No local unit corresponding to job %s", j.Name)
+		log.V(1).Infof("No local unit corresponding to job %s", j.Name)
 		return nil
 	}
 
@@ -139,7 +139,7 @@ func (m *SystemdManager) getUnitStates(name string) (string, string, string, err
 }
 
 func (m *SystemdManager) startUnit(name string) {
-	log.Println("Starting systemd unit", name)
+	log.Infof("Starting systemd unit %s", name)
 
 	files := []string{name}
 	m.Systemd.EnableUnitFiles(files, true, false)
@@ -148,7 +148,7 @@ func (m *SystemdManager) startUnit(name string) {
 }
 
 func (m *SystemdManager) stopUnit(name string) {
-	log.Println("Stopping systemd unit", name)
+	log.Infof("Stopping systemd unit %s", name)
 
 	m.Systemd.StopUnit(name, "replace")
 
@@ -158,12 +158,12 @@ func (m *SystemdManager) stopUnit(name string) {
 }
 
 func (m *SystemdManager) removeUnit(name string) {
-	log.Printf("Unlinking systemd unit %s from target %s", name, m.Target.Name())
+	log.Infof("Unlinking systemd unit %s from target %s", name, m.Target.Name())
 	link := m.getLocalPath(path.Join(m.Target.Name()+".wants", name))
 	syscall.Unlink(link)
 
 	file := m.getLocalPath(name)
-	log.Printf("Removing systemd unit file %s", file)
+	log.Infof("Removing systemd unit file %s", file)
 	syscall.Unlink(file)
 }
 
@@ -178,7 +178,7 @@ func (m *SystemdManager) readUnit(name string) (string, error) {
 }
 
 func (m *SystemdManager) writeUnit(name string, contents string) error {
-	log.Println("Writing systemd unit file", name)
+	log.Infof("Writing systemd unit file %s", name)
 
 	path := path.Join(m.unitPath, name)
 	file, err := os.Create(path)

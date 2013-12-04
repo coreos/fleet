@@ -1,12 +1,12 @@
 packages="
 	bitbucket.org/kardianos/osext
+	github.com/codegangsta/cli
 	github.com/coreos/etcd/error
 	github.com/coreos/etcd/store
 	github.com/coreos/go-etcd
 	github.com/coreos/go-log/log
 	github.com/coreos/go-systemd
+	github.com/golang/glog
 	github.com/guelfey/go.dbus
-
-	github.com/codegangsta/cli
 	github.com/nu7hatch/gouuid
 "
