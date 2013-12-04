@@ -41,7 +41,9 @@ func (self *JobWatcher) StartHeartbeatThread() {
 	heartbeat := func() {
 		for _, watch := range self.watches {
 			log.Printf("Re-claiming JobWatch(%s)", watch.Payload.Name)
-			self.registry.ClaimJobWatch(&watch, self.machine, self.claimTTL)
+			if ok := self.registry.ClaimJobWatch(&watch, self.machine, self.claimTTL); !ok {
+				log.Printf("Failed to re-claim lock on JobWatch(%s)", watch.Payload.Name)
+			}
 		}
 	}
 
