@@ -7,7 +7,6 @@ import (
 	"math/rand"
 	"regexp"
 	"strings"
-	"time"
 
 	"github.com/coreos/coreinit/job"
 	"github.com/coreos/coreinit/machine"
@@ -15,21 +14,19 @@ import (
 )
 
 type Scheduler struct {
-	ClaimTTL time.Duration
 }
 
 func NewScheduler() *Scheduler {
-	claimTTL, _ := time.ParseDuration(DefaultClaimTTL)
-	return &Scheduler{claimTTL}
+	return &Scheduler{}
 }
 
 func (scheduler *Scheduler) BuildSchedule(jobs []job.Job, machines map[string]machine.Machine, reg *registry.Registry) (Schedule, error) {
 	schedule := NewScheduleFromJobs(jobs)
-	err := scheduler.finalizeSchedule(&schedule, machines, reg)
+	err := scheduler.FinalizeSchedule(&schedule, machines, reg)
 	return schedule, err
 }
 
-func (scheduler *Scheduler) finalizeSchedule(schedule *Schedule, machines map[string]machine.Machine, reg *registry.Registry) error {
+func (scheduler *Scheduler) FinalizeSchedule(schedule *Schedule, machines map[string]machine.Machine, reg *registry.Registry) error {
 	decide := func(j *job.Job) *machine.Machine {
 		var mach *machine.Machine
 		// If the Job being scheduled is a systemd service unit, we assume we
@@ -135,8 +132,8 @@ func NewScheduleFromJobs(jobs []job.Job) Schedule {
 	return schedule
 }
 
-func (self *Schedule) Add(j job.Job, m machine.Machine) {
-	(*self)[j] = &m
+func (self *Schedule) Add(j *job.Job, m *machine.Machine) {
+	(*self)[*j] = m
 }
 
 func (self *Schedule) String() string {

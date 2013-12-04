@@ -17,6 +17,7 @@ const (
 	EventJobDeleted
 	EventJobWatchCreated
 	EventJobWatchDeleted
+	EventJobWatchClaimExpired
 	EventMachineCreated
 	EventMachineUpdated
 	EventMachineDeleted
@@ -79,14 +80,30 @@ func (self *EventStream) registerJobWatchEventGenerator(eventchan chan Event) {
 		var eventType int
 		var value string
 
-		if resp.Action == "set" && resp.PrevValue == "" {
-			eventType = EventJobWatchCreated
-			value = resp.Value
-		} else if resp.Action == "expire" || resp.Action == "delete" {
-			eventType = EventJobWatchDeleted
-			value = resp.PrevValue
-		} else {
-			return nil
+		dir, base := path.Split(resp.Key)
+		if base == "object" {
+			if resp.Action == "set" && resp.PrevValue == "" {
+				eventType = EventJobWatchCreated
+				value = resp.Value
+			} else if resp.Action == "delete" {
+				eventType = EventJobWatchDeleted
+				value = resp.PrevValue
+			} else {
+				return nil
+			}
+		} else if base == "lock" {
+			if resp.Action == "expire" {
+				eventType = EventJobWatchClaimExpired
+
+				resp2, err := self.etcd.Get(path.Join(dir, "object"), false, true)
+				if err != nil {
+					return nil
+				}
+
+				value = resp2.Value
+			} else {
+				return nil
+			}
 		}
 
 		var jw job.JobWatch

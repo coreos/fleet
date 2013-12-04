@@ -1,7 +1,6 @@
 package engine
 
 import (
-	"fmt"
 	"log"
 	"time"
 
@@ -11,50 +10,42 @@ import (
 )
 
 const (
-	DefaultClaimTTL = "5s"
+	DefaultRequestClaimTTL = "10s"
 )
 
 type Dispatcher struct {
-	registry  *registry.Registry
-	events    *registry.EventStream
-	scheduler *Scheduler
-	machine   *machine.Machine
-	claimTTL  time.Duration
-	watches   []job.JobWatch
-	machines  map[string]machine.Machine
+	registry *registry.Registry
+	events   *registry.EventStream
+	watcher  *JobWatcher
+	machine  *machine.Machine
+	claimTTL time.Duration
 }
 
-func NewDispatcher(registry *registry.Registry, events *registry.EventStream, scheduler *Scheduler, m *machine.Machine) *Dispatcher {
-	claimTTL, _ := time.ParseDuration(DefaultClaimTTL)
-	return &Dispatcher{registry, events, scheduler, m, claimTTL, make([]job.JobWatch, 0), make(map[string]machine.Machine, 0)}
+func NewDispatcher(registry *registry.Registry, events *registry.EventStream, watcher *JobWatcher, m *machine.Machine) *Dispatcher {
+	claimTTL, _ := time.ParseDuration(DefaultRequestClaimTTL)
+	return &Dispatcher{registry, events, watcher, m, claimTTL}
 }
 
 func (self *Dispatcher) Listen() {
-	self.startEventListeners()
-
-	for _, m := range self.registry.GetActiveMachines() {
-		self.machines[m.BootId] = m
-	}
-}
-
-func (self *Dispatcher) startEventListeners() {
 	eventchan := make(chan registry.Event)
 	self.events.RegisterGlobalEventListener(eventchan)
 
 	handlers := map[int]func(registry.Event){
-		registry.EventJobWatchCreated: self.handleEventJobWatchCreated,
-		registry.EventMachineCreated:  self.handleEventMachineCreated,
-		registry.EventMachineUpdated:  self.handleEventMachineUpdated,
-		registry.EventMachineDeleted:  self.handleEventMachineDeleted,
-		registry.EventRequestCreated:  self.handleEventRequestCreated,
+		registry.EventJobWatchCreated:      self.handleEventJobWatchCreated,
+		registry.EventJobWatchClaimExpired: self.handleEventJobWatchCreated,
+		registry.EventJobWatchDeleted:      self.handleEventJobWatchDeleted,
+		registry.EventMachineCreated:       self.handleEventMachineCreated,
+		registry.EventMachineUpdated:       self.handleEventMachineUpdated,
+		registry.EventMachineDeleted:       self.handleEventMachineDeleted,
+		registry.EventRequestCreated:       self.handleEventRequestCreated,
 	}
 
 	for true {
 		event := <-eventchan
 		log.Printf("Event received: Type=%d", event.Type)
-
+		handler := handlers[event.Type]
 		log.Printf("Event handler begin")
-		handlers[event.Type](event)
+		handler(event)
 		log.Printf("Event handler complete")
 	}
 }
@@ -97,97 +88,51 @@ func getJobWatchesFromRequest(req *job.JobRequest) ([]job.JobWatch, error) {
 }
 
 func (self *Dispatcher) claimRequest(request *job.JobRequest) bool {
-	return self.registry.AcquireLock(request.ID.String(), self.machine.BootId, self.claimTTL)
+	return self.registry.ClaimRequest(request, self.machine, self.claimTTL)
 }
 
 func (self *Dispatcher) resolveRequest(request *job.JobRequest) {
 	self.registry.ResolveRequest(request)
 }
 
-func (self *Dispatcher) submitSchedule(schedule Schedule) {
-	for j, m := range schedule {
-		self.registry.ScheduleMachineJob(&j, m)
-	}
-}
-
 func (self *Dispatcher) persistJobWatches(watches []job.JobWatch) {
 	for _, jw := range watches {
-		self.registry.SaveJobWatch(&jw)
+		self.registry.AddJobWatch(&jw)
 	}
 }
 
 func (self *Dispatcher) handleEventJobWatchCreated(event registry.Event) {
 	watch := event.Payload.(job.JobWatch)
-
-	//TODO: This should not claim with a TTL of zero
-	if !self.registry.AcquireLock(watch.Payload.Name, self.machine.BootId, 0) {
-		return
-	}
-
-	self.watches = append(self.watches, watch)
-	sched := NewSchedule()
-
-	if watch.Count == -1 {
-		for _, m := range self.machines {
-			name := fmt.Sprintf("%s.%s", m.BootId, watch.Payload.Name)
-			j, _ := job.NewJob(name, nil, watch.Payload)
-			log.Printf("EventJobCreated(%s): adding to schedule job=%s machine=%s", watch.Payload.Name, name, m.BootId)
-			sched.Add(*j, m)
-		}
+	if ok := self.watcher.AddJobWatch(&watch); ok {
+		log.Printf("EventJobWatchCreated(%s): claimed JobWatch", watch.Payload.Name)
 	} else {
-		for i := 0; i < watch.Count; i++ {
-			m := pickRandomMachine(self.machines)
-			name := fmt.Sprintf("%s.%s", m.BootId, watch.Payload.Name)
-			j, _ := job.NewJob(name, nil, watch.Payload)
-			log.Printf("EventJobCreated(%s): adding to schedule job=%s machine=%s", watch.Payload.Name, name, m.BootId)
-			sched.Add(*j, *m)
-		}
+		log.Printf("EventJobWatchCreated(%s): failed to claim job, discarding event", watch.Payload.Name)
 	}
+}
 
-	if len(sched) > 0 {
-		log.Printf("EventJobCreated(%s): submitting schedule", watch.Payload.Name)
-		self.submitSchedule(sched)
+func (self *Dispatcher) handleEventJobWatchDeleted(event registry.Event) {
+	watch := event.Payload.(job.JobWatch)
+	if ok := self.watcher.RemoveJobWatch(&watch); ok {
+		log.Printf("EventJobWatchDeleted(%s): removed JobWatch from watcher", watch.Payload.Name)
 	} else {
-		log.Printf("EventJobCreated(%s): no schedule changes made", watch.Payload.Name)
+		log.Printf("EventJobWatchDeleted(%s): no ownership of JobWatch, discarding event", watch.Payload.Name)
 	}
 }
 
 func (self *Dispatcher) handleEventMachineCreated(event registry.Event) {
 	m := event.Payload.(machine.Machine)
-	log.Printf("EventMachineCreated(%s): event received", m.BootId)
-	self.machines[m.BootId] = m
-	log.Printf("EventMachineCreated(%s): updating dispatcher's machine list", m.BootId)
-
-	sched := NewSchedule()
-	for _, watch := range self.watches {
-		if watch.Count == -1 {
-			name := fmt.Sprintf("%s.%s", m.BootId, watch.Payload.Name)
-			j, _ := job.NewJob(name, nil, watch.Payload)
-			log.Printf("EventMachineCreated(%s): adding to schedule job=%s machine=%s", m.BootId, name, m.BootId)
-			sched.Add(*j, m)
-		}
-	}
-
-	if len(sched) > 0 {
-		log.Printf("EventMachineCreated(%s): submitting schedule", m.BootId)
-		self.submitSchedule(sched)
-	} else {
-		log.Printf("EventMachineCreated(%s): no schedule changes made", m.BootId)
-	}
-
-	log.Printf("EventMachineCreated(%s): event handler complete", m.BootId)
+	log.Printf("EventMachineCreated(%s): updating JobWatcher's machine list", m.BootId)
+	self.watcher.TrackMachine(&m)
 }
 
 func (self *Dispatcher) handleEventMachineUpdated(event registry.Event) {
 	m := event.Payload.(machine.Machine)
-	log.Printf("EventMachineUpdated(%s): event received", m.BootId)
-	log.Printf("EventMachineUpdated(%s): updating dispatcher's machine list", m.BootId)
-	self.machines[m.BootId] = m
-	log.Printf("EventMachineUpdated(%s): event handler complete", m.BootId)
+	log.Printf("EventMachineUpdated(%s): updating JobWatcher's machine list", m.BootId)
+	self.watcher.TrackMachine(&m)
 }
 
 func (self *Dispatcher) handleEventMachineDeleted(event registry.Event) {
 	m := event.Payload.(machine.Machine)
 	log.Printf("EventMachineDeleted(%s): removing machine from dispatcher's machine list", m.BootId)
-	delete(self.machines, m.BootId)
+	self.watcher.DropMachine(&m)
 }

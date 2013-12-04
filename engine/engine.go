@@ -7,18 +7,21 @@ import (
 
 type Engine struct {
 	dispatcher *Dispatcher
-	scheduler  *Scheduler
-	machine    *machine.Machine
+	watcher    *JobWatcher
 	registry   *registry.Registry
+	machine    *machine.Machine
 }
 
 func New(reg *registry.Registry, events *registry.EventStream, mach *machine.Machine) *Engine {
 	scheduler := NewScheduler()
-	dispatcher := NewDispatcher(reg, events, scheduler, mach)
-	engine := Engine{dispatcher, scheduler, mach, reg}
-	return &engine
+	watcher := NewJobWatcher(reg, scheduler, mach)
+	dispatcher := NewDispatcher(reg, events, watcher, mach)
+	return &Engine{dispatcher, watcher, reg, mach}
 }
 
 func (engine *Engine) Run() {
+	engine.watcher.StartHeartbeatThread()
+	engine.watcher.StartRefreshThread()
+
 	engine.dispatcher.Listen()
 }
