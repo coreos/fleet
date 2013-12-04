@@ -1,55 +1,78 @@
 package main
 
 import (
+	"errors"
 	"flag"
+	"fmt"
 	"os"
+	"os/signal"
 	"syscall"
 
 	"github.com/coreos/go-etcd/etcd"
 	"github.com/golang/glog"
 
-	"github.com/coreos/coreinit/agent"
 	"github.com/coreos/coreinit/config"
-	"github.com/coreos/coreinit/engine"
-	"github.com/coreos/coreinit/machine"
-	"github.com/coreos/coreinit/registry"
+	"github.com/coreos/coreinit/server"
 )
 
 func main() {
-	var configPath string
-
-	flag.StringVar(&configPath, "config_file", "", "Path to config file.")
+	cfgPath := flag.String("config_file", "", "Path to config file.")
 	flag.Parse()
 
-	conf := config.NewConfig()
-
-	if configPath != "" {
-		configFile, err := os.Open(configPath)
-		if err != nil {
-			glog.Fatalf("Unable to open config file at %s: %s", configPath, err)
-			syscall.Exit(1)
-		}
-
-		err = config.UpdateConfigFromFile(conf, configFile)
-		if err != nil {
-			glog.Fatalf("Failed to parse config file at %s: %s", configPath, err)
-			syscall.Exit(1)
-		}
+	cfg, err := loadConfigFromPath(*cfgPath)
+	if err != nil {
+		glog.Errorf(err.Error())
+		syscall.Exit(1)
 	}
 
-	config.UpdateFlagsFromConfig(conf)
-
-	if glog.V(2) {
+	if cfg.Verbosity >= 2 {
 		etcd.OpenDebug()
 	}
 
-	m := machine.New(conf.BootId)
-	r := registry.New()
-	es := registry.NewEventStream()
+	srv := server.New(*cfg)
+	srv.Run()
 
-	a := agent.New(r, es, m, "")
-	go a.Run()
+	reconfigure := func() {
+		glog.Infof("Reloading config file from %s", *cfgPath)
+		cfg, err := loadConfigFromPath(*cfgPath)
+		if err != nil {
+			glog.Errorf(err.Error())
+			syscall.Exit(1)
+		} else {
+			srv.Configure(cfg)
+		}
+	}
 
-	e := engine.New(r, es, m)
-	e.Run()
+	listenForSignal(syscall.SIGHUP, reconfigure)
+}
+
+func loadConfigFromPath(cp string) (*config.Config, error) {
+	cfg := config.NewConfig()
+
+	if cp != "" {
+		cfgFile, err := os.Open(cp)
+		if err != nil {
+			msg := fmt.Sprintf("Unable to open config file at %s: %s", cp, err)
+			return nil, errors.New(msg)
+		}
+
+		err = config.UpdateConfigFromFile(cfg, cfgFile)
+		if err != nil {
+			msg := fmt.Sprintf("Failed to parse config file at %s: %s", cp, err)
+			return nil, errors.New(msg)
+		}
+	}
+
+	config.UpdateFlagsFromConfig(cfg)
+	return cfg, nil
+}
+
+func listenForSignal(sig os.Signal, handler func()) {
+	sigchan := make(chan os.Signal, 1)
+	signal.Notify(sigchan, sig)
+
+	for true {
+		<-sigchan
+		handler()
+	}
 }
