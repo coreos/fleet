@@ -1,8 +1,9 @@
 package engine
 
 import (
-	"log"
 	"time"
+
+	log "github.com/golang/glog"
 
 	"github.com/coreos/coreinit/job"
 	"github.com/coreos/coreinit/machine"
@@ -42,28 +43,28 @@ func (self *Dispatcher) Listen() {
 
 	for true {
 		event := <-eventchan
-		log.Printf("Event received: Type=%d", event.Type)
+		log.V(1).Infof("Event received: Type=%d", event.Type)
 		handler := handlers[event.Type]
-		log.Printf("Event handler begin")
+		log.V(1).Infof("Event handler begin")
 		handler(event)
-		log.Printf("Event handler complete")
+		log.V(1).Infof("Event handler complete")
 	}
 }
 
 func (self *Dispatcher) handleEventRequestCreated(event registry.Event) {
 	request := event.Payload.(job.JobRequest)
-	log.Printf("EventRequestCreated(%s): attempting to claim request", request.ID.String())
+	log.V(1).Infof("EventRequestCreated(%s): attempting to claim request", request.ID.String())
 	if !self.claimRequest(&request) {
 		return
 	}
 
-	log.Printf("EventRequestCreated(%s): claimed request", request.ID.String())
+	log.Infof("EventRequestCreated(%s): claimed JobRequest", request.ID.String())
 
 	watches, _ := getJobWatchesFromRequest(&request)
-	log.Printf("EventRequestCreated(%s): persisting %d job watches", request.ID.String(), len(watches))
+	log.Infof("EventRequestCreated(%s): persisting %d job watches", request.ID.String(), len(watches))
 	self.persistJobWatches(watches)
 
-	log.Printf("EventRequestCreated(%s): resolving request", request.ID.String())
+	log.Infof("EventRequestCreated(%s): resolving request", request.ID.String())
 	self.resolveRequest(&request)
 }
 
@@ -103,36 +104,35 @@ func (self *Dispatcher) persistJobWatches(watches []job.JobWatch) {
 
 func (self *Dispatcher) handleEventJobWatchCreated(event registry.Event) {
 	watch := event.Payload.(job.JobWatch)
-	if ok := self.watcher.AddJobWatch(&watch); ok {
-		log.Printf("EventJobWatchCreated(%s): claimed JobWatch", watch.Payload.Name)
-	} else {
-		log.Printf("EventJobWatchCreated(%s): failed to claim job, discarding event", watch.Payload.Name)
+	log.V(1).Infof("EventJobWatchCreated(%s): attempting to claim JobWatch", watch.Payload.Name)
+	if ok := self.watcher.AddJobWatch(&watch); !ok {
+		log.V(1).Infof("EventJobWatchCreated(%s): failed to claim job, discarding event", watch.Payload.Name)
 	}
 }
 
 func (self *Dispatcher) handleEventJobWatchDeleted(event registry.Event) {
 	watch := event.Payload.(job.JobWatch)
 	if ok := self.watcher.RemoveJobWatch(&watch); ok {
-		log.Printf("EventJobWatchDeleted(%s): removed JobWatch from watcher", watch.Payload.Name)
+		log.V(1).Infof("EventJobWatchDeleted(%s): removed JobWatch from watcher", watch.Payload.Name)
 	} else {
-		log.Printf("EventJobWatchDeleted(%s): no ownership of JobWatch, discarding event", watch.Payload.Name)
+		log.V(1).Infof("EventJobWatchDeleted(%s): no ownership of JobWatch, discarding event", watch.Payload.Name)
 	}
 }
 
 func (self *Dispatcher) handleEventMachineCreated(event registry.Event) {
 	m := event.Payload.(machine.Machine)
-	log.Printf("EventMachineCreated(%s): updating JobWatcher's machine list", m.BootId)
+	log.V(1).Infof("EventMachineCreated(%s): updating JobWatcher's machine list", m.BootId)
 	self.watcher.TrackMachine(&m)
 }
 
 func (self *Dispatcher) handleEventMachineUpdated(event registry.Event) {
 	m := event.Payload.(machine.Machine)
-	log.Printf("EventMachineUpdated(%s): updating JobWatcher's machine list", m.BootId)
+	log.V(1).Infof("EventMachineUpdated(%s): updating JobWatcher's machine list", m.BootId)
 	self.watcher.TrackMachine(&m)
 }
 
 func (self *Dispatcher) handleEventMachineDeleted(event registry.Event) {
 	m := event.Payload.(machine.Machine)
-	log.Printf("EventMachineDeleted(%s): removing machine from dispatcher's machine list", m.BootId)
+	log.V(1).Infof("EventMachineDeleted(%s): removing machine from dispatcher's machine list", m.BootId)
 	self.watcher.DropMachine(&m)
 }

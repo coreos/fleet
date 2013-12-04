@@ -4,11 +4,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"path"
 	"time"
 
 	"github.com/coreos/go-etcd/etcd"
+	log "github.com/golang/glog"
 
 	"github.com/coreos/coreinit/job"
 	"github.com/coreos/coreinit/machine"
@@ -120,7 +120,7 @@ func (r *Registry) GetScheduledJobs(machine *machine.Machine) map[string]job.Job
 			//FIXME: This will hide duplicate jobs!
 			jobs[j.Name] = *j
 		} else {
-			log.Print(err)
+			log.V(1).Infof("Failed to create Job: %s", err)
 		}
 	}
 	return jobs

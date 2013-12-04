@@ -3,10 +3,11 @@ package engine
 import (
 	"errors"
 	"fmt"
-	"log"
 	"math/rand"
 	"regexp"
 	"strings"
+
+	log "github.com/golang/glog"
 
 	"github.com/coreos/coreinit/job"
 	"github.com/coreos/coreinit/machine"
@@ -56,16 +57,16 @@ func (scheduler *Scheduler) FinalizeSchedule(schedule *Schedule, machines map[st
 			}
 
 			if mach == nil {
-				log.Printf("Unable to schedule job %s since corresponding "+
-					"service job %s could not be found", j.Name, serviceName)
+				log.Infof("Unable to schedule Job(%s) since corresponding "+
+					"service Job(%s) could not be found", j.Name, serviceName)
 			}
 		}
 
 		if mach == nil {
-			log.Printf("Not scheduling job %s", j.Name)
+			log.V(1).Infof("Not scheduling Job(%s)", j.Name)
 			return nil
 		} else {
-			log.Println("Scheduling job", j.Name, "to machine", mach.BootId)
+			log.Infof("Scheduling Job(%s) to Machine(%s)", j.Name, mach.BootId)
 			return mach
 		}
 	}

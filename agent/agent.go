@@ -1,8 +1,9 @@
 package agent
 
 import (
-	"log"
 	"time"
+
+	log "github.com/golang/glog"
 
 	"github.com/coreos/coreinit/job"
 	"github.com/coreos/coreinit/machine"
@@ -57,7 +58,7 @@ func (a *Agent) StartMachineHeartbeatThread() {
 		interval := intervalFromTTL(DefaultMachineTTL)
 		c := time.Tick(interval)
 		for _ = range c {
-			log.Printf("MachineHeartbeat")
+			log.V(1).Info("MachineHeartbeat")
 			heartbeat()
 		}
 	}
@@ -72,10 +73,10 @@ func (a *Agent) StartServiceHeartbeatThread() {
 		ttl := parseDuration(a.ServiceTTL)
 		for _, j := range localJobs {
 			if scheduledJob := a.Registry.GetMachineJob(j.Name, a.Machine); scheduledJob != nil {
-				log.Printf("Reporting state of Job(%s)", j.Name)
+				log.V(1).Infof("Reporting state of Job(%s)", j.Name)
                 a.Registry.SaveJobState(&j, ttl)
             } else {
-                log.Printf("Local Job(%s) does not appear to be scheduled to this Machine(%s), stopping it", j.Name, a.Machine.BootId)
+                log.Infof("Local Job(%s) does not appear to be scheduled to this Machine(%s), stopping it", j.Name, a.Machine.BootId)
                 a.Manager.StopJob(&j)
             }
 		}
@@ -85,7 +86,7 @@ func (a *Agent) StartServiceHeartbeatThread() {
 		interval := intervalFromTTL(a.ServiceTTL)
 		c := time.Tick(interval)
 		for _ = range c {
-			log.Printf("ServiceHeartbeat")
+			log.V(1).Info("ServiceHeartbeat")
 			heartbeat()
 		}
 	}
@@ -104,23 +105,23 @@ func (a *Agent) startEventListeners() {
 
 	for true {
 		event := <-eventchan
-		log.Printf("Event received: Type=%d", event.Type)
+		log.V(1).Infof("Event received: Type=%d", event.Type)
 
-		log.Printf("Event handler begin")
+		log.V(1).Infof("Event handler begin")
 		handlers[event.Type](event)
-		log.Printf("Event handler complete")
+		log.V(1).Infof("Event handler complete")
 	}
 }
 
 func (a *Agent) handleEventJobCreated(event registry.Event) {
 	j := event.Payload.(job.Job)
-	log.Printf("EventJobCreated(%s): starting job", j.Name)
+	log.Infof("EventJobCreated(%s): starting job", j.Name)
 	a.Manager.StartJob(&j)
 }
 
 func (a *Agent) handleEventJobDeleted(event registry.Event) {
 	j := event.Payload.(job.Job)
-	log.Printf("EventJobDeleted(%s): stopping job", j.Name)
+	log.Infof("EventJobDeleted(%s): stopping job", j.Name)
 	a.Manager.StopJob(&j)
 }
 
