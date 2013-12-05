@@ -178,13 +178,15 @@ func (self *JobWatcher) Evacuate(mach *machine.Machine) {
 	for _, watch := range self.watches {
 		sched := self.schedules[watch.Payload.Name]
 		for _, j := range sched.MachineJobs(mach) {
-			log.Infof("Removing Job(%s) scheduled to Machine(%s) being evacuated", j.Name, mach.BootId)
-			self.registry.RemoveMachineJob(&j, mach)
-
-			if watch.Count != -1 {
-				log.Infof("Rescheduling Job(%s) to a new Machine", j.Name)
+			if watch.Count == -1 {
+				log.Infof("Removing Job(%s) scheduled to Machine(%s) being evacuated", j.Name, mach.BootId)
+				delete(sched, j)
+			} else {
+				log.Infof("Rescheduling Job(%s) to new Machine", j.Name)
 				sched[j] = nil
 			}
+
+			self.registry.RemoveMachineJob(&j, mach)
 		}
 
 		if watch.Count != -1 {
