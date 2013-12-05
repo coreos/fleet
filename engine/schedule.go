@@ -137,13 +137,14 @@ func (self *Schedule) Add(j *job.Job, m *machine.Machine) {
 	(*self)[*j] = m
 }
 
-func (self *Schedule) ContainsMachine(mCheck *machine.Machine) bool {
-	for _, mSched := range *self {
+func (self *Schedule) MachineJobs(mCheck *machine.Machine) []job.Job {
+	jobs := make([]job.Job, 0)
+	for j, mSched := range *self {
 		if mCheck.BootId == mSched.BootId {
-			return true
+			jobs = append(jobs, j)
 		}
 	}
-	return false
+	return jobs
 }
 
 func (self *Schedule) String() string {
