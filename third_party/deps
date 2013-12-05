@@ -1,5 +1,6 @@
 packages="
 	bitbucket.org/kardianos/osext
+	github.com/BurntSushi/toml
 	github.com/codegangsta/cli
 	github.com/coreos/etcd/error
 	github.com/coreos/etcd/store

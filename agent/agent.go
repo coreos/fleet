@@ -25,6 +25,7 @@ type Agent struct {
 	Manager    *unit.SystemdManager
 	Machine    *machine.Machine
 	ServiceTTL string
+	stop       chan bool
 }
 
 func New(registry *registry.Registry, events *registry.EventStream, machine *machine.Machine, ttl string) *Agent {
@@ -34,19 +35,35 @@ func New(registry *registry.Registry, events *registry.EventStream, machine *mac
 		ttl = DefaultServiceTTL
 	}
 
-	agent := &Agent{registry, events, mgr, machine, ttl}
+	agent := &Agent{registry, events, mgr, machine, ttl, make(chan bool)}
 
 	return agent
 }
 
+// Trigger all async processes the Agent intends to run
 func (a *Agent) Run() {
-	a.StartServiceHeartbeatThread()
-	a.StartMachineHeartbeatThread()
-	a.startEventListeners()
+	// Kick off the three threads we need for our async processes
+	svcstop := a.StartServiceHeartbeatThread()
+	machstop := a.StartMachineHeartbeatThread()
+	eventstop := a.startEventListeners()
+
+	// Block until we receive a stop signal
+	<-a.stop
+
+	// Signal each of the threads we started to also stop
+	svcstop <- true
+	machstop <- true
+	eventstop <- true
+}
+
+// Stop all async processes the Agent is running
+func (a *Agent) Stop() {
+	a.stop <- true
 }
 
 // Keep the local statistics in the Registry up to date
-func (a *Agent) StartMachineHeartbeatThread() {
+func (a *Agent) StartMachineHeartbeatThread() chan bool {
+	stop := make(chan bool)
 	ttl := parseDuration(DefaultMachineTTL)
 
 	heartbeat := func() {
@@ -58,27 +75,37 @@ func (a *Agent) StartMachineHeartbeatThread() {
 		interval := intervalFromTTL(DefaultMachineTTL)
 		c := time.Tick(interval)
 		for _ = range c {
-			log.V(1).Info("MachineHeartbeat")
-			heartbeat()
+			log.V(1).Info("MachineHeartbeat tick")
+			select {
+			case <-stop:
+				log.V(1).Info("MachineHeartbeat exiting due to stop signal")
+				return
+			default:
+				log.V(1).Info("MachineHeartbeat running")
+				heartbeat()
+			}
 		}
 	}
 
 	go loop()
+	return stop
 }
 
 // Keep the state of local units in the Registry up to date
-func (a *Agent) StartServiceHeartbeatThread() {
+func (a *Agent) StartServiceHeartbeatThread() chan bool {
+	stop := make(chan bool)
+
 	heartbeat := func() {
 		localJobs := a.Manager.GetJobs()
 		ttl := parseDuration(a.ServiceTTL)
 		for _, j := range localJobs {
 			if scheduledJob := a.Registry.GetMachineJob(j.Name, a.Machine); scheduledJob != nil {
 				log.V(1).Infof("Reporting state of Job(%s)", j.Name)
-                a.Registry.SaveJobState(&j, ttl)
-            } else {
-                log.Infof("Local Job(%s) does not appear to be scheduled to this Machine(%s), stopping it", j.Name, a.Machine.BootId)
-                a.Manager.StopJob(&j)
-            }
+				a.Registry.SaveJobState(&j, ttl)
+			} else {
+				log.Infof("Local Job(%s) does not appear to be scheduled to this Machine(%s), stopping it", j.Name, a.Machine.BootId)
+				a.Manager.StopJob(&j)
+			}
 		}
 	}
 
@@ -86,15 +113,25 @@ func (a *Agent) StartServiceHeartbeatThread() {
 		interval := intervalFromTTL(a.ServiceTTL)
 		c := time.Tick(interval)
 		for _ = range c {
-			log.V(1).Info("ServiceHeartbeat")
-			heartbeat()
+			log.V(1).Info("ServiceHeartbeat tick")
+			select {
+			case <-stop:
+				log.V(1).Info("ServiceHeartbeat exiting due to stop signal")
+				return
+			default:
+				log.V(1).Info("ServiceHeartbeat running")
+				heartbeat()
+			}
 		}
 	}
 
 	go loop()
+	return stop
 }
 
-func (a *Agent) startEventListeners() {
+func (a *Agent) startEventListeners() chan bool {
+	stop := make(chan bool)
+
 	eventchan := make(chan registry.Event)
 	a.events.RegisterJobEventListener(eventchan, a.Machine)
 
@@ -103,14 +140,24 @@ func (a *Agent) startEventListeners() {
 		registry.EventJobDeleted: a.handleEventJobDeleted,
 	}
 
-	for true {
-		event := <-eventchan
-		log.V(1).Infof("Event received: Type=%d", event.Type)
+	loop := func() {
+		for true {
+			select {
+			case <-stop:
+				log.V(1).Infof("Exiting event listener loop")
+				return
+			case event := <-eventchan:
+				log.V(1).Infof("Event received: Type=%d", event.Type)
 
-		log.V(1).Infof("Event handler begin")
-		handlers[event.Type](event)
-		log.V(1).Infof("Event handler complete")
+				log.V(1).Infof("Event handler begin")
+				handlers[event.Type](event)
+				log.V(1).Infof("Event handler complete")
+			}
+		}
 	}
+
+	go loop()
+	return stop
 }
 
 func (a *Agent) handleEventJobCreated(event registry.Event) {
