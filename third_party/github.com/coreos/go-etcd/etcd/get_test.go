@@ -19,8 +19,8 @@ func TestGet(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if result.Key != "/foo" || result.Value != "bar" {
-		t.Fatalf("Get failed with %s %s %v", result.Key, result.Value, result.TTL)
+	if result.Node.Key != "/foo" || result.Node.Value != "bar" {
+		t.Fatalf("Get failed with %s %s %v", result.Node.Key, result.Node.Value, result.Node.TTL)
 	}
 
 	result, err = c.Get("goo", false, false)
@@ -46,21 +46,30 @@ func TestGetAll(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	expected := kvPairs{
-		KeyValuePair{
-			Key:   "/fooDir/k0",
-			Value: "v0",
-			TTL:   5,
+	expected := Nodes{
+		Node{
+			Key:           "/fooDir/k0",
+			Value:         "v0",
+			TTL:           5,
+			ModifiedIndex: 31,
+			CreatedIndex:  31,
 		},
-		KeyValuePair{
-			Key:   "/fooDir/k1",
-			Value: "v1",
-			TTL:   5,
+		Node{
+			Key:           "/fooDir/k1",
+			Value:         "v1",
+			TTL:           5,
+			ModifiedIndex: 32,
+			CreatedIndex:  32,
 		},
 	}
 
-	if !reflect.DeepEqual(result.Kvs, expected) {
-		t.Fatalf("(actual) %v != (expected) %v", result.Kvs, expected)
+	// do not check expiration time, too hard to fake
+	for i, _ := range result.Node.Nodes {
+		result.Node.Nodes[i].Expiration = nil
+	}
+
+	if !reflect.DeepEqual(result.Node.Nodes, expected) {
+		t.Fatalf("(actual) %v != (expected) %v", result.Node.Nodes, expected)
 	}
 
 	// Test the `recursive` option
@@ -70,16 +79,22 @@ func TestGetAll(t *testing.T) {
 	// Return kv-pairs in sorted order
 	result, err = c.Get("fooDir", true, true)
 
+	// do not check expiration time, too hard to fake
+	result.Node.Expiration = nil
+	for i, _ := range result.Node.Nodes {
+		result.Node.Nodes[i].Expiration = nil
+	}
+
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	expected = kvPairs{
-		KeyValuePair{
+	expected = Nodes{
+		Node{
 			Key: "/fooDir/childDir",
 			Dir: true,
-			KVPairs: kvPairs{
-				KeyValuePair{
+			Nodes: Nodes{
+				Node{
 					Key:   "/fooDir/childDir/k2",
 					Value: "v2",
 					TTL:   5,
@@ -87,19 +102,19 @@ func TestGetAll(t *testing.T) {
 			},
 			TTL: 5,
 		},
-		KeyValuePair{
+		Node{
 			Key:   "/fooDir/k0",
 			Value: "v0",
 			TTL:   5,
 		},
-		KeyValuePair{
+		Node{
 			Key:   "/fooDir/k1",
 			Value: "v1",
 			TTL:   5,
 		},
 	}
 
-	if !reflect.DeepEqual(result.Kvs, expected) {
-		t.Fatalf("(actual) %v != (expected) %v", result.Kvs, expected)
+	if !reflect.DeepEqual(result.Node.Nodes, expected) {
+		t.Fatalf("(actual) %v != (expected) %v", result.Node.Nodes, expected)
 	}
 }

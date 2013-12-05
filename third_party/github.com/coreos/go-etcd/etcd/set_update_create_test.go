@@ -14,7 +14,7 @@ func TestSet(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if resp.Key != "/foo" || resp.Value != "bar" || resp.TTL != 5 {
+	if resp.Node.Key != "/foo" || resp.Node.Value != "bar" || resp.Node.TTL != 5 {
 		t.Fatalf("Set 1 failed: %#v", resp)
 	}
 
@@ -22,8 +22,8 @@ func TestSet(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !(resp.Key == "/foo" && resp.Value == "bar2" &&
-		resp.PrevValue == "bar" && resp.TTL == 5) {
+	if !(resp.Node.Key == "/foo" && resp.Node.Value == "bar2" &&
+		resp.Node.PrevValue == "bar" && resp.Node.TTL == 5) {
 		t.Fatalf("Set 2 failed: %#v", resp)
 	}
 }
@@ -47,8 +47,8 @@ func TestUpdate(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if !(resp.Action == "update" && resp.Key == "/foo" &&
-		resp.PrevValue == "bar" && resp.TTL == 5) {
+	if !(resp.Action == "update" && resp.Node.Key == "/foo" &&
+		resp.Node.PrevValue == "bar" && resp.Node.TTL == 5) {
 		t.Fatalf("Update 1 failed: %#v", resp)
 	}
 
@@ -56,7 +56,7 @@ func TestUpdate(t *testing.T) {
 	resp, err = c.Update("nonexistent", "whatever", 5)
 	if err == nil {
 		t.Fatalf("The key %v did not exist, so the update should have failed."+
-			"The response was: %#v", resp.Key, resp)
+			"The response was: %#v", resp.Node.Key, resp)
 	}
 }
 
@@ -75,8 +75,8 @@ func TestCreate(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if !(resp.Action == "create" && resp.Key == newKey &&
-		resp.Value == newValue && resp.PrevValue == "" && resp.TTL == 5) {
+	if !(resp.Action == "create" && resp.Node.Key == newKey &&
+		resp.Node.Value == newValue && resp.Node.PrevValue == "" && resp.Node.TTL == 5) {
 		t.Fatalf("Create 1 failed: %#v", resp)
 	}
 
@@ -84,7 +84,7 @@ func TestCreate(t *testing.T) {
 	resp, err = c.Create(newKey, newValue, 5)
 	if err == nil {
 		t.Fatalf("The key %v did exist, so the creation should have failed."+
-			"The response was: %#v", resp.Key, resp)
+			"The response was: %#v", resp.Node.Key, resp)
 	}
 }
 
@@ -99,7 +99,7 @@ func TestSetDir(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !(resp.Key == "/fooDir" && resp.Value == "" && resp.TTL == 5) {
+	if !(resp.Node.Key == "/fooDir" && resp.Node.Value == "" && resp.Node.TTL == 5) {
 		t.Fatalf("SetDir 1 failed: %#v", resp)
 	}
 
@@ -120,8 +120,8 @@ func TestSetDir(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !(resp.Key == "/foo" && resp.Value == "" &&
-		resp.PrevValue == "bar" && resp.TTL == 5) {
+	if !(resp.Node.Key == "/foo" && resp.Node.Value == "" &&
+		resp.Node.PrevValue == "bar" && resp.Node.TTL == 5) {
 		t.Fatalf("SetDir 2 failed: %#v", resp)
 	}
 }
@@ -143,8 +143,8 @@ func TestUpdateDir(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if !(resp.Action == "update" && resp.Key == "/fooDir" &&
-		resp.Value == "" && resp.PrevValue == "" && resp.TTL == 5) {
+	if !(resp.Action == "update" && resp.Node.Key == "/fooDir" &&
+		resp.Node.Value == "" && resp.Node.PrevValue == "" && resp.Node.TTL == 5) {
 		t.Fatalf("UpdateDir 1 failed: %#v", resp)
 	}
 
@@ -152,7 +152,7 @@ func TestUpdateDir(t *testing.T) {
 	resp, err = c.UpdateDir("nonexistentDir", 5)
 	if err == nil {
 		t.Fatalf("The key %v did not exist, so the update should have failed."+
-			"The response was: %#v", resp.Key, resp)
+			"The response was: %#v", resp.Node.Key, resp)
 	}
 }
 
@@ -168,8 +168,8 @@ func TestCreateDir(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if !(resp.Action == "create" && resp.Key == "/fooDir" &&
-		resp.Value == "" && resp.PrevValue == "" && resp.TTL == 5) {
+	if !(resp.Action == "create" && resp.Node.Key == "/fooDir" &&
+		resp.Node.Value == "" && resp.Node.PrevValue == "" && resp.Node.TTL == 5) {
 		t.Fatalf("CreateDir 1 failed: %#v", resp)
 	}
 
@@ -177,6 +177,6 @@ func TestCreateDir(t *testing.T) {
 	resp, err = c.CreateDir("fooDir", 5)
 	if err == nil {
 		t.Fatalf("The key %v did exist, so the creation should have failed."+
-			"The response was: %#v", resp.Key, resp)
+			"The response was: %#v", resp.Node.Key, resp)
 	}
 }
