@@ -36,4 +36,10 @@ func (self *Server) Run() {
 }
 
 func (self *Server) Configure(cfg *config.Config) {
+	if cfg.BootId != self.machine.BootId {
+		self.machine = machine.New(cfg.BootId)
+		self.agent.Stop()
+		self.agent = agent.New(self.registry, self.events, self.machine, "")
+		go self.agent.Run()
+	}
 }
