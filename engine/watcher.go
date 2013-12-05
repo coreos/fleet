@@ -90,7 +90,7 @@ func (self *JobWatcher) AddJobWatch(watch *job.JobWatch) bool {
 	sched := NewSchedule()
 	self.schedules[watch.Payload.Name] = sched
 
-	if watch.Count == -1 {
+	if watch.Count == ScheduleAllMachines {
 		for idx, _ := range self.machines {
 			m := self.machines[idx]
 			name := fmt.Sprintf("%s.%s", m.BootId, watch.Payload.Name)
@@ -151,10 +151,10 @@ func (self *JobWatcher) TrackMachine(m *machine.Machine) {
 
 	partial := NewSchedule()
 	for _, watch := range self.watches {
-		if watch.Count == -1 {
+		if watch.Count == ScheduleAllMachines {
 			sched := self.schedules[watch.Payload.Name]
 
-			if sched.ContainsMachine(m) {
+			if len(sched.MachineJobs(m)) > 0 {
 				continue
 			}
 
@@ -175,18 +175,21 @@ func (self *JobWatcher) TrackMachine(m *machine.Machine) {
 
 func (self *JobWatcher) Evacuate(mach *machine.Machine) {
 	log.V(1).Infof("Evacuating any scheduled Jobs from Machine(%s)", mach.BootId)
-	for _, sched := range self.schedules {
-		modified := false
-		for j, m := range sched {
-			if mach.BootId == m.BootId {
-				log.Infof("Job(%s) scheduled to Machine(%s) being evacuated, rescheduling", j.Name, mach.BootId)
-				self.registry.RemoveMachineJob(&j, m)
+	for _, watch := range self.watches {
+		sched := self.schedules[watch.Payload.Name]
+		for _, j := range sched.MachineJobs(mach) {
+			if watch.Count == ScheduleAllMachines {
+				log.Infof("Removing Job(%s) scheduled to Machine(%s) being evacuated", j.Name, mach.BootId)
+				delete(sched, j)
+			} else {
+				log.Infof("Rescheduling Job(%s) to new Machine", j.Name)
 				sched[j] = nil
-				modified = true
 			}
+
+			self.registry.RemoveMachineJob(&j, mach)
 		}
 
-		if modified {
+		if watch.Count != ScheduleAllMachines {
 			self.scheduler.FinalizeSchedule(&sched, self.machines, self.registry)
 			log.Infof("Schedule changes calculated, submitting")
 			self.submitSchedule(sched)
