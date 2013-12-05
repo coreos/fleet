@@ -16,9 +16,9 @@ func TestDelete(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if !(resp.PrevValue == "bar" && resp.Value == "") {
-		t.Fatalf("Delete failed with %s %s", resp.PrevValue,
-			resp.Value)
+	if !(resp.Node.PrevValue == "bar" && resp.Node.Value == "") {
+		t.Fatalf("Delete failed with %s %s", resp.Node.PrevValue,
+			resp.Node.Value)
 	}
 
 	resp, err = c.Delete("foo", false)
@@ -41,7 +41,7 @@ func TestDeleteAll(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if !(resp.PrevValue == "bar" && resp.Value == "") {
+	if !(resp.Node.PrevValue == "bar" && resp.Node.Value == "") {
 		t.Fatalf("DeleteAll 1 failed: %#v", resp)
 	}
 
@@ -52,7 +52,7 @@ func TestDeleteAll(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if !(resp.PrevValue == "" && resp.Value == "") {
+	if !(resp.Node.PrevValue == "" && resp.Node.Value == "") {
 		t.Fatalf("DeleteAll 2 failed: %#v", resp)
 	}
 

@@ -42,17 +42,17 @@ func NewEventStream() *EventStream {
 
 func (self *EventStream) RegisterJobEventListener(eventchan chan Event, m *machine.Machine) {
 	translate := func(resp *etcd.Response) *Event {
-		name := path.Base(resp.Key)
+		name := path.Base(resp.Node.Key)
 
 		var eventType int
 		var value string
 
-		if resp.Action == "set" && resp.PrevValue == "" {
+		if resp.Action == "set" && resp.Node.PrevValue == "" {
 			eventType = EventJobCreated
-			value = resp.Value
+			value = resp.Node.Value
 		} else if resp.Action == "expire" || resp.Action == "delete" {
 			eventType = EventJobDeleted
-			value = resp.PrevValue
+			value = resp.Node.PrevValue
 		} else {
 			return nil
 		}
@@ -80,14 +80,14 @@ func (self *EventStream) registerJobWatchEventGenerator(eventchan chan Event) {
 		var eventType int
 		var value string
 
-		dir, base := path.Split(resp.Key)
+		dir, base := path.Split(resp.Node.Key)
 		if base == "object" {
-			if resp.Action == "set" && resp.PrevValue == "" {
+			if resp.Action == "set" && resp.Node.PrevValue == "" {
 				eventType = EventJobWatchCreated
-				value = resp.Value
+				value = resp.Node.Value
 			} else if resp.Action == "delete" {
 				eventType = EventJobWatchDeleted
-				value = resp.PrevValue
+				value = resp.Node.PrevValue
 			} else {
 				return nil
 			}
@@ -100,7 +100,7 @@ func (self *EventStream) registerJobWatchEventGenerator(eventchan chan Event) {
 					return nil
 				}
 
-				value = resp2.Value
+				value = resp2.Node.Value
 			} else {
 				return nil
 			}
@@ -125,15 +125,15 @@ func (self *EventStream) registerJobWatchEventGenerator(eventchan chan Event) {
 
 func (self *EventStream) registerMachineEventGenerator(eventchan chan Event) {
 	translate := func(resp *etcd.Response) *Event {
-		dir, base := path.Split(resp.Key)
+		dir, base := path.Split(resp.Node.Key)
 		if base != "addrs" {
 			return nil
 		}
 
 		var eventType int
-		if resp.Action == "set" && resp.PrevValue == "" {
+		if resp.Action == "set" && resp.Node.PrevValue == "" {
 			eventType = EventMachineCreated
-		} else if resp.Action == "set" && resp.PrevValue != "" {
+		} else if resp.Action == "set" && resp.Node.PrevValue != "" {
 			eventType = EventMachineUpdated
 		} else if resp.Action == "expire" || resp.Action == "delete" {
 			eventType = EventMachineDeleted
@@ -156,14 +156,14 @@ func (self *EventStream) registerMachineEventGenerator(eventchan chan Event) {
 func (self *EventStream) registerRequestEventGenerator(eventchan chan Event) {
 	translate := func(resp *etcd.Response) *Event {
 		var eventType int
-		if resp.Action == "set" && resp.PrevValue == "" {
+		if resp.Action == "set" && resp.Node.PrevValue == "" {
 			eventType = EventRequestCreated
 		} else {
 			return nil
 		}
 
 		var request job.JobRequest
-		if err := unmarshal(resp.Value, &request); err != nil {
+		if err := unmarshal(resp.Node.Value, &request); err != nil {
 			log.V(1).Infof("Failed to deserialize JobRequest: %s", err)
 			return nil
 		}
@@ -187,13 +187,13 @@ func (self *EventStream) RegisterGlobalEventListener(eventchan chan Event) {
 func pipe(etcdchan chan *etcd.Response, translate func(resp *etcd.Response) *Event, eventchan chan Event) {
 	for true {
 		resp := <-etcdchan
-		log.V(2).Infof("Received response from etcd watcher: Action=%s ModifiedIndex=%d Key=%s", resp.Action, resp.ModifiedIndex, resp.Key)
+		log.V(2).Infof("Received response from etcd watcher: Action=%s ModifiedIndex=%d Key=%s", resp.Action, resp.Node.ModifiedIndex, resp.Node.Key)
 		event := translate(resp)
 		if event != nil {
-			log.V(2).Infof("Translated response(ModifiedIndex=%d) to event(Type=%d)", resp.ModifiedIndex, event.Type)
+			log.V(2).Infof("Translated response(ModifiedIndex=%d) to event(Type=%d)", resp.Node.ModifiedIndex, event.Type)
 			eventchan <- *event
 		} else {
-			log.V(2).Infof("Discarding response(ModifiedIndex=%d) from etcd watcher", resp.ModifiedIndex)
+			log.V(2).Infof("Discarding response(ModifiedIndex=%d) from etcd watcher", resp.Node.ModifiedIndex)
 		}
 	}
 }

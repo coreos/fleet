@@ -47,7 +47,7 @@ func (c *Client) Watch(prefix string, waitIndex uint64, recursive bool,
 			return nil, err
 		}
 
-		waitIndex = resp.ModifiedIndex + 1
+		waitIndex = resp.Node.ModifiedIndex + 1
 		receiver <- resp
 	}
 
@@ -75,7 +75,7 @@ func (c *Client) RawWatch(prefix string, waitIndex uint64, recursive bool,
 			return nil, err
 		}
 
-		waitIndex = resp.ModifiedIndex + 1
+		waitIndex = resp.Node.ModifiedIndex + 1
 		receiver <- raw
 	}
 

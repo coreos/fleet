@@ -18,17 +18,17 @@ func TestWatch(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !(resp.Key == "/watch_foo" && resp.Value == "bar") {
+	if !(resp.Node.Key == "/watch_foo" && resp.Node.Value == "bar") {
 		t.Fatalf("Watch 1 failed: %#v", resp)
 	}
 
 	go setHelper("watch_foo", "bar", c)
 
-	resp, err = c.Watch("watch_foo", resp.ModifiedIndex+1, false, nil, nil)
+	resp, err = c.Watch("watch_foo", resp.Node.ModifiedIndex+1, false, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !(resp.Key == "/watch_foo" && resp.Value == "bar") {
+	if !(resp.Node.Key == "/watch_foo" && resp.Node.Value == "bar") {
 		t.Fatalf("Watch 2 failed: %#v", resp)
 	}
 
@@ -57,17 +57,17 @@ func TestWatchAll(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !(resp.Key == "/watch_foo/foo" && resp.Value == "bar") {
+	if !(resp.Node.Key == "/watch_foo/foo" && resp.Node.Value == "bar") {
 		t.Fatalf("WatchAll 1 failed: %#v", resp)
 	}
 
 	go setHelper("watch_foo/foo", "bar", c)
 
-	resp, err = c.Watch("watch_foo", resp.ModifiedIndex+1, true, nil, nil)
+	resp, err = c.Watch("watch_foo", resp.Node.ModifiedIndex+1, true, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !(resp.Key == "/watch_foo/foo" && resp.Value == "bar") {
+	if !(resp.Node.Key == "/watch_foo/foo" && resp.Node.Value == "bar") {
 		t.Fatalf("WatchAll 2 failed: %#v", resp)
 	}
 
