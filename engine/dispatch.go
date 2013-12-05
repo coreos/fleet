@@ -12,6 +12,7 @@ import (
 
 const (
 	DefaultRequestClaimTTL = "10s"
+	ScheduleAllMachines = -1
 )
 
 type Dispatcher struct {
@@ -71,7 +72,7 @@ func (self *Dispatcher) handleEventRequestCreated(event registry.Event) {
 func getJobWatchesFromRequest(req *job.JobRequest) ([]job.JobWatch, error) {
 	var count int
 	if req.IsFlagSet(job.RequestAllMachines) {
-		count = -1
+		count = ScheduleAllMachines
 	} else {
 		count = req.Count
 	}

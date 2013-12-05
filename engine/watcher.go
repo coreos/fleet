@@ -90,7 +90,7 @@ func (self *JobWatcher) AddJobWatch(watch *job.JobWatch) bool {
 	sched := NewSchedule()
 	self.schedules[watch.Payload.Name] = sched
 
-	if watch.Count == -1 {
+	if watch.Count == ScheduleAllMachines {
 		for idx, _ := range self.machines {
 			m := self.machines[idx]
 			name := fmt.Sprintf("%s.%s", m.BootId, watch.Payload.Name)
@@ -151,7 +151,7 @@ func (self *JobWatcher) TrackMachine(m *machine.Machine) {
 
 	partial := NewSchedule()
 	for _, watch := range self.watches {
-		if watch.Count == -1 {
+		if watch.Count == ScheduleAllMachines {
 			sched := self.schedules[watch.Payload.Name]
 
 			if len(sched.MachineJobs(m)) > 0 {
@@ -178,7 +178,7 @@ func (self *JobWatcher) Evacuate(mach *machine.Machine) {
 	for _, watch := range self.watches {
 		sched := self.schedules[watch.Payload.Name]
 		for _, j := range sched.MachineJobs(mach) {
-			if watch.Count == -1 {
+			if watch.Count == ScheduleAllMachines {
 				log.Infof("Removing Job(%s) scheduled to Machine(%s) being evacuated", j.Name, mach.BootId)
 				delete(sched, j)
 			} else {
@@ -189,7 +189,7 @@ func (self *JobWatcher) Evacuate(mach *machine.Machine) {
 			self.registry.RemoveMachineJob(&j, mach)
 		}
 
-		if watch.Count != -1 {
+		if watch.Count != ScheduleAllMachines {
 			self.scheduler.FinalizeSchedule(&sched, self.machines, self.registry)
 			log.Infof("Schedule changes calculated, submitting")
 			self.submitSchedule(sched)
