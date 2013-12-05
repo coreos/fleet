@@ -15,6 +15,8 @@ import (
 const (
 	EventJobCreated int = iota
 	EventJobDeleted
+	EventJobStatePublished
+	EventJobStateExpired
 	EventJobWatchCreated
 	EventJobWatchDeleted
 	EventJobWatchClaimExpired
@@ -123,6 +125,40 @@ func (self *EventStream) registerJobWatchEventGenerator(eventchan chan Event) {
 	go self.watch(etcdchan, key)
 }
 
+func (self *EventStream) registerJobStateEventGenerator(eventchan chan Event) {
+	translate := func(resp *etcd.Response) *Event {
+		var eventType int
+		var value string
+
+		if resp.Action == "set" {
+			eventType = EventJobStatePublished
+			value = resp.Node.Value
+		} else if resp.Action == "delete" || resp.Action == "expire" {
+			eventType = EventJobStateExpired
+			value = resp.Node.Value
+		} else {
+			return nil
+		}
+
+		var js job.JobState
+		err := unmarshal(value, &js)
+		if err != nil {
+			log.V(1).Infof("Failed to deserialize JobState: %s", err)
+			return nil
+		}
+
+		//TODO: handle error returned by NewJob
+		j, _ := job.NewJob(path.Base(resp.Node.Key), &js, nil)
+		return &Event{eventType, *j}
+	}
+
+	etcdchan := make(chan *etcd.Response)
+	go pipe(etcdchan, translate, eventchan)
+
+	key := path.Join(keyPrefix, statePrefix)
+	go self.watch(etcdchan, key)
+}
+
 func (self *EventStream) registerMachineEventGenerator(eventchan chan Event) {
 	translate := func(resp *etcd.Response) *Event {
 		dir, base := path.Split(resp.Node.Key)
@@ -182,6 +218,7 @@ func (self *EventStream) RegisterGlobalEventListener(eventchan chan Event) {
 	self.registerMachineEventGenerator(eventchan)
 	self.registerRequestEventGenerator(eventchan)
 	self.registerJobWatchEventGenerator(eventchan)
+	self.registerJobStateEventGenerator(eventchan)
 }
 
 func pipe(etcdchan chan *etcd.Response, translate func(resp *etcd.Response) *Event, eventchan chan Event) {

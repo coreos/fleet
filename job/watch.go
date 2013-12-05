@@ -8,3 +8,5 @@ type JobWatch struct {
 func NewJobWatch(j *JobPayload, count int) *JobWatch {
 	return &JobWatch{j, count}
 }
+
+type JobWatchState map[string]JobState

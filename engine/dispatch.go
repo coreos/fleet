@@ -12,7 +12,7 @@ import (
 
 const (
 	DefaultRequestClaimTTL = "10s"
-	ScheduleAllMachines = -1
+	ScheduleAllMachines    = -1
 )
 
 type Dispatcher struct {
@@ -36,6 +36,8 @@ func (self *Dispatcher) Listen() {
 		registry.EventJobWatchCreated:      self.handleEventJobWatchCreated,
 		registry.EventJobWatchClaimExpired: self.handleEventJobWatchCreated,
 		registry.EventJobWatchDeleted:      self.handleEventJobWatchDeleted,
+		registry.EventJobStatePublished:    self.handleEventJobStatePublished,
+		registry.EventJobStateExpired:      self.handleEventJobStateExpired,
 		registry.EventMachineCreated:       self.handleEventMachineCreated,
 		registry.EventMachineUpdated:       self.handleEventMachineUpdated,
 		registry.EventMachineDeleted:       self.handleEventMachineDeleted,
@@ -108,6 +110,32 @@ func (self *Dispatcher) handleEventJobWatchCreated(event registry.Event) {
 	log.V(1).Infof("EventJobWatchCreated(%s): attempting to claim JobWatch", watch.Payload.Name)
 	if ok := self.watcher.AddJobWatch(&watch); !ok {
 		log.V(1).Infof("EventJobWatchCreated(%s): failed to claim job, discarding event", watch.Payload.Name)
+	}
+}
+
+func (self *Dispatcher) handleEventJobStatePublished(event registry.Event) {
+	j := event.Payload.(job.Job)
+	log.V(1).Infof("EventJobStatePublished(%s): checking local JobWatch list for match", j.Name)
+	watch := self.watcher.FindJobWatch(&j)
+
+	if watch == nil {
+		log.V(1).Infof("EventJobStatePublished(%s): no matching JobWatch found, discarding event", j.Name)
+	} else {
+		log.V(1).Infof("EventJobStatePublished(%s): found local JobWatch, persisting state", j.Name)
+		self.watcher.PublishState(watch, &j)
+	}
+}
+
+func (self *Dispatcher) handleEventJobStateExpired(event registry.Event) {
+	j := event.Payload.(job.Job)
+	log.V(1).Infof("EventJobStateExpired(%s): checking local JobWatch list for match", j.Name)
+	watch := self.watcher.FindJobWatch(&j)
+
+	if watch == nil {
+		log.V(1).Infof("EventJobStateExpired(%s): no matching JobWatch found, discarding event", j.Name)
+	} else {
+		log.V(1).Infof("EventJobStateExpired(%s): found local JobWatch, destroying state", j.Name)
+		self.watcher.RemoveState(watch, &j)
 	}
 }
 

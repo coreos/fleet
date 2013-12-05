@@ -23,6 +23,7 @@ type JobWatcher struct {
 	claimTTL        time.Duration
 	refreshInterval time.Duration
 	watches         map[string]job.JobWatch
+	states          map[string]job.JobWatchState
 	schedules       map[string]Schedule
 	machines        map[string]machine.Machine
 }
@@ -31,11 +32,12 @@ func NewJobWatcher(reg *registry.Registry, scheduler *Scheduler, m *machine.Mach
 	claimTTL, _ := time.ParseDuration(DefaultJobWatchClaimTTL)
 	refreshInterval, _ := time.ParseDuration(DefaultRefreshInterval)
 
-	jobs := make(map[string]job.JobWatch, 0)
+	watches := make(map[string]job.JobWatch, 0)
 	schedules := make(map[string]Schedule, 0)
+	states := make(map[string]job.JobWatchState, 0)
 	machines := make(map[string]machine.Machine, 0)
 
-	return &JobWatcher{reg, scheduler, m, claimTTL, refreshInterval, jobs, schedules, machines}
+	return &JobWatcher{reg, scheduler, m, claimTTL, refreshInterval, watches, states, schedules, machines}
 }
 
 func (self *JobWatcher) StartHeartbeatThread() {
@@ -45,6 +47,10 @@ func (self *JobWatcher) StartHeartbeatThread() {
 			if ok := self.registry.ClaimJobWatch(&watch, self.machine, self.claimTTL); !ok {
 				log.V(1).Infof("Failed to re-claim lock on JobWatch(%s)", watch.Payload.Name)
 			}
+
+			log.V(1).Infof("Refreshing JobWatch(%s) state", watch.Payload.Name)
+			state := self.states[watch.Payload.Name]
+			self.registry.SaveJobWatchState(&watch, state, self.refreshInterval)
 		}
 	}
 
@@ -90,6 +96,9 @@ func (self *JobWatcher) AddJobWatch(watch *job.JobWatch) bool {
 	sched := NewSchedule()
 	self.schedules[watch.Payload.Name] = sched
 
+	// initialize this now to eliminate races later
+	self.states[watch.Payload.Name] = make(job.JobWatchState, 0)
+
 	if watch.Count == ScheduleAllMachines {
 		for idx, _ := range self.machines {
 			m := self.machines[idx]
@@ -129,6 +138,7 @@ func (self *JobWatcher) RemoveJobWatch(watch *job.JobWatch) bool {
 	}
 
 	delete(self.watches, watch.Payload.Name)
+	delete(self.states, watch.Payload.Name)
 
 	watchSchedule := self.schedules[watch.Payload.Name]
 	delete(self.schedules, watch.Payload.Name)
@@ -202,4 +212,41 @@ func (self *JobWatcher) DropMachine(m *machine.Machine) {
 		delete(self.machines, m.BootId)
 	}
 	self.Evacuate(m)
+}
+
+func (self *JobWatcher) FindJobWatch(j *job.Job) *job.JobWatch {
+	for watchName, sched := range self.schedules {
+		for jj, _ := range sched {
+			if j.Name == jj.Name {
+				watch := self.watches[watchName]
+				return &watch
+			}
+		}
+	}
+	return nil
+}
+
+func (self *JobWatcher) PublishState(watch *job.JobWatch, j *job.Job) {
+	log.V(1).Infof("Tracking state of Job(%s) under JobWatch(%s) locally", j.Name, watch.Payload.Name)
+	_, ok := self.states[watch.Payload.Name]
+	if !ok {
+		self.states[watch.Payload.Name] = make(job.JobWatchState, 0)
+	}
+	self.states[watch.Payload.Name][j.Name] = *j.State
+
+	log.V(1).Infof("Publishing state of Job(%s) under JobWatch(%s)", j.Name, watch.Payload.Name)
+	state := self.states[watch.Payload.Name]
+	self.registry.SaveJobWatchState(watch, state, self.refreshInterval)
+}
+
+func (self *JobWatcher) RemoveState(watch *job.JobWatch, j *job.Job) {
+	log.V(1).Infof("Removing state of Job(%s) from JobWatch(%s) locally", j.Name, watch.Payload.Name)
+	_, ok := self.states[watch.Payload.Name]
+	if ok {
+		delete(self.states[watch.Payload.Name], j.Name)
+	}
+
+	log.V(1).Infof("Removing state of Job(%s) from JobWatch(%s)", j.Name, watch.Payload.Name)
+	state := self.states[watch.Payload.Name]
+	self.registry.SaveJobWatchState(watch, state, self.refreshInterval)
 }
