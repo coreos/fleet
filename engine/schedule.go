@@ -92,7 +92,7 @@ func (scheduler *Scheduler) FinalizeSchedule(schedule *Schedule, machines map[st
 			job := undecided[i-decisions]
 			mach := decide(&job)
 			if mach != nil {
-				(*schedule)[job] = mach
+				schedule.Add(&job, mach)
 				undecided = append(undecided[0:i-decisions], undecided[i-decisions+1:]...)
 				decisions++
 			}
@@ -147,11 +147,26 @@ func (self *Schedule) MachineJobs(mCheck *machine.Machine) []job.Job {
 	return jobs
 }
 
+func (self *Schedule) Unfinished() bool {
+	for _, m := range *self {
+		if m == nil {
+			return true
+		}
+	}
+	return false
+}
+
 func (self *Schedule) String() string {
 	entries := make([]string, len(*self))
 	idx := 0
 	for j, m := range *self {
-		entries[idx] = fmt.Sprintf("job=%s machine=%s", j.Name, m.BootId)
+		var bootid string
+		if m == nil {
+			bootid = "N/A"
+		} else {
+			bootid = m.BootId
+		}
+		entries[idx] = fmt.Sprintf("job=%s machine=%s", j.Name, bootid)
 		idx++
 	}
 	return strings.Join(entries, ", ")

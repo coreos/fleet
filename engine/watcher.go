@@ -51,6 +51,13 @@ func (self *JobWatcher) StartHeartbeatThread() {
 			log.V(1).Infof("Refreshing JobWatch(%s) state", watch.Payload.Name)
 			state := self.states[watch.Payload.Name]
 			self.registry.SaveJobWatchState(&watch, state, self.refreshInterval)
+
+			// This is a band-aid - it should go away
+			sched := self.schedules[watch.Payload.Name]
+			if sched.Unfinished() {
+				self.schedule(&watch)
+			}
+
 		}
 	}
 
@@ -84,20 +91,12 @@ func (self *JobWatcher) StartRefreshThread() {
 	go loop()
 }
 
-func (self *JobWatcher) AddJobWatch(watch *job.JobWatch) bool {
-	if !self.registry.ClaimJobWatch(watch, self.machine, self.claimTTL) {
-		log.V(1).Infof("Failed to acquire lock on JobWatch(%s)", watch.Payload.Name)
-		return false
+func (self *JobWatcher) schedule(watch *job.JobWatch) {
+	sched, ok := self.schedules[watch.Payload.Name]
+	if !ok {
+		sched = NewSchedule()
+		self.schedules[watch.Payload.Name] = sched
 	}
-
-	log.Infof("Acquired lock on JobWatch(%s), building schedule", watch.Payload.Name)
-
-	self.watches[watch.Payload.Name] = *watch
-	sched := NewSchedule()
-	self.schedules[watch.Payload.Name] = sched
-
-	// initialize this now to eliminate races later
-	self.states[watch.Payload.Name] = make(job.JobWatchState, 0)
 
 	if watch.Count == ScheduleAllMachines {
 		for idx, _ := range self.machines {
@@ -128,7 +127,22 @@ func (self *JobWatcher) AddJobWatch(watch *job.JobWatch) bool {
 	} else {
 		log.Infof("No schedule changes made")
 	}
+}
 
+func (self *JobWatcher) AddJobWatch(watch *job.JobWatch) bool {
+	if !self.registry.ClaimJobWatch(watch, self.machine, self.claimTTL) {
+		log.V(1).Infof("Failed to acquire lock on JobWatch(%s)", watch.Payload.Name)
+		return false
+	}
+
+	log.Infof("Acquired lock on JobWatch(%s), building schedule", watch.Payload.Name)
+
+	self.watches[watch.Payload.Name] = *watch
+
+	// initialize this now to eliminate races later
+	self.states[watch.Payload.Name] = make(job.JobWatchState, 0)
+
+	self.schedule(watch)
 	return true
 }
 
@@ -152,7 +166,9 @@ func (self *JobWatcher) RemoveJobWatch(watch *job.JobWatch) bool {
 
 func (self *JobWatcher) submitSchedule(schedule Schedule) {
 	for j, m := range schedule {
-		self.registry.ScheduleMachineJob(&j, m)
+		if m != nil {
+			self.registry.ScheduleMachineJob(&j, m)
+		}
 	}
 }
 
