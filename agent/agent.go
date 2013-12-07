@@ -45,7 +45,9 @@ func (a *Agent) Run() {
 	// Kick off the three threads we need for our async processes
 	svcstop := a.StartServiceHeartbeatThread()
 	machstop := a.StartMachineHeartbeatThread()
-	eventstop := a.startEventListeners()
+
+	a.events.RegisterListener(a, a.Machine)
+	a.events.Open()
 
 	// Block until we receive a stop signal
 	<-a.stop
@@ -53,7 +55,8 @@ func (a *Agent) Run() {
 	// Signal each of the threads we started to also stop
 	svcstop <- true
 	machstop <- true
-	eventstop <- true
+
+	a.events.Close()
 }
 
 // Stop all async processes the Agent is running
@@ -129,44 +132,13 @@ func (a *Agent) StartServiceHeartbeatThread() chan bool {
 	return stop
 }
 
-func (a *Agent) startEventListeners() chan bool {
-	stop := make(chan bool)
-
-	eventchan := make(chan registry.Event)
-	a.events.RegisterJobEventListener(eventchan, a.Machine)
-
-	handlers := map[int]func(registry.Event){
-		registry.EventJobCreated: a.handleEventJobCreated,
-		registry.EventJobDeleted: a.handleEventJobDeleted,
-	}
-
-	loop := func() {
-		for true {
-			select {
-			case <-stop:
-				log.V(1).Infof("Exiting event listener loop")
-				return
-			case event := <-eventchan:
-				log.V(1).Infof("Event received: Type=%d", event.Type)
-
-				log.V(1).Infof("Event handler begin")
-				handlers[event.Type](event)
-				log.V(1).Infof("Event handler complete")
-			}
-		}
-	}
-
-	go loop()
-	return stop
-}
-
-func (a *Agent) handleEventJobCreated(event registry.Event) {
+func (a *Agent) HandleEventJobCreated(event registry.Event) {
 	j := event.Payload.(job.Job)
 	log.Infof("EventJobCreated(%s): starting job", j.Name)
 	a.Manager.StartJob(&j)
 }
 
-func (a *Agent) handleEventJobDeleted(event registry.Event) {
+func (a *Agent) HandleEventJobDeleted(event registry.Event) {
 	j := event.Payload.(job.Job)
 	log.Infof("EventJobDeleted(%s): stopping job", j.Name)
 	a.Manager.StopJob(&j)

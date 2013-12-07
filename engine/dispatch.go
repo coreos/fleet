@@ -29,32 +29,11 @@ func NewDispatcher(registry *registry.Registry, events *registry.EventStream, wa
 }
 
 func (self *Dispatcher) Listen() {
-	eventchan := make(chan registry.Event)
-	self.events.RegisterGlobalEventListener(eventchan)
-
-	handlers := map[int]func(registry.Event){
-		registry.EventJobWatchCreated:      self.handleEventJobWatchCreated,
-		registry.EventJobWatchClaimExpired: self.handleEventJobWatchCreated,
-		registry.EventJobWatchDeleted:      self.handleEventJobWatchDeleted,
-		registry.EventJobStatePublished:    self.handleEventJobStatePublished,
-		registry.EventJobStateExpired:      self.handleEventJobStateExpired,
-		registry.EventMachineCreated:       self.handleEventMachineCreated,
-		registry.EventMachineUpdated:       self.handleEventMachineUpdated,
-		registry.EventMachineDeleted:       self.handleEventMachineDeleted,
-		registry.EventRequestCreated:       self.handleEventRequestCreated,
-	}
-
-	for true {
-		event := <-eventchan
-		log.V(1).Infof("Event received: Type=%d", event.Type)
-		handler := handlers[event.Type]
-		log.V(1).Infof("Event handler begin")
-		handler(event)
-		log.V(1).Infof("Event handler complete")
-	}
+	self.events.RegisterListener(self, self.machine)
+	self.events.Open()
 }
 
-func (self *Dispatcher) handleEventRequestCreated(event registry.Event) {
+func (self *Dispatcher) HandleEventRequestCreated(event registry.Event) {
 	request := event.Payload.(job.JobRequest)
 	log.V(1).Infof("EventRequestCreated(%s): attempting to claim request", request.ID.String())
 	if !self.claimRequest(&request) {
@@ -105,7 +84,7 @@ func (self *Dispatcher) persistJobWatches(watches []job.JobWatch) {
 	}
 }
 
-func (self *Dispatcher) handleEventJobWatchCreated(event registry.Event) {
+func (self *Dispatcher) HandleEventJobWatchCreated(event registry.Event) {
 	watch := event.Payload.(job.JobWatch)
 	log.V(1).Infof("EventJobWatchCreated(%s): attempting to claim JobWatch", watch.Payload.Name)
 	if ok := self.watcher.AddJobWatch(&watch); !ok {
@@ -113,7 +92,7 @@ func (self *Dispatcher) handleEventJobWatchCreated(event registry.Event) {
 	}
 }
 
-func (self *Dispatcher) handleEventJobStatePublished(event registry.Event) {
+func (self *Dispatcher) HandleEventJobStatePublished(event registry.Event) {
 	j := event.Payload.(job.Job)
 	log.V(1).Infof("EventJobStatePublished(%s): checking local JobWatch list for match", j.Name)
 	watch := self.watcher.FindJobWatch(&j)
@@ -126,7 +105,7 @@ func (self *Dispatcher) handleEventJobStatePublished(event registry.Event) {
 	}
 }
 
-func (self *Dispatcher) handleEventJobStateExpired(event registry.Event) {
+func (self *Dispatcher) HandleEventJobStateExpired(event registry.Event) {
 	j := event.Payload.(job.Job)
 	log.V(1).Infof("EventJobStateExpired(%s): checking local JobWatch list for match", j.Name)
 	watch := self.watcher.FindJobWatch(&j)
@@ -139,28 +118,28 @@ func (self *Dispatcher) handleEventJobStateExpired(event registry.Event) {
 	}
 }
 
-func (self *Dispatcher) handleEventJobWatchDeleted(event registry.Event) {
-	watch := event.Payload.(job.JobWatch)
-	if ok := self.watcher.RemoveJobWatch(&watch); ok {
-		log.V(1).Infof("EventJobWatchDeleted(%s): removed JobWatch from watcher", watch.Payload.Name)
+func (self *Dispatcher) HandleEventJobWatchDeleted(event registry.Event) {
+	watchName := event.Payload.(string)
+	if ok := self.watcher.RemoveJobWatch(watchName); ok {
+		log.V(1).Infof("EventJobWatchDeleted(%s): removed JobWatch from watcher", watchName)
 	} else {
-		log.V(1).Infof("EventJobWatchDeleted(%s): no ownership of JobWatch, discarding event", watch.Payload.Name)
+		log.V(1).Infof("EventJobWatchDeleted(%s): no ownership of JobWatch, discarding event", watchName)
 	}
 }
 
-func (self *Dispatcher) handleEventMachineCreated(event registry.Event) {
+func (self *Dispatcher) HandleEventMachineCreated(event registry.Event) {
 	m := event.Payload.(machine.Machine)
 	log.V(1).Infof("EventMachineCreated(%s): updating JobWatcher's machine list", m.BootId)
 	self.watcher.TrackMachine(&m)
 }
 
-func (self *Dispatcher) handleEventMachineUpdated(event registry.Event) {
+func (self *Dispatcher) HandleEventMachineUpdated(event registry.Event) {
 	m := event.Payload.(machine.Machine)
 	log.V(1).Infof("EventMachineUpdated(%s): updating JobWatcher's machine list", m.BootId)
 	self.watcher.TrackMachine(&m)
 }
 
-func (self *Dispatcher) handleEventMachineDeleted(event registry.Event) {
+func (self *Dispatcher) HandleEventMachineDeleted(event registry.Event) {
 	m := event.Payload.(machine.Machine)
 	log.V(1).Infof("EventMachineDeleted(%s): removing machine from dispatcher's machine list", m.BootId)
 	self.watcher.DropMachine(&m)
