@@ -146,16 +146,16 @@ func (self *JobWatcher) AddJobWatch(watch *job.JobWatch) bool {
 	return true
 }
 
-func (self *JobWatcher) RemoveJobWatch(watch *job.JobWatch) bool {
-	if _, ok := self.watches[watch.Payload.Name]; !ok {
+func (self *JobWatcher) RemoveJobWatch(name string) bool {
+	if _, ok := self.watches[name]; !ok {
 		return false
 	}
 
-	delete(self.watches, watch.Payload.Name)
-	delete(self.states, watch.Payload.Name)
+	delete(self.watches, name)
+	delete(self.states, name)
 
-	watchSchedule := self.schedules[watch.Payload.Name]
-	delete(self.schedules, watch.Payload.Name)
+	watchSchedule := self.schedules[name]
+	delete(self.schedules, name)
 
 	for job, mach := range watchSchedule {
 		self.registry.RemoveMachineJob(&job, mach)
