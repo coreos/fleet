@@ -102,8 +102,9 @@ func filterEventJobCreated(resp *etcd.Response) *Event {
 	}
 
 	dir, jobName := path.Split(resp.Node.Key)
+	dir = strings.TrimSuffix(dir, "/")
 	dir, prefix := path.Split(dir)
-	if prefix != schedulePrefix {
+	if prefix != strings.Trim(schedulePrefix, "/") {
 		return nil
 	}
 
@@ -116,6 +117,7 @@ func filterEventJobCreated(resp *etcd.Response) *Event {
 
 	j, _ := job.NewJob(jobName, nil, &jp)
 
+	dir = strings.TrimSuffix(dir, "/")
 	dir, machName := path.Split(dir)
 	m := machine.New(machName)
 
@@ -128,8 +130,9 @@ func filterEventJobDeleted(resp *etcd.Response) *Event {
 	}
 
 	dir, jobName := path.Split(resp.Node.Key)
+	dir = strings.TrimSuffix(dir, "/")
 	dir, prefix := path.Split(dir)
-	if prefix != schedulePrefix {
+	if prefix != strings.Trim(schedulePrefix, "/") {
 		return nil
 	}
 
@@ -142,6 +145,7 @@ func filterEventJobDeleted(resp *etcd.Response) *Event {
 
 	j, _ := job.NewJob(jobName, nil, &jp)
 
+	dir = strings.TrimSuffix(dir, "/")
 	dir, machName := path.Split(dir)
 	m := machine.New(machName)
 
