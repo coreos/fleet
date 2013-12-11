@@ -32,7 +32,7 @@ func TestNewJobNilStateNilPayload(t *testing.T) {
 }
 
 func TestNewJob(t *testing.T) {
-	mach := machine.New("XXX")
+	mach := machine.New("XXX", "")
 	js1 := NewJobState("loaded", "inactive", "running", []string{}, mach)
 	jp1 := &JobPayload{"echo.service", "Echo"}
 
