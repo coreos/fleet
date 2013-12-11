@@ -7,8 +7,6 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/golang/glog"
-
-	"github.com/coreos/coreinit/machine"
 )
 
 type Config struct {
@@ -18,8 +16,7 @@ type Config struct {
 }
 
 func NewConfig() *Config {
-	bootid := machine.ReadLocalBootId()
-	conf := Config{BootId: bootid, Verbosity: 0}
+	conf := Config{BootId: "", Verbosity: 0}
 	return &conf
 }
 

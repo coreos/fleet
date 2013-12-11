@@ -12,6 +12,9 @@ type Machine struct {
 }
 
 func New(bootId string) (m *Machine) {
+	if bootId == "" {
+		bootId = ReadLocalBootId()
+	}
 	return &Machine{bootId}
 }
 

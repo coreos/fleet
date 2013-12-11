@@ -29,10 +29,7 @@ func New(cfg config.Config) *Server {
 	a := agent.New(r, es, m, "")
 	e := engine.New(r, es, m)
 
-	srv := Server{a, e, m, r, es}
-	srv.Configure(&cfg)
-
-	return &srv
+	return &Server{a, e, m, r, es}
 }
 
 func (self *Server) Run() {
