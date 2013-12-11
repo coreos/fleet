@@ -70,8 +70,7 @@ func (a *Agent) StartMachineHeartbeatThread() chan bool {
 	ttl := parseDuration(DefaultMachineTTL)
 
 	heartbeat := func() {
-		addrs := a.Machine.GetAddresses()
-		a.Registry.SetMachineAddrs(a.Machine, addrs, ttl)
+		a.Registry.SetMachineState(a.Machine, ttl)
 	}
 
 	loop := func() {

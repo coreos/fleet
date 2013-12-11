@@ -241,7 +241,7 @@ func filterEventJobStateExpired(resp *etcd.Response) *Event {
 }
 
 func filterEventMachineCreated(resp *etcd.Response) *Event {
-	if base := path.Base(resp.Node.Key); base != "addrs" {
+	if base := path.Base(resp.Node.Key); base != "object" {
 		return nil
 	}
 
@@ -255,7 +255,7 @@ func filterEventMachineCreated(resp *etcd.Response) *Event {
 }
 
 func filterEventMachineUpdated(resp *etcd.Response) *Event {
-	if base := path.Base(resp.Node.Key); base != "addrs" {
+	if base := path.Base(resp.Node.Key); base != "object" {
 		return nil
 	}
 
@@ -269,7 +269,7 @@ func filterEventMachineUpdated(resp *etcd.Response) *Event {
 }
 
 func filterEventMachineDeleted(resp *etcd.Response) *Event {
-	if base := path.Base(resp.Node.Key); base != "addrs" {
+	if base := path.Base(resp.Node.Key); base != "object" {
 		return nil
 	}
 
