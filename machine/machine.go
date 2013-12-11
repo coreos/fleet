@@ -8,14 +8,15 @@ import (
 const boot_id_path = "/proc/sys/kernel/random/boot_id"
 
 type Machine struct {
-	BootId string
+	BootId   string
+	PublicIP string
 }
 
-func New(bootId string) (m *Machine) {
+func New(bootId string, publicIP string) (m *Machine) {
 	if bootId == "" {
 		bootId = ReadLocalBootId()
 	}
-	return &Machine{bootId}
+	return &Machine{bootId, publicIP}
 }
 
 func (m *Machine) String() string {

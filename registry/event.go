@@ -22,6 +22,7 @@ type Event struct {
 
 type EventStream struct {
 	etcd      *etcd.Client
+	reg       *Registry
 	listeners []EventListener
 	chClose   chan bool
 }
@@ -31,9 +32,12 @@ type EventListener struct {
 	Context   *machine.Machine
 }
 
-func NewEventStream(client *etcd.Client) *EventStream {
+func NewEventStream(reg *Registry) *EventStream {
+	client := etcd.NewClient(nil)
+	client.SetConsistency(etcd.WEAK_CONSISTENCY)
 	listeners := make([]EventListener, 0)
-	return &EventStream{client, listeners, make(chan bool)}
+
+	return &EventStream{client, reg, listeners, make(chan bool)}
 }
 
 func (self *EventStream) RegisterListener(l interface{}, m *machine.Machine) {
@@ -71,7 +75,7 @@ func (self *EventStream) Open() {
 		path.Join(keyPrefix, statePrefix):
 			[]func(*etcd.Response) *Event {filterEventJobStatePublished, filterEventJobStateExpired},
 		path.Join(keyPrefix, machinePrefix):
-			[]func(*etcd.Response) *Event {filterEventMachineCreated, filterEventMachineUpdated, filterEventMachineDeleted, filterEventJobCreated, filterEventJobDeleted},
+			[]func(*etcd.Response) *Event {self.filterEventMachineCreated, self.filterEventMachineUpdated, self.filterEventMachineDeleted, self.filterEventJobCreated, self.filterEventJobDeleted},
 		path.Join(keyPrefix, requestPrefix):
 			[]func(*etcd.Response) *Event {filterEventRequestCreated},
 		path.Join(keyPrefix, jobWatchPrefix):
@@ -93,7 +97,7 @@ func (self *EventStream) Close() {
 	self.chClose <- true
 }
 
-func filterEventJobCreated(resp *etcd.Response) *Event {
+func (self *EventStream) filterEventJobCreated(resp *etcd.Response) *Event {
 	if resp.Action != "set" || resp.Node.PrevValue != "" {
 		return nil
 	}
@@ -116,12 +120,12 @@ func filterEventJobCreated(resp *etcd.Response) *Event {
 
 	dir = strings.TrimSuffix(dir, "/")
 	dir, machName := path.Split(dir)
-	m := machine.New(machName)
+	m := self.reg.GetMachineState(machName)
 
 	return &Event{"EventJobCreated", *j, m}
 }
 
-func filterEventJobDeleted(resp *etcd.Response) *Event {
+func (self *EventStream) filterEventJobDeleted(resp *etcd.Response) *Event {
 	if resp.Action != "expire" && resp.Action != "delete" {
 		return nil
 	}
@@ -144,7 +148,7 @@ func filterEventJobDeleted(resp *etcd.Response) *Event {
 
 	dir = strings.TrimSuffix(dir, "/")
 	dir, machName := path.Split(dir)
-	m := machine.New(machName)
+	m := self.reg.GetMachineState(machName)
 
 	return &Event{"EventJobDeleted", *j, m}
 }
@@ -240,7 +244,7 @@ func filterEventJobStateExpired(resp *etcd.Response) *Event {
 	return &Event{"EventJobStateExpired", *j, nil}
 }
 
-func filterEventMachineCreated(resp *etcd.Response) *Event {
+func (self *EventStream) filterEventMachineCreated(resp *etcd.Response) *Event {
 	if base := path.Base(resp.Node.Key); base != "object" {
 		return nil
 	}
@@ -249,12 +253,12 @@ func filterEventMachineCreated(resp *etcd.Response) *Event {
 		return nil
 	}
 
-	name := path.Base(path.Dir(resp.Node.Key))
-	m := machine.New(name)
-	return &Event{"EventMachineCreated", *m, nil}
+	var m machine.Machine
+	unmarshal(resp.Node.Value, &m)
+	return &Event{"EventMachineCreated", m, nil}
 }
 
-func filterEventMachineUpdated(resp *etcd.Response) *Event {
+func (self *EventStream) filterEventMachineUpdated(resp *etcd.Response) *Event {
 	if base := path.Base(resp.Node.Key); base != "object" {
 		return nil
 	}
@@ -263,12 +267,12 @@ func filterEventMachineUpdated(resp *etcd.Response) *Event {
 		return nil
 	}
 
-	name := path.Base(path.Dir(resp.Node.Key))
-	m := machine.New(name)
-	return &Event{"EventMachineUpdated", *m, nil}
+	var m machine.Machine
+	unmarshal(resp.Node.Value, &m)
+	return &Event{"EventMachineUpdated", m, nil}
 }
 
-func filterEventMachineDeleted(resp *etcd.Response) *Event {
+func (self *EventStream) filterEventMachineDeleted(resp *etcd.Response) *Event {
 	if base := path.Base(resp.Node.Key); base != "object" {
 		return nil
 	}
@@ -278,7 +282,7 @@ func filterEventMachineDeleted(resp *etcd.Response) *Event {
 	}
 
 	name := path.Base(path.Dir(resp.Node.Key))
-	m := machine.New(name)
+	m := machine.New(name, "")
 	return &Event{"EventMachineDeleted", *m, nil}
 }
 

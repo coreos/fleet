@@ -12,11 +12,12 @@ import (
 type Config struct {
 	BootId      string   `toml:"bootid"`
 	EtcdServers []string `toml:"etcd_servers"`
+	PublicIP  string `toml:"public_ip"`
 	Verbosity   int      `toml:"verbosity"`
 }
 
 func NewConfig() *Config {
-	conf := Config{BootId: "", Verbosity: 0}
+	conf := Config{BootId: "", Verbosity: 0, PublicIP: ""}
 	return &conf
 }
 
