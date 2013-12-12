@@ -19,7 +19,7 @@ type Server struct {
 }
 
 func New(cfg config.Config) *Server {
-	etcdClient := etcd.NewClient("")
+	etcdClient := etcd.NewClient(cfg.EtcdServers)
 	etcdClient.SetConsistency(etcd.WEAK_CONSISTENCY)
 	r := registry.New(etcdClient)
 	es := registry.NewEventStream(etcdClient)
