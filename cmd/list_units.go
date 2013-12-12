@@ -4,8 +4,6 @@ import (
 	"fmt"
 
 	"github.com/codegangsta/cli"
-
-	"github.com/coreos/coreinit/registry"
 )
 
 func newListUnitsCommand() cli.Command {
@@ -19,7 +17,7 @@ func newListUnitsCommand() cli.Command {
 }
 
 func listUnitsAction(c *cli.Context) {
-	r := registry.New()
+	r := getRegistry()
 
 	fmt.Fprintln(out, "UNIT\tLOAD\tACTIVE\tSUB\tDESC\tMACHINE")
 
