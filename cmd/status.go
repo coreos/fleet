@@ -19,7 +19,7 @@ func newStatusUnitsCommand() cli.Command {
 }
 
 func statusUnitsAction(c *cli.Context) {
-	r := getRegistry()
+	r := getRegistry(c)
 
 	for i, v := range c.Args() {
 		// This extra newline here to match systemctl status output

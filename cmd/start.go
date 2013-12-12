@@ -23,7 +23,7 @@ func newStartUnitCommand() cli.Command {
 }
 
 func startUnitAction(c *cli.Context) {
-	r := getRegistry()
+	r := getRegistry(c)
 
 	payloads := make([]job.JobPayload, len(c.Args()))
 

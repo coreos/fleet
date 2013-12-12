@@ -16,7 +16,7 @@ func newStopUnitCommand() cli.Command {
 }
 
 func stopUnitAction(c *cli.Context) {
-	r := getRegistry()
+	r := getRegistry(c)
 
 	for _, v := range c.Args() {
 		name := path.Base(v)

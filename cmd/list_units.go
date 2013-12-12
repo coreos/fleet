@@ -17,7 +17,7 @@ func newListUnitsCommand() cli.Command {
 }
 
 func listUnitsAction(c *cli.Context) {
-	r := getRegistry()
+	r := getRegistry(c)
 
 	fmt.Fprintln(out, "UNIT\tLOAD\tACTIVE\tSUB\tDESC\tMACHINE")
 

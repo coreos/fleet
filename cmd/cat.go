@@ -18,7 +18,7 @@ func newCatUnitCommand() cli.Command {
 }
 
 func printUnitAction(c *cli.Context) {
-	r := getRegistry()
+	r := getRegistry(c)
 
 	if len(c.Args()) != 1 {
 		fmt.Println("One unit file must be provided.")
