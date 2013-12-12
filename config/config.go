@@ -7,19 +7,17 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/golang/glog"
-
-	"github.com/coreos/coreinit/machine"
 )
 
 type Config struct {
 	BootId      string   `toml:"bootid"`
 	EtcdServers []string `toml:"etcd_servers"`
+	PublicIP  string `toml:"public_ip"`
 	Verbosity   int      `toml:"verbosity"`
 }
 
 func NewConfig() *Config {
-	bootid := machine.ReadLocalBootId()
-	conf := Config{BootId: bootid, Verbosity: 0}
+	conf := Config{BootId: "", Verbosity: 0, PublicIP: ""}
 	return &conf
 }
 

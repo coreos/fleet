@@ -3,6 +3,9 @@ package unit
 import (
 	"fmt"
 	"errors"
+	"net"
+	"net/url"
+	"strconv"
 	"strings"
 
 	log "github.com/golang/glog"
@@ -31,7 +34,7 @@ func (ss *SystemdSocket) State() (string, string, string, []string, error) {
 	sockets := parseSocketFile(payload)
 	sockStrings := []string{}
 	for _, sock := range sockets {
-		sockStrings = append(sockStrings, sock.String())
+		sockStrings = append(sockStrings, sock.String(ss.manager.Machine.PublicIP))
 	}
 
 	return loadState, activeState, subState, sockStrings, nil
@@ -59,17 +62,19 @@ func parseSocketFile(contents string) []ListenSocket {
 
 type ListenSocket struct {
 	Type string
-	Address string
+	Port int
 }
 
-func (ls *ListenSocket) String() string {
-	return fmt.Sprintf("%s://%s", ls.Type, ls.Address)
+func (ls *ListenSocket) String(ip string) string {
+	hostport := net.JoinHostPort(ip, strconv.Itoa(ls.Port))
+	u := url.URL{Scheme: ls.Type, Host: hostport}
+	return u.String()
 }
 
 func NewListenSocketFromListenConfig(cfg string) (*ListenSocket, error) {
-	sockType, address, err := parseListenLine(cfg)
+	sockType, port, err := parseListenLine(cfg)
 	if err == nil {
-		return &ListenSocket{sockType, address}, nil
+		return &ListenSocket{sockType, port}, nil
 	} else {
 		return nil, err
 	}
@@ -85,7 +90,7 @@ func filterListenLines(lines []string) []string {
 	return filtered
 }
 
-func parseListenLine(line string) (string, string, error) {
+func parseListenLine(line string) (string, int, error) {
 	keyMap := map[string]string{
 		"ListenSequentialPacket": "unix",
 		"ListenDatagram": "udp",
@@ -95,8 +100,13 @@ func parseListenLine(line string) (string, string, error) {
 	parts := strings.SplitN(line, "=", 2)
 	key, ok := keyMap[parts[0]]
 	if !ok {
-		return "", "", errors.New(fmt.Sprintf("unrecognized key %s", parts[0]))
+		return "", 0, errors.New(fmt.Sprintf("unrecognized key %s", parts[0]))
 	}
 
-	return key, parts[1], nil
+	port, err := strconv.Atoi(parts[1])
+	if err != nil {
+		return "", 0, errors.New(fmt.Sprintf("Unparseable value %s", parts[1]))
+	}
+
+	return key, port, nil
 }

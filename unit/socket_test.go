@@ -9,17 +9,16 @@ func TestParseSocketFile(t *testing.T) {
 Description=Example Socket File
 
 [Socket]
-ListenStream=1.2.3.4:23
-ListenDatagram=1.2.3.4:24
+ListenStream=23
+ListenDatagram=24
 #ListenDatagram=1.2.3.4:25
 ListenSequentialPacket=/var/run/mysqld.sock
 `
 	sockets := parseSocketFile(contents)
 
 	expected := []ListenSocket{
-		ListenSocket{"tcp", "1.2.3.4:23"},
-		ListenSocket{"udp", "1.2.3.4:24"},
-		ListenSocket{"unix", "/var/run/mysqld.sock"},
+		ListenSocket{"tcp", 23},
+		ListenSocket{"udp", 24},
 	}
 
 	if len(sockets) != len(expected) {
@@ -31,17 +30,16 @@ ListenSequentialPacket=/var/run/mysqld.sock
 			t.Errorf("Socket type '%s' does not match expected '%s'", sockets[i].Type, expect.Type)
 		}
 
-		if sockets[i].Address != expect.Address {
-			t.Errorf("Socket type '%s' does not match expected '%s'", sockets[i].Address, expect.Address)
+		if sockets[i].Port != expect.Port {
+			t.Errorf("Socket type '%s' does not match expected '%s'", sockets[i].Port, expect.Port)
 		}
 	}
 }
 
 func TestNewListenSocketFromListenConfig(t *testing.T) {
 	goodLines := []string{
-		"ListenStream=1.2.3.4:23",
+		"ListenStream=23",
 		"ListenDatagram=24",
-		"ListenSequentialPacket=/var/run/mysqld.sock",
 	}
 
 	for _, line := range goodLines {
@@ -52,8 +50,10 @@ func TestNewListenSocketFromListenConfig(t *testing.T) {
 	}
 
 	badLines := []string{
-		"ListenSocket=1.2.3.4:23", //ListenSocket is an invalid key
-		"FooBar=1.2.3.4:23", //FooBar is an invalid key
+		"ListenSocket=23", //ListenSocket is an invalid key
+		"FooBar=23", //FooBar is an invalid key
+		"ListenStream=1.2.3.4:23", //coreinit only supports ports
+		"ListenSequentialPacket=/var/run/mysqld.sock", //coreinit only support ports
 	}
 
 	for _, line := range badLines {

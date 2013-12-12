@@ -22,17 +22,14 @@ func New(cfg config.Config) *Server {
 	etcdClient := etcd.NewClient(cfg.EtcdServers)
 	etcdClient.SetConsistency(etcd.WEAK_CONSISTENCY)
 	r := registry.New(etcdClient)
-	es := registry.NewEventStream(etcdClient)
+	es := registry.NewEventStream(r)
 
-	m := machine.New(cfg.BootId)
+	m := machine.New(cfg.BootId, cfg.PublicIP)
 
 	a := agent.New(r, es, m, "")
 	e := engine.New(r, es, m)
 
-	srv := Server{a, e, m, r, es}
-	srv.Configure(&cfg)
-
-	return &srv
+	return &Server{a, e, m, r, es}
 }
 
 func (self *Server) Run() {
@@ -42,7 +39,7 @@ func (self *Server) Run() {
 
 func (self *Server) Configure(cfg *config.Config) {
 	if cfg.BootId != self.machine.BootId {
-		self.machine = machine.New(cfg.BootId)
+		self.machine = machine.New(cfg.BootId, cfg.PublicIP)
 		self.agent.Stop()
 		self.agent = agent.New(self.registry, self.events, self.machine, "")
 		go self.agent.Run()
