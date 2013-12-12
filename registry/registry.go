@@ -28,10 +28,8 @@ type Registry struct {
 	etcd *etcd.Client
 }
 
-func New() (registry *Registry) {
-	etcdC := etcd.NewClient(nil)
-	etcdC.SetConsistency(etcd.WEAK_CONSISTENCY)
-	return &Registry{etcdC}
+func New(client *etcd.Client) (registry *Registry) {
+	return &Registry{client}
 }
 
 // Describe all active Machines

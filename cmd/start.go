@@ -8,7 +8,6 @@ import (
 	"github.com/codegangsta/cli"
 
 	"github.com/coreos/coreinit/job"
-	"github.com/coreos/coreinit/registry"
 )
 
 func newStartUnitCommand() cli.Command {
@@ -24,7 +23,7 @@ func newStartUnitCommand() cli.Command {
 }
 
 func startUnitAction(c *cli.Context) {
-	r := registry.New()
+	r := getRegistry(c)
 
 	payloads := make([]job.JobPayload, len(c.Args()))
 

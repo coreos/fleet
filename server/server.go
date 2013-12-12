@@ -1,6 +1,8 @@
 package server
 
 import (
+	"github.com/coreos/go-etcd/etcd"
+
 	"github.com/coreos/coreinit/agent"
 	"github.com/coreos/coreinit/config"
 	"github.com/coreos/coreinit/engine"
@@ -17,9 +19,12 @@ type Server struct {
 }
 
 func New(cfg config.Config) *Server {
+	etcdClient := etcd.NewClient(cfg.EtcdServers)
+	etcdClient.SetConsistency(etcd.WEAK_CONSISTENCY)
+	r := registry.New(etcdClient)
+	es := registry.NewEventStream(etcdClient)
+
 	m := machine.New(cfg.BootId)
-	r := registry.New()
-	es := registry.NewEventStream()
 
 	a := agent.New(r, es, m, "")
 	e := engine.New(r, es, m)

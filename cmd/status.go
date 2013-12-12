@@ -7,7 +7,6 @@ import (
 	"github.com/codegangsta/cli"
 
 	"github.com/coreos/coreinit/job"
-	"github.com/coreos/coreinit/registry"
 )
 
 func newStatusUnitsCommand() cli.Command {
@@ -20,7 +19,7 @@ func newStatusUnitsCommand() cli.Command {
 }
 
 func statusUnitsAction(c *cli.Context) {
-	r := registry.New()
+	r := getRegistry(c)
 
 	for i, v := range c.Args() {
 		// This extra newline here to match systemctl status output

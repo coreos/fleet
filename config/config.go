@@ -12,8 +12,9 @@ import (
 )
 
 type Config struct {
-	BootId    string `toml:"bootid"`
-	Verbosity int    `toml:"verbosity"`
+	BootId      string   `toml:"bootid"`
+	EtcdServers []string `toml:"etcd_servers"`
+	Verbosity   int      `toml:"verbosity"`
 }
 
 func NewConfig() *Config {

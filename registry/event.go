@@ -31,11 +31,8 @@ type EventListener struct {
 	Context   *machine.Machine
 }
 
-func NewEventStream() *EventStream {
-	client := etcd.NewClient(nil)
-	client.SetConsistency(etcd.WEAK_CONSISTENCY)
+func NewEventStream(client *etcd.Client) *EventStream {
 	listeners := make([]EventListener, 0)
-
 	return &EventStream{client, listeners, make(chan bool)}
 }
 

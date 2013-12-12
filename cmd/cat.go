@@ -6,8 +6,6 @@ import (
 	"syscall"
 
 	"github.com/codegangsta/cli"
-
-	"github.com/coreos/coreinit/registry"
 )
 
 func newCatUnitCommand() cli.Command {
@@ -20,7 +18,7 @@ func newCatUnitCommand() cli.Command {
 }
 
 func printUnitAction(c *cli.Context) {
-	r := registry.New()
+	r := getRegistry(c)
 
 	if len(c.Args()) != 1 {
 		fmt.Println("One unit file must be provided.")

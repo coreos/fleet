@@ -4,8 +4,6 @@ import (
 	"path"
 
 	"github.com/codegangsta/cli"
-
-	"github.com/coreos/coreinit/registry"
 )
 
 func newStopUnitCommand() cli.Command {
@@ -18,7 +16,7 @@ func newStopUnitCommand() cli.Command {
 }
 
 func stopUnitAction(c *cli.Context) {
-	r := registry.New()
+	r := getRegistry(c)
 
 	for _, v := range c.Args() {
 		name := path.Base(v)
