@@ -75,7 +75,7 @@ func (self *EventStream) Open() {
 		path.Join(keyPrefix, statePrefix):
 			[]func(*etcd.Response) *Event {filterEventJobStatePublished, filterEventJobStateExpired},
 		path.Join(keyPrefix, machinePrefix):
-			[]func(*etcd.Response) *Event {self.filterEventMachineCreated, self.filterEventMachineUpdated, self.filterEventMachineDeleted, self.filterEventJobCreated, self.filterEventJobDeleted},
+			[]func(*etcd.Response) *Event {self.filterEventMachineUpdated, self.filterEventMachineDeleted, self.filterEventJobCreated, self.filterEventJobDeleted},
 		path.Join(keyPrefix, requestPrefix):
 			[]func(*etcd.Response) *Event {filterEventRequestCreated},
 		path.Join(keyPrefix, jobWatchPrefix):
@@ -98,7 +98,7 @@ func (self *EventStream) Close() {
 }
 
 func (self *EventStream) filterEventJobCreated(resp *etcd.Response) *Event {
-	if resp.Action != "set" || resp.Node.PrevValue != "" {
+	if resp.Action != "set" {
 		return nil
 	}
 
@@ -137,14 +137,7 @@ func (self *EventStream) filterEventJobDeleted(resp *etcd.Response) *Event {
 		return nil
 	}
 
-	var jp job.JobPayload
-	err := unmarshal(resp.Node.PrevValue, &jp)
-	if err != nil {
-		log.V(1).Infof("Failed to deserialize JobPayload: %s", err)
-		return nil
-	}
-
-	j, _ := job.NewJob(jobName, nil, &jp)
+	j, _ := job.NewJob(jobName, nil, nil)
 
 	dir = strings.TrimSuffix(dir, "/")
 	dir, machName := path.Split(dir)
@@ -158,7 +151,7 @@ func filterEventJobWatchCreated(resp *etcd.Response) *Event {
 		return nil
 	}
 
-	if resp.Action != "set" || resp.Node.PrevValue != "" {
+	if resp.Action != "set" {
 		return nil
 	}
 
@@ -244,26 +237,12 @@ func filterEventJobStateExpired(resp *etcd.Response) *Event {
 	return &Event{"EventJobStateExpired", *j, nil}
 }
 
-func (self *EventStream) filterEventMachineCreated(resp *etcd.Response) *Event {
-	if base := path.Base(resp.Node.Key); base != "object" {
-		return nil
-	}
-
-	if resp.Action != "set" || resp.Node.PrevValue != "" {
-		return nil
-	}
-
-	var m machine.Machine
-	unmarshal(resp.Node.Value, &m)
-	return &Event{"EventMachineCreated", m, nil}
-}
-
 func (self *EventStream) filterEventMachineUpdated(resp *etcd.Response) *Event {
 	if base := path.Base(resp.Node.Key); base != "object" {
 		return nil
 	}
 
-	if resp.Action != "set" || resp.Node.PrevValue == "" {
+	if resp.Action != "set" {
 		return nil
 	}
 
@@ -287,7 +266,7 @@ func (self *EventStream) filterEventMachineDeleted(resp *etcd.Response) *Event {
 }
 
 func filterEventRequestCreated(resp *etcd.Response) *Event{
-	if resp.Action != "set" || resp.Node.PrevValue != "" {
+	if resp.Action != "set" {
 		return nil
 	}
 
