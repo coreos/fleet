@@ -75,7 +75,7 @@ func (self *EventStream) Open() {
 		path.Join(keyPrefix, statePrefix):
 			[]func(*etcd.Response) *Event {filterEventJobStatePublished, filterEventJobStateExpired},
 		path.Join(keyPrefix, machinePrefix):
-			[]func(*etcd.Response) *Event {self.filterEventMachineUpdated, self.filterEventMachineDeleted, self.filterEventJobCreated, self.filterEventJobDeleted},
+			[]func(*etcd.Response) *Event {self.filterEventMachineUpdated, self.filterEventMachineDeleted, self.filterEventJobScheduled, self.filterEventJobRemoved},
 		path.Join(keyPrefix, requestPrefix):
 			[]func(*etcd.Response) *Event {filterEventRequestCreated},
 		path.Join(keyPrefix, jobWatchPrefix):
@@ -97,7 +97,7 @@ func (self *EventStream) Close() {
 	self.chClose <- true
 }
 
-func (self *EventStream) filterEventJobCreated(resp *etcd.Response) *Event {
+func (self *EventStream) filterEventJobScheduled(resp *etcd.Response) *Event {
 	if resp.Action != "set" {
 		return nil
 	}
@@ -122,10 +122,10 @@ func (self *EventStream) filterEventJobCreated(resp *etcd.Response) *Event {
 	dir, machName := path.Split(dir)
 	m := self.reg.GetMachineState(machName)
 
-	return &Event{"EventJobCreated", *j, m}
+	return &Event{"EventJobScheduled", *j, m}
 }
 
-func (self *EventStream) filterEventJobDeleted(resp *etcd.Response) *Event {
+func (self *EventStream) filterEventJobRemoved(resp *etcd.Response) *Event {
 	if resp.Action != "expire" && resp.Action != "delete" {
 		return nil
 	}
@@ -143,7 +143,7 @@ func (self *EventStream) filterEventJobDeleted(resp *etcd.Response) *Event {
 	dir, machName := path.Split(dir)
 	m := self.reg.GetMachineState(machName)
 
-	return &Event{"EventJobDeleted", *j, m}
+	return &Event{"EventJobRemoved", *j, m}
 }
 
 func filterEventJobWatchCreated(resp *etcd.Response) *Event {

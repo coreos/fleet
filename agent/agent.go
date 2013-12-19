@@ -131,15 +131,15 @@ func (a *Agent) StartServiceHeartbeatThread() chan bool {
 	return stop
 }
 
-func (a *Agent) HandleEventJobCreated(event registry.Event) {
+func (a *Agent) HandleEventJobScheduled(event registry.Event) {
 	j := event.Payload.(job.Job)
-	log.Infof("EventJobCreated(%s): starting job", j.Name)
+	log.Infof("EventJobScheduled(%s): starting job", j.Name)
 	a.Manager.StartJob(&j)
 }
 
-func (a *Agent) HandleEventJobDeleted(event registry.Event) {
+func (a *Agent) HandleEventJobRemoved(event registry.Event) {
 	j := event.Payload.(job.Job)
-	log.Infof("EventJobDeleted(%s): stopping job", j.Name)
+	log.Infof("EventJobRemoved(%s): stopping job", j.Name)
 	a.Manager.StopJob(&j)
 }
 
