@@ -127,12 +127,6 @@ func (self *Dispatcher) HandleEventJobWatchDeleted(event registry.Event) {
 	}
 }
 
-func (self *Dispatcher) HandleEventMachineCreated(event registry.Event) {
-	m := event.Payload.(machine.Machine)
-	log.V(1).Infof("EventMachineCreated(%s): updating JobWatcher's machine list", m.BootId)
-	self.watcher.TrackMachine(&m)
-}
-
 func (self *Dispatcher) HandleEventMachineUpdated(event registry.Event) {
 	m := event.Payload.(machine.Machine)
 	log.V(1).Infof("EventMachineUpdated(%s): updating JobWatcher's machine list", m.BootId)
