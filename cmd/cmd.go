@@ -39,6 +39,7 @@ func main() {
 		newStopUnitCommand(),
 		newStatusUnitsCommand(),
 		newCatUnitCommand(),
+		newListMachinesCommand(),
 	}
 
 	app.Run(os.Args)
