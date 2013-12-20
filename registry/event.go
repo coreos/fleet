@@ -78,8 +78,6 @@ func (self *EventStream) Open() {
 			[]func(*etcd.Response) *Event {self.filterEventMachineUpdated, self.filterEventMachineDeleted, self.filterEventJobScheduled, self.filterEventJobRemoved},
 		path.Join(keyPrefix, requestPrefix):
 			[]func(*etcd.Response) *Event {filterEventRequestCreated},
-		path.Join(keyPrefix, jobWatchPrefix):
-			[]func(*etcd.Response) *Event {filterEventJobWatchCreated, filterEventJobWatchDeleted, self.filterEventJobWatchClaimExpired},
 	}
 
 	for key, funcs := range watchMap {
@@ -144,63 +142,6 @@ func (self *EventStream) filterEventJobRemoved(resp *etcd.Response) *Event {
 	m := self.reg.GetMachineState(machName)
 
 	return &Event{"EventJobRemoved", *j, m}
-}
-
-func filterEventJobWatchCreated(resp *etcd.Response) *Event {
-	if base := path.Base(resp.Node.Key); base != "object" {
-		return nil
-	}
-
-	if resp.Action != "set" {
-		return nil
-	}
-
-	var jw job.JobWatch
-	err := unmarshal(resp.Node.Value, &jw)
-	if err != nil {
-		log.V(1).Infof("Failed to deserialize JobWatch: %s", err)
-		return nil
-	}
-
-	return &Event{"EventJobWatchCreated", jw, nil}
-}
-
-func filterEventJobWatchDeleted(resp *etcd.Response) *Event {
-	if base := path.Base(resp.Node.Key); base != "object" {
-		return nil
-	}
-
-	if resp.Action != "delete" {
-		return nil
-	}
-
-	name := path.Base(path.Dir(resp.Node.Key))
-	return &Event{"EventJobWatchDeleted", name, nil}
-}
-
-func (self *EventStream) filterEventJobWatchClaimExpired(resp *etcd.Response) *Event {
-	if base := path.Base(resp.Node.Key); base != "object" {
-		return nil
-	}
-
-	if resp.Action != "delete" {
-		return nil
-	}
-
-	jwKey := path.Join(path.Dir(resp.Node.Key), "object")
-	jwResp, err := self.etcd.Get(jwKey, false, true)
-	if err != nil {
-		return nil
-	}
-
-	var jw job.JobWatch
-	err = unmarshal(jwResp.Node.Value, &jw)
-	if err != nil {
-		log.V(1).Infof("Failed to deserialize JobWatch: %s", err)
-		return nil
-	}
-
-	return &Event{"EventJobWatchClaimExpired", jw, nil}
 }
 
 func filterEventJobStatePublished(resp *etcd.Response) *Event {
