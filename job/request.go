@@ -8,10 +8,6 @@ import (
 	"github.com/coreos/coreinit/machine"
 )
 
-const (
-	RequestAllMachines = 1 << iota
-)
-
 type JobRequest struct {
 	ID       gouuid.UUID
 	Payloads []JobPayload

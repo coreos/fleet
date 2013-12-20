@@ -12,7 +12,6 @@ import (
 
 const (
 	DefaultRequestClaimTTL = "10s"
-	ScheduleAllMachines    = -1
 )
 
 type Dispatcher struct {
@@ -51,20 +50,13 @@ func (self *Dispatcher) HandleEventRequestCreated(event registry.Event) {
 }
 
 func getJobWatchesFromRequest(req *job.JobRequest) ([]job.JobWatch, error) {
-	var count int
-	if req.IsFlagSet(job.RequestAllMachines) {
-		count = ScheduleAllMachines
-	} else {
-		count = req.Count
-	}
-
 	watches := make([]job.JobWatch, 0)
 	for i := 0; i < len(req.Payloads); i++ {
 		// Manually create the payload variable so we get a full copy
 		// of the data, not just a shallow copy.
 		payload := req.Payloads[i]
 
-		jw := job.NewJobWatch(&payload, count)
+		jw := job.NewJobWatch(&payload, req.Count)
 		watches = append(watches, *jw)
 	}
 	return watches, nil
