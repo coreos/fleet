@@ -5,6 +5,9 @@ import (
 	"path"
 	"time"
 
+	"github.com/coreos/go-etcd/etcd"
+	log "github.com/golang/glog"
+
 	"github.com/coreos/coreinit/job"
 	"github.com/coreos/coreinit/machine"
 )
@@ -26,4 +29,18 @@ func (r *Registry) ResolveRequest(req *job.JobRequest) {
 func (r *Registry) ClaimRequest(request *job.JobRequest, m *machine.Machine, ttl time.Duration) bool {
 	key := path.Join(keyPrefix, lockPrefix, fmt.Sprintf("req-%s", request.ID.String()))
 	return r.acquireLock(key, m.BootId, ttl)
+}
+
+func filterEventRequestCreated(resp *etcd.Response) *Event{
+	if resp.Action != "set" {
+		return nil
+	}
+
+	var request job.JobRequest
+	if err := unmarshal(resp.Node.Value, &request); err != nil {
+		log.V(1).Infof("Failed to deserialize JobRequest: %s", err)
+		return nil
+	}
+
+	return &Event{"EventRequestCreated", request, nil}
 }

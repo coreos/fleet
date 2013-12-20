@@ -1,7 +1,7 @@
 package main
 
 import (
-//	"path"
+	"path"
 
 	"github.com/codegangsta/cli"
 )
@@ -16,10 +16,12 @@ func newStopUnitCommand() cli.Command {
 }
 
 func stopUnitAction(c *cli.Context) {
-	//r := getRegistry(c)
+	r := getRegistry(c)
 
-	//for _, v := range c.Args() {
-		//name := path.Base(v)
-		//r.RemoveJob(name)
-	//}
+	for _, v := range c.Args() {
+		name := path.Base(v)
+		for _, j := range r.FindJobs(name) {
+			r.CancelJob(j.Name)
+		}
+	}
 }

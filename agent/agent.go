@@ -101,7 +101,7 @@ func (a *Agent) StartServiceHeartbeatThread() chan bool {
 		localJobs := a.Manager.GetJobs()
 		ttl := parseDuration(a.ServiceTTL)
 		for _, j := range localJobs {
-			if scheduledJob := a.Registry.GetMachineJob(j.Name, a.Machine); scheduledJob != nil {
+			if tgt := a.Registry.GetJobTarget(j.Name); tgt != nil && tgt.BootId != a.Machine.BootId {
 				log.V(1).Infof("Reporting state of Job(%s)", j.Name)
 				a.Registry.SaveJobState(&j, ttl)
 			} else {
@@ -131,16 +131,31 @@ func (a *Agent) StartServiceHeartbeatThread() chan bool {
 	return stop
 }
 
-func (a *Agent) HandleEventJobScheduled(event registry.Event) {
-	j := event.Payload.(job.Job)
-	log.Infof("EventJobScheduled(%s): starting job", j.Name)
-	a.Manager.StartJob(&j)
+func (a *Agent) HandleEventJobOffered(event registry.Event) {
+	jobName := event.Payload.(string)
+	log.Infof("EventJobOffered(%s): submitting JobBid", jobName)
+	jb := job.NewBid(jobName, a.Machine.BootId)
+	a.Registry.SubmitJobBid(jb)
 }
 
-func (a *Agent) HandleEventJobRemoved(event registry.Event) {
-	j := event.Payload.(job.Job)
-	log.Infof("EventJobRemoved(%s): stopping job", j.Name)
-	a.Manager.StopJob(&j)
+func (a *Agent) HandleEventJobScheduled(event registry.Event) {
+	jobName := event.Payload.(string)
+
+	log.Infof("EventJobScheduled(%s): Fetching Job from Registry", jobName)
+	j := a.Registry.GetJob(jobName)
+
+	log.Infof("EventJobScheduled(%s): Starting Job", j.Name)
+	a.Manager.StartJob(j)
+}
+
+func (a *Agent) HandleEventJobCancelled(event registry.Event) {
+	jobName := event.Payload.(string)
+	log.Infof("EventJobRemoved(%s): stopping job", jobName)
+	j, _ := job.NewJob(jobName, nil, nil)
+	a.Manager.StopJob(j)
+
+	//TODO: This should happen reactively to the StopJob call succeeding
+	a.Registry.DestroyJob(jobName)
 }
 
 func parseDuration(d string) time.Duration {

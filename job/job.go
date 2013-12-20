@@ -7,10 +7,10 @@ import (
 )
 
 type Job struct {
-	Name    string      `json:"name"`
-	Type    string      `json:"type"`
-	State   *JobState   `json:"state"`
-	Payload *JobPayload `json:"payload"`
+	Name    string
+	Type    string
+	State   *JobState
+	Payload *JobPayload
 }
 
 func NewJob(name string, state *JobState, payload *JobPayload) (*Job, error) {

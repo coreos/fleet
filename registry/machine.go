@@ -4,7 +4,13 @@ import (
 	"path"
 	"time"
 
+	"github.com/coreos/go-etcd/etcd"
+
 	"github.com/coreos/coreinit/machine"
+)
+
+const (
+	machinePrefix  = "/machines/"
 )
 
 // Describe all active Machines
@@ -56,4 +62,30 @@ func (r *Registry) SetMachineState(machine *machine.Machine, ttl time.Duration) 
 	r.etcd.Set(key, json, uint64(ttl.Seconds()))
 }
 
+func (self *EventStream) filterEventMachineUpdated(resp *etcd.Response) *Event {
+	if base := path.Base(resp.Node.Key); base != "object" {
+		return nil
+	}
 
+	if resp.Action != "set" {
+		return nil
+	}
+
+	var m machine.Machine
+	unmarshal(resp.Node.Value, &m)
+	return &Event{"EventMachineUpdated", m, nil}
+}
+
+func (self *EventStream) filterEventMachineDeleted(resp *etcd.Response) *Event {
+	if base := path.Base(resp.Node.Key); base != "object" {
+		return nil
+	}
+
+	if resp.Action != "expire" && resp.Action != "delete" {
+		return nil
+	}
+
+	name := path.Base(path.Dir(resp.Node.Key))
+	m := machine.New(name, "")
+	return &Event{"EventMachineDeleted", *m, nil}
+}

@@ -30,6 +30,7 @@ func startUnitAction(c *cli.Context) {
 		out, err := ioutil.ReadFile(v)
 		if err != nil {
 			fmt.Printf("%s: No such file or directory\n", v)
+			continue
 		}
 
 		name := path.Base(v)

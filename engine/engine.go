@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"fmt"
 	"time"
 
 	log "github.com/golang/glog"
@@ -35,27 +36,76 @@ func (self *Engine) Run() {
 
 func (self *Engine) HandleEventRequestCreated(event registry.Event) {
 	request := event.Payload.(job.JobRequest)
-	log.V(1).Infof("EventRequestCreated(%s): attempting to claim request", request.ID.String())
+
+	log.V(1).Infof("EventRequestCreated(%s): attempting to claim JobRequest", request.ID.String())
 	if !self.claimRequest(&request) {
 		return
 	}
 
 	log.Infof("EventRequestCreated(%s): claimed JobRequest", request.ID.String())
 
-	//watches, _ := getJobsFromRequest(&request)
-	//log.Infof("EventRequestCreated(%s): persisting %d job watches", request.ID.String(), len(watches))
-	//self.persistJobWatches(watches)
+	for _, j := range getJobsFromRequest(&request) {
+		log.Infof("EventRequestCreated(%s): creating Job(%s)", request.ID.String(), j.Name)
+		self.registry.CreateJob(&j)
+	}
 
-	log.Infof("EventRequestCreated(%s): resolving request", request.ID.String())
-	self.resolveRequest(&request)
+	log.Infof("EventRequestCreated(%s): resolving JobRequest", request.ID.String())
+	self.registry.ResolveRequest(&request)
 }
 
-func (self *Engine) claimRequest(request *job.JobRequest) bool {
-	return self.registry.ClaimRequest(request, self.machine, self.claimTTL)
+func getJobsFromRequest(req *job.JobRequest) []job.Job {
+	var jobs []job.Job
+	for i := 1; i <= req.Count; i++ {
+		for ii := 0; ii < len(req.Payloads); ii++ {
+			payload := req.Payloads[ii]
+			j, _ := job.NewJob(fmt.Sprintf("%d.%s", i, payload.Name), nil, &payload)
+			jobs = append(jobs, *j)
+		}
+	}
+	return jobs
 }
 
-func (self *Engine) resolveRequest(request *job.JobRequest) {
-	self.registry.ResolveRequest(request)
+func (self *Engine) claimRequest(req *job.JobRequest) bool {
+	return self.registry.ClaimRequest(req, self.machine, self.claimTTL)
+}
+
+func (self *Engine) HandleEventJobCreated(event registry.Event) {
+	j := event.Payload.(job.Job)
+
+	log.V(1).Infof("EventJobCreated(%s): attempting to claim Job", j.Name)
+	if !self.claimJob(j.Name) {
+		log.V(1).Infof("EventJobCreated(%s): unable to claim Job", j.Name)
+		return
+	}
+
+	offer := job.NewOfferFromJob(j)
+
+	log.V(1).Infof("EventJobCreated(%s): publishing JobOffer(%s)", j.Name, offer.Job.Name)
+	self.registry.CreateJobOffer(offer)
+}
+
+func (self *Engine) claimJob(jobName string) bool {
+	return self.registry.ClaimJob(jobName, self.machine, self.claimTTL)
+}
+
+func (self *Engine) HandleEventJobBidSubmitted(event registry.Event) {
+	jb := event.Payload.(job.JobBid)
+
+	log.V(1).Infof("EventJobBidSubmitted(%s): attempting to claim JobOffer", jb.JobName)
+	if !self.claimJobOffer(jb.JobName) {
+		log.V(1).Infof("EventJobBidSubmitted(%s): could not claim JobOffer", jb.JobName)
+		return
+	}
+
+	log.V(1).Infof("EventJobBidSubmitted(%s): accepted JobBid from Machine(%s), resolving JobOffer", jb.JobName, jb.MachineName)
+	self.registry.ResolveJobOffer(jb.JobName)
+
+	log.Infof("EventJobBidSubmitted(%s): instructing Machine to run Job", jb.MachineName)
+	self.registry.ScheduleJob(jb.JobName, jb.MachineName)
+}
+
+func (self *Engine) claimJobOffer(jobName string) bool {
+	return self.registry.ClaimJobOffer(jobName, self.machine, self.claimTTL)
 }
 
 func (self *Engine) HandleEventJobStatePublished(event registry.Event) {
