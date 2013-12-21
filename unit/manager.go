@@ -84,7 +84,8 @@ func (m *SystemdManager) GetJobs() map[string]job.Job {
 	jobs := make(map[string]job.Job, len(units))
 	for _, u := range units {
 		state := m.getJobStateFromUnit(&u)
-		j, _ := job.NewJob(u.Name(), state, nil)
+		name := m.stripUnitNamePrefix(u.Name())
+		j, _ := job.NewJob(name, state, nil)
 		jobs[j.Name] = *j
 	}
 
@@ -102,7 +103,8 @@ func (m *SystemdManager) getJobStateFromUnit(u *SystemdUnit) *job.JobState {
 }
 
 func (m *SystemdManager) GetJobState(j *job.Job) *job.JobState {
-	unit, err := m.getUnitByName(j.Name)
+	name := m.addUnitNamePrefix(j.Name)
+	unit, err := m.getUnitByName(name)
 	if err != nil {
 		log.V(1).Infof("No local unit corresponding to job %s", j.Name)
 		return nil
@@ -116,13 +118,15 @@ func (m *SystemdManager) StartJob(job *job.Job) {
 	// WantedBy our systemd target
 	job.Payload.Value += "\r\n\r\n[Install]\r\nWantedBy=" + m.Target.Name()
 
-	m.writeUnit(job.Name, job.Payload.Value)
-	m.startUnit(job.Name)
+	name := m.addUnitNamePrefix(job.Name)
+	m.writeUnit(name, job.Payload.Value)
+	m.startUnit(name)
 }
 
 func (m *SystemdManager) StopJob(job *job.Job) {
-	m.stopUnit(job.Name)
-	m.removeUnit(job.Name)
+	name := m.addUnitNamePrefix(job.Name)
+	m.stopUnit(name)
+	m.removeUnit(name)
 }
 
 func (m *SystemdManager) getUnitStates(name string) (string, string, string, error) {
@@ -200,4 +204,12 @@ func (m *SystemdManager) getDbusPath(name string) dbus.ObjectPath {
 
 func (m *SystemdManager) getLocalPath(name string) string {
 	return path.Join(m.unitPath, name)
+}
+
+func (m *SystemdManager) addUnitNamePrefix(name string) string {
+	return fmt.Sprintf("%s.%s", m.Machine.BootId, name)
+}
+
+func (m *SystemdManager) stripUnitNamePrefix(name string) string {
+	return strings.TrimPrefix(name, fmt.Sprintf("%s.", m.Machine.BootId))
 }
