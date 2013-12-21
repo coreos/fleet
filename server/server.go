@@ -15,23 +15,23 @@ type Server struct {
 	engine   *engine.Engine
 	machine  *machine.Machine
 	registry *registry.Registry
+	events   *registry.EventStream
 }
 
 func New(cfg config.Config) *Server {
+	m := machine.New(cfg.BootId, cfg.PublicIP)
+
 	etcdClient := etcd.NewClient(cfg.EtcdServers)
 	etcdClient.SetConsistency(etcd.WEAK_CONSISTENCY)
 	r := registry.New(etcdClient)
 
-	m := machine.New(cfg.BootId, cfg.PublicIP)
-
 	es := registry.NewEventStream(r)
-	a := agent.New(r, es, m, "")
+	es.Open()
 
-	//TODO: use a single EventStream
-	es = registry.NewEventStream(r)
+	a := agent.New(r, es, m, "")
 	e := engine.New(r, es, m)
 
-	return &Server{a, e, m, r}
+	return &Server{a, e, m, r, es}
 }
 
 func (self *Server) Run() {
@@ -43,8 +43,7 @@ func (self *Server) Configure(cfg *config.Config) {
 	if cfg.BootId != self.machine.BootId {
 		self.machine = machine.New(cfg.BootId, cfg.PublicIP)
 		self.agent.Stop()
-		es := registry.NewEventStream(self.registry)
-		self.agent = agent.New(self.registry, es, self.machine, "")
+		self.agent = agent.New(self.registry, self.events, self.machine, "")
 		go self.agent.Run()
 	}
 }

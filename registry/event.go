@@ -22,13 +22,13 @@ type Event struct {
 type EventStream struct {
 	etcd      *etcd.Client
 	reg       *Registry
-	listeners []EventListener
+	listeners map[string]EventListener
 	chClose   chan bool
 }
 
 type EventListener struct {
-	Handler interface{}
 	Context *machine.Machine
+	Handler interface{}
 }
 
 func (self *EventListener) String() string {
@@ -42,19 +42,30 @@ func (self *EventListener) String() string {
 func NewEventStream(reg *Registry) *EventStream {
 	client := etcd.NewClient(nil)
 	client.SetConsistency(etcd.WEAK_CONSISTENCY)
-	listeners := make([]EventListener, 0)
+	listeners := make(map[string]EventListener, 0)
 
 	return &EventStream{client, reg, listeners, make(chan bool)}
 }
 
-func (self *EventStream) RegisterListener(l interface{}, m *machine.Machine) {
-	self.listeners = append(self.listeners, EventListener{l, m})
+func (self *EventStream) AddListener(name string, m *machine.Machine, l interface{}) {
+	listener := EventListener{m, l}
+	key := fmt.Sprintf("%s-%s", name, m.String())
+	self.listeners[key] = listener
+}
+
+func (self *EventStream) RemoveListener(name string, m *machine.Machine) {
+	key := fmt.Sprintf("%s-%s", name, m.String())
+	if _, ok := self.listeners[key]; ok {
+		delete(self.listeners, key)
+	}
 }
 
 // Distribute an event to all listeners registered to event.Type
 func (self *EventStream) send(event Event) {
+	log.V(2).Infof("Sending %s to %d listeners", event.Type, len(self.listeners))
 	handlerFuncName := fmt.Sprintf("Handle%s", event.Type)
 	for _, listener := range self.listeners {
+		log.V(2).Infof("Looking for func %s on listener %s", handlerFuncName, listener.String())
 		if event.Context == nil || event.Context.BootId == listener.Context.BootId {
 			handlerFunc := reflect.ValueOf(listener.Handler).MethodByName(handlerFuncName)
 			if handlerFunc.IsValid() {
@@ -71,7 +82,6 @@ func (self *EventStream) eventLoop(event chan Event, stop chan bool) {
 		case <-stop:
 			return
 		case e := <-event:
-			log.V(2).Infof("Sending %s to listeners", e.Type)
 			self.send(e)
 		}
 	}

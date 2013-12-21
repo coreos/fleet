@@ -30,8 +30,7 @@ func New(reg *registry.Registry, events *registry.EventStream, mach *machine.Mac
 }
 
 func (self *Engine) Run() {
-	self.events.RegisterListener(self, self.machine)
-	self.events.Open()
+	self.events.AddListener("engine", self.machine, self)
 }
 
 func (self *Engine) HandleEventRequestCreated(event registry.Event) {

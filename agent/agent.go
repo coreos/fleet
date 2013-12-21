@@ -46,8 +46,7 @@ func (a *Agent) Run() {
 	svcstop := a.StartServiceHeartbeatThread()
 	machstop := a.StartMachineHeartbeatThread()
 
-	a.events.RegisterListener(a, a.Machine)
-	a.events.Open()
+	a.events.AddListener("agent", a.Machine, a)
 
 	// Block until we receive a stop signal
 	<-a.stop
@@ -56,7 +55,7 @@ func (a *Agent) Run() {
 	svcstop <- true
 	machstop <- true
 
-	a.events.Close()
+	a.events.RemoveListener("agent", a.Machine)
 }
 
 // Stop all async processes the Agent is running
