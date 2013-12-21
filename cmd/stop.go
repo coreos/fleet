@@ -22,6 +22,7 @@ func stopUnitAction(c *cli.Context) {
 		name := path.Base(v)
 		for _, j := range r.FindJobs(name) {
 			r.CancelJob(j.Name)
+			r.DestroyJob(j.Name)
 		}
 	}
 }
