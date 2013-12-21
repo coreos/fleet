@@ -12,11 +12,11 @@ import (
 
 func newStartUnitCommand() cli.Command {
 	return cli.Command{
-		Name:  "start",
+		Name: "start",
 		Flags: []cli.Flag{
 			cli.IntFlag{"count", 1, "Run N instances of these units."},
 		},
-		Usage: "Start (activate) one or more units",
+		Usage:  "Start (activate) one or more units",
 		Action: startUnitAction,
 	}
 }

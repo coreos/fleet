@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	jobPrefix      = "/job/"
+	jobPrefix = "/job/"
 )
 
 // List the jobs all Machines are scheduled to run

@@ -7,14 +7,13 @@ import (
 	"time"
 
 	"github.com/coreos/go-etcd/etcd"
-	//log "github.com/golang/glog"
 
 	"github.com/coreos/coreinit/job"
 	"github.com/coreos/coreinit/machine"
 )
 
 const (
-	offerPrefix    = "offer"
+	offerPrefix = "offer"
 )
 
 func (r *Registry) CreateJobOffer(jo *job.JobOffer) {

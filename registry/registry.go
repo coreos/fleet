@@ -9,8 +9,8 @@ import (
 )
 
 const (
-	keyPrefix      = "/coreos.com/coreinit/"
-	requestPrefix  = "/request/"
+	keyPrefix     = "/coreos.com/coreinit/"
+	requestPrefix = "/request/"
 )
 
 type Registry struct {

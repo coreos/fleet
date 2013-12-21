@@ -5,7 +5,7 @@ import (
 )
 
 const (
-	lockPrefix     = "/locks/"
+	lockPrefix = "/locks/"
 )
 
 // Attempt to acquire a lock in etcd on an arbitrary string. Returns true if

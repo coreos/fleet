@@ -13,7 +13,7 @@ type JobRequest struct {
 	Payloads []JobPayload
 	Machines []machine.Machine
 	Count    int
-	Flags	 int
+	Flags    int
 }
 
 func NewJobRequest(payloads []JobPayload, machines []machine.Machine) (*JobRequest, error) {

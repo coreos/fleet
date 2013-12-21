@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	statePrefix    = "/state/"
+	statePrefix = "/state/"
 )
 
 // Get the current JobState of the provided Job
@@ -71,5 +71,3 @@ func filterEventJobStateExpired(resp *etcd.Response) *Event {
 	j, _ := job.NewJob(path.Base(resp.Node.Key), &js, nil)
 	return &Event{"EventJobStateExpired", *j, nil}
 }
-
-

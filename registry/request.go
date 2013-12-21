@@ -31,7 +31,7 @@ func (r *Registry) ClaimRequest(request *job.JobRequest, m *machine.Machine, ttl
 	return r.acquireLock(key, m.BootId, ttl)
 }
 
-func filterEventRequestCreated(resp *etcd.Response) *Event{
+func filterEventRequestCreated(resp *etcd.Response) *Event {
 	if resp.Action != "set" {
 		return nil
 	}

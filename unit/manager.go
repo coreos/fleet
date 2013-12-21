@@ -10,8 +10,8 @@ import (
 	"syscall"
 
 	systemdDbus "github.com/coreos/go-systemd/dbus"
-	"github.com/guelfey/go.dbus"
 	log "github.com/golang/glog"
+	"github.com/guelfey/go.dbus"
 
 	"github.com/coreos/coreinit/job"
 	"github.com/coreos/coreinit/machine"

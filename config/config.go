@@ -12,7 +12,7 @@ import (
 type Config struct {
 	BootId      string   `toml:"bootid"`
 	EtcdServers []string `toml:"etcd_servers"`
-	PublicIP  string `toml:"public_ip"`
+	PublicIP    string   `toml:"public_ip"`
 	Verbosity   int      `toml:"verbosity"`
 }
 

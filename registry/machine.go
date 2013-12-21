@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	machinePrefix  = "/machines/"
+	machinePrefix = "/machines/"
 )
 
 // Describe all active Machines

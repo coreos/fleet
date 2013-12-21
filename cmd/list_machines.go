@@ -8,10 +8,10 @@ import (
 
 func newListMachinesCommand() cli.Command {
 	return cli.Command{
-		Name:  "list-machines",
-		Usage: "List all machines.",
+		Name:        "list-machines",
+		Usage:       "List all machines.",
 		Description: "",
-		Action: listMachinesAction,
+		Action:      listMachinesAction,
 	}
 }
 
