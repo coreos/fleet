@@ -76,7 +76,7 @@ func (self *EventStream) filterEventMachineUpdated(resp *etcd.Response) *Event {
 	return &Event{"EventMachineUpdated", m, nil}
 }
 
-func (self *EventStream) filterEventMachineDeleted(resp *etcd.Response) *Event {
+func (self *EventStream) filterEventMachineRemoved(resp *etcd.Response) *Event {
 	if base := path.Base(resp.Node.Key); base != "object" {
 		return nil
 	}
@@ -85,7 +85,6 @@ func (self *EventStream) filterEventMachineDeleted(resp *etcd.Response) *Event {
 		return nil
 	}
 
-	name := path.Base(path.Dir(resp.Node.Key))
-	m := machine.New(name, "")
-	return &Event{"EventMachineDeleted", *m, nil}
+	machName := path.Base(path.Dir(resp.Node.Key))
+	return &Event{"EventMachineRemoved", machName, nil}
 }

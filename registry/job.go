@@ -57,11 +57,7 @@ func (r *Registry) GetJobTarget(jobName string) *machine.Machine {
 		return nil
 	}
 
-	var tgt machine.Machine
-	//TODO: handle error from unmarshal
-	unmarshal(resp.Node.Value, &tgt)
-
-	return &tgt
+	return machine.New(resp.Node.Value, "")
 }
 
 func (r *Registry) GetJob(jobName string) *job.Job {

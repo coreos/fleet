@@ -31,6 +31,14 @@ type EventListener struct {
 	Context *machine.Machine
 }
 
+func (self *EventListener) String() string {
+	if self.Context != nil {
+		return self.Context.BootId
+	} else {
+		return "N/A"
+	}
+}
+
 func NewEventStream(reg *Registry) *EventStream {
 	client := etcd.NewClient(nil)
 	client.SetConsistency(etcd.WEAK_CONSISTENCY)
@@ -50,6 +58,7 @@ func (self *EventStream) send(event Event) {
 		if event.Context == nil || event.Context.BootId == listener.Context.BootId {
 			handlerFunc := reflect.ValueOf(listener.Handler).MethodByName(handlerFuncName)
 			if handlerFunc.IsValid() {
+				log.V(2).Infof("Calling event handler for %s on listener %s", event.Type, listener.String())
 				go handlerFunc.Call([]reflect.Value{reflect.ValueOf(event)})
 			}
 		}
@@ -62,6 +71,7 @@ func (self *EventStream) eventLoop(event chan Event, stop chan bool) {
 		case <-stop:
 			return
 		case e := <-event:
+			log.V(2).Infof("Sending %s to listeners", e.Type)
 			self.send(e)
 		}
 	}
@@ -73,7 +83,7 @@ func (self *EventStream) Open() {
 	watchMap := map[string][]func(*etcd.Response) *Event{
 		path.Join(keyPrefix, statePrefix):   []func(*etcd.Response) *Event{filterEventJobStatePublished, filterEventJobStateExpired},
 		path.Join(keyPrefix, jobPrefix):     []func(*etcd.Response) *Event{filterEventJobCreated, filterEventJobScheduled, filterEventJobCancelled},
-		path.Join(keyPrefix, machinePrefix): []func(*etcd.Response) *Event{self.filterEventMachineUpdated, self.filterEventMachineDeleted},
+		path.Join(keyPrefix, machinePrefix): []func(*etcd.Response) *Event{self.filterEventMachineUpdated, self.filterEventMachineRemoved},
 		path.Join(keyPrefix, requestPrefix): []func(*etcd.Response) *Event{filterEventRequestCreated},
 		path.Join(keyPrefix, offerPrefix):   []func(*etcd.Response) *Event{filterEventJobOffered, filterEventJobBidSubmitted},
 	}
@@ -109,7 +119,7 @@ func pipe(etcdchan chan *etcd.Response, translate func(resp *etcd.Response) *Eve
 
 func (self *EventStream) watch(etcdchan chan *etcd.Response, key string) {
 	for true {
-		log.V(1).Infof("Creating etcd watcher: key=%s, machines=%s", key, strings.Join(self.etcd.GetCluster(), ","))
+		log.V(2).Infof("Creating etcd watcher: key=%s, machines=%s", key, strings.Join(self.etcd.GetCluster(), ","))
 		_, err := self.etcd.Watch(key, 0, true, etcdchan, nil)
 
 		var errString string
@@ -119,7 +129,7 @@ func (self *EventStream) watch(etcdchan chan *etcd.Response, key string) {
 			errString = err.Error()
 		}
 
-		log.V(1).Infof("etcd watch exited: key=%s, err=\"%s\"", key, errString)
+		log.V(2).Infof("etcd watch exited: key=%s, err=\"%s\"", key, errString)
 
 		time.Sleep(time.Second)
 	}

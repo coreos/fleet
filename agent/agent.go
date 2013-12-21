@@ -101,7 +101,7 @@ func (a *Agent) StartServiceHeartbeatThread() chan bool {
 		localJobs := a.Manager.GetJobs()
 		ttl := parseDuration(a.ServiceTTL)
 		for _, j := range localJobs {
-			if tgt := a.Registry.GetJobTarget(j.Name); tgt != nil && tgt.BootId != a.Machine.BootId {
+			if tgt := a.Registry.GetJobTarget(j.Name); tgt != nil && tgt.BootId == a.Machine.BootId {
 				log.V(1).Infof("Reporting state of Job(%s)", j.Name)
 				a.Registry.SaveJobState(&j, ttl)
 			} else {
@@ -150,12 +150,9 @@ func (a *Agent) HandleEventJobScheduled(event registry.Event) {
 
 func (a *Agent) HandleEventJobCancelled(event registry.Event) {
 	jobName := event.Payload.(string)
-	log.Infof("EventJobRemoved(%s): stopping job", jobName)
+	log.Infof("EventJobCancelled(%s): stopping job", jobName)
 	j, _ := job.NewJob(jobName, nil, nil)
 	a.Manager.StopJob(j)
-
-	//TODO: This should happen reactively to the StopJob call succeeding
-	a.Registry.DestroyJob(jobName)
 }
 
 func parseDuration(d string) time.Duration {

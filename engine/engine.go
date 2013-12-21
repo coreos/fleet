@@ -100,7 +100,7 @@ func (self *Engine) HandleEventJobBidSubmitted(event registry.Event) {
 	log.V(1).Infof("EventJobBidSubmitted(%s): accepted JobBid from Machine(%s), resolving JobOffer", jb.JobName, jb.MachineName)
 	self.registry.ResolveJobOffer(jb.JobName)
 
-	log.Infof("EventJobBidSubmitted(%s): instructing Machine to run Job", jb.MachineName)
+	log.Infof("EventJobBidSubmitted(%s): instructing Machine(%s) to run Job", jb.JobName, jb.MachineName)
 	self.registry.ScheduleJob(jb.JobName, jb.MachineName)
 }
 
@@ -123,7 +123,19 @@ func (self *Engine) HandleEventMachineUpdated(event registry.Event) {
 	//TODO reimplement?
 }
 
-func (self *Engine) HandleEventMachineDeleted(event registry.Event) {
-	//m := event.Payload.(machine.Machine)
-	//TODO reimplement?
+func (self *Engine) HandleEventMachineRemoved(event registry.Event) {
+	machName := event.Payload.(string)
+	for _, j := range self.registry.GetAllJobs() {
+		tgt := self.registry.GetJobTarget(j.Name)
+		if tgt == nil || tgt.BootId != machName {
+			continue
+		}
+
+		log.V(1).Infof("EventMachineRemoved(%s): cancelling Job(%s)", machName, j.Name)
+		self.registry.CancelJob(j.Name)
+
+		offer := job.NewOfferFromJob(j)
+		log.V(1).Infof("EventMachineRemoved(%s): re-publishing JobOffer(%s)", machName, offer.Job.Name)
+		self.registry.CreateJobOffer(offer)
+	}
 }
