@@ -131,9 +131,18 @@ func (a *Agent) StartServiceHeartbeatThread() chan bool {
 }
 
 func (a *Agent) HandleEventJobOffered(event registry.Event) {
-	jobName := event.Payload.(string)
-	log.Infof("EventJobOffered(%s): submitting JobBid", jobName)
-	jb := job.NewBid(jobName, a.Machine.BootId)
+	jo := event.Payload.(job.JobOffer)
+	log.V(1).Infof("EventJobOffered(%s): verifying ability to run Job", jo.Job.Name)
+
+	for _, peerName := range jo.Peers {
+		if tgt := a.Registry.GetJobTarget(peerName); tgt == nil || tgt.BootId != a.Machine.BootId {
+			log.V(1).Infof("EventJobOffered(%s): unable to run Job, Peer(%s) not scheduled here", jo.Job.Name, peerName)
+			return
+		}
+	}
+
+	log.Infof("EventJobOffered(%s): submitting JobBid", jo.Job.Name)
+	jb := job.NewBid(jo.Job.Name, a.Machine.BootId)
 	a.Registry.SubmitJobBid(jb)
 }
 

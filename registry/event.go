@@ -95,7 +95,7 @@ func (self *EventStream) Open() {
 		path.Join(keyPrefix, jobPrefix):     []func(*etcd.Response) *Event{filterEventJobCreated, filterEventJobScheduled, filterEventJobCancelled},
 		path.Join(keyPrefix, machinePrefix): []func(*etcd.Response) *Event{self.filterEventMachineUpdated, self.filterEventMachineRemoved},
 		path.Join(keyPrefix, requestPrefix): []func(*etcd.Response) *Event{filterEventRequestCreated},
-		path.Join(keyPrefix, offerPrefix):   []func(*etcd.Response) *Event{filterEventJobOffered, filterEventJobBidSubmitted},
+		path.Join(keyPrefix, offerPrefix):   []func(*etcd.Response) *Event{self.filterEventJobOffered, filterEventJobBidSubmitted},
 	}
 
 	for key, funcs := range watchMap {

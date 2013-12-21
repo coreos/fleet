@@ -25,3 +25,7 @@ func NewJob(name string, state *JobState, payload *JobPayload) (*Job, error) {
 
 	return &Job{name, payloadType, state, payload}, nil
 }
+
+func (self *Job) String() string {
+	return fmt.Sprintf("{Name=%s, Type=%s}", self.Name, self.Type)
+}
