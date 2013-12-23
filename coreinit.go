@@ -25,7 +25,7 @@ func main() {
 		syscall.Exit(1)
 	}
 
-	if cfg.Verbosity >= 2 {
+	if cfg.Verbosity >= 3 {
 		etcd.OpenDebug()
 	}
 
