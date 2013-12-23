@@ -30,21 +30,25 @@ func startUnitAction(c *cli.Context) {
 		out, err := ioutil.ReadFile(v)
 		if err != nil {
 			fmt.Printf("%s: No such file or directory\n", v)
-			continue
+			return
 		}
 
 		name := path.Base(v)
 		payload := job.JobPayload{name, string(out)}
 		if err != nil {
-			fmt.Print(err)
+			fmt.Println(err.Error())
+			return
 		} else {
 			payloads[i] = payload
 		}
 	}
 
-	//TODO: Handle error response from NewJobRequest
-	req, _ := job.NewJobRequest(payloads, nil)
-	req.Count = c.Int("count")
+	req, err := job.NewJobRequest(payloads, nil)
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
 
+	req.Count = c.Int("count")
 	r.AddRequest(req)
 }
