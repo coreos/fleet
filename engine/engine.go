@@ -19,15 +19,13 @@ const (
 type Engine struct {
 	registry  *registry.Registry
 	events    *registry.EventStream
-	scheduler *Scheduler
 	machine   *machine.Machine
 	claimTTL  time.Duration
 }
 
 func New(reg *registry.Registry, events *registry.EventStream, mach *machine.Machine) *Engine {
-	scheduler := NewScheduler()
 	claimTTL, _ := time.ParseDuration(DefaultRequestClaimTTL)
-	return &Engine{reg, events, scheduler, mach, claimTTL}
+	return &Engine{reg, events, mach, claimTTL}
 }
 
 func (self *Engine) Run() {
