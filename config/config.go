@@ -4,6 +4,7 @@ import (
 	"flag"
 	"io"
 	"strconv"
+	"strings"
 
 	"github.com/BurntSushi/toml"
 	"github.com/golang/glog"
@@ -14,11 +15,30 @@ type Config struct {
 	EtcdServers []string `toml:"etcd_servers"`
 	PublicIP    string   `toml:"public_ip"`
 	Verbosity   int      `toml:"verbosity"`
+	RawMetadata string   `toml:"metadata"`
 }
 
 func NewConfig() *Config {
 	conf := Config{BootId: "", Verbosity: 0, PublicIP: ""}
 	return &conf
+}
+
+func (self *Config) Metadata() map[string]string {
+	meta := make(map[string]string, 0)
+
+	for _, pair := range strings.Split(self.RawMetadata, ",") {
+		parts := strings.SplitN(pair, "=", 2)
+		if len(parts) != 2 {
+			continue
+		}
+
+		key := strings.TrimSpace(parts[0])
+		val := strings.TrimSpace(parts[1])
+
+		meta[key] = val
+	}
+
+	return meta
 }
 
 func UpdateConfigFromFile(conf *Config, f io.Reader) error {

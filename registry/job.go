@@ -57,7 +57,7 @@ func (r *Registry) GetJobTarget(jobName string) *machine.Machine {
 		return nil
 	}
 
-	return machine.New(resp.Node.Value, "")
+	return machine.New(resp.Node.Value, "", make(map[string]string, 0))
 }
 
 func (r *Registry) GetJob(jobName string) *job.Job {
@@ -137,7 +137,7 @@ func filterEventJobScheduled(resp *etcd.Response) *Event {
 		return nil
 	}
 
-	mach := machine.New(resp.Node.Value, "")
+	mach := machine.New(resp.Node.Value, "", make(map[string]string, 0))
 	jobName := path.Base(strings.TrimSuffix(dir, "/"))
 
 	return &Event{"EventJobScheduled", jobName, mach}

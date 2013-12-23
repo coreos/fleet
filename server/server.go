@@ -19,7 +19,7 @@ type Server struct {
 }
 
 func New(cfg config.Config) *Server {
-	m := machine.New(cfg.BootId, cfg.PublicIP)
+	m := machine.New(cfg.BootId, cfg.PublicIP, cfg.Metadata())
 
 	etcdClient := etcd.NewClient(cfg.EtcdServers)
 	etcdClient.SetConsistency(etcd.WEAK_CONSISTENCY)
@@ -41,7 +41,7 @@ func (self *Server) Run() {
 
 func (self *Server) Configure(cfg *config.Config) {
 	if cfg.BootId != self.machine.BootId {
-		self.machine = machine.New(cfg.BootId, cfg.PublicIP)
+		self.machine = machine.New(cfg.BootId, cfg.PublicIP, cfg.Metadata())
 		self.agent.Stop()
 		self.agent = agent.New(self.registry, self.events, self.machine, "")
 		go self.agent.Run()

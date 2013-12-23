@@ -7,7 +7,7 @@ import (
 )
 
 func TestJobState(t *testing.T) {
-	mach := machine.New("XXX", "")
+	mach := machine.New("XXX", "", make(map[string]string, 0))
 	js1 := NewJobState("loaded", "inactive", "dead", []string{}, mach)
 
 	if js1.LoadState != "loaded" {
