@@ -26,6 +26,9 @@ type Agent struct {
 	Machine    *machine.Machine
 	ServiceTTL string
 	stop       chan bool
+
+	// map of Peer dependencies to unresolved JobOffers
+	peers map[string]string
 }
 
 func New(registry *registry.Registry, events *registry.EventStream, machine *machine.Machine, ttl string) *Agent {
@@ -35,7 +38,7 @@ func New(registry *registry.Registry, events *registry.EventStream, machine *mac
 		ttl = DefaultServiceTTL
 	}
 
-	agent := &Agent{registry, events, mgr, machine, ttl, make(chan bool)}
+	agent := &Agent{registry, events, mgr, machine, ttl, make(chan bool), make(map[string]string, 0)}
 
 	return agent
 }
@@ -137,6 +140,10 @@ func (a *Agent) HandleEventJobOffered(event registry.Event) {
 	for _, peerName := range jo.Peers {
 		if tgt := a.Registry.GetJobTarget(peerName); tgt == nil || tgt.BootId != a.Machine.BootId {
 			log.V(1).Infof("EventJobOffered(%s): unable to run Job, Peer(%s) not scheduled here", jo.Job.Name, peerName)
+
+			log.V(1).Infof("EventJobOffered(%s): tracking Job until Peer(%s) is scheduled", jo.Job.Name, peerName)
+			a.peers[peerName] = jo.Job.Name
+
 			return
 		}
 	}
@@ -149,11 +156,43 @@ func (a *Agent) HandleEventJobOffered(event registry.Event) {
 func (a *Agent) HandleEventJobScheduled(event registry.Event) {
 	jobName := event.Payload.(string)
 
-	log.Infof("EventJobScheduled(%s): Fetching Job from Registry", jobName)
+	if event.Context.BootId == a.Machine.BootId {
+		a.handleEventJobScheduledLocally(jobName)
+	} else {
+		a.handleEventJobScheduledElsewhere(jobName)
+	}
+}
+
+func (a *Agent) handleEventJobScheduledLocally(jobName string) {
+	log.V(1).Infof("EventJobScheduled(%s): Job scheduled to this Agent", jobName)
+
+	log.V(1).Infof("EventJobScheduled(%s): Fetching Job from Registry", jobName)
 	j := a.Registry.GetJob(jobName)
 
 	log.Infof("EventJobScheduled(%s): Starting Job", j.Name)
 	a.Manager.StartJob(j)
+
+	if peerName, ok := a.peers[jobName]; ok {
+		log.V(1).Infof("EventJobScheduled(%s): Found unresolved offer for Peer(%s)", jobName, peerName)
+
+		log.V(1).Infof("EventJobScheduled(%s): Removing Job from local peer list", jobName)
+		delete(a.peers, jobName)
+
+		log.Infof("EventJobScheduled(%s): submitting JobBid for Peer(%s)", jobName, peerName)
+		jb := job.NewBid(peerName, a.Machine.BootId)
+		a.Registry.SubmitJobBid(jb)
+	}
+}
+
+func (a *Agent) handleEventJobScheduledElsewhere(jobName string) {
+	log.V(1).Infof("EventJobScheduled(%s): Job not scheduled to local Agent", jobName)
+
+	if _, ok := a.peers[jobName]; ok {
+		log.V(1).Infof("EventJobScheduled(%s): Removing Job from local peer list", jobName)
+		delete(a.peers, jobName)
+
+		//TODO: Also remove any keys where value=jobName - this is just extra cleanup
+	}
 }
 
 func (a *Agent) HandleEventJobCancelled(event registry.Event) {
