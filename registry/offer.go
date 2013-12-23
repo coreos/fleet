@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/coreos/go-etcd/etcd"
+	log "github.com/golang/glog"
 
 	"github.com/coreos/coreinit/job"
 	"github.com/coreos/coreinit/machine"
@@ -34,7 +35,12 @@ func (r *Registry) ClaimJobOffer(jobName string, m *machine.Machine, ttl time.Du
 
 func (r *Registry) ResolveJobOffer(jobName string) {
 	key := path.Join(keyPrefix, offerPrefix, jobName)
-	r.etcd.Delete(key, true)
+	_, err := r.etcd.Delete(key, true)
+	if err == nil {
+		log.V(2).Infof("Successfully resolved JobOffer(%s)", jobName)
+	} else {
+		log.V(2).Infof("Failed to resolve JobOffer(%s): %s", jobName, err.Error())
+	}
 }
 
 func (r *Registry) SubmitJobBid(jb *job.JobBid) {
