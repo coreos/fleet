@@ -149,6 +149,34 @@ func (a *Agent) HandleEventJobOffered(event registry.Event) {
 		}
 	}
 
+	for key, vals := range jo.Requirements {
+		if len(vals) == 0 {
+			log.V(2).Infof("EventJobOffered(%s): required Metadata(%s) provided no values, skipping assertion.", jo.Job.Name, key)
+			continue
+		}
+
+		local, ok := a.Machine.Metadata[key]
+		if !ok {
+			log.V(1).Infof("EventJobOffered(%s): no local values found for required Metadata(%s), unable to run job", jo.Job.Name, key)
+			return
+		}
+
+		log.V(2).Infof("EventJobOffered(%s): asserting local Metadata(%s) meets requirements", jo.Job.Name, key)
+
+		var localMatch bool
+		for _, val := range vals {
+			if local == val {
+				log.V(1).Infof("EventJobOffered(%s): local Metadata(%s) meets requirement", jo.Job.Name, key)
+				localMatch = true
+			}
+		}
+
+		if !localMatch {
+			log.V(1).Infof("EventJobOffered(%s): local Metadata(%s) does not match requirement, unable to run job", jo.Job.Name, key)
+			return
+		}
+	}
+
 	log.Infof("EventJobOffered(%s): submitting JobBid", jo.Job.Name)
 	jb := job.NewBid(jo.Job.Name, a.Machine.BootId)
 	a.Registry.SubmitJobBid(jb)
@@ -199,7 +227,7 @@ func (a *Agent) handleEventJobScheduledElsewhere(jobName string) {
 func (a *Agent) HandleEventJobCancelled(event registry.Event) {
 	jobName := event.Payload.(string)
 	log.Infof("EventJobCancelled(%s): stopping job", jobName)
-	j, _ := job.NewJob(jobName, nil, nil)
+	j, _ := job.NewJob(jobName, nil, nil, make(map[string][]string, 0))
 	a.Manager.StopJob(j)
 }
 

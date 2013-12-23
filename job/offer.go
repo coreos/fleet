@@ -6,8 +6,9 @@ import (
 )
 
 type JobOffer struct {
-	Job   Job
-	Peers []string
+	Job          Job
+	Peers        []string
+	Requirements map[string][]string
 }
 
 func NewOfferFromJob(j Job) *JobOffer {
@@ -19,7 +20,7 @@ func NewOfferFromJob(j Job) *JobOffer {
 			peers = append(peers, svc)
 		}
 	}
-	return &JobOffer{j, peers}
+	return &JobOffer{j, peers, j.Requirements}
 }
 
 type JobBid struct {

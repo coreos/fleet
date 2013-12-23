@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"path"
+	"strings"
 
 	"github.com/codegangsta/cli"
 
@@ -15,6 +16,7 @@ func newStartUnitCommand() cli.Command {
 		Name: "start",
 		Flags: []cli.Flag{
 			cli.IntFlag{"count", 1, "Run N instances of these units."},
+			cli.StringFlag{"require", "", "Filter hosts with a set of requirements. Format is comma-delimited list of <key>=<value> pairs."},
 		},
 		Usage:  "Start (activate) one or more units",
 		Action: startUnitAction,
@@ -43,7 +45,8 @@ func startUnitAction(c *cli.Context) {
 		}
 	}
 
-	req, err := job.NewJobRequest(payloads, nil)
+	requirements := parseRequirements(c.String("require"))
+	req, err := job.NewJobRequest(payloads, nil, requirements)
 	if err != nil {
 		fmt.Println(err.Error())
 		return
@@ -51,4 +54,31 @@ func startUnitAction(c *cli.Context) {
 
 	req.Count = c.Int("count")
 	r.AddRequest(req)
+}
+
+func parseRequirements(arg string) map[string][]string {
+	reqs := make(map[string][]string, 0)
+
+	add := func(key, val string) {
+		vals, ok := reqs[key]
+		if !ok {
+			vals = make([]string, 0)
+			reqs[key] = vals
+		}
+		vals = append(vals, val)
+		reqs[key] = vals
+	}
+
+	for _, pair := range strings.Split(arg, ",") {
+		parts := strings.SplitN(pair, "=", 2)
+		if len(parts) != 2 {
+			continue
+		}
+
+		key := strings.TrimSpace(parts[0])
+		val := strings.TrimSpace(parts[1])
+		add(key, val)
+	}
+
+	return reqs
 }

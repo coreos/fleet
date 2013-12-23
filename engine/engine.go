@@ -56,7 +56,7 @@ func getJobsFromRequest(req *job.JobRequest) []job.Job {
 	for i := 1; i <= req.Count; i++ {
 		for ii := 0; ii < len(req.Payloads); ii++ {
 			payload := req.Payloads[ii]
-			j, _ := job.NewJob(fmt.Sprintf("%d.%s", i, payload.Name), nil, &payload)
+			j, _ := job.NewJob(fmt.Sprintf("%d.%s", i, payload.Name), nil, &payload, req.Requirements)
 			jobs = append(jobs, *j)
 		}
 	}

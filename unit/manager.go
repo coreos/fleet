@@ -85,7 +85,7 @@ func (m *SystemdManager) GetJobs() map[string]job.Job {
 	for _, u := range units {
 		state := m.getJobStateFromUnit(&u)
 		name := m.stripUnitNamePrefix(u.Name())
-		j, _ := job.NewJob(name, state, nil)
+		j, _ := job.NewJob(name, state, nil, make(map[string][]string, 0))
 		jobs[j.Name] = *j
 	}
 

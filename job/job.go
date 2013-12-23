@@ -7,13 +7,14 @@ import (
 )
 
 type Job struct {
-	Name    string
-	Type    string
-	State   *JobState
-	Payload *JobPayload
+	Name         string
+	Type         string
+	State        *JobState
+	Payload      *JobPayload
+	Requirements map[string][]string
 }
 
-func NewJob(name string, state *JobState, payload *JobPayload) (*Job, error) {
+func NewJob(name string, state *JobState, payload *JobPayload, requirements map[string][]string) (*Job, error) {
 	var payloadType string
 	if strings.HasSuffix(name, ".service") {
 		payloadType = "systemd-service"
@@ -23,7 +24,7 @@ func NewJob(name string, state *JobState, payload *JobPayload) (*Job, error) {
 		return nil, errors.New(fmt.Sprintf("Unrecognized systemd unit %s", name))
 	}
 
-	return &Job{name, payloadType, state, payload}, nil
+	return &Job{name, payloadType, state, payload, requirements}, nil
 }
 
 func (self *Job) String() string {
