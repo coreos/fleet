@@ -99,8 +99,7 @@ func (r *Registry) CancelJob(jobName string) {
 }
 
 func (r *Registry) ClaimJob(jobName string, m *machine.Machine, ttl time.Duration) bool {
-	key := path.Join(keyPrefix, lockPrefix, fmt.Sprintf("job-%s", jobName))
-	return r.acquireLock(key, m.BootId, ttl)
+	return r.acquireLeadership(fmt.Sprintf("job-%s", jobName), m.BootId, ttl)
 }
 
 func filterEventJobCreated(resp *etcd.Response) *Event {

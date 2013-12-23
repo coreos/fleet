@@ -1,27 +1,27 @@
 package registry
 
 import (
+	"path"
 	"time"
+
+	log "github.com/golang/glog"
 )
 
 const (
-	lockPrefix = "/locks/"
+	leadershipPrefix = "/leadership/"
 )
 
-// Attempt to acquire a lock in etcd on an arbitrary string. Returns true if
-// successful, otherwise false.
-func (r *Registry) acquireLock(key string, context string, ttl time.Duration) bool {
-	resp, err := r.etcd.Get(key, false, true)
-
-	//FIXME: Here lies a race condition!
-
-	if resp != nil {
-		if resp.Node.Value == context {
-			_, err = r.etcd.Update(key, context, uint64(ttl.Seconds()))
-			return err == nil
-		}
+// Attempt to acquire leadership of a given item. Return boolean success value.
+// This is not a fair locking mechanism. It does not queue up multiple leaders.
+func (r *Registry) acquireLeadership(item string, machine string, ttl time.Duration) bool {
+	log.V(2).Infof("Machine(%s) is attempting to acquire leadership of Item(%s)", machine, item)
+	key := path.Join(keyPrefix, leadershipPrefix, item)
+	_, err := r.etcd.Create(key, machine, uint64(ttl.Seconds()))
+	if err == nil {
+		log.V(2).Infof("Machine(%s) successfully acquired leadership of Item(%s)", machine, item)
+		return true
+	} else {
+		log.V(2).Infof("Machine(%s) failed to acquire leadership of Item(%s)", machine, item)
+		return false
 	}
-
-	_, err = r.etcd.Create(key, context, uint64(ttl.Seconds()))
-	return err == nil
 }

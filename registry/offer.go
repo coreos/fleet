@@ -29,8 +29,7 @@ func (r *Registry) ClaimJobOffer(jobName string, m *machine.Machine, ttl time.Du
 		return false
 	}
 
-	key = path.Join(keyPrefix, lockPrefix, fmt.Sprintf("offer-%s", jobName))
-	return r.acquireLock(key, m.BootId, ttl)
+	return r.acquireLeadership(fmt.Sprintf("offer-%s", jobName), m.BootId, ttl)
 }
 
 func (r *Registry) ResolveJobOffer(jobName string) {

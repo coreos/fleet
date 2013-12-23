@@ -27,8 +27,7 @@ func (r *Registry) ResolveRequest(req *job.JobRequest) {
 }
 
 func (r *Registry) ClaimRequest(request *job.JobRequest, m *machine.Machine, ttl time.Duration) bool {
-	key := path.Join(keyPrefix, lockPrefix, fmt.Sprintf("req-%s", request.ID.String()))
-	return r.acquireLock(key, m.BootId, ttl)
+	return r.acquireLeadership(fmt.Sprintf("req-%s", request.ID.String()), m.BootId, ttl)
 }
 
 func filterEventRequestCreated(resp *etcd.Response) *Event {
