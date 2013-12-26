@@ -36,10 +36,11 @@ func (self *Engine) HandleEventRequestCreated(event registry.Event) {
 
 	log.V(1).Infof("EventRequestCreated(%s): attempting to claim JobRequest", request.ID.String())
 	if !self.claimRequest(&request) {
+		log.V(1).Infof("EventRequestCreated(%s): could not claim JobRequest", request.ID.String())
 		return
+	} else {
+		log.V(1).Infof("EventRequestCreated(%s): claimed JobRequest", request.ID.String())
 	}
-
-	log.Infof("EventRequestCreated(%s): claimed JobRequest", request.ID.String())
 
 	for _, j := range getJobsFromRequest(&request) {
 		log.Infof("EventRequestCreated(%s): creating Job(%s)", request.ID.String(), j.Name)
@@ -74,6 +75,8 @@ func (self *Engine) HandleEventJobCreated(event registry.Event) {
 	if !self.claimJob(j.Name) {
 		log.V(1).Infof("EventJobCreated(%s): unable to claim Job", j.Name)
 		return
+	} else {
+		log.V(1).Infof("EventJobCreated(%s): claimed Job", j.Name)
 	}
 
 	offer := job.NewOfferFromJob(j)
@@ -94,6 +97,8 @@ func (self *Engine) HandleEventJobBidSubmitted(event registry.Event) {
 	if !self.claimJobOffer(jb.JobName) {
 		log.V(1).Infof("EventJobBidSubmitted(%s): could not claim JobOffer", jb.JobName)
 		return
+	} else {
+		log.V(1).Infof("EventJobBidSubmitted(%s): claimed JobOffer", jb.JobName)
 	}
 
 	log.V(1).Infof("EventJobBidSubmitted(%s): accepted JobBid from Machine(%s), resolving JobOffer", jb.JobName, jb.MachineName)
