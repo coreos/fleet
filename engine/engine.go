@@ -2,7 +2,6 @@ package engine
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	log "github.com/golang/glog"
@@ -78,7 +77,7 @@ func (self *Engine) HandleEventJobCreated(event registry.Event) {
 	}
 
 	offer := job.NewOfferFromJob(j)
-	log.V(1).Infof("EventJobCreated(%s): created JobOffer(%s) with Peers(%s)", j.Name, offer.Job.Name, strings.Join(offer.Peers, ","))
+	log.V(1).Infof("EventJobCreated(%s): created JobOffer(%s)", j.Name, offer.Job.Name)
 
 	log.Infof("EventJobCreated(%s): publishing JobOffer(%s)", j.Name, offer.Job.Name)
 	self.registry.CreateJobOffer(offer)

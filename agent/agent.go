@@ -137,7 +137,7 @@ func (a *Agent) HandleEventJobOffered(event registry.Event) {
 	jo := event.Payload.(job.JobOffer)
 	log.V(1).Infof("EventJobOffered(%s): verifying ability to run Job", jo.Job.Name)
 
-	for _, peerName := range jo.Peers {
+	for _, peerName := range jo.Job.Peers {
 		//FIXME: ideally the machine would use its own knowledge rather than calling GetJobTarget
 		if tgt := a.Registry.GetJobTarget(peerName); tgt == nil || tgt.BootId != a.Machine.BootId {
 			log.V(1).Infof("EventJobOffered(%s): unable to run Job, Peer(%s) not scheduled here", jo.Job.Name, peerName)
@@ -149,7 +149,7 @@ func (a *Agent) HandleEventJobOffered(event registry.Event) {
 		}
 	}
 
-	for key, vals := range jo.Requirements {
+	for key, vals := range jo.Job.Requirements {
 		if len(vals) == 0 {
 			log.V(2).Infof("EventJobOffered(%s): required Metadata(%s) provided no values, skipping assertion.", jo.Job.Name, key)
 			continue
