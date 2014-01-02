@@ -12,7 +12,6 @@ import (
 
 var out *tabwriter.Writer
 
-
 func init() {
 	out = new(tabwriter.Writer)
 	out.Init(os.Stdout, 0, 8, 1, '\t', 0)

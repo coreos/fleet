@@ -5,8 +5,6 @@ import (
 	"path"
 
 	"github.com/codegangsta/cli"
-
-	"github.com/coreos/coreinit/job"
 )
 
 func newStatusUnitsCommand() cli.Command {
@@ -28,27 +26,28 @@ func statusUnitsAction(c *cli.Context) {
 		}
 
 		name := path.Base(v)
-		j, _ := job.NewJob(name, nil, nil)
-		j.State = r.GetJobState(j)
+		for _, j := range r.FindJobs(name) {
+			state := r.GetJobState(&j)
 
-		loadState := "-"
-		activeState := "-"
-		subState := "-"
+			loadState := "-"
+			activeState := "-"
+			subState := "-"
 
-		if j.State != nil {
-			loadState = j.State.LoadState
-			activeState = j.State.ActiveState
-			subState = j.State.SubState
-		}
-
-		fmt.Printf("%s\n", j.Name)
-		fmt.Printf("\tLoaded: %s\n", loadState)
-		fmt.Printf("\tActive: %s (%s)\n", activeState, subState)
-		if j.State != nil {
-			for _, sock := range j.State.Sockets {
-				fmt.Printf("\tListen: %s\n", sock)
+			if state != nil {
+				loadState = state.LoadState
+				activeState = state.ActiveState
+				subState = state.SubState
 			}
+
+			fmt.Printf("%s\n", j.Name)
+			fmt.Printf("\tLoaded: %s\n", loadState)
+			fmt.Printf("\tActive: %s (%s)\n", activeState, subState)
+			if state != nil {
+				for _, sock := range state.Sockets {
+					fmt.Printf("\tListen: %s\n", sock)
+				}
+			}
+			fmt.Print("\n")
 		}
-		fmt.Print("\n")
 	}
 }

@@ -1,8 +1,8 @@
 package unit
 
 import (
-	"fmt"
 	"errors"
+	"fmt"
 	"net"
 	"net/url"
 	"strconv"
@@ -13,7 +13,7 @@ import (
 
 type SystemdSocket struct {
 	manager *SystemdManager
-	name string
+	name    string
 }
 
 func NewSystemdSocket(manager *SystemdManager, name string) *SystemdSocket {
@@ -93,8 +93,8 @@ func filterListenLines(lines []string) []string {
 func parseListenLine(line string) (string, int, error) {
 	keyMap := map[string]string{
 		"ListenSequentialPacket": "unix",
-		"ListenDatagram": "udp",
-		"ListenStream": "tcp",
+		"ListenDatagram":         "udp",
+		"ListenStream":           "tcp",
 	}
 
 	parts := strings.SplitN(line, "=", 2)

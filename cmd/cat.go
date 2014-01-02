@@ -27,8 +27,8 @@ func printUnitAction(c *cli.Context) {
 
 	name := path.Base(c.Args()[0])
 
-	for jobName, j := range r.GetAllScheduledJobs() {
-		if jobName == name {
+	for _, j := range r.GetAllJobs() {
+		if j.Name == name {
 			fmt.Println(j.Payload.Value)
 			return
 		}

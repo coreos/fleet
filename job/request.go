@@ -8,19 +8,16 @@ import (
 	"github.com/coreos/coreinit/machine"
 )
 
-const (
-	RequestAllMachines = 1 << iota
-)
-
 type JobRequest struct {
-	ID       gouuid.UUID
-	Payloads []JobPayload
-	Machines []machine.Machine
-	Count    int
-	Flags	 int
+	ID           gouuid.UUID
+	Payloads     []JobPayload
+	Machines     []machine.Machine
+	Requirements map[string][]string
+	Count        int
+	Flags        int
 }
 
-func NewJobRequest(payloads []JobPayload, machines []machine.Machine) (*JobRequest, error) {
+func NewJobRequest(payloads []JobPayload, machines []machine.Machine, requirements map[string][]string) (*JobRequest, error) {
 	if payloads == nil || len(payloads) < 1 {
 		return nil, errors.New("A minimum of one JobPayload must be provided")
 	}
@@ -30,7 +27,7 @@ func NewJobRequest(payloads []JobPayload, machines []machine.Machine) (*JobReque
 		return nil, errors.New("Failed to generate JobRequest.ID")
 	}
 
-	return &JobRequest{*uuid, payloads, machines, 1, 0}, nil
+	return &JobRequest{*uuid, payloads, machines, requirements, 1, 0}, nil
 }
 
 func (jr *JobRequest) SetFlag(flag int) {

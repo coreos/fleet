@@ -20,6 +20,9 @@ func stopUnitAction(c *cli.Context) {
 
 	for _, v := range c.Args() {
 		name := path.Base(v)
-		r.RemoveJobWatch(name)
+		for _, j := range r.FindJobs(name) {
+			r.CancelJob(j.Name)
+			r.DestroyJob(j.Name)
+		}
 	}
 }

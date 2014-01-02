@@ -2,7 +2,7 @@ package unit
 
 type SystemdService struct {
 	manager *SystemdManager
-	name string
+	name    string
 }
 
 func NewSystemdService(manager *SystemdManager, name string) *SystemdService {

@@ -10,13 +10,14 @@ const boot_id_path = "/proc/sys/kernel/random/boot_id"
 type Machine struct {
 	BootId   string
 	PublicIP string
+	Metadata map[string]string
 }
 
-func New(bootId string, publicIP string) (m *Machine) {
+func New(bootId string, publicIP string, metadata map[string]string) (m *Machine) {
 	if bootId == "" {
 		bootId = ReadLocalBootId()
 	}
-	return &Machine{bootId, publicIP}
+	return &Machine{bootId, publicIP, metadata}
 }
 
 func (m *Machine) String() string {

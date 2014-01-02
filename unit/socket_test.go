@@ -50,9 +50,9 @@ func TestNewListenSocketFromListenConfig(t *testing.T) {
 	}
 
 	badLines := []string{
-		"ListenSocket=23", //ListenSocket is an invalid key
-		"FooBar=23", //FooBar is an invalid key
-		"ListenStream=1.2.3.4:23", //coreinit only supports ports
+		"ListenSocket=23",                             //ListenSocket is an invalid key
+		"FooBar=23",                                   //FooBar is an invalid key
+		"ListenStream=1.2.3.4:23",                     //coreinit only supports ports
 		"ListenSequentialPacket=/var/run/mysqld.sock", //coreinit only support ports
 	}
 

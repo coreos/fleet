@@ -10,7 +10,6 @@ import (
 	"github.com/coreos/go-etcd/etcd"
 	log "github.com/golang/glog"
 
-	"github.com/coreos/coreinit/job"
 	"github.com/coreos/coreinit/machine"
 )
 
@@ -23,34 +22,54 @@ type Event struct {
 type EventStream struct {
 	etcd      *etcd.Client
 	reg       *Registry
-	listeners []EventListener
+	listeners map[string]EventListener
 	chClose   chan bool
 }
 
 type EventListener struct {
-	Handler  interface{}
-	Context   *machine.Machine
+	Context *machine.Machine
+	Handler interface{}
+}
+
+func (self *EventListener) String() string {
+	if self.Context != nil {
+		return self.Context.BootId
+	} else {
+		return "N/A"
+	}
 }
 
 func NewEventStream(reg *Registry) *EventStream {
 	client := etcd.NewClient(nil)
 	client.SetConsistency(etcd.WEAK_CONSISTENCY)
-	listeners := make([]EventListener, 0)
+	listeners := make(map[string]EventListener, 0)
 
 	return &EventStream{client, reg, listeners, make(chan bool)}
 }
 
-func (self *EventStream) RegisterListener(l interface{}, m *machine.Machine) {
-	self.listeners = append(self.listeners, EventListener{l, m})
+func (self *EventStream) AddListener(name string, m *machine.Machine, l interface{}) {
+	listener := EventListener{m, l}
+	key := fmt.Sprintf("%s-%s", name, m.String())
+	self.listeners[key] = listener
+}
+
+func (self *EventStream) RemoveListener(name string, m *machine.Machine) {
+	key := fmt.Sprintf("%s-%s", name, m.String())
+	if _, ok := self.listeners[key]; ok {
+		delete(self.listeners, key)
+	}
 }
 
 // Distribute an event to all listeners registered to event.Type
 func (self *EventStream) send(event Event) {
+	log.V(2).Infof("Sending %s to %d listeners", event.Type, len(self.listeners))
 	handlerFuncName := fmt.Sprintf("Handle%s", event.Type)
 	for _, listener := range self.listeners {
+		log.V(2).Infof("Looking for func %s on listener %s", handlerFuncName, listener.String())
 		if event.Context == nil || event.Context.BootId == listener.Context.BootId {
 			handlerFunc := reflect.ValueOf(listener.Handler).MethodByName(handlerFuncName)
 			if handlerFunc.IsValid() {
+				log.V(2).Infof("Calling event handler for %s on listener %s", event.Type, listener.String())
 				go handlerFunc.Call([]reflect.Value{reflect.ValueOf(event)})
 			}
 		}
@@ -71,15 +90,12 @@ func (self *EventStream) eventLoop(event chan Event, stop chan bool) {
 func (self *EventStream) Open() {
 	eventchan := make(chan Event)
 
-	watchMap := map[string][]func(*etcd.Response) *Event {
-		path.Join(keyPrefix, statePrefix):
-			[]func(*etcd.Response) *Event {filterEventJobStatePublished, filterEventJobStateExpired},
-		path.Join(keyPrefix, machinePrefix):
-			[]func(*etcd.Response) *Event {self.filterEventMachineUpdated, self.filterEventMachineDeleted, self.filterEventJobCreated, self.filterEventJobDeleted},
-		path.Join(keyPrefix, requestPrefix):
-			[]func(*etcd.Response) *Event {filterEventRequestCreated},
-		path.Join(keyPrefix, jobWatchPrefix):
-			[]func(*etcd.Response) *Event {filterEventJobWatchCreated, filterEventJobWatchDeleted, self.filterEventJobWatchClaimExpired},
+	watchMap := map[string][]func(*etcd.Response) *Event{
+		path.Join(keyPrefix, statePrefix):   []func(*etcd.Response) *Event{filterEventJobStatePublished, filterEventJobStateExpired},
+		path.Join(keyPrefix, jobPrefix):     []func(*etcd.Response) *Event{filterEventJobCreated, filterEventJobScheduled, filterEventJobCancelled},
+		path.Join(keyPrefix, machinePrefix): []func(*etcd.Response) *Event{self.filterEventMachineUpdated, self.filterEventMachineRemoved},
+		path.Join(keyPrefix, requestPrefix): []func(*etcd.Response) *Event{filterEventRequestCreated},
+		path.Join(keyPrefix, offerPrefix):   []func(*etcd.Response) *Event{self.filterEventJobOffered, filterEventJobBidSubmitted},
 	}
 
 	for key, funcs := range watchMap {
@@ -95,188 +111,6 @@ func (self *EventStream) Open() {
 
 func (self *EventStream) Close() {
 	self.chClose <- true
-}
-
-func (self *EventStream) filterEventJobCreated(resp *etcd.Response) *Event {
-	if resp.Action != "set" {
-		return nil
-	}
-
-	dir, jobName := path.Split(resp.Node.Key)
-	dir = strings.TrimSuffix(dir, "/")
-	dir, prefix := path.Split(dir)
-	if prefix != strings.Trim(schedulePrefix, "/") {
-		return nil
-	}
-
-	var jp job.JobPayload
-	err := unmarshal(resp.Node.Value, &jp)
-	if err != nil {
-		log.V(1).Infof("Failed to deserialize JobPayload: %s", err)
-		return nil
-	}
-
-	j, _ := job.NewJob(jobName, nil, &jp)
-
-	dir = strings.TrimSuffix(dir, "/")
-	dir, machName := path.Split(dir)
-	m := self.reg.GetMachineState(machName)
-
-	return &Event{"EventJobCreated", *j, m}
-}
-
-func (self *EventStream) filterEventJobDeleted(resp *etcd.Response) *Event {
-	if resp.Action != "expire" && resp.Action != "delete" {
-		return nil
-	}
-
-	dir, jobName := path.Split(resp.Node.Key)
-	dir = strings.TrimSuffix(dir, "/")
-	dir, prefix := path.Split(dir)
-	if prefix != strings.Trim(schedulePrefix, "/") {
-		return nil
-	}
-
-	j, _ := job.NewJob(jobName, nil, nil)
-
-	dir = strings.TrimSuffix(dir, "/")
-	dir, machName := path.Split(dir)
-	m := self.reg.GetMachineState(machName)
-
-	return &Event{"EventJobDeleted", *j, m}
-}
-
-func filterEventJobWatchCreated(resp *etcd.Response) *Event {
-	if base := path.Base(resp.Node.Key); base != "object" {
-		return nil
-	}
-
-	if resp.Action != "set" {
-		return nil
-	}
-
-	var jw job.JobWatch
-	err := unmarshal(resp.Node.Value, &jw)
-	if err != nil {
-		log.V(1).Infof("Failed to deserialize JobWatch: %s", err)
-		return nil
-	}
-
-	return &Event{"EventJobWatchCreated", jw, nil}
-}
-
-func filterEventJobWatchDeleted(resp *etcd.Response) *Event {
-	if base := path.Base(resp.Node.Key); base != "object" {
-		return nil
-	}
-
-	if resp.Action != "delete" {
-		return nil
-	}
-
-	name := path.Base(path.Dir(resp.Node.Key))
-	return &Event{"EventJobWatchDeleted", name, nil}
-}
-
-func (self *EventStream) filterEventJobWatchClaimExpired(resp *etcd.Response) *Event {
-	if base := path.Base(resp.Node.Key); base != "object" {
-		return nil
-	}
-
-	if resp.Action != "delete" {
-		return nil
-	}
-
-	jwKey := path.Join(path.Dir(resp.Node.Key), "object")
-	jwResp, err := self.etcd.Get(jwKey, false, true)
-	if err != nil {
-		return nil
-	}
-
-	var jw job.JobWatch
-	err = unmarshal(jwResp.Node.Value, &jw)
-	if err != nil {
-		log.V(1).Infof("Failed to deserialize JobWatch: %s", err)
-		return nil
-	}
-
-	return &Event{"EventJobWatchClaimExpired", jw, nil}
-}
-
-func filterEventJobStatePublished(resp *etcd.Response) *Event {
-	if resp.Action != "set" {
-		return nil
-	}
-
-	var js job.JobState
-	err := unmarshal(resp.Node.Value, &js)
-	if err != nil {
-		log.V(1).Infof("Failed to deserialize JobState: %s", err)
-		return nil
-	}
-
-	//TODO: handle error returned by NewJob
-	j, _ := job.NewJob(path.Base(resp.Node.Key), &js, nil)
-	return &Event{"EventJobStatePublished", *j, nil}
-}
-
-func filterEventJobStateExpired(resp *etcd.Response) *Event {
-	if resp.Action != "delete" && resp.Action != "expire" {
-		return nil
-	}
-
-	var js job.JobState
-	err := unmarshal(resp.Node.Value, &js)
-	if err != nil {
-		log.V(1).Infof("Failed to deserialize JobState: %s", err)
-		return nil
-	}
-
-	//TODO: handle error returned by NewJob
-	j, _ := job.NewJob(path.Base(resp.Node.Key), &js, nil)
-	return &Event{"EventJobStateExpired", *j, nil}
-}
-
-func (self *EventStream) filterEventMachineUpdated(resp *etcd.Response) *Event {
-	if base := path.Base(resp.Node.Key); base != "object" {
-		return nil
-	}
-
-	if resp.Action != "set" {
-		return nil
-	}
-
-	var m machine.Machine
-	unmarshal(resp.Node.Value, &m)
-	return &Event{"EventMachineUpdated", m, nil}
-}
-
-func (self *EventStream) filterEventMachineDeleted(resp *etcd.Response) *Event {
-	if base := path.Base(resp.Node.Key); base != "object" {
-		return nil
-	}
-
-	if resp.Action != "expire" && resp.Action != "delete" {
-		return nil
-	}
-
-	name := path.Base(path.Dir(resp.Node.Key))
-	m := machine.New(name, "")
-	return &Event{"EventMachineDeleted", *m, nil}
-}
-
-func filterEventRequestCreated(resp *etcd.Response) *Event{
-	if resp.Action != "set" {
-		return nil
-	}
-
-	var request job.JobRequest
-	if err := unmarshal(resp.Node.Value, &request); err != nil {
-		log.V(1).Infof("Failed to deserialize JobRequest: %s", err)
-		return nil
-	}
-
-	return &Event{"EventRequestCreated", request, nil}
 }
 
 func pipe(etcdchan chan *etcd.Response, translate func(resp *etcd.Response) *Event, eventchan chan Event) {
@@ -295,7 +129,7 @@ func pipe(etcdchan chan *etcd.Response, translate func(resp *etcd.Response) *Eve
 
 func (self *EventStream) watch(etcdchan chan *etcd.Response, key string) {
 	for true {
-		log.V(1).Infof("Creating etcd watcher: key=%s, machines=%s", key, strings.Join(self.etcd.GetCluster(), ","))
+		log.V(2).Infof("Creating etcd watcher: key=%s, machines=%s", key, strings.Join(self.etcd.GetCluster(), ","))
 		_, err := self.etcd.Watch(key, 0, true, etcdchan, nil)
 
 		var errString string
@@ -305,7 +139,7 @@ func (self *EventStream) watch(etcdchan chan *etcd.Response, key string) {
 			errString = err.Error()
 		}
 
-		log.V(1).Infof("etcd watch exited: key=%s, err=\"%s\"", key, errString)
+		log.V(2).Infof("etcd watch exited: key=%s, err=\"%s\"", key, errString)
 
 		time.Sleep(time.Second)
 	}
