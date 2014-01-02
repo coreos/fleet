@@ -2,6 +2,8 @@
 
 coreinit ties together systemd and etcd into a distributed init system.
 
+[![Build Status](https://travis-ci.org/coreos/coreinit.png?branch=master)](https://travis-ci.org/coreos/coreinit)
+
 ### Assumptions
 
 Machines have truly unique UUIDs and their metadata is perfectly cacheable.
