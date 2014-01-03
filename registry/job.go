@@ -38,17 +38,6 @@ func (r *Registry) GetAllJobs() []job.Job {
 	return jobs
 }
 
-func (r *Registry) FindJobs(search string) []job.Job {
-	var jobs []job.Job
-
-	for _, j := range r.GetAllJobs() {
-		if j.Name == search || (j.Payload != nil && j.Payload.Name == search) {
-			jobs = append(jobs, j)
-		}
-	}
-	return jobs
-}
-
 func (r *Registry) GetJobTarget(jobName string) *machine.Machine {
 	// Figure out to which Machine this Job is scheduled
 	key := path.Join(keyPrefix, jobPrefix, jobName, "target")

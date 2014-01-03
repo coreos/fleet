@@ -26,28 +26,31 @@ func statusUnitsAction(c *cli.Context) {
 		}
 
 		name := path.Base(v)
-		for _, j := range r.FindJobs(name) {
-			state := r.GetJobState(&j)
-
-			loadState := "-"
-			activeState := "-"
-			subState := "-"
-
-			if state != nil {
-				loadState = state.LoadState
-				activeState = state.ActiveState
-				subState = state.SubState
-			}
-
-			fmt.Printf("%s\n", j.Name)
-			fmt.Printf("\tLoaded: %s\n", loadState)
-			fmt.Printf("\tActive: %s (%s)\n", activeState, subState)
-			if state != nil {
-				for _, sock := range state.Sockets {
-					fmt.Printf("\tListen: %s\n", sock)
-				}
-			}
-			fmt.Print("\n")
+		j := r.GetJob(name)
+		if j == nil {
+			return
 		}
+
+		state := r.GetJobState(j)
+
+		loadState := "-"
+		activeState := "-"
+		subState := "-"
+
+		if state != nil {
+			loadState = state.LoadState
+			activeState = state.ActiveState
+			subState = state.SubState
+		}
+
+		fmt.Printf("%s\n", j.Name)
+		fmt.Printf("\tLoaded: %s\n", loadState)
+		fmt.Printf("\tActive: %s (%s)\n", activeState, subState)
+		if state != nil {
+			for _, sock := range state.Sockets {
+				fmt.Printf("\tListen: %s\n", sock)
+			}
+		}
+		fmt.Print("\n")
 	}
 }
