@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"strings"
 	"time"
 
 	log "github.com/golang/glog"
@@ -28,7 +29,7 @@ type Agent struct {
 	stop       chan bool
 
 	// map of Peer dependencies to unresolved JobOffers
-	peers map[string]string
+	peers map[string][]string
 }
 
 func New(registry *registry.Registry, events *registry.EventStream, machine *machine.Machine, ttl string) *Agent {
@@ -38,7 +39,7 @@ func New(registry *registry.Registry, events *registry.EventStream, machine *mac
 		ttl = DefaultServiceTTL
 	}
 
-	agent := &Agent{registry, events, mgr, machine, ttl, make(chan bool), make(map[string]string, 0)}
+	agent := &Agent{registry, events, mgr, machine, ttl, make(chan bool), make(map[string][]string, 0)}
 
 	return agent
 }
@@ -137,19 +138,40 @@ func (a *Agent) HandleEventJobOffered(event registry.Event) {
 	jo := event.Payload.(job.JobOffer)
 	log.V(1).Infof("EventJobOffered(%s): verifying ability to run Job", jo.Job.Name)
 
+	var missing []string
 	for _, peerName := range jo.Job.Payload.Peers {
+		log.V(1).Infof("EventJobOffered(%s): looking for target of Peer(%s)", jo.Job.Name, peerName)
 		//FIXME: ideally the machine would use its own knowledge rather than calling GetJobTarget
 		if tgt := a.Registry.GetJobTarget(peerName); tgt == nil || tgt.BootId != a.Machine.BootId {
 			log.V(1).Infof("EventJobOffered(%s): unable to run Job, Peer(%s) not scheduled here", jo.Job.Name, peerName)
 
 			log.V(1).Infof("EventJobOffered(%s): tracking Job until Peer(%s) is scheduled", jo.Job.Name, peerName)
-			a.peers[peerName] = jo.Job.Name
-
-			return
+			missing = append(missing, peerName)
+		} else {
+			log.V(1).Infof("EventJobOffered(%s): Peer(%s) scheduled here", jo.Job.Name, peerName)
 		}
 	}
 
+	if len(missing) > 0 {
+		log.V(1).Infof("EventJobOffered(%s): tracking Job until Peers(%s) are scheduled", jo.Job.Name, strings.Join(missing, ","))
+		for _, peerName := range missing {
+			if _, ok := a.peers[peerName]; !ok {
+				a.peers[peerName] = make([]string, 0)
+			}
+			a.peers[peerName] = append(a.peers[peerName], jo.Job.Name)
+		}
+		return
+	}
+
 	for key, vals := range jo.Job.Payload.Requirements {
+		if !strings.HasPrefix(key, "Machine-") {
+			log.V(2).Infof("EventJobOffered(%s): skipping requirement %s, not machine metadata.", jo.Job.Name, key)
+			continue
+		}
+
+		// Strip off leading 'Machine-'
+		key = key[8:]
+
 		if len(vals) == 0 {
 			log.V(2).Infof("EventJobOffered(%s): required Metadata(%s) provided no values, skipping assertion.", jo.Job.Name, key)
 			continue
@@ -187,8 +209,6 @@ func (a *Agent) HandleEventJobScheduled(event registry.Event) {
 
 	if event.Context.BootId == a.Machine.BootId {
 		a.handleEventJobScheduledLocally(jobName)
-	} else {
-		a.handleEventJobScheduledElsewhere(jobName)
 	}
 }
 
@@ -201,34 +221,30 @@ func (a *Agent) handleEventJobScheduledLocally(jobName string) {
 	log.Infof("EventJobScheduled(%s): Starting Job", j.Name)
 	a.Manager.StartJob(j)
 
-	if peerName, ok := a.peers[jobName]; ok {
-		log.V(1).Infof("EventJobScheduled(%s): Found unresolved offer for Peer(%s)", jobName, peerName)
+	if peers, ok := a.peers[jobName]; ok {
+		for _, peer := range peers {
+			log.V(1).Infof("EventJobScheduled(%s): Found unresolved offer for Peer(%s)", jobName, peer)
 
-		log.V(1).Infof("EventJobScheduled(%s): Removing Job from local peer list", jobName)
-		delete(a.peers, jobName)
-
-		log.Infof("EventJobScheduled(%s): submitting JobBid for Peer(%s)", jobName, peerName)
-		jb := job.NewBid(peerName, a.Machine.BootId)
-		a.Registry.SubmitJobBid(jb)
-	}
-}
-
-func (a *Agent) handleEventJobScheduledElsewhere(jobName string) {
-	log.V(1).Infof("EventJobScheduled(%s): Job not scheduled to local Agent", jobName)
-
-	if _, ok := a.peers[jobName]; ok {
-		log.V(1).Infof("EventJobScheduled(%s): Removing Job from local peer list", jobName)
-		delete(a.peers, jobName)
-
-		//TODO: Also remove any keys where value=jobName - this is just extra cleanup
+			log.Infof("EventJobScheduled(%s): submitting JobBid for Peer(%s)", jobName, peer)
+			jb := job.NewBid(peer, a.Machine.BootId)
+			a.Registry.SubmitJobBid(jb)
+		}
 	}
 }
 
 func (a *Agent) HandleEventJobCancelled(event registry.Event) {
 	jobName := event.Payload.(string)
-	log.Infof("EventJobCancelled(%s): stopping job", jobName)
+	log.Infof("EventJobCancelled(%s): stopping Job", jobName)
 	j := job.NewJob(jobName, nil, nil)
 	a.Manager.StopJob(j)
+
+	peers, ok := a.peers[jobName]
+	if ok {
+		for _, peer := range peers {
+			log.Infof("EventJobCancelled(%s): cancelling Peer(%s) of Job", jobName, peer)
+			a.Registry.CancelJob(peer)
+		}
+	}
 }
 
 func parseDuration(d string) time.Duration {

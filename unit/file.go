@@ -1,6 +1,7 @@
 package unit
 
 import (
+	"encoding/csv"
 	"fmt"
 	"strings"
 )
@@ -41,7 +42,11 @@ func (self *SystemdUnitFile) Requirements() map[string][]string {
 			requirements[key] = make([]string, 0)
 		}
 
-		requirements[key] = append(requirements[key], value)
+		valueReader := strings.NewReader(value)
+		csvReader := csv.NewReader(valueReader)
+		values, _ := csvReader.Read()
+
+		requirements[key] = append(requirements[key], values...)
 	}
 	return requirements
 }

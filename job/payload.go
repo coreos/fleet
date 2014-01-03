@@ -15,7 +15,7 @@ type JobPayload struct {
 }
 
 func NewJobPayload(name string, value string, requirements map[string][]string) (*JobPayload, error) {
-	var peers []string
+	var defaultPeers []string
 	var pType string
 	if strings.HasSuffix(name, ".service") {
 		pType = "systemd-service"
@@ -24,10 +24,14 @@ func NewJobPayload(name string, value string, requirements map[string][]string) 
 
 		idx := len(name) - 7
 		baseName := name[0:idx]
-		svc := fmt.Sprintf("%s.%s", baseName, "service")
-		peers = append(peers, svc)
+		defaultPeers = []string{fmt.Sprintf("%s.%s", baseName, "service")}
 	} else {
 		return nil, errors.New(fmt.Sprintf("Unrecognized systemd unit %s", name))
+	}
+
+	peers, ok := requirements["Peers"]
+	if !ok {
+		peers = defaultPeers
 	}
 
 	return &JobPayload{name, pType, value, peers, requirements}, nil
