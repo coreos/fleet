@@ -1,7 +1,6 @@
 package engine
 
 import (
-	"fmt"
 	"time"
 
 	log "github.com/golang/glog"
@@ -53,12 +52,10 @@ func (self *Engine) HandleEventRequestCreated(event registry.Event) {
 
 func getJobsFromRequest(req *job.JobRequest) []job.Job {
 	var jobs []job.Job
-	for i := 1; i <= req.Count; i++ {
-		for ii := 0; ii < len(req.Payloads); ii++ {
-			payload := req.Payloads[ii]
-			j, _ := job.NewJob(fmt.Sprintf("%d.%s", i, payload.Name), nil, &payload, req.Requirements)
-			jobs = append(jobs, *j)
-		}
+	for i := 0; i < len(req.Payloads); i++ {
+		payload := req.Payloads[i]
+		j, _ := job.NewJob(payload.Name, nil, &payload, req.Requirements)
+		jobs = append(jobs, *j)
 	}
 	return jobs
 }

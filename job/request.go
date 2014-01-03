@@ -13,7 +13,6 @@ type JobRequest struct {
 	Payloads     []JobPayload
 	Machines     []machine.Machine
 	Requirements map[string][]string
-	Count        int
 	Flags        int
 }
 
@@ -27,7 +26,7 @@ func NewJobRequest(payloads []JobPayload, machines []machine.Machine, requiremen
 		return nil, errors.New("Failed to generate JobRequest.ID")
 	}
 
-	return &JobRequest{*uuid, payloads, machines, requirements, 1, 0}, nil
+	return &JobRequest{*uuid, payloads, machines, requirements, 0}, nil
 }
 
 func (jr *JobRequest) SetFlag(flag int) {
