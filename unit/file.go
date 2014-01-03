@@ -27,8 +27,23 @@ func (self *SystemdUnitFile) SetField(section string, key string, value string) 
 	self.contents[section][key] = value
 }
 
-func (self *SystemdUnitFile) Requirements() map[string]string {
-	return map[string]string{}
+func (self *SystemdUnitFile) Requirements() map[string][]string {
+	requirements := make(map[string][]string, 0)
+	for key, value := range self.GetSection("X-Coreinit") {
+		if !strings.HasPrefix(key, "X-Coreinit-") {
+			continue
+		}
+
+		// Strip off leading X-Coreinit-
+		key = key[11:]
+
+		if _, ok := requirements[key]; !ok {
+			requirements[key] = make([]string, 0)
+		}
+
+		requirements[key] = append(requirements[key], value)
+	}
+	return requirements
 }
 
 func (self *SystemdUnitFile) String() string {

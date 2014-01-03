@@ -26,7 +26,7 @@ func newStartUnitCommand() cli.Command {
 func startUnitAction(c *cli.Context) {
 	r := getRegistry(c)
 
-	requirements := parseRequirements(c.String("require"))
+	cliRequirements := parseRequirements(c.String("require"))
 
 	payloads := make([]job.JobPayload, len(c.Args()))
 	for i, v := range c.Args() {
@@ -37,6 +37,8 @@ func startUnitAction(c *cli.Context) {
 		}
 
 		unitFile := unit.NewSystemdUnitFile(string(out))
+		fileRequirements := unitFile.Requirements()
+		requirements := stackRequirements(fileRequirements, cliRequirements)
 
 		name := path.Base(v)
 		payload, err := job.NewJobPayload(name, unitFile.String(), requirements)
@@ -82,4 +84,18 @@ func parseRequirements(arg string) map[string][]string {
 	}
 
 	return reqs
+}
+
+func stackRequirements(base, overlay map[string][]string) map[string][]string{
+	stacked := make(map[string][]string, 0)
+
+	for key, values := range base {
+		stacked[key] = values
+	}
+
+	for key, values := range overlay {
+		stacked[key] = values
+	}
+
+	return stacked
 }
