@@ -15,7 +15,6 @@ func newStartUnitCommand() cli.Command {
 	return cli.Command{
 		Name: "start",
 		Flags: []cli.Flag{
-			cli.IntFlag{"count", 1, "Run N instances of these units."},
 			cli.StringFlag{"require", "", "Filter hosts with a set of requirements. Format is comma-delimited list of <key>=<value> pairs."},
 		},
 		Usage:  "Start (activate) one or more units",
@@ -52,7 +51,6 @@ func startUnitAction(c *cli.Context) {
 		return
 	}
 
-	req.Count = c.Int("count")
 	r.AddRequest(req)
 }
 
