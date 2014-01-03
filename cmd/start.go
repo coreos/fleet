@@ -25,8 +25,9 @@ func newStartUnitCommand() cli.Command {
 func startUnitAction(c *cli.Context) {
 	r := getRegistry(c)
 
-	payloads := make([]job.JobPayload, len(c.Args()))
+	requirements := parseRequirements(c.String("require"))
 
+	payloads := make([]job.JobPayload, len(c.Args()))
 	for i, v := range c.Args() {
 		out, err := ioutil.ReadFile(v)
 		if err != nil {
@@ -35,17 +36,16 @@ func startUnitAction(c *cli.Context) {
 		}
 
 		name := path.Base(v)
-		payload := job.JobPayload{name, string(out)}
+		payload, err := job.NewJobPayload(name, string(out), requirements)
 		if err != nil {
 			fmt.Println(err.Error())
 			return
 		} else {
-			payloads[i] = payload
+			payloads[i] = *payload
 		}
 	}
 
-	requirements := parseRequirements(c.String("require"))
-	req, err := job.NewJobRequest(payloads, nil, requirements)
+	req, err := job.NewJobRequest(payloads)
 	if err != nil {
 		fmt.Println(err.Error())
 		return

@@ -54,7 +54,7 @@ func getJobsFromRequest(req *job.JobRequest) []job.Job {
 	var jobs []job.Job
 	for i := 0; i < len(req.Payloads); i++ {
 		payload := req.Payloads[i]
-		j, _ := job.NewJob(payload.Name, nil, &payload, req.Requirements)
+		j := job.NewJob(payload.Name, nil, &payload)
 		jobs = append(jobs, *j)
 	}
 	return jobs
