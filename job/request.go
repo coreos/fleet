@@ -9,11 +9,12 @@ import (
 type JobRequest struct {
 	ID           gouuid.UUID
 	Payloads     []JobPayload
+	Peers        []string
 	Requirements map[string][]string
 	Flags        int
 }
 
-func NewJobRequest(payloads []JobPayload, requirements map[string][]string) (*JobRequest, error) {
+func NewJobRequest(payloads []JobPayload, peers []string, requirements map[string][]string) (*JobRequest, error) {
 	if payloads == nil || len(payloads) < 1 {
 		return nil, errors.New("A minimum of one JobPayload must be provided")
 	}
@@ -23,7 +24,7 @@ func NewJobRequest(payloads []JobPayload, requirements map[string][]string) (*Jo
 		return nil, errors.New("Failed to generate JobRequest.ID")
 	}
 
-	return &JobRequest{*uuid, payloads, requirements, 0}, nil
+	return &JobRequest{*uuid, payloads, peers, requirements, 0}, nil
 }
 
 func (jr *JobRequest) SetFlag(flag int) {

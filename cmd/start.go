@@ -45,7 +45,7 @@ func startUnitAction(c *cli.Context) {
 	}
 
 	requirements := parseRequirements(c.String("require"))
-	req, err := job.NewJobRequest(payloads, requirements)
+	req, err := job.NewJobRequest(payloads, nil, requirements)
 	if err != nil {
 		fmt.Println(err.Error())
 		return
