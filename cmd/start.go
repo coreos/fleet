@@ -9,6 +9,7 @@ import (
 	"github.com/codegangsta/cli"
 
 	"github.com/coreos/coreinit/job"
+	"github.com/coreos/coreinit/unit"
 )
 
 func newStartUnitCommand() cli.Command {
@@ -35,8 +36,10 @@ func startUnitAction(c *cli.Context) {
 			return
 		}
 
+		unitFile := unit.NewSystemdUnitFile(string(out))
+
 		name := path.Base(v)
-		payload, err := job.NewJobPayload(name, string(out), requirements)
+		payload, err := job.NewJobPayload(name, unitFile.String(), requirements)
 		if err != nil {
 			fmt.Println(err.Error())
 			return
