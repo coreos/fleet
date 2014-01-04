@@ -38,6 +38,30 @@ func (r *Registry) GetAllJobs() []job.Job {
 	return jobs
 }
 
+func (r *Registry) GetAllJobsByMachine(match *machine.Machine) []job.Job {
+	var jobs []job.Job
+
+	key := path.Join(keyPrefix, jobPrefix)
+	resp, err := r.etcd.Get(key, false, true)
+
+	if err != nil {
+		log.Errorf(err.Error())
+		return jobs
+	}
+
+	for _, node := range resp.Node.Nodes {
+		if j := r.GetJob(path.Base(node.Key)); j != nil {
+			tgt := r.GetJobTarget(j.Name)
+			if tgt != nil && tgt.BootId == match.BootId {
+				jobs = append(jobs, *j)
+			}
+		}
+	}
+
+	return jobs
+}
+
+
 func (r *Registry) GetJobTarget(jobName string) *machine.Machine {
 	// Figure out to which Machine this Job is scheduled
 	key := path.Join(keyPrefix, jobPrefix, jobName, "target")

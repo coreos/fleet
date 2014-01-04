@@ -134,9 +134,59 @@ func (a *Agent) StartServiceHeartbeatThread() chan bool {
 	return stop
 }
 
+// Determine whether a given Job conflicts with any locally-scheduled Jobs
+func (a *Agent) HasLocalJobConflict(j *job.Job) bool {
+	isSingleton := func (j *job.Job) bool {
+		singleton, ok := j.Payload.Requirements["MachineSingleton"]
+		return ok && singleton[0] == "true"
+	}
+
+	hasProvides := func (j *job.Job) bool {
+		provides, ok := j.Payload.Requirements["Provides"]
+		return ok && len(provides) > 0
+	}
+
+	if !isSingleton(j) || !hasProvides(j) {
+		return false
+	}
+
+	for _, other := range a.Registry.GetAllJobsByMachine(a.Machine) {
+		if !hasProvides(&other) {
+			continue
+		}
+
+		// Skip self
+		if other.Name == j.Name {
+			continue
+		}
+
+		for _, provide := range j.Payload.Requirements["Provides"] {
+			for _, otherProvide := range other.Payload.Requirements["Provides"] {
+				if provide == otherProvide {
+					log.V(1).Infof("Local Job(%s) already provides '%s'", other.Name, provide)
+					return true
+				}
+			}
+		}
+	}
+
+	return false
+}
+
 func (a *Agent) HandleEventJobOffered(event registry.Event) {
 	jo := event.Payload.(job.JobOffer)
 	log.V(1).Infof("EventJobOffered(%s): verifying ability to run Job", jo.Job.Name)
+
+	metadata := extractMachineMetadata(jo.Job.Payload.Requirements)
+	if !a.Machine.HasMetadata(metadata) {
+		log.V(1).Infof("EventJobOffered(%s): local Metadata insufficient", jo.Job.Name)
+		return
+	}
+
+	if a.HasLocalJobConflict(&jo.Job) {
+		log.V(1).Infof("EventJobOffered(%s): local Job conflict", jo.Job.Name)
+		return
+	}
 
 	var missing []string
 	for _, peerName := range jo.Job.Payload.Peers {
@@ -163,71 +213,60 @@ func (a *Agent) HandleEventJobOffered(event registry.Event) {
 		return
 	}
 
-	for key, vals := range jo.Job.Payload.Requirements {
+	log.Infof("EventJobOffered(%s): submitting JobBid", jo.Job.Name)
+	jb := job.NewBid(jo.Job.Name, a.Machine.BootId)
+	a.Registry.SubmitJobBid(jb)
+}
+
+func extractMachineMetadata(requirements map[string][]string) map[string][]string {
+	metadata := make(map[string][]string)
+
+	for key, values := range requirements {
 		if !strings.HasPrefix(key, "Machine-") {
-			log.V(2).Infof("EventJobOffered(%s): skipping requirement %s, not machine metadata.", jo.Job.Name, key)
+			log.V(2).Infof("Skipping requirement %s, not machine metadata.", key)
 			continue
 		}
 
 		// Strip off leading 'Machine-'
 		key = key[8:]
 
-		if len(vals) == 0 {
-			log.V(2).Infof("EventJobOffered(%s): required Metadata(%s) provided no values, skipping assertion.", jo.Job.Name, key)
+		if len(values) == 0 {
+			log.V(2).Infof("Metadata(%s) requirement provided no values, ignoring.", key)
 			continue
 		}
 
-		local, ok := a.Machine.Metadata[key]
-		if !ok {
-			log.V(1).Infof("EventJobOffered(%s): no local values found for required Metadata(%s), unable to run job", jo.Job.Name, key)
-			return
-		}
-
-		log.V(2).Infof("EventJobOffered(%s): asserting local Metadata(%s) meets requirements", jo.Job.Name, key)
-
-		var localMatch bool
-		for _, val := range vals {
-			if local == val {
-				log.V(1).Infof("EventJobOffered(%s): local Metadata(%s) meets requirement", jo.Job.Name, key)
-				localMatch = true
-			}
-		}
-
-		if !localMatch {
-			log.V(1).Infof("EventJobOffered(%s): local Metadata(%s) does not match requirement, unable to run job", jo.Job.Name, key)
-			return
-		}
+		metadata[key] = values
 	}
 
-	log.Infof("EventJobOffered(%s): submitting JobBid", jo.Job.Name)
-	jb := job.NewBid(jo.Job.Name, a.Machine.BootId)
-	a.Registry.SubmitJobBid(jb)
+	return metadata
 }
 
 func (a *Agent) HandleEventJobScheduled(event registry.Event) {
 	jobName := event.Payload.(string)
 
 	if event.Context.BootId == a.Machine.BootId {
-		a.handleEventJobScheduledLocally(jobName)
-	}
-}
+		log.V(1).Infof("EventJobScheduled(%s): Job scheduled to this Agent", jobName)
 
-func (a *Agent) handleEventJobScheduledLocally(jobName string) {
-	log.V(1).Infof("EventJobScheduled(%s): Job scheduled to this Agent", jobName)
+		log.V(1).Infof("EventJobScheduled(%s): Fetching Job from Registry", jobName)
+		j := a.Registry.GetJob(jobName)
 
-	log.V(1).Infof("EventJobScheduled(%s): Fetching Job from Registry", jobName)
-	j := a.Registry.GetJob(jobName)
+		if a.HasLocalJobConflict(j) {
+			log.V(1).Infof("EventJobScheduled(%s): local Job conflict, cancelling", jobName)
+			a.Registry.CancelJob(jobName)
+			return
+		}
 
-	log.Infof("EventJobScheduled(%s): Starting Job", j.Name)
-	a.Manager.StartJob(j)
+		log.Infof("EventJobScheduled(%s): Starting Job", j.Name)
+		a.Manager.StartJob(j)
 
-	if peers, ok := a.peers[jobName]; ok {
-		for _, peer := range peers {
-			log.V(1).Infof("EventJobScheduled(%s): Found unresolved offer for Peer(%s)", jobName, peer)
+		if peers, ok := a.peers[jobName]; ok {
+			for _, peer := range peers {
+				log.V(1).Infof("EventJobScheduled(%s): Found unresolved offer for Peer(%s)", jobName, peer)
 
-			log.Infof("EventJobScheduled(%s): submitting JobBid for Peer(%s)", jobName, peer)
-			jb := job.NewBid(peer, a.Machine.BootId)
-			a.Registry.SubmitJobBid(jb)
+				log.Infof("EventJobScheduled(%s): submitting JobBid for Peer(%s)", jobName, peer)
+				jb := job.NewBid(peer, a.Machine.BootId)
+				a.Registry.SubmitJobBid(jb)
+			}
 		}
 	}
 }
