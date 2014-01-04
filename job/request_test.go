@@ -4,42 +4,31 @@ import (
 	"testing"
 )
 
-func TestNewJobRequestNilPayloadsNoRequirements(t *testing.T) {
-	_, err := NewJobRequest(nil, nil, make(map[string][]string, 0))
+func TestNewJobRequestNilPayloads(t *testing.T) {
+	_, err := NewJobRequest(nil)
 	if err == nil {
 		t.Error("Expected error when using nil payloads")
 	}
 }
 
-func TestNewJobRequestEmptyPayloadsNoRequirements(t *testing.T) {
+func TestNewJobRequestEmptyPayloads(t *testing.T) {
 	payloads := []JobPayload{}
-	_, err := NewJobRequest(payloads, nil, make(map[string][]string, 0))
+	_, err := NewJobRequest(payloads)
 	if err == nil {
 		t.Error("Expected error when using empty payloads slice")
 	}
 }
 
 func TestNewJobRequest(t *testing.T) {
-	payloads := []JobPayload{JobPayload{"pong.service", "pong"}}
-	jr, err := NewJobRequest(payloads, nil, map[string][]string{"foo": []string{"bar"}})
+	payload, _ := NewJobPayload("pong.service", "pong", make(map[string][]string, 0))
+	payloads := []JobPayload{*payload}
+	jr, err := NewJobRequest(payloads)
 	if err != nil {
 		t.Errorf("Not expecting error:", err)
 	}
 
-	if len(jr.Payloads) != 1 || jr.Payloads[0] != payloads[0] {
+	if len(jr.Payloads) != 1 || jr.Payloads[0].Name != payloads[0].Name {
 		t.Error("Payloads does not match expected value")
-	}
-
-	if len(jr.Requirements) != 1 || len(jr.Requirements["foo"]) != 1 || jr.Requirements["foo"][0] != "bar" {
-		t.Fatal("JobRequest.Requirements are incorrect")
-	}
-}
-
-func TestNewJobRequestIDGeneration(t *testing.T) {
-	payloads := []JobPayload{JobPayload{"pong.service", "pong"}}
-	jr, err := NewJobRequest(payloads, nil, make(map[string][]string, 0))
-	if err != nil {
-		t.Errorf("Not expecting error:", err)
 	}
 
 	if len(jr.ID.String()) != 36 {

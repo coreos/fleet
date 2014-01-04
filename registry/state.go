@@ -50,8 +50,7 @@ func filterEventJobStatePublished(resp *etcd.Response) *Event {
 		return nil
 	}
 
-	//TODO: handle error returned by NewJob
-	j, _ := job.NewJob(path.Base(resp.Node.Key), &js, nil, make(map[string][]string, 0))
+	j := job.NewJob(path.Base(resp.Node.Key), &js, nil)
 	return &Event{"EventJobStatePublished", *j, nil}
 }
 
@@ -67,7 +66,6 @@ func filterEventJobStateExpired(resp *etcd.Response) *Event {
 		return nil
 	}
 
-	//TODO: handle error returned by NewJob
-	j, _ := job.NewJob(path.Base(resp.Node.Key), &js, nil, make(map[string][]string, 0))
+	j := job.NewJob(path.Base(resp.Node.Key), &js, nil)
 	return &Event{"EventJobStateExpired", *j, nil}
 }

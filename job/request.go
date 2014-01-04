@@ -4,19 +4,15 @@ import (
 	"errors"
 
 	gouuid "github.com/nu7hatch/gouuid"
-
-	"github.com/coreos/coreinit/machine"
 )
 
 type JobRequest struct {
 	ID           gouuid.UUID
 	Payloads     []JobPayload
-	Machines     []machine.Machine
-	Requirements map[string][]string
 	Flags        int
 }
 
-func NewJobRequest(payloads []JobPayload, machines []machine.Machine, requirements map[string][]string) (*JobRequest, error) {
+func NewJobRequest(payloads []JobPayload) (*JobRequest, error) {
 	if payloads == nil || len(payloads) < 1 {
 		return nil, errors.New("A minimum of one JobPayload must be provided")
 	}
@@ -26,7 +22,7 @@ func NewJobRequest(payloads []JobPayload, machines []machine.Machine, requiremen
 		return nil, errors.New("Failed to generate JobRequest.ID")
 	}
 
-	return &JobRequest{*uuid, payloads, machines, requirements, 0}, nil
+	return &JobRequest{*uuid, payloads, 0}, nil
 }
 
 func (jr *JobRequest) SetFlag(flag int) {

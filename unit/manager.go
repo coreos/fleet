@@ -85,7 +85,7 @@ func (m *SystemdManager) GetJobs() map[string]job.Job {
 	for _, u := range units {
 		state := m.getJobStateFromUnit(&u)
 		name := m.stripUnitNamePrefix(u.Name())
-		j, _ := job.NewJob(name, state, nil, make(map[string][]string, 0))
+		j := job.NewJob(name, state, nil)
 		jobs[j.Name] = *j
 	}
 
@@ -114,12 +114,11 @@ func (m *SystemdManager) GetJobState(j *job.Job) *job.JobState {
 }
 
 func (m *SystemdManager) StartJob(job *job.Job) {
-	//This is probably not the right place to force the service to be
-	// WantedBy our systemd target
-	job.Payload.Value += "\r\n\r\n[Install]\r\nWantedBy=" + m.Target.Name()
+	unitFile := NewSystemdUnitFile(job.Payload.Value)
+	unitFile.SetField("Install", "WantedBy", m.Target.Name())
 
 	name := m.addUnitNamePrefix(job.Name)
-	m.writeUnit(name, job.Payload.Value)
+	m.writeUnit(name, unitFile.String())
 	m.startUnit(name)
 }
 

@@ -9,6 +9,7 @@ import (
 	"github.com/codegangsta/cli"
 
 	"github.com/coreos/coreinit/job"
+	"github.com/coreos/coreinit/unit"
 )
 
 func newStartUnitCommand() cli.Command {
@@ -25,8 +26,9 @@ func newStartUnitCommand() cli.Command {
 func startUnitAction(c *cli.Context) {
 	r := getRegistry(c)
 
-	payloads := make([]job.JobPayload, len(c.Args()))
+	cliRequirements := parseRequirements(c.String("require"))
 
+	payloads := make([]job.JobPayload, len(c.Args()))
 	for i, v := range c.Args() {
 		out, err := ioutil.ReadFile(v)
 		if err != nil {
@@ -34,18 +36,21 @@ func startUnitAction(c *cli.Context) {
 			return
 		}
 
+		unitFile := unit.NewSystemdUnitFile(string(out))
+		fileRequirements := unitFile.Requirements()
+		requirements := stackRequirements(fileRequirements, cliRequirements)
+
 		name := path.Base(v)
-		payload := job.JobPayload{name, string(out)}
+		payload, err := job.NewJobPayload(name, unitFile.String(), requirements)
 		if err != nil {
 			fmt.Println(err.Error())
 			return
 		} else {
-			payloads[i] = payload
+			payloads[i] = *payload
 		}
 	}
 
-	requirements := parseRequirements(c.String("require"))
-	req, err := job.NewJobRequest(payloads, nil, requirements)
+	req, err := job.NewJobRequest(payloads)
 	if err != nil {
 		fmt.Println(err.Error())
 		return
@@ -79,4 +84,18 @@ func parseRequirements(arg string) map[string][]string {
 	}
 
 	return reqs
+}
+
+func stackRequirements(base, overlay map[string][]string) map[string][]string{
+	stacked := make(map[string][]string, 0)
+
+	for key, values := range base {
+		stacked[key] = values
+	}
+
+	for key, values := range overlay {
+		stacked[key] = values
+	}
+
+	return stacked
 }
