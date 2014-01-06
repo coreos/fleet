@@ -121,3 +121,15 @@ func TestNewV5(t *testing.T) {
 		t.Errorf("Expected UUIDs generated of the same namespace and different names to be different")
 	}
 }
+
+func BenchmarkParseHex(b *testing.B) {
+	s := "f3593cff-ee92-40df-4086-87825b523f13"
+	for i := 0; i < b.N; i++ {
+		_, err := ParseHex(s)
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+	b.StopTimer()
+	b.ReportAllocs()
+}
