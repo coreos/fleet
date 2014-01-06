@@ -16,6 +16,7 @@ type Config struct {
 	PublicIP    string   `toml:"public_ip"`
 	Verbosity   int      `toml:"verbosity"`
 	RawMetadata string   `toml:"metadata"`
+	UnitPrefix  string   `toml:"unit_prefix"`
 }
 
 func NewConfig() *Config {

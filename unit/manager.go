@@ -23,20 +23,21 @@ const (
 )
 
 type SystemdManager struct {
-	Systemd  *systemdDbus.Conn
-	Target   *SystemdTarget
-	Machine  *machine.Machine
-	unitPath string
-	dbusPath string
+	Systemd    *systemdDbus.Conn
+	Target     *SystemdTarget
+	Machine    *machine.Machine
+	UnitPrefix string
+	unitPath   string
+	dbusPath   string
 }
 
-func NewSystemdManager(machine *machine.Machine) *SystemdManager {
+func NewSystemdManager(machine *machine.Machine, unitPrefix string) *SystemdManager {
 	systemd := systemdDbus.New()
 
 	name := "coreinit-" + machine.BootId + ".target"
 	target := NewSystemdTarget(name)
 
-	mgr := &SystemdManager{systemd, target, machine, defaultSystemdRuntimePath, defaultSystemdDbusPath}
+	mgr := &SystemdManager{systemd, target, machine, unitPrefix, defaultSystemdRuntimePath, defaultSystemdDbusPath}
 
 	mgr.writeUnit(target.Name(), "")
 
@@ -206,9 +207,17 @@ func (m *SystemdManager) getLocalPath(name string) string {
 }
 
 func (m *SystemdManager) addUnitNamePrefix(name string) string {
-	return fmt.Sprintf("%s.%s", m.Machine.BootId, name)
+	if len(m.UnitPrefix) > 0 {
+		return fmt.Sprintf("%s.%s", m.UnitPrefix, name)
+	} else {
+		return name
+	}
 }
 
 func (m *SystemdManager) stripUnitNamePrefix(name string) string {
-	return strings.TrimPrefix(name, fmt.Sprintf("%s.", m.Machine.BootId))
+	if len(m.UnitPrefix) > 0 {
+		return strings.TrimPrefix(name, fmt.Sprintf("%s.", m.UnitPrefix))
+	} else {
+		return name
+	}
 }

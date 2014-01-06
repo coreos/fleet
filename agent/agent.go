@@ -32,8 +32,8 @@ type Agent struct {
 	peers map[string][]string
 }
 
-func New(registry *registry.Registry, events *registry.EventStream, machine *machine.Machine, ttl string) *Agent {
-	mgr := unit.NewSystemdManager(machine)
+func New(registry *registry.Registry, events *registry.EventStream, machine *machine.Machine, ttl string, unitPrefix string) *Agent {
+	mgr := unit.NewSystemdManager(machine, unitPrefix)
 
 	if ttl == "" {
 		ttl = DefaultServiceTTL
