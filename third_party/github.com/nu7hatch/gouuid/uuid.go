@@ -39,6 +39,8 @@ var (
 const hexPattern = "^(urn\\:uuid\\:)?\\{?([a-z0-9]{8})-([a-z0-9]{4})-" +
 	"([1-5][a-z0-9]{3})-([a-z0-9]{4})-([a-z0-9]{12})\\}?$"
 
+var re = regexp.MustCompile(hexPattern)
+
 // A UUID representation compliant with specification in
 // RFC 4122 document.
 type UUID [16]byte
@@ -52,7 +54,6 @@ type UUID [16]byte
 //     uuid.ParseHex("urn:uuid:6ba7b814-9dad-11d1-80b4-00c04fd430c8")
 //
 func ParseHex(s string) (u *UUID, err error) {
-	re := regexp.MustCompile(hexPattern)
 	md := re.FindStringSubmatch(s)
 	if md == nil {
 		err = errors.New("Invalid UUID string")
