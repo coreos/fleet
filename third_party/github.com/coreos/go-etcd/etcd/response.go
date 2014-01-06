@@ -20,8 +20,19 @@ type RawResponse struct {
 	Header     http.Header
 }
 
+var (
+	validHttpStatusCode = map[int]bool{
+		http.StatusCreated:            true,
+		http.StatusOK:                 true,
+		http.StatusBadRequest:         true,
+		http.StatusNotFound:           true,
+		http.StatusPreconditionFailed: true,
+		http.StatusForbidden:          true,
+	}
+)
+
 func (rr *RawResponse) toResponse() (*Response, error) {
-	if rr.StatusCode == http.StatusBadRequest {
+	if rr.StatusCode != http.StatusOK && rr.StatusCode != http.StatusCreated {
 		return nil, handleError(rr.Body)
 	}
 
@@ -44,6 +55,7 @@ func (rr *RawResponse) toResponse() (*Response, error) {
 type Response struct {
 	Action    string `json:"action"`
 	Node      *Node  `json:"node"`
+	PrevNode  *Node  `json:"prevNode,omitempty"`
 	EtcdIndex uint64 `json:"etcdIndex"`
 	RaftIndex uint64 `json:"raftIndex"`
 	RaftTerm  uint64 `json:"raftTerm"`
@@ -51,7 +63,6 @@ type Response struct {
 
 type Node struct {
 	Key           string     `json:"key, omitempty"`
-	PrevValue     string     `json:"prevValue,omitempty"`
 	Value         string     `json:"value,omitempty"`
 	Dir           bool       `json:"dir,omitempty"`
 	Expiration    *time.Time `json:"expiration,omitempty"`
