@@ -1,18 +1,20 @@
 package store
 
 const (
-	Get            = "get"
-	Create         = "create"
-	Set            = "set"
-	Update         = "update"
-	Delete         = "delete"
-	CompareAndSwap = "compareAndSwap"
-	Expire         = "expire"
+	Get              = "get"
+	Create           = "create"
+	Set              = "set"
+	Update           = "update"
+	Delete           = "delete"
+	CompareAndSwap   = "compareAndSwap"
+	CompareAndDelete = "compareAndDelete"
+	Expire           = "expire"
 )
 
 type Event struct {
-	Action string      `json:"action"`
-	Node   *NodeExtern `json:"node,omitempty"`
+	Action   string      `json:"action"`
+	Node     *NodeExtern `json:"node,omitempty"`
+	PrevNode *NodeExtern `json:"prevNode,omitempty"`
 }
 
 func newEvent(action string, key string, modifiedIndex, createdIndex uint64) *Event {
@@ -33,7 +35,7 @@ func (e *Event) IsCreated() bool {
 		return true
 	}
 
-	if e.Action == Set && e.Node.PrevValue == "" {
+	if e.Action == Set && e.PrevNode == nil {
 		return true
 	}
 
@@ -51,7 +53,7 @@ func (event *Event) Response(currentIndex uint64) interface{} {
 			Action:     event.Action,
 			Key:        event.Node.Key,
 			Value:      event.Node.Value,
-			PrevValue:  event.Node.PrevValue,
+			PrevValue:  event.PrevNode.Value,
 			Index:      event.Node.ModifiedIndex,
 			TTL:        event.Node.TTL,
 			Expiration: event.Node.Expiration,

@@ -231,9 +231,9 @@ func (n *node) Remove(dir, recursive bool, callback func(path string)) *etcdErr.
 	return nil
 }
 
-func (n *node) Repr(recurisive, sorted bool) NodeExtern {
+func (n *node) Repr(recurisive, sorted bool) *NodeExtern {
 	if n.IsDir() {
-		node := NodeExtern{
+		node := &NodeExtern{
 			Key:           n.Path,
 			Dir:           true,
 			ModifiedIndex: n.ModifiedIndex,
@@ -272,7 +272,7 @@ func (n *node) Repr(recurisive, sorted bool) NodeExtern {
 		return node
 	}
 
-	node := NodeExtern{
+	node := &NodeExtern{
 		Key:           n.Path,
 		Value:         n.Value,
 		ModifiedIndex: n.ModifiedIndex,
@@ -304,6 +304,13 @@ func (n *node) UpdateTTL(expireTime time.Time) {
 			n.store.ttlKeyHeap.push(n)
 		}
 	}
+}
+
+func (n *node) Compare(prevValue string, prevIndex uint64) bool {
+	compareValue := (prevValue == "" || n.Value == prevValue)
+	compareIndex := (prevIndex == 0 || n.ModifiedIndex == prevIndex)
+
+	return compareValue && compareIndex
 }
 
 // Clone function clone the node recursively and return the new node.
