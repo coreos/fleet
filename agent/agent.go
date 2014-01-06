@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"fmt"
 	"strings"
 	"time"
 
@@ -136,17 +137,38 @@ func (a *Agent) StartServiceHeartbeatThread() chan bool {
 
 // Determine whether a given Job conflicts with any locally-scheduled Jobs
 func (a *Agent) HasLocalJobConflict(j *job.Job) bool {
-	isSingleton := func (j *job.Job) bool {
+	var reqString string
+	for key, slice := range j.Payload.Requirements {
+		reqString += fmt.Sprintf("%s = [", key)
+		for _, val := range slice {
+			reqString += fmt.Sprintf("%s, ", val)
+		}
+		reqString += fmt.Sprint("] ")
+	}
+
+	if len(reqString) > 0 {
+		log.V(1).Infof("Job(%s) has requirements %s", j.Name, reqString)
+	} else {
+		log.V(1).Infof("Job(%s) has no requirements", j.Name)
+	}
+
+	isSingleton := func(j *job.Job) bool {
 		singleton, ok := j.Payload.Requirements["MachineSingleton"]
 		return ok && singleton[0] == "true"
 	}
 
-	hasProvides := func (j *job.Job) bool {
+	hasProvides := func(j *job.Job) bool {
 		provides, ok := j.Payload.Requirements["Provides"]
 		return ok && len(provides) > 0
 	}
 
-	if !isSingleton(j) || !hasProvides(j) {
+	if !isSingleton(j) {
+		log.V(1).Infof("Job(%s) is not a singleton, therefore no conflict", j.Name)
+		return false
+	}
+
+	if !hasProvides(j) {
+		log.V(1).Infof("Job(%s) does not provide anything, therefore no conflict", j.Name)
 		return false
 	}
 
@@ -186,6 +208,8 @@ func (a *Agent) HandleEventJobOffered(event registry.Event) {
 	if a.HasLocalJobConflict(&jo.Job) {
 		log.V(1).Infof("EventJobOffered(%s): local Job conflict", jo.Job.Name)
 		return
+	} else {
+		log.V(1).Infof("EventJobScheduled(%s): no local Job conflicts", jo.Job.Name)
 	}
 
 	var missing []string
@@ -254,6 +278,8 @@ func (a *Agent) HandleEventJobScheduled(event registry.Event) {
 			log.V(1).Infof("EventJobScheduled(%s): local Job conflict, cancelling", jobName)
 			a.Registry.CancelJob(jobName)
 			return
+		} else {
+			log.V(1).Infof("EventJobScheduled(%s): no local Job conflicts", jobName)
 		}
 
 		log.Infof("EventJobScheduled(%s): Starting Job", j.Name)
