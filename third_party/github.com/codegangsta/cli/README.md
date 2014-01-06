@@ -30,8 +30,10 @@ One of the philosophies behind cli.go is that an API should be playful and full 
 ``` go
 package main
 
-import "os"
-import "github.com/codegangsta/cli"
+import (
+  "os"
+  "github.com/codegangsta/cli"
+)
 
 func main() {
   cli.NewApp().Run(os.Args)
@@ -43,8 +45,10 @@ This app will run and show help text, but is not very useful. Let's give an acti
 ``` go
 package main
 
-import "os"
-import "github.com/codegangsta/cli"
+import (
+  "os"
+  "github.com/codegangsta/cli"
+)
 
 func main() {
   app := cli.NewApp()
@@ -68,8 +72,10 @@ Being a programmer can be a lonely job. Thankfully by the power of automation th
 /* greet.go */
 package main
 
-import "os"
-import "github.com/codegangsta/cli"
+import (
+  "os"
+  "github.com/codegangsta/cli"
+)
 
 func main() {
   app := cli.NewApp()
@@ -147,6 +153,18 @@ app.Action = func(c *cli.Context) {
 ...
 ```
 
+#### Alternate Names
+
+You can set alternate (or short) names for flags by providing a comma-delimited list for the Name. e.g.
+
+``` go
+app.Flags = []cli.Flag {
+  cli.StringFlag{"lang, l", "english", "language for the greeting"},
+}
+```
+
+That flag can then be set with `--lang spanish` or `-l spanish`. Note that giving two different forms of the same flag in the same command invocation is an error.
+
 ### Subcommands
 
 Subcommands can be defined for a more git-like command line app.
@@ -158,7 +176,7 @@ app.Commands = []cli.Command{
     ShortName: "a",
     Usage:     "add a task to the list",
     Action: func(c *cli.Context) {
-      println("added task: ", c.Args()[0])
+      println("added task: ", c.FirstArg())
     },
   },
   {
@@ -166,7 +184,7 @@ app.Commands = []cli.Command{
     ShortName: "c",
     Usage:     "complete a task on the list",
     Action: func(c *cli.Context) {
-      println("completed task: ", c.Args()[0])
+      println("completed task: ", c.FirstArg())
     },
   },
 }
