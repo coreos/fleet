@@ -22,7 +22,7 @@ func (r *Registry) GetAllJobs() []job.Job {
 	var jobs []job.Job
 
 	key := path.Join(keyPrefix, jobPrefix)
-	resp, err := r.etcd.Get(key, false, true)
+	resp, err := r.etcd.Get(key, true, true)
 
 	if err != nil {
 		log.Errorf(err.Error())
@@ -42,7 +42,7 @@ func (r *Registry) GetAllJobsByMachine(match *machine.Machine) []job.Job {
 	var jobs []job.Job
 
 	key := path.Join(keyPrefix, jobPrefix)
-	resp, err := r.etcd.Get(key, false, true)
+	resp, err := r.etcd.Get(key, true, true)
 
 	if err != nil {
 		log.Errorf(err.Error())
