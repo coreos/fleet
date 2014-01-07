@@ -27,10 +27,10 @@ type Agent struct {
 	Manager    *unit.SystemdManager
 	Machine    *machine.Machine
 	ServiceTTL string
-	stop       chan bool
+	state      *AgentState
 
-	// map of Peer dependencies to unresolved JobOffers
-	peers map[string][]string
+	// channel used to shutdown any open connections the Agent holds
+	stop chan bool
 }
 
 func New(registry *registry.Registry, events *registry.EventStream, machine *machine.Machine, ttl string, unitPrefix string) *Agent {
@@ -40,13 +40,13 @@ func New(registry *registry.Registry, events *registry.EventStream, machine *mac
 		ttl = DefaultServiceTTL
 	}
 
-	agent := &Agent{registry, events, mgr, machine, ttl, make(chan bool), make(map[string][]string, 0)}
-
-	return agent
+	return &Agent{registry, events, mgr, machine, ttl, nil, make(chan bool)}
 }
 
 // Trigger all async processes the Agent intends to run
 func (a *Agent) Run() {
+	a.state = NewState()
+
 	// Kick off the three threads we need for our async processes
 	svcstop := a.StartServiceHeartbeatThread()
 	machstop := a.StartMachineHeartbeatThread()
@@ -61,6 +61,8 @@ func (a *Agent) Run() {
 	machstop <- true
 
 	a.events.RemoveListener("agent", a.Machine)
+
+	a.state = nil
 }
 
 // Stop all async processes the Agent is running
@@ -229,10 +231,7 @@ func (a *Agent) HandleEventJobOffered(event registry.Event) {
 	if len(missing) > 0 {
 		log.V(1).Infof("EventJobOffered(%s): tracking Job until Peers(%s) are scheduled", jo.Job.Name, strings.Join(missing, ","))
 		for _, peerName := range missing {
-			if _, ok := a.peers[peerName]; !ok {
-				a.peers[peerName] = make([]string, 0)
-			}
-			a.peers[peerName] = append(a.peers[peerName], jo.Job.Name)
+			a.state.TrackPeer(peerName, jo.Job.Name)
 		}
 		return
 	}
@@ -285,14 +284,12 @@ func (a *Agent) HandleEventJobScheduled(event registry.Event) {
 		log.Infof("EventJobScheduled(%s): Starting Job", j.Name)
 		a.Manager.StartJob(j)
 
-		if peers, ok := a.peers[jobName]; ok {
-			for _, peer := range peers {
-				log.V(1).Infof("EventJobScheduled(%s): Found unresolved offer for Peer(%s)", jobName, peer)
+		for _, peer := range a.state.GetPeers(jobName) {
+			log.V(1).Infof("EventJobScheduled(%s): Found unresolved offer for Peer(%s)", jobName, peer)
 
-				log.Infof("EventJobScheduled(%s): submitting JobBid for Peer(%s)", jobName, peer)
-				jb := job.NewBid(peer, a.Machine.BootId)
-				a.Registry.SubmitJobBid(jb)
-			}
+			log.Infof("EventJobScheduled(%s): submitting JobBid for Peer(%s)", jobName, peer)
+			jb := job.NewBid(peer, a.Machine.BootId)
+			a.Registry.SubmitJobBid(jb)
 		}
 	}
 }
@@ -303,12 +300,9 @@ func (a *Agent) HandleEventJobCancelled(event registry.Event) {
 	j := job.NewJob(jobName, nil, nil)
 	a.Manager.StopJob(j)
 
-	peers, ok := a.peers[jobName]
-	if ok {
-		for _, peer := range peers {
-			log.Infof("EventJobCancelled(%s): cancelling Peer(%s) of Job", jobName, peer)
-			a.Registry.CancelJob(peer)
-		}
+	for _, peer := range a.state.GetPeers(jobName) {
+		log.Infof("EventJobCancelled(%s): cancelling Peer(%s) of Job", jobName, peer)
+		a.Registry.CancelJob(peer)
 	}
 }
 
