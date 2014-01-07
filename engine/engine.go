@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	DefaultRequestClaimTTL = "10s"
+	DefaultRequestClaimTTL = "4s"
 )
 
 type Engine struct {
