@@ -66,12 +66,10 @@ func (self *EventStream) send(event Event) {
 	handlerFuncName := fmt.Sprintf("Handle%s", event.Type)
 	for _, listener := range self.listeners {
 		log.V(2).Infof("Looking for func %s on listener %s", handlerFuncName, listener.String())
-		if event.Context == nil || event.Context.BootId == listener.Context.BootId {
-			handlerFunc := reflect.ValueOf(listener.Handler).MethodByName(handlerFuncName)
-			if handlerFunc.IsValid() {
-				log.V(2).Infof("Calling event handler for %s on listener %s", event.Type, listener.String())
-				go handlerFunc.Call([]reflect.Value{reflect.ValueOf(event)})
-			}
+		handlerFunc := reflect.ValueOf(listener.Handler).MethodByName(handlerFuncName)
+		if handlerFunc.IsValid() {
+			log.V(2).Infof("Calling event handler for %s on listener %s", event.Type, listener.String())
+			go handlerFunc.Call([]reflect.Value{reflect.ValueOf(event)})
 		}
 	}
 }
