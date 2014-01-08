@@ -28,6 +28,9 @@ func main() {
 		syscall.Exit(1)
 	}
 
+	// Print out to stderr by default (stderr instead of stdout due to glog's choices)
+	flag.Lookup("logtostderr").Value.Set("true")
+
 	cfg, err := loadConfigFromPath(*cfgPath)
 	if err != nil {
 		glog.Errorf(err.Error())
