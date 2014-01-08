@@ -16,8 +16,17 @@ import (
 )
 
 func main() {
-	cfgPath := flag.String("config_file", "", "Path to config file.")
-	flag.Parse()
+	// We use a custom FlagSet since golang/glog adds a bunch of flags we
+	// do not want to publish
+	flagset := flag.NewFlagSet("coreinit", flag.ExitOnError)
+	cfgPath := flagset.String("config_file", "", "Path to config file.")
+	err := flagset.Parse(os.Args[1:])
+
+	// We do this manually since we're using a custom FlagSet
+	if err == flag.ErrHelp {
+		flag.Usage()
+		syscall.Exit(1)
+	}
 
 	cfg, err := loadConfigFromPath(*cfgPath)
 	if err != nil {
