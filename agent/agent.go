@@ -312,6 +312,11 @@ func (a *Agent) HandleEventJobScheduled(event registry.Event) {
 	log.V(1).Infof("EventJobScheduled(%s): Fetching Job from Registry", jobName)
 	j := a.Registry.GetJob(jobName)
 
+	if j == nil {
+		log.V(1).Infof("EventJobScheduled(%s): Job not found in Registry")
+		return
+	}
+
 	// Reassert there are no conflicts
 	if a.hasConflict(j) {
 		log.V(1).Infof("EventJobScheduled(%s): Local conflict found, cancelling Job", jobName)
