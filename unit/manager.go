@@ -31,6 +31,7 @@ type SystemdManager struct {
 func NewSystemdManager(machine *machine.Machine, unitPrefix string) *SystemdManager {
 	//TODO(bcwaldon): Handle error in call to New()
 	systemd, _ := systemdDbus.New()
+	systemd.Subscribe()
 
 	name := "coreinit-" + machine.BootId + ".target"
 	target := NewSystemdTarget(name)
