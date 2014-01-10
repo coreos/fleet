@@ -11,7 +11,6 @@ import (
 
 	systemdDbus "github.com/coreos/go-systemd/dbus"
 	log "github.com/golang/glog"
-	"github.com/guelfey/go.dbus"
 
 	"github.com/coreos/coreinit/job"
 	"github.com/coreos/coreinit/machine"
@@ -19,7 +18,6 @@ import (
 
 const (
 	defaultSystemdRuntimePath = "/run/systemd/system/"
-	defaultSystemdDbusPath    = "/org/freedesktop/systemd1/unit/"
 )
 
 type SystemdManager struct {
@@ -28,7 +26,6 @@ type SystemdManager struct {
 	Machine    *machine.Machine
 	UnitPrefix string
 	unitPath   string
-	dbusPath   string
 }
 
 func NewSystemdManager(machine *machine.Machine, unitPrefix string) *SystemdManager {
@@ -37,7 +34,7 @@ func NewSystemdManager(machine *machine.Machine, unitPrefix string) *SystemdMana
 	name := "coreinit-" + machine.BootId + ".target"
 	target := NewSystemdTarget(name)
 
-	mgr := &SystemdManager{systemd, target, machine, unitPrefix, defaultSystemdRuntimePath, defaultSystemdDbusPath}
+	mgr := &SystemdManager{systemd, target, machine, unitPrefix, defaultSystemdRuntimePath}
 
 	mgr.writeUnit(target.Name(), "")
 
@@ -58,8 +55,7 @@ func (m *SystemdManager) getUnitByName(name string) (*SystemdUnit, error) {
 }
 
 func (m *SystemdManager) getUnitsByTarget(target *SystemdTarget) []SystemdUnit {
-	object := m.getDbusPath(target.Name())
-	info, err := m.Systemd.GetUnitInfo(object)
+	info, err := m.Systemd.GetUnitInfo(target.Name())
 
 	if err != nil {
 		panic(err)
@@ -130,7 +126,7 @@ func (m *SystemdManager) StopJob(job *job.Job) {
 }
 
 func (m *SystemdManager) getUnitStates(name string) (string, string, string, error) {
-	info, err := m.Systemd.GetUnitInfo(m.getDbusPath(name))
+	info, err := m.Systemd.GetUnitInfo(name)
 
 	if err != nil {
 		return "", "", "", err
@@ -194,12 +190,6 @@ func (m *SystemdManager) writeUnit(name string, contents string) error {
 
 	file.Write([]byte(contents))
 	return nil
-}
-
-func (m *SystemdManager) getDbusPath(name string) dbus.ObjectPath {
-	path := path.Join(m.dbusPath, name)
-	path = serializeDbusPath(path)
-	return dbus.ObjectPath(path)
 }
 
 func (m *SystemdManager) getLocalPath(name string) string {
