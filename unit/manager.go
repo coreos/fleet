@@ -56,13 +56,13 @@ func (m *SystemdManager) getUnitByName(name string) (*SystemdUnit, error) {
 }
 
 func (m *SystemdManager) getUnitsByTarget(target *SystemdTarget) []SystemdUnit {
-	info, err := m.Systemd.GetUnitInfo(target.Name())
+	info, err := m.Systemd.GetUnitProperties(target.Name())
 
 	if err != nil {
 		panic(err)
 	}
 
-	names := info["Wants"].Value().([]string)
+	names := info["Wants"].([]string)
 
 	var units []SystemdUnit
 	for _, name := range names {
@@ -127,14 +127,14 @@ func (m *SystemdManager) StopJob(job *job.Job) {
 }
 
 func (m *SystemdManager) getUnitStates(name string) (string, string, string, error) {
-	info, err := m.Systemd.GetUnitInfo(name)
+	info, err := m.Systemd.GetUnitProperties(name)
 
 	if err != nil {
 		return "", "", "", err
 	} else {
-		loadState := info["LoadState"].Value().(string)
-		activeState := info["ActiveState"].Value().(string)
-		subState := info["SubState"].Value().(string)
+		loadState := info["LoadState"].(string)
+		activeState := info["ActiveState"].(string)
+		subState := info["SubState"].(string)
 		return loadState, activeState, subState, nil
 	}
 }
