@@ -171,6 +171,8 @@ func (dec *decoder) decode(s string, depth int) interface{} {
 				panic(FormatError("input exceeds container depth limit"))
 			}
 			length := dec.decode("u", depth).(uint32)
+			// Even for empty maps, the correct padding must be included
+			dec.align(8)
 			spos := dec.pos
 			for dec.pos < spos+int(length) {
 				dec.align(8)
@@ -188,6 +190,8 @@ func (dec *decoder) decode(s string, depth int) interface{} {
 		}
 		length := dec.decode("u", depth).(uint32)
 		v := reflect.MakeSlice(reflect.SliceOf(typeFor(s[1:])), 0, int(length))
+		// Even for empty arrays, the correct padding must be included
+		dec.align(alignment(typeFor(s[1:])))
 		spos := dec.pos
 		for dec.pos < spos+int(length) {
 			ev := dec.decode(s[1:], depth+1)

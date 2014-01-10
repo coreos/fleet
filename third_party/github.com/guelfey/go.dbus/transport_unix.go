@@ -6,7 +6,6 @@ import (
 	"errors"
 	"io"
 	"net"
-	"os"
 	"syscall"
 )
 
@@ -182,19 +181,6 @@ func (t *unixTransport) SendMessage(msg *Message) error {
 		if err := msg.EncodeTo(t, binary.LittleEndian); err != nil {
 			return nil
 		}
-	}
-	return nil
-}
-
-func (t *unixTransport) SendNullByte() error {
-	ucred := &syscall.Ucred{Pid: int32(os.Getpid()), Uid: uint32(os.Getuid()), Gid: uint32(os.Getgid())}
-	b := syscall.UnixCredentials(ucred)
-	_, oobn, err := t.UnixConn.WriteMsgUnix([]byte{0}, b, nil)
-	if err != nil {
-		return err
-	}
-	if oobn != len(b) {
-		return io.ErrShortWrite
 	}
 	return nil
 }

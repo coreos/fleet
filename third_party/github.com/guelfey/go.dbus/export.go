@@ -22,6 +22,10 @@ var (
 	}
 )
 
+// Sender is a type which can be used in exported methods to receive the message
+// sender.
+type Sender string
+
 func exportedMethod(v interface{}, name string) reflect.Value {
 	if v == nil {
 		return reflect.Value{}
@@ -94,20 +98,28 @@ func (conn *Conn) handleCall(msg *Message) {
 	}
 	t := m.Type()
 	vs := msg.Body
-	if t.NumIn() != len(vs) {
-		conn.sendError(errmsgInvalidArg, sender, serial)
-		return
-	}
-	pointers := make([]interface{}, len(vs))
+	pointers := make([]interface{}, t.NumIn())
+	decode := make([]interface{}, 0, len(vs))
 	for i := 0; i < t.NumIn(); i++ {
-		pointers[i] = reflect.New(t.In(i)).Interface()
+		tp := t.In(i)
+		val := reflect.New(tp)
+		pointers[i] = val.Interface()
+		if tp == reflect.TypeOf((*Sender)(nil)).Elem() {
+			val.Elem().SetString(sender)
+		} else {
+			decode = append(decode, pointers[i])
+		}
 	}
-	if err := Store(vs, pointers...); err != nil {
+	if len(decode) != len(vs) {
 		conn.sendError(errmsgInvalidArg, sender, serial)
 		return
 	}
-	params := make([]reflect.Value, len(vs))
-	for i := 0; i < len(vs); i++ {
+	if err := Store(vs, decode...); err != nil {
+		conn.sendError(errmsgInvalidArg, sender, serial)
+		return
+	}
+	params := make([]reflect.Value, len(pointers))
+	for i := 0; i < len(pointers); i++ {
 		params[i] = reflect.ValueOf(pointers[i]).Elem()
 	}
 	ret := m.Call(params)
@@ -184,6 +196,11 @@ func (conn *Conn) Emit(path ObjectPath, name string, values ...interface{}) erro
 // *Error is not nil, it is sent back to the caller as an error.
 // Otherwise, a method reply is sent with the other return values as its body.
 //
+// Any parameters with the special type Sender are set to the sender of the
+// dbus message when the method is called. Parameters of this type do not
+// contribute to the dbus signature of the method (i.e. the method is exposed
+// as if the parameters of type Sender were not there).
+//
 // Every method call is executed in a new goroutine, so the method may be called
 // in multiple goroutines at once.
 //
@@ -252,11 +269,6 @@ func (conn *Conn) RequestName(name string, flags RequestNameFlags) (RequestNameR
 		conn.namesLck.Unlock()
 	}
 	return RequestNameReply(r), nil
-}
-
-func (conn *Conn) Unexport(path ObjectPath, iface string) {
-	conn.handlersLck.Lock()
-	conn.handlersLck.Unlock()
 }
 
 // ReleaseNameReply is the reply to a ReleaseName call.
