@@ -1,8 +1,10 @@
 package dbus
 
 import (
-	"github.com/guelfey/go.dbus"
+	"errors"
 	"time"
+
+	"github.com/guelfey/go.dbus"
 )
 
 const (
@@ -10,8 +12,60 @@ const (
 	ignoreInterval      = int64(30 * time.Millisecond)
 )
 
+// Subscribe sets up this connection to subscribe to all dbus events. This is
+// required before calling SubscribeUnits.
+func (c *Conn) Subscribe() error {
+	c.sysconn.BusObject().Call("org.freedesktop.DBus.AddMatch", 0,
+		"type='signal',interface='org.freedesktop.systemd1.Manager',member='JobRemoved'")
+	c.sysconn.BusObject().Call("org.freedesktop.DBus.AddMatch", 0,
+		"type='signal',interface='org.freedesktop.systemd1.Manager',member='UnitNew'")
+	c.sysconn.BusObject().Call("org.freedesktop.DBus.AddMatch", 0,
+		"type='signal',interface='org.freedesktop.DBus.Properties',member='PropertiesChanged'")
+
+	err := c.sysobj.Call("org.freedesktop.systemd1.Manager.Subscribe", 0).Store()
+	if err != nil {
+		c.sysconn.Close()
+		return err
+	}
+
+	c.initSubscription()
+	c.initDispatch()
+
+	return nil
+}
+
 func (c *Conn) initSubscription() {
 	c.subscriber.ignore = make(map[dbus.ObjectPath]int64)
+}
+
+func (c *Conn) initDispatch() {
+	ch := make(chan *dbus.Signal, signalBuffer)
+
+	c.sysconn.Signal(ch)
+
+	go func() {
+		for {
+			signal := <-ch
+			switch signal.Name {
+			case "org.freedesktop.systemd1.Manager.JobRemoved":
+				c.jobComplete(signal)
+
+				unitName := signal.Body[2].(string)
+				var unitPath dbus.ObjectPath
+				c.sysobj.Call("GetUnit", 0, unitName).Store(&unitPath)
+				if unitPath != dbus.ObjectPath("") {
+					c.sendSubStateUpdate(unitPath)
+				}
+			case "org.freedesktop.systemd1.Manager.UnitNew":
+				c.sendSubStateUpdate(signal.Body[1].(dbus.ObjectPath))
+			case "org.freedesktop.DBus.Properties.PropertiesChanged":
+				if signal.Body[0].(string) == "org.freedesktop.systemd1.Unit" {
+					// we only care about SubState updates, which are a Unit property
+					c.sendSubStateUpdate(signal.Path)
+				}
+			}
+		}
+	}()
 }
 
 // Returns two unbuffered channels which will receive all changed units every
@@ -71,12 +125,6 @@ type SubStateUpdate struct {
 	SubState string
 }
 
-type Error string
-
-func (e Error) Error() string {
-	return string(e)
-}
-
 // SetSubStateSubscriber writes to updateCh when any unit's substate changes.
 // Althrough this writes to updateCh on every state change, the reported state
 // may be more recent than the change that generated it (due to an unavoidable
@@ -104,7 +152,7 @@ func (c *Conn) sendSubStateUpdate(path dbus.ObjectPath) {
 		return
 	}
 
-	info, err := c.GetUnitInfo(path)
+	info, err := c.GetUnitProperties(string(path))
 	if err != nil {
 		select {
 		case c.subscriber.errCh <- err:
@@ -112,31 +160,20 @@ func (c *Conn) sendSubStateUpdate(path dbus.ObjectPath) {
 		}
 	}
 
-	name := info["Id"].Value().(string)
-	substate := info["SubState"].Value().(string)
+	name := info["Id"].(string)
+	substate := info["SubState"].(string)
 
 	update := &SubStateUpdate{name, substate}
 	select {
 	case c.subscriber.updateCh <- update:
 	default:
 		select {
-		case c.subscriber.errCh <- Error("update channel full!"):
+		case c.subscriber.errCh <- errors.New("update channel full!"):
 		default:
 		}
 	}
 
 	c.updateIgnore(path, info)
-}
-
-func (c *Conn) GetUnitInfo(path dbus.ObjectPath) (map[string]dbus.Variant, error) {
-	var err error
-	var props map[string]dbus.Variant
-	obj := c.sysconn.Object("org.freedesktop.systemd1", path)
-	err = obj.Call("GetAll", 0, "org.freedesktop.systemd1.Unit").Store(&props)
-	if err != nil {
-		return nil, err
-	}
-	return props, nil
 }
 
 // The ignore functions work around a wart in the systemd dbus interface.
@@ -158,11 +195,11 @@ func (c *Conn) shouldIgnore(path dbus.ObjectPath) bool {
 	return ok && t >= time.Now().UnixNano()
 }
 
-func (c *Conn) updateIgnore(path dbus.ObjectPath, info map[string]dbus.Variant) {
+func (c *Conn) updateIgnore(path dbus.ObjectPath, info map[string]interface{}) {
 	c.cleanIgnore()
 
 	// unit is unloaded - it will trigger bad systemd dbus behavior
-	if info["LoadState"].Value().(string) == "not-found" {
+	if info["LoadState"].(string) == "not-found" {
 		c.subscriber.ignore[path] = time.Now().UnixNano() + ignoreInterval
 	}
 }
