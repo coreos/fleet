@@ -48,6 +48,27 @@ func (o *Object) Call(method string, flags Flags, args ...interface{}) *Call {
 	return <-o.Go(method, flags, make(chan *Call, 1), args...).Done
 }
 
+// GetProperty calls org.freedesktop.DBus.Properties.GetProperty on the given
+// object. The property name must be given in interface.member notation.
+func (o *Object) GetProperty(p string) (Variant, error) {
+	idx := strings.LastIndex(p, ".")
+	if idx == -1 || idx+1 == len(p) {
+		return Variant{}, errors.New("dbus: invalid property " + p)
+	}
+
+	iface := p[:idx]
+	prop := p[idx+1:]
+
+	result := Variant{}
+	err := o.Call("org.freedesktop.DBus.Properties.Get", 0, iface, prop).Store(&result)
+
+	if err != nil {
+		return Variant{}, err
+	}
+
+	return result, nil
+}
+
 // Go calls a method with the given arguments asynchronously. It returns a
 // Call structure representing this method call. The passed channel will
 // return the same value once the call is done. If ch is nil, a new channel

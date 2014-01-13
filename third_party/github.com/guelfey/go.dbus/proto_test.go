@@ -69,6 +69,16 @@ var protoTests = []struct {
 		[]byte{0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 0, 42, 0, 0, 0, 1},
 		[]byte{8, 0, 0, 0, 0, 0, 0, 0, 42, 0, 0, 0, 1, 0, 0, 0},
 	},
+	{
+		[]interface{}{map[string]Variant{}, byte(42)},
+		[]byte{0, 0, 0, 0, 0, 0, 0, 0, 42},
+		[]byte{0, 0, 0, 0, 0, 0, 0, 0, 42},
+	},
+	{
+		[]interface{}{[]uint64{}, byte(42)},
+		[]byte{0, 0, 0, 0, 0, 0, 0, 0, 42},
+		[]byte{0, 0, 0, 0, 0, 0, 0, 0, 42},
+	},
 }
 
 func TestProto(t *testing.T) {

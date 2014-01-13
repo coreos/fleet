@@ -146,6 +146,7 @@ func (c *Client) sendRequest(method string, relativePath string,
 
 		// network error, change a machine!
 		if resp, err = c.httpClient.Do(req); err != nil {
+			logger.Debug("network error: ", err.Error())
 			c.cluster.switchLeader(trial % len(c.cluster.Machines))
 			time.Sleep(time.Millisecond * 200)
 			continue

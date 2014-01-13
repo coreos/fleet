@@ -1,11 +1,9 @@
 package dbus
 
 import (
-	"bytes"
 	"errors"
 	"io"
 	"os"
-	"os/exec"
 	"reflect"
 	"strings"
 	"sync"
@@ -97,17 +95,8 @@ func SessionBusPrivate() (*Conn, error) {
 	if address != "" && address != "autolaunch:" {
 		return Dial(address)
 	}
-	cmd := exec.Command("dbus-launch")
-	b, err := cmd.CombinedOutput()
-	if err != nil {
-		return nil, err
-	}
-	i := bytes.IndexByte(b, '=')
-	j := bytes.IndexByte(b, '\n')
-	if i == -1 || j == -1 {
-		return nil, errors.New("dbus: couldn't determine address of session bus")
-	}
-	return Dial(string(b[i+1 : j]))
+
+	return sessionBusPlatform()
 }
 
 // SystemBus returns a shared connection to the system bus, connecting to it if

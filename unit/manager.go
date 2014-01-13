@@ -11,7 +11,6 @@ import (
 
 	systemdDbus "github.com/coreos/go-systemd/dbus"
 	log "github.com/golang/glog"
-	"github.com/guelfey/go.dbus"
 
 	"github.com/coreos/coreinit/job"
 	"github.com/coreos/coreinit/machine"
@@ -19,7 +18,6 @@ import (
 
 const (
 	defaultSystemdRuntimePath = "/run/systemd/system/"
-	defaultSystemdDbusPath    = "/org/freedesktop/systemd1/unit/"
 )
 
 type SystemdManager struct {
@@ -28,16 +26,17 @@ type SystemdManager struct {
 	Machine    *machine.Machine
 	UnitPrefix string
 	unitPath   string
-	dbusPath   string
 }
 
 func NewSystemdManager(machine *machine.Machine, unitPrefix string) *SystemdManager {
-	systemd := systemdDbus.New()
+	//TODO(bcwaldon): Handle error in call to New()
+	systemd, _ := systemdDbus.New()
+	systemd.Subscribe()
 
 	name := "coreinit-" + machine.BootId + ".target"
 	target := NewSystemdTarget(name)
 
-	mgr := &SystemdManager{systemd, target, machine, unitPrefix, defaultSystemdRuntimePath, defaultSystemdDbusPath}
+	mgr := &SystemdManager{systemd, target, machine, unitPrefix, defaultSystemdRuntimePath}
 
 	mgr.writeUnit(target.Name(), "")
 
@@ -58,14 +57,13 @@ func (m *SystemdManager) getUnitByName(name string) (*SystemdUnit, error) {
 }
 
 func (m *SystemdManager) getUnitsByTarget(target *SystemdTarget) []SystemdUnit {
-	object := m.getDbusPath(target.Name())
-	info, err := m.Systemd.GetUnitInfo(object)
+	info, err := m.Systemd.GetUnitProperties(target.Name())
 
 	if err != nil {
 		panic(err)
 	}
 
-	names := info["Wants"].Value().([]string)
+	names := info["Wants"].([]string)
 
 	var units []SystemdUnit
 	for _, name := range names {
@@ -130,31 +128,34 @@ func (m *SystemdManager) StopJob(job *job.Job) {
 }
 
 func (m *SystemdManager) getUnitStates(name string) (string, string, string, error) {
-	info, err := m.Systemd.GetUnitInfo(m.getDbusPath(name))
+	info, err := m.Systemd.GetUnitProperties(name)
 
 	if err != nil {
 		return "", "", "", err
 	} else {
-		loadState := info["LoadState"].Value().(string)
-		activeState := info["ActiveState"].Value().(string)
-		subState := info["SubState"].Value().(string)
+		loadState := info["LoadState"].(string)
+		activeState := info["ActiveState"].(string)
+		subState := info["SubState"].(string)
 		return loadState, activeState, subState, nil
 	}
 }
 
 func (m *SystemdManager) startUnit(name string) {
-	log.Infof("Starting systemd unit %s", name)
+	log.V(1).Infof("Starting systemd unit %s", name)
 
 	files := []string{name}
 	m.Systemd.EnableUnitFiles(files, true, false)
+	log.V(1).Infof("Enabled systemd unit %s", name)
 
 	m.Systemd.StartUnit(name, "replace")
+	log.Infof("Started systemd unit %s", name)
 }
 
 func (m *SystemdManager) stopUnit(name string) {
-	log.Infof("Stopping systemd unit %s", name)
+	log.V(1).Infof("Stopping systemd unit %s", name)
 
 	m.Systemd.StopUnit(name, "replace")
+	log.Infof("Stopped systemd unit %s", name)
 
 	// go-systemd does not yet have this implemented
 	//files := []string{name}
@@ -194,12 +195,6 @@ func (m *SystemdManager) writeUnit(name string, contents string) error {
 
 	file.Write([]byte(contents))
 	return nil
-}
-
-func (m *SystemdManager) getDbusPath(name string) dbus.ObjectPath {
-	path := path.Join(m.dbusPath, name)
-	path = serializeDbusPath(path)
-	return dbus.ObjectPath(path)
 }
 
 func (m *SystemdManager) getLocalPath(name string) string {

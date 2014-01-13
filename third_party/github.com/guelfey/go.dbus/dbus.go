@@ -177,6 +177,8 @@ func alignment(t reflect.Type) int {
 		return 4
 	case signatureType:
 		return 1
+	case interfacesType: // sometimes used for structs
+		return 8
 	}
 	switch t.Kind() {
 	case reflect.Uint8:

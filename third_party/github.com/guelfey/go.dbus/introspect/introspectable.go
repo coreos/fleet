@@ -56,13 +56,16 @@ func Methods(v interface{}) []Method {
 		}
 		var m Method
 		m.Name = t.Method(i).Name
-		m.Args = make([]Arg, mt.NumIn()+mt.NumOut()-2)
+		m.Args = make([]Arg, 0, mt.NumIn()+mt.NumOut()-2)
 		for j := 1; j < mt.NumIn(); j++ {
-			m.Args[j-1] = Arg{"", dbus.SignatureOfType(mt.In(j)).String(), "in"}
+			if mt.In(j) != reflect.TypeOf((*dbus.Sender)(nil)).Elem() {
+				arg := Arg{"", dbus.SignatureOfType(mt.In(j)).String(), "in"}
+				m.Args = append(m.Args, arg)
+			}
 		}
 		for j := 0; j < mt.NumOut()-1; j++ {
-			m.Args[mt.NumIn()+j-1] = Arg{"",
-				dbus.SignatureOfType(mt.Out(j)).String(), "out"}
+			arg := Arg{"", dbus.SignatureOfType(mt.Out(j)).String(), "out"}
+			m.Args = append(m.Args, arg)
 		}
 		m.Annotations = make([]Annotation, 0)
 		ms = append(ms, m)

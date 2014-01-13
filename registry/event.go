@@ -39,11 +39,8 @@ func (self *EventListener) String() string {
 	}
 }
 
-func NewEventStream(reg *Registry) *EventStream {
-	client := etcd.NewClient(nil)
-	client.SetConsistency(etcd.WEAK_CONSISTENCY)
+func NewEventStream(client *etcd.Client, reg *Registry) *EventStream {
 	listeners := make(map[string]EventListener, 0)
-
 	return &EventStream{client, reg, listeners, make(chan bool)}
 }
 

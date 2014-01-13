@@ -21,11 +21,13 @@ type Server struct {
 func New(cfg config.Config) *Server {
 	m := machine.New(cfg.BootId, cfg.PublicIP, cfg.Metadata())
 
-	etcdClient := etcd.NewClient(cfg.EtcdServers)
-	etcdClient.SetConsistency(etcd.WEAK_CONSISTENCY)
-	r := registry.New(etcdClient)
+	regClient := etcd.NewClient(cfg.EtcdServers)
+	regClient.SetConsistency(etcd.WEAK_CONSISTENCY)
+	r := registry.New(regClient)
 
-	es := registry.NewEventStream(r)
+	eventClient := etcd.NewClient(cfg.EtcdServers)
+	eventClient.SetConsistency(etcd.WEAK_CONSISTENCY)
+	es := registry.NewEventStream(eventClient, r)
 	es.Open()
 
 	a := agent.New(r, es, m, "", cfg.UnitPrefix)
