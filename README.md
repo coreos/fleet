@@ -1,4 +1,4 @@
-## coreinit - a distributed init systems.
+## coreinit - a distributed init system.
 
 coreinit ties together [systemd](http://coreos.com/using-coreos/systemd) and [etcd](https://github.com/coreos/etcd) into a distributed init system. Think of it as an extension of systemd that operates at the cluster level instead of the machine level.
 
@@ -8,7 +8,7 @@ This project is very low level and is designed as a foundation for higher order 
 
 ### Set Up
 
-coreinit needs to be running on each machine that's part of the cluster. On a CoreOS machine, drop in a coreinit unit file and start it. Coreinit assumes you have an etcd cluster running on 4001 that it can talk to.
+coreinit needs to be running on each machine that's part of the cluster. On a CoreOS machine, drop in a coreinit unit file and start it. You can configure coreinit to talk to a local etcd endpoint (default) or a remote cluster.
 
 ### Writing Unit Files
 
@@ -67,9 +67,9 @@ UNIT						LOAD	ACTIVE		SUB			DESC							MACHINE
 socket-activated.service	loaded	inactive	dead        Socket-Activated Web Service	491586a6-508f-4583-a71d-bfc4d146e996
 socket-activated.socket		loaded	active		listening 	Socket-Activated Web Service	491586a6-508f-4583-a71d-bfc4d146e996
 web@8000.service			loaded	active		running		Web Service						491586a6-508f-4583-a71d-bfc4d146e996
-web@8001.service			loaded	active		running		Web Service						491586a6-508f-4583-a71d-bfc4d146e996
+web@8001.service			loaded	active		running		Web Service						148a18ff-6e95-4cd8-92da-c9de9bb90d5a
 web@8002.service			loaded	active		running		Web Service						491586a6-508f-4583-a71d-bfc4d146e996
-apache1.service		loaded	active		running		Example service started with c	491586a6-508f-4583-a71d-bfc4d146e996
+apache1.service				loaded	active		running		Example service started with c	148a18ff-6e95-4cd8-92da-c9de9bb90d5a
 ```
 
 ### List Machines
@@ -77,11 +77,13 @@ apache1.service		loaded	active		running		Example service started with c	491586a6
 List out all of the machines currently connected to the cluster:
 
 ```
-corectl list-machines
+$ corectl list-machines
+MACHINE									METADATA
+148a18ff-6e95-4cd8-92da-c9de9bb90d5a
+491586a6-508f-4583-a71d-bfc4d146e996
 ```
 
 ### Assumptions
 
 * Machines have truly unique UUIDs and their metadata is perfectly cacheable.
 * If a machine changes IP addresses, etc it *must* have a new UUID.
-* An etcd cluster is running on 127.0.0.1:4001
