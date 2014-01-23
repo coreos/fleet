@@ -23,13 +23,7 @@ Description=coreinit
 ExecStart=/home/core/coreinit -config_file /home/core/coreinit.conf
 ```
 
-You can configure coreinit to talk to a local etcd endpoint (default) or a remote cluster with `etcd_servers` in your config file:
-
-```
-$ cat /home/core/coreinit.conf
-verbosity=1
-etcd_servers=["http://PRIVATE_IP:4001"] # optional
-```
+You can configure coreinit with a config file. See the example file for more info.
 
 To start your coreinit unit, run `sudo systemctl start coreinit.service`.
 
