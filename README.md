@@ -2,7 +2,7 @@
 
 coreinit ties together [systemd](http://coreos.com/using-coreos/systemd) and [etcd](https://github.com/coreos/etcd) into a distributed init system. Think of it as an extension of systemd that operates at the cluster level instead of the machine level.
 
-This project is very low level and is designed as a foundation for sophisticated services. It is not currently suitable for production use.
+This project is very low level and is designed as a foundation for higher order orchestration.
 
 [![Build Status](https://travis-ci.org/coreos/coreinit.png?branch=master)](https://travis-ci.org/coreos/coreinit)
 
@@ -20,7 +20,7 @@ Coreinit schedules each unit file to a machine in the cluster, taking into accou
 | X-Coreinit-Peers | The name of a unit file that should be scheduled alongside this unit. |
 | X-Coreinit-MachineSingleton | Boolean value that controls whether multiple copies of this service can run on a single machine. Useful for creating HA services. |
 
-To deploy multiple copies of a service, generate unique copies of each unit file. Each will need its own name (`apache-a2fe67.service`) and contents where appropriate. In the following example, the name of the container `apache-a2fe67` is unique. These unit files should be considered perfectly cachable. Any changes will need to result in a new unit file.
+To deploy multiple copies of a service, generate unique copies of each unit file. Each will need its own name (`apache1.service`) and contents where appropriate. In the following example, the name of the container `apache1` is unique. These unit files should be considered perfectly cachable. Any changes will need to result in a new unit file.
 
 ```
 [Unit]
@@ -28,8 +28,8 @@ Description=Example service started with coreinit
 After=docker.service
 
 [Service]
-ExecStart=/usr/bin/docker run -name apache-a2fe67 coreos/apache /usr/sbin/apache2ctl -D FOREGROUND
-ExecStop=/usr/bin/docker stop apache-a2fe67
+ExecStart=/usr/bin/docker run -name apache1 coreos/apache /usr/sbin/apache2ctl -D FOREGROUND
+ExecStop=/usr/bin/docker stop apache1
 
 [X-Coreinit]
 X-Coreinit-Provides=apache
@@ -46,7 +46,7 @@ Other Notes
 Running a unit on the cluster is done by specifying a unit file — just as if you were using systemd locally — but you're operating at the cluster level instead of the machine level. An included tool, `corectl` acts similarly to `systemctl`. To run the unit files you just generated, run:
 
 ```
-corectl start apache-a2fe67.service
+corectl start apache1.service
 ```
 
 You can also start an entire folder:
@@ -69,7 +69,7 @@ socket-activated.socket		loaded	active		listening 	Socket-Activated Web Service	
 web@8000.service			loaded	active		running		Web Service						491586a6-508f-4583-a71d-bfc4d146e996
 web@8001.service			loaded	active		running		Web Service						491586a6-508f-4583-a71d-bfc4d146e996
 web@8002.service			loaded	active		running		Web Service						491586a6-508f-4583-a71d-bfc4d146e996
-apache-a2fe67.service		loaded	active		running		Example service started with c	491586a6-508f-4583-a71d-bfc4d146e996
+apache1.service		loaded	active		running		Example service started with c	491586a6-508f-4583-a71d-bfc4d146e996
 ```
 
 ### List Machines
