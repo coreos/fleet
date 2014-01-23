@@ -6,9 +6,32 @@ This project is very low level and is designed as a foundation for higher order 
 
 [![Build Status](https://travis-ci.org/coreos/coreinit.png?branch=master)](https://travis-ci.org/coreos/coreinit)
 
+### Building
+
+Coreinit must be built with Go 1.2 on a Linux machine, or in a [Go docker container](https://index.docker.io/u/miksago/ubuntu-go/). Simply run `./build` and then copy the binaries onto each of your machines.
+
 ### Set Up
 
-coreinit needs to be running on each machine that's part of the cluster. On a CoreOS machine, drop in a coreinit unit file and start it. You can configure coreinit to talk to a local etcd endpoint (default) or a remote cluster.
+coreinit needs to be running on each machine that's part of the cluster. On each CoreOS machine, place the `coreinit` and `corectl` binaries in `/home/core`, the unit into `/media/state/units/coreinit.service`, and the config file into `/home/core/coreinit.conf`.
+
+```
+$ cat /media/state/units/coreinit.service
+[Unit]
+Description=coreinit
+
+[Service]
+ExecStart=/home/core/coreinit -config_file /home/core/coreinit.conf
+```
+
+You can configure coreinit to talk to a local etcd endpoint (default) or a remote cluster with `etcd_servers` in your config file:
+
+```
+$ cat /home/core/coreinit.conf
+verbosity=1
+etcd_servers=["http://PRIVATE_IP:4001"] # optional
+```
+
+To start your coreinit unit, run `sudo systemctl start coreinit.service`.
 
 ### Writing Unit Files
 
