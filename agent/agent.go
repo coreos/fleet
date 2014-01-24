@@ -16,7 +16,7 @@ import (
 
 const (
 	// TTL to use with all state pushed to Registry
-	DefaultTTL = "10s"
+	DefaultTTL = "30s"
 
 	// Refresh TTLs at 1/2 the TTL length
 	refreshInterval   = 2
