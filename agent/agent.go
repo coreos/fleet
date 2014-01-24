@@ -81,15 +81,13 @@ func (a *Agent) StartMachineHeartbeatThread() chan bool {
 
 	loop := func() {
 		interval := intervalFromTTL(a.ttl)
-		c := time.Tick(interval)
-		for _ = range c {
-			log.V(1).Info("MachineHeartbeat tick")
+		for true {
 			select {
 			case <-stop:
-				log.V(1).Info("MachineHeartbeat exiting due to stop signal")
+				log.V(2).Info("MachineHeartbeat exiting due to stop signal")
 				return
-			default:
-				log.V(1).Info("MachineHeartbeat running")
+			case <- time.Tick(interval):
+				log.V(2).Info("MachineHeartbeat tick")
 				heartbeat()
 			}
 		}
@@ -118,15 +116,13 @@ func (a *Agent) StartServiceHeartbeatThread() chan bool {
 
 	loop := func() {
 		interval := intervalFromTTL(a.ttl)
-		c := time.Tick(interval)
-		for _ = range c {
-			log.V(1).Info("ServiceHeartbeat tick")
+		for true {
 			select {
 			case <-stop:
 				log.V(1).Info("ServiceHeartbeat exiting due to stop signal")
 				return
-			default:
-				log.V(1).Info("ServiceHeartbeat running")
+			case <-time.Tick(interval):
+				log.V(2).Info("ServiceHeartbeat tick")
 				heartbeat()
 			}
 		}
