@@ -25,7 +25,7 @@ const (
 type Agent struct {
 	registry   *registry.Registry
 	events     *event.EventBus
-	Manager    *unit.SystemdManager
+	manager    *unit.SystemdManager
 	Machine    *machine.Machine
 	ServiceTTL string
 	state      *AgentState
@@ -105,7 +105,7 @@ func (a *Agent) StartServiceHeartbeatThread() chan bool {
 	stop := make(chan bool)
 
 	heartbeat := func() {
-		localJobs := a.Manager.GetJobs()
+		localJobs := a.manager.GetJobs()
 		ttl := parseDuration(a.ServiceTTL)
 		for _, j := range localJobs {
 			if tgt := a.registry.GetJobTarget(j.Name); tgt != nil && tgt.BootId == a.Machine.BootId {
@@ -113,7 +113,7 @@ func (a *Agent) StartServiceHeartbeatThread() chan bool {
 				a.registry.SaveJobState(&j, ttl)
 			} else {
 				log.Infof("Local Job(%s) does not appear to be scheduled to this Machine(%s), stopping it", j.Name, a.Machine.BootId)
-				a.Manager.StopJob(&j)
+				a.manager.StopJob(&j)
 			}
 		}
 	}
@@ -326,7 +326,7 @@ func (a *Agent) HandleEventJobScheduled(ev event.Event) {
 	}
 
 	log.Infof("EventJobScheduled(%s): Starting Job", j.Name)
-	a.Manager.StartJob(j)
+	a.manager.StartJob(j)
 
 	reversePeers := a.state.GetJobsByPeer(jobName)
 	for _, peer := range reversePeers {
@@ -364,7 +364,7 @@ func (a *Agent) HandleEventJobCancelled(ev event.Event) {
 	jobName := ev.Payload.(string)
 	log.Infof("EventJobCancelled(%s): stopping Job", jobName)
 	j := job.NewJob(jobName, nil, nil)
-	a.Manager.StopJob(j)
+	a.manager.StopJob(j)
 
 	a.state.Lock()
 	defer a.state.Unlock()
