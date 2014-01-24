@@ -17,6 +17,7 @@ type Server struct {
 	machine  *machine.Machine
 	registry *registry.Registry
 	eventBus *event.EventBus
+	eventStream *registry.EventStream
 }
 
 func New(cfg config.Config) *Server {
@@ -32,24 +33,25 @@ func New(cfg config.Config) *Server {
 	eventClient := etcd.NewClient(cfg.EtcdServers)
 	eventClient.SetConsistency(etcd.WEAK_CONSISTENCY)
 	es := registry.NewEventStream(eventClient)
-	es.Stream(eb.Channel)
 
 	a := agent.New(r, eb, m, cfg.AgentTTL, cfg.UnitPrefix)
 	e := engine.New(r, eb, m)
 
-	return &Server{a, e, m, r, eb}
+	return &Server{a, e, m, r, eb, es}
 }
 
 func (self *Server) Run() {
 	go self.agent.Run()
 	go self.engine.Run()
+
+	go self.eventBus.Listen()
+	go self.eventStream.Stream(self.eventBus.Channel)
 }
 
-func (self *Server) Configure(cfg *config.Config) {
-	if cfg.BootId != self.machine.BootId {
-		self.machine = machine.New(cfg.BootId, cfg.PublicIP, cfg.Metadata())
-		self.agent.Stop()
-		self.agent = agent.New(self.registry, self.eventBus, self.machine, cfg.AgentTTL, cfg.UnitPrefix)
-		go self.agent.Run()
-	}
+func (self *Server) Stop() {
+	self.agent.Stop()
+	self.engine.Stop()
+
+	self.eventStream.Close()
+	self.eventBus.Stop()
 }

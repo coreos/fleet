@@ -13,7 +13,7 @@ import (
 
 type EventStream struct {
 	etcd *etcd.Client
-	stop chan bool
+	close chan bool
 }
 
 func NewEventStream(client *etcd.Client) *EventStream {
@@ -32,16 +32,20 @@ func (self *EventStream) Stream(eventchan chan *event.Event) {
 	for key, funcs := range watchMap {
 		for _, f := range funcs {
 			etcdchan := make(chan *etcd.Response)
-			go watch(self.etcd, etcdchan, key, self.stop)
-			go pipe(etcdchan, f, eventchan, self.stop)
+			go watch(self.etcd, etcdchan, key, self.close)
+			go pipe(etcdchan, f, eventchan, self.close)
 		}
 	}
 }
 
-func pipe(etcdchan chan *etcd.Response, translate func(resp *etcd.Response) *event.Event, eventchan chan *event.Event, stopchan chan bool) {
+func (self *EventStream) Close() {
+	close(self.close)
+}
+
+func pipe(etcdchan chan *etcd.Response, translate func(resp *etcd.Response) *event.Event, eventchan chan *event.Event, closechan chan bool) {
 	for true {
 		select {
-		case <-stopchan:
+		case <-closechan:
 			return
 		case resp := <-etcdchan:
 			log.V(2).Infof("Received response from etcd watcher: Action=%s ModifiedIndex=%d Key=%s", resp.Action, resp.Node.ModifiedIndex, resp.Node.Key)
@@ -56,11 +60,11 @@ func pipe(etcdchan chan *etcd.Response, translate func(resp *etcd.Response) *eve
 	}
 }
 
-func watch(client *etcd.Client, etcdchan chan *etcd.Response, key string, stopchan chan bool) {
+func watch(client *etcd.Client, etcdchan chan *etcd.Response, key string, closechan chan bool) {
 	idx := uint64(0)
 	for true {
 		select {
-		case <-stopchan:
+		case <-closechan:
 			log.V(2).Infof("Gracefully closing etcd watch loop: key=%s", key)
 			return
 		default:
