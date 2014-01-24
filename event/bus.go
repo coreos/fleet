@@ -21,14 +21,16 @@ func NewEventBus() *EventBus {
 }
 
 func (self *EventBus) Listen() {
-	for {
-		select {
-		case <-self.chClose:
-			return
-		case ev := <-self.Channel:
-			self.dispatch(ev)
+	go func() {
+		for {
+			select {
+			case <-self.chClose:
+				return
+			case ev := <-self.Channel:
+				self.dispatch(ev)
+			}
 		}
-	}
+	}()
 }
 
 func (self *EventBus) Close() {
