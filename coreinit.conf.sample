@@ -19,6 +19,11 @@
 # could look like:  metadata="region=us-west,az=us-west-1"
 # metadata=""
 
+# An Agent will be considered dead if it exceeds this amount of time to
+# communicate with the Registry. The agent will attempt a heartbeat at half
+# of this value.
+# agent_ttl="30s"
+
 
 #####
 # Development Settings

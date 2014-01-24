@@ -33,7 +33,7 @@ func New(cfg config.Config) *Server {
 	es := registry.NewEventStream(eventClient)
 	es.Stream(eb.Channel)
 
-	a := agent.New(r, eb, m, "", cfg.UnitPrefix)
+	a := agent.New(r, eb, m, cfg.AgentTTL, cfg.UnitPrefix)
 	e := engine.New(r, eb, m)
 
 	return &Server{a, e, m, r, eb}
@@ -48,7 +48,7 @@ func (self *Server) Configure(cfg *config.Config) {
 	if cfg.BootId != self.machine.BootId {
 		self.machine = machine.New(cfg.BootId, cfg.PublicIP, cfg.Metadata())
 		self.agent.Stop()
-		self.agent = agent.New(self.registry, self.eventBus, self.machine, "", cfg.UnitPrefix)
+		self.agent = agent.New(self.registry, self.eventBus, self.machine, cfg.AgentTTL, cfg.UnitPrefix)
 		go self.agent.Run()
 	}
 }
