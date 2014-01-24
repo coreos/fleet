@@ -21,7 +21,6 @@ type Event struct {
 
 type EventStream struct {
 	etcd      *etcd.Client
-	reg       *Registry
 	listeners map[string]EventListener
 	chClose   chan bool
 }
@@ -39,9 +38,9 @@ func (self *EventListener) String() string {
 	}
 }
 
-func NewEventStream(client *etcd.Client, reg *Registry) *EventStream {
+func NewEventStream(client *etcd.Client) *EventStream {
 	listeners := make(map[string]EventListener, 0)
-	return &EventStream{client, reg, listeners, make(chan bool)}
+	return &EventStream{client, listeners, make(chan bool)}
 }
 
 func (self *EventStream) AddListener(name string, m *machine.Machine, l interface{}) {

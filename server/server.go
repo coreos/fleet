@@ -27,7 +27,7 @@ func New(cfg config.Config) *Server {
 
 	eventClient := etcd.NewClient(cfg.EtcdServers)
 	eventClient.SetConsistency(etcd.WEAK_CONSISTENCY)
-	es := registry.NewEventStream(eventClient, r)
+	es := registry.NewEventStream(eventClient)
 	es.Open()
 
 	a := agent.New(r, es, m, "", cfg.UnitPrefix)
