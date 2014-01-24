@@ -23,7 +23,7 @@ const (
 // The Agent owns all of the coordination between the Registry, the local
 // Machine, and the local SystemdManager.
 type Agent struct {
-	Registry   *registry.Registry
+	registry   *registry.Registry
 	events     *event.EventBus
 	Manager    *unit.SystemdManager
 	Machine    *machine.Machine
@@ -77,7 +77,7 @@ func (a *Agent) StartMachineHeartbeatThread() chan bool {
 	ttl := parseDuration(DefaultMachineTTL)
 
 	heartbeat := func() {
-		a.Registry.SetMachineState(a.Machine, ttl)
+		a.registry.SetMachineState(a.Machine, ttl)
 	}
 
 	loop := func() {
@@ -108,9 +108,9 @@ func (a *Agent) StartServiceHeartbeatThread() chan bool {
 		localJobs := a.Manager.GetJobs()
 		ttl := parseDuration(a.ServiceTTL)
 		for _, j := range localJobs {
-			if tgt := a.Registry.GetJobTarget(j.Name); tgt != nil && tgt.BootId == a.Machine.BootId {
+			if tgt := a.registry.GetJobTarget(j.Name); tgt != nil && tgt.BootId == a.Machine.BootId {
 				log.V(1).Infof("Reporting state of Job(%s)", j.Name)
-				a.Registry.SaveJobState(&j, ttl)
+				a.registry.SaveJobState(&j, ttl)
 			} else {
 				log.Infof("Local Job(%s) does not appear to be scheduled to this Machine(%s), stopping it", j.Name, a.Machine.BootId)
 				a.Manager.StopJob(&j)
@@ -177,7 +177,7 @@ func (a *Agent) hasConflict(j *job.Job) bool {
 	}
 
 	// Check for conflicts with locally-scheduled jobs
-	for _, other := range a.Registry.GetAllJobsByMachine(a.Machine) {
+	for _, other := range a.registry.GetAllJobsByMachine(a.Machine) {
 		if !hasProvides(&other) {
 			continue
 		}
@@ -251,7 +251,7 @@ func (a *Agent) HandleEventJobOffered(ev event.Event) {
 
 	log.Infof("EventJobOffered(%s): passed all criteria, submitting JobBid", jo.Job.Name)
 	jb := job.NewBid(jo.Job.Name, a.Machine.BootId)
-	a.Registry.SubmitJobBid(jb)
+	a.registry.SubmitJobBid(jb)
 	a.state.TrackBid(jo.Job.Name)
 }
 
@@ -260,7 +260,7 @@ func (a *Agent) hasAllLocalPeers(j *job.Job) bool {
 		log.V(1).Infof("Looking for target of Peer(%s)", peerName)
 
 		//FIXME: ideally the machine would use its own knowledge rather than calling GetJobTarget
-		if tgt := a.Registry.GetJobTarget(peerName); tgt == nil || tgt.BootId != a.Machine.BootId {
+		if tgt := a.registry.GetJobTarget(peerName); tgt == nil || tgt.BootId != a.Machine.BootId {
 			log.V(1).Infof("Peer(%s) of Job(%s) not scheduled here", peerName, j.Name)
 			return false
 		} else {
@@ -311,7 +311,7 @@ func (a *Agent) HandleEventJobScheduled(ev event.Event) {
 	}
 
 	log.V(1).Infof("EventJobScheduled(%s): Fetching Job from Registry", jobName)
-	j := a.Registry.GetJob(jobName)
+	j := a.registry.GetJob(jobName)
 
 	if j == nil {
 		log.V(1).Infof("EventJobScheduled(%s): Job not found in Registry")
@@ -321,7 +321,7 @@ func (a *Agent) HandleEventJobScheduled(ev event.Event) {
 	// Reassert there are no conflicts
 	if a.hasConflict(j) {
 		log.V(1).Infof("EventJobScheduled(%s): Local conflict found, cancelling Job", jobName)
-		a.Registry.CancelJob(jobName)
+		a.registry.CancelJob(jobName)
 		return
 	}
 
@@ -332,10 +332,10 @@ func (a *Agent) HandleEventJobScheduled(ev event.Event) {
 	for _, peer := range reversePeers {
 		log.V(1).Infof("EventJobScheduled(%s): Found unresolved offer for Peer(%s)", jobName, peer)
 
-		if peerJob := a.Registry.GetJob(peer); !a.hasConflict(peerJob) {
+		if peerJob := a.registry.GetJob(peer); !a.hasConflict(peerJob) {
 			log.Infof("EventJobScheduled(%s): Submitting JobBid for Peer(%s)", jobName, peer)
 			jb := job.NewBid(peer, a.Machine.BootId)
-			a.Registry.SubmitJobBid(jb)
+			a.registry.SubmitJobBid(jb)
 
 			a.state.TrackBid(jb.JobName)
 		} else {
@@ -350,7 +350,7 @@ func (a *Agent) bidForPossibleOffers() {
 		if !a.hasConflict(&offer.Job) && a.hasAllLocalPeers(&offer.Job) {
 			log.Infof("Unscheduled Job(%s) has no local conflicts, submitting JobBid", offer.Job.Name)
 			jb := job.NewBid(offer.Job.Name, a.Machine.BootId)
-			a.Registry.SubmitJobBid(jb)
+			a.registry.SubmitJobBid(jb)
 
 			a.state.TrackBid(jb.JobName)
 		}
@@ -374,7 +374,7 @@ func (a *Agent) HandleEventJobCancelled(ev event.Event) {
 
 	for _, peer := range reversePeers {
 		log.Infof("EventJobCancelled(%s): cancelling Peer(%s) of Job", jobName, peer)
-		a.Registry.CancelJob(peer)
+		a.registry.CancelJob(peer)
 	}
 
 	a.bidForPossibleOffers()
