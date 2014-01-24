@@ -52,7 +52,7 @@ func (self *EventBus) RemoveListener(name string, m *machine.Machine) {
 
 // Distribute an Event to all listeners registered to Event.Type
 func (self *EventBus) dispatch(ev *Event) {
-	log.V(2).Infof("Dispatching %s to listeners", ev.Type, len(self.listeners))
+	log.V(2).Infof("Dispatching %s to listeners", ev.Type)
 	handlerFuncName := fmt.Sprintf("Handle%s", ev.Type)
 	for _, listener := range self.listeners {
 		log.V(2).Infof("Looking for event handler func %s on listener %s", handlerFuncName, listener.String())
