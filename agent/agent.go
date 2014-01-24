@@ -15,9 +15,11 @@ import (
 )
 
 const (
-	DefaultServiceTTL = "2s"
+	// TTL to use with all state pushed to Registry
 	DefaultMachineTTL = "10s"
-	refreshInterval   = 2 // Refresh TTLs at 1/2 the TTL length
+
+	// Refresh TTLs at 1/2 the TTL length
+	refreshInterval   = 2
 )
 
 // The Agent owns all of the coordination between the Registry, the local
@@ -25,23 +27,20 @@ const (
 type Agent struct {
 	registry   *registry.Registry
 	events     *event.EventBus
-	manager    *unit.SystemdManager
 	machine    *machine.Machine
-	ServiceTTL string
+	ttl        time.Duration
+
+	manager    *unit.SystemdManager
 	state      *AgentState
 
-	// channel used to shutdown any open connections the Agent holds
+	// channel used to shutdown any open connections/channels the Agent holds
 	stop chan bool
 }
 
-func New(registry *registry.Registry, events *event.EventBus, machine *machine.Machine, ttl string, unitPrefix string) *Agent {
+func New(registry *registry.Registry, events *event.EventBus, machine *machine.Machine, unitPrefix string) *Agent {
 	mgr := unit.NewSystemdManager(machine, unitPrefix)
-
-	if ttl == "" {
-		ttl = DefaultServiceTTL
-	}
-
-	return &Agent{registry, events, mgr, machine, ttl, nil, make(chan bool)}
+	ttl := parseDuration(DefaultMachineTTL)
+	return &Agent{registry, events, machine, ttl, mgr, nil, make(chan bool)}
 }
 
 // Trigger all async processes the Agent intends to run
@@ -74,14 +73,13 @@ func (a *Agent) Stop() {
 // Keep the local statistics in the Registry up to date
 func (a *Agent) StartMachineHeartbeatThread() chan bool {
 	stop := make(chan bool)
-	ttl := parseDuration(DefaultMachineTTL)
 
 	heartbeat := func() {
-		a.registry.SetMachineState(a.machine, ttl)
+		a.registry.SetMachineState(a.machine, a.ttl)
 	}
 
 	loop := func() {
-		interval := intervalFromTTL(DefaultMachineTTL)
+		interval := intervalFromTTL(a.ttl)
 		c := time.Tick(interval)
 		for _ = range c {
 			log.V(1).Info("MachineHeartbeat tick")
@@ -106,11 +104,10 @@ func (a *Agent) StartServiceHeartbeatThread() chan bool {
 
 	heartbeat := func() {
 		localJobs := a.manager.GetJobs()
-		ttl := parseDuration(a.ServiceTTL)
 		for _, j := range localJobs {
 			if tgt := a.registry.GetJobTarget(j.Name); tgt != nil && tgt.BootId == a.machine.BootId {
 				log.V(1).Infof("Reporting state of Job(%s)", j.Name)
-				a.registry.SaveJobState(&j, ttl)
+				a.registry.SaveJobState(&j, a.ttl)
 			} else {
 				log.Infof("Local Job(%s) does not appear to be scheduled to this Machine(%s), stopping it", j.Name, a.machine.BootId)
 				a.manager.StopJob(&j)
@@ -119,7 +116,7 @@ func (a *Agent) StartServiceHeartbeatThread() chan bool {
 	}
 
 	loop := func() {
-		interval := intervalFromTTL(a.ServiceTTL)
+		interval := intervalFromTTL(a.ttl)
 		c := time.Tick(interval)
 		for _ = range c {
 			log.V(1).Info("ServiceHeartbeat tick")
@@ -389,7 +386,6 @@ func parseDuration(d string) time.Duration {
 	return duration
 }
 
-func intervalFromTTL(ttl string) time.Duration {
-	duration := parseDuration(ttl)
-	return duration / refreshInterval
+func intervalFromTTL(d time.Duration) time.Duration {
+	return d / refreshInterval
 }
