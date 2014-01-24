@@ -57,17 +57,21 @@ func pipe(etcdchan chan *etcd.Response, translate func(resp *etcd.Response) *eve
 }
 
 func watch(client *etcd.Client, etcdchan chan *etcd.Response, key string, stopchan chan bool) {
+	idx := uint64(0)
 	for true {
 		select {
 		case <-stopchan:
-			log.V(2).Infof("Gracefully closing etcd watcher: key=%s", key)
+			log.V(2).Infof("Gracefully closing etcd watch loop: key=%s", key)
 			return
 		default:
 			log.V(2).Infof("Creating etcd watcher: key=%s, machines=%s", key, strings.Join(client.GetCluster(), ","))
-			_, err := client.Watch(key, 0, true, etcdchan, stopchan)
+			resp, err := client.Watch(key, idx, true, nil, nil)
 
-			if err != nil {
-				log.V(2).Infof("etcd watch closed exited: key=%s, err=\"%s\"", key, err.Error())
+			if err == nil {
+				idx = resp.Node.ModifiedIndex + 1
+				etcdchan <- resp
+			} else {
+				log.V(2).Infof("etcd watcher returned error: key=%s, err=\"%s\"", key, err.Error())
 
 				// Let's not slam the etcd server in the event that we know
 				// an unexpected error occurred.
