@@ -24,7 +24,7 @@ const (
 // Machine, and the local SystemdManager.
 type Agent struct {
 	Registry   *registry.Registry
-	events     *registry.EventStream
+	events     *event.EventBus
 	Manager    *unit.SystemdManager
 	Machine    *machine.Machine
 	ServiceTTL string
@@ -34,7 +34,7 @@ type Agent struct {
 	stop chan bool
 }
 
-func New(registry *registry.Registry, events *registry.EventStream, machine *machine.Machine, ttl string, unitPrefix string) *Agent {
+func New(registry *registry.Registry, events *event.EventBus, machine *machine.Machine, ttl string, unitPrefix string) *Agent {
 	mgr := unit.NewSystemdManager(machine, unitPrefix)
 
 	if ttl == "" {

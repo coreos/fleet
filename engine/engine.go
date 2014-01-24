@@ -16,13 +16,13 @@ const (
 )
 
 type Engine struct {
-	registry  *registry.Registry
-	events    *registry.EventStream
-	machine   *machine.Machine
-	claimTTL  time.Duration
+	registry *registry.Registry
+	events   *event.EventBus
+	machine  *machine.Machine
+	claimTTL time.Duration
 }
 
-func New(reg *registry.Registry, events *registry.EventStream, mach *machine.Machine) *Engine {
+func New(reg *registry.Registry, events *event.EventBus, mach *machine.Machine) *Engine {
 	claimTTL, _ := time.ParseDuration(DefaultRequestClaimTTL)
 	return &Engine{reg, events, mach, claimTTL}
 }
