@@ -9,5 +9,3 @@ type Event struct {
 	Payload interface{}
 	Context *machine.Machine
 }
-
-
