@@ -51,7 +51,9 @@ func main() {
 			glog.Errorf(err.Error())
 			syscall.Exit(1)
 		} else {
-			srv.Configure(cfg)
+			srv.Stop()
+			srv = server.New(*cfg)
+			srv.Run()
 		}
 	}
 

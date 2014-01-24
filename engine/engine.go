@@ -20,15 +20,27 @@ type Engine struct {
 	events   *event.EventBus
 	machine  *machine.Machine
 	claimTTL time.Duration
+
+	stop     chan bool
 }
 
 func New(reg *registry.Registry, events *event.EventBus, mach *machine.Machine) *Engine {
 	claimTTL, _ := time.ParseDuration(DefaultRequestClaimTTL)
-	return &Engine{reg, events, mach, claimTTL}
+	return &Engine{reg, events, mach, claimTTL, nil}
 }
 
 func (self *Engine) Run() {
+	self.stop = make(chan bool)
 	self.events.AddListener("engine", self.machine, self)
+
+	// Block until we receive a stop signal
+	<-self.stop
+
+	self.events.RemoveListener("engine", self.machine)
+}
+
+func (self *Engine) Stop() {
+	close(self.stop)
 }
 
 func (self *Engine) HandleEventRequestCreated(ev event.Event) {

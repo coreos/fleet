@@ -40,11 +40,12 @@ type Agent struct {
 func New(registry *registry.Registry, events *event.EventBus, machine *machine.Machine, ttl, unitPrefix string) *Agent {
 	mgr := unit.NewSystemdManager(machine, unitPrefix)
 	ttldur := parseDuration(ttl)
-	return &Agent{registry, events, machine, ttldur, mgr, nil, make(chan bool)}
+	return &Agent{registry, events, machine, ttldur, mgr, nil, nil}
 }
 
 // Trigger all async processes the Agent intends to run
 func (a *Agent) Run() {
+	a.stop = make(chan bool)
 	a.state = NewState()
 
 	// Kick off the three threads we need for our async processes
@@ -67,7 +68,7 @@ func (a *Agent) Run() {
 
 // Stop all async processes the Agent is running
 func (a *Agent) Stop() {
-	a.stop <- true
+	close(a.stop)
 }
 
 // Keep the local statistics in the Registry up to date

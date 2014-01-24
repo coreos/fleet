@@ -12,7 +12,7 @@ import (
 type EventBus struct {
 	listeners map[string]EventListener
 	Channel   chan *Event
-	chClose   chan bool
+	stop   chan bool
 }
 
 func NewEventBus() *EventBus {
@@ -24,7 +24,7 @@ func (self *EventBus) Listen() {
 	go func() {
 		for {
 			select {
-			case <-self.chClose:
+			case <-self.stop:
 				return
 			case ev := <-self.Channel:
 				self.dispatch(ev)
@@ -33,8 +33,8 @@ func (self *EventBus) Listen() {
 	}()
 }
 
-func (self *EventBus) Close() {
-	close(self.chClose)
+func (self *EventBus) Stop() {
+	close(self.stop)
 }
 
 func (self *EventBus) AddListener(name string, m *machine.Machine, l interface{}) {
