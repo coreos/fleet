@@ -1,25 +1,4 @@
 #!/bin/sh
 
-COREINIT_PACKAGE=github.com/coreos/coreinit
-export GOPATH="${PWD}"
-SRC_DIR="$GOPATH/src"
-COREINIT_DIR="$SRC_DIR/$COREINIT_PACKAGE"
-
-COREINIT_BASE=$(dirname "${COREINIT_DIR}")
-if [ ! -d "${COREINIT_BASE}" ]; then
-	mkdir -p "${COREINIT_BASE}"
-fi
-
-if [ ! -h "${COREINIT_DIR}" ]; then
-	ln -s ../../../ "${COREINIT_DIR}"
-fi
-
-for i in third_party/*; do
-	if [ "$i" = "third_party/src" ]; then
-		continue
-	fi
-	cp -R "$i" src/
-done
-
-go build "${COREINIT_PACKAGE}"
-go build -o corectl "${COREINIT_PACKAGE}"/cmd
+go run third_party.go build -o bin/coreinit github.com/coreos/coreinit
+go run third_party.go build -o bin/corectl github.com/coreos/coreinit/cmd
