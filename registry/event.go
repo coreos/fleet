@@ -13,10 +13,11 @@ import (
 
 type EventStream struct {
 	etcd *etcd.Client
+	stop chan bool
 }
 
 func NewEventStream(client *etcd.Client) *EventStream {
-	return &EventStream{client}
+	return &EventStream{client, make(chan bool)}
 }
 
 func (self *EventStream) Stream(eventChannel chan *event.Event) {
@@ -31,40 +32,47 @@ func (self *EventStream) Stream(eventChannel chan *event.Event) {
 	for key, funcs := range watchMap {
 		for _, f := range funcs {
 			etcdchan := make(chan *etcd.Response)
-			go self.watch(etcdchan, key)
-			go pipe(etcdchan, f, eventChannel)
+			go watch(self.etcd, etcdchan, key, self.stop)
+			go pipe(etcdchan, f, eventChannel, self.stop)
 		}
 	}
 }
 
-func pipe(etcdchan chan *etcd.Response, translate func(resp *etcd.Response) *event.Event, eventchan chan *event.Event) {
+func pipe(etcdchan chan *etcd.Response, translate func(resp *etcd.Response) *event.Event, eventchan chan *event.Event, stopchan chan bool) {
 	for true {
-		resp := <-etcdchan
-		log.V(2).Infof("Received response from etcd watcher: Action=%s ModifiedIndex=%d Key=%s", resp.Action, resp.Node.ModifiedIndex, resp.Node.Key)
-		ev := translate(resp)
-		if ev != nil {
-			log.V(2).Infof("Translated response(ModifiedIndex=%d) to event(Type=%s)", resp.Node.ModifiedIndex, ev.Type)
-			eventchan <- ev
-		} else {
-			log.V(2).Infof("Discarding response(ModifiedIndex=%d) from etcd watcher", resp.Node.ModifiedIndex)
+		select {
+		case <-stopchan:
+			return
+		case resp := <-etcdchan:
+			log.V(2).Infof("Received response from etcd watcher: Action=%s ModifiedIndex=%d Key=%s", resp.Action, resp.Node.ModifiedIndex, resp.Node.Key)
+			ev := translate(resp)
+			if ev != nil {
+				log.V(2).Infof("Translated response(ModifiedIndex=%d) to event(Type=%s)", resp.Node.ModifiedIndex, ev.Type)
+				eventchan <- ev
+			} else {
+				log.V(2).Infof("Discarding response(ModifiedIndex=%d) from etcd watcher", resp.Node.ModifiedIndex)
+			}
 		}
 	}
 }
 
-func (self *EventStream) watch(etcdchan chan *etcd.Response, key string) {
+func watch(client *etcd.Client, etcdchan chan *etcd.Response, key string, stopchan chan bool) {
 	for true {
-		log.V(2).Infof("Creating etcd watcher: key=%s, machines=%s", key, strings.Join(self.etcd.GetCluster(), ","))
-		_, err := self.etcd.Watch(key, 0, true, etcdchan, nil)
+		select {
+		case <-stopchan:
+			log.V(2).Infof("Gracefully closing etcd watcher: key=%s", key)
+			return
+		default:
+			log.V(2).Infof("Creating etcd watcher: key=%s, machines=%s", key, strings.Join(client.GetCluster(), ","))
+			_, err := client.Watch(key, 0, true, etcdchan, stopchan)
 
-		var errString string
-		if err == nil {
-			errString = "N/A"
-		} else {
-			errString = err.Error()
+			if err != nil {
+				log.V(2).Infof("etcd watch closed exited: key=%s, err=\"%s\"", key, err.Error())
+
+				// Let's not slam the etcd server in the event that we know
+				// an unexpected error occurred.
+				time.Sleep(time.Second)
+			}
 		}
-
-		log.V(2).Infof("etcd watch exited: key=%s, err=\"%s\"", key, errString)
-
-		time.Sleep(time.Second)
 	}
 }
