@@ -8,6 +8,8 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/golang/glog"
+
+	"github.com/coreos/coreinit/agent"
 )
 
 type Config struct {
@@ -17,10 +19,11 @@ type Config struct {
 	Verbosity   int      `toml:"verbosity"`
 	RawMetadata string   `toml:"metadata"`
 	UnitPrefix  string   `toml:"unit_prefix"`
+	AgentTTL    string   `toml:"agent_ttl"`
 }
 
 func NewConfig() *Config {
-	conf := Config{BootId: "", Verbosity: 0, PublicIP: ""}
+	conf := Config{BootId: "", Verbosity: 0, PublicIP: "", AgentTTL: agent.DefaultTTL}
 	return &conf
 }
 

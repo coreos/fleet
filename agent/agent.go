@@ -16,7 +16,7 @@ import (
 
 const (
 	// TTL to use with all state pushed to Registry
-	DefaultMachineTTL = "10s"
+	DefaultTTL = "10s"
 
 	// Refresh TTLs at 1/2 the TTL length
 	refreshInterval   = 2
@@ -37,10 +37,10 @@ type Agent struct {
 	stop chan bool
 }
 
-func New(registry *registry.Registry, events *event.EventBus, machine *machine.Machine, unitPrefix string) *Agent {
+func New(registry *registry.Registry, events *event.EventBus, machine *machine.Machine, ttl, unitPrefix string) *Agent {
 	mgr := unit.NewSystemdManager(machine, unitPrefix)
-	ttl := parseDuration(DefaultMachineTTL)
-	return &Agent{registry, events, machine, ttl, mgr, nil, make(chan bool)}
+	ttldur := parseDuration(ttl)
+	return &Agent{registry, events, machine, ttldur, mgr, nil, make(chan bool)}
 }
 
 // Trigger all async processes the Agent intends to run
