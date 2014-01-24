@@ -8,6 +8,7 @@ import (
 	"github.com/coreos/go-etcd/etcd"
 	log "github.com/golang/glog"
 
+	"github.com/coreos/coreinit/event"
 	"github.com/coreos/coreinit/job"
 	"github.com/coreos/coreinit/machine"
 )
@@ -30,7 +31,7 @@ func (r *Registry) ClaimRequest(request *job.JobRequest, m *machine.Machine, ttl
 	return r.acquireLeadership(fmt.Sprintf("req-%s", request.ID.String()), m.BootId, ttl)
 }
 
-func filterEventRequestCreated(resp *etcd.Response) *Event {
+func filterEventRequestCreated(resp *etcd.Response) *event.Event {
 	if resp.Action != "set" {
 		return nil
 	}
@@ -41,5 +42,5 @@ func filterEventRequestCreated(resp *etcd.Response) *Event {
 		return nil
 	}
 
-	return &Event{"EventRequestCreated", request, nil}
+	return &event.Event{"EventRequestCreated", request, nil}
 }

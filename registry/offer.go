@@ -9,6 +9,7 @@ import (
 	"github.com/coreos/go-etcd/etcd"
 	log "github.com/golang/glog"
 
+	"github.com/coreos/coreinit/event"
 	"github.com/coreos/coreinit/job"
 	"github.com/coreos/coreinit/machine"
 )
@@ -49,7 +50,7 @@ func (r *Registry) SubmitJobBid(jb *job.JobBid) {
 	r.etcd.Set(key, "", 0)
 }
 
-func (self *EventStream) filterEventJobOffered(resp *etcd.Response) *Event {
+func (self *EventStream) filterEventJobOffered(resp *etcd.Response) *event.Event {
 	if resp.Action != "set" {
 		return nil
 	}
@@ -71,10 +72,10 @@ func (self *EventStream) filterEventJobOffered(resp *etcd.Response) *Event {
 	//TODO: handle error from unmarshal
 	unmarshal(resp.Node.Value, &jo)
 
-	return &Event{"EventJobOffered", jo, nil}
+	return &event.Event{"EventJobOffered", jo, nil}
 }
 
-func filterEventJobBidSubmitted(resp *etcd.Response) *Event {
+func filterEventJobBidSubmitted(resp *etcd.Response) *event.Event {
 	if resp.Action != "set" {
 		return nil
 	}
@@ -94,5 +95,5 @@ func filterEventJobBidSubmitted(resp *etcd.Response) *Event {
 	}
 
 	jb := job.NewBid(jobName, machName)
-	return &Event{"EventJobBidSubmitted", *jb, nil}
+	return &event.Event{"EventJobBidSubmitted", *jb, nil}
 }

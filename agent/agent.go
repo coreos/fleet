@@ -7,6 +7,7 @@ import (
 
 	log "github.com/golang/glog"
 
+	"github.com/coreos/coreinit/event"
 	"github.com/coreos/coreinit/job"
 	"github.com/coreos/coreinit/machine"
 	"github.com/coreos/coreinit/registry"
@@ -23,7 +24,7 @@ const (
 // Machine, and the local SystemdManager.
 type Agent struct {
 	Registry   *registry.Registry
-	events     *registry.EventStream
+	events     *event.EventBus
 	Manager    *unit.SystemdManager
 	Machine    *machine.Machine
 	ServiceTTL string
@@ -33,7 +34,7 @@ type Agent struct {
 	stop chan bool
 }
 
-func New(registry *registry.Registry, events *registry.EventStream, machine *machine.Machine, ttl string, unitPrefix string) *Agent {
+func New(registry *registry.Registry, events *event.EventBus, machine *machine.Machine, ttl string, unitPrefix string) *Agent {
 	mgr := unit.NewSystemdManager(machine, unitPrefix)
 
 	if ttl == "" {
@@ -220,8 +221,8 @@ func (a *Agent) hasConflict(j *job.Job) bool {
 	return false
 }
 
-func (a *Agent) HandleEventJobOffered(event registry.Event) {
-	jo := event.Payload.(job.JobOffer)
+func (a *Agent) HandleEventJobOffered(ev event.Event) {
+	jo := ev.Payload.(job.JobOffer)
 	log.V(1).Infof("EventJobOffered(%s): verifying ability to run Job", jo.Job.Name)
 
 	a.state.Lock()
@@ -292,8 +293,8 @@ func extractMachineMetadata(requirements map[string][]string) map[string][]strin
 	return metadata
 }
 
-func (a *Agent) HandleEventJobScheduled(event registry.Event) {
-	jobName := event.Payload.(string)
+func (a *Agent) HandleEventJobScheduled(ev event.Event) {
+	jobName := ev.Payload.(string)
 
 	a.state.Lock()
 	defer a.state.Unlock()
@@ -301,7 +302,7 @@ func (a *Agent) HandleEventJobScheduled(event registry.Event) {
 	a.state.DropOffer(jobName)
 	a.state.DropBid(jobName)
 
-	if event.Context.BootId != a.Machine.BootId {
+	if ev.Context.BootId != a.Machine.BootId {
 		log.V(1).Infof("EventJobScheduled(%s): Job not scheduled to this Agent", jobName)
 		a.bidForPossibleOffers()
 		return
@@ -356,11 +357,11 @@ func (a *Agent) bidForPossibleOffers() {
 	}
 }
 
-func (a *Agent) HandleEventJobCancelled(event registry.Event) {
+func (a *Agent) HandleEventJobCancelled(ev event.Event) {
 	//TODO(bcwaldon): We should check the context of the event before
 	// making any changes to local systemd or the registry
 
-	jobName := event.Payload.(string)
+	jobName := ev.Payload.(string)
 	log.Infof("EventJobCancelled(%s): stopping Job", jobName)
 	j := job.NewJob(jobName, nil, nil)
 	a.Manager.StopJob(j)

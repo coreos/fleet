@@ -9,6 +9,7 @@ import (
 	"github.com/coreos/go-etcd/etcd"
 	log "github.com/golang/glog"
 
+	"github.com/coreos/coreinit/event"
 	"github.com/coreos/coreinit/job"
 	"github.com/coreos/coreinit/machine"
 )
@@ -114,7 +115,7 @@ func (r *Registry) ClaimJob(jobName string, m *machine.Machine, ttl time.Duratio
 	return r.acquireLeadership(fmt.Sprintf("job-%s", jobName), m.BootId, ttl)
 }
 
-func filterEventJobCreated(resp *etcd.Response) *Event {
+func filterEventJobCreated(resp *etcd.Response) *event.Event {
 	if resp.Action != "set" {
 		return nil
 	}
@@ -131,10 +132,10 @@ func filterEventJobCreated(resp *etcd.Response) *Event {
 		return nil
 	}
 
-	return &Event{"EventJobCreated", j, nil}
+	return &event.Event{"EventJobCreated", j, nil}
 }
 
-func filterEventJobScheduled(resp *etcd.Response) *Event {
+func filterEventJobScheduled(resp *etcd.Response) *event.Event {
 	if resp.Action != "set" {
 		return nil
 	}
@@ -147,10 +148,10 @@ func filterEventJobScheduled(resp *etcd.Response) *Event {
 	mach := machine.New(resp.Node.Value, "", make(map[string]string, 0))
 	jobName := path.Base(strings.TrimSuffix(dir, "/"))
 
-	return &Event{"EventJobScheduled", jobName, mach}
+	return &event.Event{"EventJobScheduled", jobName, mach}
 }
 
-func filterEventJobCancelled(resp *etcd.Response) *Event {
+func filterEventJobCancelled(resp *etcd.Response) *event.Event {
 	if resp.Action != "delete" && resp.Action != "expire" {
 		return nil
 	}
@@ -163,5 +164,5 @@ func filterEventJobCancelled(resp *etcd.Response) *Event {
 	dir = strings.TrimSuffix(dir, "/")
 	dir, jobName := path.Split(dir)
 
-	return &Event{"EventJobCancelled", jobName, nil}
+	return &event.Event{"EventJobCancelled", jobName, nil}
 }
