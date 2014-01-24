@@ -19,19 +19,19 @@ const (
 	DefaultTTL = "30s"
 
 	// Refresh TTLs at 1/2 the TTL length
-	refreshInterval   = 2
+	refreshInterval = 2
 )
 
 // The Agent owns all of the coordination between the Registry, the local
 // Machine, and the local SystemdManager.
 type Agent struct {
-	registry   *registry.Registry
-	events     *event.EventBus
-	machine    *machine.Machine
-	ttl        time.Duration
+	registry *registry.Registry
+	events   *event.EventBus
+	machine  *machine.Machine
+	ttl      time.Duration
 
-	manager    *unit.SystemdManager
-	state      *AgentState
+	manager *unit.SystemdManager
+	state   *AgentState
 
 	// channel used to shutdown any open connections/channels the Agent holds
 	stop chan bool
