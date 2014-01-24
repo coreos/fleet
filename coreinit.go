@@ -57,7 +57,19 @@ func main() {
 		}
 	}
 
-	listenForSignal(syscall.SIGHUP, reconfigure)
+	shutdown := func() {
+		glog.Infof("Gracefully shutting down")
+		srv.Stop()
+		syscall.Exit(0)
+	}
+
+	signals := map[os.Signal]func(){
+		syscall.SIGHUP:  reconfigure,
+		syscall.SIGTERM: shutdown,
+		syscall.SIGINT:  shutdown,
+	}
+
+	listenForSignals(signals)
 }
 
 func loadConfigFromPath(cp string) (*config.Config, error) {
@@ -81,12 +93,18 @@ func loadConfigFromPath(cp string) (*config.Config, error) {
 	return cfg, nil
 }
 
-func listenForSignal(sig os.Signal, handler func()) {
+func listenForSignals(sigmap map[os.Signal]func()) {
 	sigchan := make(chan os.Signal, 1)
-	signal.Notify(sigchan, sig)
+
+	for k, _ := range sigmap {
+		signal.Notify(sigchan, k)
+	}
 
 	for true {
-		<-sigchan
-		handler()
+		sig := <-sigchan
+		handler, ok := sigmap[sig]
+		if ok {
+			handler()
+		}
 	}
 }

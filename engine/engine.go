@@ -40,6 +40,7 @@ func (self *Engine) Run() {
 }
 
 func (self *Engine) Stop() {
+	log.V(1).Info("Stopping Engine")
 	close(self.stop)
 }
 

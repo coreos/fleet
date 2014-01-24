@@ -39,6 +39,7 @@ func (self *EventStream) Stream(eventchan chan *event.Event) {
 }
 
 func (self *EventStream) Close() {
+	log.V(1).Info("Closing EventStream")
 	close(self.close)
 }
 

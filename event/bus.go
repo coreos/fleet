@@ -34,6 +34,7 @@ func (self *EventBus) Listen() {
 }
 
 func (self *EventBus) Stop() {
+	log.V(1).Info("Stopping EventBus")
 	close(self.stop)
 }
 

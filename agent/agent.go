@@ -68,6 +68,7 @@ func (a *Agent) Run() {
 
 // Stop all async processes the Agent is running
 func (a *Agent) Stop() {
+	log.V(1).Info("Stopping Agent")
 	close(a.stop)
 }
 
