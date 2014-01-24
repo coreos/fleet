@@ -1,0 +1,32 @@
+# This config file is formatted using TOML:
+#   https://github.com/mojombo/toml/blob/master/versions/toml-v0.2.0.md
+
+# Lower the logging threshold. Acceptable values are 0, 1, and 2. A higher
+# value corresponds to a lower logging threshold.
+# verbosity=0
+
+# Provide a custom set of etcd endpoints. The default value is determined
+# by the underlying go-etcd library.
+# etcd_servers=["http://127.0.0.1:4001"]
+
+# IP address that should be published with any socket information. By default,
+# no IP address is published.
+# public_ip=""
+
+# Comma-delimited key/value pairs that are published with the local
+# to the coreinit registry. This data can be used directly by a client
+# of coreinit to make scheduling descisions. An example set of metadata
+# could look like:  metadata="region=us-west,az=us-west-1"
+# metadata=""
+
+
+#####
+# Development Settings
+
+# Unique identifier of coreinit instance. The value defaults
+# to contents of /proc/sys/kernel/random/boot_id
+# bootid=""
+
+# Prefix to use when creating local systemd units. This prefix will never
+# be exposed outside of this machine.
+# unit_prefix=""
