@@ -7,6 +7,7 @@ import (
 	"github.com/coreos/go-etcd/etcd"
 	log "github.com/golang/glog"
 
+	"github.com/coreos/coreinit/event"
 	"github.com/coreos/coreinit/job"
 )
 
@@ -38,7 +39,7 @@ func (r *Registry) SaveJobState(j *job.Job, ttl time.Duration) {
 	r.etcd.Set(key, json, uint64(ttl.Seconds()))
 }
 
-func filterEventJobStatePublished(resp *etcd.Response) *Event {
+func filterEventJobStatePublished(resp *etcd.Response) *event.Event {
 	if resp.Action != "set" {
 		return nil
 	}
@@ -51,10 +52,10 @@ func filterEventJobStatePublished(resp *etcd.Response) *Event {
 	}
 
 	j := job.NewJob(path.Base(resp.Node.Key), &js, nil)
-	return &Event{"EventJobStatePublished", *j, nil}
+	return &event.Event{"EventJobStatePublished", *j, nil}
 }
 
-func filterEventJobStateExpired(resp *etcd.Response) *Event {
+func filterEventJobStateExpired(resp *etcd.Response) *event.Event {
 	if resp.Action != "delete" && resp.Action != "expire" {
 		return nil
 	}
@@ -67,5 +68,5 @@ func filterEventJobStateExpired(resp *etcd.Response) *Event {
 	}
 
 	j := job.NewJob(path.Base(resp.Node.Key), &js, nil)
-	return &Event{"EventJobStateExpired", *j, nil}
+	return &event.Event{"EventJobStateExpired", *j, nil}
 }

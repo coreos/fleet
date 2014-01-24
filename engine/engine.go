@@ -5,6 +5,7 @@ import (
 
 	log "github.com/golang/glog"
 
+	"github.com/coreos/coreinit/event"
 	"github.com/coreos/coreinit/job"
 	"github.com/coreos/coreinit/machine"
 	"github.com/coreos/coreinit/registry"
@@ -30,8 +31,8 @@ func (self *Engine) Run() {
 	self.events.AddListener("engine", self.machine, self)
 }
 
-func (self *Engine) HandleEventRequestCreated(event registry.Event) {
-	request := event.Payload.(job.JobRequest)
+func (self *Engine) HandleEventRequestCreated(ev event.Event) {
+	request := ev.Payload.(job.JobRequest)
 
 	log.V(1).Infof("EventRequestCreated(%s): attempting to claim JobRequest", request.ID.String())
 	if !self.claimRequest(&request) {
@@ -64,8 +65,8 @@ func (self *Engine) claimRequest(req *job.JobRequest) bool {
 	return self.registry.ClaimRequest(req, self.machine, self.claimTTL)
 }
 
-func (self *Engine) HandleEventJobCreated(event registry.Event) {
-	j := event.Payload.(job.Job)
+func (self *Engine) HandleEventJobCreated(ev event.Event) {
+	j := ev.Payload.(job.Job)
 	log.V(1).Infof("EventJobCreated(%s): Job=%s", j.Name, j.String())
 
 	log.V(1).Infof("EventJobCreated(%s): attempting to claim Job", j.Name)
@@ -87,8 +88,8 @@ func (self *Engine) claimJob(jobName string) bool {
 	return self.registry.ClaimJob(jobName, self.machine, self.claimTTL)
 }
 
-func (self *Engine) HandleEventJobBidSubmitted(event registry.Event) {
-	jb := event.Payload.(job.JobBid)
+func (self *Engine) HandleEventJobBidSubmitted(ev event.Event) {
+	jb := ev.Payload.(job.JobBid)
 
 	log.V(1).Infof("EventJobBidSubmitted(%s): attempting to claim JobOffer", jb.JobName)
 	if !self.claimJobOffer(jb.JobName) {
@@ -109,23 +110,23 @@ func (self *Engine) claimJobOffer(jobName string) bool {
 	return self.registry.ClaimJobOffer(jobName, self.machine, self.claimTTL)
 }
 
-func (self *Engine) HandleEventJobStatePublished(event registry.Event) {
-	//j := event.Payload.(job.Job)
+func (self *Engine) HandleEventJobStatePublished(ev event.Event) {
+	//j := ev.Payload.(job.Job)
 	//TODO reimplement
 }
 
-func (self *Engine) HandleEventJobStateExpired(event registry.Event) {
-	//j := event.Payload.(job.Job)
+func (self *Engine) HandleEventJobStateExpired(ev event.Event) {
+	//j := ev.Payload.(job.Job)
 	//TODO reimplement
 }
 
-func (self *Engine) HandleEventMachineUpdated(event registry.Event) {
-	//m := event.Payload.(machine.Machine)
+func (self *Engine) HandleEventMachineUpdated(ev event.Event) {
+	//m := ev.Payload.(machine.Machine)
 	//TODO reimplement?
 }
 
-func (self *Engine) HandleEventMachineRemoved(event registry.Event) {
-	machName := event.Payload.(string)
+func (self *Engine) HandleEventMachineRemoved(ev event.Event) {
+	machName := ev.Payload.(string)
 	for _, j := range self.registry.GetAllJobs() {
 		tgt := self.registry.GetJobTarget(j.Name)
 		if tgt == nil || tgt.BootId != machName {

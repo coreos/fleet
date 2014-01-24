@@ -6,6 +6,7 @@ import (
 
 	"github.com/coreos/go-etcd/etcd"
 
+	"github.com/coreos/coreinit/event"
 	"github.com/coreos/coreinit/machine"
 )
 
@@ -62,7 +63,7 @@ func (r *Registry) SetMachineState(machine *machine.Machine, ttl time.Duration) 
 	r.etcd.Set(key, json, uint64(ttl.Seconds()))
 }
 
-func (self *EventStream) filterEventMachineUpdated(resp *etcd.Response) *Event {
+func (self *EventStream) filterEventMachineUpdated(resp *etcd.Response) *event.Event {
 	if base := path.Base(resp.Node.Key); base != "object" {
 		return nil
 	}
@@ -73,10 +74,10 @@ func (self *EventStream) filterEventMachineUpdated(resp *etcd.Response) *Event {
 
 	var m machine.Machine
 	unmarshal(resp.Node.Value, &m)
-	return &Event{"EventMachineUpdated", m, nil}
+	return &event.Event{"EventMachineUpdated", m, nil}
 }
 
-func (self *EventStream) filterEventMachineRemoved(resp *etcd.Response) *Event {
+func (self *EventStream) filterEventMachineRemoved(resp *etcd.Response) *event.Event {
 	if base := path.Base(resp.Node.Key); base != "object" {
 		return nil
 	}
@@ -86,5 +87,5 @@ func (self *EventStream) filterEventMachineRemoved(resp *etcd.Response) *Event {
 	}
 
 	machName := path.Base(path.Dir(resp.Node.Key))
-	return &Event{"EventMachineRemoved", machName, nil}
+	return &event.Event{"EventMachineRemoved", machName, nil}
 }

@@ -14,12 +14,6 @@ import (
 	"github.com/coreos/coreinit/machine"
 )
 
-type Event struct {
-	Type    string
-	Payload interface{}
-	Context *machine.Machine
-}
-
 type EventStream struct {
 	etcd      *etcd.Client
 	listeners map[string]event.EventListener
@@ -44,40 +38,40 @@ func (self *EventStream) RemoveListener(name string, m *machine.Machine) {
 	}
 }
 
-// Distribute an event to all listeners registered to event.Type
-func (self *EventStream) send(event Event) {
-	log.V(2).Infof("Sending %s to %d listeners", event.Type, len(self.listeners))
-	handlerFuncName := fmt.Sprintf("Handle%s", event.Type)
+// Distribute an Event to all listeners registered to Event.Type
+func (self *EventStream) send(ev event.Event) {
+	log.V(2).Infof("Sending %s to %d listeners", ev.Type, len(self.listeners))
+	handlerFuncName := fmt.Sprintf("Handle%s", ev.Type)
 	for _, listener := range self.listeners {
 		log.V(2).Infof("Looking for func %s on listener %s", handlerFuncName, listener.String())
 		handlerFunc := reflect.ValueOf(listener.Handler).MethodByName(handlerFuncName)
 		if handlerFunc.IsValid() {
-			log.V(2).Infof("Calling event handler for %s on listener %s", event.Type, listener.String())
-			go handlerFunc.Call([]reflect.Value{reflect.ValueOf(event)})
+			log.V(2).Infof("Calling event handler for %s on listener %s", ev.Type, listener.String())
+			go handlerFunc.Call([]reflect.Value{reflect.ValueOf(ev)})
 		}
 	}
 }
 
-func (self *EventStream) eventLoop(event chan Event, stop chan bool) {
+func (self *EventStream) eventLoop(eventChan chan event.Event, stop chan bool) {
 	for {
 		select {
 		case <-stop:
 			return
-		case e := <-event:
-			self.send(e)
+		case ev := <-eventChan:
+			self.send(ev)
 		}
 	}
 }
 
 func (self *EventStream) Open() {
-	eventchan := make(chan Event)
+	eventchan := make(chan event.Event)
 
-	watchMap := map[string][]func(*etcd.Response) *Event{
-		path.Join(keyPrefix, statePrefix):   []func(*etcd.Response) *Event{filterEventJobStatePublished, filterEventJobStateExpired},
-		path.Join(keyPrefix, jobPrefix):     []func(*etcd.Response) *Event{filterEventJobCreated, filterEventJobScheduled, filterEventJobCancelled},
-		path.Join(keyPrefix, machinePrefix): []func(*etcd.Response) *Event{self.filterEventMachineUpdated, self.filterEventMachineRemoved},
-		path.Join(keyPrefix, requestPrefix): []func(*etcd.Response) *Event{filterEventRequestCreated},
-		path.Join(keyPrefix, offerPrefix):   []func(*etcd.Response) *Event{self.filterEventJobOffered, filterEventJobBidSubmitted},
+	watchMap := map[string][]func(*etcd.Response) *event.Event{
+		path.Join(keyPrefix, statePrefix):   []func(*etcd.Response) *event.Event{filterEventJobStatePublished, filterEventJobStateExpired},
+		path.Join(keyPrefix, jobPrefix):     []func(*etcd.Response) *event.Event{filterEventJobCreated, filterEventJobScheduled, filterEventJobCancelled},
+		path.Join(keyPrefix, machinePrefix): []func(*etcd.Response) *event.Event{self.filterEventMachineUpdated, self.filterEventMachineRemoved},
+		path.Join(keyPrefix, requestPrefix): []func(*etcd.Response) *event.Event{filterEventRequestCreated},
+		path.Join(keyPrefix, offerPrefix):   []func(*etcd.Response) *event.Event{self.filterEventJobOffered, filterEventJobBidSubmitted},
 	}
 
 	for key, funcs := range watchMap {
@@ -95,7 +89,7 @@ func (self *EventStream) Close() {
 	self.chClose <- true
 }
 
-func pipe(etcdchan chan *etcd.Response, translate func(resp *etcd.Response) *Event, eventchan chan Event) {
+func pipe(etcdchan chan *etcd.Response, translate func(resp *etcd.Response) *event.Event, eventchan chan event.Event) {
 	for true {
 		resp := <-etcdchan
 		log.V(2).Infof("Received response from etcd watcher: Action=%s ModifiedIndex=%d Key=%s", resp.Action, resp.Node.ModifiedIndex, resp.Node.Key)
