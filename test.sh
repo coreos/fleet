@@ -1,7 +1,7 @@
 #!/bin/sh
 
 if [ -z "$PKG" ]; then
-    PKG="./job ./machine ./unit"
+    PKG="./job ./machine ./unit ./registry"
 fi
 
 # Unit tests

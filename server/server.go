@@ -27,6 +27,7 @@ func New(cfg config.Config) *Server {
 	r := registry.New(regClient)
 
 	eb := event.NewEventBus()
+	eb.Listen()
 
 	eventClient := etcd.NewClient(cfg.EtcdServers)
 	eventClient.SetConsistency(etcd.WEAK_CONSISTENCY)
