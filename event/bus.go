@@ -20,10 +20,10 @@ func NewEventBus() *EventBus {
 	return &EventBus{listeners, make(chan *Event), make(chan bool)}
 }
 
-func (self *EventBus) Listen(stop chan bool) {
+func (self *EventBus) Listen() {
 	for {
 		select {
-		case <-stop:
+		case <-self.chClose:
 			return
 		case ev := <-self.Channel:
 			self.dispatch(ev)
