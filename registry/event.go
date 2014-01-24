@@ -10,6 +10,7 @@ import (
 	"github.com/coreos/go-etcd/etcd"
 	log "github.com/golang/glog"
 
+	"github.com/coreos/coreinit/event"
 	"github.com/coreos/coreinit/machine"
 )
 
@@ -21,30 +22,17 @@ type Event struct {
 
 type EventStream struct {
 	etcd      *etcd.Client
-	listeners map[string]EventListener
+	listeners map[string]event.EventListener
 	chClose   chan bool
 }
 
-type EventListener struct {
-	Context *machine.Machine
-	Handler interface{}
-}
-
-func (self *EventListener) String() string {
-	if self.Context != nil {
-		return self.Context.BootId
-	} else {
-		return "N/A"
-	}
-}
-
 func NewEventStream(client *etcd.Client) *EventStream {
-	listeners := make(map[string]EventListener, 0)
+	listeners := make(map[string]event.EventListener, 0)
 	return &EventStream{client, listeners, make(chan bool)}
 }
 
 func (self *EventStream) AddListener(name string, m *machine.Machine, l interface{}) {
-	listener := EventListener{m, l}
+	listener := event.EventListener{m, l}
 	key := fmt.Sprintf("%s-%s", name, m.String())
 	self.listeners[key] = listener
 }
