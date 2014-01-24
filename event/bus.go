@@ -59,7 +59,7 @@ func (self *EventBus) dispatch(ev *Event) {
 		handlerFunc := reflect.ValueOf(listener.Handler).MethodByName(handlerFuncName)
 		if handlerFunc.IsValid() {
 			log.V(2).Infof("Calling event handler for %s on listener %s", ev.Type, listener.String())
-			go handlerFunc.Call([]reflect.Value{reflect.ValueOf(ev)})
+			go handlerFunc.Call([]reflect.Value{reflect.ValueOf(*ev)})
 		}
 	}
 }
