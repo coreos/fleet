@@ -55,3 +55,7 @@ func (self *Server) Stop() {
 	self.eventStream.Close()
 	self.eventBus.Stop()
 }
+
+func (self *Server) Purge() {
+	self.agent.Purge()
+}

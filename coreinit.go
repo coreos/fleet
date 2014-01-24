@@ -60,6 +60,7 @@ func main() {
 	shutdown := func() {
 		glog.Infof("Gracefully shutting down")
 		srv.Stop()
+		srv.Purge()
 		syscall.Exit(0)
 	}
 

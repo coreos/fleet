@@ -72,6 +72,11 @@ func (a *Agent) Stop() {
 	close(a.stop)
 }
 
+func (a *Agent) Purge() {
+	log.V(1).Info("Removing Agent from Registry")
+	a.registry.RemoveMachineState(a.machine)
+}
+
 // Keep the local statistics in the Registry up to date
 func (a *Agent) StartMachineHeartbeatThread() chan bool {
 	stop := make(chan bool)
