@@ -1,4 +1,4 @@
 #!/bin/sh
 
-go run third_party.go build github.com/coreos/coreinit
-go run third_party.go build -o corectl github.com/coreos/coreinit/cmd
+go run third_party.go build -o bin/coreinit github.com/coreos/coreinit
+go run third_party.go build -o bin/corectl github.com/coreos/coreinit/cmd

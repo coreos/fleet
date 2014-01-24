@@ -1,4 +1,3 @@
-/coreinit
-/corectl
+bin/
 third_party/pkg
 *.swp
