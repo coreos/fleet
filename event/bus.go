@@ -32,7 +32,7 @@ func (self *EventBus) Listen(stop chan bool) {
 }
 
 func (self *EventBus) Close() {
-	self.chClose <- true
+	close(self.chClose)
 }
 
 func (self *EventBus) AddListener(name string, m *machine.Machine, l interface{}) {
