@@ -26,7 +26,7 @@ type Agent struct {
 	registry   *registry.Registry
 	events     *event.EventBus
 	manager    *unit.SystemdManager
-	Machine    *machine.Machine
+	machine    *machine.Machine
 	ServiceTTL string
 	state      *AgentState
 
@@ -52,7 +52,7 @@ func (a *Agent) Run() {
 	svcstop := a.StartServiceHeartbeatThread()
 	machstop := a.StartMachineHeartbeatThread()
 
-	a.events.AddListener("agent", a.Machine, a)
+	a.events.AddListener("agent", a.machine, a)
 
 	// Block until we receive a stop signal
 	<-a.stop
@@ -61,7 +61,7 @@ func (a *Agent) Run() {
 	svcstop <- true
 	machstop <- true
 
-	a.events.RemoveListener("agent", a.Machine)
+	a.events.RemoveListener("agent", a.machine)
 
 	a.state = nil
 }
@@ -77,7 +77,7 @@ func (a *Agent) StartMachineHeartbeatThread() chan bool {
 	ttl := parseDuration(DefaultMachineTTL)
 
 	heartbeat := func() {
-		a.registry.SetMachineState(a.Machine, ttl)
+		a.registry.SetMachineState(a.machine, ttl)
 	}
 
 	loop := func() {
@@ -108,11 +108,11 @@ func (a *Agent) StartServiceHeartbeatThread() chan bool {
 		localJobs := a.manager.GetJobs()
 		ttl := parseDuration(a.ServiceTTL)
 		for _, j := range localJobs {
-			if tgt := a.registry.GetJobTarget(j.Name); tgt != nil && tgt.BootId == a.Machine.BootId {
+			if tgt := a.registry.GetJobTarget(j.Name); tgt != nil && tgt.BootId == a.machine.BootId {
 				log.V(1).Infof("Reporting state of Job(%s)", j.Name)
 				a.registry.SaveJobState(&j, ttl)
 			} else {
-				log.Infof("Local Job(%s) does not appear to be scheduled to this Machine(%s), stopping it", j.Name, a.Machine.BootId)
+				log.Infof("Local Job(%s) does not appear to be scheduled to this Machine(%s), stopping it", j.Name, a.machine.BootId)
 				a.manager.StopJob(&j)
 			}
 		}
@@ -177,7 +177,7 @@ func (a *Agent) hasConflict(j *job.Job) bool {
 	}
 
 	// Check for conflicts with locally-scheduled jobs
-	for _, other := range a.registry.GetAllJobsByMachine(a.Machine) {
+	for _, other := range a.registry.GetAllJobsByMachine(a.machine) {
 		if !hasProvides(&other) {
 			continue
 		}
@@ -234,7 +234,7 @@ func (a *Agent) HandleEventJobOffered(ev event.Event) {
 	a.state.TrackJobPeers(jo.Job.Name, jo.Job.Payload.Peers)
 
 	metadata := extractMachineMetadata(jo.Job.Payload.Requirements)
-	if !a.Machine.HasMetadata(metadata) {
+	if !a.machine.HasMetadata(metadata) {
 		log.V(1).Infof("EventJobOffered(%s): local Machine Metadata insufficient", jo.Job.Name)
 		return
 	}
@@ -250,7 +250,7 @@ func (a *Agent) HandleEventJobOffered(ev event.Event) {
 	}
 
 	log.Infof("EventJobOffered(%s): passed all criteria, submitting JobBid", jo.Job.Name)
-	jb := job.NewBid(jo.Job.Name, a.Machine.BootId)
+	jb := job.NewBid(jo.Job.Name, a.machine.BootId)
 	a.registry.SubmitJobBid(jb)
 	a.state.TrackBid(jo.Job.Name)
 }
@@ -260,7 +260,7 @@ func (a *Agent) hasAllLocalPeers(j *job.Job) bool {
 		log.V(1).Infof("Looking for target of Peer(%s)", peerName)
 
 		//FIXME: ideally the machine would use its own knowledge rather than calling GetJobTarget
-		if tgt := a.registry.GetJobTarget(peerName); tgt == nil || tgt.BootId != a.Machine.BootId {
+		if tgt := a.registry.GetJobTarget(peerName); tgt == nil || tgt.BootId != a.machine.BootId {
 			log.V(1).Infof("Peer(%s) of Job(%s) not scheduled here", peerName, j.Name)
 			return false
 		} else {
@@ -302,7 +302,7 @@ func (a *Agent) HandleEventJobScheduled(ev event.Event) {
 	a.state.DropOffer(jobName)
 	a.state.DropBid(jobName)
 
-	if ev.Context.BootId != a.Machine.BootId {
+	if ev.Context.BootId != a.machine.BootId {
 		log.V(1).Infof("EventJobScheduled(%s): Job not scheduled to this Agent", jobName)
 		a.bidForPossibleOffers()
 		return
@@ -334,7 +334,7 @@ func (a *Agent) HandleEventJobScheduled(ev event.Event) {
 
 		if peerJob := a.registry.GetJob(peer); !a.hasConflict(peerJob) {
 			log.Infof("EventJobScheduled(%s): Submitting JobBid for Peer(%s)", jobName, peer)
-			jb := job.NewBid(peer, a.Machine.BootId)
+			jb := job.NewBid(peer, a.machine.BootId)
 			a.registry.SubmitJobBid(jb)
 
 			a.state.TrackBid(jb.JobName)
@@ -349,7 +349,7 @@ func (a *Agent) bidForPossibleOffers() {
 	for _, offer := range a.state.GetUnbadeOffers() {
 		if !a.hasConflict(&offer.Job) && a.hasAllLocalPeers(&offer.Job) {
 			log.Infof("Unscheduled Job(%s) has no local conflicts, submitting JobBid", offer.Job.Name)
-			jb := job.NewBid(offer.Job.Name, a.Machine.BootId)
+			jb := job.NewBid(offer.Job.Name, a.machine.BootId)
 			a.registry.SubmitJobBid(jb)
 
 			a.state.TrackBid(jb.JobName)
