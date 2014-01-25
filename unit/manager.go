@@ -12,6 +12,7 @@ import (
 	systemdDbus "github.com/coreos/go-systemd/dbus"
 	log "github.com/golang/glog"
 
+	"github.com/coreos/coreinit/event"
 	"github.com/coreos/coreinit/job"
 	"github.com/coreos/coreinit/machine"
 )
@@ -26,21 +27,55 @@ type SystemdManager struct {
 	Machine    *machine.Machine
 	UnitPrefix string
 	unitPath   string
+
+	subscriptions  *systemdDbus.SubscriptionSet
+	stop chan bool
 }
 
 func NewSystemdManager(machine *machine.Machine, unitPrefix string) *SystemdManager {
 	//TODO(bcwaldon): Handle error in call to New()
 	systemd, _ := systemdDbus.New()
-	systemd.Subscribe()
+	subscriptions := systemd.NewSubscriptionSet()
 
 	name := "coreinit-" + machine.BootId + ".target"
 	target := NewSystemdTarget(name)
 
-	mgr := &SystemdManager{systemd, target, machine, unitPrefix, defaultSystemdRuntimePath}
-
+	mgr := &SystemdManager{systemd, target, machine, unitPrefix, defaultSystemdRuntimePath, subscriptions, nil}
 	mgr.writeUnit(target.Name(), "")
 
 	return mgr
+}
+
+func (m *SystemdManager) Publish(bus *event.EventBus) {
+	m.stop = make(chan bool)
+
+	m.Systemd.Subscribe()
+	changechan, errchan := m.subscriptions.Subscribe()
+
+	stream := NewEventStream()
+	stream.Stream(changechan, bus.Channel)
+
+	for true {
+		select {
+		case <-m.stop:
+			break
+		case err := <-errchan:
+			var errString string
+			if err != nil {
+				errString = err.Error()
+			} else {
+				errString = "N/A"
+			}
+			log.Errorf("Received error from dbus: err=%s", errString)
+		}
+	}
+
+	stream.Close()
+	m.Systemd.Unsubscribe()
+}
+
+func (m *SystemdManager) Stop() {
+	close(m.stop)
 }
 
 func (m *SystemdManager) getUnitByName(name string) (*SystemdUnit, error) {
@@ -118,6 +153,9 @@ func (m *SystemdManager) StartJob(job *job.Job) {
 
 	name := m.addUnitNamePrefix(job.Name)
 	m.writeUnit(name, unitFile.String())
+
+	m.subscriptions.Add(name)
+
 	m.startUnit(name)
 }
 
