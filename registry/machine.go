@@ -63,9 +63,11 @@ func (r *Registry) SetMachineState(machine *machine.Machine, ttl time.Duration) 
 	r.etcd.Set(key, json, uint64(ttl.Seconds()))
 }
 
-func (r *Registry) RemoveMachineState(machine *machine.Machine) {
+// Remove Machine object from etcd
+func (r *Registry) RemoveMachineState(machine *machine.Machine) error {
 	key := path.Join(keyPrefix, machinePrefix, machine.BootId, "object")
-	r.etcd.Delete(key, false)
+	_, err := r.etcd.Delete(key, false)
+	return err
 }
 
 func (self *EventStream) filterEventMachineUpdated(resp *etcd.Response) *event.Event {

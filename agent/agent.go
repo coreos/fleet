@@ -74,7 +74,10 @@ func (a *Agent) Stop() {
 
 func (a *Agent) Purge() {
 	log.V(1).Info("Removing Agent from Registry")
-	a.registry.RemoveMachineState(a.machine)
+	err := a.registry.RemoveMachineState(a.machine)
+	if err != nil {
+		log.Errorf("Failed to remove Machine %s from Registry: %s", a.machine.BootId, err.Error())
+	}
 }
 
 // Keep the local statistics in the Registry up to date
