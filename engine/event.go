@@ -94,21 +94,6 @@ func (self *EventHandler) claimJobOffer(jobName string) bool {
 	return self.engine.Registry().ClaimJobOffer(jobName, self.engine.Machine(), self.engine.ClaimTTL())
 }
 
-func (self *EventHandler) HandleEventJobStatePublished(ev event.Event) {
-	//j := ev.Payload.(job.Job)
-	//TODO reimplement
-}
-
-func (self *EventHandler) HandleEventJobStateExpired(ev event.Event) {
-	//j := ev.Payload.(job.Job)
-	//TODO reimplement
-}
-
-func (self *EventHandler) HandleEventMachineUpdated(ev event.Event) {
-	//m := ev.Payload.(machine.Machine)
-	//TODO reimplement?
-}
-
 func (self *EventHandler) HandleEventMachineRemoved(ev event.Event) {
 	machName := ev.Payload.(string)
 	for _, j := range self.engine.Registry().GetAllJobs() {
