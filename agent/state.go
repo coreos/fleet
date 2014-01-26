@@ -9,7 +9,7 @@ import (
 )
 
 type AgentState struct {
-	// used to lock the datastructure for thread-safety
+	// used to lock the datastructure for multi-goroutine safety
 	mutex sync.Mutex
 
 	// unresolved job offers

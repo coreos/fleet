@@ -34,7 +34,12 @@ func New(cfg config.Config) *Server {
 	eventClient.SetConsistency(etcd.WEAK_CONSISTENCY)
 	es := registry.NewEventStream(eventClient)
 
-	a := agent.New(r, eb, m, cfg.AgentTTL, cfg.UnitPrefix)
+	a, err := agent.New(r, eb, m, cfg.AgentTTL, cfg.UnitPrefix)
+	if err != nil {
+		//TODO: return this as an error object rather than panicking
+		panic(err)
+	}
+
 	e := engine.New(r, eb, m)
 
 	return &Server{a, e, m, r, eb, es}

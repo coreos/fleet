@@ -9,7 +9,7 @@ import (
 	"strings"
 	"syscall"
 
-	systemdDbus "github.com/coreos/go-systemd/dbus"
+	"github.com/coreos/go-systemd/dbus"
 	log "github.com/golang/glog"
 
 	"github.com/coreos/coreinit/event"
@@ -22,34 +22,32 @@ const (
 )
 
 type SystemdManager struct {
-	Systemd    *systemdDbus.Conn
+	Systemd    *dbus.Conn
 	Target     *SystemdTarget
 	Machine    *machine.Machine
 	UnitPrefix string
 	unitPath   string
 
-	subscriptions  *systemdDbus.SubscriptionSet
+	subscriptions  *dbus.SubscriptionSet
 	stop chan bool
 }
 
 func NewSystemdManager(machine *machine.Machine, unitPrefix string) *SystemdManager {
 	//TODO(bcwaldon): Handle error in call to New()
-	systemd, _ := systemdDbus.New()
-	subscriptions := systemd.NewSubscriptionSet()
+	systemd, _ := dbus.New()
 
 	name := "coreinit-" + machine.BootId + ".target"
 	target := NewSystemdTarget(name)
 
-	mgr := &SystemdManager{systemd, target, machine, unitPrefix, defaultSystemdRuntimePath, subscriptions, nil}
+	mgr := &SystemdManager{systemd, target, machine, unitPrefix, defaultSystemdRuntimePath, systemd.NewSubscriptionSet(), nil}
 	mgr.writeUnit(target.Name(), "")
 
 	return mgr
 }
 
-func (m *SystemdManager) Publish(bus *event.EventBus) {
-	m.stop = make(chan bool)
-
+func (m *SystemdManager) Publish(bus *event.EventBus, stopchan chan bool) {
 	m.Systemd.Subscribe()
+
 	changechan, errchan := m.subscriptions.Subscribe()
 
 	stream := NewEventStream()
@@ -57,7 +55,7 @@ func (m *SystemdManager) Publish(bus *event.EventBus) {
 
 	for true {
 		select {
-		case <-m.stop:
+		case <-stopchan:
 			break
 		case err := <-errchan:
 			var errString string
@@ -72,10 +70,6 @@ func (m *SystemdManager) Publish(bus *event.EventBus) {
 
 	stream.Close()
 	m.Systemd.Unsubscribe()
-}
-
-func (m *SystemdManager) Stop() {
-	close(m.stop)
 }
 
 func (m *SystemdManager) getUnitByName(name string) (*SystemdUnit, error) {

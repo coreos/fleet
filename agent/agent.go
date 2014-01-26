@@ -25,44 +25,51 @@ const (
 // The Agent owns all of the coordination between the Registry, the local
 // Machine, and the local SystemdManager.
 type Agent struct {
-	registry *registry.Registry
-	events   *event.EventBus
-	machine  *machine.Machine
-	ttl      time.Duration
+	registry   *registry.Registry
+	events     *event.EventBus
+	machine    *machine.Machine
+	ttl        time.Duration
+	unitPrefix string
 
-	manager *unit.SystemdManager
 	state   *AgentState
+	systemd *unit.SystemdManager
 
 	// channel used to shutdown any open connections/channels the Agent holds
 	stop chan bool
 }
 
-func New(registry *registry.Registry, events *event.EventBus, machine *machine.Machine, ttl, unitPrefix string) *Agent {
+func New(registry *registry.Registry, events *event.EventBus, machine *machine.Machine, ttl, unitPrefix string) (*Agent, error) {
+	ttldur, err := time.ParseDuration(ttl)
+	if err != nil {
+		return nil, err
+	}
+
+	state := NewState()
 	mgr := unit.NewSystemdManager(machine, unitPrefix)
-	ttldur := parseDuration(ttl)
-	return &Agent{registry, events, machine, ttldur, mgr, nil, nil}
+
+	return &Agent{registry, events, machine, ttldur, unitPrefix, state, mgr, nil}, nil
+}
+
+// Access Agent's machine field
+func (a *Agent) Machine() *machine.Machine {
+	return a.machine
 }
 
 // Trigger all async processes the Agent intends to run
 func (a *Agent) Run() {
 	a.stop = make(chan bool)
-	a.state = NewState()
 
-	// Kick off the three threads we need for our async processes
-	a.events.AddListener("agent", a.machine, a)
-	a.manager.Publish(a.events)
-	machstop := a.StartMachineHeartbeatThread()
+	listener := NewEventListener(a)
+
+	a.events.AddListener("agent", a.machine, listener)
+
+	go a.systemd.Publish(a.events, a.stop)
+	go a.Heartbeat(a.ttl, a.stop)
 
 	// Block until we receive a stop signal
 	<-a.stop
 
-	// Signal each of the threads we started to also stop
-	machstop <- true
-
-	a.manager.Stop()
 	a.events.RemoveListener("agent", a.machine)
-
-	a.state = nil
 }
 
 // Stop all async processes the Agent is running
@@ -71,6 +78,7 @@ func (a *Agent) Stop() {
 	close(a.stop)
 }
 
+// Clear any presence data from the Registry
 func (a *Agent) Purge() {
 	log.V(1).Info("Removing Agent from Registry")
 	err := a.registry.RemoveMachineState(a.machine)
@@ -79,34 +87,164 @@ func (a *Agent) Purge() {
 	}
 }
 
-// Keep the local statistics in the Registry up to date
-func (a *Agent) StartMachineHeartbeatThread() chan bool {
-	stop := make(chan bool)
-
-	heartbeat := func() {
-		a.registry.SetMachineState(a.machine, a.ttl)
-	}
-
-	loop := func() {
-		interval := intervalFromTTL(a.ttl)
-		for true {
-			select {
-			case <-stop:
-				log.V(2).Info("MachineHeartbeat exiting due to stop signal")
-				return
-			case <- time.Tick(interval):
-				log.V(2).Info("MachineHeartbeat tick")
-				heartbeat()
-			}
+// Periodically report to the Registry at an interval equal to
+// half of the provided ttl. Stop reporting when the provided
+// channel is closed.
+func (a *Agent) Heartbeat(ttl time.Duration, stop chan bool) {
+	interval := ttl / refreshInterval
+	for true {
+		select {
+		case <-stop:
+			log.V(2).Info("MachineHeartbeat exiting due to stop signal")
+			return
+		case <-time.Tick(interval):
+			log.V(2).Info("MachineHeartbeat tick")
+			a.registry.SetMachineState(a.machine, a.ttl)
 		}
 	}
+}
 
-	go loop()
-	return stop
+// Instruct the Agent to start the provided Job
+func (a *Agent) StartJob(j *job.Job) {
+	log.Infof("Starting Job(%s)", j.Name)
+	a.systemd.StartJob(j)
+}
+
+// Instruct the Agent to stop the provided Job and
+// all of its peers
+func (a *Agent) StopJob(j *job.Job) {
+	log.Infof("Stopping Job(%s)", j.Name)
+	a.systemd.StopJob(j)
+
+	a.state.Lock()
+	reversePeers := a.state.GetJobsByPeer(j.Name)
+	a.state.DropPeersJob(j.Name)
+	a.state.Unlock()
+
+	for _, peer := range reversePeers {
+		log.Infof("Cancelling Peer(%s) of Job", j.Name, peer)
+		a.registry.CancelJob(peer)
+	}
+}
+
+// Persist the state of the given Job into the Registry
+func (a *Agent) ReportJobState(j *job.Job) {
+	if j.State == nil {
+		err := a.registry.RemoveJobState(j)
+		if err != nil {
+			log.V(1).Infof("Failed to remove JobState from Registry: %s", j.Name, err.Error())
+		}
+	} else {
+		a.registry.SaveJobState(j)
+	}
+}
+
+// Submit all possible bids for unresolved offers
+func (a *Agent) BidForPossibleJobs() {
+	for _, offer := range a.state.GetUnbadeOffers() {
+		log.V(2).Infof("Checking ability to run unscheduled Job(%s)", offer.Job.Name)
+		if a.AbleToRun(&offer.Job) {
+			a.Bid(offer.Job.Name)
+		}
+	}
+}
+
+// Submit a bid for the given Job
+func (a *Agent) Bid(jobName string) {
+	log.Infof("Submitting JobBid for Job(%s)", jobName)
+
+	jb := job.NewBid(jobName, a.machine.BootId)
+	a.registry.SubmitJobBid(jb)
+
+	a.state.Lock()
+	defer a.state.Unlock()
+
+	a.state.TrackBid(jb.JobName)
+}
+
+// Instruct the Agent that an offer has been created and must
+// be tracked until it is resolved
+func (a *Agent) TrackOffer(jo job.JobOffer) {
+	a.state.Lock()
+	defer a.state.Unlock()
+
+	a.state.TrackOffer(jo)
+	a.state.TrackJobPeers(jo.Job.Name, jo.Job.Payload.Peers)
+}
+
+// Instruct the Agent that the given offer has been resolved
+// and may be ignored in future conflict calculations
+func (a *Agent) OfferResolved(jobName string) {
+	a.state.Lock()
+	defer a.state.Unlock()
+
+	a.state.DropOffer(jobName)
+	a.state.DropBid(jobName)
+}
+
+// Pull a Job and its payload from the Registry
+func (a *Agent) FetchJob(jobName string) *job.Job {
+	log.V(1).Infof("Fetching Job(%s) from Registry", jobName)
+	j := a.registry.GetJob(jobName)
+	if j == nil {
+		log.V(1).Infof("Job not found in Registry")
+	}
+	return j
+}
+
+// Submit all possible bids for known peers of the provided job
+func (a *Agent) BidForPossiblePeers(jobName string) {
+	for _, peer := range a.state.GetJobsByPeer(jobName) {
+		log.V(1).Infof("Found unresolved offer for Peer(%s) of Job(%s)", peer, jobName)
+
+		peerJob := a.FetchJob(peer)
+		if peerJob != nil && a.AbleToRun(peerJob) {
+			log.Infof("Submitting bid for Peer(%s) of Job(%s)", peer, jobName)
+			a.Bid(peer)
+		} else {
+			log.V(1).Infof("Unable to bid for Peer(%s) of Job(%s)", peer, jobName)
+		}
+	}
+}
+
+// Determine if the Agent can run the provided Job
+func (a *Agent) AbleToRun(j *job.Job) bool {
+	metadata := extractMachineMetadata(j.Payload.Requirements)
+	if !a.machine.HasMetadata(metadata) {
+		log.V(1).Infof("Unable to run Job(%s), local Machine metadata insufficient", j.Name)
+		return false
+	}
+
+	if a.hasConflict(j) {
+		log.V(1).Infof("Unable to run Job(%s), local Job conflict, ignoring offer", j.Name)
+		return false
+	}
+
+	if !a.hasAllLocalPeers(j) {
+		log.V(1).Infof("Unable to run Job(%s), necessary peer Jobs are not running locally", j.Name)
+		return false
+	}
+
+	return true
+}
+
+// Determine if all necessary peers of a Job are scheduled to this Agent
+func (a *Agent) hasAllLocalPeers(j *job.Job) bool {
+	for _, peerName := range j.Payload.Peers {
+		log.V(1).Infof("Looking for target of Peer(%s)", peerName)
+
+		//FIXME: ideally the machine would use its own knowledge rather than calling GetJobTarget
+		if tgt := a.registry.GetJobTarget(peerName); tgt == nil || tgt.BootId != a.machine.BootId {
+			log.V(1).Infof("Peer(%s) of Job(%s) not scheduled here", peerName, j.Name)
+			return false
+		} else {
+			log.V(1).Infof("Peer(%s) of Job(%s) scheduled here", peerName, j.Name)
+		}
+	}
+	return true
 }
 
 // Determine whether a given Job conflicts with any other relevant Jobs
-// Only call this from a locked AgentState context
 func (a *Agent) hasConflict(j *job.Job) bool {
 	var reqString string
 	for key, slice := range j.Payload.Requirements {
@@ -188,55 +326,7 @@ func (a *Agent) hasConflict(j *job.Job) bool {
 	return false
 }
 
-func (a *Agent) HandleEventJobOffered(ev event.Event) {
-	jo := ev.Payload.(job.JobOffer)
-	log.V(1).Infof("EventJobOffered(%s): verifying ability to run Job", jo.Job.Name)
-
-	a.state.Lock()
-	defer a.state.Unlock()
-
-	// Everything we check against could change over time, so we track all
-	// offers starting here for future bidding even if we can't bid now
-	a.state.TrackOffer(jo)
-	a.state.TrackJobPeers(jo.Job.Name, jo.Job.Payload.Peers)
-
-	metadata := extractMachineMetadata(jo.Job.Payload.Requirements)
-	if !a.machine.HasMetadata(metadata) {
-		log.V(1).Infof("EventJobOffered(%s): local Machine Metadata insufficient", jo.Job.Name)
-		return
-	}
-
-	if a.hasConflict(&jo.Job) {
-		log.V(1).Infof("EventJobOffered(%s): local Job conflict, ignoring offer", jo.Job.Name)
-		return
-	}
-
-	if !a.hasAllLocalPeers(&jo.Job) {
-		log.V(1).Infof("EventJobOffered(%s): necessary peer Jobs are not running locally", jo.Job.Name)
-		return
-	}
-
-	log.Infof("EventJobOffered(%s): passed all criteria, submitting JobBid", jo.Job.Name)
-	jb := job.NewBid(jo.Job.Name, a.machine.BootId)
-	a.registry.SubmitJobBid(jb)
-	a.state.TrackBid(jo.Job.Name)
-}
-
-func (a *Agent) hasAllLocalPeers(j *job.Job) bool {
-	for _, peerName := range j.Payload.Peers {
-		log.V(1).Infof("Looking for target of Peer(%s)", peerName)
-
-		//FIXME: ideally the machine would use its own knowledge rather than calling GetJobTarget
-		if tgt := a.registry.GetJobTarget(peerName); tgt == nil || tgt.BootId != a.machine.BootId {
-			log.V(1).Infof("Peer(%s) of Job(%s) not scheduled here", peerName, j.Name)
-			return false
-		} else {
-			log.V(1).Infof("Peer(%s) of Job(%s) scheduled here", peerName, j.Name)
-		}
-	}
-	return true
-}
-
+// Return all machine-related metadata from a job requirements map
 func extractMachineMetadata(requirements map[string][]string) map[string][]string {
 	metadata := make(map[string][]string)
 
@@ -258,124 +348,4 @@ func extractMachineMetadata(requirements map[string][]string) map[string][]strin
 	}
 
 	return metadata
-}
-
-func (a *Agent) HandleEventJobScheduled(ev event.Event) {
-	jobName := ev.Payload.(string)
-	log.V(1).Infof("EventJobScheduled(%s): Dropping outstanding offers and bids", jobName)
-
-	a.state.Lock()
-	defer a.state.Unlock()
-
-	a.state.DropOffer(jobName)
-	a.state.DropBid(jobName)
-
-	if ev.Context.(*machine.Machine).BootId != a.machine.BootId {
-		log.V(1).Infof("EventJobScheduled(%s): Job not scheduled to this Agent", jobName)
-		a.bidForPossibleOffers()
-		return
-	} else {
-		log.V(1).Infof("EventJobScheduled(%s): Job scheduled to this Agent", jobName)
-	}
-
-	log.V(1).Infof("EventJobScheduled(%s): Fetching Job from Registry", jobName)
-	j := a.registry.GetJob(jobName)
-
-	if j == nil {
-		log.V(1).Infof("EventJobScheduled(%s): Job not found in Registry")
-		return
-	}
-
-	// Reassert there are no conflicts
-	if a.hasConflict(j) {
-		log.V(1).Infof("EventJobScheduled(%s): Local conflict found, cancelling Job", jobName)
-		a.registry.CancelJob(jobName)
-		return
-	}
-
-	log.Infof("EventJobScheduled(%s): Starting Job", j.Name)
-	a.manager.StartJob(j)
-
-	reversePeers := a.state.GetJobsByPeer(jobName)
-	for _, peer := range reversePeers {
-		log.V(1).Infof("EventJobScheduled(%s): Found unresolved offer for Peer(%s)", jobName, peer)
-
-		if peerJob := a.registry.GetJob(peer); !a.hasConflict(peerJob) {
-			log.Infof("EventJobScheduled(%s): Submitting JobBid for Peer(%s)", jobName, peer)
-			jb := job.NewBid(peer, a.machine.BootId)
-			a.registry.SubmitJobBid(jb)
-
-			a.state.TrackBid(jb.JobName)
-		} else {
-			log.V(1).Infof("EventJobScheduled(%s): Would submit JobBid for Peer(%s), but local conflict exists", jobName, peer)
-		}
-	}
-}
-
-// Only call this from a locked AgentState context
-func (a *Agent) bidForPossibleOffers() {
-	for _, offer := range a.state.GetUnbadeOffers() {
-		log.V(2).Infof("Checking ability to run unscheduled Job(%s)", offer.Job.Name)
-		if !a.hasConflict(&offer.Job) && a.hasAllLocalPeers(&offer.Job) {
-			log.Infof("Unscheduled Job(%s) has no local conflicts, submitting JobBid", offer.Job.Name)
-			jb := job.NewBid(offer.Job.Name, a.machine.BootId)
-			a.registry.SubmitJobBid(jb)
-
-			a.state.TrackBid(jb.JobName)
-		}
-	}
-}
-
-func (a *Agent) HandleEventJobCancelled(ev event.Event) {
-	//TODO(bcwaldon): We should check the context of the event before
-	// making any changes to local systemd or the registry
-
-	jobName := ev.Payload.(string)
-	log.Infof("EventJobCancelled(%s): stopping Job", jobName)
-	j := job.NewJob(jobName, nil, nil)
-	a.manager.StopJob(j)
-
-	a.state.Lock()
-	defer a.state.Unlock()
-
-	reversePeers := a.state.GetJobsByPeer(jobName)
-	a.state.DropPeersJob(jobName)
-
-	for _, peer := range reversePeers {
-		log.Infof("EventJobCancelled(%s): cancelling Peer(%s) of Job", jobName, peer)
-		a.registry.CancelJob(peer)
-	}
-
-	a.bidForPossibleOffers()
-}
-
-func (a *Agent) HandleEventJobStateUpdated(ev event.Event) {
-	jobName := ev.Context.(string)
-	state := ev.Payload.(*job.JobState)
-	j := job.NewJob(jobName, state, nil)
-	if state == nil {
-		log.V(1).Infof("EventJobStateUpdated(%s): received nil JobState object", jobName)
-		err := a.registry.RemoveJobState(j)
-		if err != nil {
-			log.V(1).Infof("EventJobStateUpdated(%s): failed to remove JobState from Registry: %s", jobName, err.Error())
-		}
-	} else {
-		log.V(1).Infof("EventJobStateUpdated(%s): pushing state (loadState=%s, activeState=%s, subState=%s) to Registry", jobName, state.LoadState, state.ActiveState, state.SubState)
-		// FIXME: This should probably be set in the underlying event-generation code
-		state.Machine = a.machine
-		a.registry.SaveJobState(j)
-	}
-}
-
-func parseDuration(d string) time.Duration {
-	duration, err := time.ParseDuration(d)
-	if err != nil {
-		panic(err)
-	}
-
-	return duration
-}
-
-func intervalFromTTL(d time.Duration) time.Duration {
-	return d / refreshInterval
 }
