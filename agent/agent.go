@@ -49,18 +49,17 @@ func (a *Agent) Run() {
 	a.state = NewState()
 
 	// Kick off the three threads we need for our async processes
-	svcstop := a.StartServiceHeartbeatThread()
-	machstop := a.StartMachineHeartbeatThread()
-
 	a.events.AddListener("agent", a.machine, a)
+	a.manager.Publish(a.events)
+	machstop := a.StartMachineHeartbeatThread()
 
 	// Block until we receive a stop signal
 	<-a.stop
 
 	// Signal each of the threads we started to also stop
-	svcstop <- true
 	machstop <- true
 
+	a.manager.Stop()
 	a.events.RemoveListener("agent", a.machine)
 
 	a.state = nil
@@ -97,41 +96,6 @@ func (a *Agent) StartMachineHeartbeatThread() chan bool {
 				return
 			case <- time.Tick(interval):
 				log.V(2).Info("MachineHeartbeat tick")
-				heartbeat()
-			}
-		}
-	}
-
-	go loop()
-	return stop
-}
-
-// Keep the state of local units in the Registry up to date
-func (a *Agent) StartServiceHeartbeatThread() chan bool {
-	stop := make(chan bool)
-
-	heartbeat := func() {
-		localJobs := a.manager.GetJobs()
-		for _, j := range localJobs {
-			if tgt := a.registry.GetJobTarget(j.Name); tgt != nil && tgt.BootId == a.machine.BootId {
-				log.V(1).Infof("Reporting state of Job(%s)", j.Name)
-				a.registry.SaveJobState(&j, a.ttl)
-			} else {
-				log.Infof("Local Job(%s) does not appear to be scheduled to this Machine(%s), stopping it", j.Name, a.machine.BootId)
-				a.manager.StopJob(&j)
-			}
-		}
-	}
-
-	loop := func() {
-		interval := intervalFromTTL(a.ttl)
-		for true {
-			select {
-			case <-stop:
-				log.V(1).Info("ServiceHeartbeat exiting due to stop signal")
-				return
-			case <-time.Tick(interval):
-				log.V(2).Info("ServiceHeartbeat tick")
 				heartbeat()
 			}
 		}
@@ -298,6 +262,7 @@ func extractMachineMetadata(requirements map[string][]string) map[string][]strin
 
 func (a *Agent) HandleEventJobScheduled(ev event.Event) {
 	jobName := ev.Payload.(string)
+	log.V(1).Infof("EventJobScheduled(%s): Dropping outstanding offers and bids", jobName)
 
 	a.state.Lock()
 	defer a.state.Unlock()
@@ -305,7 +270,7 @@ func (a *Agent) HandleEventJobScheduled(ev event.Event) {
 	a.state.DropOffer(jobName)
 	a.state.DropBid(jobName)
 
-	if ev.Context.BootId != a.machine.BootId {
+	if ev.Context.(*machine.Machine).BootId != a.machine.BootId {
 		log.V(1).Infof("EventJobScheduled(%s): Job not scheduled to this Agent", jobName)
 		a.bidForPossibleOffers()
 		return
@@ -350,6 +315,7 @@ func (a *Agent) HandleEventJobScheduled(ev event.Event) {
 // Only call this from a locked AgentState context
 func (a *Agent) bidForPossibleOffers() {
 	for _, offer := range a.state.GetUnbadeOffers() {
+		log.V(2).Infof("Checking ability to run unscheduled Job(%s)", offer.Job.Name)
 		if !a.hasConflict(&offer.Job) && a.hasAllLocalPeers(&offer.Job) {
 			log.Infof("Unscheduled Job(%s) has no local conflicts, submitting JobBid", offer.Job.Name)
 			jb := job.NewBid(offer.Job.Name, a.machine.BootId)
@@ -381,6 +347,24 @@ func (a *Agent) HandleEventJobCancelled(ev event.Event) {
 	}
 
 	a.bidForPossibleOffers()
+}
+
+func (a *Agent) HandleEventJobStateUpdated(ev event.Event) {
+	jobName := ev.Context.(string)
+	state := ev.Payload.(*job.JobState)
+	j := job.NewJob(jobName, state, nil)
+	if state == nil {
+		log.V(1).Infof("EventJobStateUpdated(%s): received nil JobState object", jobName)
+		err := a.registry.RemoveJobState(j)
+		if err != nil {
+			log.V(1).Infof("EventJobStateUpdated(%s): failed to remove JobState from Registry: %s", jobName, err.Error())
+		}
+	} else {
+		log.V(1).Infof("EventJobStateUpdated(%s): pushing state (loadState=%s, activeState=%s, subState=%s) to Registry", jobName, state.LoadState, state.ActiveState, state.SubState)
+		// FIXME: This should probably be set in the underlying event-generation code
+		state.Machine = a.machine
+		a.registry.SaveJobState(j)
+	}
 }
 
 func parseDuration(d string) time.Duration {

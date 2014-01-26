@@ -1,3 +1,19 @@
+/*
+Copyright 2013 CoreOS Inc.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+     http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 // Integration with the systemd D-Bus API.  See http://www.freedesktop.org/wiki/Software/systemd/dbus/
 package dbus
 
@@ -20,6 +36,7 @@ func ObjectPath(path string) dbus.ObjectPath {
 	return dbus.ObjectPath(path)
 }
 
+// Conn is a connection to systemds dbus endpoint.
 type Conn struct {
 	sysconn     *dbus.Conn
 	sysobj      *dbus.Object
@@ -37,6 +54,7 @@ type Conn struct {
 	dispatch map[string]func(dbus.Signal)
 }
 
+// New() establishes a connection to the system bus and authenticates.
 func New() (*Conn, error) {
 	c := new(Conn)
 
@@ -69,7 +87,11 @@ func (c *Conn) initConnection() error {
 
 	c.sysobj = c.sysconn.Object("org.freedesktop.systemd1", dbus.ObjectPath("/org/freedesktop/systemd1"))
 
+	// Setup the listeners on jobs so that we can get completions
+	c.sysconn.BusObject().Call("org.freedesktop.DBus.AddMatch", 0,
+		"type='signal', interface='org.freedesktop.systemd1.Manager', member='JobRemoved'")
+	c.initSubscription()
+	c.initDispatch()
+
 	return nil
 }
-
-

@@ -1,3 +1,19 @@
+/*
+Copyright 2013 CoreOS Inc.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+     http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package dbus
 
 import (
@@ -12,11 +28,11 @@ const (
 	ignoreInterval      = int64(30 * time.Millisecond)
 )
 
-// Subscribe sets up this connection to subscribe to all dbus events. This is
-// required before calling SubscribeUnits.
+// Subscribe sets up this connection to subscribe to all systemd dbus events.
+// This is required before calling SubscribeUnits. When the connection closes
+// systemd will automatically stop sending signals so there is no need to
+// explicitly call Unsubscribe().
 func (c *Conn) Subscribe() error {
-	c.sysconn.BusObject().Call("org.freedesktop.DBus.AddMatch", 0,
-		"type='signal',interface='org.freedesktop.systemd1.Manager',member='JobRemoved'")
 	c.sysconn.BusObject().Call("org.freedesktop.DBus.AddMatch", 0,
 		"type='signal',interface='org.freedesktop.systemd1.Manager',member='UnitNew'")
 	c.sysconn.BusObject().Call("org.freedesktop.DBus.AddMatch", 0,
@@ -28,8 +44,16 @@ func (c *Conn) Subscribe() error {
 		return err
 	}
 
-	c.initSubscription()
-	c.initDispatch()
+	return nil
+}
+
+// Unsubscribe this connection from systemd dbus events.
+func (c *Conn) Unsubscribe() error {
+	err := c.sysobj.Call("org.freedesktop.systemd1.Manager.Unsubscribe", 0).Store()
+	if err != nil {
+		c.sysconn.Close()
+		return err
+	}
 
 	return nil
 }
@@ -69,14 +93,15 @@ func (c *Conn) initDispatch() {
 }
 
 // Returns two unbuffered channels which will receive all changed units every
-// @interval@ seconds.  Deleted units are sent as nil.
+// interval.  Deleted units are sent as nil.
 func (c *Conn) SubscribeUnits(interval time.Duration) (<-chan map[string]*UnitStatus, <-chan error) {
-	return c.SubscribeUnitsCustom(interval, 0, func(u1, u2 *UnitStatus) bool { return *u1 != *u2 })
+	return c.SubscribeUnitsCustom(interval, 0, func(u1, u2 *UnitStatus) bool { return *u1 != *u2 }, nil)
 }
 
 // SubscribeUnitsCustom is like SubscribeUnits but lets you specify the buffer
-// size of the channels and the comparison function for detecting changes.
-func (c *Conn) SubscribeUnitsCustom(interval time.Duration, buffer int, isChanged func(*UnitStatus, *UnitStatus) bool) (<-chan map[string]*UnitStatus, <-chan error) {
+// size of the channels, the comparison function for detecting changes and a filter
+// function for cutting down on the noise that your channel receives.
+func (c *Conn) SubscribeUnitsCustom(interval time.Duration, buffer int, isChanged func(*UnitStatus, *UnitStatus) bool, filterUnit func (string) bool) (<-chan map[string]*UnitStatus, <-chan error) {
 	old := make(map[string]*UnitStatus)
 	statusChan := make(chan map[string]*UnitStatus, buffer)
 	errChan := make(chan error, buffer)
@@ -89,6 +114,9 @@ func (c *Conn) SubscribeUnitsCustom(interval time.Duration, buffer int, isChange
 			if err == nil {
 				cur := make(map[string]*UnitStatus)
 				for i := range units {
+					if filterUnit != nil && filterUnit(units[i].Name) {
+						continue
+					}
 					cur[units[i].Name] = &units[i]
 				}
 
@@ -108,7 +136,9 @@ func (c *Conn) SubscribeUnitsCustom(interval time.Duration, buffer int, isChange
 
 				old = cur
 
-				statusChan <- changed
+				if len(changed) != 0 {
+					statusChan <- changed
+				}
 			} else {
 				errChan <- err
 			}
@@ -126,7 +156,7 @@ type SubStateUpdate struct {
 }
 
 // SetSubStateSubscriber writes to updateCh when any unit's substate changes.
-// Althrough this writes to updateCh on every state change, the reported state
+// Although this writes to updateCh on every state change, the reported state
 // may be more recent than the change that generated it (due to an unavoidable
 // race in the systemd dbus interface).  That is, this method provides a good
 // way to keep a current view of all units' states, but is not guaranteed to
