@@ -59,9 +59,8 @@ func (a *Agent) Machine() *machine.Machine {
 func (a *Agent) Run() {
 	a.stop = make(chan bool)
 
-	listener := NewEventListener(a)
-
-	a.events.AddListener("agent", a.machine, listener)
+	handler := NewEventHandler(a)
+	a.events.AddListener("agent", a.machine, handler)
 
 	go a.systemd.Publish(a.events, a.stop)
 	go a.Heartbeat(a.ttl, a.stop)
