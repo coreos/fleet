@@ -122,9 +122,13 @@ func (a *Agent) StopJob(j *job.Job) {
 	a.state.Unlock()
 
 	for _, peer := range reversePeers {
-		log.Infof("Cancelling Peer(%s) of Job", j.Name, peer)
+		log.Infof("Cancelling Peer(%s) of Job(%s)", peer, j.Name)
 		a.registry.CancelJob(peer)
 	}
+}
+
+func (a *Agent) CancelJob(jobName string) {
+	a.registry.CancelJob(jobName)
 }
 
 // Persist the state of the given Job into the Registry
@@ -141,10 +145,18 @@ func (a *Agent) ReportJobState(j *job.Job) {
 
 // Submit all possible bids for unresolved offers
 func (a *Agent) BidForPossibleJobs() {
-	for _, offer := range a.state.GetUnbadeOffers() {
-		log.V(2).Infof("Checking ability to run unscheduled Job(%s)", offer.Job.Name)
+	a.state.Lock()
+	offers := a.state.GetUnbadeOffers()
+	a.state.Unlock()
+
+	log.V(2).Infof("Checking %d unbade offers", len(offers))
+	for _, offer := range offers {
+		log.V(2).Infof("Checking ability to run Job(%s)", offer.Job.Name)
 		if a.AbleToRun(&offer.Job) {
+			log.V(2).Infof("Able to run Job(%s), submitting bid", offer.Job.Name)
 			a.Bid(offer.Job.Name)
+		} else {
+			log.V(2).Infof("Still unable to run Job(%s)", offer.Job.Name)
 		}
 	}
 }
@@ -168,7 +180,9 @@ func (a *Agent) TrackOffer(jo job.JobOffer) {
 	a.state.Lock()
 	defer a.state.Unlock()
 
+	log.V(2).Infof("Tracking JobOffer(%s)", jo.Job.Name)
 	a.state.TrackOffer(jo)
+
 	a.state.TrackJobPeers(jo.Job.Name, jo.Job.Payload.Peers)
 }
 
@@ -178,7 +192,9 @@ func (a *Agent) OfferResolved(jobName string) {
 	a.state.Lock()
 	defer a.state.Unlock()
 
+	log.V(2).Infof("Dropping JobOffer(%s)", jobName)
 	a.state.DropOffer(jobName)
+
 	a.state.DropBid(jobName)
 }
 
@@ -194,7 +210,11 @@ func (a *Agent) FetchJob(jobName string) *job.Job {
 
 // Submit all possible bids for known peers of the provided job
 func (a *Agent) BidForPossiblePeers(jobName string) {
-	for _, peer := range a.state.GetJobsByPeer(jobName) {
+	a.state.Lock()
+	peers := a.state.GetJobsByPeer(jobName)
+	a.state.Unlock()
+
+	for _, peer := range peers {
 		log.V(1).Infof("Found unresolved offer for Peer(%s) of Job(%s)", peer, jobName)
 
 		peerJob := a.FetchJob(peer)
@@ -216,7 +236,7 @@ func (a *Agent) AbleToRun(j *job.Job) bool {
 	}
 
 	if a.hasConflict(j) {
-		log.V(1).Infof("Unable to run Job(%s), local Job conflict, ignoring offer", j.Name)
+		log.V(1).Infof("Unable to run Job(%s), local Job conflict", j.Name)
 		return false
 	}
 

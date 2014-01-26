@@ -37,12 +37,12 @@ func (el *EventListener) HandleEventJobScheduled(ev event.Event) {
 	el.agent.OfferResolved(jobName)
 
 	if ev.Context.(*machine.Machine).BootId != el.agent.Machine().BootId {
-		log.V(1).Infof("EventJobScheduled(%s): Job not scheduled to this Agent", jobName)
-		el.agent.BidForPossibleJobs()
+		log.V(1).Infof("EventJobScheduled(%s): Job not scheduled to this Agent, checking unbade offers", jobName)
+		eh.agent.BidForPossibleJobs()
 		return
-	} else {
-		log.V(1).Infof("EventJobScheduled(%s): Job scheduled to this Agent", jobName)
 	}
+
+	log.V(1).Infof("EventJobScheduled(%s): Job scheduled to this Agent", jobName)
 
 	j := el.agent.FetchJob(jobName)
 	if j == nil {
@@ -54,7 +54,7 @@ func (el *EventListener) HandleEventJobScheduled(ev event.Event) {
 		log.V(1).Infof("EventJobScheduled(%s): Unable to run scheduled Job", jobName)
 
 		// FIXME: the listener should not talk directly to the registry
-		//el.agent.CancelJob(jobName)
+		el.agent.CancelJob(jobName)
 
 		return
 	}
@@ -75,6 +75,7 @@ func (el *EventListener) HandleEventJobCancelled(ev event.Event) {
 	j := job.NewJob(jobName, nil, nil)
 	el.agent.StopJob(j)
 
+	log.V(1).Infof("EventJobCancelled(%s): revisiting unresolved JobOffers", jobName)
 	el.agent.BidForPossibleJobs()
 }
 
