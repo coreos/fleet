@@ -51,11 +51,8 @@ func (eh *EventHandler) HandleEventJobScheduled(ev event.Event) {
 	}
 
 	if !eh.agent.AbleToRun(j) {
-		log.V(1).Infof("EventJobScheduled(%s): Unable to run scheduled Job", jobName)
-
-		// FIXME: the listener should not talk directly to the registry
-		eh.agent.CancelJob(jobName)
-
+		log.V(1).Infof("EventJobScheduled(%s): Unable to run scheduled Job, rescheduling.", jobName)
+		eh.agent.RescheduleJob(j)
 		return
 	}
 

@@ -109,6 +109,17 @@ func (a *Agent) StartJob(j *job.Job) {
 	a.systemd.StartJob(j)
 }
 
+// Inform the Registry that a Job must be rescheduled
+func (a *Agent) RescheduleJob(j *job.Job) {
+	log.V(2).Infof("Cancelling Job(%s)", j.Name)
+	a.registry.CancelJob(j.Name)
+
+	offer := job.NewOfferFromJob(*j)
+	log.V(2).Infof("Publishing JobOffer(%s)", offer.Job.Name)
+	a.registry.CreateJobOffer(offer)
+	log.Infof("Published JobOffer(%s)", offer.Job.Name)
+}
+
 // Instruct the Agent to stop the provided Job and
 // all of its peers
 func (a *Agent) StopJob(j *job.Job) {
