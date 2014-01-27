@@ -84,6 +84,13 @@ func (a *Agent) Purge() {
 	if err != nil {
 		log.Errorf("Failed to remove Machine %s from Registry: %s", a.machine.BootId, err.Error())
 	}
+
+	for _, j := range a.registry.GetAllJobsByMachine(a.machine) {
+		offer := job.NewOfferFromJob(j)
+		log.V(2).Infof("Publishing JobOffer(%s)", offer.Job.Name)
+		a.registry.CreateJobOffer(offer)
+		log.Infof("Published JobOffer(%s)", offer.Job.Name)
+	}
 }
 
 // Periodically report to the Registry at an interval equal to
