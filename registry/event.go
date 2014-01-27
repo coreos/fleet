@@ -69,7 +69,7 @@ func watch(client *etcd.Client, etcdchan chan *etcd.Response, key string, closec
 			log.V(2).Infof("Gracefully closing etcd watch loop: key=%s", key)
 			return
 		default:
-			log.V(2).Infof("Creating etcd watcher: key=%s, machines=%s", key, strings.Join(client.GetCluster(), ","))
+			log.V(2).Infof("Creating etcd watcher: key=%s, index=%d, machines=%s", key, idx, strings.Join(client.GetCluster(), ","))
 			resp, err := client.Watch(key, idx, true, nil, nil)
 
 			if err == nil {
