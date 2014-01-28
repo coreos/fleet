@@ -37,9 +37,7 @@ func main() {
 		syscall.Exit(1)
 	}
 
-	if cfg.Verbosity >= 3 {
-		etcd.OpenDebug()
-	}
+	etcd.SetLogger(etcdLogger{})
 
 	srv := server.New(*cfg)
 	srv.Run()
@@ -108,4 +106,22 @@ func listenForSignals(sigmap map[os.Signal]func()) {
 			handler()
 		}
 	}
+}
+
+type etcdLogger struct {}
+
+func (el etcdLogger) Debug(args ...interface{}) {
+	glog.V(3).Info(args...)
+}
+
+func (el etcdLogger) Debugf(fmt string, args ...interface{}) {
+	glog.V(3).Infof(fmt, args...)
+}
+
+func (el etcdLogger) Warning(args ...interface{}) {
+	glog.Warning(args...)
+}
+
+func (el etcdLogger) Warningf(fmt string, args ...interface{}) {
+	glog.Warningf(fmt, args...)
 }

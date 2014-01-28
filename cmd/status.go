@@ -1,10 +1,14 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
+	"log"
 	"path"
 
 	"github.com/codegangsta/cli"
+
+	"github.com/coreos/coreinit/registry"
 )
 
 func newStatusUnitsCommand() cli.Command {
@@ -26,31 +30,43 @@ func statusUnitsAction(c *cli.Context) {
 		}
 
 		name := path.Base(v)
-		j := r.GetJob(name)
-		if j == nil {
-			return
+		printUnitStatus(r, name)
+	}
+}
+
+func printUnitStatus(r *registry.Registry, unitName string) {
+	j := r.GetJob(unitName)
+	if j == nil {
+		return
+	}
+
+	js := r.GetJobState(j)
+
+	if js == nil {
+		fmt.Println("%s does not appear to be running", unitName)
+	}
+
+	tunnel, err := ssh("core", fmt.Sprintf("%s:22", js.Machine.PublicIP))
+	if err != nil {
+		log.Fatalf("Unable to SSH to coreinit host: %s", err.Error())
+	}
+
+	stdout, _ := tunnel.StdoutPipe()
+	bstdout := bufio.NewReader(stdout)
+	cmd := fmt.Sprintf("systemctl status -l %s", unitName)
+
+	tunnel.Start(cmd)
+	go tunnel.Wait()
+
+	for true {
+		bytes, prefix, err := bstdout.ReadLine()
+		if err != nil {
+			break
 		}
 
-		state := r.GetJobState(j)
-
-		loadState := "-"
-		activeState := "-"
-		subState := "-"
-
-		if state != nil {
-			loadState = state.LoadState
-			activeState = state.ActiveState
-			subState = state.SubState
+		print(string(bytes))
+		if !prefix {
+			print("\n")
 		}
-
-		fmt.Printf("%s\n", j.Name)
-		fmt.Printf("\tLoaded: %s\n", loadState)
-		fmt.Printf("\tActive: %s (%s)\n", activeState, subState)
-		if state != nil {
-			for _, sock := range state.Sockets {
-				fmt.Printf("\tListen: %s\n", sock)
-			}
-		}
-		fmt.Print("\n")
 	}
 }

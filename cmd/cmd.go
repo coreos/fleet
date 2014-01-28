@@ -1,7 +1,11 @@
 package main
 
 import (
+	"crypto/tls"
+	"net"
+	"net/http"
 	"os"
+	"strings"
 	"text/tabwriter"
 
 	"github.com/codegangsta/cli"
@@ -18,8 +22,39 @@ func init() {
 }
 
 func getRegistry(context *cli.Context) *registry.Registry {
+	tun := context.GlobalString("tunnel")
 	endpoint := context.GlobalString("endpoint")
-	client := etcd.NewClient([]string{endpoint})
+
+	machines := []string{endpoint}
+	client := etcd.NewClient(machines)
+
+	if tun != "" {
+		if !strings.Contains(tun, ":") {
+			tun += ":22"
+		}
+		sshClient, err := newSSHClient("core", tun)
+		if err != nil {
+			panic(err)
+		}
+
+		dial := func(network, addr string) (net.Conn, error) {
+			tcpaddr, err := net.ResolveTCPAddr(network, addr)
+			if err != nil {
+				return nil, err
+			}
+			return sshClient.DialTCP(network, nil, tcpaddr)
+		}
+
+		tr := http.Transport{
+			Dial: dial,
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: true,
+			},
+		}
+
+		client.SetTransport(&tr)
+	}
+
 	return registry.New(client)
 }
 
@@ -30,6 +65,7 @@ func main() {
 
 	app.Flags = []cli.Flag{
 		cli.StringFlag{"endpoint", "http://127.0.0.1:4001", "Coreinit Engine API endpoint (etcd)"},
+		cli.StringFlag{"tunnel", "", "Establish an SSH tunnel through the provided address for all etcd communication."},
 	}
 
 	app.Commands = []cli.Command{
@@ -39,6 +75,7 @@ func main() {
 		newStatusUnitsCommand(),
 		newCatUnitCommand(),
 		newListMachinesCommand(),
+		newJournalCommand(),
 	}
 
 	app.Run(os.Args)

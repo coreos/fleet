@@ -2,6 +2,7 @@ package machine
 
 import (
 	"io/ioutil"
+	"net"
 	"strings"
 
 	log "github.com/golang/glog"
@@ -18,6 +19,9 @@ type Machine struct {
 func New(bootId string, publicIP string, metadata map[string]string) (m *Machine) {
 	if bootId == "" {
 		bootId = ReadLocalBootId()
+	}
+	if publicIP == "" {
+		publicIP = getLocalIP()
 	}
 	return &Machine{bootId, publicIP, metadata}
 }
@@ -59,4 +63,18 @@ func ReadLocalBootId() string {
 		panic(err)
 	}
 	return strings.TrimSpace(string(id))
+}
+
+func getLocalIP() string {
+	iface, err := net.InterfaceByName("eth0")
+	if err != nil {
+		return ""
+	}
+
+	addrs, err := iface.Addrs()
+	if err != nil || len(addrs) == 0 {
+		return ""
+	}
+
+	return strings.SplitN(addrs[0].String(), "/", 2)[0]
 }
