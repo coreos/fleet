@@ -36,3 +36,21 @@ func ssh(user, addr string) (*gossh.Session, error)  {
 
 	return session, nil
 }
+
+func newSSHClient(user, addr string) (*gossh.ClientConn, error) {
+	agent, err := net.Dial("unix", os.Getenv("SSH_AUTH_SOCK"))
+	if err != nil {
+		return nil, err
+	}
+
+	auths := []gossh.ClientAuth{
+		gossh.ClientAuthAgent(gossh.NewAgentClient(agent)),
+	}
+
+	clientConfig := &gossh.ClientConfig{
+		User: user,
+		Auth: auths,
+	}
+
+	return gossh.Dial("tcp", addr, clientConfig)
+}
