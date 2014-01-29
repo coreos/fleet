@@ -1,0 +1,8 @@
+[Unit]
+Description=PONG
+
+[Service]
+ExecStart=/bin/bash -c "while true; do echo \"pong\"; sleep 1; done"
+
+[X-Coreinit]
+X-Coreinit-Peers=ping.service
