@@ -19,7 +19,7 @@ To start your coreinit unit, run `sudo systemctl start coreinit.service`.
 
 You can configure coreinit with a config file or command line flags. See the [example config file][example-config] for more info.
 
-[example-config]: https://coreos.com/docs/cluster-management/setup/getting-started-with-etcd
+[example-config]: https://github.com/coreos/coreinit/blob/master/coreinit.conf.sample
 
 ## Etcd Cluster
 
