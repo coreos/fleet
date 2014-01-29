@@ -19,10 +19,10 @@ func newListMachinesCommand() cli.Command {
 func listMachinesAction(c *cli.Context) {
 	r := getRegistry(c)
 
-	fmt.Fprintln(out, "MACHINE\tMETADATA")
+	fmt.Fprintln(out, "MACHINE\tIP\tMETADATA")
 
 	for _, m := range r.GetActiveMachines() {
-		fmt.Fprintf(out, "%s\t%s\n", m.BootId, formatMetadata(m.Metadata))
+		fmt.Fprintf(out, "%s\t%s\t%s\n", m.BootId, m.PublicIP, formatMetadata(m.Metadata))
 	}
 
 	out.Flush()
