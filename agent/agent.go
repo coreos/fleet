@@ -118,8 +118,8 @@ func (a *Agent) StartJob(j *job.Job) {
 
 // Inform the Registry that a Job must be rescheduled
 func (a *Agent) RescheduleJob(j *job.Job) {
-	log.V(2).Infof("Cancelling Job(%s)", j.Name)
-	a.registry.CancelJob(j.Name)
+	log.V(2).Infof("Stopping Job(%s)", j.Name)
+	a.registry.StopJob(j.Name)
 
 	offer := job.NewOfferFromJob(*j)
 	log.V(2).Infof("Publishing JobOffer(%s)", offer.Job.Name)
@@ -129,34 +129,30 @@ func (a *Agent) RescheduleJob(j *job.Job) {
 
 // Instruct the Agent to stop the provided Job and
 // all of its peers
-func (a *Agent) StopJob(j *job.Job) {
-	log.Infof("Stopping Job(%s)", j.Name)
-	a.systemd.StopJob(j)
+func (a *Agent) StopJob(jobName string) {
+	log.Infof("Stopping Job(%s)", jobName)
+	a.systemd.StopJob(jobName)
 
 	a.state.Lock()
-	reversePeers := a.state.GetJobsByPeer(j.Name)
-	a.state.DropPeersJob(j.Name)
+	reversePeers := a.state.GetJobsByPeer(jobName)
+	a.state.DropPeersJob(jobName)
 	a.state.Unlock()
 
 	for _, peer := range reversePeers {
-		log.Infof("Cancelling Peer(%s) of Job(%s)", peer, j.Name)
-		a.registry.CancelJob(peer)
+		log.Infof("Stopping Peer(%s) of Job(%s)", peer, jobName)
+		a.registry.StopJob(peer)
 	}
 }
 
-func (a *Agent) CancelJob(jobName string) {
-	a.registry.CancelJob(jobName)
-}
-
 // Persist the state of the given Job into the Registry
-func (a *Agent) ReportJobState(j *job.Job) {
-	if j.State == nil {
-		err := a.registry.RemoveJobState(j)
+func (a *Agent) ReportJobState(jobName string, jobState *job.JobState) {
+	if jobState == nil {
+		err := a.registry.RemoveJobState(jobName)
 		if err != nil {
-			log.V(1).Infof("Failed to remove JobState from Registry: %s", j.Name, err.Error())
+			log.V(1).Infof("Failed to remove JobState from Registry: %s", jobName, err.Error())
 		}
 	} else {
-		a.registry.SaveJobState(j)
+		a.registry.SaveJobState(jobName, jobState)
 	}
 }
 
@@ -247,7 +243,7 @@ func (a *Agent) BidForPossiblePeers(jobName string) {
 
 // Determine if the Agent can run the provided Job
 func (a *Agent) AbleToRun(j *job.Job) bool {
-	metadata := extractMachineMetadata(j.Payload.Unit.Requirements())
+	metadata := extractMachineMetadata(j.Requirements())
 	if !a.machine.HasMetadata(metadata) {
 		log.V(1).Infof("Unable to run Job(%s), local Machine metadata insufficient", j.Name)
 		return false
@@ -284,7 +280,7 @@ func (a *Agent) hasAllLocalPeers(j *job.Job) bool {
 
 // Determine whether a given Job conflicts with any other relevant Jobs
 func (a *Agent) hasConflict(j *job.Job) bool {
-	requirements := j.Payload.Unit.Requirements()
+	requirements := j.Requirements()
 
 	var reqString string
 	for key, slice := range requirements {

@@ -12,7 +12,7 @@ import (
 )
 
 type EventStream struct {
-	etcd *etcd.Client
+	etcd  *etcd.Client
 	close chan bool
 }
 
@@ -22,8 +22,7 @@ func NewEventStream(client *etcd.Client) *EventStream {
 
 func (self *EventStream) Stream(eventchan chan *event.Event) {
 	watchMap := map[string][]func(*etcd.Response) *event.Event{
-		path.Join(keyPrefix, statePrefix):   []func(*etcd.Response) *event.Event{filterEventJobStatePublished, filterEventJobStateExpired},
-		path.Join(keyPrefix, jobPrefix):     []func(*etcd.Response) *event.Event{filterEventJobCreated, filterEventJobScheduled, filterEventJobCancelled},
+		path.Join(keyPrefix, jobPrefix):     []func(*etcd.Response) *event.Event{filterEventJobCreated, filterEventJobScheduled, filterEventJobStopped},
 		path.Join(keyPrefix, machinePrefix): []func(*etcd.Response) *event.Event{self.filterEventMachineUpdated, self.filterEventMachineRemoved},
 		path.Join(keyPrefix, requestPrefix): []func(*etcd.Response) *event.Event{filterEventRequestCreated},
 		path.Join(keyPrefix, offerPrefix):   []func(*etcd.Response) *event.Event{self.filterEventJobOffered, filterEventJobBidSubmitted},

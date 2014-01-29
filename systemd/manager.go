@@ -107,40 +107,6 @@ func (m *SystemdManager) getUnitsByTarget(target *SystemdTarget) []SystemdUnit {
 	return units
 }
 
-func (m *SystemdManager) GetJobs() map[string]job.Job {
-	units := m.getUnitsByTarget(m.Target)
-	jobs := make(map[string]job.Job, len(units))
-	for _, u := range units {
-		state := m.getJobStateFromUnit(&u)
-		name := m.stripUnitNamePrefix(u.Name())
-		j := job.NewJob(name, state, nil)
-		jobs[j.Name] = *j
-	}
-
-	return jobs
-}
-
-func (m *SystemdManager) getJobStateFromUnit(u *SystemdUnit) *job.JobState {
-	loadState, activeState, subState, sockets, err := (*u).State()
-	if err != nil {
-		log.V(1).Infof("Failed to get state for unit %s", (*u).Name())
-		return nil
-	} else {
-		return job.NewJobState(loadState, activeState, subState, sockets, m.Machine)
-	}
-}
-
-func (m *SystemdManager) GetJobState(j *job.Job) *job.JobState {
-	name := m.addUnitNamePrefix(j.Name)
-	unit, err := m.getUnitByName(name)
-	if err != nil {
-		log.V(1).Infof("No local unit corresponding to job %s", j.Name)
-		return nil
-	}
-
-	return m.getJobStateFromUnit(unit)
-}
-
 func (m *SystemdManager) StartJob(job *job.Job) {
 	job.Payload.Unit.SetField("Install", "WantedBy", m.Target.Name())
 
@@ -152,10 +118,10 @@ func (m *SystemdManager) StartJob(job *job.Job) {
 	m.startUnit(name)
 }
 
-func (m *SystemdManager) StopJob(job *job.Job) {
-	name := m.addUnitNamePrefix(job.Name)
-	m.stopUnit(name)
-	m.removeUnit(name)
+func (m *SystemdManager) StopJob(jobName string) {
+	unitName := m.addUnitNamePrefix(jobName)
+	m.stopUnit(unitName)
+	m.removeUnit(unitName)
 }
 
 func (m *SystemdManager) getUnitStates(name string) (string, string, string, error) {
