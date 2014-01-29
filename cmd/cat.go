@@ -29,7 +29,7 @@ func printUnitAction(c *cli.Context) {
 
 	for _, j := range r.GetAllJobs() {
 		if j.Name == name {
-			fmt.Println(j.Payload.Value)
+			fmt.Println(j.Payload.Unit.String())
 			return
 		}
 	}

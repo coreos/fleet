@@ -1,4 +1,4 @@
-package unit
+package systemd
 
 import (
 	"errors"
@@ -142,11 +142,10 @@ func (m *SystemdManager) GetJobState(j *job.Job) *job.JobState {
 }
 
 func (m *SystemdManager) StartJob(job *job.Job) {
-	unitFile := NewSystemdUnitFile(job.Payload.Value)
-	unitFile.SetField("Install", "WantedBy", m.Target.Name())
+	job.Payload.Unit.SetField("Install", "WantedBy", m.Target.Name())
 
 	name := m.addUnitNamePrefix(job.Name)
-	m.writeUnit(name, unitFile.String())
+	m.writeUnit(name, job.Payload.Unit.String())
 
 	m.subscriptions.Add(name)
 

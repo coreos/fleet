@@ -4,35 +4,40 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	
+	"github.com/coreos/coreinit/unit"
 )
 
 type JobPayload struct {
-	Name         string              `json:"name"`
-	Type         string              `json:"type"`
-	Value        string              `json:"value"`
-	Peers        []string            `json:"peers"`
-	Requirements map[string][]string `json:"requirements"`
+	Name         string
+	Unit         unit.SystemdUnitFile
 }
 
-func NewJobPayload(name string, value string, requirements map[string][]string) (*JobPayload, error) {
-	var defaultPeers []string
-	var pType string
-	if strings.HasSuffix(name, ".service") {
-		pType = "systemd-service"
-	} else if strings.HasSuffix(name, ".socket") {
-		pType = "systemd-socket"
+func NewJobPayload(name string, uFile unit.SystemdUnitFile) *JobPayload {
+	return &JobPayload{name, uFile}
+}
 
-		idx := len(name) - 7
-		baseName := name[0:idx]
-		defaultPeers = []string{fmt.Sprintf("%s.%s", baseName, "service")}
+func (jp *JobPayload) Type() (string, error) {
+	if strings.HasSuffix(jp.Name, ".service") {
+		return "systemd-service", nil
+	} else if strings.HasSuffix(jp.Name, ".socket") {
+		return "systemd-socket", nil
 	} else {
-		return nil, errors.New(fmt.Sprintf("Unrecognized systemd unit %s", name))
+		return "", errors.New(fmt.Sprintf("Unrecognized systemd unit %s", jp.Name))
 	}
+}
 
-	peers, ok := requirements["Peers"]
+func (jp *JobPayload) Peers() []string {
+	peers, ok := jp.Unit.Requirements()["Peers"]
+
 	if !ok {
-		peers = defaultPeers
+		jpType, err := jp.Type()
+		if err != nil && jpType == "systemd-socket" {
+			idx := len(jp.Name) - 7
+			baseName := jp.Name[0:idx]
+			peers = []string{fmt.Sprintf("%s.%s", baseName, "service")}
+		}
 	}
 
-	return &JobPayload{name, pType, value, peers, requirements}, nil
+	return peers
 }

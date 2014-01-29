@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/coreos/coreinit/machine"
+	"github.com/coreos/coreinit/unit"
 )
 
 func TestNewJobNilStateNilPayload(t *testing.T) {
@@ -25,7 +26,7 @@ func TestNewJobNilStateNilPayload(t *testing.T) {
 func TestNewJob(t *testing.T) {
 	mach := machine.New("XXX", "", make(map[string]string, 0))
 	js1 := NewJobState("loaded", "inactive", "running", []string{}, mach)
-	jp1, _ := NewJobPayload("echo.service", "Echo", map[string][]string{})
+	jp1 := NewJobPayload("echo.service", *unit.NewSystemdUnitFile("Echo"))
 
 	j1 := NewJob("pong.service", js1, jp1)
 

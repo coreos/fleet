@@ -2,6 +2,8 @@ package job
 
 import (
 	"testing"
+
+	"github.com/coreos/coreinit/unit"
 )
 
 func TestNewJobRequestNilPayloads(t *testing.T) {
@@ -20,7 +22,7 @@ func TestNewJobRequestEmptyPayloads(t *testing.T) {
 }
 
 func TestNewJobRequest(t *testing.T) {
-	payload, _ := NewJobPayload("pong.service", "pong", make(map[string][]string, 0))
+	payload := NewJobPayload("pong.service", *unit.NewSystemdUnitFile("pong"))
 	payloads := []JobPayload{*payload}
 	jr, err := NewJobRequest(payloads)
 	if err != nil {
