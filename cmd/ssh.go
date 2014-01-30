@@ -1,54 +1,51 @@
 package main
 
 import (
-	"net"
-	"os"
+	"fmt"
+	"log"
 
-	gossh "code.google.com/p/go.crypto/ssh"
+	"github.com/codegangsta/cli"
+
+	"github.com/coreos/coreinit/ssh"
 )
 
-func ssh(user, addr string) (*gossh.Session, error)  {
-	agent, err := net.Dial("unix", os.Getenv("SSH_AUTH_SOCK"))
-	if err != nil {
-		return nil, err
+func newSSHCommand() cli.Command {
+	return cli.Command{
+		Name:   "ssh",
+		Usage:  "Open interactive shell on a machine in the cluster",
+		Action: sshAction,
+		Flags: []cli.Flag{
+			cli.StringFlag{"unit, u", "", "Open SSH connection to machine running provided unit."},
+		},
 	}
-	defer agent.Close()
-
-	auths := []gossh.ClientAuth{
-		gossh.ClientAuthAgent(gossh.NewAgentClient(agent)),
-	}
-
-	clientConfig := &gossh.ClientConfig{
-		User: user,
-		Auth: auths,
-	}
-
-	client, err := gossh.Dial("tcp", addr, clientConfig)
-	if err != nil {
-		return nil, err
-	}
-	session, err := client.NewSession()
-	if err != nil {
-		return nil, err
-	}
-
-	return session, nil
 }
 
-func newSSHClient(user, addr string) (*gossh.ClientConn, error) {
-	agent, err := net.Dial("unix", os.Getenv("SSH_AUTH_SOCK"))
-	if err != nil {
-		return nil, err
+func sshAction(c *cli.Context) {
+	r := getRegistry(c)
+
+	numArgs := len(c.Args())
+	unit := c.String("unit")
+	if numArgs == 0 && unit == "" {
+		log.Fatalf("Provide one machine or unit")
 	}
 
-	auths := []gossh.ClientAuth{
-		gossh.ClientAuthAgent(gossh.NewAgentClient(agent)),
+	var addr string
+	if unit == "" {
+		m := c.Args()[0]
+		ms := r.GetMachineState(m)
+		if ms == nil {
+			log.Fatalf("Machine %s could not be found", m)
+		}
+		addr = fmt.Sprintf("%s:22", ms.PublicIP)
+	} else {
+		js := r.GetJobState(unit)
+		if js == nil {
+			log.Fatalf("Requested unit %s does not appear to be running", unit)
+		}
+		addr = fmt.Sprintf("%s:22", js.Machine.PublicIP)
 	}
 
-	clientConfig := &gossh.ClientConfig{
-		User: user,
-		Auth: auths,
+	if err := ssh.Shell("core", addr); err != nil {
+		log.Fatalf(err.Error())
 	}
-
-	return gossh.Dial("tcp", addr, clientConfig)
 }

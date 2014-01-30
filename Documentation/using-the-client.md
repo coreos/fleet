@@ -143,7 +143,9 @@ Jan 30 01:14:54 ip-172-31-5-250 bash[6973]: Hello, world
 Jan 30 01:14:55 ip-172-31-5-250 bash[6973]: Hello, world
 ```
 
-## Enumerate hosts
+## Exploring the cluster
+
+### Enumerate hosts
 
 Describe all of the machines currently connected to the cluster with `corectl list-machines`:
 
@@ -152,4 +154,31 @@ $ corectl list-machines
 MACHINE									IP			METADATA
 148a18ff-6e95-4cd8-92da-c9de9bb90d5a	19.4.0.112	region=us-west
 491586a6-508f-4583-a71d-bfc4d146e996	19.4.0.113	region=us-east
+```
+
+### SSH dynamically to host
+
+The `corectl ssh` command can be used to open a pseuto-terminal over SSH to a host in the coreinit cluster. The command will look up the IP address of a machine based on the provided machine ID:
+
+```
+$ corectl ssh 491586a6-508f-4583-a71d-bfc4d146e996
+   ______                ____  _____
+  / ____/___  ________  / __ \/ ___/
+ / /   / __ \/ ___/ _ \/ / / /\__ \
+/ /___/ /_/ / /  /  __/ /_/ /___/ /
+\____/\____/_/   \___/\____//____/
+core@ip-172-31-5-251 ~ $
+```
+
+Alternatively, a unit name can be provided using the `--unit` flag. `corectl ssh --unit <UNIT>` will look up the location of the
+provided unit in the cluster before opening an SSH connection:
+
+```
+$ corectl ssh --unit hello.service
+   ______                ____  _____
+  / ____/___  ________  / __ \/ ___/
+ / /   / __ \/ ___/ _ \/ / / /\__ \
+/ /___/ /_/ / /  /  __/ /_/ /___/ /
+\____/\____/_/   \___/\____//____/
+core@ip-172-31-5-250 ~ $
 ```

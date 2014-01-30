@@ -1,12 +1,13 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
 	"log"
 	"syscall"
 
 	"github.com/codegangsta/cli"
+
+	"github.com/coreos/coreinit/ssh"
 )
 
 func newJournalCommand() cli.Command {
@@ -35,20 +36,16 @@ func journalAction(c *cli.Context) {
 		syscall.Exit(1)
 	}
 
-	tunnel, err := ssh("core", fmt.Sprintf("%s:22", js.Machine.PublicIP))
+	user := "core"
+	addr := fmt.Sprintf("%s:22", js.Machine.PublicIP)
+	cmd := fmt.Sprintf("journalctl -u %s --no-pager -l -n %d", jobName, c.Int("lines"))
+	stdout, err := ssh.Execute(user, addr, cmd)
 	if err != nil {
-		log.Fatalf("Unable to SSH to coreinit host: %s", err.Error())
+		log.Fatalf("Unable to run command over SSH: %s", err.Error())
 	}
 
-	stdout, _ := tunnel.StdoutPipe()
-	bstdout := bufio.NewReader(stdout)
-	cmd := fmt.Sprintf("journalctl -u %s --no-pager -l -n %d", jobName, c.Int("lines"))
-
-	tunnel.Start(cmd)
-	go tunnel.Wait()
-
 	for true {
-		bytes, prefix, err := bstdout.ReadLine()
+		bytes, prefix, err := stdout.ReadLine()
 		if err != nil {
 			break
 		}

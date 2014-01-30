@@ -12,6 +12,7 @@ import (
 	"github.com/coreos/go-etcd/etcd"
 
 	"github.com/coreos/coreinit/registry"
+	"github.com/coreos/coreinit/ssh"
 )
 
 var out *tabwriter.Writer
@@ -32,7 +33,7 @@ func getRegistry(context *cli.Context) *registry.Registry {
 		if !strings.Contains(tun, ":") {
 			tun += ":22"
 		}
-		sshClient, err := newSSHClient("core", tun)
+		sshClient, err := ssh.NewSSHClient("core", tun)
 		if err != nil {
 			panic(err)
 		}
@@ -78,6 +79,7 @@ func main() {
 		newCatUnitCommand(),
 		newListMachinesCommand(),
 		newJournalCommand(),
+		newSSHCommand(),
 	}
 
 	app.Run(os.Args)
