@@ -39,7 +39,7 @@ ping.service	-		-		-		-	-
 pong.service	-		-		-		-	-
 ```
 
-### Push units into a cluster
+### Push units into the cluster
 
 Getting units into the cluster is as simple as a call to `corectl submit` with a path to one or more unit files:
 
@@ -55,6 +55,32 @@ $ corectl submit examples/*
 ```
 
 Submission of units to a coreinit cluster does not cause them to be scheduled out to specific hosts. The unit should be visible in a `corectl list-units` command, but have no reported state.
+
+### Remove units from the cluster
+
+A unit can be removed from a cluster with the `destroy` command:
+
+```
+$ corectl destroy hello.service
+```
+
+The `destroy` command does two things:
+
+1. Instruct systemd on the host machine to stop the unit, deferring to systemd completely for any custom stop directives (i.e. ExecStop option in the unit file).
+2. Remove the unit file from the cluster, making it impossible to start again until it has been re-submitted.
+
+### View unit contents
+
+The contents of a loaded unit file can be printed to stdout using the `corectl cat` command:
+
+```
+$ corectl cat examples/hello.service
+[Unit]
+Description=Hello World
+
+[Service]
+ExecStart=/bin/bash -c "while true; do echo \"Hello, world\"; sleep 1; done"
+```
 
 ### Start and stop units
 
@@ -72,20 +98,52 @@ Halting execution of a unit is as simple as calling `stop`:
 $ corectl stop hello.service
 ```
 
-### Remove units from a cluster
+### Query unit status
 
-A unit can be removed from a cluster with the `destroy` command:
+Once a unit has been started, coreinit will publish its status. The systemd state fields 'LoadState', 'ActiveState', and 'SubState' can be retrieved with `corectl list-units`. To get all of the unit's state information, the `corectl status` command will actually call systemctl on the machine running a given unit over SSH:
 
 ```
-$ corectl destroy hello.service
+$ corectl status hello.service
+hello.service - Hello World
+   Loaded: loaded (/run/systemd/system/hello.service; enabled-runtime)
+   Active: active (running) since Wed 2014-01-29 23:20:23 UTC; 1h 49min ago
+ Main PID: 6973 (bash)
+   CGroup: /system.slice/hello.1.service
+           ├─ 6973 /bin/bash -c while true; do echo "Hello, world"; sleep 1; done
+           └─20381 sleep 1
+
+Jan 30 01:09:18 ip-172-31-5-250 bash[6973]: Hello, world
+Jan 30 01:09:19 ip-172-31-5-250 bash[6973]: Hello, world
+Jan 30 01:09:20 ip-172-31-5-250 bash[6973]: Hello, world
+Jan 30 01:09:21 ip-172-31-5-250 bash[6973]: Hello, world
+Jan 30 01:09:22 ip-172-31-5-250 bash[6973]: Hello, world
+Jan 30 01:09:23 ip-172-31-5-250 bash[6973]: Hello, world
+Jan 30 01:09:24 ip-172-31-5-250 bash[6973]: Hello, world
+Jan 30 01:09:25 ip-172-31-5-250 bash[6973]: Hello, world
+Jan 30 01:09:26 ip-172-31-5-250 bash[6973]: Hello, world
+Jan 30 01:09:27 ip-172-31-5-250 bash[6973]: Hello, world
 ```
 
-The `destroy` command does two things:
+### Fetch unit logs
 
-1. Instruct systemd on the host machine to stop the unit, deferring to systemd completely for any custom stop directives (i.e. ExecStop option in the unit file).
-2. Remove the unit file from the cluster, making it impossible to start again until it has been re-submitted.
+The `corectl journal` command can be used to interact directly with `journalctl` on the machine running a given unit:
 
-## Inspect hosts
+```
+$ corectl journal hello.service
+-- Logs begin at Wed 2014-01-29 20:50:48 UTC, end at Thu 2014-01-30 01:14:55 UTC. --
+Jan 30 01:14:46 ip-172-31-5-250 bash[6973]: Hello, world
+Jan 30 01:14:47 ip-172-31-5-250 bash[6973]: Hello, world
+Jan 30 01:14:48 ip-172-31-5-250 bash[6973]: Hello, world
+Jan 30 01:14:49 ip-172-31-5-250 bash[6973]: Hello, world
+Jan 30 01:14:50 ip-172-31-5-250 bash[6973]: Hello, world
+Jan 30 01:14:51 ip-172-31-5-250 bash[6973]: Hello, world
+Jan 30 01:14:52 ip-172-31-5-250 bash[6973]: Hello, world
+Jan 30 01:14:53 ip-172-31-5-250 bash[6973]: Hello, world
+Jan 30 01:14:54 ip-172-31-5-250 bash[6973]: Hello, world
+Jan 30 01:14:55 ip-172-31-5-250 bash[6973]: Hello, world
+```
+
+## Enumerate hosts
 
 Describe all of the machines currently connected to the cluster with `corectl list-machines`:
 
