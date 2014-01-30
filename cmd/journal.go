@@ -12,8 +12,7 @@ import (
 func newJournalCommand() cli.Command {
 	return cli.Command{
 		Name:        "journal",
-		Usage:       "Interact with journalctl.",
-		Description: "",
+		Usage:       "Print the journal of a unit in the cluster to stdout",
 		Action:      journalAction,
 		Flags: []cli.Flag{
 			cli.IntFlag{"lines, n", 10, "Number of log lines to return."},

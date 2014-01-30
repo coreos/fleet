@@ -14,7 +14,7 @@ import (
 func newSubmitUnitCommand() cli.Command {
 	return cli.Command{
 		Name: "submit",
-		Usage:  "Upload one or more units to coreinit",
+		Usage:  "Upload one or more units to the cluster",
 		Action: submitUnitsAction,
 	}
 }

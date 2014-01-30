@@ -9,9 +9,7 @@ import (
 func newListUnitsCommand() cli.Command {
 	return cli.Command{
 		Name:  "list-units",
-		Usage: "List installed unit files",
-		Description: `List all of the units that are scheduled on the
-	cluster and their current state.`,
+		Usage: "Enumerate units loaded in the cluster",
 		Action: listUnitsAction,
 	}
 }

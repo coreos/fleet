@@ -10,8 +10,7 @@ import (
 func newListMachinesCommand() cli.Command {
 	return cli.Command{
 		Name:        "list-machines",
-		Usage:       "List all machines.",
-		Description: "",
+		Usage:       "Enumerate the current hosts in the cluster",
 		Action:      listMachinesAction,
 	}
 }

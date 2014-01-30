@@ -9,8 +9,7 @@ import (
 func newDestroyUnitCommand() cli.Command {
 	return cli.Command{
 		Name:        "destroy",
-		Usage:       "Destroy one or more units",
-		Description: `Remove one or more units from the cluster`,
+		Usage:       "Destroy one or more units in the cluster",
 		Action:      destroyUnitsAction,
 	}
 }
