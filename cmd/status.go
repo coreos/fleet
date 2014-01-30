@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
 	"log"
 	"path"
@@ -9,6 +8,7 @@ import (
 	"github.com/codegangsta/cli"
 
 	"github.com/coreos/coreinit/registry"
+	"github.com/coreos/coreinit/ssh"
 )
 
 func newStatusUnitsCommand() cli.Command {
@@ -40,20 +40,16 @@ func printUnitStatus(r *registry.Registry, jobName string) {
 		fmt.Println("%s does not appear to be running", jobName)
 	}
 
-	tunnel, err := ssh("core", fmt.Sprintf("%s:22", js.Machine.PublicIP))
+	user := "core"
+	addr := fmt.Sprintf("%s:22", js.Machine.PublicIP)
+	cmd := fmt.Sprintf("systemctl status -l %s", jobName)
+	stdout, err := ssh.Execute(user, addr, cmd)
 	if err != nil {
-		log.Fatalf("Unable to SSH to coreinit host: %s", err.Error())
+		log.Fatalf("Unable to execute command over SSH: %s", err.Error())
 	}
 
-	stdout, _ := tunnel.StdoutPipe()
-	bstdout := bufio.NewReader(stdout)
-	cmd := fmt.Sprintf("systemctl status -l %s", jobName)
-
-	tunnel.Start(cmd)
-	go tunnel.Wait()
-
 	for true {
-		bytes, prefix, err := bstdout.ReadLine()
+		bytes, prefix, err := stdout.ReadLine()
 		if err != nil {
 			break
 		}
