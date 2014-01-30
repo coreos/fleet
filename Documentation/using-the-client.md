@@ -1,77 +1,97 @@
 # Using the Client
 
-## Running corectl
+coreinit provides a command-line tool called `corectl`. The commands provided by corectl are generally identical to those of systemd's CLI, `systemctl`, while enabling a user to interact with an entire cluster of disconnected systemd instances.
 
-The Coreinit client utility `corectl` can be run locally on your workstation or from a machine in the cluster.
+## Get up and running
 
-## List Machines
+The `corectl` binary is included in all CoreOS distributions, so it is as simple as SSH'ing in to your CoreOS machine and executing `corectl`.
 
-List out all of the machines currently connected to the cluster:
+If you prefer to execute corectl from an external host (i.e. your laptop), the `--tunnel` flag can be used to communicate with an etcd endpoint over an SSH tunnel:
 
-```
-$ corectl list-machines
-MACHINE									METADATA
-148a18ff-6e95-4cd8-92da-c9de9bb90d5a
-491586a6-508f-4583-a71d-bfc4d146e996
-```
+    corectl --tunnel <IP[:PORT]> list-units
 
-## Writing Unit Files
+Usage of the `--tunnel` flag requires two things:
 
-Coreinit schedules each unit file to a machine in the cluster, taking into account a few special properties under the `X-Coreinit` section. If you're new to using systemd unit files, check out the [Getting Started with systemd](https://coreos.com/docs/launching-containers/launching/getting-started-with-systemd) guide.
+1. SSH access to the provided address
+2. ssh-agent must be running on the client machine with the necessary private key to access the provided address. 
 
-| Property Name | Description |
-|---------------|-------------|
-| X-Coreinit-Provides | A string that represents the service name. This is used to enforce `X-Coreinit-MachineSingleton`. |
-| X-Coreinit-Peers | The name of a unit file that should be scheduled alongside this unit. |
-| X-Coreinit-MachineSingleton | Boolean value that controls whether multiple copies of this service can run on a single machine. Useful for creating HA services. |
+One can SSH directly to the tunnel host to assert ssh-agent is running with the proper access.
 
-To deploy multiple copies of a service, generate unique copies of each unit file. Each will need its own name (`apache1.service`) and contents where appropriate. In the following example, the name of the container `apache1` is unique. These unit files should be considered perfectly cachable. Any changes will need to result in a new unit file.
+corectl also requires direct communication with the etcd cluster that your coreinit machines are configured to use. Use the `--endpoint` flag to override the default of `http://127.0.0.1:4001`:
 
-```
-[Unit]
-Description=Example service started with coreinit
-After=docker.service
+    corectl --endpoint http://<IP:PORT> list-units
 
-[Service]
-ExecStart=/usr/bin/docker run -name apache1 coreos/apache /usr/sbin/apache2ctl -D FOREGROUND
-ExecStop=/usr/bin/docker stop apache1
+When using the `--tunnel` flag and the `--endpoint` flag together, it is important to note that all etcd requests will be made through the SSH tunnel. The address in the `--endpoint` flag must be routable from the server hosting the tunnel.
 
-[X-Coreinit]
-X-Coreinit-Provides=apache
-X-Coreinit-MachineSingleton=true
-```
+## Interact with units
 
-Other Notes
-* Unit files must not have an [Install] section
-* Unit file names must end in '.service' or '.socket'
+For information about the additional unit file parameters coreinit will interact with, see [this documentation](unit-files.md).
 
-## Running Unit Files
+### Explore existing units
 
-Running a unit on the cluster is done by specifying a unit file — just as if you were using systemd locally — but you're operating at the cluster level instead of the machine level. An included tool, `corectl` acts similarly to `systemctl`. To run the unit files you just generated, run:
-
-```
-corectl start apache1.service
-```
-
-You can also start an entire folder:
-
-```
-$ ls examples/
-socket-activated.service  socket-activated.socket  web@8000.service  web@8001.service  web@8002.service
-$ corectl start examples/*
-```
-
-## List Units
-
-You can list all of the units cluster wide and get a quick status:
+List all units in the coreinit cluster with `corectl list-units`. This will describe all units the coreinit cluster knows about, running or not:
 
 ```
 $ corectl list-units
-UNIT						LOAD	ACTIVE		SUB			DESC							MACHINE
-socket-activated.service	loaded	inactive	dead        Socket-Activated Web Service	491586a6-508f-4583-a71d-bfc4d146e996
-socket-activated.socket		loaded	active		listening 	Socket-Activated Web Service	491586a6-508f-4583-a71d-bfc4d146e996
-web@8000.service			loaded	active		running		Web Service						491586a6-508f-4583-a71d-bfc4d146e996
-web@8001.service			loaded	active		running		Web Service						148a18ff-6e95-4cd8-92da-c9de9bb90d5a
-web@8002.service			loaded	active		running		Web Service						491586a6-508f-4583-a71d-bfc4d146e996
-apache1.service				loaded	active		running		Example service started with c	148a18ff-6e95-4cd8-92da-c9de9bb90d5a
+UNIT			LOAD	ACTIVE	SUB		DESC	MACHINE
+hello.service	loaded	active	running	-	148a18ff-6e95-4cd8-92da-c9de9bb90d5a
+ping.service	-		-		-		-	-
+pong.service	-		-		-		-	-
+```
+
+### Push units into a cluster
+
+Getting units into the cluster is as simple as a call to `corectl submit` with a path to one or more unit files:
+
+```
+$ corectl submit examples/hello.service
+```
+You can also rely on your shell's path-expansion to conveniently submit a large set of unit files:
+
+```
+$ ls examples/
+hello.service	ping.service	pong.service
+$ corectl submit examples/*
+```
+
+Submission of units to a coreinit cluster does not cause them to be scheduled out to specific hosts. The unit should be visible in a `corectl list-units` command, but have no reported state.
+
+### Start and stop units
+
+Once a unit has been submitted to the coreinit cluster, it can be started and stopped like so:
+
+```
+$ corectl start hello.service
+```
+
+The `start` operation is what causes a unit to be scheduled to a specific host and executed.
+
+Halting execution of a unit is as simple as calling `stop`:
+
+```
+$ corectl stop hello.service
+```
+
+### Remove units from a cluster
+
+A unit can be removed from a cluster with the `destroy` command:
+
+```
+$ corectl destroy hello.service
+```
+
+The `destroy` command does two things:
+
+1. Instruct systemd on the host machine to stop the unit, deferring to systemd completely for any custom stop directives (i.e. ExecStop option in the unit file).
+2. Remove the unit file from the cluster, making it impossible to start again until it has been re-submitted.
+
+## Inspect hosts
+
+Describe all of the machines currently connected to the cluster with `corectl list-machines`:
+
+```
+$ corectl list-machines
+MACHINE									IP			METADATA
+148a18ff-6e95-4cd8-92da-c9de9bb90d5a	19.4.0.112	region=us-west
+491586a6-508f-4583-a71d-bfc4d146e996	19.4.0.113	region=us-east
 ```

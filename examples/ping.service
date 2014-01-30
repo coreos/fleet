@@ -1,0 +1,5 @@
+[Unit]
+Description=PING
+
+[Service]
+ExecStart=/bin/bash -c "while true; do echo \"ping\"; sleep 1; done"
