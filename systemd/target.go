@@ -1,4 +1,4 @@
-package unit
+package systemd
 
 type SystemdTarget struct {
 	name string

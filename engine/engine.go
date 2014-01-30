@@ -61,41 +61,32 @@ func (self *Engine) GetJobsScheduledToMachine(machName string) []job.Job {
 	return jobs
 }
 
-func (self *Engine) CancelJob(jobName string) {
-	self.registry.CancelJob(jobName)
-	log.Info("Cancelled Job(%s)", jobName)
+func (self *Engine) StopJob(jobName string) {
+	self.registry.StopJob(jobName)
+	log.Info("Stopped Job(%s)", jobName)
 }
 
-func (self *Engine) ResolveRequest(request *job.JobRequest) error {
-	log.V(2).Infof("Attempting to claim JobRequest(%s)", request.ID.String())
-	if !self.claimRequest(request) {
-		log.V(2).Infof("Could not claim JobRequest(%s)", request.ID.String())
+func (self *Engine) ResolveRequest(req *job.JobRequest) error {
+	log.V(2).Infof("Attempting to claim JobRequest(%s)", req.ID.String())
+	if !self.claimRequest(req) {
+		log.V(2).Infof("Could not claim JobRequest(%s)", req.ID.String())
 		return errors.New("Could not claim JobRequest")
 	}
 
-	log.V(1).Infof("Claimed JobRequest(%s)", request.ID.String())
+	log.V(1).Infof("Claimed JobRequest(%s)", req.ID.String())
 
-	for _, j := range getJobsFromRequest(request) {
-		log.V(2).Infof("Creating Job(%s) from JobRequest(%s)", j.Name, request.ID.String())
-		self.registry.CreateJob(&j)
-		log.Infof("Created Job(%s) from JobRequest(%s)", j.Name, request.ID.String())
+	for i := 0; i < len(req.Payloads); i++ {
+		jp := req.Payloads[i]
+		log.V(2).Infof("Creating JobPayload(%s) from JobRequest(%s)", jp.Name, req.ID.String())
+		self.registry.CreatePayload(&jp)
+		log.Infof("Created JobPayload(%s) from JobRequest(%s)", jp.Name, req.ID.String())
 	}
 
-	log.V(2).Infof("Resolving JobRequest(%s)", request.ID.String())
-	self.registry.ResolveRequest(request)
-	log.V(1).Infof("Resolved JobRequest(%s)", request.ID.String())
+	log.V(2).Infof("Resolving JobRequest(%s)", req.ID.String())
+	self.registry.ResolveRequest(req)
+	log.V(1).Infof("Resolved JobRequest(%s)", req.ID.String())
 
 	return nil
-}
-
-func getJobsFromRequest(req *job.JobRequest) []job.Job {
-	var jobs []job.Job
-	for i := 0; i < len(req.Payloads); i++ {
-		payload := req.Payloads[i]
-		j := job.NewJob(payload.Name, nil, &payload)
-		jobs = append(jobs, *j)
-	}
-	return jobs
 }
 
 func (self *Engine) OfferJob(j job.Job) error {

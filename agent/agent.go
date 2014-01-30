@@ -11,7 +11,7 @@ import (
 	"github.com/coreos/coreinit/job"
 	"github.com/coreos/coreinit/machine"
 	"github.com/coreos/coreinit/registry"
-	"github.com/coreos/coreinit/unit"
+	"github.com/coreos/coreinit/systemd"
 )
 
 const (
@@ -29,10 +29,10 @@ type Agent struct {
 	events     *event.EventBus
 	machine    *machine.Machine
 	ttl        time.Duration
-	unitPrefix string
+	systemdPrefix string
 
 	state   *AgentState
-	systemd *unit.SystemdManager
+	systemd *systemd.SystemdManager
 
 	// channel used to shutdown any open connections/channels the Agent holds
 	stop chan bool
@@ -45,7 +45,7 @@ func New(registry *registry.Registry, events *event.EventBus, machine *machine.M
 	}
 
 	state := NewState()
-	mgr := unit.NewSystemdManager(machine, unitPrefix)
+	mgr := systemd.NewSystemdManager(machine, unitPrefix)
 
 	return &Agent{registry, events, machine, ttldur, unitPrefix, state, mgr, nil}, nil
 }
@@ -118,8 +118,8 @@ func (a *Agent) StartJob(j *job.Job) {
 
 // Inform the Registry that a Job must be rescheduled
 func (a *Agent) RescheduleJob(j *job.Job) {
-	log.V(2).Infof("Cancelling Job(%s)", j.Name)
-	a.registry.CancelJob(j.Name)
+	log.V(2).Infof("Stopping Job(%s)", j.Name)
+	a.registry.StopJob(j.Name)
 
 	offer := job.NewOfferFromJob(*j)
 	log.V(2).Infof("Publishing JobOffer(%s)", offer.Job.Name)
@@ -129,34 +129,30 @@ func (a *Agent) RescheduleJob(j *job.Job) {
 
 // Instruct the Agent to stop the provided Job and
 // all of its peers
-func (a *Agent) StopJob(j *job.Job) {
-	log.Infof("Stopping Job(%s)", j.Name)
-	a.systemd.StopJob(j)
+func (a *Agent) StopJob(jobName string) {
+	log.Infof("Stopping Job(%s)", jobName)
+	a.systemd.StopJob(jobName)
 
 	a.state.Lock()
-	reversePeers := a.state.GetJobsByPeer(j.Name)
-	a.state.DropPeersJob(j.Name)
+	reversePeers := a.state.GetJobsByPeer(jobName)
+	a.state.DropPeersJob(jobName)
 	a.state.Unlock()
 
 	for _, peer := range reversePeers {
-		log.Infof("Cancelling Peer(%s) of Job(%s)", peer, j.Name)
-		a.registry.CancelJob(peer)
+		log.Infof("Stopping Peer(%s) of Job(%s)", peer, jobName)
+		a.registry.StopJob(peer)
 	}
 }
 
-func (a *Agent) CancelJob(jobName string) {
-	a.registry.CancelJob(jobName)
-}
-
 // Persist the state of the given Job into the Registry
-func (a *Agent) ReportJobState(j *job.Job) {
-	if j.State == nil {
-		err := a.registry.RemoveJobState(j)
+func (a *Agent) ReportJobState(jobName string, jobState *job.JobState) {
+	if jobState == nil {
+		err := a.registry.RemoveJobState(jobName)
 		if err != nil {
-			log.V(1).Infof("Failed to remove JobState from Registry: %s", j.Name, err.Error())
+			log.V(1).Infof("Failed to remove JobState from Registry: %s", jobName, err.Error())
 		}
 	} else {
-		a.registry.SaveJobState(j)
+		a.registry.SaveJobState(jobName, jobState)
 	}
 }
 
@@ -201,7 +197,7 @@ func (a *Agent) TrackOffer(jo job.JobOffer) {
 	log.V(2).Infof("Tracking JobOffer(%s)", jo.Job.Name)
 	a.state.TrackOffer(jo)
 
-	a.state.TrackJobPeers(jo.Job.Name, jo.Job.Payload.Peers)
+	a.state.TrackJobPeers(jo.Job.Name, jo.Job.Payload.Peers())
 }
 
 // Instruct the Agent that the given offer has been resolved
@@ -247,7 +243,7 @@ func (a *Agent) BidForPossiblePeers(jobName string) {
 
 // Determine if the Agent can run the provided Job
 func (a *Agent) AbleToRun(j *job.Job) bool {
-	metadata := extractMachineMetadata(j.Payload.Requirements)
+	metadata := extractMachineMetadata(j.Requirements())
 	if !a.machine.HasMetadata(metadata) {
 		log.V(1).Infof("Unable to run Job(%s), local Machine metadata insufficient", j.Name)
 		return false
@@ -268,7 +264,7 @@ func (a *Agent) AbleToRun(j *job.Job) bool {
 
 // Determine if all necessary peers of a Job are scheduled to this Agent
 func (a *Agent) hasAllLocalPeers(j *job.Job) bool {
-	for _, peerName := range j.Payload.Peers {
+	for _, peerName := range j.Payload.Peers() {
 		log.V(1).Infof("Looking for target of Peer(%s)", peerName)
 
 		//FIXME: ideally the machine would use its own knowledge rather than calling GetJobTarget
@@ -284,8 +280,10 @@ func (a *Agent) hasAllLocalPeers(j *job.Job) bool {
 
 // Determine whether a given Job conflicts with any other relevant Jobs
 func (a *Agent) hasConflict(j *job.Job) bool {
+	requirements := j.Requirements()
+
 	var reqString string
-	for key, slice := range j.Payload.Requirements {
+	for key, slice := range requirements {
 		reqString += fmt.Sprintf("%s = [", key)
 		for _, val := range slice {
 			reqString += fmt.Sprintf("%s, ", val)
@@ -300,12 +298,12 @@ func (a *Agent) hasConflict(j *job.Job) bool {
 	}
 
 	isSingleton := func(j *job.Job) bool {
-		singleton, ok := j.Payload.Requirements["MachineSingleton"]
+		singleton, ok := requirements["MachineSingleton"]
 		return ok && singleton[0] == "true"
 	}
 
 	hasProvides := func(j *job.Job) bool {
-		provides, ok := j.Payload.Requirements["Provides"]
+		provides, ok := requirements["Provides"]
 		return ok && len(provides) > 0
 	}
 
@@ -330,8 +328,8 @@ func (a *Agent) hasConflict(j *job.Job) bool {
 			continue
 		}
 
-		for _, provide := range j.Payload.Requirements["Provides"] {
-			for _, otherProvide := range other.Payload.Requirements["Provides"] {
+		for _, provide := range requirements["Provides"] {
+			for _, otherProvide := range requirements["Provides"] {
 				if provide == otherProvide {
 					log.V(1).Infof("Local Job(%s) already provides '%s'", other.Name, provide)
 					return true
@@ -351,8 +349,8 @@ func (a *Agent) hasConflict(j *job.Job) bool {
 			continue
 		}
 
-		for _, provide := range j.Payload.Requirements["Provides"] {
-			for _, offerProvide := range offer.Job.Payload.Requirements["Provides"] {
+		for _, provide := range requirements["Provides"] {
+			for _, offerProvide := range requirements["Provides"] {
 				if provide == offerProvide {
 					log.V(1).Infof("Outstanding JobBid(%s) already provides '%s'", offer.Job.Name, provide)
 					return true

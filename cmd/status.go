@@ -34,16 +34,11 @@ func statusUnitsAction(c *cli.Context) {
 	}
 }
 
-func printUnitStatus(r *registry.Registry, unitName string) {
-	j := r.GetJob(unitName)
-	if j == nil {
-		return
-	}
-
-	js := r.GetJobState(j)
+func printUnitStatus(r *registry.Registry, jobName string) {
+	js := r.GetJobState(jobName)
 
 	if js == nil {
-		fmt.Println("%s does not appear to be running", unitName)
+		fmt.Println("%s does not appear to be running", jobName)
 	}
 
 	tunnel, err := ssh("core", fmt.Sprintf("%s:22", js.Machine.PublicIP))
@@ -53,7 +48,7 @@ func printUnitStatus(r *registry.Registry, unitName string) {
 
 	stdout, _ := tunnel.StdoutPipe()
 	bstdout := bufio.NewReader(stdout)
-	cmd := fmt.Sprintf("systemctl status -l %s", unitName)
+	cmd := fmt.Sprintf("systemctl status -l %s", jobName)
 
 	tunnel.Start(cmd)
 	go tunnel.Wait()

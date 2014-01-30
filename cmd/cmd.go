@@ -70,6 +70,8 @@ func main() {
 
 	app.Commands = []cli.Command{
 		newListUnitsCommand(),
+		newSubmitUnitCommand(),
+		newDestroyUnitCommand(),
 		newStartUnitCommand(),
 		newStopUnitCommand(),
 		newStatusUnitsCommand(),

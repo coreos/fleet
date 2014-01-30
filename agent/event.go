@@ -63,23 +63,21 @@ func (eh *EventHandler) HandleEventJobScheduled(ev event.Event) {
 	eh.agent.BidForPossiblePeers(jobName)
 }
 
-func (eh *EventHandler) HandleEventJobCancelled(ev event.Event) {
+func (eh *EventHandler) HandleEventJobStopped(ev event.Event) {
 	//TODO(bcwaldon): We should check the context of the event before
 	// making any changes to local systemd or the registry
 
 	jobName := ev.Payload.(string)
-	log.Infof("EventJobCancelled(%s): stopping Job", jobName)
-	j := job.NewJob(jobName, nil, nil)
-	eh.agent.StopJob(j)
+	log.Infof("EventJobStopped(%s): stopping corresponding unit", jobName)
+	eh.agent.StopJob(jobName)
 
-	log.V(1).Infof("EventJobCancelled(%s): revisiting unresolved JobOffers", jobName)
+	log.V(1).Infof("EventJobStopped(%s): revisiting unresolved JobOffers", jobName)
 	eh.agent.BidForPossibleJobs()
 }
 
 func (eh *EventHandler) HandleEventJobStateUpdated(ev event.Event) {
 	jobName := ev.Context.(string)
 	state := ev.Payload.(*job.JobState)
-	j := job.NewJob(jobName, state, nil)
 
 	if state == nil {
 		log.V(1).Infof("EventJobStateUpdated(%s): received nil JobState object", jobName)
@@ -90,5 +88,5 @@ func (eh *EventHandler) HandleEventJobStateUpdated(ev event.Event) {
 		state.Machine = eh.agent.Machine()
 	}
 
-	eh.agent.ReportJobState(j)
+	eh.agent.ReportJobState(jobName, state)
 }

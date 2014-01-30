@@ -26,14 +26,12 @@ func printUnitAction(c *cli.Context) {
 	}
 
 	name := path.Base(c.Args()[0])
+	payload := r.GetPayload(name)
 
-	for _, j := range r.GetAllJobs() {
-		if j.Name == name {
-			fmt.Println(j.Payload.Value)
-			return
-		}
+	if payload == nil {
+		fmt.Println("Job not found.")
+		syscall.Exit(1)
 	}
 
-	fmt.Println("Unit not found.")
-	syscall.Exit(1)
+	fmt.Print(payload.Unit.String())
 }

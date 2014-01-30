@@ -2,22 +2,21 @@ package job
 
 import (
 	"testing"
+
+	"github.com/coreos/coreinit/unit"
 )
 
 func TestNewJobPayloadBadType(t *testing.T) {
-	j, err := NewJobPayload("foo.unknown", "echo", make(map[string][]string, 0))
+	j := NewJobPayload("foo.unknown", *unit.NewSystemdUnitFile("echo"))
+	_, err := j.Type()
 
 	if err == nil {
 		t.Fatal("Expected non-nil error")
 	}
-
-	if j != nil {
-		t.Fatal("Expected nil response")
-	}
 }
 
 func TestNewJobPayload(t *testing.T) {
-	payload, _ := NewJobPayload("echo.service", "Echo", map[string][]string{})
+	payload := NewJobPayload("echo.service", *unit.NewSystemdUnitFile("Echo"))
 	payloads := []JobPayload{*payload}
 	jr, err := NewJobRequest(payloads)
 	if err != nil {

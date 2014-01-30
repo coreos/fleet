@@ -4,10 +4,11 @@ import (
 	"testing"
 
 	"github.com/coreos/coreinit/machine"
+	"github.com/coreos/coreinit/unit"
 )
 
 func TestNewJobNilStateNilPayload(t *testing.T) {
-	j1 := NewJob("ping.service", nil, nil)
+	j1 := NewJob("ping.service", map[string][]string{}, nil, nil)
 
 	if j1.Name != "ping.service" {
 		t.Fatal("job.Job.Name != 'ping.service'")
@@ -25,9 +26,9 @@ func TestNewJobNilStateNilPayload(t *testing.T) {
 func TestNewJob(t *testing.T) {
 	mach := machine.New("XXX", "", make(map[string]string, 0))
 	js1 := NewJobState("loaded", "inactive", "running", []string{}, mach)
-	jp1, _ := NewJobPayload("echo.service", "Echo", map[string][]string{})
+	jp1 := NewJobPayload("echo.service", *unit.NewSystemdUnitFile("Echo"))
 
-	j1 := NewJob("pong.service", js1, jp1)
+	j1 := NewJob("pong.service", map[string][]string{}, jp1, js1)
 
 	if j1.Name != "pong.service" {
 		t.Fatal("job.Job.Name != 'pong.service'")

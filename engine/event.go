@@ -51,8 +51,8 @@ func (self *EventHandler) HandleEventMachineRemoved(ev event.Event) {
 	jobs := self.engine.GetJobsScheduledToMachine(machName)
 
 	for _, j := range jobs {
-		log.V(1).Infof("EventMachineRemoved(%s): cancelling Job(%s)", machName, j.Name)
-		self.engine.CancelJob(j.Name)
+		log.V(1).Infof("EventMachineRemoved(%s): stopping Job(%s)", machName, j.Name)
+		self.engine.StopJob(j.Name)
 	}
 
 	for _, j := range jobs {

@@ -1,4 +1,4 @@
-package unit
+package systemd
 
 import (
 	"testing"

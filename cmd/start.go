@@ -2,14 +2,12 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"path"
 	"strings"
 
 	"github.com/codegangsta/cli"
 
 	"github.com/coreos/coreinit/job"
-	"github.com/coreos/coreinit/unit"
 )
 
 func newStartUnitCommand() cli.Command {
@@ -26,37 +24,25 @@ func newStartUnitCommand() cli.Command {
 func startUnitAction(c *cli.Context) {
 	r := getRegistry(c)
 
-	cliRequirements := parseRequirements(c.String("require"))
-
 	payloads := make([]job.JobPayload, len(c.Args()))
 	for i, v := range c.Args() {
-		out, err := ioutil.ReadFile(v)
-		if err != nil {
-			fmt.Printf("%s: No such file or directory\n", v)
-			return
-		}
-
-		unitFile := unit.NewSystemdUnitFile(string(out))
-		fileRequirements := unitFile.Requirements()
-		requirements := stackRequirements(fileRequirements, cliRequirements)
-
 		name := path.Base(v)
-		payload, err := job.NewJobPayload(name, unitFile.String(), requirements)
-		if err != nil {
-			fmt.Println(err.Error())
+		payload := r.GetPayload(name)
+		if payload == nil {
+			fmt.Printf("Could not find payload %s\n", name)
 			return
-		} else {
-			payloads[i] = *payload
 		}
+
+		payloads[i] = *payload
 	}
 
-	req, err := job.NewJobRequest(payloads)
-	if err != nil {
-		fmt.Println(err.Error())
-		return
-	}
+	requirements := parseRequirements(c.String("require"))
 
-	r.AddRequest(req)
+	// TODO: This must be done in a transaction!
+	for _, jp := range payloads {
+		j := job.NewJob(jp.Name, requirements, &jp, nil)
+		r.CreateJob(j)
+	}
 }
 
 func parseRequirements(arg string) map[string][]string {
@@ -84,18 +70,4 @@ func parseRequirements(arg string) map[string][]string {
 	}
 
 	return reqs
-}
-
-func stackRequirements(base, overlay map[string][]string) map[string][]string{
-	stacked := make(map[string][]string, 0)
-
-	for key, values := range base {
-		stacked[key] = values
-	}
-
-	for key, values := range overlay {
-		stacked[key] = values
-	}
-
-	return stacked
 }

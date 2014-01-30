@@ -7,8 +7,6 @@ import (
 	"syscall"
 
 	"github.com/codegangsta/cli"
-
-	"github.com/coreos/coreinit/job"
 )
 
 func newJournalCommand() cli.Command {
@@ -28,11 +26,10 @@ func journalAction(c *cli.Context) {
 		fmt.Println("One unit file must be provided.")
 		syscall.Exit(1)
 	}
-	unitName := c.Args()[0]
+	jobName := c.Args()[0]
 
 	r := getRegistry(c)
-	j := job.NewJob(unitName, nil, nil)
-	js := r.GetJobState(j)
+	js := r.GetJobState(jobName)
 
 	if js == nil {
 		fmt.Println("Unit does not appear to be running")
@@ -46,7 +43,7 @@ func journalAction(c *cli.Context) {
 
 	stdout, _ := tunnel.StdoutPipe()
 	bstdout := bufio.NewReader(stdout)
-	cmd := fmt.Sprintf("journalctl -u %s --no-pager -l -n %d", unitName, c.Int("lines"))
+	cmd := fmt.Sprintf("journalctl -u %s --no-pager -l -n %d", jobName, c.Int("lines"))
 
 	tunnel.Start(cmd)
 	go tunnel.Wait()

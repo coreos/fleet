@@ -1,4 +1,4 @@
-package unit
+package systemd
 
 type SystemdUnit interface {
 	Name() string

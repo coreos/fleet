@@ -7,11 +7,11 @@ import (
 )
 
 type SystemdUnitFile struct {
-	contents map[string]map[string]string
+	Contents map[string]map[string]string
 }
 
 func (self *SystemdUnitFile) GetSection(section string) map[string]string {
-	result, ok := self.contents[section]
+	result, ok := self.Contents[section]
 	if ok {
 		return result
 	} else {
@@ -20,12 +20,12 @@ func (self *SystemdUnitFile) GetSection(section string) map[string]string {
 }
 
 func (self *SystemdUnitFile) SetField(section string, key string, value string) {
-	_, ok := self.contents[section]
+	_, ok := self.Contents[section]
 	if !ok {
-		self.contents[section] = make(map[string]string, 0)
+		self.Contents[section] = make(map[string]string, 0)
 	}
 
-	self.contents[section][key] = value
+	self.Contents[section][key] = value
 }
 
 func (self *SystemdUnitFile) Requirements() map[string][]string {
@@ -53,7 +53,7 @@ func (self *SystemdUnitFile) Requirements() map[string][]string {
 
 func (self *SystemdUnitFile) String() string {
 	var serialized string
-	for section, keyMap := range self.contents {
+	for section, keyMap := range self.Contents {
 		serialized += fmt.Sprintf("[%s]\n", section)
 		for key, value := range keyMap {
 			serialized += fmt.Sprintf("%s=%s\n", key, value)
@@ -63,8 +63,8 @@ func (self *SystemdUnitFile) String() string {
 	return serialized
 }
 
-func NewSystemdUnitFile(contents string) *SystemdUnitFile {
-	parsed := deserializeUnitFile(contents)
+func NewSystemdUnitFile(Contents string) *SystemdUnitFile {
+	parsed := deserializeUnitFile(Contents)
 	return &SystemdUnitFile{parsed}
 }
 
