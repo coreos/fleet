@@ -14,9 +14,9 @@ func newStartUnitCommand() cli.Command {
 	return cli.Command{
 		Name: "start",
 		Flags: []cli.Flag{
-			cli.StringFlag{"require", "", "Filter hosts with a set of requirements. Format is comma-delimited list of <key>=<value> pairs."},
+			cli.StringFlag{"require", "", "Filter suitable hosts with a set of requirements. Format is comma-delimited list of <key>=<value> pairs."},
 		},
-		Usage:  "Start (activate) one or more units",
+		Usage:  "Schedule and execute one or more units already loaded in the cluster",
 		Action: startUnitAction,
 	}
 }

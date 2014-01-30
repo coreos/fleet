@@ -14,8 +14,7 @@ import (
 func newStatusUnitsCommand() cli.Command {
 	return cli.Command{
 		Name:        "status",
-		Usage:       "Fetch the status of one or more units",
-		Description: ``,
+		Usage:       "Fetch the status of one or more units in the cluster",
 		Action:      statusUnitsAction,
 	}
 }

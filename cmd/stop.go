@@ -9,8 +9,7 @@ import (
 func newStopUnitCommand() cli.Command {
 	return cli.Command{
 		Name:        "stop",
-		Usage:       "Stop one or more units",
-		Description: `Remove one or more jobs from the cluster schedule.`,
+		Usage:       "Halt one or more units in the cluster",
 		Action:      stopUnitAction,
 	}
 }

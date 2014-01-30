@@ -3,7 +3,6 @@ package main
 import (
 	"net"
 	"os"
-	"log"
 
 	gossh "code.google.com/p/go.crypto/ssh"
 )
@@ -24,7 +23,6 @@ func ssh(user, addr string) (*gossh.Session, error)  {
 		Auth: auths,
 	}
 
-	log.Printf("Dialing %s", addr)
 	client, err := gossh.Dial("tcp", addr, clientConfig)
 	if err != nil {
 		return nil, err
