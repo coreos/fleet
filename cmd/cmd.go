@@ -79,6 +79,7 @@ func main() {
 		newCatUnitCommand(),
 		newListMachinesCommand(),
 		newJournalCommand(),
+		newSSHCommand(),
 	}
 
 	app.Run(os.Args)
