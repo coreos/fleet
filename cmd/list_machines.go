@@ -34,7 +34,17 @@ func listMachinesAction(c *cli.Context) {
 			mach = ellipsize(mach, 8)
 		}
 
-		fmt.Fprintf(out, "%s\t%s\t%s\n", mach, m.PublicIP, formatMetadata(m.Metadata))
+		ip := m.PublicIP
+		if len(ip) == 0 {
+			ip = "-"
+		}
+
+		metadata := "-"
+		if len(m.Metadata) != 0 {
+			metadata = formatMetadata(m.Metadata)
+		}
+
+		fmt.Fprintf(out, "%s\t%s\t%s\n", mach, ip, metadata)
 	}
 
 	out.Flush()
