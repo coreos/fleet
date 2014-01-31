@@ -9,16 +9,21 @@ import (
 
 func newListMachinesCommand() cli.Command {
 	return cli.Command{
-		Name:        "list-machines",
-		Usage:       "Enumerate the current hosts in the cluster",
-		Action:      listMachinesAction,
+		Name:   "list-machines",
+		Usage:  "Enumerate the current hosts in the cluster",
+		Action: listMachinesAction,
+		Flags: []cli.Flag{
+			cli.BoolFlag{"no-legend", "Do not print a legend (column headers)"},
+		},
 	}
 }
 
 func listMachinesAction(c *cli.Context) {
 	r := getRegistry(c)
 
-	fmt.Fprintln(out, "MACHINE\tIP\tMETADATA")
+	if !c.Bool("no-legend") {
+		fmt.Fprintln(out, "MACHINE\tIP\tMETADATA")
+	}
 
 	for _, m := range r.GetActiveMachines() {
 		fmt.Fprintf(out, "%s\t%s\t%s\n", m.BootId, m.PublicIP, formatMetadata(m.Metadata))

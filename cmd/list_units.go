@@ -8,16 +8,21 @@ import (
 
 func newListUnitsCommand() cli.Command {
 	return cli.Command{
-		Name:  "list-units",
-		Usage: "Enumerate units loaded in the cluster",
+		Name:   "list-units",
+		Usage:  "Enumerate units loaded in the cluster",
 		Action: listUnitsAction,
+		Flags: []cli.Flag{
+			cli.BoolFlag{"no-legend", "Do not print a legend (column headers)"},
+		},
 	}
 }
 
 func listUnitsAction(c *cli.Context) {
 	r := getRegistry(c)
 
-	fmt.Fprintln(out, "UNIT\tLOAD\tACTIVE\tSUB\tDESC\tMACHINE")
+	if !c.Bool("no-legend") {
+		fmt.Fprintln(out, "UNIT\tLOAD\tACTIVE\tSUB\tDESC\tMACHINE")
+	}
 
 	for _, jp := range r.GetAllPayloads() {
 		js := r.GetJobState(jp.Name)
