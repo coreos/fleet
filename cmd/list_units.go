@@ -12,6 +12,7 @@ func newListUnitsCommand() cli.Command {
 		Usage:  "Enumerate units loaded in the cluster",
 		Action: listUnitsAction,
 		Flags: []cli.Flag{
+			cli.BoolFlag{"full, l", "Do not ellipsize fields on output"},
 			cli.BoolFlag{"no-legend", "Do not print a legend (column headers)"},
 		},
 	}
@@ -23,6 +24,8 @@ func listUnitsAction(c *cli.Context) {
 	if !c.Bool("no-legend") {
 		fmt.Fprintln(out, "UNIT\tLOAD\tACTIVE\tSUB\tDESC\tMACHINE")
 	}
+
+	full := c.Bool("full")
 
 	for _, jp := range r.GetAllPayloads() {
 		js := r.GetJobState(jp.Name)
@@ -36,8 +39,12 @@ func listUnitsAction(c *cli.Context) {
 			loadState = js.LoadState
 			activeState = js.ActiveState
 			subState = js.SubState
+
 			if js.Machine != nil {
 				mach = js.Machine.String()
+				if !full {
+					mach = ellipsize(mach, 8)
+				}
 			}
 		}
 
