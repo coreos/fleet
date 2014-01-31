@@ -45,6 +45,9 @@ func listUnitsAction(c *cli.Context) {
 				if !full {
 					mach = ellipsize(mach, 8)
 				}
+				if len(js.Machine.PublicIP) > 0 {
+					mach = fmt.Sprintf("%s/%s", mach, js.Machine.PublicIP)
+				}
 			}
 		}
 
