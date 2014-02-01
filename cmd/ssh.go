@@ -7,6 +7,7 @@ import (
 
 	"github.com/codegangsta/cli"
 
+	"github.com/coreos/coreinit/machine"
 	"github.com/coreos/coreinit/ssh"
 )
 
@@ -32,14 +33,25 @@ func sshAction(c *cli.Context) {
 
 	var addr string
 	if unit == "" {
-		m := args[0]
+		lookup := args[0]
 		args = args[1:]
-
-		ms := r.GetMachineState(m)
-		if ms == nil {
-			log.Fatalf("Machine %s could not be found", m)
+		machines := r.GetActiveMachines()
+		var match *machine.Machine
+		for i, _ := range machines {
+			mach := machines[i]
+			if !strings.HasPrefix(mach.BootId, lookup) {
+				continue
+			} else if match != nil {
+				log.Fatalf("Found more than one Machine, be more specfic")
+			}
+			match = &mach
 		}
-		addr = fmt.Sprintf("%s:22", ms.PublicIP)
+
+		if match == nil {
+			log.Fatalf("Could not find provided Machine")
+		}
+
+		addr = fmt.Sprintf("%s:22", match.PublicIP)
 	} else {
 		js := r.GetJobState(unit)
 		if js == nil {

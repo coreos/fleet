@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/tls"
+	"fmt"
 	"net"
 	"net/http"
 	"os"
@@ -83,4 +84,16 @@ func main() {
 	}
 
 	app.Run(os.Args)
+}
+
+func ellipsize(field string, n int) string {
+	// When ellipsing a field, we want to display the first n
+	// characters. We check for n+3 so we don't inadvertently
+	// make fields with fewer than n+3 characters even longer
+	// by adding unnecessary ellipses.
+	if len(field) > n+3 {
+		return fmt.Sprintf("%s...", field[0:n])
+	} else {
+		return field
+	}
 }
