@@ -132,6 +132,7 @@ func (a *Agent) RescheduleJob(j *job.Job) {
 func (a *Agent) StopJob(jobName string) {
 	log.Infof("Stopping Job(%s)", jobName)
 	a.systemd.StopJob(jobName)
+	a.ReportJobState(jobName, nil)
 
 	a.state.Lock()
 	reversePeers := a.state.GetJobsByPeer(jobName)

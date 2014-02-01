@@ -120,6 +120,9 @@ func (m *SystemdManager) StartJob(job *job.Job) {
 
 func (m *SystemdManager) StopJob(jobName string) {
 	unitName := m.addUnitNamePrefix(jobName)
+
+	m.subscriptions.Remove(jobName)
+
 	m.stopUnit(unitName)
 	m.removeUnit(unitName)
 }
