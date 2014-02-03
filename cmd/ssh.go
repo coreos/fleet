@@ -3,9 +3,11 @@ package main
 import (
 	"fmt"
 	"log"
+	"strings"
 
 	"github.com/codegangsta/cli"
 
+	"github.com/coreos/coreinit/machine"
 	"github.com/coreos/coreinit/ssh"
 )
 
@@ -23,20 +25,33 @@ func newSSHCommand() cli.Command {
 func sshAction(c *cli.Context) {
 	r := getRegistry(c)
 
-	numArgs := len(c.Args())
+	args := c.Args()
 	unit := c.String("unit")
-	if numArgs == 0 && unit == "" {
+	if len(args) == 0 && unit == "" {
 		log.Fatalf("Provide one machine or unit")
 	}
 
 	var addr string
 	if unit == "" {
-		m := c.Args()[0]
-		ms := r.GetMachineState(m)
-		if ms == nil {
-			log.Fatalf("Machine %s could not be found", m)
+		lookup := args[0]
+		args = args[1:]
+		machines := r.GetActiveMachines()
+		var match *machine.Machine
+		for i, _ := range machines {
+			mach := machines[i]
+			if !strings.HasPrefix(mach.BootId, lookup) {
+				continue
+			} else if match != nil {
+				log.Fatalf("Found more than one Machine, be more specfic")
+			}
+			match = &mach
 		}
-		addr = fmt.Sprintf("%s:22", ms.PublicIP)
+
+		if match == nil {
+			log.Fatalf("Could not find provided Machine")
+		}
+
+		addr = fmt.Sprintf("%s:22", match.PublicIP)
 	} else {
 		js := r.GetJobState(unit)
 		if js == nil {
@@ -45,7 +60,28 @@ func sshAction(c *cli.Context) {
 		addr = fmt.Sprintf("%s:22", js.Machine.PublicIP)
 	}
 
-	if err := ssh.Shell("core", addr); err != nil {
-		log.Fatalf(err.Error())
+	if len(args) > 0 {
+		cmd := strings.Join(args, " ")
+		stdout, err := ssh.Execute("core", addr, cmd)
+		if err != nil {
+			log.Fatalf("Unable to run command over SSH: %s", err.Error())
+		}
+
+		for {
+			bytes, prefix, err := stdout.ReadLine()
+			if err != nil {
+				break
+			}
+
+			print(string(bytes))
+			if !prefix {
+				print("\n")
+			}
+		}
+
+	} else {
+		if err := ssh.Shell("core", addr); err != nil {
+			log.Fatalf(err.Error())
+		}
 	}
 }
