@@ -1,8 +1,8 @@
 # Deploying coreinit
 
-Deploying `coreinit` is as simple as dropping a binary on a machine with access to and running it. 
+Deploying `coreinit` is as simple as dropping a binary on a machine with access to etcd and starting it.
 
-Running `coreinit` on CoreOS is even simpler: just run `systemctl start coreinit`. However, the built-in configuration assumes each of your hosts is serving an etcd endpoint at the default location (http://127.0.0.1:4001). If your etcd cluster differs, you must make the corresponding configuration changes.
+Deploying `coreinit` on CoreOS is even simpler: just run `systemctl start coreinit`. The built-in configuration assumes each of your hosts is serving an etcd endpoint at the default location (http://127.0.0.1:4001). However, if your etcd cluster differs, you must make the corresponding configuration changes.
 
 ### etcd
 
@@ -18,3 +18,5 @@ The `coreinit` daemon communicates with systemd (v207+) running locally on a giv
 ### SSH Keys
 
 The `corectl` client tool uses SSH to interact with a coreinit cluster. It utilizes agent forwarding, which means each client's public SSH key must be authorized to access each `coreinit` machine.
+
+Included in the [coreinit source](../contrib/corectl-inject-ssh.sh) is a script that will help distribute SSH keys across a coreinit cluster running on CoreOS.
