@@ -1,9 +1,5 @@
 package job
 
-import (
-	"fmt"
-)
-
 type Job struct {
 	Name            string
 	JobRequirements map[string][]string
@@ -13,10 +9,6 @@ type Job struct {
 
 func NewJob(name string, requirements map[string][]string, payload *JobPayload, state *JobState) *Job {
 	return &Job{name, requirements, payload, state}
-}
-
-func (self *Job) String() string {
-	return fmt.Sprintf("{ Name=%s }", self.Name)
 }
 
 func (self *Job) Requirements() map[string][]string {
