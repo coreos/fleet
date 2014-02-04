@@ -17,6 +17,16 @@ The `coreinit` daemon communicates with systemd (v207+) running locally on a giv
 
 ### SSH Keys
 
-The `corectl` client tool uses SSH to interact with a coreinit cluster. It utilizes agent forwarding, which means each client's public SSH key must be authorized to access each `coreinit` machine.
+The `corectl` client tool uses SSH to interact with a coreinit cluster. This means each client's public SSH key must be authorized to access each `coreinit` machine.
 
-Included in the [coreinit source](../contrib/corectl-inject-ssh.sh) is a script that will help distribute SSH keys across a coreinit cluster running on CoreOS.
+Included in the [coreinit source](../contrib/corectl-inject-ssh.sh) is a script that will help distribute SSH keys across a coreinit cluster running on CoreOS. Using it is as simple as piping the contents of a public SSH key into the script:
+
+```
+cat ~/.ssh/id_rsa.pub | ./corectl-inject-ssh.sh simon
+```
+
+Any arguments past the first to `corectl-inject-ssh.sh` are passed directly to `corectl`.
+
+```
+cat ~/.ssh/id_rsa.pub | ./corectl-inject-ssh.sh simon --tunnel 19.12.0.33
+```
