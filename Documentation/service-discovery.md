@@ -1,6 +1,6 @@
 # Service Discovery
 
-Service discovery with coreinit will be handled in a very similar fashion to [Synapse](https://github.com/airbnb/synapse), which runs a separate discovery agent next to the main container that is being run. While this functionality will be implemented in a higher order system above coreinit, you can configure your own units to have discovery agents run beside them with `X-Coreinit-Peers` today.
+Service discovery with coreinit will be handled in a very similar fashion to [Synapse](https://github.com/airbnb/synapse), which runs a separate discovery agent next to the main container that is being run. While this functionality will be implemented in a higher order system above coreinit, you can configure your own units to have discovery agents run beside them with the `X-ConditionMachineOf` option.
 
 It's hard for coreinit to generalize the logic for service discovery when applications and networking environments vary widely between each customer's deployment. Instead of guessing when an application is healthy and ready to serve traffic, you can write agent to be as simple or complex as you see fit.
 
@@ -22,5 +22,5 @@ ExecStop=/usr/bin/etcdctl delete /services/website/nginx1
 
 [X-Coreinit]
 # This unit will always be colocated with nginx1.service
-X-Coreinit-Peers=nginx1.service
+X-ConditionMachineOf=nginx1.service
 ```

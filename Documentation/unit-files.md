@@ -11,20 +11,18 @@ coreinit will schedule any valid service or socket systemd unit to a machine in 
 
 | Option Name | Description |
 |---------------|-------------|
-| `X-Coreinit-Provides` | List of services the unit provides or what roles it may fill. The format of the value is a comma-delimited list of strings. These values are not currently published anywhere. |
-| `X-Coreinit-MachineSingleton` | Boolean controlling whether multiple copies of this service can run on a single machine. coreinit tests each individual token in `X-Coreinit-Provides` to decide whether a conflicting service is on a given machine. Currently, the string 'true' is the only value that qualifies as the boolean value true. |
-| `X-Coreinit-Peers` | List of unit file names that must be scheduled to a given machine in order for this unit to be scheduled there. This allows a unit to 'follow' another around the system. The format of the value is a comma-delimited list of strings |
+| `X-ConditionMachineBootID` | Require a job to be scheduled to a specific machine. The value of this option is the boot ID of a machine in the cluster. If no machine in the cluster has this boot ID, the job will not be scheduled. |
+| `X-ConditionMachineOf` | Require a specific job be scheduled to a machine for it to be considered a candidate in scheduling. This allows a given job to 'follow' another around the system. |
 
 Take the following as an example of how your `[X-Coreinit]` section could be written:
 
 ```
 [Unit]
-Description=...
+Description=Some Monitoring Service
 
 [Service]
-ExecStart=...
+ExecStart=/bin/monitorme
 
 [X-Coreinit]
-X-Coreinit-Provides=webservice
-X-Coreinit-MachineSingleton=true
+X-ConditionMachineBootID=148a18ff-6e95-4cd8-92da-c9de9bb90d5a
 ```

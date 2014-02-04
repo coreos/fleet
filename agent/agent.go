@@ -25,10 +25,10 @@ const (
 // The Agent owns all of the coordination between the Registry, the local
 // Machine, and the local SystemdManager.
 type Agent struct {
-	registry   *registry.Registry
-	events     *event.EventBus
-	machine    *machine.Machine
-	ttl        time.Duration
+	registry      *registry.Registry
+	events        *event.EventBus
+	machine       *machine.Machine
+	ttl           time.Duration
 	systemdPrefix string
 
 	state   *AgentState
@@ -198,6 +198,8 @@ func (a *Agent) TrackOffer(jo job.JobOffer) {
 	log.V(2).Infof("Tracking JobOffer(%s)", jo.Job.Name)
 	a.state.TrackOffer(jo)
 
+	peers := jo.Job.Payload.Peers()
+	log.V(2).Infof("Tracking peers of JobOffer(%s): %v", jo.Job.Name, peers)
 	a.state.TrackJobPeers(jo.Job.Name, jo.Job.Payload.Peers())
 }
 
@@ -244,44 +246,11 @@ func (a *Agent) BidForPossiblePeers(jobName string) {
 
 // Determine if the Agent can run the provided Job
 func (a *Agent) AbleToRun(j *job.Job) bool {
-	metadata := extractMachineMetadata(j.Requirements())
-	if !a.machine.HasMetadata(metadata) {
-		log.V(1).Infof("Unable to run Job(%s), local Machine metadata insufficient", j.Name)
-		return false
-	}
-
-	if a.hasConflict(j) {
-		log.V(1).Infof("Unable to run Job(%s), local Job conflict", j.Name)
-		return false
-	}
-
-	if !a.hasAllLocalPeers(j) {
-		log.V(1).Infof("Unable to run Job(%s), necessary peer Jobs are not running locally", j.Name)
-		return false
-	}
-
-	return true
-}
-
-// Determine if all necessary peers of a Job are scheduled to this Agent
-func (a *Agent) hasAllLocalPeers(j *job.Job) bool {
-	for _, peerName := range j.Payload.Peers() {
-		log.V(1).Infof("Looking for target of Peer(%s)", peerName)
-
-		//FIXME: ideally the machine would use its own knowledge rather than calling GetJobTarget
-		if tgt := a.registry.GetJobTarget(peerName); tgt == nil || tgt.BootId != a.machine.BootId {
-			log.V(1).Infof("Peer(%s) of Job(%s) not scheduled here", peerName, j.Name)
-			return false
-		} else {
-			log.V(1).Infof("Peer(%s) of Job(%s) scheduled here", peerName, j.Name)
-		}
-	}
-	return true
-}
-
-// Determine whether a given Job conflicts with any other relevant Jobs
-func (a *Agent) hasConflict(j *job.Job) bool {
 	requirements := j.Requirements()
+	if len(requirements) == 0 {
+		log.V(1).Infof("Job(%s) has no requirements", j.Name)
+		return true
+	}
 
 	var reqString string
 	for key, slice := range requirements {
@@ -292,75 +261,28 @@ func (a *Agent) hasConflict(j *job.Job) bool {
 		reqString += fmt.Sprint("] ")
 	}
 
-	if len(reqString) > 0 {
-		log.V(1).Infof("Job(%s) has requirements %s", j.Name, reqString)
-	} else {
-		log.V(1).Infof("Job(%s) has no requirements", j.Name)
-	}
+	log.V(1).Infof("Job(%s) has requirements: %s", j.Name, reqString)
 
-	isSingleton := func(j *job.Job) bool {
-		singleton, ok := requirements["MachineSingleton"]
-		return ok && singleton[0] == "true"
-	}
-
-	hasProvides := func(j *job.Job) bool {
-		provides, ok := requirements["Provides"]
-		return ok && len(provides) > 0
-	}
-
-	if !isSingleton(j) {
-		log.V(1).Infof("Job(%s) is not a singleton, therefore no conflict", j.Name)
+	metadata := extractMachineMetadata(requirements)
+	log.V(1).Infof("Job(%s) requires machine metadata: %v", j.Name, metadata)
+	if !a.machine.HasMetadata(metadata) {
+		log.V(1).Infof("Unable to run Job(%s), local Machine metadata insufficient", j.Name)
 		return false
 	}
 
-	if !hasProvides(j) {
-		log.V(1).Infof("Job(%s) does not provide anything, therefore no conflict", j.Name)
+	bootID, ok := requirements["MachineBootID"]
+	if ok && len(bootID) > 0 && a.machine.BootId == bootID[0] {
+		log.V(1).Infof("Agent does not pass MachineBootID condition for Job(%s)", j.Name)
 		return false
 	}
 
-	// Check for conflicts with locally-scheduled jobs
-	for _, other := range a.registry.GetAllJobsByMachine(a.machine) {
-		if !hasProvides(&other) {
-			continue
-		}
-
-		// Skip self
-		if other.Name == j.Name {
-			continue
-		}
-
-		for _, provide := range requirements["Provides"] {
-			for _, otherProvide := range requirements["Provides"] {
-				if provide == otherProvide {
-					log.V(1).Infof("Local Job(%s) already provides '%s'", other.Name, provide)
-					return true
-				}
-			}
-		}
+	peerName, ok := requirements["MachineOf"]
+	if ok && len(peerName) > 0 && !a.peerScheduledHere(j.Name, peerName[0]) {
+		log.V(1).Infof("Agent does not pass MachineOf condition for Job(%s)", j.Name)
+		return false
 	}
 
-	for _, offer := range a.state.GetBadeOffers() {
-		// Skip self
-		if offer.Job.Name == j.Name {
-			continue
-		}
-
-		if !hasProvides(&offer.Job) {
-			log.V(1).Infof("Outstanding JobBid(%s) does not provide anything, therefore no conflict", offer.Job.Name)
-			continue
-		}
-
-		for _, provide := range requirements["Provides"] {
-			for _, offerProvide := range requirements["Provides"] {
-				if provide == offerProvide {
-					log.V(1).Infof("Outstanding JobBid(%s) already provides '%s'", offer.Job.Name, provide)
-					return true
-				}
-			}
-		}
-	}
-
-	return false
+	return true
 }
 
 // Return all machine-related metadata from a job requirements map
@@ -384,4 +306,18 @@ func extractMachineMetadata(requirements map[string][]string) map[string][]strin
 	}
 
 	return metadata
+}
+
+// Determine if all necessary peers of a Job are scheduled to this Agent
+func (a *Agent) peerScheduledHere(jobName, peerName string) bool {
+	log.V(1).Infof("Looking for target of Peer(%s)", peerName)
+
+	//FIXME: ideally the machine would use its own knowledge rather than calling GetJobTarget
+	if tgt := a.registry.GetJobTarget(peerName); tgt == nil || tgt.BootId != a.machine.BootId {
+		log.V(1).Infof("Peer(%s) of Job(%s) not scheduled here", peerName, jobName)
+		return false
+	}
+
+	log.V(1).Infof("Peer(%s) of Job(%s) scheduled here", peerName, jobName)
+	return true
 }

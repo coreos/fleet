@@ -1,7 +1,6 @@
 package unit
 
 import (
-	"encoding/csv"
 	"fmt"
 	"strings"
 )
@@ -31,22 +30,18 @@ func (self *SystemdUnitFile) SetField(section string, key string, value string) 
 func (self *SystemdUnitFile) Requirements() map[string][]string {
 	requirements := make(map[string][]string, 0)
 	for key, value := range self.GetSection("X-Coreinit") {
-		if !strings.HasPrefix(key, "X-Coreinit-") {
+		if !strings.HasPrefix(key, "X-Condition") {
 			continue
 		}
 
-		// Strip off leading X-Coreinit-
+		// Strip off leading X-Condition
 		key = key[11:]
 
 		if _, ok := requirements[key]; !ok {
 			requirements[key] = make([]string, 0)
 		}
 
-		valueReader := strings.NewReader(value)
-		csvReader := csv.NewReader(valueReader)
-		values, _ := csvReader.Read()
-
-		requirements[key] = append(requirements[key], values...)
+		requirements[key] = append(requirements[key], value)
 	}
 	return requirements
 }
