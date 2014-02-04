@@ -81,11 +81,6 @@ func (self *AgentState) DropPeersJob(jobName string) {
 }
 
 func (self *AgentState) TrackOffer(offer job.JobOffer) {
-	if _, ok := self.GetOffer(offer.Job.Name); ok {
-		log.V(2).Infof("AgentState already knows about JobOffer(%s)", offer.Job.Name)
-		return
-	}
-
 	self.offers[offer.Job.Name] = offer
 }
 
