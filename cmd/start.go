@@ -64,7 +64,7 @@ func parseRequirements(arg string) map[string][]string {
 			continue
 		}
 
-		key := strings.TrimSpace(parts[0])
+		key := fmt.Sprintf("MachineMetadata%s", strings.TrimSpace(parts[0]))
 		val := strings.TrimSpace(parts[1])
 		add(key, val)
 	}

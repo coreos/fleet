@@ -368,16 +368,15 @@ func extractMachineMetadata(requirements map[string][]string) map[string][]strin
 	metadata := make(map[string][]string)
 
 	for key, values := range requirements {
-		if !strings.HasPrefix(key, "Machine-") {
-			log.V(2).Infof("Skipping requirement %s, not machine metadata.", key)
+		if !strings.HasPrefix(key, "MachineMetadata") {
 			continue
 		}
 
-		// Strip off leading 'Machine-'
-		key = key[8:]
+		// Strip off leading 'MachineMetadata'
+		key = key[15:]
 
 		if len(values) == 0 {
-			log.V(2).Infof("Metadata(%s) requirement provided no values, ignoring.", key)
+			log.V(2).Infof("Machine metadata requirement %s provided no values, ignoring.", key)
 			continue
 		}
 
