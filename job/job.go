@@ -5,10 +5,10 @@ import (
 )
 
 type Job struct {
-	Name         string
-	requirements map[string][]string
-	Payload      *JobPayload
-	State        *JobState
+	Name            string
+	JobRequirements map[string][]string
+	Payload         *JobPayload
+	State           *JobState
 }
 
 func NewJob(name string, requirements map[string][]string, payload *JobPayload, state *JobState) *Job {
@@ -27,13 +27,13 @@ func (self *Job) Requirements() map[string][]string {
 			stacked[key] = values
 		}
 
-		for key, values := range self.requirements {
+		for key, values := range self.JobRequirements {
 			stacked[key] = values
 		}
 
 		return stacked
 
 	} else {
-		return self.requirements
+		return self.JobRequirements
 	}
 }
