@@ -23,7 +23,8 @@ Coreinit must be built with Go 1.2 on a Linux machine, or in a [Go docker contai
 
 ### Get Started
 
-Before you can deploy units, [coreinit must be deployed][deploying-and-configuring.md] on each host within your cluster. After you have machines configured (`corectl list-machines`), [start some units][using-the-client.md].
+Before you can deploy units, coreinit must be [deployed][deploy] and [configured][configure] on each host cluster your cluster. After you have machines configured (`corectl list-machines`), [start some units][using-the-client.md].
 
 [using-the-client.md]: https://github.com/coreos/coreinit/blob/master/Documentation/using-the-client.md
-[deploying-and-configuring.md]: https://github.com/coreos/coreinit/blob/master/Documentation/deploying-and-configuring.md
+[deploy]: https://github.com/coreos/coreinit/blob/master/Documentation/deployment.md
+[configure]: https://github.com/coreos/coreinit/blob/master/Documentation/configuration.md
