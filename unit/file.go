@@ -30,12 +30,12 @@ func (self *SystemdUnitFile) SetField(section string, key string, value string) 
 func (self *SystemdUnitFile) Requirements() map[string][]string {
 	requirements := make(map[string][]string, 0)
 	for key, value := range self.GetSection("X-Coreinit") {
-		if !strings.HasPrefix(key, "X-Condition") {
+		if !strings.HasPrefix(key, "X-") {
 			continue
 		}
 
-		// Strip off leading X-Condition
-		key = key[11:]
+		// Strip off leading X-
+		key = key[2:]
 
 		if _, ok := requirements[key]; !ok {
 			requirements[key] = make([]string, 0)

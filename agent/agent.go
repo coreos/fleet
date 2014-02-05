@@ -270,7 +270,7 @@ func (a *Agent) AbleToRun(j *job.Job) bool {
 		return false
 	}
 
-	bootID, ok := requirements["MachineBootID"]
+	bootID, ok := requirements["ConditionMachineBootID"]
 	if ok && len(bootID) > 0 && a.machine.BootId == bootID[0] {
 		log.V(1).Infof("Agent does not pass MachineBootID condition for Job(%s)", j.Name)
 		return false

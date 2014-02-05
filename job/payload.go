@@ -28,7 +28,7 @@ func (jp *JobPayload) Type() (string, error) {
 }
 
 func (jp *JobPayload) Peers() []string {
-	peers, ok := jp.Unit.Requirements()["MachineOf"]
+	peers, ok := jp.Unit.Requirements()["ConditionMachineOf"]
 
 	if !ok {
 		jpType, err := jp.Type()
