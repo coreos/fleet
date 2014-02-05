@@ -28,7 +28,7 @@ func (jp *JobPayload) Type() (string, error) {
 }
 
 func (jp *JobPayload) Peers() []string {
-	peers, ok := jp.Unit.Requirements()["Peers"]
+	peers, ok := jp.Unit.Requirements()["ConditionMachineOf"]
 
 	if !ok {
 		jpType, err := jp.Type()
@@ -40,4 +40,13 @@ func (jp *JobPayload) Peers() []string {
 	}
 
 	return peers
+}
+
+func (jp *JobPayload) Conflicts() []string {
+	conflicts, ok := jp.Unit.Requirements()["Conflicts"]
+	if ok {
+		return conflicts
+	} else {
+		return make([]string, 0)
+	}
 }

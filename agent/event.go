@@ -59,7 +59,7 @@ func (eh *EventHandler) HandleEventJobScheduled(ev event.Event) {
 	log.V(1).Infof("EventJobScheduled(%s): Starting Job", j.Name)
 	eh.agent.StartJob(j)
 
-	log.V(1).Infof("EventJobScheduled(%s): Bidding for all possible peers of Job")
+	log.V(1).Infof("EventJobScheduled(%s): Bidding for all possible peers of Job", j.Name)
 	eh.agent.BidForPossiblePeers(jobName)
 }
 
