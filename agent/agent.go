@@ -112,6 +112,8 @@ func (a *Agent) Heartbeat(ttl time.Duration, stop chan bool) {
 
 // Instruct the Agent to start the provided Job
 func (a *Agent) StartJob(j *job.Job) {
+	a.state.TrackJobConflicts(j.Name, j.Payload.Conflicts())
+
 	log.Infof("Starting Job(%s)", j.Name)
 	a.systemd.StartJob(j)
 }
@@ -137,6 +139,7 @@ func (a *Agent) StopJob(jobName string) {
 	a.state.Lock()
 	reversePeers := a.state.GetJobsByPeer(jobName)
 	a.state.DropPeersJob(jobName)
+	a.state.DropJobConflicts(jobName)
 	a.state.Unlock()
 
 	for _, peer := range reversePeers {
@@ -276,9 +279,15 @@ func (a *Agent) AbleToRun(j *job.Job) bool {
 		return false
 	}
 
-	peerName, ok := requirements["MachineOf"]
-	if ok && len(peerName) > 0 && !a.peerScheduledHere(j.Name, peerName[0]) {
-		log.V(1).Infof("Agent does not pass MachineOf condition for Job(%s)", j.Name)
+	for _, peer := range j.Payload.Peers() {
+		if !a.peerScheduledHere(j.Name, peer) {
+			log.V(1).Infof("Required Peer(%s) of Job(%s) is not scheduled locally", peer, j.Name)
+			return false
+		}
+	}
+
+	if conflicted, conflictedJobName := a.state.HasConflict(j.Name, j.Payload.Conflicts()); conflicted {
+		log.V(1).Infof("Job(%s) has conflict with Job(%s)", j.Name, conflictedJobName)
 		return false
 	}
 

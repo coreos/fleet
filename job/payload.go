@@ -41,3 +41,12 @@ func (jp *JobPayload) Peers() []string {
 
 	return peers
 }
+
+func (jp *JobPayload) Conflicts() []string {
+	conflicts, ok := jp.Unit.Requirements()["Conflicts"]
+	if ok {
+		return conflicts
+	} else {
+		return make([]string, 0)
+	}
+}

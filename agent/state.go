@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"path"
 	"sync"
 
 	log "github.com/golang/glog"
@@ -22,10 +23,18 @@ type AgentState struct {
 	// Agent could not have bid on previously
 	// i.e. {"hello.service": ["howareyou.service", "goodbye.service"]}
 	peers map[string][]string
+
+	// index of local payload conflicts to the job they belong to
+	conflicts map[string][]string
 }
 
 func NewState() *AgentState {
-	return &AgentState{offers: make(map[string]job.JobOffer), bids: make([]string, 0), peers: make(map[string][]string)}
+	return &AgentState{
+		offers:    make(map[string]job.JobOffer),
+		bids:      make([]string, 0),
+		peers:     make(map[string][]string),
+		conflicts: make(map[string][]string, 0),
+	}
 }
 
 func (self *AgentState) Lock() {
@@ -38,6 +47,39 @@ func (self *AgentState) Unlock() {
 	log.V(2).Infof("Attempting to unlock AgentState")
 	self.mutex.Unlock()
 	log.V(2).Infof("AgentState unlocked")
+}
+
+// Store a list of conflicts on behalf of a given Job
+func (self *AgentState) TrackJobConflicts(jobName string, conflicts []string) {
+	self.conflicts[jobName] = conflicts
+}
+
+// Determine whether there are any known conflicts with the given argument
+func (self *AgentState) HasConflict(potentialJobName string, potentialConflicts []string) (bool, string) {
+	// Iterate through each existing Job, asserting two things:
+	for existingJobName, existingConflicts := range self.conflicts {
+
+		// 1. Each tracked Job does not conflict with the potential conflicts
+		for _, pc := range potentialConflicts {
+			if globMatches(pc, existingJobName) {
+				return true, existingJobName
+			}
+		}
+
+		// 2. The new Job does not conflict with any of the tracked confclits
+		for _, ec := range existingConflicts {
+			if globMatches(ec, potentialJobName) {
+				return true, existingJobName
+			}
+		}
+	}
+
+	return false, ""
+}
+
+// Purge all tracked conflicts for a given Job
+func (self *AgentState) DropJobConflicts(jobName string) {
+	delete(self.conflicts, jobName)
 }
 
 // Store a relation of 1 Job -> N Peers
@@ -138,4 +180,12 @@ func (self *AgentState) DropBid(name string) {
 			return
 		}
 	}
+}
+
+func globMatches(pattern, target string) bool {
+	matched, err := path.Match(pattern, target)
+	if err != nil {
+		log.V(2).Infof("Received error while matching pattern '%s': %v", pattern, err)
+	}
+	return matched
 }
