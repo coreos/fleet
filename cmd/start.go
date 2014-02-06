@@ -16,12 +16,13 @@ func newStartUnitCommand() cli.Command {
 		Flags: []cli.Flag{
 			cli.StringFlag{"require", "", "Filter suitable hosts with a set of requirements. Format is comma-delimited list of <key>=<value> pairs."},
 		},
-		Usage:  "Schedule and execute one or more units already loaded in the cluster",
+		Usage:  "Schedule and execute one or more units in the cluster",
 		Action: startUnitAction,
 	}
 }
 
 func startUnitAction(c *cli.Context) {
+	var err error
 	r := getRegistry(c)
 
 	payloads := make([]job.JobPayload, len(c.Args()))
@@ -29,8 +30,17 @@ func startUnitAction(c *cli.Context) {
 		name := path.Base(v)
 		payload := r.GetPayload(name)
 		if payload == nil {
-			fmt.Printf("Could not find payload %s\n", name)
-			return
+			payload, err = getJobPayloadFromFile(v)
+			if err != nil {
+				fmt.Println(err.Error())
+				return
+			}
+
+			err = r.CreatePayload(payload)
+			if err != nil {
+				fmt.Printf("Creation of Payload %s failed: %v", err)
+				return
+			}
 		}
 
 		payloads[i] = *payload
