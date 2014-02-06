@@ -1,7 +1,7 @@
 package job
 
 import (
-	"github.com/coreos/coreinit/machine"
+	"github.com/coreos/fleet/machine"
 )
 
 type JobState struct {

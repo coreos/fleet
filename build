@@ -1,4 +1,4 @@
 #!/bin/bash -e
 
-go run third_party.go build -o bin/coreinit github.com/coreos/coreinit
-go run third_party.go build -o bin/corectl github.com/coreos/coreinit/cmd
+go run third_party.go build -o bin/fleet github.com/coreos/fleet
+go run third_party.go build -o bin/fleetctl github.com/coreos/fleet/cmd

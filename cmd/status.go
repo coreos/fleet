@@ -7,8 +7,8 @@ import (
 
 	"github.com/codegangsta/cli"
 
-	"github.com/coreos/coreinit/registry"
-	"github.com/coreos/coreinit/ssh"
+	"github.com/coreos/fleet/registry"
+	"github.com/coreos/fleet/ssh"
 )
 
 func newStatusUnitsCommand() cli.Command {

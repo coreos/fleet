@@ -3,12 +3,12 @@ package server
 import (
 	"github.com/coreos/go-etcd/etcd"
 
-	"github.com/coreos/coreinit/agent"
-	"github.com/coreos/coreinit/config"
-	"github.com/coreos/coreinit/engine"
-	"github.com/coreos/coreinit/event"
-	"github.com/coreos/coreinit/machine"
-	"github.com/coreos/coreinit/registry"
+	"github.com/coreos/fleet/agent"
+	"github.com/coreos/fleet/config"
+	"github.com/coreos/fleet/engine"
+	"github.com/coreos/fleet/event"
+	"github.com/coreos/fleet/machine"
+	"github.com/coreos/fleet/registry"
 )
 
 type Server struct {

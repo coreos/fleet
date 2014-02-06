@@ -1,8 +1,8 @@
 # Configuration
 
-The coreinit config file is formatted using [TOML](https://github.com/mojombo/toml/blob/master/versions/toml-v0.2.0.md). A [sample config][config] exists in the root of the coreinit source code. The recognized options are documented below:
+The fleet config file is formatted using [TOML](https://github.com/mojombo/toml/blob/master/versions/toml-v0.2.0.md). A [sample config][config] exists in the root of the fleet source code. The recognized options are documented below:
 
-[config]: https://github.com/coreos/coreinit/blob/master/coreinit.conf.sample
+[config]: https://github.com/coreos/fleet/blob/master/fleet.conf.sample
 
 #### verbosity
 
@@ -24,7 +24,7 @@ Default: ""
 
 #### metadata
 
-Comma-delimited key/value pairs that are published with the local to the coreinit registry. This data can be used directly by a client of coreinit to make scheduling descisions. An example set of metadata could look like:  
+Comma-delimited key/value pairs that are published with the local to the fleet registry. This data can be used directly by a client of fleet to make scheduling descisions. An example set of metadata could look like:  
 
 	metadata="region=us-west,az=us-west-1"
 
@@ -40,7 +40,7 @@ Default: "30s"
 
 #### boot_id
 
-Unique identifier of coreinit instance.
+Unique identifier of fleet instance.
 
 Default: contents of file /proc/sys/kernel/random/boot_id
 

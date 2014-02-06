@@ -14,7 +14,7 @@ ExecStart=echo "ping";
 ExecStop=echo "pong";
 
 [Install]
-WantedBy=coreinit-ping.target
+WantedBy=fleet-ping.target
 `
 
 	unitFile := NewSystemdUnitFile(contents)
@@ -33,7 +33,7 @@ WantedBy=coreinit-ping.target
 	}
 
 	section = unitFile.GetSection("Install")
-	if section["WantedBy"] != "coreinit-ping.target" {
+	if section["WantedBy"] != "fleet-ping.target" {
 		t.Fatalf("Install.WantedBy is incorrect")
 	}
 }

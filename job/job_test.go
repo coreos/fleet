@@ -3,8 +3,8 @@ package job
 import (
 	"testing"
 
-	"github.com/coreos/coreinit/machine"
-	"github.com/coreos/coreinit/unit"
+	"github.com/coreos/fleet/machine"
+	"github.com/coreos/fleet/unit"
 )
 
 func TestNewJobNilStateNilPayload(t *testing.T) {

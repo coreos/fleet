@@ -1,6 +1,6 @@
 # Using the Client
 
-coreinit provides a command-line tool called `corectl`. The commands provided by corectl are generally identical to those of systemd's CLI, `systemctl`, while enabling a user to interact with an entire cluster of disconnected systemd instances.
+fleet provides a command-line tool called `corectl`. The commands provided by corectl are generally identical to those of systemd's CLI, `systemctl`, while enabling a user to interact with an entire cluster of disconnected systemd instances.
 
 ## Get up and running
 
@@ -17,7 +17,7 @@ Usage of the `--tunnel` flag requires two things:
 
 One can SSH directly to the tunnel host to assert ssh-agent is running with the proper access.
 
-corectl also requires direct communication with the etcd cluster that your coreinit machines are configured to use. Use the `--endpoint` flag to override the default of `http://127.0.0.1:4001`:
+corectl also requires direct communication with the etcd cluster that your fleet machines are configured to use. Use the `--endpoint` flag to override the default of `http://127.0.0.1:4001`:
 
     corectl --endpoint http://<IP:PORT> list-units
 
@@ -25,11 +25,11 @@ When using the `--tunnel` flag and the `--endpoint` flag together, it is importa
 
 ## Interact with units
 
-For information about the additional unit file parameters coreinit will interact with, see [this documentation](unit-files.md).
+For information about the additional unit file parameters fleet will interact with, see [this documentation](unit-files.md).
 
 ### Explore existing units
 
-List all units in the coreinit cluster with `corectl list-units`. This will describe all units the coreinit cluster knows about, running or not:
+List all units in the fleet cluster with `corectl list-units`. This will describe all units the fleet cluster knows about, running or not:
 
 ```
 $ corectl list-units
@@ -54,7 +54,7 @@ hello.service	ping.service	pong.service
 $ corectl submit examples/*
 ```
 
-Submission of units to a coreinit cluster does not cause them to be scheduled out to specific hosts. The unit should be visible in a `corectl list-units` command, but have no reported state.
+Submission of units to a fleet cluster does not cause them to be scheduled out to specific hosts. The unit should be visible in a `corectl list-units` command, but have no reported state.
 
 ### Remove units from the cluster
 
@@ -84,7 +84,7 @@ ExecStart=/bin/bash -c "while true; do echo \"Hello, world\"; sleep 1; done"
 
 ### Start and stop units
 
-Once a unit has been submitted to the coreinit cluster, it can be started and stopped like so:
+Once a unit has been submitted to the fleet cluster, it can be started and stopped like so:
 
 ```
 $ corectl start hello.service
@@ -100,7 +100,7 @@ $ corectl stop hello.service
 
 ### Query unit status
 
-Once a unit has been started, coreinit will publish its status. The systemd state fields 'LoadState', 'ActiveState', and 'SubState' can be retrieved with `corectl list-units`. To get all of the unit's state information, the `corectl status` command will actually call systemctl on the machine running a given unit over SSH:
+Once a unit has been started, fleet will publish its status. The systemd state fields 'LoadState', 'ActiveState', and 'SubState' can be retrieved with `corectl list-units`. To get all of the unit's state information, the `corectl status` command will actually call systemctl on the machine running a given unit over SSH:
 
 ```
 $ corectl status hello.service
@@ -158,7 +158,7 @@ MACHINE									IP			METADATA
 
 ### SSH dynamically to host
 
-The `corectl ssh` command can be used to open a pseuto-terminal over SSH to a host in the coreinit cluster. The command will look up the IP address of a machine based on the provided machine ID:
+The `corectl ssh` command can be used to open a pseuto-terminal over SSH to a host in the fleet cluster. The command will look up the IP address of a machine based on the provided machine ID:
 
 ```
 $ corectl ssh 491586a6-508f-4583-a71d-bfc4d146e996

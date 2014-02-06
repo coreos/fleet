@@ -7,7 +7,7 @@ import (
 
 	"github.com/codegangsta/cli"
 
-	"github.com/coreos/coreinit/ssh"
+	"github.com/coreos/fleet/ssh"
 )
 
 func newJournalCommand() cli.Command {

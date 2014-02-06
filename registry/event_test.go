@@ -5,7 +5,7 @@ import (
 
 	"github.com/coreos/go-etcd/etcd"
 
-	"github.com/coreos/coreinit/event"
+	"github.com/coreos/fleet/event"
 )
 
 func TestPipe(t *testing.T) {

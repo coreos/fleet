@@ -9,7 +9,7 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/golang/glog"
 
-	"github.com/coreos/coreinit/agent"
+	"github.com/coreos/fleet/agent"
 )
 
 type Config struct {

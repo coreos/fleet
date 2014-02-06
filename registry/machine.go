@@ -6,8 +6,8 @@ import (
 
 	"github.com/coreos/go-etcd/etcd"
 
-	"github.com/coreos/coreinit/event"
-	"github.com/coreos/coreinit/machine"
+	"github.com/coreos/fleet/event"
+	"github.com/coreos/fleet/machine"
 )
 
 const (

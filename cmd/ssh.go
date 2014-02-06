@@ -7,8 +7,8 @@ import (
 
 	"github.com/codegangsta/cli"
 
-	"github.com/coreos/coreinit/machine"
-	"github.com/coreos/coreinit/ssh"
+	"github.com/coreos/fleet/machine"
+	"github.com/coreos/fleet/ssh"
 )
 
 func newSSHCommand() cli.Command {

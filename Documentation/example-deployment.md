@@ -1,6 +1,6 @@
-# Deploying a Service Using coreinit
+# Deploying a Service Using fleet
 
-The following is an example of how one might deploy a load-balanced web service using coreinit. 
+The following is an example of how one might deploy a load-balanced web service using fleet. 
 This example deploys [subgun](https://github.com/coreos/subgun), a simple subscription tool for [mailgun](https://mailgun.com/). 
 
 subgun is deployed in two pieces: an application and a presence daemon. The application simply serves HTTP requests through an AWS load balancer, while the presence daemon updates the load balancer with backend information. The diagram below illustrates this model:
@@ -51,7 +51,7 @@ Description=SUBGUN
 ExecStart=/usr/bin/docker run -rm -name subgun-cont -e SUBGUN_LISTS=<LIST> -e SUBGUN_API_KEY=<KEY> -p 8080:8080 coreos/subgun
 ExecStop=/usr/bin/docker kill subgun-cont
 
-[X-Coreinit]
+[X-Fleet]
 X-Conflicts=subgun.*.service
 ```
 
@@ -66,14 +66,14 @@ BindsTo=subgun.service
 ExecStart=/usr/bin/docker run -rm -name subgun-presence -e AWS_ACCESS_KEY=<ACCESS> -e AWS_SECRET_KEY=<SECRET> -e AWS_REGION=<REGION> -e ELB_NAME=<ELB_NAME> coreos/elb-presence
 ExecStop=/usr/bin/docker kill subgun-presence
 
-[X-Coreinit]
+[X-Fleet]
 X-ConditionMachineOf=subgun.<N>.service
 ```
 
 ## Deploy!
 
 
-At this point, it is simple enough to hand the two unit files over to coreinit:
+At this point, it is simple enough to hand the two unit files over to fleet:
 
 ```
 $ corectl submit subgun-presence.*.service subgun.*.service

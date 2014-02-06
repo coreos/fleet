@@ -14,8 +14,8 @@
 # public_ip=""
 
 # Comma-delimited key/value pairs that are published with the local
-# to the coreinit registry. This data can be used directly by a client
-# of coreinit to make scheduling descisions. An example set of metadata
+# to the fleet registry. This data can be used directly by a client
+# of fleet to make scheduling descisions. An example set of metadata
 # could look like:  metadata="region=us-west,az=us-west-1"
 # metadata=""
 
@@ -28,7 +28,7 @@
 #####
 # Development Settings
 
-# Unique identifier of coreinit instance. The value defaults
+# Unique identifier of fleet instance. The value defaults
 # to contents of /proc/sys/kernel/random/boot_id
 # bootid=""
 

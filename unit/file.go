@@ -29,7 +29,7 @@ func (self *SystemdUnitFile) SetField(section string, key string, value string) 
 
 func (self *SystemdUnitFile) Requirements() map[string][]string {
 	requirements := make(map[string][]string, 0)
-	for key, value := range self.GetSection("X-Coreinit") {
+	for key, value := range self.GetSection("X-Fleet") {
 		if !strings.HasPrefix(key, "X-") {
 			continue
 		}

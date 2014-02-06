@@ -8,7 +8,7 @@ import (
 	"github.com/coreos/go-etcd/etcd"
 	log "github.com/golang/glog"
 
-	"github.com/coreos/coreinit/event"
+	"github.com/coreos/fleet/event"
 )
 
 type EventStream struct {

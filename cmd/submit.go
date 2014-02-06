@@ -7,8 +7,8 @@ import (
 
 	"github.com/codegangsta/cli"
 
-	"github.com/coreos/coreinit/job"
-	"github.com/coreos/coreinit/unit"
+	"github.com/coreos/fleet/job"
+	"github.com/coreos/fleet/unit"
 )
 
 func newSubmitUnitCommand() cli.Command {

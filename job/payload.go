@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 	
-	"github.com/coreos/coreinit/unit"
+	"github.com/coreos/fleet/unit"
 )
 
 type JobPayload struct {

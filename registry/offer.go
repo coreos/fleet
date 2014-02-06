@@ -9,9 +9,9 @@ import (
 	"github.com/coreos/go-etcd/etcd"
 	log "github.com/golang/glog"
 
-	"github.com/coreos/coreinit/event"
-	"github.com/coreos/coreinit/job"
-	"github.com/coreos/coreinit/machine"
+	"github.com/coreos/fleet/event"
+	"github.com/coreos/fleet/job"
+	"github.com/coreos/fleet/machine"
 )
 
 const (

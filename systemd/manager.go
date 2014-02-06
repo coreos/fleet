@@ -12,9 +12,9 @@ import (
 	"github.com/coreos/go-systemd/dbus"
 	log "github.com/golang/glog"
 
-	"github.com/coreos/coreinit/event"
-	"github.com/coreos/coreinit/job"
-	"github.com/coreos/coreinit/machine"
+	"github.com/coreos/fleet/event"
+	"github.com/coreos/fleet/job"
+	"github.com/coreos/fleet/machine"
 )
 
 const (
@@ -36,7 +36,7 @@ func NewSystemdManager(machine *machine.Machine, unitPrefix string) *SystemdMana
 	//TODO(bcwaldon): Handle error in call to New()
 	systemd, _ := dbus.New()
 
-	name := "coreinit-" + machine.BootId + ".target"
+	name := "fleet-" + machine.BootId + ".target"
 	target := NewSystemdTarget(name)
 
 	mgr := &SystemdManager{systemd, target, machine, unitPrefix, defaultSystemdRuntimePath, systemd.NewSubscriptionSet(), nil}
