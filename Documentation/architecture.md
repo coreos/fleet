@@ -1,6 +1,6 @@
 # Architecture
 
-There exist two primary roles within coreinit: Engine and Agent. Each `coreinit` daemon running in a cluster fulfills both roles. An Engine primarily makes scheduling decisions while an Agent executes jobs.
+There exist two primary roles within fleet: Engine and Agent. Each `fleet` daemon running in a cluster fulfills both roles. An Engine primarily makes scheduling decisions while an Agent executes jobs.
 
 ## Moving Parts
 
@@ -24,19 +24,19 @@ If an Agent's JobBid is rejected, that Agent simply forgets about it and moves o
 
 ### Registry
 
-The Registry is the sole datastore in a coreinit cluster. All persistent and ephemeral data is stored in the registry: unit files, cluster presence, job state, etc.
+The Registry is the sole datastore in a fleet cluster. All persistent and ephemeral data is stored in the registry: unit files, cluster presence, job state, etc.
 
-**NOTE:**The backing store is currently the distributed locking service [etcd](https://github.com/coreos/etcd). This will continue to support coreinit at a small scale, but scaling coreinit up will require a redesign of the underlying datastores used by the Registry.
+**NOTE:**The backing store is currently the distributed locking service [etcd](https://github.com/coreos/etcd). This will continue to support fleet at a small scale, but scaling fleet up will require a redesign of the underlying datastores used by the Registry.
 
 ### Events
 
-There are four key pieces to the event system in coreinit: the EventBus, EventStreams, EventListeners and Events. EventStreams generate Events, streaming them to the EventBus, which then distributes them amongst its registered EventListeners.
+There are four key pieces to the event system in fleet: the EventBus, EventStreams, EventListeners and Events. EventStreams generate Events, streaming them to the EventBus, which then distributes them amongst its registered EventListeners.
 
 The Event is a simple data object. It has a name, a payload, and an optional context. The name is a canonical representation of what happened, the payload is the relevant data that has changed, and the context represents in what namespace the event happened (i.e. a specific machine, job, etc).
 
 The Engine and Agent each have EventListeners which understand how to manipulate their respective components in response to Events.
 
-There are two EventStreams in coreinit. The first watches etcd for changes, while the second subscribes to D-Bus events.
+There are two EventStreams in fleet. The first watches etcd for changes, while the second subscribes to D-Bus events.
 
 ## Object Model
 

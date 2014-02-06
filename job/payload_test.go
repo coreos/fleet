@@ -3,7 +3,7 @@ package job
 import (
 	"testing"
 
-	"github.com/coreos/coreinit/unit"
+	"github.com/coreos/fleet/unit"
 )
 
 func TestNewJobPayloadBadType(t *testing.T) {

@@ -6,10 +6,10 @@ import (
 
 	log "github.com/golang/glog"
 
-	"github.com/coreos/coreinit/event"
-	"github.com/coreos/coreinit/job"
-	"github.com/coreos/coreinit/machine"
-	"github.com/coreos/coreinit/registry"
+	"github.com/coreos/fleet/event"
+	"github.com/coreos/fleet/job"
+	"github.com/coreos/fleet/machine"
+	"github.com/coreos/fleet/registry"
 )
 
 const (

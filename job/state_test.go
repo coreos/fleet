@@ -3,7 +3,7 @@ package job
 import (
 	"testing"
 
-	"github.com/coreos/coreinit/machine"
+	"github.com/coreos/fleet/machine"
 )
 
 func TestJobState(t *testing.T) {

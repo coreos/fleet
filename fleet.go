@@ -11,14 +11,14 @@ import (
 	"github.com/coreos/go-etcd/etcd"
 	"github.com/golang/glog"
 
-	"github.com/coreos/coreinit/config"
-	"github.com/coreos/coreinit/server"
+	"github.com/coreos/fleet/config"
+	"github.com/coreos/fleet/server"
 )
 
 func main() {
 	// We use a custom FlagSet since golang/glog adds a bunch of flags we
 	// do not want to publish
-	flagset := flag.NewFlagSet("coreinit", flag.ExitOnError)
+	flagset := flag.NewFlagSet("fleet", flag.ExitOnError)
 	cfgPath := flagset.String("config_file", "", "Path to config file.")
 	err := flagset.Parse(os.Args[1:])
 

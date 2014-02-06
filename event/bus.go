@@ -6,7 +6,7 @@ import (
 
 	log "github.com/golang/glog"
 
-	"github.com/coreos/coreinit/machine"
+	"github.com/coreos/fleet/machine"
 )
 
 type EventBus struct {

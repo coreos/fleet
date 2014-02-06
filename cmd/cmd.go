@@ -12,8 +12,8 @@ import (
 	"github.com/codegangsta/cli"
 	"github.com/coreos/go-etcd/etcd"
 
-	"github.com/coreos/coreinit/registry"
-	"github.com/coreos/coreinit/ssh"
+	"github.com/coreos/fleet/registry"
+	"github.com/coreos/fleet/ssh"
 )
 
 var out *tabwriter.Writer
@@ -66,7 +66,7 @@ func main() {
 	app.Usage = "corectl is a command line driven interface to the cluster wide CoreOS init system."
 
 	app.Flags = []cli.Flag{
-		cli.StringFlag{"endpoint", "http://127.0.0.1:4001", "Coreinit Engine API endpoint (etcd)"},
+		cli.StringFlag{"endpoint", "http://127.0.0.1:4001", "Fleet Engine API endpoint (etcd)"},
 		cli.StringFlag{"tunnel", "", "Establish an SSH tunnel through the provided address for all etcd communication."},
 	}
 

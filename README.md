@@ -1,14 +1,14 @@
-# coreinit - a Distributed init System.
+# fleet - a Distributed init System.
 
-coreinit ties together [systemd](http://coreos.com/using-coreos/systemd) and [etcd](https://github.com/coreos/etcd) into a distributed init system. Think of it as an extension of systemd that operates at the cluster level instead of the machine level.
+fleet ties together [systemd](http://coreos.com/using-coreos/systemd) and [etcd](https://github.com/coreos/etcd) into a distributed init system. Think of it as an extension of systemd that operates at the cluster level instead of the machine level.
 
 This project is very low level and is designed as a foundation for higher order orchestration.
 
-[![Build Status](https://travis-ci.org/coreos/coreinit.png?branch=master)](https://travis-ci.org/coreos/coreinit)
+[![Build Status](https://travis-ci.org/coreos/fleet.png?branch=master)](https://travis-ci.org/coreos/fleet)
 
 ## Common Uses
 
-coreinit allows you to define flexible architectures for running your services:
+fleet allows you to define flexible architectures for running your services:
 
 * Deploy a single container anywhere on the cluster
 * Deploy multiple copies of the same container
@@ -19,21 +19,21 @@ coreinit allows you to define flexible architectures for running your services:
 
 ## Getting Started
 
-Before you can deploy units, coreinit must be [deployed][deploy] and [configured][configure] on each host cluster your cluster. After you have machines configured (`corectl list-machines`), [start some units][using-the-client.md].
+Before you can deploy units, fleet must be [deployed][deploy] and [configured][configure] on each host cluster your cluster. After you have machines configured (`corectl list-machines`), [start some units][using-the-client.md].
 
-[using-the-client.md]: https://github.com/coreos/coreinit/blob/master/Documentation/using-the-client.md
-[deploy]: https://github.com/coreos/coreinit/blob/master/Documentation/deployment.md
-[configure]: https://github.com/coreos/coreinit/blob/master/Documentation/configuration.md
+[using-the-client.md]: https://github.com/coreos/fleet/blob/master/Documentation/using-the-client.md
+[deploy]: https://github.com/coreos/fleet/blob/master/Documentation/deployment.md
+[configure]: https://github.com/coreos/fleet/blob/master/Documentation/configuration.md
 
 ### Building
 
-coreinit must be built with Go 1.2 on a Linux machine, or in a [Go docker container](https://index.docker.io/u/miksago/ubuntu-go/). Simply run `./build` and then copy the binaries out of bin/ onto each of your machines.
+fleet must be built with Go 1.2 on a Linux machine, or in a [Go docker container](https://index.docker.io/u/miksago/ubuntu-go/). Simply run `./build` and then copy the binaries out of bin/ onto each of your machines.
 
 ## Project Details
 
 ### APIs
 
-The current interfaces into coreinit should not yet be considered stable. Expect incompatible in subsequent releases.
+The current interfaces into fleet should not yet be considered stable. Expect incompatible in subsequent releases.
 
 ### Contributing
 
@@ -41,4 +41,4 @@ See [CONTRIBUTING](CONTRIBUTING.md) for details on submitting patches and contac
 
 ### License
 
-coreinit is under the Apache 2.0 license. See the [LICENSE](LICENSE) file for details.
+fleet is under the Apache 2.0 license. See the [LICENSE](LICENSE) file for details.

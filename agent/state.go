@@ -6,7 +6,7 @@ import (
 
 	log "github.com/golang/glog"
 
-	"github.com/coreos/coreinit/job"
+	"github.com/coreos/fleet/job"
 )
 
 type AgentState struct {

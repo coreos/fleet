@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	keyPrefix     = "/coreos.com/coreinit/"
+	keyPrefix     = "/coreos.com/fleet/"
 	requestPrefix = "/request/"
 )
 

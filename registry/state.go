@@ -3,7 +3,7 @@ package registry
 import (
 	"path"
 
-	"github.com/coreos/coreinit/job"
+	"github.com/coreos/fleet/job"
 )
 
 const (

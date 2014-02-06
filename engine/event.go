@@ -3,8 +3,8 @@ package engine
 import (
 	log "github.com/golang/glog"
 
-	"github.com/coreos/coreinit/event"
-	"github.com/coreos/coreinit/job"
+	"github.com/coreos/fleet/event"
+	"github.com/coreos/fleet/job"
 )
 
 type EventHandler struct {

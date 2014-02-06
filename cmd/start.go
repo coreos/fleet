@@ -7,7 +7,7 @@ import (
 
 	"github.com/codegangsta/cli"
 
-	"github.com/coreos/coreinit/job"
+	"github.com/coreos/fleet/job"
 )
 
 func newStartUnitCommand() cli.Command {
