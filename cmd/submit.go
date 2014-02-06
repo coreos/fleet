@@ -2,19 +2,16 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
-	"path"
 
 	"github.com/codegangsta/cli"
 
 	"github.com/coreos/fleet/job"
-	"github.com/coreos/fleet/unit"
 )
 
 func newSubmitUnitCommand() cli.Command {
 	return cli.Command{
-		Name: "submit",
-		Usage:  "Upload one or more units to the cluster",
+		Name:   "submit",
+		Usage:  "Upload one or more units to the cluster without starting them",
 		Action: submitUnitsAction,
 	}
 }
@@ -22,18 +19,10 @@ func newSubmitUnitCommand() cli.Command {
 func submitUnitsAction(c *cli.Context) {
 	r := getRegistry(c)
 
+	// First, validate each of the provided payloads
 	payloads := make([]job.JobPayload, len(c.Args()))
 	for i, v := range c.Args() {
-		out, err := ioutil.ReadFile(v)
-		if err != nil {
-			fmt.Printf("%s: No such file or directory\n", v)
-			return
-		}
-
-		unitFile := unit.NewSystemdUnitFile(string(out))
-
-		name := path.Base(v)
-		payload := job.NewJobPayload(name, *unitFile)
+		payload, err := getJobPayloadFromFile(v)
 		if err != nil {
 			fmt.Println(err.Error())
 			return
@@ -41,11 +30,13 @@ func submitUnitsAction(c *cli.Context) {
 		payloads[i] = *payload
 	}
 
-	req, err := job.NewJobRequest(payloads)
-	if err != nil {
-		fmt.Println(err.Error())
-		return
+	// Only after all the provided payloads have been validated
+	// do we push any changes to the Registry
+	for _, payload := range payloads {
+		err := r.CreatePayload(&payload)
+		if err != nil {
+			fmt.Printf("Creation of Payload %s failed: %v", err)
+			return
+		}
 	}
-
-	r.AddRequest(req)
 }

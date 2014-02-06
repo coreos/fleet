@@ -3,17 +3,21 @@ package main
 import (
 	"crypto/tls"
 	"fmt"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
+	"path"
 	"strings"
 	"text/tabwriter"
 
 	"github.com/codegangsta/cli"
 	"github.com/coreos/go-etcd/etcd"
 
+	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/registry"
 	"github.com/coreos/fleet/ssh"
+	"github.com/coreos/fleet/unit"
 )
 
 var out *tabwriter.Writer
@@ -96,4 +100,18 @@ func ellipsize(field string, n int) string {
 	} else {
 		return field
 	}
+}
+
+func getJobPayloadFromFile(file string) (*job.JobPayload, error) {
+	out, err := ioutil.ReadFile(file)
+	if err != nil {
+		return nil, err
+	}
+
+	unitFile := unit.NewSystemdUnitFile(string(out))
+
+	name := path.Base(file)
+	payload := job.NewJobPayload(name, *unitFile)
+
+	return payload, nil
 }

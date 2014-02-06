@@ -10,7 +10,6 @@ import (
 
 const (
 	keyPrefix     = "/_coreos.com/fleet/"
-	requestPrefix = "/request/"
 )
 
 type Registry struct {

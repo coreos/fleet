@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	DefaultRequestClaimTTL = "4s"
+	DefaultClaimTTL = "4s"
 )
 
 type Engine struct {
@@ -26,7 +26,7 @@ type Engine struct {
 }
 
 func New(reg *registry.Registry, events *event.EventBus, mach *machine.Machine) *Engine {
-	claimTTL, _ := time.ParseDuration(DefaultRequestClaimTTL)
+	claimTTL, _ := time.ParseDuration(DefaultClaimTTL)
 	return &Engine{reg, events, mach, claimTTL, nil}
 }
 
@@ -64,29 +64,6 @@ func (self *Engine) GetJobsScheduledToMachine(machName string) []job.Job {
 func (self *Engine) StopJob(jobName string) {
 	self.registry.StopJob(jobName)
 	log.Info("Stopped Job(%s)", jobName)
-}
-
-func (self *Engine) ResolveRequest(req *job.JobRequest) error {
-	log.V(2).Infof("Attempting to claim JobRequest(%s)", req.ID.String())
-	if !self.claimRequest(req) {
-		log.V(2).Infof("Could not claim JobRequest(%s)", req.ID.String())
-		return errors.New("Could not claim JobRequest")
-	}
-
-	log.V(1).Infof("Claimed JobRequest(%s)", req.ID.String())
-
-	for i := 0; i < len(req.Payloads); i++ {
-		jp := req.Payloads[i]
-		log.V(2).Infof("Creating JobPayload(%s) from JobRequest(%s)", jp.Name, req.ID.String())
-		self.registry.CreatePayload(&jp)
-		log.Infof("Created JobPayload(%s) from JobRequest(%s)", jp.Name, req.ID.String())
-	}
-
-	log.V(2).Infof("Resolving JobRequest(%s)", req.ID.String())
-	self.registry.ResolveRequest(req)
-	log.V(1).Infof("Resolved JobRequest(%s)", req.ID.String())
-
-	return nil
 }
 
 func (self *Engine) OfferJob(j job.Job) error {
@@ -130,8 +107,4 @@ func (self *Engine) claimJobOffer(jobName string) bool {
 
 func (self *Engine) claimJob(jobName string) bool {
 	return self.registry.ClaimJob(jobName, self.machine, self.claimTTL)
-}
-
-func (self *Engine) claimRequest(req *job.JobRequest) bool {
-	return self.registry.ClaimRequest(req, self.machine, self.claimTTL)
 }

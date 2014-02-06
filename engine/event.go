@@ -15,18 +15,6 @@ func NewEventHandler(engine *Engine) *EventHandler {
 	return &EventHandler{engine}
 }
 
-func (self *EventHandler) HandleEventRequestCreated(ev event.Event) {
-	request := ev.Payload.(job.JobRequest)
-
-	log.V(1).Infof("EventRequestCreated(%s): attempting to resolve JobRequest", request.ID.String())
-	err := self.engine.ResolveRequest(&request)
-	if err == nil {
-		log.V(1).Infof("EventRequestCreated(%s): resolved JobRequest", request.ID.String())
-	} else {
-		log.V(1).Infof("EventRequestCreated(%s): failed to resolve JobRequest: %s", request.ID.String(), err.Error())
-	}
-}
-
 func (self *EventHandler) HandleEventJobCreated(ev event.Event) {
 	j := ev.Payload.(job.Job)
 
