@@ -76,8 +76,8 @@ X-ConditionMachineOf=subgun.<N>.service
 At this point, it is simple enough to hand the two unit files over to fleet:
 
 ```
-$ corectl submit subgun-presence.*.service subgun.*.service
-$ corectl list-units
+$ fleetctl submit subgun-presence.*.service subgun.*.service
+$ fleetctl list-units
 UNIT						LOAD	ACTIVE	SUB	DESC	MACHINE
 subgun-presence.1.service	-		-		-	-		-
 subgun-presence.2.service	-		-		-	-		-
@@ -90,8 +90,8 @@ subgun.3.service			-		-		-	-		-
 And now they can be started:
 
 ```
-$ corectl start subgun-presence.*.service subgun.*.service
-$ corectl list-units
+$ fleetctl start subgun-presence.*.service subgun.*.service
+$ fleetctl list-units
 UNIT						LOAD	ACTIVE	SUB		DESC	MACHINE
 subgun-presence.1.service	loaded	active	running	-		148a18ff...
 subgun-presence.2.service	loaded	active	running	-		3caa7b7d...

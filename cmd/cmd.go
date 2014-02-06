@@ -62,8 +62,8 @@ func getRegistry(context *cli.Context) *registry.Registry {
 
 func main() {
 	app := cli.NewApp()
-	app.Name = "corectl"
-	app.Usage = "corectl is a command line driven interface to the cluster wide CoreOS init system."
+	app.Name = "fleetctl"
+	app.Usage = "fleetctl is a command line driven interface to the cluster wide CoreOS init system."
 
 	app.Flags = []cli.Flag{
 		cli.StringFlag{"endpoint", "http://127.0.0.1:4001", "Fleet Engine API endpoint (etcd)"},

@@ -19,7 +19,7 @@ fleet allows you to define flexible architectures for running your services:
 
 ## Getting Started
 
-Before you can deploy units, fleet must be [deployed][deploy] and [configured][configure] on each host cluster your cluster. After you have machines configured (`corectl list-machines`), [start some units][using-the-client.md].
+Before you can deploy units, fleet must be [deployed][deploy] and [configured][configure] on each host cluster your cluster. After you have machines configured (`fleetctl list-machines`), [start some units][using-the-client.md].
 
 [using-the-client.md]: https://github.com/coreos/fleet/blob/master/Documentation/using-the-client.md
 [deploy]: https://github.com/coreos/fleet/blob/master/Documentation/deployment.md

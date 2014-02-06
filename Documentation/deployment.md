@@ -17,16 +17,16 @@ The `fleet` daemon communicates with systemd (v207+) running locally on a given 
 
 ### SSH Keys
 
-The `corectl` client tool uses SSH to interact with a fleet cluster. This means each client's public SSH key must be authorized to access each `fleet` machine.
+The `fleetctl` client tool uses SSH to interact with a fleet cluster. This means each client's public SSH key must be authorized to access each `fleet` machine.
 
-Included in the [fleet source](../contrib/corectl-inject-ssh.sh) is a script that will help distribute SSH keys across a fleet cluster running on CoreOS. Using it is as simple as piping the contents of a public SSH key into the script:
-
-```
-cat ~/.ssh/id_rsa.pub | ./corectl-inject-ssh.sh simon
-```
-
-Any arguments past the first to `corectl-inject-ssh.sh` are passed directly to `corectl`.
+Included in the [fleet source](../contrib/fleetctl-inject-ssh.sh) is a script that will help distribute SSH keys across a fleet cluster running on CoreOS. Using it is as simple as piping the contents of a public SSH key into the script:
 
 ```
-cat ~/.ssh/id_rsa.pub | ./corectl-inject-ssh.sh simon --tunnel 19.12.0.33
+cat ~/.ssh/id_rsa.pub | ./fleetctl-inject-ssh.sh simon
+```
+
+Any arguments past the first to `fleetctl-inject-ssh.sh` are passed directly to `fleetctl`.
+
+```
+cat ~/.ssh/id_rsa.pub | ./fleetctl-inject-ssh.sh simon --tunnel 19.12.0.33
 ```
