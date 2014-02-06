@@ -42,10 +42,6 @@ There are two EventStreams in fleet. The first watches etcd for changes, while t
 
 ### User-facing Objects
 
-#### Requests
-
-There is currently one type of request object: the (poorly-named) JobRequest. This represents a set of JobPayloads a user wishes to be loaded into a cluster.
-
 #### Jobs and Payloads
 
 A JobPayload represents a single systemd service or socket. Once a JobPayload is pushed to the cluster, it is immutable. A JobPayload must be destroyed and re-submitted for any modifications to be made.
@@ -79,7 +75,5 @@ Once an Engine receives enough bids in response to a given offer, it makes a sch
 ## Putting it All Together
 
 The following demonstrates how the above objects and components interact with one another:
-
-![image](img/Requests-Diagram.png)
 
 ![image](img/Schedule-Diagram.png)

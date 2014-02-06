@@ -41,11 +41,7 @@ func submitUnitsAction(c *cli.Context) {
 		payloads[i] = *payload
 	}
 
-	req, err := job.NewJobRequest(payloads)
-	if err != nil {
-		fmt.Println(err.Error())
-		return
+	for _, jp := range payloads {
+		r.CreatePayload(&jp)
 	}
-
-	r.AddRequest(req)
 }

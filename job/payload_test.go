@@ -17,13 +17,12 @@ func TestNewJobPayloadBadType(t *testing.T) {
 
 func TestNewJobPayload(t *testing.T) {
 	payload := NewJobPayload("echo.service", *unit.NewSystemdUnitFile("Echo"))
-	payloads := []JobPayload{*payload}
-	jr, err := NewJobRequest(payloads)
-	if err != nil {
-		t.Errorf("Not expecting error:", err)
+
+	if payload.Name != "echo.service" {
+		t.Errorf("Payload has unexpected name '%s'", payload.Name)
 	}
 
-	if len(jr.Payloads) != 1 || jr.Payloads[0].Name != payloads[0].Name {
-		t.Error("Payloads does not match expected value")
+	if pt, _ := payload.Type(); pt != "systemd-service" {
+		t.Errorf("Payload has unexpected Type '%s'", pt)
 	}
 }

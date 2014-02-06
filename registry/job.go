@@ -117,10 +117,11 @@ func (r *Registry) GetJob(jobName string) *job.Job {
 	return &j
 }
 
-func (r *Registry) CreatePayload(jp *job.JobPayload) {
+func (r *Registry) CreatePayload(jp *job.JobPayload) error {
 	key := path.Join(keyPrefix, payloadPrefix, jp.Name)
 	json, _ := marshal(jp)
-	r.etcd.Set(key, json, 0)
+	_, err := r.etcd.Set(key, json, 0)
+	return err
 }
 
 func (r *Registry) GetPayload(payloadName string) *job.JobPayload {
