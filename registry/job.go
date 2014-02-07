@@ -157,7 +157,7 @@ func (r *Registry) ScheduleJob(jobName string, machName string) {
 }
 
 func (r *Registry) StopJob(jobName string) {
-	key := path.Join(keyPrefix, jobPrefix, jobName, "target")
+	key := path.Join(keyPrefix, jobPrefix, jobName)
 	r.etcd.Delete(key, true)
 }
 
