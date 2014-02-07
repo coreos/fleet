@@ -26,6 +26,8 @@ If an Agent's JobBid is rejected, that Agent simply forgets about it and moves o
 
 The Registry is the sole datastore in a fleet cluster. All persistent and ephemeral data is stored in the registry: unit files, cluster presence, job state, etc.
 
+![image](img/Requests-Diagram.png)
+
 **NOTE:**The backing store is currently the distributed locking service [etcd](https://github.com/coreos/etcd). This will continue to support fleet at a small scale, but scaling fleet up will require a redesign of the underlying datastores used by the Registry.
 
 ### Events
