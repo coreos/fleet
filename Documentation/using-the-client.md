@@ -15,7 +15,7 @@ Usage of the `--tunnel` flag requires two things:
 1. SSH access to the provided address
 2. ssh-agent must be running on the client machine with the necessary private key to access the provided address. 
 
-One can SSH directly to the tunnel host to assert ssh-agent is running with the proper access.
+One can SSH directly to the tunnel host to assert ssh-agent is running with the proper access. Additionally, an alias for the `--tunnel` flag makes it less cumbersome: `alias fleetctl=fleetctl --tunnel 10.10.10.10`
 
 fleetctl also requires direct communication with the etcd cluster that your fleet machines are configured to use. Use the `--endpoint` flag to override the default of `http://127.0.0.1:4001`:
 
