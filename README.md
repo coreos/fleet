@@ -2,7 +2,7 @@
 
 fleet ties together [systemd](http://coreos.com/using-coreos/systemd) and [etcd](https://github.com/coreos/etcd) into a distributed init system. Think of it as an extension of systemd that operates at the cluster level instead of the machine level.
 
-This project is very low level and is designed as a foundation for higher order orchestration.
+This project is very low level and is designed as a foundation for higher order orchestration. This is a preview release – please read the [security notice](Documentation/security.md).
 
 [![Build Status](https://travis-ci.org/coreos/fleet.png?branch=master)](https://travis-ci.org/coreos/fleet)
 
