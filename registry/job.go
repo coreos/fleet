@@ -144,10 +144,11 @@ func (r *Registry) DestroyPayload(payloadName string) {
 	r.etcd.Delete(key, false)
 }
 
-func (r *Registry) CreateJob(j *job.Job) {
+func (r *Registry) CreateJob(j *job.Job) error {
 	key := path.Join(keyPrefix, jobPrefix, j.Name, "object")
 	json, _ := marshal(j)
-	r.etcd.Set(key, json, 0)
+	_, err := r.etcd.Create(key, json, 0)
+	return err
 }
 
 func (r *Registry) ScheduleJob(jobName string, machName string) {
@@ -165,7 +166,7 @@ func (r *Registry) ClaimJob(jobName string, m *machine.Machine, ttl time.Duratio
 }
 
 func filterEventJobCreated(resp *etcd.Response) *event.Event {
-	if resp.Action != "set" {
+	if resp.Action != "create" {
 		return nil
 	}
 
