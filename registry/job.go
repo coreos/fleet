@@ -26,7 +26,6 @@ func (r *Registry) GetAllPayloads() []job.JobPayload {
 	resp, err := r.etcd.Get(key, true, true)
 
 	if err != nil {
-		log.Errorf(err.Error())
 		return payloads
 	}
 
