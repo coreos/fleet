@@ -2,8 +2,11 @@ package main
 
 import (
 	"fmt"
+	"sort"
 
 	"github.com/codegangsta/cli"
+
+	"github.com/coreos/fleet/job"
 )
 
 func newListUnitsCommand() cli.Command {
@@ -25,34 +28,55 @@ func listUnitsAction(c *cli.Context) {
 		fmt.Fprintln(out, "UNIT\tLOAD\tACTIVE\tSUB\tDESC\tMACHINE")
 	}
 
-	full := c.Bool("full")
+	names := make(map[string]bool, 0)
+	sortable := make(sort.StringSlice, 0)
 
-	for _, jp := range r.GetAllPayloads() {
-		js := r.GetJobState(jp.Name)
-
-		loadState := "-"
-		activeState := "-"
-		subState := "-"
-		mach := "-"
-
-		if js != nil {
-			loadState = js.LoadState
-			activeState = js.ActiveState
-			subState = js.SubState
-
-			if js.Machine != nil {
-				mach = js.Machine.String()
-				if !full {
-					mach = ellipsize(mach, 8)
-				}
-				if len(js.Machine.PublicIP) > 0 {
-					mach = fmt.Sprintf("%s/%s", mach, js.Machine.PublicIP)
-				}
-			}
+	for _, p := range r.GetAllPayloads() {
+		if _, ok := names[p.Name]; !ok {
+			names[p.Name] = true
+			sortable = append(sortable, p.Name)
 		}
+	}
 
-		fmt.Fprintf(out, "%s\t%s\t%s\t%s\t-\t%s\n", jp.Name, loadState, activeState, subState, mach)
+	for _, j := range r.GetAllJobs() {
+		if _, ok := names[j.Name]; !ok {
+			names[j.Name] = true
+			sortable = append(sortable, j.Name)
+		}
+	}
+
+	sortable.Sort()
+
+	full := c.Bool("full")
+	for _, name := range sortable {
+		state := r.GetJobState(name)
+		printJobState(name, state, full)
 	}
 
 	out.Flush()
+}
+
+func printJobState(name string, js *job.JobState, full bool) {
+	loadState := "-"
+	activeState := "-"
+	subState := "-"
+	mach := "-"
+
+	if js != nil {
+		loadState = js.LoadState
+		activeState = js.ActiveState
+		subState = js.SubState
+
+		if js.Machine != nil {
+			mach = js.Machine.String()
+			if !full {
+				mach = ellipsize(mach, 8)
+			}
+			if len(js.Machine.PublicIP) > 0 {
+				mach = fmt.Sprintf("%s/%s", mach, js.Machine.PublicIP)
+			}
+		}
+	}
+
+	fmt.Fprintf(out, "%s\t%s\t%s\t%s\t-\t%s\n", name, loadState, activeState, subState, mach)
 }
