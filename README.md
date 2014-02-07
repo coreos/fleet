@@ -17,6 +17,35 @@ fleet allows you to define flexible architectures for running your services:
 * Maintain N containers of a service, re-deploying on failure
 * Deploy containers on machines matching specific metadata
 
+## Examples
+
+### List Machines in the Cluster
+```
+$ fleetctl list-machines
+MACHINE									IP			METADATA
+148a18ff-6e95-4cd8-92da-c9de9bb90d5a	19.4.0.112	region=us-west
+491586a6-508f-4583-a71d-bfc4d146e996	19.4.0.113	region=us-east
+```
+
+### Submit & Start Units
+
+```
+$ ls examples/
+hello.service	ping.service	pong.service
+$ fleetctl submit examples/*
+$ fleetctl start hello.service
+```
+
+### List Units
+
+```
+$ fleetctl list-units
+UNIT			LOAD	ACTIVE	SUB		DESC	MACHINE
+hello.service	loaded	active	running	-		148a18ff-6e95-4cd8-92da-c9de9bb90d5a
+ping.service	-		-		-		-		-
+pong.service	-		-		-		-		-
+```
+
 ## Getting Started
 
 Before you can deploy units, fleet must be [deployed][deploy] and [configured][configure] on each host cluster your cluster. After you have machines configured (`fleetctl list-machines`), [start some units][using-the-client.md].
