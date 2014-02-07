@@ -24,14 +24,14 @@ func New(cfg config.Config) *Server {
 	m := machine.New(cfg.BootId, cfg.PublicIP, cfg.Metadata())
 
 	regClient := etcd.NewClient(cfg.EtcdServers)
-	regClient.SetConsistency(etcd.WEAK_CONSISTENCY)
+	regClient.SetConsistency(etcd.STRONG_CONSISTENCY)
 	r := registry.New(regClient)
 
 	eb := event.NewEventBus()
 	eb.Listen()
 
 	eventClient := etcd.NewClient(cfg.EtcdServers)
-	eventClient.SetConsistency(etcd.WEAK_CONSISTENCY)
+	eventClient.SetConsistency(etcd.STRONG_CONSISTENCY)
 	es := registry.NewEventStream(eventClient)
 
 	a, err := agent.New(r, eb, m, cfg.AgentTTL, cfg.UnitPrefix)
