@@ -76,5 +76,14 @@ func getLocalIP() string {
 		return ""
 	}
 
-	return strings.SplitN(addrs[0].String(), "/", 2)[0]
+	for _, addr := range addrs {
+		// Attempt to parse the address in CIDR notation
+		// and assert it is IPv4
+		ip, _, err := net.ParseCIDR(addr.String())
+		if err == nil && ip.To4() != nil {
+			return ip.String()
+		}
+	}
+
+	return ""
 }
