@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	
+
 	"github.com/coreos/fleet/unit"
 )
 

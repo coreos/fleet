@@ -27,6 +27,8 @@ func (eh *EventHandler) HandleEventJobOffered(ev event.Event) {
 	if eh.agent.AbleToRun(&jo.Job) {
 		log.Infof("EventJobOffered(%s): passed all criteria, submitting JobBid", jo.Job.Name)
 		eh.agent.Bid(jo.Job.Name)
+	} else  {
+		log.V(1).Infof("EventJobOffered(%s): not all criteria met, not bidding", jo.Job.Name)
 	}
 }
 

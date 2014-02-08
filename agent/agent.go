@@ -279,11 +279,17 @@ func (a *Agent) AbleToRun(j *job.Job) bool {
 		return false
 	}
 
-	for _, peer := range j.Payload.Peers() {
-		if !a.peerScheduledHere(j.Name, peer) {
-			log.V(1).Infof("Required Peer(%s) of Job(%s) is not scheduled locally", peer, j.Name)
-			return false
+	peers := j.Payload.Peers()
+	if len(peers) > 0 {
+		log.V(1).Infof("Asserting required Peers %v of Job(%s) are scheduled locally", peers, j.Name)
+		for _, peer := range peers {
+			if !a.peerScheduledHere(j.Name, peer) {
+				log.V(1).Infof("Required Peer(%s) of Job(%s) is not scheduled locally", peer, j.Name)
+				return false
+			}
 		}
+	} else {
+		log.V(2).Infof("Job(%s) has no peers to worry about", j.Name)
 	}
 
 	if conflicted, conflictedJobName := a.state.HasConflict(j.Name, j.Payload.Conflicts()); conflicted {
