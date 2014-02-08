@@ -20,7 +20,11 @@ const (
 
 func (r *Registry) CreateJobOffer(jo *job.JobOffer) {
 	key := path.Join(keyPrefix, offerPrefix, jo.Job.Name, "object")
-	json, _ := marshal(jo)
+	json, err := marshal(jo)
+	if err != nil {
+		log.Errorf(err.Error())
+		return
+	}
 	r.etcd.Set(key, json, 0)
 }
 
