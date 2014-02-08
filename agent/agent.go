@@ -343,3 +343,7 @@ func (a *Agent) peerScheduledHere(jobName, peerName string) bool {
 	log.V(1).Infof("Peer(%s) of Job(%s) scheduled here", peerName, jobName)
 	return true
 }
+
+func (a *Agent) UnresolvedJobOffers() []job.JobOffer {
+	return a.registry.UnresolvedJobOffers()
+}

@@ -79,18 +79,18 @@ func (r *Registry) RemoveMachineState(machine *machine.Machine) error {
 	return err
 }
 
-func (self *EventStream) filterEventMachineUpdated(resp *etcd.Response) *event.Event {
+func (self *EventStream) filterEventMachineCreated(resp *etcd.Response) *event.Event {
 	if base := path.Base(resp.Node.Key); base != "object" {
 		return nil
 	}
 
-	if resp.Action != "set" {
+	if resp.Action != "create" {
 		return nil
 	}
 
 	var m machine.Machine
 	unmarshal(resp.Node.Value, &m)
-	return &event.Event{"EventMachineUpdated", m, nil}
+	return &event.Event{"EventMachineCreated", m, nil}
 }
 
 func (self *EventStream) filterEventMachineRemoved(resp *etcd.Response) *event.Event {
