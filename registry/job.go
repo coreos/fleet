@@ -206,13 +206,13 @@ func filterEventJobStopped(resp *etcd.Response) *event.Event {
 		return nil
 	}
 
-	dir, baseName := path.Split(resp.Node.Key)
-	if baseName != "target" {
+	dir, jobName := path.Split(resp.Node.Key)
+	dir = strings.TrimSuffix(dir, "/")
+	dir, prefixName := path.Split(dir)
+
+	if prefixName != "job" {
 		return nil
 	}
-
-	dir = strings.TrimSuffix(dir, "/")
-	dir, jobName := path.Split(dir)
 
 	return &event.Event{"EventJobStopped", jobName, nil}
 }
