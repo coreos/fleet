@@ -100,6 +100,10 @@ func (a *Agent) Purge() {
 // half of the provided ttl. Stop reporting when the provided
 // channel is closed.
 func (a *Agent) Heartbeat(ttl time.Duration, stop chan bool) {
+	// Explicitly heartbeat immediately to push state to the
+	// Registry as quickly as possible
+	a.registry.SetMachineState(a.machine, a.ttl)
+
 	interval := ttl / refreshInterval
 	for true {
 		select {
