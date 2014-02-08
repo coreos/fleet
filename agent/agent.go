@@ -128,7 +128,7 @@ func (a *Agent) StartJob(j *job.Job) {
 // Inform the Registry that a Job must be rescheduled
 func (a *Agent) RescheduleJob(j *job.Job) {
 	log.V(2).Infof("Stopping Job(%s)", j.Name)
-	a.registry.StopJob(j.Name)
+	a.registry.UnscheduleJob(j.Name)
 
 	offer := job.NewOfferFromJob(*j)
 	log.V(2).Infof("Publishing JobOffer(%s)", offer.Job.Name)

@@ -61,9 +61,9 @@ func (self *Engine) GetJobsScheduledToMachine(machName string) []job.Job {
 	return jobs
 }
 
-func (self *Engine) StopJob(jobName string) {
-	self.registry.StopJob(jobName)
-	log.Info("Stopped Job(%s)", jobName)
+func (self *Engine) UnscheduleJob(jobName string) {
+	self.registry.UnscheduleJob(jobName)
+	log.Infof("Unscheduled Job(%s)", jobName)
 }
 
 func (self *Engine) OfferJob(j job.Job) error {
