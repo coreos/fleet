@@ -42,6 +42,12 @@ func (r *Registry) UnresolvedJobOffers() []job.JobOffer {
 		key := path.Join(node.Key, "object")
 		resp, err := r.etcd.Get(key, true, true)
 
+		// The object was probably handled between when we attempted to
+		// start resolving offers and when we actually tried to get it
+		if err != nil {
+			continue
+		}
+
 		var jo job.JobOffer
 		err = unmarshal(resp.Node.Value, &jo)
 		if err != nil {
