@@ -53,7 +53,6 @@ func (r *Registry) GetAllJobs() []job.Job {
 	resp, err := r.etcd.Get(key, true, true)
 
 	if err != nil {
-		log.Errorf(err.Error())
 		return jobs
 	}
 
@@ -154,6 +153,11 @@ func (r *Registry) CreateJob(j *job.Job) error {
 func (r *Registry) ScheduleJob(jobName string, machName string) {
 	key := path.Join(keyPrefix, jobPrefix, jobName, "target")
 	r.etcd.Set(key, machName, 0)
+}
+
+func (r *Registry) UnscheduleJob(jobName string) {
+	key := path.Join(keyPrefix, jobPrefix, jobName, "target")
+	r.etcd.Delete(key, true)
 }
 
 func (r *Registry) StopJob(jobName string) {

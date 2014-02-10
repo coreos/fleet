@@ -92,3 +92,25 @@ func (eh *EventHandler) HandleEventJobStateUpdated(ev event.Event) {
 
 	eh.agent.ReportJobState(jobName, state)
 }
+
+func (eh *EventHandler) HandleEventMachineCreated(ev event.Event) {
+	mach := ev.Payload.(machine.Machine)
+	if mach.BootId != eh.agent.Machine().BootId {
+		log.V(1).Infof("EventMachineCreated(%s): references other Machine, discarding event", mach.BootId)
+	}
+
+	for _, jo := range eh.agent.UnresolvedJobOffers() {
+		log.V(1).Infof("EventMachineCreated(%s): verifying ability to run Job(%s)", mach.BootId, jo.Job.Name)
+
+		// Everything we check against could change over time, so we track all
+		// offers starting here for future bidding even if we can't bid now
+		eh.agent.TrackOffer(jo)
+
+		if eh.agent.AbleToRun(&jo.Job) {
+			log.Infof("EventMachineCreated(%s): passed all criteria, submitting JobBid(%s)", mach.BootId, jo.Job.Name)
+			eh.agent.Bid(jo.Job.Name)
+		} else  {
+			log.V(1).Infof("EventMachineCreated(%s): not all criteria met, not bidding for Job(%s)", mach.BootId, jo.Job.Name)
+		}
+	}
+}

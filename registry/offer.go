@@ -20,8 +20,39 @@ const (
 
 func (r *Registry) CreateJobOffer(jo *job.JobOffer) {
 	key := path.Join(keyPrefix, offerPrefix, jo.Job.Name, "object")
-	json, _ := marshal(jo)
+	json, err := marshal(jo)
+	if err != nil {
+		log.Errorf(err.Error())
+		return
+	}
 	r.etcd.Set(key, json, 0)
+}
+
+func (r *Registry) UnresolvedJobOffers() []job.JobOffer {
+	var offers []job.JobOffer
+
+	key := path.Join(keyPrefix, offerPrefix)
+	resp, err := r.etcd.Get(key, true, true)
+
+	if err != nil {
+		return offers
+	}
+
+	for _, node := range resp.Node.Nodes {
+		key := path.Join(node.Key, "object")
+		resp, err := r.etcd.Get(key, true, true)
+
+		var jo job.JobOffer
+		err = unmarshal(resp.Node.Value, &jo)
+		if err != nil {
+			log.Errorf(err.Error())
+			continue
+		}
+
+		offers = append(offers, jo)
+	}
+
+	return offers
 }
 
 func (r *Registry) ClaimJobOffer(jobName string, m *machine.Machine, ttl time.Duration) bool {

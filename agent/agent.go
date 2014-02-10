@@ -86,6 +86,9 @@ func (a *Agent) Purge() {
 	}
 
 	for _, j := range a.registry.GetAllJobsByMachine(a.machine) {
+		log.V(1).Infof("Clearing JobState(%s) from Registry", j.Name)
+		a.registry.SaveJobState(j.Name, nil)
+
 		offer := job.NewOfferFromJob(j)
 		log.V(2).Infof("Publishing JobOffer(%s)", offer.Job.Name)
 		a.registry.CreateJobOffer(offer)
@@ -97,6 +100,10 @@ func (a *Agent) Purge() {
 // half of the provided ttl. Stop reporting when the provided
 // channel is closed.
 func (a *Agent) Heartbeat(ttl time.Duration, stop chan bool) {
+	// Explicitly heartbeat immediately to push state to the
+	// Registry as quickly as possible
+	a.registry.SetMachineState(a.machine, a.ttl)
+
 	interval := ttl / refreshInterval
 	for true {
 		select {
@@ -121,7 +128,7 @@ func (a *Agent) StartJob(j *job.Job) {
 // Inform the Registry that a Job must be rescheduled
 func (a *Agent) RescheduleJob(j *job.Job) {
 	log.V(2).Infof("Stopping Job(%s)", j.Name)
-	a.registry.StopJob(j.Name)
+	a.registry.UnscheduleJob(j.Name)
 
 	offer := job.NewOfferFromJob(*j)
 	log.V(2).Infof("Publishing JobOffer(%s)", offer.Job.Name)
@@ -335,4 +342,8 @@ func (a *Agent) peerScheduledHere(jobName, peerName string) bool {
 
 	log.V(1).Infof("Peer(%s) of Job(%s) scheduled here", peerName, jobName)
 	return true
+}
+
+func (a *Agent) UnresolvedJobOffers() []job.JobOffer {
+	return a.registry.UnresolvedJobOffers()
 }
