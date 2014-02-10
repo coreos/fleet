@@ -112,6 +112,7 @@ func (m *SystemdManager) StartJob(job *job.Job) {
 
 	name := m.addUnitNamePrefix(job.Name)
 	m.writeUnit(name, job.Payload.Unit.String())
+	m.daemonReload()
 
 	m.subscriptions.Add(name)
 
@@ -180,6 +181,12 @@ func (m *SystemdManager) readUnit(name string) (string, error) {
 	} else {
 		return "", errors.New(fmt.Sprintf("No unit file at local path %s", path))
 	}
+}
+
+func (m *SystemdManager) daemonReload() error {
+	log.Infof("Instructing systemd to reload units")
+	_, err := m.Systemd.Reload()
+	return err
 }
 
 func (m *SystemdManager) writeUnit(name string, contents string) error {
