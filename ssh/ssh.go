@@ -58,8 +58,8 @@ func Shell(client *gossh.ClientConn) error {
 		return err
 	}
 
-	err = session.Wait()
-	return err
+	session.Wait()
+	return nil
 }
 
 func sshClientConfig(user string) *gossh.ClientConfig {
