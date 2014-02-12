@@ -11,7 +11,11 @@ export GOPATH=${PWD}
 eval $(go env)
 
 if [ ${GOOS} = "linux" ]; then
+	echo "Building fleet"
 	go install github.com/coreos/fleet
+else
+	echo "Skipping fleet build"
 fi
 
+echo "Building fleetctl"
 go install github.com/coreos/fleet/fleetctl
