@@ -4,7 +4,7 @@ import (
 	"errors"
 	"time"
 
-	log "github.com/golang/glog"
+	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
 
 	"github.com/coreos/fleet/event"
 	"github.com/coreos/fleet/job"
@@ -17,12 +17,12 @@ const (
 )
 
 type Engine struct {
-	registry *registry.Registry
-	events   *event.EventBus
-	machine  *machine.Machine
-	claimTTL time.Duration
+	registry	*registry.Registry
+	events		*event.EventBus
+	machine		*machine.Machine
+	claimTTL	time.Duration
 
-	stop chan bool
+	stop	chan bool
 }
 
 func New(reg *registry.Registry, events *event.EventBus, mach *machine.Machine) *Engine {

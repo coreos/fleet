@@ -8,8 +8,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/coreos/go-etcd/etcd"
-	"github.com/golang/glog"
+	"github.com/coreos/fleet/third_party/github.com/coreos/go-etcd/etcd"
+	"github.com/coreos/fleet/third_party/github.com/golang/glog"
 
 	"github.com/coreos/fleet/config"
 	"github.com/coreos/fleet/server"
@@ -108,7 +108,7 @@ func listenForSignals(sigmap map[os.Signal]func()) {
 	}
 }
 
-type etcdLogger struct {}
+type etcdLogger struct{}
 
 func (el etcdLogger) Debug(args ...interface{}) {
 	glog.V(3).Info(args...)

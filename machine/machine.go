@@ -5,15 +5,15 @@ import (
 	"net"
 	"strings"
 
-	log "github.com/golang/glog"
+	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
 )
 
 const boot_id_path = "/proc/sys/kernel/random/boot_id"
 
 type Machine struct {
-	BootId   string
-	PublicIP string
-	Metadata map[string]string
+	BootId		string
+	PublicIP	string
+	Metadata	map[string]string
 }
 
 func New(bootId string, publicIP string, metadata map[string]string) (m *Machine) {

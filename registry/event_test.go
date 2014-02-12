@@ -3,7 +3,7 @@ package registry
 import (
 	"testing"
 
-	"github.com/coreos/go-etcd/etcd"
+	"github.com/coreos/fleet/third_party/github.com/coreos/go-etcd/etcd"
 
 	"github.com/coreos/fleet/event"
 )
@@ -21,7 +21,7 @@ func TestPipe(t *testing.T) {
 	go pipe(etcdchan, translate, eventchan, stopchan)
 
 	resp := etcd.Response{Action: "TestAction", Node: &etcd.Node{Key: "/", ModifiedIndex: 0}}
-	etcdchan<- &resp
+	etcdchan <- &resp
 
 	ev := <-eventchan
 	if ev.Type != "TranslateTest" {

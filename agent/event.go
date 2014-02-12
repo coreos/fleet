@@ -1,7 +1,7 @@
 package agent
 
 import (
-	log "github.com/golang/glog"
+	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
 
 	"github.com/coreos/fleet/event"
 	"github.com/coreos/fleet/job"
@@ -27,7 +27,7 @@ func (eh *EventHandler) HandleEventJobOffered(ev event.Event) {
 	if eh.agent.AbleToRun(&jo.Job) {
 		log.Infof("EventJobOffered(%s): passed all criteria, submitting JobBid", jo.Job.Name)
 		eh.agent.Bid(jo.Job.Name)
-	} else  {
+	} else {
 		log.V(1).Infof("EventJobOffered(%s): not all criteria met, not bidding", jo.Job.Name)
 	}
 }
@@ -109,7 +109,7 @@ func (eh *EventHandler) HandleEventMachineCreated(ev event.Event) {
 		if eh.agent.AbleToRun(&jo.Job) {
 			log.Infof("EventMachineCreated(%s): passed all criteria, submitting JobBid(%s)", mach.BootId, jo.Job.Name)
 			eh.agent.Bid(jo.Job.Name)
-		} else  {
+		} else {
 			log.V(1).Infof("EventMachineCreated(%s): not all criteria met, not bidding for Job(%s)", mach.BootId, jo.Job.Name)
 		}
 	}

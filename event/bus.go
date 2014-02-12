@@ -4,15 +4,15 @@ import (
 	"fmt"
 	"reflect"
 
-	log "github.com/golang/glog"
+	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
 
 	"github.com/coreos/fleet/machine"
 )
 
 type EventBus struct {
-	listeners map[string]EventListener
-	Channel   chan *Event
-	stop   chan bool
+	listeners	map[string]EventListener
+	Channel		chan *Event
+	stop		chan bool
 }
 
 func NewEventBus() *EventBus {

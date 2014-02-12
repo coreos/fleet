@@ -5,11 +5,11 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/coreos/go-etcd/etcd"
+	"github.com/coreos/fleet/third_party/github.com/coreos/go-etcd/etcd"
 )
 
 const (
-	keyPrefix     = "/_coreos.com/fleet/"
+	keyPrefix = "/_coreos.com/fleet/"
 )
 
 type Registry struct {

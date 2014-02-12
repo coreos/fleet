@@ -6,20 +6,20 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/BurntSushi/toml"
-	"github.com/golang/glog"
+	"github.com/coreos/fleet/third_party/github.com/BurntSushi/toml"
+	"github.com/coreos/fleet/third_party/github.com/golang/glog"
 
 	"github.com/coreos/fleet/agent"
 )
 
 type Config struct {
-	BootId      string   `toml:"bootid"`
-	EtcdServers []string `toml:"etcd_servers"`
-	PublicIP    string   `toml:"public_ip"`
-	Verbosity   int      `toml:"verbosity"`
-	RawMetadata string   `toml:"metadata"`
-	UnitPrefix  string   `toml:"unit_prefix"`
-	AgentTTL    string   `toml:"agent_ttl"`
+	BootId		string		`toml:"bootid"`
+	EtcdServers	[]string	`toml:"etcd_servers"`
+	PublicIP	string		`toml:"public_ip"`
+	Verbosity	int		`toml:"verbosity"`
+	RawMetadata	string		`toml:"metadata"`
+	UnitPrefix	string		`toml:"unit_prefix"`
+	AgentTTL	string		`toml:"agent_ttl"`
 }
 
 func NewConfig() *Config {
