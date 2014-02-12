@@ -1,4 +1,12 @@
 #!/bin/bash -e
 
-go run third_party.go build -o bin/fleet github.com/coreos/fleet
-go run third_party.go build -o bin/fleetctl github.com/coreos/fleet/cmd
+if [ ! -h src/github.com/coreos/fleet ]; then
+	mkdir -p src/github.com/coreos/
+	ln -s ../../.. src/github.com/coreos/fleet
+fi
+
+export GOBIN=${PWD}/bin
+export GOPATH=${PWD}
+
+go install github.com/coreos/fleet
+go install github.com/coreos/fleet/fleetctl
