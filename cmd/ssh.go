@@ -5,6 +5,7 @@ import (
 	"log"
 	"strings"
 
+	gossh "code.google.com/p/go.crypto/ssh"
 	"github.com/codegangsta/cli"
 
 	"github.com/coreos/fleet/machine"
@@ -60,9 +61,23 @@ func sshAction(c *cli.Context) {
 		addr = fmt.Sprintf("%s:22", js.Machine.PublicIP)
 	}
 
+	var err error
+	var sshClient *gossh.ClientConn
+	if tun := getTunnelFlag(c); tun != "" {
+		sshClient, err = ssh.NewTunnelledSSHClient("core", tun, addr)
+	} else {
+		sshClient, err = ssh.NewSSHClient("core", addr)
+	}
+	if err != nil {
+		log.Fatalf("Unable to establish SSH connection: %v", err)
+		return
+	}
+
+	defer sshClient.Close()
+
 	if len(args) > 0 {
 		cmd := strings.Join(args, " ")
-		stdout, err := ssh.Execute("core", addr, cmd)
+		stdout, err := ssh.Execute(sshClient, cmd)
 		if err != nil {
 			log.Fatalf("Unable to run command over SSH: %s", err.Error())
 		}
@@ -80,7 +95,7 @@ func sshAction(c *cli.Context) {
 		}
 
 	} else {
-		if err := ssh.Shell("core", addr); err != nil {
+		if err := ssh.Shell(sshClient); err != nil {
 			log.Fatalf(err.Error())
 		}
 	}

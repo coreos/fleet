@@ -28,16 +28,13 @@ func init() {
 }
 
 func getRegistry(context *cli.Context) *registry.Registry {
-	tun := context.GlobalString("tunnel")
+	tun := getTunnelFlag(context)
 	endpoint := context.GlobalString("endpoint")
 
 	machines := []string{endpoint}
 	client := etcd.NewClient(machines)
 
 	if tun != "" {
-		if !strings.Contains(tun, ":") {
-			tun += ":22"
-		}
 		sshClient, err := ssh.NewSSHClient("core", tun)
 		if err != nil {
 			panic(err)
@@ -71,7 +68,7 @@ func main() {
 
 	app.Flags = []cli.Flag{
 		cli.StringFlag{"endpoint", "http://127.0.0.1:4001", "Fleet Engine API endpoint (etcd)"},
-		cli.StringFlag{"tunnel", "", "Establish an SSH tunnel through the provided address for all etcd communication."},
+		cli.StringFlag{"tunnel", "", "Establish an SSH tunnel through the provided address for communication with fleet and etcd."},
 	}
 
 	app.Commands = []cli.Command{
@@ -114,4 +111,12 @@ func getJobPayloadFromFile(file string) (*job.JobPayload, error) {
 	payload := job.NewJobPayload(name, *unitFile)
 
 	return payload, nil
+}
+
+func getTunnelFlag(context *cli.Context) string {
+	tun := context.GlobalString("tunnel")
+	if !strings.Contains(tun, ":") {
+		tun += ":22"
+	}
+	return tun
 }

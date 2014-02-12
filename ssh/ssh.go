@@ -9,12 +9,7 @@ import (
 	"code.google.com/p/go.crypto/ssh/terminal"
 )
 
-func Execute(user, addr, cmd string) (*bufio.Reader, error) {
-	client, err := NewSSHClient(user, addr)
-	if err != nil {
-		return nil, err
-	}
-
+func Execute(client *gossh.ClientConn, cmd string) (*bufio.Reader, error) {
 	session, err := client.NewSession()
 	if err != nil {
 		return nil, err
@@ -29,13 +24,7 @@ func Execute(user, addr, cmd string) (*bufio.Reader, error) {
 	return bstdout, nil
 }
 
-func Shell(user, addr string) error {
-	client, err := NewSSHClient(user, addr)
-	if err != nil {
-		return err
-	}
-	defer client.Close()
-
+func Shell(client *gossh.ClientConn) error {
 	session, err := client.NewSession()
 	if err != nil {
 		return err
@@ -69,24 +58,48 @@ func Shell(user, addr string) error {
 		return err
 	}
 
-	err = session.Wait()
-	return err
+	session.Wait()
+	return nil
 }
 
-func NewSSHClient(user, addr string) (*gossh.ClientConn, error) {
+func sshClientConfig(user string) *gossh.ClientConfig {
 	agent, err := net.Dial("unix", os.Getenv("SSH_AUTH_SOCK"))
 	if err != nil {
-		return nil, err
+		return nil
 	}
 
 	auths := []gossh.ClientAuth{
 		gossh.ClientAuthAgent(gossh.NewAgentClient(agent)),
 	}
 
-	clientConfig := &gossh.ClientConfig{
+	return &gossh.ClientConfig{
 		User: user,
 		Auth: auths,
 	}
+}
 
+func NewSSHClient(user, addr string) (*gossh.ClientConn, error) {
+	clientConfig := sshClientConfig(user)
 	return gossh.Dial("tcp", addr, clientConfig)
+}
+
+func NewTunnelledSSHClient(user, tunaddr, tgtaddr string) (*gossh.ClientConn, error) {
+	clientConfig := sshClientConfig(user)
+
+	tunnelClient, err := gossh.Dial("tcp", tunaddr, clientConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	targetConn, err := tunnelClient.Dial("tcp", tgtaddr)
+	if err != nil {
+		return nil, err
+	}
+
+	targetClient, err := gossh.Client(targetConn, clientConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	return targetClient, nil
 }

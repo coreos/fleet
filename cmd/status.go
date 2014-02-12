@@ -5,6 +5,7 @@ import (
 	"log"
 	"path"
 
+	gossh "code.google.com/p/go.crypto/ssh"
 	"github.com/codegangsta/cli"
 
 	"github.com/coreos/fleet/registry"
@@ -29,21 +30,34 @@ func statusUnitsAction(c *cli.Context) {
 		}
 
 		name := path.Base(v)
-		printUnitStatus(r, name)
+		printUnitStatus(c, r, name)
 	}
 }
 
-func printUnitStatus(r *registry.Registry, jobName string) {
+func printUnitStatus(c *cli.Context, r *registry.Registry, jobName string) {
 	js := r.GetJobState(jobName)
 
 	if js == nil {
 		fmt.Println("%s does not appear to be running", jobName)
 	}
 
-	user := "core"
 	addr := fmt.Sprintf("%s:22", js.Machine.PublicIP)
+
+	var err error
+	var sshClient *gossh.ClientConn
+	if tun := getTunnelFlag(c); tun != "" {
+		sshClient, err = ssh.NewTunnelledSSHClient("core", tun, addr)
+	} else {
+		sshClient, err = ssh.NewSSHClient("core", addr)
+	}
+	if err != nil {
+		log.Fatalf("Unable to establish SSH connection: %v", err)
+	}
+
+	defer sshClient.Close()
+
 	cmd := fmt.Sprintf("systemctl status -l %s", jobName)
-	stdout, err := ssh.Execute(user, addr, cmd)
+	stdout, err := ssh.Execute(sshClient, cmd)
 	if err != nil {
 		log.Fatalf("Unable to execute command over SSH: %s", err.Error())
 	}

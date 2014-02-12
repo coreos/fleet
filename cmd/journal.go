@@ -5,6 +5,7 @@ import (
 	"log"
 	"syscall"
 
+	gossh "code.google.com/p/go.crypto/ssh"
 	"github.com/codegangsta/cli"
 
 	"github.com/coreos/fleet/ssh"
@@ -12,9 +13,9 @@ import (
 
 func newJournalCommand() cli.Command {
 	return cli.Command{
-		Name:        "journal",
-		Usage:       "Print the journal of a unit in the cluster to stdout",
-		Action:      journalAction,
+		Name:   "journal",
+		Usage:  "Print the journal of a unit in the cluster to stdout",
+		Action: journalAction,
 		Flags: []cli.Flag{
 			cli.IntFlag{"lines, n", 10, "Number of log lines to return."},
 		},
@@ -36,10 +37,23 @@ func journalAction(c *cli.Context) {
 		syscall.Exit(1)
 	}
 
-	user := "core"
 	addr := fmt.Sprintf("%s:22", js.Machine.PublicIP)
+
+	var err error
+	var sshClient *gossh.ClientConn
+	if tun := getTunnelFlag(c); tun != "" {
+		sshClient, err = ssh.NewTunnelledSSHClient("core", tun, addr)
+	} else {
+		sshClient, err = ssh.NewSSHClient("core", addr)
+	}
+	if err != nil {
+		log.Fatalf("Unable to establish SSH connection: %v", err)
+	}
+
+	defer sshClient.Close()
+
 	cmd := fmt.Sprintf("journalctl -u %s --no-pager -l -n %d", jobName, c.Int("lines"))
-	stdout, err := ssh.Execute(user, addr, cmd)
+	stdout, err := ssh.Execute(sshClient, cmd)
 	if err != nil {
 		log.Fatalf("Unable to run command over SSH: %s", err.Error())
 	}
