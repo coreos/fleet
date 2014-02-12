@@ -1,6 +1,7 @@
 package registry
 
 import (
+	"fmt"
 	"path"
 	"time"
 
@@ -77,6 +78,11 @@ func (r *Registry) RemoveMachineState(machine *machine.Machine) error {
 	key := path.Join(keyPrefix, machinePrefix, machine.BootId, "object")
 	_, err := r.etcd.Delete(key, false)
 	return err
+}
+
+// Attempt to acquire a lock on a given machine for a given amount of time
+func (r *Registry) ClaimMachine(machName string, m *machine.Machine, ttl time.Duration) bool {
+	return r.acquireLeadership(fmt.Sprintf("machine-%s", machName), m.BootId, ttl)
 }
 
 func (self *EventStream) filterEventMachineCreated(resp *etcd.Response) *event.Event {

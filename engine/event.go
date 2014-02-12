@@ -36,10 +36,16 @@ func (self *EventHandler) HandleEventJobBidSubmitted(ev event.Event) {
 
 func (self *EventHandler) HandleEventMachineRemoved(ev event.Event) {
 	machName := ev.Payload.(string)
+	if !self.engine.ClaimMachine(machName) {
+		log.V(2).Infof("EventMachineRemoved(%s): failed to lock Machine, ignoring event", machName)
+		return
+	}
+
 	jobs := self.engine.GetJobsScheduledToMachine(machName)
 
 	for _, j := range jobs {
-		log.V(1).Infof("EventMachineRemoved(%s): stopping Job(%s)", machName, j.Name)
+		log.V(1).Infof("EventMachineRemoved(%s): unscheduling Job(%s)", machName, j.Name)
+		self.engine.RemoveJobState(j.Name)
 		self.engine.UnscheduleJob(j.Name)
 	}
 
