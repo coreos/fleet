@@ -13,6 +13,7 @@ fleet will schedule any valid service or socket systemd unit to a machine in the
 |---------------|-------------|
 | `X-ConditionMachineBootID` | Require a job to be scheduled to a specific machine. The value of this option is the boot ID of a machine in the cluster. If no machine in the cluster has this boot ID, the job will not be scheduled. |
 | `X-ConditionMachineOf` | Require a specific job be scheduled to a machine for it to be considered a candidate in scheduling. This allows a given job to 'follow' another around the system. |
+| `X-Conflicts` | Prevent a unit from being collocated with another unit. Supports glob matching (`webapp*.service`). |
 
 Take the following as an example of how your `[X-Fleet]` section could be written:
 
