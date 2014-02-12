@@ -87,7 +87,7 @@ func (a *Agent) Purge() {
 
 	for _, j := range a.registry.GetAllJobsByMachine(a.machine) {
 		log.V(1).Infof("Clearing JobState(%s) from Registry", j.Name)
-		a.registry.SaveJobState(j.Name, nil)
+		a.registry.RemoveJobState(j.Name)
 
 		offer := job.NewOfferFromJob(j)
 		log.V(2).Infof("Publishing JobOffer(%s)", offer.Job.Name)
