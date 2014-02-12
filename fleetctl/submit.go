@@ -12,6 +12,14 @@ func newSubmitUnitCommand() cli.Command {
 	return cli.Command{
 		Name:	"submit",
 		Usage:	"Upload one or more units to the cluster without starting them",
+		Description: `Upload one or more units to the cluster without starting them. Useful
+validating units before they are started.
+
+Submit a single unit:
+fleetctl submit foo.service
+
+Submit a directory of units with glob matching:
+fleetctl submit myservice/*`,
 		Action:	submitUnitsAction,
 	}
 }

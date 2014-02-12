@@ -16,6 +16,18 @@ func newSSHCommand() cli.Command {
 	return cli.Command{
 		Name:	"ssh",
 		Usage:	"Open interactive shell on a machine in the cluster",
+		Description: `Open an interactive shell on a specific machine in the cluster or on the machine where the specified unit is located.
+
+Open a shell on a machine:
+fleetctl ssh 2444264c-eac2-4eff-a490-32d5e5e4af24
+
+Open a shell from your laptop, to the machine running a specific unit, using a
+cluster member as a bastion host:
+fleetctl --tunnel 10.10.10.10 ssh -u foo.service
+
+Pro-Tip: Create an alias for --tunnel:
+Add "alias fleetctl=fleetctl --tunnel 10.10.10.10" to your bash profile.
+Now you can run all fleet commands locally.`,
 		Action:	sshAction,
 		Flags: []cli.Flag{
 			cli.StringFlag{"unit, u", "", "Open SSH connection to machine running provided unit."},

@@ -11,6 +11,14 @@ func newListMachinesCommand() cli.Command {
 	return cli.Command{
 		Name:	"list-machines",
 		Usage:	"Enumerate the current hosts in the cluster",
+		Description: `Lists all active machines within the cluster. Previously active machines will
+not appear in this list.
+
+For easily parsable output, you can remove the column headers:
+fleetctl list-machines --no-legend
+
+Output the list without truncation:
+fleetctl list-machines --full`,
 		Action:	listMachinesAction,
 		Flags: []cli.Flag{
 			cli.BoolFlag{"full, l", "Do not ellipsize fields on output"},

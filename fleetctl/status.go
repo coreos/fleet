@@ -15,7 +15,16 @@ import (
 func newStatusUnitsCommand() cli.Command {
 	return cli.Command{
 		Name:	"status",
-		Usage:	"Fetch the status of one or more units in the cluster",
+		Usage:	"Output the status of one or more units in the cluster",
+		Description: `Output the status of one or more units currently running in the cluster.
+Supports glob matching of units in the current working directory or matches
+previously started units.
+
+Show status of a single unit:
+fleetctl status foo.service
+
+Show status of an entire directory with glob matching:
+fleetctl status myservice/*`,
 		Action:	statusUnitsAction,
 	}
 }

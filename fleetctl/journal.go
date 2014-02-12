@@ -16,8 +16,16 @@ func newJournalCommand() cli.Command {
 		Name:	"journal",
 		Usage:	"Print the journal of a unit in the cluster to stdout",
 		Action:	journalAction,
+		Description: `Outputs the journal of a unit by connecting to the machine that the unit
+occupies.
+
+Read the last 10 lines:
+fleetctl journal foo.service
+
+Read the last 100 lines:
+fleetctl journal --lines 100 foo.service`,
 		Flags: []cli.Flag{
-			cli.IntFlag{"lines, n", 10, "Number of log lines to return."},
+			cli.IntFlag{"lines, n", 10, "Number of recent log lines to return."},
 		},
 	}
 }
