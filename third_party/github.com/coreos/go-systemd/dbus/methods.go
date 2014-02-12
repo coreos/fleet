@@ -18,7 +18,7 @@ package dbus
 
 import (
 	"errors"
-	"github.com/coreos/fleet/github.com/guelfey/go.dbus"
+	"github.com/coreos/fleet/third_party/github.com/guelfey/go.dbus"
 )
 
 func (c *Conn) initJobs() {

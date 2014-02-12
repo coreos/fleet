@@ -17,7 +17,7 @@ limitations under the License.
 package dbus
 
 import (
-	"github.com/coreos/fleet/github.com/guelfey/go.dbus"
+	"github.com/coreos/fleet/third_party/github.com/guelfey/go.dbus"
 )
 
 // From the systemd docs:
