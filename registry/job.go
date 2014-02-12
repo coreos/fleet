@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/coreos/go-etcd/etcd"
-	log "github.com/golang/glog"
+	"github.com/coreos/fleet/third_party/github.com/coreos/go-etcd/etcd"
+	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
 
 	"github.com/coreos/fleet/event"
 	"github.com/coreos/fleet/job"
@@ -15,8 +15,8 @@ import (
 )
 
 const (
-	jobPrefix     = "/job/"
-	payloadPrefix = "/payload/"
+	jobPrefix	= "/job/"
+	payloadPrefix	= "/payload/"
 )
 
 func (r *Registry) GetAllPayloads() []job.JobPayload {

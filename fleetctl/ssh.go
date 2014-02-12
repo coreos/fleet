@@ -5,8 +5,8 @@ import (
 	"log"
 	"strings"
 
-	gossh "code.google.com/p/go.crypto/ssh"
-	"github.com/codegangsta/cli"
+	gossh "github.com/coreos/fleet/third_party/code.google.com/p/go.crypto/ssh"
+	"github.com/coreos/fleet/third_party/github.com/codegangsta/cli"
 
 	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/ssh"
@@ -14,9 +14,9 @@ import (
 
 func newSSHCommand() cli.Command {
 	return cli.Command{
-		Name:   "ssh",
-		Usage:  "Open interactive shell on a machine in the cluster",
-		Action: sshAction,
+		Name:	"ssh",
+		Usage:	"Open interactive shell on a machine in the cluster",
+		Action:	sshAction,
 		Flags: []cli.Flag{
 			cli.StringFlag{"unit, u", "", "Open SSH connection to machine running provided unit."},
 		},

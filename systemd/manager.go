@@ -9,8 +9,8 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/coreos/go-systemd/dbus"
-	log "github.com/golang/glog"
+	"github.com/coreos/fleet/third_party/github.com/coreos/go-systemd/dbus"
+	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
 
 	"github.com/coreos/fleet/event"
 	"github.com/coreos/fleet/job"
@@ -22,14 +22,14 @@ const (
 )
 
 type SystemdManager struct {
-	Systemd    *dbus.Conn
-	Target     *SystemdTarget
-	Machine    *machine.Machine
-	UnitPrefix string
-	unitPath   string
+	Systemd		*dbus.Conn
+	Target		*SystemdTarget
+	Machine		*machine.Machine
+	UnitPrefix	string
+	unitPath	string
 
-	subscriptions  *dbus.SubscriptionSet
-	stop chan bool
+	subscriptions	*dbus.SubscriptionSet
+	stop		chan bool
 }
 
 func NewSystemdManager(machine *machine.Machine, unitPrefix string) *SystemdManager {

@@ -4,16 +4,16 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/codegangsta/cli"
+	"github.com/coreos/fleet/third_party/github.com/codegangsta/cli"
 
 	"github.com/coreos/fleet/job"
 )
 
 func newListUnitsCommand() cli.Command {
 	return cli.Command{
-		Name:   "list-units",
-		Usage:  "Enumerate units loaded in the cluster",
-		Action: listUnitsAction,
+		Name:	"list-units",
+		Usage:	"Enumerate units loaded in the cluster",
+		Action:	listUnitsAction,
 		Flags: []cli.Flag{
 			cli.BoolFlag{"full, l", "Do not ellipsize fields on output"},
 			cli.BoolFlag{"no-legend", "Do not print a legend (column headers)"},

@@ -5,8 +5,8 @@ import (
 	"net"
 	"os"
 
-	gossh "code.google.com/p/go.crypto/ssh"
-	"code.google.com/p/go.crypto/ssh/terminal"
+	gossh "github.com/coreos/fleet/third_party/code.google.com/p/go.crypto/ssh"
+	"github.com/coreos/fleet/third_party/code.google.com/p/go.crypto/ssh/terminal"
 )
 
 func Execute(client *gossh.ClientConn, cmd string) (*bufio.Reader, error) {
@@ -32,9 +32,9 @@ func Shell(client *gossh.ClientConn) error {
 	defer session.Close()
 
 	modes := gossh.TerminalModes{
-		gossh.ECHO:          1,     // enable echoing
-		gossh.TTY_OP_ISPEED: 14400, // input speed = 14.4kbaud
-		gossh.TTY_OP_OSPEED: 14400, // output speed = 14.4kbaud
+		gossh.ECHO:		1,	// enable echoing
+		gossh.TTY_OP_ISPEED:	14400,	// input speed = 14.4kbaud
+		gossh.TTY_OP_OSPEED:	14400,	// output speed = 14.4kbaud
 	}
 
 	fd := int(os.Stdin.Fd())
@@ -73,8 +73,8 @@ func sshClientConfig(user string) *gossh.ClientConfig {
 	}
 
 	return &gossh.ClientConfig{
-		User: user,
-		Auth: auths,
+		User:	user,
+		Auth:	auths,
 	}
 }
 

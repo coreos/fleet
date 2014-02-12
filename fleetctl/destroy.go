@@ -3,14 +3,14 @@ package main
 import (
 	"path"
 
-	"github.com/codegangsta/cli"
+	"github.com/coreos/fleet/third_party/github.com/codegangsta/cli"
 )
 
 func newDestroyUnitCommand() cli.Command {
 	return cli.Command{
-		Name:        "destroy",
-		Usage:       "Destroy one or more units in the cluster",
-		Action:      destroyUnitsAction,
+		Name:	"destroy",
+		Usage:	"Destroy one or more units in the cluster",
+		Action:	destroyUnitsAction,
 	}
 }
 

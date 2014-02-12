@@ -5,14 +5,14 @@ import (
 	"path"
 	"syscall"
 
-	"github.com/codegangsta/cli"
+	"github.com/coreos/fleet/third_party/github.com/codegangsta/cli"
 )
 
 func newCatUnitCommand() cli.Command {
 	return cli.Command{
-		Name:        "cat",
-		Usage:       "Print the contents of a unit that has been loaded in the cluster",
-		Action:      printUnitAction,
+		Name:	"cat",
+		Usage:	"Print the contents of a unit that has been loaded in the cluster",
+		Action:	printUnitAction,
 	}
 }
 

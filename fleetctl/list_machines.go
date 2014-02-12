@@ -4,14 +4,14 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/codegangsta/cli"
+	"github.com/coreos/fleet/third_party/github.com/codegangsta/cli"
 )
 
 func newListMachinesCommand() cli.Command {
 	return cli.Command{
-		Name:   "list-machines",
-		Usage:  "Enumerate the current hosts in the cluster",
-		Action: listMachinesAction,
+		Name:	"list-machines",
+		Usage:	"Enumerate the current hosts in the cluster",
+		Action:	listMachinesAction,
 		Flags: []cli.Flag{
 			cli.BoolFlag{"full, l", "Do not ellipsize fields on output"},
 			cli.BoolFlag{"no-legend", "Do not print a legend (column headers)"},

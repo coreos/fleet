@@ -1,15 +1,15 @@
 package systemd
 
 import (
-	log "github.com/golang/glog"
-	"github.com/coreos/go-systemd/dbus"
+	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
+	"github.com/coreos/fleet/third_party/github.com/coreos/go-systemd/dbus"
 
 	"github.com/coreos/fleet/event"
 	"github.com/coreos/fleet/job"
 )
 
 type EventStream struct {
-	close   chan bool
+	close chan bool
 }
 
 func NewEventStream() *EventStream {

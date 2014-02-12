@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	log "github.com/golang/glog"
+	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
 
 	"github.com/coreos/fleet/event"
 	"github.com/coreos/fleet/job"
@@ -16,26 +16,26 @@ import (
 
 const (
 	// TTL to use with all state pushed to Registry
-	DefaultTTL = "30s"
+	DefaultTTL	= "30s"
 
 	// Refresh TTLs at 1/2 the TTL length
-	refreshInterval = 2
+	refreshInterval	= 2
 )
 
 // The Agent owns all of the coordination between the Registry, the local
 // Machine, and the local SystemdManager.
 type Agent struct {
-	registry      *registry.Registry
-	events        *event.EventBus
-	machine       *machine.Machine
-	ttl           time.Duration
-	systemdPrefix string
+	registry	*registry.Registry
+	events		*event.EventBus
+	machine		*machine.Machine
+	ttl		time.Duration
+	systemdPrefix	string
 
-	state   *AgentState
-	systemd *systemd.SystemdManager
+	state	*AgentState
+	systemd	*systemd.SystemdManager
 
 	// channel used to shutdown any open connections/channels the Agent holds
-	stop chan bool
+	stop	chan bool
 }
 
 func New(registry *registry.Registry, events *event.EventBus, machine *machine.Machine, ttl, unitPrefix string) (*Agent, error) {

@@ -3,16 +3,16 @@ package main
 import (
 	"fmt"
 
-	"github.com/codegangsta/cli"
+	"github.com/coreos/fleet/third_party/github.com/codegangsta/cli"
 
 	"github.com/coreos/fleet/job"
 )
 
 func newSubmitUnitCommand() cli.Command {
 	return cli.Command{
-		Name:   "submit",
-		Usage:  "Upload one or more units to the cluster without starting them",
-		Action: submitUnitsAction,
+		Name:	"submit",
+		Usage:	"Upload one or more units to the cluster without starting them",
+		Action:	submitUnitsAction,
 	}
 }
 

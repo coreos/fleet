@@ -4,7 +4,7 @@ import (
 	"path"
 	"time"
 
-	"github.com/coreos/go-etcd/etcd"
+	"github.com/coreos/fleet/third_party/github.com/coreos/go-etcd/etcd"
 
 	"github.com/coreos/fleet/event"
 	"github.com/coreos/fleet/machine"

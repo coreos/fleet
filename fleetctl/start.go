@@ -5,19 +5,19 @@ import (
 	"path"
 	"strings"
 
-	"github.com/codegangsta/cli"
+	"github.com/coreos/fleet/third_party/github.com/codegangsta/cli"
 
 	"github.com/coreos/fleet/job"
 )
 
 func newStartUnitCommand() cli.Command {
 	return cli.Command{
-		Name: "start",
+		Name:	"start",
 		Flags: []cli.Flag{
 			cli.StringFlag{"require", "", "Filter suitable hosts with a set of requirements. Format is comma-delimited list of <key>=<value> pairs."},
 		},
-		Usage:  "Schedule and execute one or more units in the cluster",
-		Action: startUnitAction,
+		Usage:	"Schedule and execute one or more units in the cluster",
+		Action:	startUnitAction,
 	}
 }
 

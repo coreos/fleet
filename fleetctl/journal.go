@@ -5,17 +5,17 @@ import (
 	"log"
 	"syscall"
 
-	gossh "code.google.com/p/go.crypto/ssh"
-	"github.com/codegangsta/cli"
+	gossh "github.com/coreos/fleet/third_party/code.google.com/p/go.crypto/ssh"
+	"github.com/coreos/fleet/third_party/github.com/codegangsta/cli"
 
 	"github.com/coreos/fleet/ssh"
 )
 
 func newJournalCommand() cli.Command {
 	return cli.Command{
-		Name:   "journal",
-		Usage:  "Print the journal of a unit in the cluster to stdout",
-		Action: journalAction,
+		Name:	"journal",
+		Usage:	"Print the journal of a unit in the cluster to stdout",
+		Action:	journalAction,
 		Flags: []cli.Flag{
 			cli.IntFlag{"lines, n", 10, "Number of log lines to return."},
 		},

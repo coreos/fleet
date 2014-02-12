@@ -3,14 +3,14 @@ package main
 import (
 	"path"
 
-	"github.com/codegangsta/cli"
+	"github.com/coreos/fleet/third_party/github.com/codegangsta/cli"
 )
 
 func newStopUnitCommand() cli.Command {
 	return cli.Command{
-		Name:        "stop",
-		Usage:       "Halt one or more units in the cluster",
-		Action:      stopUnitAction,
+		Name:	"stop",
+		Usage:	"Halt one or more units in the cluster",
+		Action:	stopUnitAction,
 	}
 }
 

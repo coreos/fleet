@@ -5,8 +5,8 @@ import (
 	"log"
 	"path"
 
-	gossh "code.google.com/p/go.crypto/ssh"
-	"github.com/codegangsta/cli"
+	gossh "github.com/coreos/fleet/third_party/code.google.com/p/go.crypto/ssh"
+	"github.com/coreos/fleet/third_party/github.com/codegangsta/cli"
 
 	"github.com/coreos/fleet/registry"
 	"github.com/coreos/fleet/ssh"
@@ -14,9 +14,9 @@ import (
 
 func newStatusUnitsCommand() cli.Command {
 	return cli.Command{
-		Name:        "status",
-		Usage:       "Fetch the status of one or more units in the cluster",
-		Action:      statusUnitsAction,
+		Name:	"status",
+		Usage:	"Fetch the status of one or more units in the cluster",
+		Action:	statusUnitsAction,
 	}
 }
 

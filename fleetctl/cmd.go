@@ -11,8 +11,8 @@ import (
 	"strings"
 	"text/tabwriter"
 
-	"github.com/codegangsta/cli"
-	"github.com/coreos/go-etcd/etcd"
+	"github.com/coreos/fleet/third_party/github.com/codegangsta/cli"
+	"github.com/coreos/fleet/third_party/github.com/coreos/go-etcd/etcd"
 
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/registry"
@@ -49,7 +49,7 @@ func getRegistry(context *cli.Context) *registry.Registry {
 		}
 
 		tr := http.Transport{
-			Dial: dial,
+			Dial:	dial,
 			TLSClientConfig: &tls.Config{
 				InsecureSkipVerify: true,
 			},

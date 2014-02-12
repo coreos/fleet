@@ -1,7 +1,7 @@
 package server
 
 import (
-	"github.com/coreos/go-etcd/etcd"
+	"github.com/coreos/fleet/third_party/github.com/coreos/go-etcd/etcd"
 
 	"github.com/coreos/fleet/agent"
 	"github.com/coreos/fleet/config"
@@ -12,12 +12,12 @@ import (
 )
 
 type Server struct {
-	agent    *agent.Agent
-	engine   *engine.Engine
-	machine  *machine.Machine
-	registry *registry.Registry
-	eventBus *event.EventBus
-	eventStream *registry.EventStream
+	agent		*agent.Agent
+	engine		*engine.Engine
+	machine		*machine.Machine
+	registry	*registry.Registry
+	eventBus	*event.EventBus
+	eventStream	*registry.EventStream
 }
 
 func New(cfg config.Config) *Server {
