@@ -20,12 +20,12 @@ import (
 	"errors"
 	"time"
 
-	"github.com/coreos/fleet/third_party/github.com/guelfey/go.dbus"
+	"github.com/guelfey/go.dbus"
 )
 
 const (
-	cleanIgnoreInterval	= int64(10 * time.Second)
-	ignoreInterval		= int64(30 * time.Millisecond)
+	cleanIgnoreInterval = int64(10 * time.Second)
+	ignoreInterval      = int64(30 * time.Millisecond)
 )
 
 // Subscribe sets up this connection to subscribe to all systemd dbus events.
@@ -101,7 +101,7 @@ func (c *Conn) SubscribeUnits(interval time.Duration) (<-chan map[string]*UnitSt
 // SubscribeUnitsCustom is like SubscribeUnits but lets you specify the buffer
 // size of the channels, the comparison function for detecting changes and a filter
 // function for cutting down on the noise that your channel receives.
-func (c *Conn) SubscribeUnitsCustom(interval time.Duration, buffer int, isChanged func(*UnitStatus, *UnitStatus) bool, filterUnit func(string) bool) (<-chan map[string]*UnitStatus, <-chan error) {
+func (c *Conn) SubscribeUnitsCustom(interval time.Duration, buffer int, isChanged func(*UnitStatus, *UnitStatus) bool, filterUnit func (string) bool) (<-chan map[string]*UnitStatus, <-chan error) {
 	old := make(map[string]*UnitStatus)
 	statusChan := make(chan map[string]*UnitStatus, buffer)
 	errChan := make(chan error, buffer)
@@ -151,8 +151,8 @@ func (c *Conn) SubscribeUnitsCustom(interval time.Duration, buffer int, isChange
 }
 
 type SubStateUpdate struct {
-	UnitName	string
-	SubState	string
+	UnitName string
+	SubState string
 }
 
 // SetSubStateSubscriber writes to updateCh when any unit's substate changes.
