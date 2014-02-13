@@ -33,10 +33,12 @@ type SystemdManager struct {
 }
 
 func NewSystemdManager(machine *machine.Machine, unitPrefix string) *SystemdManager {
-	//TODO(bcwaldon): Handle error in call to New()
-	systemd, _ := dbus.New()
+	systemd, err := dbus.New()
+	if err != nil {
+		panic(err)
+	}
 
-	name := "fleet-" + machine.BootId + ".target"
+	name := "fleet-" + machine.State().BootId + ".target"
 	target := NewSystemdTarget(name)
 
 	mgr := &SystemdManager{systemd, target, machine, unitPrefix, defaultSystemdRuntimePath, systemd.NewSubscriptionSet(), nil}

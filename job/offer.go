@@ -1,7 +1,7 @@
 package job
 
 type JobOffer struct {
-	Job          Job
+	Job Job
 }
 
 func NewOfferFromJob(j Job) *JobOffer {
@@ -9,10 +9,10 @@ func NewOfferFromJob(j Job) *JobOffer {
 }
 
 type JobBid struct {
-	JobName     string
-	MachineName string
+	JobName       string
+	MachineBootId string
 }
 
-func NewBid(jobName string, machName string) *JobBid {
-	return &JobBid{jobName, machName}
+func NewBid(jobName string, machBootId string) *JobBid {
+	return &JobBid{jobName, machBootId}
 }

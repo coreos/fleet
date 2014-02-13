@@ -38,7 +38,7 @@ func (eh *EventHandler) HandleEventJobScheduled(ev event.Event) {
 
 	eh.agent.OfferResolved(jobName)
 
-	if ev.Context.(*machine.Machine).BootId != eh.agent.Machine().BootId {
+	if ev.Context.(machine.MachineState).BootId != eh.agent.Machine().State().BootId {
 		log.V(1).Infof("EventJobScheduled(%s): Job not scheduled to this Agent, checking unbade offers", jobName)
 		eh.agent.BidForPossibleJobs()
 		return
@@ -87,15 +87,16 @@ func (eh *EventHandler) HandleEventJobStateUpdated(ev event.Event) {
 		log.V(1).Infof("EventJobStateUpdated(%s): pushing state (loadState=%s, activeState=%s, subState=%s) to Registry", jobName, state.LoadState, state.ActiveState, state.SubState)
 
 		// FIXME: This should probably be set in the underlying event-generation code
-		state.Machine = eh.agent.Machine()
+		ms := eh.agent.Machine().State()
+		state.MachineState = &ms
 	}
 
 	eh.agent.ReportJobState(jobName, state)
 }
 
 func (eh *EventHandler) HandleEventMachineCreated(ev event.Event) {
-	mach := ev.Payload.(machine.Machine)
-	if mach.BootId != eh.agent.Machine().BootId {
+	mach := ev.Payload.(machine.MachineState)
+	if mach.BootId != eh.agent.Machine().State().BootId {
 		log.V(1).Infof("EventMachineCreated(%s): references other Machine, discarding event", mach.BootId)
 	}
 

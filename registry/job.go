@@ -65,7 +65,7 @@ func (r *Registry) GetAllJobs() []job.Job {
 	return jobs
 }
 
-func (r *Registry) GetAllJobsByMachine(match *machine.Machine) []job.Job {
+func (r *Registry) GetAllJobsByMachine(machBootId string) []job.Job {
 	var jobs []job.Job
 
 	key := path.Join(keyPrefix, jobPrefix)
@@ -79,7 +79,7 @@ func (r *Registry) GetAllJobsByMachine(match *machine.Machine) []job.Job {
 	for _, node := range resp.Node.Nodes {
 		if j := r.GetJob(path.Base(node.Key)); j != nil {
 			tgt := r.GetJobTarget(j.Name)
-			if tgt != nil && tgt.BootId == match.BootId {
+			if tgt != nil && tgt.BootId == machBootId {
 				jobs = append(jobs, *j)
 			}
 		}
@@ -88,7 +88,7 @@ func (r *Registry) GetAllJobsByMachine(match *machine.Machine) []job.Job {
 	return jobs
 }
 
-func (r *Registry) GetJobTarget(jobName string) *machine.Machine {
+func (r *Registry) GetJobTarget(jobName string) *machine.MachineState {
 	// Figure out to which Machine this Job is scheduled
 	key := path.Join(keyPrefix, jobPrefix, jobName, "target")
 	resp, err := r.etcd.Get(key, false, true)
@@ -96,7 +96,7 @@ func (r *Registry) GetJobTarget(jobName string) *machine.Machine {
 		return nil
 	}
 
-	return machine.New(resp.Node.Value, "", make(map[string]string, 0))
+	return &machine.MachineState{resp.Node.Value, "", make(map[string]string, 0)}
 }
 
 func (r *Registry) GetJob(jobName string) *job.Job {
@@ -150,9 +150,9 @@ func (r *Registry) CreateJob(j *job.Job) error {
 	return err
 }
 
-func (r *Registry) ScheduleJob(jobName string, machName string) {
+func (r *Registry) ScheduleJob(jobName string, machBootId string) {
 	key := path.Join(keyPrefix, jobPrefix, jobName, "target")
-	r.etcd.Set(key, machName, 0)
+	r.etcd.Set(key, machBootId, 0)
 }
 
 func (r *Registry) UnscheduleJob(jobName string) {
@@ -166,7 +166,7 @@ func (r *Registry) StopJob(jobName string) {
 }
 
 func (r *Registry) ClaimJob(jobName string, m *machine.Machine, ttl time.Duration) bool {
-	return r.acquireLeadership(fmt.Sprintf("job-%s", jobName), m.BootId, ttl)
+	return r.acquireLeadership(fmt.Sprintf("job-%s", jobName), m.State().BootId, ttl)
 }
 
 func filterEventJobCreated(resp *etcd.Response) *event.Event {
@@ -199,7 +199,7 @@ func filterEventJobScheduled(resp *etcd.Response) *event.Event {
 		return nil
 	}
 
-	mach := machine.New(resp.Node.Value, "", make(map[string]string, 0))
+	mach := machine.MachineState{resp.Node.Value, "", make(map[string]string, 0)}
 	jobName := path.Base(strings.TrimSuffix(dir, "/"))
 
 	return &event.Event{"EventJobScheduled", jobName, mach}

@@ -47,12 +47,12 @@ func (self *Engine) Stop() {
 	close(self.stop)
 }
 
-func (self *Engine) GetJobsScheduledToMachine(machName string) []job.Job {
+func (self *Engine) GetJobsScheduledToMachine(machBootId string) []job.Job {
 	var jobs []job.Job
 
 	for _, j := range self.registry.GetAllJobs() {
 		tgt := self.registry.GetJobTarget(j.Name)
-		if tgt == nil || tgt.BootId != machName {
+		if tgt == nil || tgt.BootId != machBootId {
 			continue
 		}
 		jobs = append(jobs, j)
@@ -84,7 +84,7 @@ func (self *Engine) OfferJob(j job.Job) error {
 	return nil
 }
 
-func (self *Engine) ResolveJobOffer(jobName string, machName string) error {
+func (self *Engine) ResolveJobOffer(jobName string, machBootId string) error {
 	log.V(2).Infof("Attempting to claim JobOffer(%s)", jobName)
 	if !self.claimJobOffer(jobName) {
 		log.V(2).Infof("Could not claim JobOffer(%s)", jobName)
@@ -93,10 +93,10 @@ func (self *Engine) ResolveJobOffer(jobName string, machName string) error {
 
 	log.V(2).Infof("Claimed JobOffer", jobName)
 
-	log.V(2).Infof("Resolving JobOffer(%s), scheduling to Machine(%s)", jobName, machName)
+	log.V(2).Infof("Resolving JobOffer(%s), scheduling to Machine(%s)", jobName, machBootId)
 	self.registry.ResolveJobOffer(jobName)
-	self.registry.ScheduleJob(jobName, machName)
-	log.Infof("Scheduled Job(%s) to Machine(%s)", jobName, machName)
+	self.registry.ScheduleJob(jobName, machBootId)
+	log.Infof("Scheduled Job(%s) to Machine(%s)", jobName, machBootId)
 
 	return nil
 }
@@ -113,6 +113,7 @@ func (self *Engine) claimJob(jobName string) bool {
 	return self.registry.ClaimJob(jobName, self.machine, self.claimTTL)
 }
 
-func (self *Engine) ClaimMachine(machName string) bool {
-	return self.registry.ClaimMachine(machName, self.machine, self.claimTTL)
+// Pass-through to Registry.ClaimMachine
+func (self *Engine) ClaimMachine(machBootId string) bool {
+	return self.registry.ClaimMachine(machBootId, self.machine, self.claimTTL)
 }

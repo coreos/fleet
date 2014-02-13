@@ -80,12 +80,13 @@ func (a *Agent) Stop() {
 // Clear any presence data from the Registry
 func (a *Agent) Purge() {
 	log.V(1).Info("Removing Agent from Registry")
-	err := a.registry.RemoveMachineState(a.machine)
+	bootId := a.machine.State().BootId
+	err := a.registry.RemoveMachineState(bootId)
 	if err != nil {
-		log.Errorf("Failed to remove Machine %s from Registry: %s", a.machine.BootId, err.Error())
+		log.Errorf("Failed to remove Machine %s from Registry: %s", bootId, err.Error())
 	}
 
-	for _, j := range a.registry.GetAllJobsByMachine(a.machine) {
+	for _, j := range a.registry.GetAllJobsByMachine(bootId) {
 		log.V(1).Infof("Clearing JobState(%s) from Registry", j.Name)
 		a.registry.RemoveJobState(j.Name)
 
@@ -100,9 +101,11 @@ func (a *Agent) Purge() {
 // half of the provided ttl. Stop reporting when the provided
 // channel is closed.
 func (a *Agent) Heartbeat(ttl time.Duration, stop chan bool) {
+
 	// Explicitly heartbeat immediately to push state to the
 	// Registry as quickly as possible
-	a.registry.SetMachineState(a.machine, a.ttl)
+	a.machine.RefreshState()
+	a.registry.SetMachineState(a.machine.State(), a.ttl)
 
 	interval := ttl / refreshInterval
 	for true {
@@ -112,7 +115,8 @@ func (a *Agent) Heartbeat(ttl time.Duration, stop chan bool) {
 			return
 		case <-time.Tick(interval):
 			log.V(2).Info("MachineHeartbeat tick")
-			err := a.registry.SetMachineState(a.machine, a.ttl)
+			a.machine.RefreshState()
+			err := a.registry.SetMachineState(a.machine.State(), a.ttl)
 			if err != nil {
 				log.Errorf("MachineHeartbeat failed: %v", err)
 			}
@@ -173,7 +177,7 @@ func (a *Agent) ReportJobState(jobName string, jobState *job.JobState) {
 // Submit all possible bids for unresolved offers
 func (a *Agent) BidForPossibleJobs() {
 	a.state.Lock()
-	offers := a.state.GetUnbadeOffers()
+	offers := a.state.GetOffersWithoutBids()
 	a.state.Unlock()
 
 	log.V(2).Infof("Checking %d unbade offers", len(offers))
@@ -193,7 +197,7 @@ func (a *Agent) BidForPossibleJobs() {
 func (a *Agent) Bid(jobName string) {
 	log.Infof("Submitting JobBid for Job(%s)", jobName)
 
-	jb := job.NewBid(jobName, a.machine.BootId)
+	jb := job.NewBid(jobName, a.machine.State().BootId)
 	a.registry.SubmitJobBid(jb)
 
 	a.state.Lock()
@@ -284,7 +288,7 @@ func (a *Agent) AbleToRun(j *job.Job) bool {
 	}
 
 	bootID, ok := requirements["ConditionMachineBootID"]
-	if ok && len(bootID) > 0 && a.machine.BootId == bootID[0] {
+	if ok && len(bootID) > 0 && a.machine.State().BootId == bootID[0] {
 		log.V(1).Infof("Agent does not pass MachineBootID condition for Job(%s)", j.Name)
 		return false
 	}
@@ -338,7 +342,7 @@ func (a *Agent) peerScheduledHere(jobName, peerName string) bool {
 	log.V(1).Infof("Looking for target of Peer(%s)", peerName)
 
 	//FIXME: ideally the machine would use its own knowledge rather than calling GetJobTarget
-	if tgt := a.registry.GetJobTarget(peerName); tgt == nil || tgt.BootId != a.machine.BootId {
+	if tgt := a.registry.GetJobTarget(peerName); tgt == nil || tgt.BootId != a.machine.State().BootId {
 		log.V(1).Infof("Peer(%s) of Job(%s) not scheduled here", peerName, jobName)
 		return false
 	}

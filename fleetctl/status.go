@@ -50,7 +50,7 @@ func printUnitStatus(c *cli.Context, r *registry.Registry, jobName string) {
 		fmt.Println("%s does not appear to be running", jobName)
 	}
 
-	addr := fmt.Sprintf("%s:22", js.Machine.PublicIP)
+	addr := fmt.Sprintf("%s:22", js.MachineState.PublicIP)
 
 	var err error
 	var sshClient *gossh.ClientConn

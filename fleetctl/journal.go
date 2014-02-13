@@ -45,7 +45,7 @@ func journalAction(c *cli.Context) {
 		syscall.Exit(1)
 	}
 
-	addr := fmt.Sprintf("%s:22", js.Machine.PublicIP)
+	addr := fmt.Sprintf("%s:22", js.MachineState.PublicIP)
 
 	var err error
 	var sshClient *gossh.ClientConn

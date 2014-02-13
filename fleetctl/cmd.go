@@ -127,7 +127,7 @@ func getJobPayloadFromFile(file string) (*job.JobPayload, error) {
 
 func getTunnelFlag(context *cli.Context) string {
 	tun := context.GlobalString("tunnel")
-	if !strings.Contains(tun, ":") {
+	if tun != "" && !strings.Contains(tun, ":") {
 		tun += ":22"
 	}
 	return tun
