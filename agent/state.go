@@ -126,16 +126,6 @@ func (self *AgentState) TrackOffer(offer job.JobOffer) {
 	self.offers[offer.Job.Name] = offer
 }
 
-func (self *AgentState) GetBadeOffers() []job.JobOffer {
-	offers := make([]job.JobOffer, 0)
-	for _, offer := range self.offers {
-		if self.HasBid(offer.Job.Name) {
-			offers = append(offers, offer)
-		}
-	}
-	return offers
-}
-
 // GetOffersWithoutBids returns all tracked JobOffers that have
 // no corresponding JobBid tracked in the same AgentState object.
 func (self *AgentState) GetOffersWithoutBids() []job.JobOffer {
