@@ -41,7 +41,7 @@ func journalAction(c *cli.Context) {
 	js := r.GetJobState(jobName)
 
 	if js == nil {
-		fmt.Println("Unit does not appear to be running")
+		fmt.Printf("%s does not appear to be running\n", jobName)
 		syscall.Exit(1)
 	}
 
