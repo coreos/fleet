@@ -177,7 +177,7 @@ func (a *Agent) ReportJobState(jobName string, jobState *job.JobState) {
 // Submit all possible bids for unresolved offers
 func (a *Agent) BidForPossibleJobs() {
 	a.state.Lock()
-	offers := a.state.GetUnbadeOffers()
+	offers := a.state.GetOffersWithoutBids()
 	a.state.Unlock()
 
 	log.V(2).Infof("Checking %d unbade offers", len(offers))

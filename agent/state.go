@@ -136,7 +136,9 @@ func (self *AgentState) GetBadeOffers() []job.JobOffer {
 	return offers
 }
 
-func (self *AgentState) GetUnbadeOffers() []job.JobOffer {
+// GetOffersWithoutBids returns all tracked JobOffers that have
+// no corresponding JobBid tracked in the same AgentState object.
+func (self *AgentState) GetOffersWithoutBids() []job.JobOffer {
 	offers := make([]job.JobOffer, 0)
 	for _, offer := range self.offers {
 		if !self.HasBid(offer.Job.Name) {
