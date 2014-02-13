@@ -34,7 +34,7 @@ func (ss *SystemdSocket) State() (string, string, string, []string, error) {
 	sockets := parseSocketFile(payload)
 	sockStrings := []string{}
 	for _, sock := range sockets {
-		sockStrings = append(sockStrings, sock.String(ss.manager.Machine.PublicIP))
+		sockStrings = append(sockStrings, sock.String(ss.manager.Machine.State().PublicIP))
 	}
 
 	return loadState, activeState, subState, sockStrings, nil

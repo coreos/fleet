@@ -74,13 +74,13 @@ func printJobState(name string, js *job.JobState, full bool) {
 		activeState = js.ActiveState
 		subState = js.SubState
 
-		if js.Machine != nil {
-			mach = js.Machine.String()
+		if js.MachineState != nil {
+			mach = js.MachineState.BootId
 			if !full {
 				mach = ellipsize(mach, 8)
 			}
-			if len(js.Machine.PublicIP) > 0 {
-				mach = fmt.Sprintf("%s/%s", mach, js.Machine.PublicIP)
+			if len(js.MachineState.PublicIP) > 0 {
+				mach = fmt.Sprintf("%s/%s", mach, js.MachineState.PublicIP)
 			}
 		}
 	}

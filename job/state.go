@@ -5,13 +5,13 @@ import (
 )
 
 type JobState struct {
-	LoadState   string           `json:"loadState"`
-	ActiveState string           `json:"activeState"`
-	SubState    string           `json:"subState"`
-	Sockets     []string         `json:"sockets"`
-	Machine     *machine.Machine `json:"machine"`
+	LoadState    string                `json:"loadState"`
+	ActiveState  string                `json:"activeState"`
+	SubState     string                `json:"subState"`
+	Sockets      []string              `json:"sockets"`
+	MachineState *machine.MachineState `json:"machineState"`
 }
 
-func NewJobState(loadState, activeState, subState string, sockets []string, machine *machine.Machine) *JobState {
-	return &JobState{loadState, activeState, subState, sockets, machine}
+func NewJobState(loadState, activeState, subState string, sockets []string, ms *machine.MachineState) *JobState {
+	return &JobState{loadState, activeState, subState, sockets, ms}
 }

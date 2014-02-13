@@ -7,8 +7,8 @@ import (
 )
 
 func TestJobState(t *testing.T) {
-	mach := machine.New("XXX", "", make(map[string]string, 0))
-	js1 := NewJobState("loaded", "inactive", "dead", []string{}, mach)
+	ms := &machine.MachineState{"XXX", "", make(map[string]string, 0)}
+	js1 := NewJobState("loaded", "inactive", "dead", []string{}, ms)
 
 	if js1.LoadState != "loaded" {
 		t.Fatal("job.JobState.LoadState != 'loaded'")
@@ -26,12 +26,12 @@ func TestJobState(t *testing.T) {
 		t.Fatal("job.JobState.Sockets does not match expected length")
 	}
 
-	if js1.Machine != mach {
-		t.Fatal("job.JobState.Machine does not match expected value")
+	if js1.MachineState != ms {
+		t.Fatal("job.JobState.MachineState does not match expected value")
 	}
 }
 
-func TestJobStateNilMachine(t *testing.T) {
+func TestJobStateNilMachineState(t *testing.T) {
 	js1 := NewJobState("loaded", "active", "listening", []string{}, nil)
 
 	if js1.LoadState != "loaded" {
@@ -50,7 +50,7 @@ func TestJobStateNilMachine(t *testing.T) {
 		t.Fatal("job.JobState.Sockets does not match expected length")
 	}
 
-	if js1.Machine != nil {
-		t.Fatal("job.JobState.Machine != nil")
+	if js1.MachineState != nil {
+		t.Fatal("job.JobState.MachineState != nil")
 	}
 }

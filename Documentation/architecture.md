@@ -60,7 +60,7 @@ Both Jobs and Machines have dynamic state which is published both for the user a
 
 A JobState object represents the state of a payload as reported by systemd on a given Machine. Only the Machine running an actual Job will publish a corresponding JobState object.
 
-A Machine object represents the presence of a host in the cluster. Machine objects are published on an interval with a TTL, keeping the overall view of a cluster relatively accurate at any given time.
+A MachineState object represents the state of a host in the cluster at the time the object was generated. MachineState objects are published on an interval with a TTL, keeping the external view of a cluster relatively accurate at any given time.
 
 ### Internal Objects
 
@@ -71,6 +71,10 @@ A JobOffer is created by an Engine to represent the need to schedule a given Job
 A JobBid represents a single Agent's request to run a Job. A JobBid will only be created by Agents that have compared their current capabilities to the requirements of a given Job.
 
 Once an Engine receives enough bids in response to a given offer, it makes a scheduling decision and destroys that offer.
+
+#### Machine
+
+The Machine object acts as a factory for MachineState objects. It is shared between several internal components of fleet to ensure the view of the host is consistent at any given point in time.
 
 ## Putting it All Together
 

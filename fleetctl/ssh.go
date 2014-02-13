@@ -48,16 +48,16 @@ func sshAction(c *cli.Context) {
 	if unit == "" {
 		lookup := args[0]
 		args = args[1:]
-		machines := r.GetActiveMachines()
-		var match *machine.Machine
-		for i, _ := range machines {
-			mach := machines[i]
-			if !strings.HasPrefix(mach.BootId, lookup) {
+		states := r.GetActiveMachines()
+		var match *machine.MachineState
+		for i, _ := range states {
+			machState := states[i]
+			if !strings.HasPrefix(machState.BootId, lookup) {
 				continue
 			} else if match != nil {
 				log.Fatalf("Found more than one Machine, be more specfic")
 			}
-			match = &mach
+			match = &machState
 		}
 
 		if match == nil {
@@ -70,7 +70,7 @@ func sshAction(c *cli.Context) {
 		if js == nil {
 			log.Fatalf("Requested unit %s does not appear to be running", unit)
 		}
-		addr = fmt.Sprintf("%s:22", js.Machine.PublicIP)
+		addr = fmt.Sprintf("%s:22", js.MachineState.PublicIP)
 	}
 
 	var err error

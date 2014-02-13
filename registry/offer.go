@@ -68,7 +68,7 @@ func (r *Registry) ClaimJobOffer(jobName string, m *machine.Machine, ttl time.Du
 		return false
 	}
 
-	return r.acquireLeadership(fmt.Sprintf("offer-%s", jobName), m.BootId, ttl)
+	return r.acquireLeadership(fmt.Sprintf("offer-%s", jobName), m.State().BootId, ttl)
 }
 
 func (r *Registry) ResolveJobOffer(jobName string) {
@@ -82,7 +82,7 @@ func (r *Registry) ResolveJobOffer(jobName string) {
 }
 
 func (r *Registry) SubmitJobBid(jb *job.JobBid) {
-	key := path.Join(keyPrefix, offerPrefix, jb.JobName, "bids", jb.MachineName)
+	key := path.Join(keyPrefix, offerPrefix, jb.JobName, "bids", jb.MachineBootId)
 	//TODO: Use a TTL
 	r.etcd.Set(key, "", 0)
 }
@@ -117,7 +117,7 @@ func filterEventJobBidSubmitted(resp *etcd.Response) *event.Event {
 		return nil
 	}
 
-	dir, machName := path.Split(resp.Node.Key)
+	dir, machBootId := path.Split(resp.Node.Key)
 	dir, prefix := path.Split(strings.TrimSuffix(dir, "/"))
 
 	if prefix != "bids" {
@@ -131,6 +131,6 @@ func filterEventJobBidSubmitted(resp *etcd.Response) *event.Event {
 		return nil
 	}
 
-	jb := job.NewBid(jobName, machName)
+	jb := job.NewBid(jobName, machBootId)
 	return &event.Event{"EventJobBidSubmitted", *jb, nil}
 }
