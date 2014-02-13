@@ -13,19 +13,26 @@ import (
 
 	"github.com/coreos/fleet/config"
 	"github.com/coreos/fleet/server"
+	"github.com/coreos/fleet/version"
 )
 
 func main() {
 	// We use a custom FlagSet since golang/glog adds a bunch of flags we
 	// do not want to publish
 	flagset := flag.NewFlagSet("fleet", flag.ExitOnError)
-	cfgPath := flagset.String("config_file", "", "Path to config file.")
+	printVersion := flagset.Bool("version", false, "Prints the version.")
+	cfgPath := flagset.String("config", "", "Path to config file.")
 	err := flagset.Parse(os.Args[1:])
 
 	// We do this manually since we're using a custom FlagSet
 	if err == flag.ErrHelp {
 		flag.Usage()
 		syscall.Exit(1)
+	}
+
+	if *printVersion {
+		fmt.Println("fleet version", version.Version)
+		os.Exit(0)
 	}
 
 	// Print out to stderr by default (stderr instead of stdout due to glog's choices)

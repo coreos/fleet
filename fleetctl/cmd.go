@@ -18,6 +18,7 @@ import (
 	"github.com/coreos/fleet/registry"
 	"github.com/coreos/fleet/ssh"
 	"github.com/coreos/fleet/unit"
+	"github.com/coreos/fleet/version"
 )
 
 var out *tabwriter.Writer
@@ -73,6 +74,7 @@ func getRegistry(context *cli.Context) *registry.Registry {
 
 func main() {
 	app := cli.NewApp()
+	app.Version = version.Version
 	app.Name = "fleetctl"
 	app.Usage = "fleetctl is a command line driven interface to the cluster wide CoreOS init system."
 
