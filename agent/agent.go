@@ -112,7 +112,10 @@ func (a *Agent) Heartbeat(ttl time.Duration, stop chan bool) {
 			return
 		case <-time.Tick(interval):
 			log.V(2).Info("MachineHeartbeat tick")
-			a.registry.SetMachineState(a.machine, a.ttl)
+			err := a.registry.SetMachineState(a.machine, a.ttl)
+			if err != nil {
+				log.Errorf("MachineHeartbeat failed: %v", err)
+			}
 		}
 	}
 }
