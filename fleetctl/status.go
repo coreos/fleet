@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"path"
+	"syscall"
 
 	gossh "github.com/coreos/fleet/third_party/code.google.com/p/go.crypto/ssh"
 	"github.com/coreos/fleet/third_party/github.com/codegangsta/cli"
@@ -47,7 +48,8 @@ func printUnitStatus(c *cli.Context, r *registry.Registry, jobName string) {
 	js := r.GetJobState(jobName)
 
 	if js == nil {
-		fmt.Println("%s does not appear to be running", jobName)
+		fmt.Printf("%s does not appear to be running\n", jobName)
+		syscall.Exit(1)
 	}
 
 	addr := fmt.Sprintf("%s:22", js.Machine.PublicIP)
