@@ -87,7 +87,7 @@ func (a *Agent) Purge() {
 
 	for _, j := range a.registry.GetAllJobsByMachine(a.machine) {
 		log.V(1).Infof("Clearing JobState(%s) from Registry", j.Name)
-		a.registry.SaveJobState(j.Name, nil)
+		a.registry.RemoveJobState(j.Name)
 
 		offer := job.NewOfferFromJob(j)
 		log.V(2).Infof("Publishing JobOffer(%s)", offer.Job.Name)
@@ -112,7 +112,10 @@ func (a *Agent) Heartbeat(ttl time.Duration, stop chan bool) {
 			return
 		case <-time.Tick(interval):
 			log.V(2).Info("MachineHeartbeat tick")
-			a.registry.SetMachineState(a.machine, a.ttl)
+			err := a.registry.SetMachineState(a.machine, a.ttl)
+			if err != nil {
+				log.Errorf("MachineHeartbeat failed: %v", err)
+			}
 		}
 	}
 }

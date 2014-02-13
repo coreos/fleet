@@ -17,12 +17,12 @@ const (
 )
 
 type Engine struct {
-	registry	*registry.Registry
-	events		*event.EventBus
-	machine		*machine.Machine
-	claimTTL	time.Duration
+	registry *registry.Registry
+	events   *event.EventBus
+	machine  *machine.Machine
+	claimTTL time.Duration
 
-	stop	chan bool
+	stop chan bool
 }
 
 func New(reg *registry.Registry, events *event.EventBus, mach *machine.Machine) *Engine {
@@ -101,10 +101,18 @@ func (self *Engine) ResolveJobOffer(jobName string, machName string) error {
 	return nil
 }
 
+func (self *Engine) RemoveJobState(jobName string) {
+	self.registry.RemoveJobState(jobName)
+}
+
 func (self *Engine) claimJobOffer(jobName string) bool {
 	return self.registry.ClaimJobOffer(jobName, self.machine, self.claimTTL)
 }
 
 func (self *Engine) claimJob(jobName string) bool {
 	return self.registry.ClaimJob(jobName, self.machine, self.claimTTL)
+}
+
+func (self *Engine) ClaimMachine(machName string) bool {
+	return self.registry.ClaimMachine(machName, self.machine, self.claimTTL)
 }
