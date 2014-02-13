@@ -1,6 +1,6 @@
-#!/bin/sh
+#!/bin/bash -e
 
-source build
+source ./build
 
 if [ -z "$PKG" ]; then
     PKG="./job ./machine ./unit ./registry"
