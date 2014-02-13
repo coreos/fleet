@@ -21,7 +21,7 @@ func main() {
 	// do not want to publish
 	flagset := flag.NewFlagSet("fleet", flag.ExitOnError)
 	printVersion := flagset.Bool("version", false, "Prints the version.")
-	cfgPath := flagset.String("config_file", "", "Path to config file.")
+	cfgPath := flagset.String("config", "", "Path to config file.")
 	err := flagset.Parse(os.Args[1:])
 
 	// We do this manually since we're using a custom FlagSet
