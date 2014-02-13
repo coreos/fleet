@@ -25,6 +25,16 @@ var out *tabwriter.Writer
 func init() {
 	out = new(tabwriter.Writer)
 	out.Init(os.Stdout, 0, 8, 1, '\t', 0)
+	cli.CommandHelpTemplate = `NAME:
+   fleetctl {{.Name}} - {{.Usage}}
+
+DESCRIPTION:
+   {{.Description}}
+
+OPTIONS:
+   {{range .Flags}}{{.}}
+   {{end}}
+`
 }
 
 func getRegistry(context *cli.Context) *registry.Registry {

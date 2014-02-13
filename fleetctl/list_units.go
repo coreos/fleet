@@ -13,6 +13,13 @@ func newListUnitsCommand() cli.Command {
 	return cli.Command{
 		Name:	"list-units",
 		Usage:	"Enumerate units loaded in the cluster",
+		Description: `Lists all units submitted or started on the cluster.
+
+For easily parsable output, you can remove the column headers:
+fleetctl list-units --no-legend
+
+Output the list without ellipses:
+fleetctl list-units --full`,
 		Action:	listUnitsAction,
 		Flags: []cli.Flag{
 			cli.BoolFlag{"full, l", "Do not ellipsize fields on output"},

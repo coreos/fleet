@@ -11,7 +11,9 @@ import (
 func newCatUnitCommand() cli.Command {
 	return cli.Command{
 		Name:	"cat",
-		Usage:	"Print the contents of a unit that has been loaded in the cluster",
+		Usage:	"Output the contents of a submitted unit",
+		Description: `Outputs the unit file that is currently loaded in the cluster. Useful to verify
+the correct version of a unit is running.`,
 		Action:	printUnitAction,
 	}
 }
