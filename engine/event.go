@@ -36,10 +36,12 @@ func (self *EventHandler) HandleEventJobBidSubmitted(ev event.Event) {
 
 func (self *EventHandler) HandleEventMachineRemoved(ev event.Event) {
 	machBootId := ev.Payload.(string)
-	if !self.engine.ClaimMachine(machBootId) {
+	mutex := self.engine.LockMachine(machBootId)
+	if mutex == nil {
 		log.V(2).Infof("EventMachineRemoved(%s): failed to lock Machine, ignoring event", machBootId)
 		return
 	}
+	defer mutex.Unlock()
 
 	jobs := self.engine.GetJobsScheduledToMachine(machBootId)
 
