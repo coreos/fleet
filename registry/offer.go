@@ -1,17 +1,14 @@
 package registry
 
 import (
-	"fmt"
 	"path"
 	"strings"
-	"time"
 
 	"github.com/coreos/fleet/third_party/github.com/coreos/go-etcd/etcd"
 	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
 
 	"github.com/coreos/fleet/event"
 	"github.com/coreos/fleet/job"
-	"github.com/coreos/fleet/machine"
 )
 
 const (
@@ -61,14 +58,14 @@ func (r *Registry) UnresolvedJobOffers() []job.JobOffer {
 	return offers
 }
 
-func (r *Registry) ClaimJobOffer(jobName string, m *machine.Machine, ttl time.Duration) bool {
+func (r *Registry) LockJobOffer(jobName, context string) *TimedResourceMutex {
 	key := path.Join(keyPrefix, offerPrefix, jobName)
 	_, err := r.etcd.Get(key, false, true)
 	if err != nil {
-		return false
+		return nil
 	}
 
-	return r.acquireLeadership(fmt.Sprintf("offer-%s", jobName), m.State().BootId, ttl)
+	return r.lockResource("offer", jobName, context)
 }
 
 func (r *Registry) ResolveJobOffer(jobName string) {

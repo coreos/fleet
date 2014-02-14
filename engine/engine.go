@@ -2,7 +2,6 @@ package engine
 
 import (
 	"errors"
-	"time"
 
 	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
 
@@ -12,22 +11,16 @@ import (
 	"github.com/coreos/fleet/registry"
 )
 
-const (
-	DefaultClaimTTL = "4s"
-)
-
 type Engine struct {
 	registry *registry.Registry
 	events   *event.EventBus
 	machine  *machine.Machine
-	claimTTL time.Duration
 
 	stop chan bool
 }
 
 func New(reg *registry.Registry, events *event.EventBus, mach *machine.Machine) *Engine {
-	claimTTL, _ := time.ParseDuration(DefaultClaimTTL)
-	return &Engine{reg, events, mach, claimTTL, nil}
+	return &Engine{reg, events, mach, nil}
 }
 
 func (self *Engine) Run() {
@@ -67,11 +60,14 @@ func (self *Engine) UnscheduleJob(jobName string) {
 }
 
 func (self *Engine) OfferJob(j job.Job) error {
-	log.V(2).Infof("Attempting to claim Job(%s)", j.Name)
-	if !self.claimJob(j.Name) {
-		log.V(1).Infof("Could not claim Job(%s)", j.Name)
-		return errors.New("Could not claim Job")
+	log.V(2).Infof("Attempting to lock Job(%s)", j.Name)
+
+	mutex := self.lockJob(j.Name)
+	if mutex == nil {
+		log.V(1).Infof("Could not lock Job(%s)", j.Name)
+		return errors.New("Could not lock Job")
 	}
+	defer mutex.Unlock()
 
 	log.V(1).Infof("Claimed Job", j.Name)
 
@@ -85,11 +81,14 @@ func (self *Engine) OfferJob(j job.Job) error {
 }
 
 func (self *Engine) ResolveJobOffer(jobName string, machBootId string) error {
-	log.V(2).Infof("Attempting to claim JobOffer(%s)", jobName)
-	if !self.claimJobOffer(jobName) {
-		log.V(2).Infof("Could not claim JobOffer(%s)", jobName)
-		return errors.New("Could not claim JobOffer")
+	log.V(2).Infof("Attempting to lock JobOffer(%s)", jobName)
+	mutex := self.lockJobOffer(jobName)
+
+	if mutex == nil {
+		log.V(2).Infof("Could not lock JobOffer(%s)", jobName)
+		return errors.New("Could not lock JobOffer")
 	}
+	defer mutex.Unlock()
 
 	log.V(2).Infof("Claimed JobOffer", jobName)
 
@@ -105,15 +104,15 @@ func (self *Engine) RemoveJobState(jobName string) {
 	self.registry.RemoveJobState(jobName)
 }
 
-func (self *Engine) claimJobOffer(jobName string) bool {
-	return self.registry.ClaimJobOffer(jobName, self.machine, self.claimTTL)
+func (self *Engine) lockJobOffer(jobName string) *registry.TimedResourceMutex {
+	return self.registry.LockJobOffer(jobName, self.machine.State().BootId)
 }
 
-func (self *Engine) claimJob(jobName string) bool {
-	return self.registry.ClaimJob(jobName, self.machine, self.claimTTL)
+func (self *Engine) lockJob(jobName string) *registry.TimedResourceMutex {
+	return self.registry.LockJob(jobName, self.machine.State().BootId)
 }
 
-// Pass-through to Registry.ClaimMachine
-func (self *Engine) ClaimMachine(machBootId string) bool {
-	return self.registry.ClaimMachine(machBootId, self.machine, self.claimTTL)
+// Pass-through to Registry.LockMachine
+func (self *Engine) LockMachine(machBootId string) *registry.TimedResourceMutex {
+	return self.registry.LockMachine(machBootId, self.machine.State().BootId)
 }

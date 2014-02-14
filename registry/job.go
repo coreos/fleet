@@ -1,10 +1,8 @@
 package registry
 
 import (
-	"fmt"
 	"path"
 	"strings"
-	"time"
 
 	"github.com/coreos/fleet/third_party/github.com/coreos/go-etcd/etcd"
 	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
@@ -165,8 +163,8 @@ func (r *Registry) StopJob(jobName string) {
 	r.etcd.Delete(key, true)
 }
 
-func (r *Registry) ClaimJob(jobName string, m *machine.Machine, ttl time.Duration) bool {
-	return r.acquireLeadership(fmt.Sprintf("job-%s", jobName), m.State().BootId, ttl)
+func (r *Registry) LockJob(jobName, context string) *TimedResourceMutex {
+	return r.lockResource("job", jobName, context)
 }
 
 func filterEventJobCreated(resp *etcd.Response) *event.Event {
