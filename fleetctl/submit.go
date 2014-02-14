@@ -43,7 +43,7 @@ func submitUnitsAction(c *cli.Context) {
 	for _, payload := range payloads {
 		err := r.CreatePayload(&payload)
 		if err != nil {
-			fmt.Printf("Creation of Payload %s failed: %v", err)
+			fmt.Printf("Creation of payload %s failed: %v\n", payload.Name, err)
 			return
 		}
 	}

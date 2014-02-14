@@ -53,7 +53,7 @@ func startUnitAction(c *cli.Context) {
 
 			err = r.CreatePayload(payload)
 			if err != nil {
-				fmt.Printf("Creation of Payload %s failed\n", payload.Name)
+				fmt.Printf("Creation of payload %s failed: %v\n", payload.Name, err)
 				return
 			}
 		}
@@ -68,7 +68,7 @@ func startUnitAction(c *cli.Context) {
 		j := job.NewJob(jp.Name, requirements, &jp, nil)
 		err := r.CreateJob(j)
 		if err != nil {
-			fmt.Printf("Creation of Job %s failed\n", j.Name)
+			fmt.Printf("Creation of job %s failed: %v\n", j.Name, err)
 		}
 	}
 }
