@@ -1,6 +1,7 @@
 package machine
 
 import (
+	"fmt"
 	"io/ioutil"
 	"net"
 	"strings"
@@ -14,6 +15,10 @@ type MachineState struct {
 	BootId   string
 	PublicIP string
 	Metadata map[string]string
+}
+
+func (ms MachineState) String() string {
+	return fmt.Sprintf("MachineState{BootId: %q, PublicIp: %q, Metadata: %v}", ms.BootId, ms.PublicIP, ms.Metadata)
 }
 
 // NewDynamicMachineState generates a MachineState object with
