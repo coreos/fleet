@@ -62,7 +62,7 @@ fleet must be built with Go 1.2 on a Linux machine, or in a [Go docker container
 
 ### APIs
 
-The current interfaces into fleet should not yet be considered stable. Expect incompatible in subsequent releases.
+The current fleet interfaces should not be considered stable. Expect incompatible changes in subsequent releases.
 
 ### Contributing
 
