@@ -31,7 +31,7 @@ func (m *Machine) State() (state MachineState) {
 	if m.dynamicState == nil {
 		state = MachineState(m.staticState)
 	} else {
-		state = stackState(*m.dynamicState, m.staticState)
+		state = stackState(m.staticState, *m.dynamicState)
 	}
 
 	return
