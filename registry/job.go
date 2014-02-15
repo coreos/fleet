@@ -148,9 +148,10 @@ func (r *Registry) CreateJob(j *job.Job) error {
 	return err
 }
 
-func (r *Registry) ScheduleJob(jobName string, machBootId string) {
+func (r *Registry) ScheduleJob(jobName string, machBootId string) error {
 	key := path.Join(keyPrefix, jobPrefix, jobName, "target")
-	r.etcd.Set(key, machBootId, 0)
+	_, err := r.etcd.Create(key, machBootId, 0)
+	return err
 }
 
 func (r *Registry) UnscheduleJob(jobName string) {
@@ -188,7 +189,7 @@ func filterEventJobCreated(resp *etcd.Response) *event.Event {
 }
 
 func filterEventJobScheduled(resp *etcd.Response) *event.Event {
-	if resp.Action != "set" {
+	if resp.Action != "create" {
 		return nil
 	}
 
