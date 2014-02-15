@@ -68,14 +68,15 @@ func (r *Registry) LockJobOffer(jobName, context string) *TimedResourceMutex {
 	return r.lockResource("offer", jobName, context)
 }
 
-func (r *Registry) ResolveJobOffer(jobName string) {
-	key := path.Join(keyPrefix, offerPrefix, jobName)
-	_, err := r.etcd.Delete(key, true)
-	if err == nil {
-		log.V(2).Infof("Successfully resolved JobOffer(%s)", jobName)
-	} else {
-		log.V(2).Infof("Failed to resolve JobOffer(%s): %s", jobName, err.Error())
+func (r *Registry) ResolveJobOffer(jobName string) error {
+	key := path.Join(keyPrefix, offerPrefix, jobName, "object")
+	if _, err := r.etcd.Delete(key, false); err != nil {
+		return err
 	}
+
+	key = path.Join(keyPrefix, offerPrefix, jobName)
+	r.etcd.Delete(key, true)
+	return nil
 }
 
 func (r *Registry) SubmitJobBid(jb *job.JobBid) {

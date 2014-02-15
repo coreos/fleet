@@ -30,7 +30,7 @@ func (self *EventHandler) HandleEventJobBidSubmitted(ev event.Event) {
 	if err == nil {
 		log.V(1).Infof("EventJobBidSubmitted(%s): successfully scheduled Job to Machine(%s)", jb.JobName, jb.MachineBootId)
 	} else {
-		log.V(1).Infof("EventJobBidSubmitted(%s): failed to schedule Job to Machine(%s): %s", jb.JobName, jb.MachineBootId, err.Error())
+		log.V(1).Infof("EventJobBidSubmitted(%s): failed to schedule Job to Machine(%s)", jb.JobName, jb.MachineBootId)
 	}
 }
 

@@ -90,13 +90,22 @@ func (self *Engine) ResolveJobOffer(jobName string, machBootId string) error {
 	}
 	defer mutex.Unlock()
 
-	log.V(2).Infof("Claimed JobOffer", jobName)
+	log.V(2).Infof("Claimed JobOffer(%s)", jobName)
 
 	log.V(2).Infof("Resolving JobOffer(%s), scheduling to Machine(%s)", jobName, machBootId)
-	self.registry.ResolveJobOffer(jobName)
-	self.registry.ScheduleJob(jobName, machBootId)
-	log.Infof("Scheduled Job(%s) to Machine(%s)", jobName, machBootId)
+	err := self.registry.ResolveJobOffer(jobName)
+	if err != nil {
+		log.Errorf("Failed resolving JobOffer(%s): %v", jobName, err)
+		return err
+	}
 
+	err = self.registry.ScheduleJob(jobName, machBootId)
+	if err != nil {
+		log.Errorf("Failed scheduling Job(%s): %v", jobName, err)
+		return err
+	}
+
+	log.Infof("Scheduled Job(%s) to Machine(%s)", jobName, machBootId)
 	return nil
 }
 
