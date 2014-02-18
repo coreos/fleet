@@ -40,7 +40,7 @@ for i in darwin linux; do
 
 	build fleet ${VER}
 
-	TARGET="fleet-{VER}-${GOOS}-${GOARCH}"
+	TARGET="fleet-${VER}-${GOOS}-${GOARCH}"
 	mkdir ${TARGET}
 
 	package fleet ${TARGET}
