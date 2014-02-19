@@ -29,3 +29,7 @@ func (self *Job) Requirements() map[string][]string {
 		return self.JobRequirements
 	}
 }
+
+func (self *Job) Description() string {
+	return self.Payload.Description()
+}

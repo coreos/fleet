@@ -35,19 +35,19 @@ func listUnitsAction(c *cli.Context) {
 		fmt.Fprintln(out, "UNIT\tLOAD\tACTIVE\tSUB\tDESC\tMACHINE")
 	}
 
-	names := make(map[string]bool, 0)
+	names := make(map[string]string, 0)
 	sortable := make(sort.StringSlice, 0)
 
 	for _, p := range r.GetAllPayloads() {
 		if _, ok := names[p.Name]; !ok {
-			names[p.Name] = true
+			names[p.Name] = p.Description()
 			sortable = append(sortable, p.Name)
 		}
 	}
 
 	for _, j := range r.GetAllJobs() {
 		if _, ok := names[j.Name]; !ok {
-			names[j.Name] = true
+			names[j.Name] = j.Description()
 			sortable = append(sortable, j.Name)
 		}
 	}
@@ -57,13 +57,14 @@ func listUnitsAction(c *cli.Context) {
 	full := c.Bool("full")
 	for _, name := range sortable {
 		state := r.GetJobState(name)
-		printJobState(name, state, full)
+		description := names[name]
+		printJobState(name, description, state, full)
 	}
 
 	out.Flush()
 }
 
-func printJobState(name string, js *job.JobState, full bool) {
+func printJobState(name, description string, js *job.JobState, full bool) {
 	loadState := "-"
 	activeState := "-"
 	subState := "-"
@@ -85,5 +86,5 @@ func printJobState(name string, js *job.JobState, full bool) {
 		}
 	}
 
-	fmt.Fprintf(out, "%s\t%s\t%s\t%s\t-\t%s\n", name, loadState, activeState, subState, mach)
+	fmt.Fprintf(out, "%s\t%s\t%s\t%s\t%s\t%s\n", name, loadState, activeState, subState, description, mach)
 }
