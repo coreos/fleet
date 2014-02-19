@@ -2,28 +2,24 @@ package config
 
 import (
 	"flag"
-	"io"
 	"strconv"
 	"strings"
 
-	"github.com/coreos/fleet/third_party/github.com/BurntSushi/toml"
 	"github.com/coreos/fleet/third_party/github.com/golang/glog"
-
-	"github.com/coreos/fleet/agent"
 )
 
 type Config struct {
-	BootId		string		`toml:"bootid"`
-	EtcdServers	[]string	`toml:"etcd_servers"`
-	PublicIP	string		`toml:"public_ip"`
-	Verbosity	int		`toml:"verbosity"`
-	RawMetadata	string		`toml:"metadata"`
-	UnitPrefix	string		`toml:"unit_prefix"`
-	AgentTTL	string		`toml:"agent_ttl"`
+	BootId      string
+	EtcdServers []string
+	PublicIP    string
+	Verbosity   int
+	RawMetadata string
+	UnitPrefix  string
+	AgentTTL    string
 }
 
 func NewConfig() *Config {
-	conf := Config{BootId: "", Verbosity: 0, PublicIP: "", AgentTTL: agent.DefaultTTL}
+	conf := Config{BootId: "", Verbosity: 0, PublicIP: ""}
 	return &conf
 }
 
@@ -45,18 +41,14 @@ func (self *Config) Metadata() map[string]string {
 	return meta
 }
 
-func UpdateConfigFromFile(conf *Config, f io.Reader) error {
-	_, err := toml.DecodeReader(f, conf)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func UpdateFlagsFromConfig(conf *Config) {
+func UpdateLoggingFlagsFromConfig(conf *Config) {
 	err := flag.Lookup("v").Value.Set(strconv.Itoa(conf.Verbosity))
 	if err != nil {
-		glog.Errorf("Failed to apply config.Verbosity to flag.v: %s", err.Error())
+		glog.Errorf("Failed to apply config.Verbosity to flag.v: %v", err)
+	}
+
+	err = flag.Lookup("logtostderr").Value.Set("true")
+	if err != nil {
+		glog.Errorf("Failed to set flag.logtostderr to true: %v", err)
 	}
 }
