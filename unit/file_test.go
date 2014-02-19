@@ -37,3 +37,22 @@ WantedBy=fleet-ping.target
 		t.Fatalf("Install.WantedBy is incorrect")
 	}
 }
+
+func TestDescription(t *testing.T) {
+	contents := `
+[Unit]
+Description = Foo
+
+[Service]
+ExecStart=echo "ping";
+ExecStop=echo "pong";
+
+[Install]
+WantedBy=fleet-ping.target
+`
+
+	unitFile := NewSystemdUnitFile(contents)
+	if unitFile.Description() != "Foo" {
+		t.Fatalf("Unit.Description is incorrect")
+	}
+}

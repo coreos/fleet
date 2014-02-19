@@ -46,6 +46,10 @@ func (self *SystemdUnitFile) Requirements() map[string][]string {
 	return requirements
 }
 
+func (self *SystemdUnitFile) Description() string {
+	return self.GetSection("Unit")["Description"]
+}
+
 func (self *SystemdUnitFile) String() string {
 	var serialized string
 	for section, keyMap := range self.Contents {
