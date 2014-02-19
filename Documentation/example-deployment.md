@@ -39,35 +39,35 @@ CMD /bin/elb-presence
 
 ## Service Files
 
-With the docker images available over the public internet, systemd can simply run the containers. The following templates are rendered with all configuration information and the <N> field replaced with a unique integer per pair:
+With the docker images available over the public internet, systemd can simply run the containers. The following templates are rendered with all configuration information and can be run multiple times by incrementing the integer in the filename and within the unit:
 
-**subgun.\<N>.service**
+**subgun-http.1.service**
 
 ```
 [Unit]
-Description=SUBGUN
+Description=subgun
 
 [Service]
-ExecStart=/usr/bin/docker run -rm -name subgun-cont -e SUBGUN_LISTS=<LIST> -e SUBGUN_API_KEY=<KEY> -p 8080:8080 coreos/subgun
-ExecStop=/usr/bin/docker kill subgun-cont
+ExecStart=/usr/bin/docker run -rm -name subgun-1 -e SUBGUN_LISTEN=127.0.0.1:8080 -e SUBGUN_LISTS=recv@sandbox2398.mailgun.org -e SUBGUN_API_KEY=key-779ru4cibbnhfa1qp7a3apyvwkls7ny7 -p 8080:8080 coreos/subgun
+ExecStop=/usr/bin/docker kill subgun-1
 
 [X-Fleet]
-X-Conflicts=subgun.*.service
+X-Conflicts=subgun-http.*.service
 ```
 
-**subgun-presence.\<N>.service**
+**subgun-presence.1.service**
 
 ```
 [Unit]
 Description=subgun presence service
-BindsTo=subgun.service
+BindsTo=subgun-http.1.service
 
 [Service]
-ExecStart=/usr/bin/docker run -rm -name subgun-presence -e AWS_ACCESS_KEY=<ACCESS> -e AWS_SECRET_KEY=<SECRET> -e AWS_REGION=<REGION> -e ELB_NAME=<ELB_NAME> coreos/elb-presence
-ExecStop=/usr/bin/docker kill subgun-presence
+ExecStart=/usr/bin/docker run -rm -name subgun-presence-1 -e AWS_ACCESS_KEY=AKIAIBC5MW3ONCW6J2XQ -e AWS_SECRET_KEY=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 -e AWS_REGION=us-east-1 -e ELB_NAME=fleet-lb coreos/elb-presence
+ExecStop=/usr/bin/docker kill subgun-presence-1
 
 [X-Fleet]
-X-ConditionMachineOf=subgun.<N>.service
+X-ConditionMachineOf=subgun-http.1.service
 ```
 
 ## Deploy!
