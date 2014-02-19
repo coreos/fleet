@@ -8,7 +8,7 @@ import (
 	"path"
 	"strings"
 
-	ini "github.com/rakyll/goini"
+	ini "github.com/coreos/fleet/third_party/github.com/rakyll/goini"
 )
 
 const (
@@ -25,8 +25,8 @@ var flags map[string]*flag.FlagSet = make(map[string]*flag.FlagSet)
 
 // Represents a GlobalConf context.
 type GlobalConf struct {
-	Filename string
-	dict     *ini.Dict
+	Filename	string
+	dict		*ini.Dict
 }
 
 // Opens/creates a config file for the specified appName.
@@ -64,8 +64,8 @@ func NewWithFilename(filename string) (*GlobalConf, error) {
 	}
 	Register("", flag.CommandLine)
 	return &GlobalConf{
-		Filename: filename,
-		dict:     &dict,
+		Filename:	filename,
+		dict:		&dict,
 	}, nil
 }
 
