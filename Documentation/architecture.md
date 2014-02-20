@@ -6,7 +6,7 @@ There exist two primary roles within fleet: Engine and Agent. Each `fleet` daemo
 
 ### Engine
 
-The most imporant responsibility of an Engine is that of scheduling Jobs. An Engine offers Jobs to Agents in the cluster, gathers JobBids in response to those JobOffers, and decides which Agent will actually run those Jobs. 
+The most important responsibility of an Engine is that of scheduling Jobs. An Engine offers Jobs to Agents in the cluster, gathers JobBids in response to those JobOffers, and decides which Agent will actually run those Jobs. 
 
 **NOTE:** The current scheduling algorithm used by an Engine is not fair. It simply accepts the first JobBid.
 
