@@ -50,6 +50,9 @@ func printUnitStatus(c *cli.Context, r *registry.Registry, jobName string) {
 	if js == nil {
 		fmt.Printf("%s does not appear to be running\n", jobName)
 		syscall.Exit(1)
+	} else if js.MachineState.PublicIP == "" {
+		fmt.Printf("Unit's host machine has not published a reachable IP address")
+		syscall.Exit(1)
 	}
 
 	addr := fmt.Sprintf("%s:22", js.MachineState.PublicIP)

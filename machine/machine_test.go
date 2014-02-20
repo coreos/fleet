@@ -8,7 +8,7 @@ func TestHasMetadataSimpleMatch(t *testing.T) {
 	metadata := map[string]string{
 		"region": "us-east-1",
 	}
-	mach := New("", "", metadata)
+	mach := New("", "", "", metadata)
 
 	match := map[string][]string{
 		"region": []string{"us-east-1"},
@@ -22,7 +22,7 @@ func TestHasMetadataMultiMatch(t *testing.T) {
 	metadata := map[string]string{
 		"groups": "ping",
 	}
-	mach := New("", "", metadata)
+	mach := New("", "", "", metadata)
 
 	match := map[string][]string{
 		"groups": []string{"ping", "pong"},
@@ -36,7 +36,7 @@ func TestHasMetadataSingleMatchFail(t *testing.T) {
 	metadata := map[string]string{
 		"groups": "ping",
 	}
-	mach := New("", "", metadata)
+	mach := New("", "", "", metadata)
 
 	match := map[string][]string{
 		"groups": []string{"pong"},
@@ -51,7 +51,7 @@ func TestHasMetadataPartialMatchFail(t *testing.T) {
 		"region": "us-east-1",
 		"groups": "ping",
 	}
-	mach := New("", "", metadata)
+	mach := New("", "", "", metadata)
 
 	match := map[string][]string{
 		"region": []string{"us-east-1"},
