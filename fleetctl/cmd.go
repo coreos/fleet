@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net"
 	"net/http"
 	"os"
@@ -48,7 +49,7 @@ func getRegistry(context *cli.Context) *registry.Registry {
 	if tun != "" {
 		sshClient, err := ssh.NewSSHClient("core", tun)
 		if err != nil {
-			panic(err)
+			log.Fatalf("Failed initializing SSH client: %v", err)
 		}
 
 		dial := func(network, addr string) (net.Conn, error) {
