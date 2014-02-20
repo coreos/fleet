@@ -25,8 +25,8 @@ var flags map[string]*flag.FlagSet = make(map[string]*flag.FlagSet)
 
 // Represents a GlobalConf context.
 type GlobalConf struct {
-	Filename	string
-	dict		*ini.Dict
+	Filename string
+	dict     *ini.Dict
 }
 
 // Opens/creates a config file for the specified appName.
@@ -55,6 +55,14 @@ func New(appName string) (g *GlobalConf, err error) {
 	return NewWithFilename(filePath)
 }
 
+// NewWithoutFile creates a GlobalConf without an
+// underlying config file.
+func NewWithoutFile() *GlobalConf {
+	Register("", flag.CommandLine)
+	dict := make(ini.Dict, 0)
+	return &GlobalConf{dict: &dict}
+}
+
 // Opens and loads contents of a config file whose filename
 // is provided as the first argument.
 func NewWithFilename(filename string) (*GlobalConf, error) {
@@ -64,22 +72,30 @@ func NewWithFilename(filename string) (*GlobalConf, error) {
 	}
 	Register("", flag.CommandLine)
 	return &GlobalConf{
-		Filename:	filename,
-		dict:		&dict,
+		Filename: filename,
+		dict:     &dict,
 	}, nil
+}
+
+// Persist internal ini data to disk if file is provided
+func (g *GlobalConf) write() (err error) {
+	if g.Filename != "" {
+		err = ini.Write(g.Filename, g.dict)
+	}
+	return
 }
 
 // Sets a flag's value and persists the changes to the disk.
 func (g *GlobalConf) Set(flagSetName string, f *flag.Flag) error {
 	g.dict.SetString(flagSetName, f.Name, f.Value.String())
-	return ini.Write(g.Filename, g.dict)
+	return g.write()
 }
 
 // Deletes a flag from config file and persists the changes
 // to the disk.
 func (g *GlobalConf) Delete(flagSetName, flagName string) error {
 	g.dict.Delete(flagSetName, flagName)
-	return ini.Write(g.Filename, g.dict)
+	return g.write()
 }
 
 // Parses the config file for the provided flag set.
