@@ -44,7 +44,7 @@ func sshAction(c *cli.Context) {
 		log.Fatalf("Provide one machine or unit")
 	}
 
-	var addr string
+	var mach *machine.MachineState
 	if unit == "" {
 		lookup := args[0]
 		args = args[1:]
@@ -62,16 +62,25 @@ func sshAction(c *cli.Context) {
 
 		if match == nil {
 			log.Fatalf("Could not find provided Machine")
+		} else if match.PublicIP == "" {
+			log.Fatalf("Machine has not published a reachable IP address")
 		}
 
-		addr = fmt.Sprintf("%s:22", match.PublicIP)
+		mach = match
+
 	} else {
 		js := r.GetJobState(unit)
 		if js == nil {
 			log.Fatalf("Requested unit %s does not appear to be running", unit)
+		} else if js.MachineState.PublicIP == "" {
+			log.Fatalf("Unit's host machine has not published a reachable IP address")
 		}
-		addr = fmt.Sprintf("%s:22", js.MachineState.PublicIP)
+
+		mach = js.MachineState
 	}
+
+
+	addr := fmt.Sprintf("%s:22", mach.PublicIP)
 
 	var err error
 	var sshClient *gossh.ClientConn
