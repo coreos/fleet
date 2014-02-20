@@ -6,22 +6,21 @@ fleet provides a command-line tool called `fleetctl`. The commands provided by f
 
 The `fleetctl` binary is included in all CoreOS distributions, so it is as simple as SSH'ing in to your CoreOS machine and executing `fleetctl`.
 
+### Custom etcd Endpoint
+
+fleetctl requires direct communication with the etcd cluster that your fleet machines are configured to use. Use the `--endpoint` flag to override the default of `http://127.0.0.1:4001`:
+
+    fleetctl --endpoint http://<IP:PORT> list-units
+
+### From an External Host
+
 If you prefer to execute fleetctl from an external host (i.e. your laptop), the `--tunnel` flag can be used to tunnel communication with your fleet cluster over SSH:
 
     fleetctl --tunnel <IP[:PORT]> list-units
 
-Usage of the `--tunnel` flag requires two things:
-
-1. SSH access to the provided address, which subsequently can SSH to all of your fleet machines
-2. ssh-agent running on the client machine with the necessary private key to access the provided address
-
-One can SSH directly to the tunnel host to assert ssh-agent is running with the proper access. Additionally, an alias for the `--tunnel` flag makes it less cumbersome: `alias fleetctl=fleetctl --tunnel 10.10.10.10`
-
-fleetctl also requires direct communication with the etcd cluster that your fleet machines are configured to use. Use the `--endpoint` flag to override the default of `http://127.0.0.1:4001`:
-
-    fleetctl --endpoint http://<IP:PORT> list-units
-
 When using the `--tunnel` flag and the `--endpoint` flag together, it is important to note that all etcd requests will be made through the SSH tunnel. The address in the `--endpoint` flag must be routable from the server hosting the tunnel.
+
+See more about [configuring remote access](remote-access.md).
 
 ## Interact with units
 
