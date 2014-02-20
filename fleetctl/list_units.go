@@ -47,7 +47,11 @@ func listUnitsAction(c *cli.Context) {
 
 	for _, j := range r.GetAllJobs() {
 		if _, ok := names[j.Name]; !ok {
-			names[j.Name] = j.Description()
+			var description string
+			if j.Payload != nil {
+				description = j.Payload.Description()
+			}
+			names[j.Name] = description
 			sortable = append(sortable, j.Name)
 		}
 	}
