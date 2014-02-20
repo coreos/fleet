@@ -19,11 +19,11 @@ func TestEventBus(t *testing.T) {
 	evchan := make(chan Event)
 
 	bus := NewEventBus()
-	bus.AddListener("test", machine.New("X", "", make(map[string]string, 0)), &TestListener{evchan})
+	bus.AddListener("test", machine.New("X", "", "", make(map[string]string, 0)), &TestListener{evchan})
 	bus.Listen()
 	defer bus.Stop()
 
-	ev := Event{"EventTypeOne", "payload", machine.New("Y", "", make(map[string]string, 0))}
+	ev := Event{"EventTypeOne", "payload", machine.New("Y", "", "", make(map[string]string, 0))}
 	bus.Channel <- &ev
 
 	select {
@@ -43,15 +43,15 @@ func TestEventBusNoDispatch(t *testing.T) {
 	evchan := make(chan Event)
 
 	bus := NewEventBus()
-	bus.AddListener("test", machine.New("X", "", make(map[string]string, 0)), &TestListener{evchan})
+	bus.AddListener("test", machine.New("X", "", "", make(map[string]string, 0)), &TestListener{evchan})
 	bus.Listen()
 	defer bus.Stop()
 
 	go func() {
-		ev := Event{"EventTypeTwo", "payload", machine.New("Y", "", make(map[string]string, 0))}
+		ev := Event{"EventTypeTwo", "payload", machine.New("Y", "", "", make(map[string]string, 0))}
 		bus.Channel <- &ev
 
-		ev = Event{"EventTypeOne", "payload", machine.New("Y", "", make(map[string]string, 0))}
+		ev = Event{"EventTypeOne", "payload", machine.New("Y", "", "", make(map[string]string, 0))}
 		bus.Channel <- &ev
 	}()
 

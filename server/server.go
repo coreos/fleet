@@ -21,7 +21,7 @@ type Server struct {
 }
 
 func New(cfg config.Config) *Server {
-	m := machine.New(cfg.BootId, cfg.PublicIP, cfg.Metadata())
+	m := machine.New(cfg.BootId, cfg.PublicIP, cfg.PublicInterface, cfg.Metadata())
 	m.RefreshState()
 
 	regClient := etcd.NewClient(cfg.EtcdServers)

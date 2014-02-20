@@ -5,9 +5,14 @@ import (
 	"io/ioutil"
 	"net"
 	"strings"
+
+	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
 )
 
-const bootIdPath = "/proc/sys/kernel/random/boot_id"
+const (
+	bootIdPath             = "/proc/sys/kernel/random/boot_id"
+	DefaultPublicInterface = "eth0"
+)
 
 // MachineState represents a point-in-time snapshot of the
 // state of the local host.
@@ -23,9 +28,9 @@ func (ms MachineState) String() string {
 
 // NewDynamicMachineState generates a MachineState object with
 // the values read from the local system
-func CurrentState() MachineState {
+func CurrentState(iface string) MachineState {
 	bootId := readLocalBootId()
-	publicIP := getLocalIP()
+	publicIP := getLocalIP(iface)
 	return MachineState{bootId, publicIP, make(map[string]string, 0)}
 }
 
@@ -37,16 +42,21 @@ func readLocalBootId() string {
 	return strings.TrimSpace(string(id))
 }
 
-func getLocalIP() string {
-	iface, err := net.InterfaceByName("eth0")
+func getLocalIP(publicIface string) string {
+	log.V(2).Infof("Attempting to read IPv4 address from interface %s", publicIface)
+	iface, err := net.InterfaceByName(publicIface)
 	if err != nil {
+		log.V(2).Infof("Could not find local interface by name %s: %v", publicIface, err)
 		return ""
 	}
 
 	addrs, err := iface.Addrs()
-	if err != nil || len(addrs) == 0 {
+	if err != nil {
+		log.V(2).Infof("Could not read IP information of local interface %s: %v", publicIface, err)
 		return ""
 	}
+
+	log.V(2).Infof("Found %d addresses bound to interface %s", len(addrs), publicIface)
 
 	for _, addr := range addrs {
 		// Attempt to parse the address in CIDR notation
