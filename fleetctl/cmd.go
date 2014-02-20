@@ -61,7 +61,7 @@ func getRegistry(context *cli.Context) *registry.Registry {
 		}
 
 		tr := http.Transport{
-			Dial:	dial,
+			Dial: dial,
 			TLSClientConfig: &tls.Config{
 				InsecureSkipVerify: true,
 			},

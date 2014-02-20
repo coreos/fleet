@@ -2,6 +2,7 @@ package ssh
 
 import (
 	"bufio"
+	"errors"
 	"net"
 	"os"
 
@@ -62,29 +63,41 @@ func Shell(client *gossh.ClientConn) error {
 	return nil
 }
 
-func sshClientConfig(user string) *gossh.ClientConfig {
-	agent, err := net.Dial("unix", os.Getenv("SSH_AUTH_SOCK"))
+func sshClientConfig(user string) (*gossh.ClientConfig, error) {
+	sock := os.Getenv("SSH_AUTH_SOCK")
+	if sock == "" {
+		return nil, errors.New("SSH_AUTH_SOCK environment variable is not set. Verify ssh-agent is running. See https://github.com/coreos/fleet/blob/master/Documentation/remote-access.md for help.")
+	}
+
+	agent, err := net.Dial("unix", sock)
 	if err != nil {
-		return nil
+		return nil, err
 	}
 
-	auths := []gossh.ClientAuth{
-		gossh.ClientAuthAgent(gossh.NewAgentClient(agent)),
-	}
-
-	return &gossh.ClientConfig{
+	cfg := gossh.ClientConfig{
 		User:	user,
-		Auth:	auths,
+		Auth:	[]gossh.ClientAuth{
+			gossh.ClientAuthAgent(gossh.NewAgentClient(agent)),
+		},
 	}
+
+	return &cfg, nil
 }
 
 func NewSSHClient(user, addr string) (*gossh.ClientConn, error) {
-	clientConfig := sshClientConfig(user)
+	clientConfig, err := sshClientConfig(user)
+	if err != nil {
+		return nil, err
+	}
+
 	return gossh.Dial("tcp", addr, clientConfig)
 }
 
 func NewTunnelledSSHClient(user, tunaddr, tgtaddr string) (*gossh.ClientConn, error) {
-	clientConfig := sshClientConfig(user)
+	clientConfig, err := sshClientConfig(user)
+	if err != nil {
+		return nil, err
+	}
 
 	tunnelClient, err := gossh.Dial("tcp", tunaddr, clientConfig)
 	if err != nil {
