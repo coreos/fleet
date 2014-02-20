@@ -62,7 +62,7 @@ func printUnitStatus(c *cli.Context, r *registry.Registry, jobName string) {
 		sshClient, err = ssh.NewSSHClient("core", addr)
 	}
 	if err != nil {
-		log.Fatalf("Unable to establish SSH connection: %v", err)
+		log.Fatal(err.Error())
 	}
 
 	defer sshClient.Close()

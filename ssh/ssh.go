@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net"
 	"os"
+	"time"
 
 	gossh "github.com/coreos/fleet/third_party/code.google.com/p/go.crypto/ssh"
 	"github.com/coreos/fleet/third_party/code.google.com/p/go.crypto/ssh/terminal"
@@ -33,9 +34,9 @@ func Shell(client *gossh.ClientConn) error {
 	defer session.Close()
 
 	modes := gossh.TerminalModes{
-		gossh.ECHO:		1,	// enable echoing
-		gossh.TTY_OP_ISPEED:	14400,	// input speed = 14.4kbaud
-		gossh.TTY_OP_OSPEED:	14400,	// output speed = 14.4kbaud
+		gossh.ECHO:          1,     // enable echoing
+		gossh.TTY_OP_ISPEED: 14400, // input speed = 14.4kbaud
+		gossh.TTY_OP_OSPEED: 14400, // output speed = 14.4kbaud
 	}
 
 	fd := int(os.Stdin.Fd())
@@ -90,7 +91,14 @@ func NewSSHClient(user, addr string) (*gossh.ClientConn, error) {
 		return nil, err
 	}
 
-	return gossh.Dial("tcp", addr, clientConfig)
+	var client *gossh.ClientConn
+	dialFunc := func(echan chan error) {
+		var err error
+		client, err = gossh.Dial("tcp", addr, clientConfig)
+		echan <- err
+	}
+	err = timeoutSSHDial(dialFunc)
+	return client, err
 }
 
 func NewTunnelledSSHClient(user, tunaddr, tgtaddr string) (*gossh.ClientConn, error) {
@@ -99,12 +107,24 @@ func NewTunnelledSSHClient(user, tunaddr, tgtaddr string) (*gossh.ClientConn, er
 		return nil, err
 	}
 
-	tunnelClient, err := gossh.Dial("tcp", tunaddr, clientConfig)
+	var tunnelClient *gossh.ClientConn
+	dialFunc := func(echan chan error) {
+		var err error
+		tunnelClient, err = gossh.Dial("tcp", tunaddr, clientConfig)
+		echan <- err
+	}
+	err = timeoutSSHDial(dialFunc)
 	if err != nil {
 		return nil, err
 	}
 
-	targetConn, err := tunnelClient.Dial("tcp", tgtaddr)
+	var targetConn net.Conn
+	dialFunc = func(echan chan error) {
+		var err error
+		targetConn, err = tunnelClient.Dial("tcp", tgtaddr)
+		echan <- err
+	}
+	err = timeoutSSHDial(dialFunc)
 	if err != nil {
 		return nil, err
 	}
@@ -115,4 +135,18 @@ func NewTunnelledSSHClient(user, tunaddr, tgtaddr string) (*gossh.ClientConn, er
 	}
 
 	return targetClient, nil
+}
+
+func timeoutSSHDial(dial func(chan error)) error {
+	var echan chan error
+	var err error
+
+	go dial(echan)
+
+	select {
+	case <-time.After(time.Duration(time.Second * 10)):
+		return errors.New("Timed out while initiating SSH connection")
+	case err = <-echan:
+		return err
+	}
 }
