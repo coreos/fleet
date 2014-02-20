@@ -7,7 +7,6 @@ import (
 	"github.com/coreos/fleet/machine"
 )
 
-
 type TestListener struct {
 	evchan chan Event
 }
@@ -37,5 +36,27 @@ func TestEventBus(t *testing.T) {
 		if recv.Context.(*machine.Machine).State().BootId != "Y" {
 			t.Error("event context is incorrect")
 		}
+	}
+}
+
+func TestEventBusNoDispatch(t *testing.T) {
+	evchan := make(chan Event)
+
+	bus := NewEventBus()
+	bus.AddListener("test", machine.New("X", "", make(map[string]string, 0)), &TestListener{evchan})
+	bus.Listen()
+	defer bus.Stop()
+
+	go func() {
+		ev := Event{"EventTypeTwo", "payload", machine.New("Y", "", make(map[string]string, 0))}
+		bus.Channel <- &ev
+
+		ev = Event{"EventTypeOne", "payload", machine.New("Y", "", make(map[string]string, 0))}
+		bus.Channel <- &ev
+	}()
+
+	recv := <-evchan
+	if recv.Type != "EventTypeOne" {
+		t.Fatalf("handler received unexpected event")
 	}
 }
