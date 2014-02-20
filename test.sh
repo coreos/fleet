@@ -7,10 +7,6 @@ if [ -z "$PKG" ]; then
 fi
 
 # Unit tests
-for i in $PKG
-do
-    echo
-    echo "Testing $i"
-    go test -i $i
-    go test -cover -v $i
-done
+echo
+go test -i $PKG
+go test -cover -v $PKG
