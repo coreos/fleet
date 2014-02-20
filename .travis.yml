@@ -2,7 +2,7 @@ language: go
 go: 1.2
 
 install:
- - echo "Skip install"
+ - go get code.google.com/p/go.tools/cmd/cover
 
 script:
  - ./test.sh
