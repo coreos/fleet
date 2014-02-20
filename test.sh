@@ -9,6 +9,8 @@ fi
 # Unit tests
 for i in $PKG
 do
+    echo
+    echo "Testing $i"
     go test -i $i
-    go test -v $i
+    go test -cover -v $i
 done
