@@ -27,7 +27,7 @@ Included in the [fleet source](../contrib/fleetctl-inject-ssh.sh) is a script th
 cat ~/.ssh/id_rsa.pub | ./fleetctl-inject-ssh.sh simon
 ```
 
-Any arguments past the first to `fleetctl-inject-ssh.sh` are passed directly to `fleetctl`.
+All but the first argument to `fleetctl-inject-ssh.sh` are passed directly to `fleetctl`.
 
 ```
 cat ~/.ssh/id_rsa.pub | ./fleetctl-inject-ssh.sh simon --tunnel 19.12.0.33
