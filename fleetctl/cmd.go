@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/tls"
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/coreos/fleet/third_party/github.com/codegangsta/cli"
 	"github.com/coreos/fleet/third_party/github.com/coreos/go-etcd/etcd"
+	"github.com/coreos/fleet/third_party/github.com/rakyll/globalconf"
 
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/registry"
@@ -22,6 +24,7 @@ import (
 )
 
 var out *tabwriter.Writer
+var flagset *flag.FlagSet = flag.NewFlagSet("fleetctl", flag.ExitOnError)
 
 func init() {
 	out = new(tabwriter.Writer)
@@ -39,8 +42,8 @@ OPTIONS:
 }
 
 func getRegistry(context *cli.Context) *registry.Registry {
-	tun := getTunnelFlag(context)
-	endpoint := context.GlobalString("endpoint")
+	tun := getTunnelFlag()
+	endpoint := getEndpointFlag()
 
 	machines := []string{endpoint}
 	client := etcd.NewClient(machines)
@@ -96,6 +99,18 @@ func main() {
 		newSSHCommand(),
 	}
 
+	//flagset := flag.NewFlagSet("fleetctl", flag.ExitOnError)
+	for _, flag := range app.Flags {
+		flag.Apply(flagset)
+	}
+
+	flagset.Parse(os.Args[1:])
+
+	globalconf.EnvPrefix="FLEETCTL_"
+	globalconf.Register("fleetctl", flagset)
+	gconf := globalconf.NewWithoutFile()
+	gconf.ParseSet("", flagset)
+
 	app.Run(os.Args)
 }
 
@@ -125,10 +140,14 @@ func getJobPayloadFromFile(file string) (*job.JobPayload, error) {
 	return payload, nil
 }
 
-func getTunnelFlag(context *cli.Context) string {
-	tun := context.GlobalString("tunnel")
+func getTunnelFlag() string {
+	tun := (*flagset.Lookup("tunnel")).Value.(flag.Getter).Get().(string)
 	if tun != "" && !strings.Contains(tun, ":") {
 		tun += ":22"
 	}
 	return tun
+}
+
+func getEndpointFlag() string {
+	return (*flagset.Lookup("endpoint")).Value.(flag.Getter).Get().(string)
 }

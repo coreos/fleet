@@ -47,7 +47,7 @@ func main() {
 	globalconf.Register("", cfgset)
 	cfg, err := getConfig(cfgset, *cfgPath)
 	if err != nil {
-		glog.Errorf(err)
+		glog.Error(err.Error())
 		syscall.Exit(1)
 	}
 

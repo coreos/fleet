@@ -49,7 +49,7 @@ func journalAction(c *cli.Context) {
 
 	var err error
 	var sshClient *gossh.ClientConn
-	if tun := getTunnelFlag(c); tun != "" {
+	if tun := getTunnelFlag(); tun != "" {
 		sshClient, err = ssh.NewTunnelledSSHClient("core", tun, addr)
 	} else {
 		sshClient, err = ssh.NewSSHClient("core", addr)

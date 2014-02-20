@@ -56,7 +56,7 @@ func printUnitStatus(c *cli.Context, r *registry.Registry, jobName string) {
 
 	var err error
 	var sshClient *gossh.ClientConn
-	if tun := getTunnelFlag(c); tun != "" {
+	if tun := getTunnelFlag(); tun != "" {
 		sshClient, err = ssh.NewTunnelledSSHClient("core", tun, addr)
 	} else {
 		sshClient, err = ssh.NewSSHClient("core", addr)
