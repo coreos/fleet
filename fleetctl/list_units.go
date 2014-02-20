@@ -74,6 +74,10 @@ func printJobState(name, description string, js *job.JobState, full bool) {
 	subState := "-"
 	mach := "-"
 
+	if description == "" {
+		description = "-"
+	}
+
 	if js != nil {
 		loadState = js.LoadState
 		activeState = js.ActiveState
