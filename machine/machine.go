@@ -17,7 +17,6 @@ func New(bootId string, publicIP string, metadata map[string]string) *Machine {
 	static := MachineState{bootId, publicIP, metadata}
 	log.V(2).Infof("Created Machine with static state %s", static)
 	m := &Machine{staticState: static}
-	m.RefreshState()
 	return m
 }
 
