@@ -1,8 +1,21 @@
 # Configuration
 
-The fleet config file is formatted using [TOML](https://github.com/mojombo/toml/blob/master/versions/toml-v0.2.0.md). A [sample config][config] exists in the root of the fleet source code. The recognized options are documented below:
+The `fleet` daemon uses two sources for configuration parameters:
+
+1. an INI-formatted config file ([sample][config])
+2. environment variables
 
 [config]: https://github.com/coreos/fleet/blob/master/fleet.conf.sample
+
+fleet will look at `/etc/fleet/fleet.conf` for this config file by default. The `--config` flag may be passed to the fleet binary to use a custom config file location. The options that may be set are defined below. Note that each of the options should be defined at the global level, outside of any INI sections.
+
+Environment variables may also provide configuration options. Options provided in an environment variable will override the corresponding option provided in a config file. To use an environment variable, simply prefix the name of a given option with 'FLEET_', while uppercasing the rest of the name. For example, to set the `etcd_servers` option to 'http://192.0.2.12:4001' when running the fleet binary:
+
+```
+$ FLEET_ETCD_SERVERS=http://192.0.2.12:4001 /usr/bin/fleet
+```
+
+## General Options
 
 #### verbosity
 
@@ -36,7 +49,7 @@ An Agent will be considered dead if it exceeds this amount of time to communicat
 
 Default: "30s"
 
-## Development Settings
+## Development Options
 
 #### boot_id
 

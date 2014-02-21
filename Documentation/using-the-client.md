@@ -11,6 +11,10 @@ The `fleetctl` binary is included in all CoreOS distributions, so it is as simpl
 fleetctl requires direct communication with the etcd cluster that your fleet machines are configured to use. Use the `--endpoint` flag to override the default of `http://127.0.0.1:4001`:
 
     fleetctl --endpoint http://<IP:PORT> list-units
+    
+Alternatively, `--endpoint` can be provided through the `FLEETCTL_ENDPOINT` environment variable:
+
+	FLEETCTL_ENDPOINT=http://<IP:[PORT]> fleetctl list-units
 
 ### From an External Host
 
@@ -18,7 +22,11 @@ If you prefer to execute fleetctl from an external host (i.e. your laptop), the 
 
     fleetctl --tunnel <IP[:PORT]> list-units
 
-When using the `--tunnel` flag and the `--endpoint` flag together, it is important to note that all etcd requests will be made through the SSH tunnel. The address in the `--endpoint` flag must be routable from the server hosting the tunnel.
+One can also provide `--tunnel` through the environment variable `FLEETCTL_TUNNEL`:
+
+	FLEETCTL_TUNNEL=<IP[:PORT]> fleetctl list-units
+
+When using `--tunnel` and `--endpoint` together, it is important to note that all etcd requests will be made through the SSH tunnel. The address in the `--endpoint` flag must be routable from the server hosting the tunnel.
 
 See more about [configuring remote access](remote-access.md).
 
