@@ -26,7 +26,39 @@ var flags map[string]*flag.FlagSet = make(map[string]*flag.FlagSet)
 // Represents a GlobalConf context.
 type GlobalConf struct {
 	Filename string
+	options  Options
 	dict     *ini.Dict
+}
+
+type Options struct {
+	ConfigFile string
+	EnvPrefix  string
+}
+
+// NewWithOptions creates a GlobalConf from the provided
+// Options. The caller is responsible for creating any
+// referenced config files.
+func NewWithOptions(opts Options) (g *GlobalConf, err error) {
+	Register("", flag.CommandLine)
+
+	if opts.EnvPrefix != "" {
+		EnvPrefix = opts.EnvPrefix
+	}
+
+	var dict ini.Dict
+	if opts.ConfigFile != "" {
+		dict, err = ini.Load(opts.ConfigFile)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		dict = make(ini.Dict, 0)
+	}
+
+	return &GlobalConf{
+		Filename: opts.ConfigFile,
+		dict:     &dict,
+	}, nil
 }
 
 // Opens/creates a config file for the specified appName.
@@ -55,47 +87,30 @@ func New(appName string) (g *GlobalConf, err error) {
 	return NewWithFilename(filePath)
 }
 
-// NewWithoutFile creates a GlobalConf without an
-// underlying config file.
-func NewWithoutFile() *GlobalConf {
-	Register("", flag.CommandLine)
-	dict := make(ini.Dict, 0)
-	return &GlobalConf{dict: &dict}
-}
-
 // Opens and loads contents of a config file whose filename
 // is provided as the first argument.
 func NewWithFilename(filename string) (*GlobalConf, error) {
-	dict, err := ini.Load(filename)
-	if err != nil {
-		return nil, err
-	}
-	Register("", flag.CommandLine)
-	return &GlobalConf{
-		Filename: filename,
-		dict:     &dict,
-	}, nil
-}
-
-// Persist internal ini data to disk if file is provided
-func (g *GlobalConf) write() (err error) {
-	if g.Filename != "" {
-		err = ini.Write(g.Filename, g.dict)
-	}
-	return
+	opts := Options{ConfigFile: filename}
+	return NewWithOptions(opts)
 }
 
 // Sets a flag's value and persists the changes to the disk.
 func (g *GlobalConf) Set(flagSetName string, f *flag.Flag) error {
 	g.dict.SetString(flagSetName, f.Name, f.Value.String())
-	return g.write()
+	if g.Filename != "" {
+		return ini.Write(g.Filename, g.dict)
+	}
+	return nil
 }
 
 // Deletes a flag from config file and persists the changes
 // to the disk.
 func (g *GlobalConf) Delete(flagSetName, flagName string) error {
 	g.dict.Delete(flagSetName, flagName)
-	return g.write()
+	if g.Filename != "" {
+		return ini.Write(g.Filename, g.dict)
+	}
+	return nil
 }
 
 // Parses the config file for the provided flag set.
