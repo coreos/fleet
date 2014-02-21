@@ -107,9 +107,12 @@ func main() {
 
 	flagset.Parse(os.Args[1:])
 
-	globalconf.EnvPrefix="FLEETCTL_"
 	globalconf.Register("fleetctl", flagset)
-	gconf := globalconf.NewWithoutFile()
+
+	opts := globalconf.Options{
+		EnvPrefix: "FLEETCTL_",
+	}
+	gconf, _ := globalconf.NewWithOptions(opts)
 	gconf.ParseSet("", flagset)
 
 	app.Run(os.Args)

@@ -91,9 +91,16 @@ func main() {
 }
 
 func getConfig(flagset *flag.FlagSet, file string) (*config.Config, error) {
-	globalconf.EnvPrefix = "FLEET_"
+	if _, err := os.Stat(file); err != nil {
+		glog.Infof("Config file %s does not appear to exist - ignoring")
+		file = ""
+	}
 
-	gconf, err := globalconf.NewWithFilename(file)
+	opts := globalconf.Options{
+		EnvPrefix: "FLEET_",
+		ConfigFile: file,
+	}
+	gconf, err := globalconf.NewWithOptions(opts)
 	if err != nil {
 		return nil, err
 	}
