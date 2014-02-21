@@ -138,9 +138,9 @@ func NewTunnelledSSHClient(user, tunaddr, tgtaddr string) (*gossh.ClientConn, er
 }
 
 func timeoutSSHDial(dial func(chan error)) error {
-	var echan chan error
 	var err error
 
+	echan := make(chan error)
 	go dial(echan)
 
 	select {
