@@ -117,7 +117,7 @@ func (self *AgentState) DropPeersJob(jobName string) {
 
 		// Iterate through the item indexes, removing the corresponding Peers
 		for i, idx := range idxs {
-			self.peers[peer] = append(self.peers[peer][0:idx-i], self.peers[peer][idx-i:]...)
+			self.peers[peer] = append(self.peers[peer][0:idx-i], self.peers[peer][idx-i+1:]...)
 		}
 	}
 }
