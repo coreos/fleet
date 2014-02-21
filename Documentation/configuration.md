@@ -32,6 +32,7 @@ Default: ["http://127.0.0.1:4001"]
 #### public_ip
 
 IP address that should be published with the local Machine's state and any socket information.
+If not set, fleet will attempt to detect the IP it should publish based on the machine's IP routing information.
 
 Default: ""
 
