@@ -5,6 +5,9 @@ import (
 	"io/ioutil"
 	"net"
 	"strings"
+
+	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
+	"github.com/coreos/fleet/third_party/github.com/dotcloud/docker/pkg/netlink"
 )
 
 const bootIdPath = "/proc/sys/kernel/random/boot_id"
@@ -38,8 +41,8 @@ func readLocalBootId() string {
 }
 
 func getLocalIP() string {
-	iface, err := net.InterfaceByName("eth0")
-	if err != nil {
+	iface := getDefaultGatewayIface()
+	if iface == nil {
 		return ""
 	}
 
@@ -58,6 +61,34 @@ func getLocalIP() string {
 	}
 
 	return ""
+}
+
+func getDefaultGatewayIface() *net.Interface {
+	log.V(2).Infof("Attempting to retrieve IP route info from netlink")
+
+	routes, err := netlink.NetworkGetRoutes()
+	if err != nil {
+		log.V(2).Infof("Unable to detect default interface: %v", err)
+		return nil
+	}
+
+	if len(routes) == 0 {
+		log.V(2).Infof("Netlink returned zero routes")
+		return nil
+	}
+
+	for _, route := range routes {
+		if route.Default {
+			if route.Iface == nil {
+				log.V(2).Infof("Found default route but could not determine interface")
+			}
+			log.V(2).Infof("Found default route with interface %v", route.Iface.Name)
+			return route.Iface
+		}
+	}
+
+	log.V(2).Infof("Unable to find default route")
+	return nil
 }
 
 func stackState(top, bottom MachineState) MachineState {
