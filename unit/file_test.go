@@ -75,6 +75,56 @@ Description = Foo
 	}
 }
 
+func TestParseRequirements(t *testing.T) {
+	contents := `
+[X-Fleet]
+X-Foo=Bar
+Ping=Pong
+X-Key=Value
+`
+	unitFile := NewSystemdUnitFile(contents)
+	reqs := unitFile.Requirements()
+	if len(reqs) != 2 {
+		t.Fatalf("Incorrect number of requirements; got %d, expected 2", len(reqs))
+	}
+
+	if len(reqs["Foo"]) != 1 || reqs["Foo"][0] != "Bar" {
+		t.Fatalf("Incorrect value %q of requirement 'Foo'", reqs["Foo"])
+	}
+
+	if len(reqs["Key"]) != 1 || reqs["Key"][0] != "Value" {
+		t.Fatalf("Incorrect value %q of requirement 'Key'", reqs["Key"])
+	}
+}
+
+func TestParseRequirementsMultipleValuesForKeyOverwrite(t *testing.T) {
+	contents := `
+[X-Fleet]
+X-Foo=Bar
+X-Foo=Baz
+`
+	unitFile := NewSystemdUnitFile(contents)
+	reqs := unitFile.Requirements()
+	if len(reqs) != 1 {
+		t.Fatalf("Incorrect number of requirements; got %d, expected 1", len(reqs))
+	}
+
+	if len(reqs["Foo"]) != 1 || reqs["Foo"][0] != "Baz" {
+		t.Fatalf("Incorrect value %q of requirement 'Foo'", reqs["Foo"])
+	}
+}
+
+func TestParseRequirementsMissingSection(t *testing.T) {
+	contents := `
+[Unit]
+Description=Timmy
+`
+	unitFile := NewSystemdUnitFile(contents)
+	reqs := unitFile.Requirements()
+	if len(reqs) != 0 {
+		t.Fatalf("Incorrect number of requirements; got %d, expected 0", len(reqs))
+	}
+}
 
 func TestGetSectionMissing(t *testing.T) {
 	contents := `
@@ -157,6 +207,4 @@ Description = Foo
 `
 	unitFile := NewSystemdUnitFile(contents)
 	unitFile.SetField("NewSection", "Field", "Baz")
-
-
 }
