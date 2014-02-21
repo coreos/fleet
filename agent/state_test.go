@@ -53,3 +53,20 @@ func TestHasConflictComplexGlob(t *testing.T) {
 		t.Errorf("Expected no conflict")
 	}
 }
+
+// Assert that a conflict is truly gone when DropJobConflicts is called
+func TestHasConflictDropped(t *testing.T) {
+	state := NewState()
+	state.TrackJobConflicts("a", []string{"b"})
+
+	matched, name := state.HasConflict("b", []string{})
+	if !matched || name != "a" {
+		t.Errorf("Expected conflict with 'a'")
+	}
+
+	state.DropJobConflicts("a")
+	matched, _ = state.HasConflict("b", []string{})
+	if matched {
+		t.Errorf("Expected no conflict")
+	}
+}
