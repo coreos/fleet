@@ -11,29 +11,29 @@ import (
 
 type AgentState struct {
 	// used to lock the datastructure for multi-goroutine safety
-	mutex	sync.Mutex
+	mutex sync.Mutex
 
 	// unresolved job offers
-	offers	map[string]job.JobOffer
+	offers map[string]job.JobOffer
 
 	// job names for which a bid has been submitted
-	bids	[]string
+	bids []string
 
 	// reverse index of peers that would cause a reassesment of a JobOffer this
 	// Agent could not have bid on previously
 	// i.e. {"hello.service": ["howareyou.service", "goodbye.service"]}
-	peers	map[string][]string
+	peers map[string][]string
 
 	// index of local payload conflicts to the job they belong to
-	conflicts	map[string][]string
+	conflicts map[string][]string
 }
 
 func NewState() *AgentState {
 	return &AgentState{
-		offers:		make(map[string]job.JobOffer),
-		bids:		make([]string, 0),
-		peers:		make(map[string][]string),
-		conflicts:	make(map[string][]string, 0),
+		offers:    make(map[string]job.JobOffer),
+		bids:      make([]string, 0),
+		peers:     make(map[string][]string),
+		conflicts: make(map[string][]string, 0),
 	}
 }
 
