@@ -1,5 +1,4 @@
-# This config file is formatted using TOML:
-#   https://github.com/mojombo/toml/blob/master/versions/toml-v0.2.0.md
+# This config file is INI-formatted
 
 # Lower the logging threshold. Acceptable values are 0, 1, and 2. A higher
 # value corresponds to a lower logging threshold.
