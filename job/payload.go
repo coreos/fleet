@@ -32,7 +32,7 @@ func (jp *JobPayload) Peers() []string {
 
 	if !ok {
 		jpType, err := jp.Type()
-		if err != nil && jpType == "systemd-socket" {
+		if err == nil && jpType == "systemd-socket" {
 			idx := len(jp.Name) - 7
 			baseName := jp.Name[0:idx]
 			peers = []string{fmt.Sprintf("%s.%s", baseName, "service")}

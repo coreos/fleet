@@ -26,3 +26,27 @@ func TestNewJobPayload(t *testing.T) {
 		t.Errorf("Payload has unexpected Type '%s'", pt)
 	}
 }
+
+func TestJobPayloadServiceDefaultPeers(t *testing.T) {
+	unitFile := unit.NewSystemdUnitFile("")
+	payload := NewJobPayload("echo.service", *unitFile)
+	peers := payload.Peers()
+
+	if len(peers) != 0 {
+		t.Fatalf("Unexpected number of peers %d, expected 0", len(peers))
+	}
+}
+
+func TestJobPayloadSocketDefaultPeers(t *testing.T) {
+	unitFile := unit.NewSystemdUnitFile("")
+	payload := NewJobPayload("echo.socket", *unitFile)
+	peers := payload.Peers()
+
+	if len(peers) != 1 {
+		t.Fatalf("Unexpected number of peers %d, expected 1", len(peers))
+	}
+
+	if peers[0] != "echo.service" {
+		t.Fatalf("Unexpected peers: %v", peers)
+	}
+}
