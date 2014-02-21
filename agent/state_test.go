@@ -70,3 +70,45 @@ func TestHasConflictDropped(t *testing.T) {
 		t.Errorf("Expected no conflict")
 	}
 }
+
+// Assert that jobs and their peers are properly indexed
+func TestGetJobsByPeer(t *testing.T) {
+	state := NewState()
+	state.TrackJobPeers("a", []string{"b", "c"})
+	state.TrackJobPeers("d", []string{"c"})
+
+	peers := state.GetJobsByPeer("b")
+	if len(peers) != 1 || peers[0] != "a" {
+		t.Fatalf("Unexpected index of job peers %v", peers)
+	}
+
+	peers = state.GetJobsByPeer("c")
+	if len(peers) != 2 || peers[0] != "a" || peers[1] != "d" {
+		t.Fatalf("Unexpected index of job peers %v", peers)
+	}
+}
+
+// Assert that no jobs are returned for unknown peers
+func TestGetJobsByPeerUnknown(t *testing.T) {
+	state := NewState()
+	state.TrackJobPeers("a", []string{"b"})
+
+	peers := state.GetJobsByPeer("c")
+	if len(peers) != 0 {
+		t.Fatalf("Unexpected index of job peers %v", peers)
+	}
+}
+
+// Assert that peers indexes are properly cleared after
+// calling DropPeersJob
+func TestDropPeersJob(t *testing.T) {
+	state := NewState()
+	state.TrackJobPeers("a", []string{"b", "c"})
+	state.TrackJobPeers("d", []string{"c"})
+	state.DropPeersJob("a")
+
+	peers := state.GetJobsByPeer("c")
+	if len(peers) != 1 || peers[0] != "d" {
+		t.Fatalf("Unexpected index of job peers %v", peers)
+	}
+}
