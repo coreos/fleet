@@ -78,7 +78,6 @@ func getRegistry(context *cli.Context) *registry.Registry {
 
 func main() {
 	app := cli.NewApp()
-	app.Version = version.Version
 	app.Name = "fleetctl"
 	app.Usage = "fleetctl is a command line driven interface to the cluster wide CoreOS init system."
 
@@ -100,12 +99,18 @@ func main() {
 		newSSHCommand(),
 	}
 
-	//flagset := flag.NewFlagSet("fleetctl", flag.ExitOnError)
-	for _, flag := range app.Flags {
-		flag.Apply(flagset)
+	for _, f := range app.Flags {
+		f.Apply(flagset)
 	}
 
+	flagset.Bool("version", false, "Print the version and exit")
+
 	flagset.Parse(os.Args[1:])
+
+	if (*flagset.Lookup("version")).Value.(flag.Getter).Get().(bool) {
+		fmt.Println("fleetctl version", version.Version)
+		os.Exit(0)
+	}
 
 	globalconf.Register("fleetctl", flagset)
 
