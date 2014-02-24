@@ -12,12 +12,12 @@ import (
 )
 
 type Server struct {
-	agent		*agent.Agent
-	engine		*engine.Engine
-	machine		*machine.Machine
-	registry	*registry.Registry
-	eventBus	*event.EventBus
-	eventStream	*registry.EventStream
+	agent       *agent.Agent
+	engine      *engine.Engine
+	machine     *machine.Machine
+	registry    *registry.Registry
+	eventBus    *event.EventBus
+	eventStream *registry.EventStream
 }
 
 func New(cfg config.Config) *Server {
@@ -33,7 +33,7 @@ func New(cfg config.Config) *Server {
 
 	eventClient := etcd.NewClient(cfg.EtcdServers)
 	eventClient.SetConsistency(etcd.STRONG_CONSISTENCY)
-	es := registry.NewEventStream(eventClient)
+	es := registry.NewEventStream(eventClient, r)
 
 	a, err := agent.New(r, eb, m, cfg.AgentTTL, cfg.UnitPrefix)
 	if err != nil {

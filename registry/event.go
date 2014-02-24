@@ -12,19 +12,20 @@ import (
 )
 
 type EventStream struct {
-	etcd	*etcd.Client
-	close	chan bool
+	etcd     *etcd.Client
+	registry *Registry
+	close    chan bool
 }
 
-func NewEventStream(client *etcd.Client) *EventStream {
-	return &EventStream{client, make(chan bool)}
+func NewEventStream(client *etcd.Client, registry *Registry) *EventStream {
+	return &EventStream{client, registry, make(chan bool)}
 }
 
 func (self *EventStream) Stream(eventchan chan *event.Event) {
 	watchMap := map[string][]func(*etcd.Response) *event.Event{
-		path.Join(keyPrefix, jobPrefix):	[]func(*etcd.Response) *event.Event{filterEventJobCreated, filterEventJobScheduled, filterEventJobStopped},
-		path.Join(keyPrefix, machinePrefix):	[]func(*etcd.Response) *event.Event{self.filterEventMachineCreated, self.filterEventMachineRemoved},
-		path.Join(keyPrefix, offerPrefix):	[]func(*etcd.Response) *event.Event{self.filterEventJobOffered, filterEventJobBidSubmitted},
+		path.Join(keyPrefix, jobPrefix):     []func(*etcd.Response) *event.Event{filterEventJobCreated, filterEventJobScheduled, filterEventJobStopped, self.filterEventJobUpdated},
+		path.Join(keyPrefix, machinePrefix): []func(*etcd.Response) *event.Event{self.filterEventMachineCreated, self.filterEventMachineRemoved},
+		path.Join(keyPrefix, offerPrefix):   []func(*etcd.Response) *event.Event{self.filterEventJobOffered, filterEventJobBidSubmitted},
 	}
 
 	for key, funcs := range watchMap {

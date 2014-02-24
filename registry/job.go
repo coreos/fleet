@@ -13,8 +13,8 @@ import (
 )
 
 const (
-	jobPrefix	= "/job/"
-	payloadPrefix	= "/payload/"
+	jobPrefix     = "/job/"
+	payloadPrefix = "/payload/"
 )
 
 func (r *Registry) GetAllPayloads() []job.JobPayload {
@@ -88,7 +88,7 @@ func (r *Registry) GetAllJobsByMachine(machBootId string) []job.Job {
 
 func (r *Registry) GetJobTarget(jobName string) *machine.MachineState {
 	// Figure out to which Machine this Job is scheduled
-	key := path.Join(keyPrefix, jobPrefix, jobName, "target")
+	key := jobTargetAgentPath(jobName)
 	resp, err := r.etcd.Get(key, false, true)
 	if err != nil {
 		return nil
@@ -141,21 +141,26 @@ func (r *Registry) DestroyPayload(payloadName string) {
 	r.etcd.Delete(key, false)
 }
 
-func (r *Registry) CreateJob(j *job.Job) error {
+func (r *Registry) CreateJob(j *job.Job) (err error) {
 	key := path.Join(keyPrefix, jobPrefix, j.Name, "object")
 	json, _ := marshal(j)
-	_, err := r.etcd.Create(key, json, 0)
-	return err
+
+	if r.JobScheduled(j.Name) {
+		_, err = r.etcd.Update(key, json, 0)
+	} else {
+		_, err = r.etcd.Create(key, json, 0)
+	}
+	return
 }
 
 func (r *Registry) ScheduleJob(jobName string, machBootId string) error {
-	key := path.Join(keyPrefix, jobPrefix, jobName, "target")
+	key := jobTargetAgentPath(jobName)
 	_, err := r.etcd.Create(key, machBootId, 0)
 	return err
 }
 
 func (r *Registry) UnscheduleJob(jobName string) {
-	key := path.Join(keyPrefix, jobPrefix, jobName, "target")
+	key := jobTargetAgentPath(jobName)
 	r.etcd.Delete(key, true)
 }
 
@@ -166,6 +171,12 @@ func (r *Registry) StopJob(jobName string) {
 
 func (r *Registry) LockJob(jobName, context string) *TimedResourceMutex {
 	return r.lockResource("job", jobName, context)
+}
+
+func (r *Registry) JobScheduled(jobName string) bool {
+	key := jobTargetAgentPath(jobName)
+	value, err := r.etcd.Get(key, false, true)
+	return err == nil && value != nil
 }
 
 func filterEventJobCreated(resp *etcd.Response) *event.Event {
@@ -218,4 +229,8 @@ func filterEventJobStopped(resp *etcd.Response) *event.Event {
 	}
 
 	return &event.Event{"EventJobStopped", jobName, nil}
+}
+
+func jobTargetAgentPath(jobName string) string {
+	return path.Join(keyPrefix, jobPrefix, jobName, "target")
 }
