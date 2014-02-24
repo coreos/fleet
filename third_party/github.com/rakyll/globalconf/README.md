@@ -2,7 +2,7 @@
 
 [![Build Status](https://travis-ci.org/rakyll/globalconf.png?branch=master)](https://travis-ci.org/rakyll/globalconf)
 
-Effortlessly persist/retrieve flags of your Golang programs. If you need global configuration instead of requiring user always to set command line flags, you are looking at the right package.
+Effortlessly persist/retrieve flags of your Golang programs. If you need global configuration instead of requiring user always to set command line flags, you are looking at the right package. `globalconf` allows your users to not only provide flags, but config files and environment variables as well.
 
 ## Usage
 
@@ -12,11 +12,17 @@ import "github.com/rakyll/globalconf"
     
 ### Loading a config file
 
-By default, globalconf provides you a config file under `~/.config/<yourappname>/config.ini`. If you don't prefer the default location you can load from a specified path as well.
+By default, globalconf provides you a config file under `~/.config/<yourappname>/config.ini`.
 
 ~~~ go
 globalconf.New("appname") // loads from ~/.config/<appname>/config.ini
-globalconf.NewWithFilename("/path/to/config/file")
+~~~
+
+If you don't prefer the default location you can load from a specified path as well.
+
+~~~ go
+opts := globalconf.Options{Filename: "/path/to/config/file"}
+globalconf.NewWithOptions(&opts)
 ~~~
 	
 ### Parsing flag values
@@ -45,14 +51,14 @@ conf.ParseAll()
 
 ### Custom flag sets
 
-Custom flagsets are supported, but required registration before parse is done. Command line flags are automatically registered.
+Custom flagsets are supported, but required registration before parse is done. The default flagset `flag.CommandLine` is automatically registered.
 
 ~~~ go
 globalconf.Register("termopts", termOptsFlagSet)
 conf.ParseAll() // parses command line and all registered flag sets
 ~~~
 
-Custom flag set values should be provided in their own segment. Getting back to the sample ini config file, termopts values will have their own segment.
+Custom flagset values should be provided in their own segment. Getting back to the sample ini config file, termopts values will have their own segment.
 
 	name = Burcu
 	addr = Brandschenkestrasse 110, 8002
@@ -63,21 +69,26 @@ Custom flag set values should be provided in their own segment. Getting back to 
 
 ### Environment variables
 
-If `globalconf.EnvPrefix` is not an empty string, environment variables will take precedence over values in the configuration file.
-Command line flags, however, will override the environment variables.
+If an EnvPrefix is provided, environment variables will take precedence over values in the configuration file.
+Set the `EnvPrefix` option when calling `globalconf.NewWithOptions`.
+An `EnvPrefix` will only be used if it is a non-empty string.
+Command line flags will override the environment variables.
 
-// If global.EnvPrefix is not "", variables will be read from the environment.
-
-~~~go
-globalconf.EnvPrefix = "MYAPP_"
-conf, err := globalconf.NewWithFilename("/path/to/config", "APPCONF_")
+~~~ go
+opts := globalconf.Options{
+	EnvPrefix: "MYAPP_",
+	Filename:  "/path/to/config",
+}
+conf, err := globalconf.NewWithOptions(&opts)
 conf.ParseAll()
 ~~~
 
 With environment variables:
+
 	APPCONF_NAME = Burcu
 
 and configuration:
+
 	name = Jane
 	addr = Brandschenkestrasse 110, 8002
 
@@ -85,7 +96,8 @@ and configuration:
 
 ### Modifying stored flags
 
-Modifications are persisted as long as you set a new flag.
+Modifications are persisted as long as you set a new flag and your GlobalConf
+object was configured with a filename.
 
 ~~~ go
 f := &flag.Flag{Name: "name", Value: val}
@@ -97,7 +109,8 @@ conf.Set("termopts", color) // if you are modifying a custom flag set flag
 
 ### Deleting stored flags
 
-Deletions are persisted as long as you delete a flag's value.
+Like Set, Deletions are persisted as long as you delete a flag's value and your
+GlobalConf object was configured with a filename.
 
 ~~~ go
 conf.Delete("", "name") // removes command line flag "name"s value from config

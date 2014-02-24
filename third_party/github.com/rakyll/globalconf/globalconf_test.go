@@ -9,7 +9,7 @@ import (
 
 const EnvTestPrefix = "CONFTEST_"
 
-func TestNewWithOptions(t *testing.T) {
+func TestNewWithOptionsNoFilename(t *testing.T) {
 	opts := Options{EnvPrefix: EnvTestPrefix}
 
 	os.Setenv(EnvTestPrefix+"D", "EnvD")
@@ -17,7 +17,7 @@ func TestNewWithOptions(t *testing.T) {
 	flagD := flag.String("d", "default", "")
 	flagE := flag.Bool("e", true, "")
 
-	conf, err := NewWithOptions(opts)
+	conf, err := NewWithOptions(&opts)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -34,10 +34,9 @@ func TestNewWithOptions(t *testing.T) {
 func TestParse_Global(t *testing.T) {
 	resetForTesting("")
 
-	EnvPrefix = EnvTestPrefix
-	os.Setenv(EnvPrefix+"D", "EnvD")
-	os.Setenv(EnvPrefix+"E", "true")
-	os.Setenv(EnvPrefix+"F", "5.5")
+	os.Setenv(EnvTestPrefix+"D", "EnvD")
+	os.Setenv(EnvTestPrefix+"E", "true")
+	os.Setenv(EnvTestPrefix+"F", "5.5")
 
 	flagA := flag.Bool("a", false, "")
 	flagB := flag.Float64("b", 0.0, "")
@@ -47,7 +46,7 @@ func TestParse_Global(t *testing.T) {
 	flagE := flag.Bool("e", false, "")
 	flagF := flag.Float64("f", 0.0, "")
 
-	parse(t, "./testdata/global.ini")
+	parse(t, "./testdata/global.ini", EnvTestPrefix)
 	if !*flagA {
 		t.Errorf("flagA found %v, expected true", *flagA)
 	}
@@ -72,7 +71,7 @@ func TestParse_GlobalOverwrite(t *testing.T) {
 	resetForTesting("-b=7.6")
 	flagB := flag.Float64("b", 0.0, "")
 
-	parse(t, "./testdata/global.ini")
+	parse(t, "./testdata/global.ini", "")
 	if *flagB != 7.6 {
 		t.Errorf("flagB found %v, expected 7.6", *flagB)
 	}
@@ -81,8 +80,7 @@ func TestParse_GlobalOverwrite(t *testing.T) {
 func TestParse_Custom(t *testing.T) {
 	resetForTesting("")
 
-	EnvPrefix = EnvTestPrefix
-	os.Setenv(EnvPrefix+"CUSTOM_E", "Hello Env")
+	os.Setenv(EnvTestPrefix+"CUSTOM_E", "Hello Env")
 
 	flagB := flag.Float64("b", 5.0, "")
 
@@ -92,7 +90,7 @@ func TestParse_Custom(t *testing.T) {
 	flagE := custom.String("e", "ee", "")
 
 	Register(name, custom)
-	parse(t, "./testdata/custom.ini")
+	parse(t, "./testdata/custom.ini", EnvTestPrefix)
 	if *flagB != 5.0 {
 		t.Errorf("flagB found %v, expected 5.0", *flagB)
 	}
@@ -113,7 +111,7 @@ func TestParse_CustomOverwrite(t *testing.T) {
 	flagD := custom.String("d", "dd", "")
 
 	Register(name, custom)
-	parse(t, "./testdata/custom.ini")
+	parse(t, "./testdata/custom.ini", "")
 	if *flagB != 6.0 {
 		t.Errorf("flagB found %v, expected 6.0", *flagB)
 	}
@@ -133,7 +131,7 @@ func TestParse_GlobalAndCustom(t *testing.T) {
 	flagD := custom.String("d", "", "")
 
 	Register(name, custom)
-	parse(t, "./testdata/globalandcustom.ini")
+	parse(t, "./testdata/globalandcustom.ini", "")
 	if !*flagA {
 		t.Errorf("flagA found %v, expected true", *flagA)
 	}
@@ -159,7 +157,7 @@ func TestParse_GlobalAndCustomOverwrite(t *testing.T) {
 	flagD := custom.String("d", "", "")
 
 	Register(name, custom)
-	parse(t, "./testdata/globalandcustom.ini")
+	parse(t, "./testdata/globalandcustom.ini", "")
 	if !*flagA {
 		t.Errorf("flagA found %v, expected true", *flagA)
 	}
@@ -177,11 +175,11 @@ func TestParse_GlobalAndCustomOverwrite(t *testing.T) {
 func TestSet(t *testing.T) {
 	resetForTesting()
 	file, _ := ioutil.TempFile("", "")
-	conf := parse(t, file.Name())
+	conf := parse(t, file.Name(), "")
 	conf.Set("", &flag.Flag{Name: "a", Value: newFlagValue("test")})
 
 	flagA := flag.String("a", "", "")
-	parse(t, file.Name())
+	parse(t, file.Name(), "")
 	if *flagA != "test" {
 		t.Errorf("flagA found %v, expected 'test'", *flagA)
 	}
@@ -190,19 +188,23 @@ func TestSet(t *testing.T) {
 func TestDelete(t *testing.T) {
 	resetForTesting()
 	file, _ := ioutil.TempFile("", "")
-	conf := parse(t, file.Name())
+	conf := parse(t, file.Name(), "")
 	conf.Set("", &flag.Flag{Name: "a", Value: newFlagValue("test")})
 	conf.Delete("", "a")
 
 	flagA := flag.String("a", "", "")
-	parse(t, file.Name())
+	parse(t, file.Name(), "")
 	if *flagA != "" {
 		t.Errorf("flagNewA found %v, expected ''", *flagA)
 	}
 }
 
-func parse(t *testing.T, filename string) *GlobalConf {
-	conf, err := NewWithFilename(filename)
+func parse(t *testing.T, filename, envPrefix string) *GlobalConf {
+	opts := Options{
+		Filename:  filename,
+		EnvPrefix: envPrefix,
+	}
+	conf, err := NewWithOptions(&opts)
 	if err != nil {
 		t.Error(err)
 	}
@@ -213,7 +215,6 @@ func parse(t *testing.T, filename string) *GlobalConf {
 // Resets os.Args and the default flag set.
 func resetForTesting(args ...string) {
 	os.Clearenv()
-	EnvPrefix = ""
 
 	os.Args = append([]string{"cmd"}, args...)
 	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)

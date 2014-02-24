@@ -15,39 +15,29 @@ const (
 	defaultConfigFileName = "config.ini"
 )
 
-// If not empty, environment variables will override the config.
-// Example:
-//   globalconf.EnvPrefix = "MYAPP_"
-// MYAPP_VAR=val will override var = otherval in config file.
-var EnvPrefix string = ""
-
 var flags map[string]*flag.FlagSet = make(map[string]*flag.FlagSet)
 
 // Represents a GlobalConf context.
 type GlobalConf struct {
-	Filename string
-	options  Options
-	dict     *ini.Dict
+	Filename  string
+	EnvPrefix string
+	dict      *ini.Dict
 }
 
 type Options struct {
-	ConfigFile string
-	EnvPrefix  string
+	Filename  string
+	EnvPrefix string
 }
 
 // NewWithOptions creates a GlobalConf from the provided
 // Options. The caller is responsible for creating any
 // referenced config files.
-func NewWithOptions(opts Options) (g *GlobalConf, err error) {
+func NewWithOptions(opts *Options) (g *GlobalConf, err error) {
 	Register("", flag.CommandLine)
 
-	if opts.EnvPrefix != "" {
-		EnvPrefix = opts.EnvPrefix
-	}
-
 	var dict ini.Dict
-	if opts.ConfigFile != "" {
-		dict, err = ini.Load(opts.ConfigFile)
+	if opts.Filename != "" {
+		dict, err = ini.Load(opts.Filename)
 		if err != nil {
 			return nil, err
 		}
@@ -56,8 +46,9 @@ func NewWithOptions(opts Options) (g *GlobalConf, err error) {
 	}
 
 	return &GlobalConf{
-		Filename: opts.ConfigFile,
-		dict:     &dict,
+		Filename:  opts.Filename,
+		EnvPrefix: opts.EnvPrefix,
+		dict:      &dict,
 	}, nil
 }
 
@@ -65,7 +56,7 @@ func NewWithOptions(opts Options) (g *GlobalConf, err error) {
 // The path to config file is ~/.config/appName/config.ini.
 func New(appName string) (g *GlobalConf, err error) {
 	var u *user.User
-	if u, err = user.Current(); u != nil {
+	if u, err = user.Current(); u == nil {
 		return
 	}
 	// Create config file's directory.
@@ -84,14 +75,8 @@ func New(appName string) (g *GlobalConf, err error) {
 			return
 		}
 	}
-	return NewWithFilename(filePath)
-}
-
-// Opens and loads contents of a config file whose filename
-// is provided as the first argument.
-func NewWithFilename(filename string) (*GlobalConf, error) {
-	opts := Options{ConfigFile: filename}
-	return NewWithOptions(opts)
+	opts := Options{Filename: filePath}
+	return NewWithOptions(&opts)
 }
 
 // Sets a flag's value and persists the changes to the disk.
@@ -119,7 +104,7 @@ func (g *GlobalConf) Delete(flagSetName, flagName string) error {
 // if the flag is not in the file.
 func (g *GlobalConf) ParseSet(flagSetName string, set *flag.FlagSet) {
 	set.VisitAll(func(f *flag.Flag) {
-		val := getEnv(flagSetName, f.Name)
+		val := getEnv(g.EnvPrefix, flagSetName, f.Name)
 		if val != "" {
 			set.Set(f.Name, val)
 			return
@@ -147,7 +132,7 @@ func (g *GlobalConf) Parse() {
 				return
 			}
 
-			val := getEnv(name, f.Name)
+			val := getEnv(g.EnvPrefix, name, f.Name)
 			if val != "" {
 				set.Set(f.Name, val)
 				return
@@ -171,16 +156,16 @@ func (g *GlobalConf) ParseAll() {
 }
 
 // Looks up variable in environment
-func getEnv(flagSetName, flagName string) string {
+func getEnv(envPrefix, flagSetName, flagName string) string {
 	// If we haven't set an EnvPrefix, don't lookup vals in the ENV
-	if EnvPrefix == "" {
+	if envPrefix == "" {
 		return ""
 	}
 	// Append a _ to flagSetName if it exists.
 	if flagSetName != "" {
 		flagSetName += "_"
 	}
-	envKey := strings.ToUpper(EnvPrefix + flagSetName + flagName)
+	envKey := strings.ToUpper(envPrefix + flagSetName + flagName)
 	return os.Getenv(envKey)
 }
 
