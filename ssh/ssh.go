@@ -11,6 +11,10 @@ import (
 	"github.com/coreos/fleet/third_party/code.google.com/p/go.crypto/ssh/terminal"
 )
 
+const (
+	timeoutForDial = 10 * time.Second
+)
+
 func Execute(client *gossh.ClientConn, cmd string) (*bufio.Reader, error) {
 	session, err := client.NewSession()
 	if err != nil {
@@ -91,14 +95,7 @@ func NewSSHClient(user, addr string) (*gossh.ClientConn, error) {
 		return nil, err
 	}
 
-	var client *gossh.ClientConn
-	dialFunc := func(echan chan error) {
-		var err error
-		client, err = gossh.Dial("tcp", addr, clientConfig)
-		echan <- err
-	}
-	err = timeoutSSHDial(dialFunc)
-	return client, err
+	return gosshDialTimeout("tcp", addr, timeoutForDial, clientConfig)
 }
 
 func NewTunnelledSSHClient(user, tunaddr, tgtaddr string) (*gossh.ClientConn, error) {
@@ -107,19 +104,13 @@ func NewTunnelledSSHClient(user, tunaddr, tgtaddr string) (*gossh.ClientConn, er
 		return nil, err
 	}
 
-	var tunnelClient *gossh.ClientConn
-	dialFunc := func(echan chan error) {
-		var err error
-		tunnelClient, err = gossh.Dial("tcp", tunaddr, clientConfig)
-		echan <- err
-	}
-	err = timeoutSSHDial(dialFunc)
+	tunnelClient, err := gosshDialTimeout("tcp", tunaddr, timeoutForDial, clientConfig)
 	if err != nil {
 		return nil, err
 	}
 
 	var targetConn net.Conn
-	dialFunc = func(echan chan error) {
+	dialFunc := func(echan chan error) {
 		var err error
 		targetConn, err = tunnelClient.Dial("tcp", tgtaddr)
 		echan <- err
@@ -144,9 +135,18 @@ func timeoutSSHDial(dial func(chan error)) error {
 	go dial(echan)
 
 	select {
-	case <-time.After(time.Duration(time.Second * 10)):
+	case <-time.After(timeoutForDial):
 		return errors.New("Timed out while initiating SSH connection")
 	case err = <-echan:
 		return err
 	}
+}
+
+// gosshDialTimeout is the timeout version of gossh.Dial
+func gosshDialTimeout(network, addr string, timeout time.Duration, config *gossh.ClientConfig) (*gossh.ClientConn, error) {
+	conn, err := net.DialTimeout(network, addr, timeout)
+	if err != nil {
+		return nil, err
+	}
+	return gossh.Client(conn, config)
 }
