@@ -40,7 +40,7 @@ func listUnitsAction(c *cli.Context) {
 
 	for _, p := range r.GetAllPayloads() {
 		if _, ok := names[p.Name]; !ok {
-			names[p.Name] = p.Description()
+			names[p.Name] = p.Unit.Description()
 			sortable = append(sortable, p.Name)
 		}
 	}
@@ -49,7 +49,7 @@ func listUnitsAction(c *cli.Context) {
 		if _, ok := names[j.Name]; !ok {
 			var description string
 			if j.Payload != nil {
-				description = j.Payload.Description()
+				description = j.Payload.Unit.Description()
 			}
 			names[j.Name] = description
 			sortable = append(sortable, j.Name)

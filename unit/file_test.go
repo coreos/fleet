@@ -158,6 +158,24 @@ WantedBy=fleet-ping.target
 	}
 }
 
+func TestDescriptionNotDefined(t *testing.T) {
+	contents := `
+[Unit]
+
+[Service]
+ExecStart=echo "ping";
+ExecStop=echo "pong";
+
+[Install]
+WantedBy=fleet-ping.target
+`
+
+	unitFile := NewSystemdUnitFile(contents)
+	if unitFile.Description() != "" {
+		t.Fatalf("Unit.Description is incorrect")
+	}
+}
+
 func TestSetFieldNewSection(t *testing.T) {
 	contents := `
 [Unit]
