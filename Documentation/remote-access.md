@@ -40,7 +40,7 @@ Things get a bit more complicated when using [vagrant][v], as access to your hos
 First, find the identity file used by vagrant to authenticate access to your hosts. The `vagrant` binary provides a convenient `ssh-config` command to help do this. Running `vagrant ssh-config` from a Vagrant project directory will produce something like this:
 
 ```
-% vag ssh-config
+% vagrant ssh-config
 Host default
   HostName 127.0.0.1
   User core
@@ -57,7 +57,7 @@ Host default
 The output communicates exactly how the connection to a vagrant host is made when calling `vagrant ssh`. Using the `HostName`, `Port` and `IdentityFile` options, we can bypass `vagrant ssh` and connect directly:
 
 ```
-$ ssh -p 22 -i /Users/bcwaldon/.vagrant.d/insecure_private_key core@127.0.0.1
+$ ssh -p 2222 -i /Users/bcwaldon/.vagrant.d/insecure_private_key core@127.0.0.1
 Last login: Thu Feb 20 05:39:51 UTC 2014 from 10.0.2.2 on pts/1
    ______                ____  _____
   / ____/___  ________  / __ \/ ___/
