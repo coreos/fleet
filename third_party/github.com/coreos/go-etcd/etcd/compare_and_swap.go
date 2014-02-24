@@ -9,7 +9,7 @@ func (c *Client) CompareAndSwap(key string, value string, ttl uint64,
 		return nil, err
 	}
 
-	return raw.toResponse()
+	return raw.Unmarshal()
 }
 
 func (c *Client) RawCompareAndSwap(key string, value string, ttl uint64,

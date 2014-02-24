@@ -14,7 +14,7 @@ func (c *Client) Get(key string, sort, recursive bool) (*Response, error) {
 		return nil, err
 	}
 
-	return raw.toResponse()
+	return raw.Unmarshal()
 }
 
 func (c *Client) RawGet(key string, sort, recursive bool) (*RawResponse, error) {
