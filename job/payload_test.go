@@ -50,3 +50,33 @@ func TestJobPayloadSocketDefaultPeers(t *testing.T) {
 		t.Fatalf("Unexpected peers: %v", peers)
 	}
 }
+
+func TestJobPayloadConflicts(t *testing.T) {
+	contents := `[Unit]
+Description=Testing
+
+[X-Fleet]
+X-Conflicts=*bar*
+`
+	unitFile := unit.NewSystemdUnitFile(contents)
+	payload := NewJobPayload("echo.service", *unitFile)
+	conflicts := payload.Conflicts()
+
+	if len(conflicts) != 1 {
+		t.Errorf("Expected 1 conflict, received %v", conflicts)
+	}
+
+	if conflicts[0] != "*bar*" {
+		t.Errorf("Expected first conflict to be '*bar*', received %s", conflicts[1])
+	}
+}
+
+func TestJobPayloadConflictsNotProvided(t *testing.T) {
+	unitFile := unit.NewSystemdUnitFile("")
+	payload := NewJobPayload("echo.socket", *unitFile)
+	conflicts := payload.Conflicts()
+
+	if len(conflicts) > 0 {
+		t.Fatalf("Expected no conflicts, received %v", conflicts)
+	}
+}
