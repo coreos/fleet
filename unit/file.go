@@ -1,6 +1,7 @@
 package unit
 
 import (
+	"bytes"
 	"fmt"
 	"strings"
 )
@@ -71,7 +72,7 @@ func deserializeUnitFile(raw string) map[string]map[string][]string {
 			continue
 		}
 
-		line = strings.Trim(line, " ")
+		line = strings.TrimSpace(line)
 
 		// Ignore blank lines
 		if len(line) == 0 {
@@ -85,18 +86,60 @@ func deserializeUnitFile(raw string) map[string]map[string][]string {
 			continue
 		}
 
-		// Check for key=value
-		if strings.ContainsAny(line, "=") {
-			parts := strings.SplitN(line, "=", 2)
-			key := strings.Trim(parts[0], " ")
-			value := strings.Trim(parts[1], " ")
+		// ignore any lines that aren't within a section
+		if len(section) == 0 {
+			continue
+		}
 
-			if len(section) > 0 {
-				sections[section][key] = append(sections[section][key], value)
-			}
-
+		key, values := deserializeUnitLine(line)
+		for _, v := range values {
+			sections[section][key] = append(sections[section][key], v)
 		}
 	}
 
 	return sections
+}
+
+func deserializeUnitLine(line string) (key string, values []string) {
+	parts := strings.SplitN(line, "=", 2)
+	key = strings.TrimSpace(parts[0])
+	value := strings.TrimSpace(parts[1])
+
+	if strings.HasPrefix(value, `"`) && strings.HasSuffix(value, `"`) {
+		for _, v := range parseMultivalueLine(value) {
+			values = append(values, v)
+		}
+	} else {
+		values = append(values, value)
+	}
+	return
+}
+
+// parseMultivalueLine parses a line that includes several quoted values separated by whitespaces.
+// Example: MachineMetadata="foo=bar" "baz=qux"
+func parseMultivalueLine(line string) (values []string) {
+	var v bytes.Buffer
+	w := false // check whether we're within quotes or not
+
+	for _, e := range []byte(line) {
+		// ignore quotes
+		if e == '"' {
+			w = !w
+			continue
+		}
+
+		if e == ' ' {
+			if !w { // between quoted values, keep the previous value and reset.
+				values = append(values, v.String())
+				v.Reset()
+				continue
+			}
+		}
+
+		v.WriteByte(e)
+	}
+
+	values = append(values, v.String())
+
+	return
 }

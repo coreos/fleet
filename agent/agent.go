@@ -22,6 +22,12 @@ const (
 
 	// Refresh TTLs at 1/2 the TTL length
 	refreshInterval = 2
+
+	// Machine metadata key for the deprecated `require` flag
+	requireFlagMachineMetadata = "MachineMetadata"
+
+	// Machine metadata key in the unit file, without the X- prefix
+	fleetXConditionMachineMetadata = "ConditionMachineMetadata"
 )
 
 // The Agent owns all of the coordination between the Registry, the local
@@ -404,21 +410,37 @@ func (a *Agent) AbleToRun(j *job.Job) bool {
 // Return all machine-related metadata from a job requirements map
 func extractMachineMetadata(requirements map[string][]string) map[string][]string {
 	metadata := make(map[string][]string)
-
 	for key, values := range requirements {
-		if !strings.HasPrefix(key, "MachineMetadata") {
-			continue
+		// Deprecated syntax added to the metadata via the old `--require` flag.
+		if strings.HasPrefix(key, requireFlagMachineMetadata) {
+			if len(values) == 0 {
+				log.V(2).Infof("Machine metadata requirement %s provided no values, ignoring.", key)
+				continue
+			}
+
+			metadata[key[15:]] = values
+		} else if key == fleetXConditionMachineMetadata {
+			for _, valuePair := range values {
+				s := strings.Split(valuePair, "=")
+
+				if len(s) != 2 {
+					log.V(2).Infof("Machine metadata requirement %q has invalid format, ignoring.", valuePair)
+					continue
+				}
+
+				if len(s[0]) == 0 || len(s[1]) == 0 {
+					log.V(2).Infof("Machine metadata requirement %q provided no values, ignoring.", valuePair)
+					continue
+				}
+
+				var mValues []string
+				if mv, ok := metadata[s[0]]; ok {
+					mValues = mv
+				}
+
+				metadata[s[0]] = append(mValues, s[1])
+			}
 		}
-
-		// Strip off leading 'MachineMetadata'
-		key = key[15:]
-
-		if len(values) == 0 {
-			log.V(1).Infof("Machine metadata requirement %s provided no values, ignoring.", key)
-			continue
-		}
-
-		metadata[key] = values
 	}
 
 	return metadata

@@ -22,6 +22,28 @@ One must use the entire boot ID when setting `X-ConditionMachineBootID` - the sh
 
 It is important to note that a machine's boot ID is ephemeral and will change across reboots.
 
+##### Schedule unit to machine with specific metadata
+
+The `X-ConditionMachineMetadata` option of a unit file allows you to set conditional metadata required for a machine to be elegible.
+
+```
+[X-Fleet]
+X-ConditionMachineMetadata="region=us-east-1" "diskType=SSD"
+```
+
+This requires an eligible machine to have at least the `region` and `diskType` keys set accordingly. A single key may also be defined multiple timess, in which case only one of the conditions needs to be met:
+
+```
+[X-Fleet]
+X-ConditionMachineMetadata=region=us-east-1
+X-ConditionMachineMetadata=region=us-west-1
+```
+
+This would allow a machine to match just one of the provided values to be considered eligible to run.
+
+A machine is not automatically configured with metadata.
+A deployer may define machine metadata using the `metadata` [config option](https://github.com/coreos/fleet/blob/master/Documentation/configuration.md).
+
 ##### Schedule unit next to another unit
 
 In order for a unit to be scheduled to the same machine as another unit, a unit file can define `X-ConditionMachineOf`.
