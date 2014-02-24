@@ -2,9 +2,13 @@ package config
 
 import (
 	"flag"
+	"io/ioutil"
+	"log"
+	"os"
 	"strconv"
 	"strings"
 
+	"github.com/coreos/fleet/third_party/github.com/coreos/go-etcd/etcd"
 	"github.com/coreos/fleet/third_party/github.com/golang/glog"
 )
 
@@ -50,5 +54,11 @@ func UpdateLoggingFlagsFromConfig(conf *Config) {
 	err = flag.Lookup("logtostderr").Value.Set("true")
 	if err != nil {
 		glog.Errorf("Failed to set flag.logtostderr to true: %v", err)
+	}
+
+	if conf.Verbosity > 2 {
+		etcd.SetLogger(log.New(os.Stdout, "go-etcd", log.LstdFlags))
+	} else {
+		etcd.SetLogger(log.New(ioutil.Discard, "go-etcd", log.LstdFlags))
 	}
 }
