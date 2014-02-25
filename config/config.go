@@ -22,11 +22,6 @@ type Config struct {
 	AgentTTL    string
 }
 
-func NewConfig() *Config {
-	conf := Config{BootId: "", Verbosity: 0, PublicIP: ""}
-	return &conf
-}
-
 func (self *Config) Metadata() map[string]string {
 	meta := make(map[string]string, 0)
 
@@ -45,13 +40,15 @@ func (self *Config) Metadata() map[string]string {
 	return meta
 }
 
-func UpdateLoggingFlagsFromConfig(conf *Config) {
-	err := flag.Lookup("v").Value.Set(strconv.Itoa(conf.Verbosity))
+// UpdateLoggingFlagsFromConfig extracts the logging-related options from
+// the provided config and sets flags in the given flagset
+func UpdateLoggingFlagsFromConfig(flagset *flag.FlagSet, conf *Config) {
+	err := flagset.Lookup("v").Value.Set(strconv.Itoa(conf.Verbosity))
 	if err != nil {
 		glog.Errorf("Failed to apply config.Verbosity to flag.v: %v", err)
 	}
 
-	err = flag.Lookup("logtostderr").Value.Set("true")
+	err = flagset.Lookup("logtostderr").Value.Set("true")
 	if err != nil {
 		glog.Errorf("Failed to set flag.logtostderr to true: %v", err)
 	}

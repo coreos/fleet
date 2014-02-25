@@ -50,8 +50,6 @@ func main() {
 		syscall.Exit(1)
 	}
 
-	config.UpdateLoggingFlagsFromConfig(cfg)
-
 	srv := server.New(*cfg)
 	srv.Run()
 
@@ -66,9 +64,7 @@ func main() {
 
 		srv.Stop()
 
-		config.UpdateLoggingFlagsFromConfig(cfg)
 		srv = server.New(*cfg)
-
 		srv.Run()
 	}
 
@@ -105,16 +101,19 @@ func getConfig(flagset *flag.FlagSet, file string) (*config.Config, error) {
 
 	gconf.ParseSet("", flagset)
 
-	cfg := config.NewConfig()
-	cfg.Verbosity = (*flagset.Lookup("verbosity")).Value.(flag.Getter).Get().(int)
-	cfg.EtcdServers = (*flagset.Lookup("etcd_servers")).Value.(flag.Getter).Get().(stringSlice)
-	cfg.BootId = (*flagset.Lookup("boot_id")).Value.(flag.Getter).Get().(string)
-	cfg.PublicIP = (*flagset.Lookup("public_ip")).Value.(flag.Getter).Get().(string)
-	cfg.RawMetadata = (*flagset.Lookup("metadata")).Value.(flag.Getter).Get().(string)
-	cfg.UnitPrefix = (*flagset.Lookup("unit_prefix")).Value.(flag.Getter).Get().(string)
-	cfg.AgentTTL = (*flagset.Lookup("agent_ttl")).Value.(flag.Getter).Get().(string)
+	cfg := config.Config{
+		Verbosity: (*flagset.Lookup("verbosity")).Value.(flag.Getter).Get().(int),
+		EtcdServers: (*flagset.Lookup("etcd_servers")).Value.(flag.Getter).Get().(stringSlice),
+		BootId: (*flagset.Lookup("boot_id")).Value.(flag.Getter).Get().(string),
+		PublicIP: (*flagset.Lookup("public_ip")).Value.(flag.Getter).Get().(string),
+		RawMetadata: (*flagset.Lookup("metadata")).Value.(flag.Getter).Get().(string),
+		UnitPrefix: (*flagset.Lookup("unit_prefix")).Value.(flag.Getter).Get().(string),
+		AgentTTL: (*flagset.Lookup("agent_ttl")).Value.(flag.Getter).Get().(string),
+	}
 
-	return cfg, nil
+	config.UpdateLoggingFlagsFromConfig(flag.CommandLine, &cfg)
+
+	return &cfg, nil
 }
 
 func listenForSignals(sigmap map[os.Signal]func()) {
