@@ -6,6 +6,7 @@ import (
 	"github.com/coreos/fleet/third_party/github.com/codegangsta/cli"
 
 	"github.com/coreos/fleet/job"
+	"github.com/coreos/fleet/sign"
 )
 
 func newSubmitUnitCommand() cli.Command {
@@ -20,12 +21,26 @@ fleetctl submit foo.service
 
 Submit a directory of units with glob matching:
 fleetctl submit myservice/*`,
+		Flags:	[]cli.Flag{
+			cli.BoolFlag{"sign", "Sign unit file signatures using local SSH identities"},
+		},
 		Action:	submitUnitsAction,
 	}
 }
 
 func submitUnitsAction(c *cli.Context) {
 	r := getRegistry(c)
+
+	toSign := c.Bool("sign")
+	var sc *sign.SignatureCreator
+	if toSign {
+		var err error
+		sc, err = sign.NewSignatureCreatorFromSSHAgent()
+		if err != nil {
+			fmt.Println("Fail to create SignatureVerifier:", err)
+			return
+		}
+	}
 
 	// First, validate each of the provided payloads
 	payloads := make([]job.JobPayload, len(c.Args()))
@@ -45,6 +60,14 @@ func submitUnitsAction(c *cli.Context) {
 		if err != nil {
 			fmt.Printf("Creation of payload %s failed: %v\n", payload.Name, err)
 			return
+		}
+		if toSign {
+			s, err := sc.SignPayload(&payload)
+			if err != nil {
+				fmt.Printf("Creation of sign for payload %s failed: %v\n", payload.Name, err)
+				return
+			}
+			r.CreateSignatureSet(s)
 		}
 	}
 }

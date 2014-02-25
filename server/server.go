@@ -9,6 +9,7 @@ import (
 	"github.com/coreos/fleet/event"
 	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/registry"
+	"github.com/coreos/fleet/sign"
 )
 
 type Server struct {
@@ -35,7 +36,17 @@ func New(cfg config.Config) *Server {
 	eventClient.SetConsistency(etcd.STRONG_CONSISTENCY)
 	es := registry.NewEventStream(eventClient)
 
-	a, err := agent.New(r, eb, m, cfg.AgentTTL, cfg.UnitPrefix)
+	var verifier *sign.SignatureVerifier
+	if cfg.VerifyUnits {
+		var err error
+		verifier, err = sign.NewSignatureVerifierFromAuthorizedKeyFile(cfg.AuthorizedKeyFile)
+		if err != nil {
+			//TODO: return this as an error object rather than panicking
+			panic(err)
+		}
+	}
+
+	a, err := agent.New(r, eb, m, cfg.AgentTTL, cfg.UnitPrefix, verifier)
 	if err != nil {
 		//TODO: return this as an error object rather than panicking
 		panic(err)

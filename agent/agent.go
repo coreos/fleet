@@ -11,6 +11,7 @@ import (
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/registry"
+	"github.com/coreos/fleet/sign"
 	"github.com/coreos/fleet/systemd"
 )
 
@@ -30,6 +31,7 @@ type Agent struct {
 	machine       *machine.Machine
 	ttl           time.Duration
 	systemdPrefix string
+	verifier      *sign.SignatureVerifier
 
 	state   *AgentState
 	systemd *systemd.SystemdManager
@@ -38,7 +40,7 @@ type Agent struct {
 	stop chan bool
 }
 
-func New(registry *registry.Registry, events *event.EventBus, machine *machine.Machine, ttl, unitPrefix string) (*Agent, error) {
+func New(registry *registry.Registry, events *event.EventBus, machine *machine.Machine, ttl, unitPrefix string, verifier *sign.SignatureVerifier) (*Agent, error) {
 	ttldur, err := time.ParseDuration(ttl)
 	if err != nil {
 		return nil, err
@@ -47,7 +49,7 @@ func New(registry *registry.Registry, events *event.EventBus, machine *machine.M
 	state := NewState()
 	mgr := systemd.NewSystemdManager(machine, unitPrefix)
 
-	return &Agent{registry, events, machine, ttldur, unitPrefix, state, mgr, nil}, nil
+	return &Agent{registry, events, machine, ttldur, unitPrefix, verifier, state, mgr, nil}, nil
 }
 
 // Access Agent's machine field
@@ -87,6 +89,15 @@ func (a *Agent) Purge() {
 	}
 
 	for _, j := range a.registry.GetAllJobsByMachine(bootId) {
+		if a.verifier != nil {
+			payload := j.Payload
+			s := a.registry.GetSignatureSetOfPayload(payload.Name)
+			ok, err := a.verifier.VerifyPayload(payload, s)
+			if !ok || err != nil {
+				log.V(2).Infof("Check of payload %s failed: %v", payload.Name, err)
+			}
+		}
+
 		log.V(1).Infof("Clearing JobState(%s) from Registry", j.Name)
 		a.registry.RemoveJobState(j.Name)
 
@@ -238,6 +249,16 @@ func (a *Agent) FetchJob(jobName string) *job.Job {
 	j := a.registry.GetJob(jobName)
 	if j == nil {
 		log.V(1).Infof("Job not found in Registry")
+		return nil
+	}
+	if a.verifier != nil {
+		payload := j.Payload
+		s := a.registry.GetSignatureSetOfPayload(payload.Name)
+		ok, err := a.verifier.VerifyPayload(payload, s)
+		if !ok || err != nil {
+			log.V(2).Infof("Check of payload %s failed: %v", payload.Name, err)
+			return nil
+		}
 	}
 	return j
 }

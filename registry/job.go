@@ -13,8 +13,8 @@ import (
 )
 
 const (
-	jobPrefix	= "/job/"
-	payloadPrefix	= "/payload/"
+	jobPrefix     = "/job/"
+	payloadPrefix = "/payload/"
 )
 
 func (r *Registry) GetAllPayloads() []job.JobPayload {

@@ -7,6 +7,7 @@ import (
 	"github.com/coreos/fleet/third_party/github.com/codegangsta/cli"
 
 	"github.com/coreos/fleet/job"
+	"github.com/coreos/fleet/sign"
 )
 
 func newListUnitsCommand() cli.Command {
@@ -24,12 +25,24 @@ fleetctl list-units --full`,
 		Flags: []cli.Flag{
 			cli.BoolFlag{"full, l", "Do not ellipsize fields on output"},
 			cli.BoolFlag{"no-legend", "Do not print a legend (column headers)"},
+			cli.BoolFlag{"verify", "Verify unit file signatures using local SSH identities"},
 		},
 	}
 }
 
 func listUnitsAction(c *cli.Context) {
 	r := getRegistry(c)
+
+	toVerify := c.Bool("verify")
+	var sv *sign.SignatureVerifier
+	if toVerify {
+		var err error
+		sv, err = sign.NewSignatureVerifierFromSSHAgent()
+		if err != nil {
+			fmt.Println("Fail to create SignatureVerifier:", err)
+			return
+		}
+	}
 
 	if !c.Bool("no-legend") {
 		fmt.Fprintln(out, "UNIT\tLOAD\tACTIVE\tSUB\tDESC\tMACHINE")
@@ -39,6 +52,14 @@ func listUnitsAction(c *cli.Context) {
 	sortable := make(sort.StringSlice, 0)
 
 	for _, p := range r.GetAllPayloads() {
+		if toVerify {
+			s := r.GetSignatureSetOfPayload(p.Name)
+			ok, err := sv.VerifyPayload(&p, s)
+			if !ok || err != nil {
+				fmt.Printf("Check of payload %s failed: %v\n", p.Name, err)
+				return
+			}
+		}
 		if _, ok := names[p.Name]; !ok {
 			names[p.Name] = p.Unit.Description()
 			sortable = append(sortable, p.Name)
