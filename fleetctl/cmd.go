@@ -113,11 +113,8 @@ func main() {
 	}
 
 	globalconf.Register("fleetctl", flagset)
-
-	opts := globalconf.Options{
-		EnvPrefix: "FLEETCTL_",
-	}
-	gconf, _ := globalconf.NewWithOptions(opts)
+	opts := globalconf.Options{EnvPrefix: "FLEETCTL_"}
+	gconf, _ := globalconf.NewWithOptions(&opts)
 	gconf.ParseSet("", flagset)
 
 	app.Run(os.Args)

@@ -17,11 +17,18 @@ import (
 	"github.com/coreos/fleet/version"
 )
 
+const (
+	DefaultConfigFile = "/etc/fleet/fleet.conf"
+)
+
 func main() {
 	// We use a FlagSets since glog adds a bunch of flags we do not want to publish
 	userset := flag.NewFlagSet("fleet", flag.ExitOnError)
 	printVersion := userset.Bool("version", false, "Print the version and exit")
-	cfgPath := userset.String("config", "/etc/fleet/fleet.conf", "Path to config file")
+	cfgPath := userset.String("config", "", fmt.Sprintf("Path to config file. Fleet will look for a config at %s by default.", DefaultConfigFile))
+
+	// Initialize logging so we have it set up while parsing config information
+	config.UpdateLoggingFlagsFromConfig(&config.Config{})
 
 	err := userset.Parse(os.Args[1:])
 	if err == flag.ErrHelp {
@@ -84,17 +91,27 @@ func main() {
 	listenForSignals(signals)
 }
 
-func getConfig(flagset *flag.FlagSet, file string) (*config.Config, error) {
-	if _, err := os.Stat(file); err != nil {
-		glog.Infof("Config file %s does not appear to exist - ignoring")
-		file = ""
+func getConfig(flagset *flag.FlagSet, userCfgFile string) (*config.Config, error) {
+	opts := globalconf.Options{EnvPrefix: "FLEET_"}
+
+	if userCfgFile != "" {
+		// Fail hard if a user-provided config is not usable
+		if _, err := os.Stat(userCfgFile); err != nil {
+			glog.Errorf("Unable to use config file %s: %v", userCfgFile, err)
+			os.Exit(1)
+		}
+
+		glog.Infof("Using provided config file %s", userCfgFile)
+		opts.Filename = userCfgFile
+
+	} else if _, err := os.Stat(DefaultConfigFile); err == nil {
+		glog.Infof("Using default config file %s", DefaultConfigFile)
+		opts.Filename = DefaultConfigFile
+	} else {
+		glog.Infof("Continuing without config file")
 	}
 
-	opts := globalconf.Options{
-		EnvPrefix: "FLEET_",
-		ConfigFile: file,
-	}
-	gconf, err := globalconf.NewWithOptions(opts)
+	gconf, err := globalconf.NewWithOptions(&opts)
 	if err != nil {
 		return nil, err
 	}
