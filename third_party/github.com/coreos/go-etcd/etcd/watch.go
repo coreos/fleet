@@ -31,8 +31,9 @@ func (c *Client) Watch(prefix string, waitIndex uint64, recursive bool,
 			return nil, err
 		}
 
-		return raw.toResponse()
+		return raw.Unmarshal()
 	}
+	defer close(receiver)
 
 	for {
 		raw, err := c.watchOnce(prefix, waitIndex, recursive, stop)
@@ -41,7 +42,7 @@ func (c *Client) Watch(prefix string, waitIndex uint64, recursive bool,
 			return nil, err
 		}
 
-		resp, err := raw.toResponse()
+		resp, err := raw.Unmarshal()
 
 		if err != nil {
 			return nil, err
@@ -69,7 +70,7 @@ func (c *Client) RawWatch(prefix string, waitIndex uint64, recursive bool,
 			return nil, err
 		}
 
-		resp, err := raw.toResponse()
+		resp, err := raw.Unmarshal()
 
 		if err != nil {
 			return nil, err
@@ -86,36 +87,21 @@ func (c *Client) RawWatch(prefix string, waitIndex uint64, recursive bool,
 // return when there is change under the given prefix
 func (c *Client) watchOnce(key string, waitIndex uint64, recursive bool, stop chan bool) (*RawResponse, error) {
 
-	respChan := make(chan *RawResponse, 1)
-	errChan := make(chan error)
+	options := options{
+		"wait": true,
+	}
+	if waitIndex > 0 {
+		options["waitIndex"] = waitIndex
+	}
+	if recursive {
+		options["recursive"] = true
+	}
 
-	go func() {
-		options := options{
-			"wait": true,
-		}
-		if waitIndex > 0 {
-			options["waitIndex"] = waitIndex
-		}
-		if recursive {
-			options["recursive"] = true
-		}
+	resp, err := c.getCancelable(key, options, stop)
 
-		resp, err := c.get(key, options)
-
-		if err != nil {
-			errChan <- err
-			return
-		}
-
-		respChan <- resp
-	}()
-
-	select {
-	case resp := <-respChan:
-		return resp, nil
-	case err := <-errChan:
-		return nil, err
-	case <-stop:
+	if err == ErrRequestCancelled {
 		return nil, ErrWatchStoppedByUser
 	}
+
+	return resp, err
 }
