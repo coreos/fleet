@@ -50,7 +50,3 @@ func (jp *JobPayload) Conflicts() []string {
 		return make([]string, 0)
 	}
 }
-
-func (jp *JobPayload) Description() string {
-	return jp.Unit.Description()
-}
