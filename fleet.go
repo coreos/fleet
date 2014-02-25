@@ -28,7 +28,7 @@ func main() {
 	cfgPath := userset.String("config", "", fmt.Sprintf("Path to config file. Fleet will look for a config at %s by default.", DefaultConfigFile))
 
 	// Initialize logging so we have it set up while parsing config information
-	config.UpdateLoggingFlagsFromConfig(&config.Config{})
+	config.UpdateLoggingFlagsFromConfig(flag.CommandLine, &config.Config{})
 
 	err := userset.Parse(os.Args[1:])
 	if err == flag.ErrHelp {
