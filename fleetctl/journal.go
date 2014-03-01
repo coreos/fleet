@@ -50,9 +50,9 @@ func journalAction(c *cli.Context) {
 	var err error
 	var sshClient *gossh.ClientConn
 	if tun := getTunnelFlag(); tun != "" {
-		sshClient, err = ssh.NewTunnelledSSHClient("core", tun, addr)
+		sshClient, err = ssh.NewTunnelledSSHClient("core", tun, addr, getChecker())
 	} else {
-		sshClient, err = ssh.NewSSHClient("core", addr)
+		sshClient, err = ssh.NewSSHClient("core", addr, getChecker())
 	}
 	if err != nil {
 		log.Fatal(err.Error())

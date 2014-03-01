@@ -13,6 +13,7 @@ import (
 	"strings"
 	"text/tabwriter"
 
+	gossh "github.com/coreos/fleet/third_party/code.google.com/p/go.crypto/ssh"
 	"github.com/coreos/fleet/third_party/github.com/codegangsta/cli"
 	"github.com/coreos/fleet/third_party/github.com/coreos/go-etcd/etcd"
 	"github.com/coreos/fleet/third_party/github.com/rakyll/globalconf"
@@ -52,7 +53,7 @@ func getRegistry() *registry.Registry {
 	client := etcd.NewClient(machines)
 
 	if tun != "" {
-		sshClient, err := ssh.NewSSHClient("core", tun)
+		sshClient, err := ssh.NewSSHClient("core", tun, getChecker())
 		if err != nil {
 			log.Fatalf("Failed initializing SSH client: %v", err)
 		}
@@ -78,6 +79,16 @@ func getRegistry() *registry.Registry {
 	return registry.New(client)
 }
 
+func getChecker() gossh.HostKeyChecker {
+	if !(*flagset.Lookup("strict-host-key-checking")).Value.(flag.Getter).Get().(bool) {
+		return nil
+	}
+
+	knownHostsFile := (*flagset.Lookup("known-hosts-file")).Value.(flag.Getter).Get().(string)
+	keyFile := ssh.NewHostKeyFile(knownHostsFile)
+	return ssh.NewHostKeyChecker(keyFile, askToTrustHost, nil)
+}
+
 func main() {
 	app := cli.NewApp()
 	app.Name = "fleetctl"
@@ -86,6 +97,8 @@ func main() {
 	app.Flags = []cli.Flag{
 		cli.StringFlag{"endpoint", "http://127.0.0.1:4001", "Fleet Engine API endpoint (etcd)"},
 		cli.StringFlag{"tunnel", "", "Establish an SSH tunnel through the provided address for communication with fleet and etcd."},
+		cli.BoolTFlag{"strict-host-key-checking", "Do strict check on known hosts for ssh connection. Defaults to 'true'."},
+		cli.StringFlag{"known-hosts-file", ssh.DefaultKnownHostsFile, "Location for known_hosts file"},
 	}
 
 	app.Commands = []cli.Command{
@@ -176,4 +189,18 @@ func ellipsize(field string, n int) string {
 	} else {
 		return field
 	}
+}
+
+func askToTrustHost(addr, algo, fingerprint string) bool {
+	var ans string
+
+	fmt.Printf("The authenticity of host '%v' can't be established.\n%v key fingerprint is %v.\nAre you sure you want to continue connecting (yes/no)? ", addr, algo, fingerprint)
+	fmt.Scanf("%s\n", &ans)
+
+	ans = strings.ToLower(ans)
+	if ans != "yes" && ans != "y" {
+		return false
+	}
+
+	return true
 }
