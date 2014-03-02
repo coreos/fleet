@@ -62,7 +62,7 @@ func (eh *EventHandler) HandleEventJobScheduled(ev event.Event) {
 	eh.agent.StartJob(j)
 
 	log.V(1).Infof("EventJobScheduled(%s): Bidding for all possible peers of Job", j.Name)
-	eh.agent.BidForPossiblePeers(jobName)
+	eh.agent.BidForPossiblePeers(j.Name)
 }
 
 func (eh *EventHandler) HandleEventJobStopped(ev event.Event) {
@@ -75,6 +75,21 @@ func (eh *EventHandler) HandleEventJobStopped(ev event.Event) {
 
 	log.V(1).Infof("EventJobStopped(%s): revisiting unresolved JobOffers", jobName)
 	eh.agent.BidForPossibleJobs()
+}
+
+func (eh *EventHandler) HandleEventJobUpdated(ev event.Event) {
+	j := ev.Payload.(job.Job)
+
+	localBootId := eh.agent.Machine().State().BootId
+	targetBootId := ev.Context.(string)
+
+	if targetBootId != localBootId {
+		log.V(1).Infof("EventJobUpdated(%s): Job not scheduled to Agent %s, skipping", j.Name, localBootId)
+		return
+	}
+
+	log.V(1).Infof("EventJobUpdated(%s): Starting Job", j.Name)
+	eh.agent.StartJob(&j)
 }
 
 func (eh *EventHandler) HandleEventJobStateUpdated(ev event.Event) {
