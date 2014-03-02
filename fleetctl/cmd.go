@@ -42,7 +42,7 @@ OPTIONS:
 `
 }
 
-func getRegistry(context *cli.Context) *registry.Registry {
+func getRegistry() *registry.Registry {
 	tun := getTunnelFlag()
 	endpoint := getEndpointFlag()
 

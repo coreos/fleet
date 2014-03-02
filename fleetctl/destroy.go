@@ -22,7 +22,7 @@ Destroyed units are impossible to start unless re-submitted.`,
 }
 
 func destroyUnitsAction(c *cli.Context) {
-	r := getRegistry(c)
+	r := getRegistry()
 
 	for _, v := range c.Args() {
 		name := path.Base(v)

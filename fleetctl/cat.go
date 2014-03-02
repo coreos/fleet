@@ -19,7 +19,7 @@ the correct version of a unit is running.`,
 }
 
 func printUnitAction(c *cli.Context) {
-	r := getRegistry(c)
+	r := getRegistry()
 
 	if len(c.Args()) != 1 {
 		fmt.Println("One unit file must be provided.")

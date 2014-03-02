@@ -36,7 +36,7 @@ Now you can run all fleet commands locally.`,
 }
 
 func sshAction(c *cli.Context) {
-	r := getRegistry(c)
+	r := getRegistry()
 
 	args := c.Args()
 	unit := c.String("unit")

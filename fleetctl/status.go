@@ -31,7 +31,7 @@ fleetctl status myservice/*`,
 }
 
 func statusUnitsAction(c *cli.Context) {
-	r := getRegistry(c)
+	r := getRegistry()
 
 	for i, v := range c.Args() {
 		// This extra newline here to match systemctl status output
