@@ -37,7 +37,7 @@ func journalAction(c *cli.Context) {
 	}
 	jobName := c.Args()[0]
 
-	r := getRegistry(c)
+	r := getRegistry()
 	js := r.GetJobState(jobName)
 
 	if js == nil {

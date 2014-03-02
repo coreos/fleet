@@ -27,7 +27,7 @@ fleetctl stop myservice/*`,
 }
 
 func stopUnitAction(c *cli.Context) {
-	r := getRegistry(c)
+	r := getRegistry()
 
 	for _, v := range c.Args() {
 		name := path.Base(v)

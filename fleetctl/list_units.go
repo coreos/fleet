@@ -29,7 +29,7 @@ fleetctl list-units --full`,
 }
 
 func listUnitsAction(c *cli.Context) {
-	r := getRegistry(c)
+	r := getRegistry()
 
 	if !c.Bool("no-legend") {
 		fmt.Fprintln(out, "UNIT\tLOAD\tACTIVE\tSUB\tDESC\tMACHINE")

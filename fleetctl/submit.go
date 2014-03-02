@@ -25,7 +25,7 @@ fleetctl submit myservice/*`,
 }
 
 func submitUnitsAction(c *cli.Context) {
-	r := getRegistry(c)
+	r := getRegistry()
 
 	// First, validate each of the provided payloads
 	payloads := make([]job.JobPayload, len(c.Args()))

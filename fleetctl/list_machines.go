@@ -28,7 +28,7 @@ fleetctl list-machines --full`,
 }
 
 func listMachinesAction(c *cli.Context) {
-	r := getRegistry(c)
+	r := getRegistry()
 
 	if !c.Bool("no-legend") {
 		fmt.Fprintln(out, "MACHINE\tIP\tMETADATA")

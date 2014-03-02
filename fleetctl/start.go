@@ -38,7 +38,7 @@ fleetctl start --require region=us-east foo.service`,
 
 func startUnitAction(c *cli.Context) {
 	var err error
-	r := getRegistry(c)
+	r := getRegistry()
 
 	payloads := make([]job.JobPayload, len(c.Args()))
 	for i, v := range c.Args() {
