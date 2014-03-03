@@ -11,8 +11,8 @@ import (
 
 func newSubmitUnitCommand() cli.Command {
 	return cli.Command{
-		Name:	"submit",
-		Usage:	"Upload one or more units to the cluster without starting them",
+		Name:  "submit",
+		Usage: "Upload one or more units to the cluster without starting them",
 		Description: `Upload one or more units to the cluster without starting them. Useful
 validating units before they are started.
 
@@ -21,16 +21,14 @@ fleetctl submit foo.service
 
 Submit a directory of units with glob matching:
 fleetctl submit myservice/*`,
-		Flags:	[]cli.Flag{
+		Flags: []cli.Flag{
 			cli.BoolFlag{"sign", "Sign unit file signatures using local SSH identities"},
 		},
-		Action:	submitUnitsAction,
+		Action: submitUnitsAction,
 	}
 }
 
 func submitUnitsAction(c *cli.Context) {
-	r := getRegistry()
-
 	toSign := c.Bool("sign")
 	var sc *sign.SignatureCreator
 	if toSign {
@@ -56,7 +54,7 @@ func submitUnitsAction(c *cli.Context) {
 	// Only after all the provided payloads have been validated
 	// do we push any changes to the Registry
 	for _, payload := range payloads {
-		err := r.CreatePayload(&payload)
+		err := registryCtl.CreatePayload(&payload)
 		if err != nil {
 			fmt.Printf("Creation of payload %s failed: %v\n", payload.Name, err)
 			return
@@ -67,7 +65,7 @@ func submitUnitsAction(c *cli.Context) {
 				fmt.Printf("Creation of sign for payload %s failed: %v\n", payload.Name, err)
 				return
 			}
-			r.CreateSignatureSet(s)
+			registryCtl.CreateSignatureSet(s)
 		}
 	}
 }

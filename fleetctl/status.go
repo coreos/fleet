@@ -9,14 +9,13 @@ import (
 	gossh "github.com/coreos/fleet/third_party/code.google.com/p/go.crypto/ssh"
 	"github.com/coreos/fleet/third_party/github.com/codegangsta/cli"
 
-	"github.com/coreos/fleet/registry"
 	"github.com/coreos/fleet/ssh"
 )
 
 func newStatusUnitsCommand() cli.Command {
 	return cli.Command{
-		Name:	"status",
-		Usage:	"Output the status of one or more units in the cluster",
+		Name:  "status",
+		Usage: "Output the status of one or more units in the cluster",
 		Description: `Output the status of one or more units currently running in the cluster.
 Supports glob matching of units in the current working directory or matches
 previously started units.
@@ -26,13 +25,11 @@ fleetctl status foo.service
 
 Show status of an entire directory with glob matching:
 fleetctl status myservice/*`,
-		Action:	statusUnitsAction,
+		Action: statusUnitsAction,
 	}
 }
 
 func statusUnitsAction(c *cli.Context) {
-	r := getRegistry()
-
 	for i, v := range c.Args() {
 		// This extra newline here to match systemctl status output
 		if i != 0 {
@@ -40,12 +37,12 @@ func statusUnitsAction(c *cli.Context) {
 		}
 
 		name := path.Base(v)
-		printUnitStatus(c, r, name)
+		printUnitStatus(c, name)
 	}
 }
 
-func printUnitStatus(c *cli.Context, r *registry.Registry, jobName string) {
-	js := r.GetJobState(jobName)
+func printUnitStatus(c *cli.Context, jobName string) {
+	js := registryCtl.GetJobState(jobName)
 
 	if js == nil {
 		fmt.Printf("%s does not appear to be running\n", jobName)
