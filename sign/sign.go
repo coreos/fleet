@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	DefaultAuthorizedKeyFile = "~/.ssh/authorized_keys"
+	DefaultAuthorizedKeysFile = "~/.ssh/authorized_keys"
 )
 
 type SignatureSet struct {
@@ -98,8 +98,8 @@ func NewSignatureVerifierFromKeyring(keyring gossh.ClientKeyring) (*SignatureVer
 	return &SignatureVerifier{pubkeys}, nil
 }
 
-// NewSignatureVerifierFromAuthorizedKeyFile return SignatureVerifier which uses authorized key file to verify
-func NewSignatureVerifierFromAuthorizedKeyFile(filepath string) (*SignatureVerifier, error) {
+// NewSignatureVerifierFromAuthorizedKeysFile return SignatureVerifier which uses authorized key file to verify
+func NewSignatureVerifierFromAuthorizedKeysFile(filepath string) (*SignatureVerifier, error) {
 	out, err := ioutil.ReadFile(parseFilepath(filepath))
 	if err != nil {
 		return nil, err

@@ -75,7 +75,7 @@ func initSign(t *testing.T) (*SignatureCreator, *SignatureVerifier) {
 	}
 
 	c := NewSignatureCreator(keyring)
-	v, err := NewSignatureVerifierFromAuthorizedKeyFile(authorizedKeyFile)
+	v, err := NewSignatureVerifierFromAuthorizedKeysFile(authorizedKeyFile)
 	if err != nil {
 		t.Fatal("Fail to read from authorized key file:", err)
 	}
@@ -85,7 +85,7 @@ func initSign(t *testing.T) (*SignatureCreator, *SignatureVerifier) {
 
 // TestNewSignatureVerifierFromFile tests initializing SignatureVerifier from file
 func TestNewSignatureVerifierFromFile(t *testing.T) {
-	v, err := NewSignatureVerifierFromAuthorizedKeyFile(authorizedKeyFile)
+	v, err := NewSignatureVerifierFromAuthorizedKeysFile(authorizedKeyFile)
 	if err != nil {
 		t.Fatal("Fail to read from authorized key file:", err)
 	}
@@ -101,12 +101,12 @@ func TestNewSignatureVerifierFromFile(t *testing.T) {
 
 // TestBadNewSignatureVerifierFromFile tests initializing SignatureVerifier from file incorrectly
 func TestBadNewSignatureVerifierFromFile(t *testing.T) {
-	_, err := NewSignatureVerifierFromAuthorizedKeyFile(nonexistAuthorizedKeyFile)
+	_, err := NewSignatureVerifierFromAuthorizedKeysFile(nonexistAuthorizedKeyFile)
 	if err == nil {
 		t.Fatal("succeed to new signature verifier")
 	}
 
-	_, err = NewSignatureVerifierFromAuthorizedKeyFile(privateKeyFile)
+	_, err = NewSignatureVerifierFromAuthorizedKeysFile(privateKeyFile)
 	if err == nil {
 		t.Fatal("succeed to new signature verifier")
 	}
