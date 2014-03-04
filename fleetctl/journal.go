@@ -26,6 +26,7 @@ Read the last 100 lines:
 fleetctl journal --lines 100 foo.service`,
 		Flags: []cli.Flag{
 			cli.IntFlag{"lines, n", 10, "Number of recent log lines to return."},
+			cli.BoolFlag{"follow, f", "Continuously print new entries as they are appended to the journal."},
 		},
 	}
 }
@@ -61,6 +62,9 @@ func journalAction(c *cli.Context) {
 	defer sshClient.Close()
 
 	cmd := fmt.Sprintf("journalctl -u %s --no-pager -l -n %d", jobName, c.Int("lines"))
+	if c.Bool("follow") {
+		cmd += " -f"
+	}
 	stdout, err := ssh.Execute(sshClient, cmd)
 	if err != nil {
 		log.Fatalf("Unable to run command over SSH: %s", err.Error())
