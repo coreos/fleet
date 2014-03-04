@@ -40,7 +40,7 @@ func New(cfg config.Config) *Server {
 	var verifier *sign.SignatureVerifier
 	if cfg.VerifyUnits {
 		var err error
-		verifier, err = sign.NewSignatureVerifierFromAuthorizedKeyFile(cfg.AuthorizedKeyFile)
+		verifier, err = sign.NewSignatureVerifierFromAuthorizedKeysFile(cfg.AuthorizedKeysFile)
 		if err != nil {
 			log.Errorln("Failed to get any key from authorized key file in verify_units mode:", err)
 			verifier = sign.NewSignatureVerifier()
