@@ -76,9 +76,9 @@ func journalAction(c *cli.Context) {
 			break
 		}
 
-		print(string(bytes))
+		fmt.Print(string(bytes))
 		if !prefix {
-			print("\n")
+			fmt.Print("\n")
 		}
 	}
 }

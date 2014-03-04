@@ -79,9 +79,9 @@ func printUnitStatus(c *cli.Context, r *registry.Registry, jobName string) {
 			break
 		}
 
-		print(string(bytes))
+		fmt.Print(string(bytes))
 		if !prefix {
-			print("\n")
+			fmt.Print("\n")
 		}
 	}
 }
