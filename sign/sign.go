@@ -67,6 +67,10 @@ type SignatureVerifier struct {
 	pubkeys []gossh.PublicKey
 }
 
+func NewSignatureVerifier() *SignatureVerifier {
+	return &SignatureVerifier{}
+}
+
 // NewSignatureVerifierFromSSHAgent return SignatureVerifier which uses ssh-agent to verify
 func NewSignatureVerifierFromSSHAgent() (*SignatureVerifier, error) {
 	keyring, err := ssh.NewSSHAgentKeyring()
