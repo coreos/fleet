@@ -2,6 +2,7 @@ package server
 
 import (
 	"github.com/coreos/fleet/third_party/github.com/coreos/go-etcd/etcd"
+	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
 
 	"github.com/coreos/fleet/agent"
 	"github.com/coreos/fleet/config"
@@ -41,8 +42,8 @@ func New(cfg config.Config) *Server {
 		var err error
 		verifier, err = sign.NewSignatureVerifierFromAuthorizedKeyFile(cfg.AuthorizedKeyFile)
 		if err != nil {
-			//TODO: return this as an error object rather than panicking
-			panic(err)
+			log.Errorln("Failed to get any key from authorized key file in verify_units mode:", err)
+			verifier = sign.NewSignatureVerifier()
 		}
 	}
 
