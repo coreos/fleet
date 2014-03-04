@@ -28,5 +28,6 @@ func destroyUnitsAction(c *cli.Context) {
 		name := path.Base(v)
 		r.StopJob(name)
 		r.DestroyPayload(name)
+		r.DestroySignatureSetOfPayload(name)
 	}
 }

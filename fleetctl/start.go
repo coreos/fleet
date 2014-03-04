@@ -8,6 +8,7 @@ import (
 	"github.com/coreos/fleet/third_party/github.com/codegangsta/cli"
 
 	"github.com/coreos/fleet/job"
+	"github.com/coreos/fleet/sign"
 )
 
 func newStartUnitCommand() cli.Command {
@@ -31,6 +32,8 @@ Start a unit on any "us-east" machine:
 fleetctl start --require region=us-east foo.service`,
 		Flags: []cli.Flag{
 			cli.StringFlag{"require", "", "Filter suitable hosts with a set of requirements. Format is comma-delimited list of <key>=<value> pairs."},
+			cli.BoolFlag{"sign", "Sign unit file signatures using local SSH identities"},
+			cli.BoolFlag{"verify", "Verify unit file signatures using local SSH identities"},
 		},
 		Action:	startUnitAction,
 	}
@@ -39,6 +42,27 @@ fleetctl start --require region=us-east foo.service`,
 func startUnitAction(c *cli.Context) {
 	var err error
 	r := getRegistry()
+
+	toSign := c.Bool("sign")
+	// If signing is explicitly set to on, verification should default to on.
+	toVerify := c.Bool("verify") || toSign
+	var sc *sign.SignatureCreator
+	var sv *sign.SignatureVerifier
+	if toSign {
+		var err error
+		sc, err = sign.NewSignatureCreatorFromSSHAgent()
+		if err != nil {
+			fmt.Println("Fail to create SignatureCreator:", err)
+			return
+		}
+	}
+	if toVerify {
+		sv, err = sign.NewSignatureVerifierFromSSHAgent()
+		if err != nil {
+			fmt.Println("Fail to create SignatureVerifier:", err)
+			return
+		}
+	}
 
 	payloads := make([]job.JobPayload, len(c.Args()))
 	for i, v := range c.Args() {
@@ -54,6 +78,22 @@ func startUnitAction(c *cli.Context) {
 			err = r.CreatePayload(payload)
 			if err != nil {
 				fmt.Printf("Creation of payload %s failed: %v\n", payload.Name, err)
+				return
+			}
+			if toSign {
+				s, err := sc.SignPayload(payload)
+				if err != nil {
+					fmt.Printf("Creation of sign for payload %s failed: %v\n", payload.Name, err)
+					return
+				}
+				r.CreateSignatureSet(s)
+			}
+		}
+		if toVerify {
+			s := r.GetSignatureSetOfPayload(name)
+			ok, err := sv.VerifyPayload(payload, s)
+			if !ok || err != nil {
+				fmt.Printf("Check of payload %s failed: %v\n", payload.Name, err)
 				return
 			}
 		}
