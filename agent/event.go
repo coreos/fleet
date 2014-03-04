@@ -48,7 +48,7 @@ func (eh *EventHandler) HandleEventJobScheduled(ev event.Event) {
 
 	j := eh.agent.FetchJob(jobName)
 	if j == nil {
-		log.Errorf("EventJobScheduled(%s): Failed to fetch Job")
+		log.Errorf("EventJobScheduled(%s): Failed to fetch Job", jobName)
 		return
 	}
 

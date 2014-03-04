@@ -94,7 +94,7 @@ func (a *Agent) Purge() {
 			s := a.registry.GetSignatureSetOfPayload(payload.Name)
 			ok, err := a.verifier.VerifyPayload(payload, s)
 			if !ok || err != nil {
-				log.V(2).Infof("Check of payload %s failed: %v", payload.Name, err)
+				log.Warningf("Check of payload %s failed when purge: %v", payload.Name, err)
 			}
 		}
 
@@ -256,7 +256,7 @@ func (a *Agent) FetchJob(jobName string) *job.Job {
 		s := a.registry.GetSignatureSetOfPayload(payload.Name)
 		ok, err := a.verifier.VerifyPayload(payload, s)
 		if !ok || err != nil {
-			log.V(2).Infof("Check of payload %s failed: %v", payload.Name, err)
+			log.Errorf("Check of payload %s failed when fetch: %v", payload.Name, err)
 			return nil
 		}
 	}
