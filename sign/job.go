@@ -25,10 +25,15 @@ func (sc *SignatureCreator) SignPayload(jp *job.JobPayload) (*SignatureSet, erro
 
 // VerifyPayload verifies the payload using signature
 func (sc *SignatureVerifier) VerifyPayload(jp *job.JobPayload, s *SignatureSet) (bool, error) {
+	if s == nil {
+		return false, errors.New("signature to verify is nil")
+	}
+
 	tag := path.Join(payloadPrefix, jp.Name)
 	if tag != s.Tag {
 		return false, errors.New("unmatched payload and signature")
 	}
+
 	data, _ := marshal(jp)
 	return sc.Verify(data, s)
 }

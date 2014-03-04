@@ -52,6 +52,11 @@ func TestVerifyJobPayload(t *testing.T) {
 	s.Tag = ""
 	ok, err = v.VerifyPayload(payload, s)
 	if err == nil || ok == true {
-		t.Fatal("succeed veirfy payload")
+		t.Fatal("should fail on payload verification")
+	}
+
+	ok, err = v.VerifyPayload(payload, nil)
+	if err == nil || ok == true {
+		t.Fatal("should fail on payload verification")
 	}
 }
