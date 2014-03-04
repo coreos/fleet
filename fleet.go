@@ -50,7 +50,7 @@ func main() {
 	cfgset.String("metadata", "", "List of key-value metadata to assign to the fleet machine")
 	cfgset.String("unit_prefix", "", "Prefix that should be used for all systemd units")
 	cfgset.String("agent_ttl", agent.DefaultTTL, "TTL in seconds of fleet machine state in etcd")
-	cfgset.Bool("verify_units", true, "Verify unit file signatures using local SSH identities")
+	cfgset.Bool("verify_units", false, "Verify unit file signatures using local SSH identities")
 	cfgset.String("authorized_key_file", sign.DefaultAuthorizedKeyFile, "File that contains authorized keys to be used for signature verification")
 
 	globalconf.Register("", cfgset)
