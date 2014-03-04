@@ -50,6 +50,18 @@ An Agent will be considered dead if it exceeds this amount of time to communicat
 
 Default: "30s"
 
+#### verify_units
+
+Enable payload signature verification. Payloads without verifiable signatures will not be eligible to run on the local fleet server.
+
+Default: false
+
+#### authorized_keys_file
+
+File containing public SSH keys that should be used to verify payload signatures.
+
+Default: "~/.ssh/authorized_keys""
+
 ## Development Options
 
 #### boot_id
