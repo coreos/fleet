@@ -147,18 +147,28 @@ func (m *SystemdManager) startUnit(name string) {
 	log.V(1).Infof("Starting systemd unit %s", name)
 
 	files := []string{name}
-	m.Systemd.EnableUnitFiles(files, true, false)
-	log.V(1).Infof("Enabled systemd unit %s", name)
+	if ok, _, err := m.Systemd.EnableUnitFiles(files, true, false); !ok {
+		log.Errorf("Failed to enable systemd unit %s: %v", name, err)
+		return
+	} else {
+		log.V(1).Infof("Enabled systemd unit %s", name)
+	}
 
-	m.Systemd.StartUnit(name, "replace")
-	log.Infof("Started systemd unit %s", name)
+	if stat, err := m.Systemd.StartUnit(name, "replace"); err != nil {
+		log.Errorf("Failed to start systemd unit %s: %v", name, err)
+	} else {
+		log.Infof("Started systemd unit %s(%s)", name, stat)
+	}
 }
 
 func (m *SystemdManager) stopUnit(name string) {
 	log.V(1).Infof("Stopping systemd unit %s", name)
 
-	m.Systemd.StopUnit(name, "replace")
-	log.Infof("Stopped systemd unit %s", name)
+	if stat, err := m.Systemd.StopUnit(name, "replace"); err != nil {
+		log.Errorf("Failed to stop systemd unit %s: %v", name, err)
+	} else {
+		log.Infof("Stopped systemd unit %s(%s)", name, stat)
+	}
 
 	// go-systemd does not yet have this implemented
 	//files := []string{name}
