@@ -52,7 +52,7 @@ func (eh *EventHandler) HandleEventJobScheduled(ev event.Event) {
 		return
 	}
 
-	if ok := eh.agent.VerifyJob(j); !ok {
+	if !eh.agent.VerifyJob(j) {
 		log.Errorf("EventJobScheduled(%s): Failed to verify job", j.Name)
 		return
 	}
@@ -90,6 +90,11 @@ func (eh *EventHandler) HandleEventJobUpdated(ev event.Event) {
 
 	if targetBootId != localBootId {
 		log.V(1).Infof("EventJobUpdated(%s): Job not scheduled to Agent %s, skipping", j.Name, localBootId)
+		return
+	}
+
+	if ok := eh.agent.VerifyJob(&j); !ok {
+		log.Errorf("EventJobUpdated(%s): Failed to verify job", j.Name)
 		return
 	}
 
