@@ -98,6 +98,7 @@ func main() {
 		newListMachinesCommand(),
 		newJournalCommand(),
 		newSSHCommand(),
+		newVerifyUnitCommand(),
 	}
 
 	for _, f := range app.Flags {
