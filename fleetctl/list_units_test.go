@@ -29,7 +29,7 @@ func newTestRegistryForListUnits(payloads []job.JobPayload, jobs []job.Job) Regi
 func TestGetAllJobs(t *testing.T) {
 	registryCtl = newTestRegistryForListUnits(nil, nil)
 
-	names, sortable := findAllUnits(false)
+	names, sortable := findAllUnits()
 	if len(names) != 2 {
 		t.Errorf("Expected to find two units: %v\n", names)
 	}
@@ -47,7 +47,7 @@ func TestIgnoreDuplicatedUnits(t *testing.T) {
 	jp := []job.JobPayload{*job.NewJobPayload("echo.service", *unit.NewSystemdUnitFile("Echo"))}
 	registryCtl = newTestRegistryForListUnits(jp, nil)
 
-	names, sortable := findAllUnits(false)
+	names, sortable := findAllUnits()
 	if len(names) != 2 {
 		t.Errorf("Expected to find two units: %v\n", names)
 	}
@@ -69,7 +69,7 @@ Description=PING
 	j := []job.Job{*job.NewJob("ping.service", map[string][]string{}, jp, nil)}
 	registryCtl = newTestRegistryForListUnits(nil, j)
 
-	names, _ := findAllUnits(false)
+	names, _ := findAllUnits()
 	if len(names) != 3 {
 		t.Errorf("Expected to find three units: %v\n", names)
 	}
@@ -86,7 +86,7 @@ Description=PING
 	jp := []job.JobPayload{*job.NewJobPayload("ping.service", *unit.NewSystemdUnitFile(contents))}
 	registryCtl = newTestRegistryForListUnits(jp, nil)
 
-	names, _ := findAllUnits(false)
+	names, _ := findAllUnits()
 	if len(names) != 3 {
 		t.Errorf("Expected to find three units: %v\n", names)
 	}

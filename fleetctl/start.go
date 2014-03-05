@@ -42,9 +42,8 @@ fleetctl start --require region=us-east foo.service`,
 func startUnitAction(c *cli.Context) {
 	var err error
 
+	// If signing is explicitly set to on, verification will be done also.
 	toSign := c.Bool("sign")
-	// If signing is explicitly set to on, verification should default to on.
-	toVerify := c.Bool("verify") || toSign
 	var sc *sign.SignatureCreator
 	var sv *sign.SignatureVerifier
 	if toSign {
@@ -54,8 +53,6 @@ func startUnitAction(c *cli.Context) {
 			fmt.Println("Fail to create SignatureCreator:", err)
 			return
 		}
-	}
-	if toVerify {
 		sv, err = sign.NewSignatureVerifierFromSSHAgent()
 		if err != nil {
 			fmt.Println("Fail to create SignatureVerifier:", err)
@@ -88,7 +85,7 @@ func startUnitAction(c *cli.Context) {
 				registryCtl.CreateSignatureSet(s)
 			}
 		}
-		if toVerify {
+		if toSign {
 			s := registryCtl.GetSignatureSetOfPayload(name)
 			ok, err := sv.VerifyPayload(payload, s)
 			if !ok || err != nil {
