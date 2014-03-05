@@ -60,6 +60,8 @@ func main() {
 		syscall.Exit(1)
 	}
 
+	checkPermission()
+
 	srv := server.New(*cfg)
 	srv.Run()
 
@@ -136,6 +138,12 @@ func getConfig(flagset *flag.FlagSet, userCfgFile string) (*config.Config, error
 	config.UpdateLoggingFlagsFromConfig(flag.CommandLine, &cfg)
 
 	return &cfg, nil
+}
+
+func checkPermission() {
+	if os.Getuid() != 0 {
+		glog.Warningln("Uid", os.Getuid(), "must have permission to run systemd.")
+	}
 }
 
 func listenForSignals(sigmap map[os.Signal]func()) {
