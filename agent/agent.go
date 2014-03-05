@@ -31,6 +31,8 @@ type Agent struct {
 	machine       *machine.Machine
 	ttl           time.Duration
 	systemdPrefix string
+	// verifier is used to verify job payload. A nil one implies that
+	// all payloads are accepted.
 	verifier      *sign.SignatureVerifier
 
 	state   *AgentState
@@ -89,14 +91,7 @@ func (a *Agent) Purge() {
 	}
 
 	for _, j := range a.registry.GetAllJobsByMachine(bootId) {
-		if a.verifier != nil {
-			payload := j.Payload
-			s := a.registry.GetSignatureSetOfPayload(payload.Name)
-			ok, err := a.verifier.VerifyPayload(payload, s)
-			if !ok || err != nil {
-				log.Warningf("Check of payload %s failed when purge: %v", payload.Name, err)
-			}
-		}
+		a.VerifyJob(&j)
 
 		log.V(1).Infof("Clearing JobState(%s) from Registry", j.Name)
 		a.registry.RemoveJobState(j.Name)
@@ -251,16 +246,23 @@ func (a *Agent) FetchJob(jobName string) *job.Job {
 		log.V(1).Infof("Job not found in Registry")
 		return nil
 	}
-	if a.verifier != nil {
-		payload := j.Payload
-		s := a.registry.GetSignatureSetOfPayload(payload.Name)
-		ok, err := a.verifier.VerifyPayload(payload, s)
-		if !ok || err != nil {
-			log.Errorf("Check of payload %s failed when fetch: %v", payload.Name, err)
-			return nil
-		}
-	}
 	return j
+}
+
+// Verify a Job through SignatureSet
+func (a *Agent) VerifyJob(j *job.Job) bool {
+	if a.verifier == nil {
+		return true
+	}
+
+	payload := j.Payload
+	s := a.registry.GetSignatureSetOfPayload(payload.Name)
+	ok, err := a.verifier.VerifyPayload(payload, s)
+	if !ok || err != nil {
+		log.V(1).Infof("Payload(%s) doesn't fit its signature: %v", payload.Name, err)
+		return false
+	}
+	return true
 }
 
 // Submit all possible bids for known peers of the provided job
