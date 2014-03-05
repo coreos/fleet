@@ -24,12 +24,18 @@ func (eh *EventHandler) HandleEventJobOffered(ev event.Event) {
 	// offers starting here for future bidding even if we can't bid now
 	eh.agent.TrackOffer(jo)
 
-	if eh.agent.AbleToRun(&jo.Job) {
-		log.Infof("EventJobOffered(%s): passed all criteria, submitting JobBid", jo.Job.Name)
-		eh.agent.Bid(jo.Job.Name)
-	} else {
-		log.V(1).Infof("EventJobOffered(%s): not all criteria met, not bidding", jo.Job.Name)
+	if !eh.agent.VerifyJob(&jo.Job) {
+		log.Errorf("EventJobOffered(%s): Failed to verify job", jo.Job.Name)
+		return
 	}
+
+	if !eh.agent.AbleToRun(&jo.Job) {
+		log.V(1).Infof("EventJobOffered(%s): not all criteria met, not bidding", jo.Job.Name)
+		return
+	}
+
+	log.Infof("EventJobOffered(%s): passed all criteria, submitting JobBid", jo.Job.Name)
+	eh.agent.Bid(jo.Job.Name)
 }
 
 func (eh *EventHandler) HandleEventJobScheduled(ev event.Event) {
