@@ -52,6 +52,11 @@ func (eh *EventHandler) HandleEventJobScheduled(ev event.Event) {
 		return
 	}
 
+	if ok := eh.agent.VerifyJob(j); !ok {
+		log.Errorf("EventJobScheduled(%s): Failed to verify job", j.Name)
+		return
+	}
+
 	if !eh.agent.AbleToRun(j) {
 		log.V(1).Infof("EventJobScheduled(%s): Unable to run scheduled Job, rescheduling.", jobName)
 		eh.agent.RescheduleJob(j)
