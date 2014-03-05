@@ -26,6 +26,7 @@ import (
 
 var out *tabwriter.Writer
 var flagset *flag.FlagSet = flag.NewFlagSet("fleetctl", flag.ExitOnError)
+var registryCtl Registry
 
 func init() {
 	out = new(tabwriter.Writer)
@@ -117,6 +118,7 @@ func main() {
 	gconf, _ := globalconf.NewWithOptions(&opts)
 	gconf.ParseSet("", flagset)
 
+	registryCtl = NewRegistry(getRegistry())
 	app.Run(os.Args)
 }
 

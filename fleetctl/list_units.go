@@ -12,8 +12,8 @@ import (
 
 func newListUnitsCommand() cli.Command {
 	return cli.Command{
-		Name:	"list-units",
-		Usage:	"Enumerate units loaded in the cluster",
+		Name:  "list-units",
+		Usage: "Enumerate units loaded in the cluster",
 		Description: `Lists all units submitted or started on the cluster.
 
 For easily parsable output, you can remove the column headers:
@@ -21,7 +21,7 @@ fleetctl list-units --no-legend
 
 Output the list without ellipses:
 fleetctl list-units --full`,
-		Action:	listUnitsAction,
+		Action: listUnitsAction,
 		Flags: []cli.Flag{
 			cli.BoolFlag{"full, l", "Do not ellipsize fields on output"},
 			cli.BoolFlag{"no-legend", "Do not print a legend (column headers)"},
@@ -31,9 +31,23 @@ fleetctl list-units --full`,
 }
 
 func listUnitsAction(c *cli.Context) {
-	r := getRegistry()
+	if !c.Bool("no-legend") {
+		fmt.Fprintln(out, "UNIT\tLOAD\tACTIVE\tSUB\tDESC\tMACHINE")
+	}
 
-	toVerify := c.Bool("verify")
+	names, sortable := findAllUnits(c.Bool("verify"))
+
+	full := c.Bool("full")
+	for _, name := range sortable {
+		state := registryCtl.GetJobState(name)
+		description := names[name]
+		printJobState(name, description, state, full)
+	}
+
+	out.Flush()
+}
+
+func findAllUnits(toVerify bool) (names map[string]string, sortable sort.StringSlice) {
 	var sv *sign.SignatureVerifier
 	if toVerify {
 		var err error
@@ -44,29 +58,26 @@ func listUnitsAction(c *cli.Context) {
 		}
 	}
 
-	if !c.Bool("no-legend") {
-		fmt.Fprintln(out, "UNIT\tLOAD\tACTIVE\tSUB\tDESC\tMACHINE")
-	}
+	names = make(map[string]string, 0)
+	sortable = make(sort.StringSlice, 0)
 
-	names := make(map[string]string, 0)
-	sortable := make(sort.StringSlice, 0)
-
-	for _, p := range r.GetAllPayloads() {
+	for _, p := range registryCtl.GetAllPayloads() {
 		if toVerify {
-			s := r.GetSignatureSetOfPayload(p.Name)
+			s := registryCtl.GetSignatureSetOfPayload(p.Name)
 			ok, err := sv.VerifyPayload(&p, s)
 			if !ok || err != nil {
 				fmt.Printf("Check of payload %s failed: %v\n", p.Name, err)
 				return
 			}
 		}
+
 		if _, ok := names[p.Name]; !ok {
 			names[p.Name] = p.Unit.Description()
 			sortable = append(sortable, p.Name)
 		}
 	}
 
-	for _, j := range r.GetAllJobs() {
+	for _, j := range registryCtl.GetAllJobs() {
 		if _, ok := names[j.Name]; !ok {
 			var description string
 			if j.Payload != nil {
@@ -79,14 +90,7 @@ func listUnitsAction(c *cli.Context) {
 
 	sortable.Sort()
 
-	full := c.Bool("full")
-	for _, name := range sortable {
-		state := r.GetJobState(name)
-		description := names[name]
-		printJobState(name, description, state, full)
-	}
-
-	out.Flush()
+	return names, sortable
 }
 
 func printJobState(name, description string, js *job.JobState, full bool) {

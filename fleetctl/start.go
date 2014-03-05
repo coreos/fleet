@@ -13,8 +13,8 @@ import (
 
 func newStartUnitCommand() cli.Command {
 	return cli.Command{
-		Name:	"start",
-		Usage:	"Schedule and execute one or more units in the cluster",
+		Name:  "start",
+		Usage: "Schedule and execute one or more units in the cluster",
 		Description: `Start one or many units on the cluster. Select units to start by glob matching
 for units in the current working directory or matching names of previously
 submitted units.
@@ -35,13 +35,12 @@ fleetctl start --require region=us-east foo.service`,
 			cli.BoolFlag{"sign", "Sign unit file signatures using local SSH identities"},
 			cli.BoolFlag{"verify", "Verify unit file signatures using local SSH identities"},
 		},
-		Action:	startUnitAction,
+		Action: startUnitAction,
 	}
 }
 
 func startUnitAction(c *cli.Context) {
 	var err error
-	r := getRegistry()
 
 	toSign := c.Bool("sign")
 	// If signing is explicitly set to on, verification should default to on.
@@ -67,7 +66,7 @@ func startUnitAction(c *cli.Context) {
 	payloads := make([]job.JobPayload, len(c.Args()))
 	for i, v := range c.Args() {
 		name := path.Base(v)
-		payload := r.GetPayload(name)
+		payload := registryCtl.GetPayload(name)
 		if payload == nil {
 			payload, err = getJobPayloadFromFile(v)
 			if err != nil {
@@ -75,7 +74,7 @@ func startUnitAction(c *cli.Context) {
 				return
 			}
 
-			err = r.CreatePayload(payload)
+			err = registryCtl.CreatePayload(payload)
 			if err != nil {
 				fmt.Printf("Creation of payload %s failed: %v\n", payload.Name, err)
 				return
@@ -86,11 +85,11 @@ func startUnitAction(c *cli.Context) {
 					fmt.Printf("Creation of sign for payload %s failed: %v\n", payload.Name, err)
 					return
 				}
-				r.CreateSignatureSet(s)
+				registryCtl.CreateSignatureSet(s)
 			}
 		}
 		if toVerify {
-			s := r.GetSignatureSetOfPayload(name)
+			s := registryCtl.GetSignatureSetOfPayload(name)
 			ok, err := sv.VerifyPayload(payload, s)
 			if !ok || err != nil {
 				fmt.Printf("Check of payload %s failed: %v\n", payload.Name, err)
@@ -106,7 +105,7 @@ func startUnitAction(c *cli.Context) {
 	// TODO: This must be done in a transaction!
 	for _, jp := range payloads {
 		j := job.NewJob(jp.Name, requirements, &jp, nil)
-		err := r.CreateJob(j)
+		err := registryCtl.CreateJob(j)
 		if err != nil {
 			fmt.Printf("Creation of job %s failed: %v\n", j.Name, err)
 		}

@@ -13,9 +13,9 @@ import (
 
 func newJournalCommand() cli.Command {
 	return cli.Command{
-		Name:	"journal",
-		Usage:	"Print the journal of a unit in the cluster to stdout",
-		Action:	journalAction,
+		Name:   "journal",
+		Usage:  "Print the journal of a unit in the cluster to stdout",
+		Action: journalAction,
 		Description: `Outputs the journal of a unit by connecting to the machine that the unit
 occupies.
 
@@ -38,8 +38,7 @@ func journalAction(c *cli.Context) {
 	}
 	jobName := c.Args()[0]
 
-	r := getRegistry()
-	js := r.GetJobState(jobName)
+	js := registryCtl.GetJobState(jobName)
 
 	if js == nil {
 		fmt.Printf("%s does not appear to be running\n", jobName)
