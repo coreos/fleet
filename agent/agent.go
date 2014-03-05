@@ -286,6 +286,11 @@ func (a *Agent) BidForPossiblePeers(jobName string) {
 
 // Determine if the Agent can run the provided Job
 func (a *Agent) AbleToRun(j *job.Job) bool {
+	if !a.VerifyJob(j) {
+		log.V(1).Infof("Failed to verify Job(%s)", j.Name)
+		return false
+	}
+
 	requirements := j.Requirements()
 	if len(requirements) == 0 {
 		log.V(1).Infof("Job(%s) has no requirements", j.Name)
