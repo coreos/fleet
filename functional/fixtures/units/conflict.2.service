@@ -1,0 +1,8 @@
+[Unit]
+Description=Test Unit
+
+[Service]
+ExecStart=/usr/bin/sleep 120
+
+[X-Fleet]
+X-Conflicts=conflict.*.service
