@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -57,6 +58,10 @@ func New(registry *registry.Registry, events *event.EventBus, machine *machine.M
 // Access Agent's machine field
 func (a *Agent) Machine() *machine.Machine {
 	return a.machine
+}
+
+func (a *Agent) MarshalJSON() ([]byte, error) {
+	return json.Marshal(struct{ State *AgentState }{State: a.state})
 }
 
 // Trigger all async processes the Agent intends to run

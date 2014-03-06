@@ -1,6 +1,8 @@
 package server
 
 import (
+	"encoding/json"
+
 	"github.com/coreos/fleet/third_party/github.com/coreos/go-etcd/etcd"
 	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
 
@@ -56,6 +58,10 @@ func New(cfg config.Config) *Server {
 	e := engine.New(r, eb, m)
 
 	return &Server{a, e, m, r, eb, es}
+}
+
+func (self *Server) MarshalJSON() ([]byte, error) {
+	return json.Marshal(struct{ Agent *agent.Agent }{Agent: self.agent})
 }
 
 func (self *Server) Run() {

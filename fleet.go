@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
@@ -85,10 +86,30 @@ func main() {
 		syscall.Exit(0)
 	}
 
+	writeState := func() {
+		glog.Infof("Dumping server state")
+
+		encoded, err := json.Marshal(srv)
+		if err != nil {
+			glog.Errorf("Failed to dump server state: %v", err)
+			return
+		}
+
+		if _, err := os.Stdout.Write(encoded); err != nil {
+			glog.Errorf("Failed to dump server state: %v", err)
+			return
+		}
+
+		os.Stdout.Write([]byte("\n"))
+
+		glog.V(1).Infof("Finished dumping server state")
+	}
+
 	signals := map[os.Signal]func(){
 		syscall.SIGHUP:  reconfigure,
 		syscall.SIGTERM: shutdown,
 		syscall.SIGINT:  shutdown,
+		syscall.SIGUSR1: writeState,
 	}
 
 	listenForSignals(signals)
