@@ -39,5 +39,3 @@ func TestStackStateEmptyTop(t *testing.T) {
 		t.Errorf("Unexpected Metadata %v", stacked.Metadata)
 	}
 }
-
-
