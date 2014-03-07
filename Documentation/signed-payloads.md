@@ -22,4 +22,4 @@ To enable payload validation on a fleet server, simply set `verify_units=true` i
 fleet will validate payloads with the keys in `~/.ssh/authorized_keys` by default.
 A deployer may provide an alternate set of SSH keys to use for validation using the `authorized_keys_file` option.
 
-See [more information](configuration.md) on configuring `fleet`.
+See [more information](https://github.com/coreos/fleet/blob/master/Documentation/configuration.md) on configuring `fleet`.

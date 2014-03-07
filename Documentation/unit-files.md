@@ -15,7 +15,7 @@ fleet will schedule any valid service or socket systemd unit to a machine in the
 | `X-ConditionMachineOf` | Limit eligible machines to the one that hosts a specific unit. |
 | `X-Conflicts` | Prevent a unit from being collocated with other units using glob-matching on the other unit names. |
 
-See [more information](scheduling.md) on these parameters and how they impact scheduling decisions.
+See [more information](https://github.com/coreos/fleet/blob/master/Documentation/scheduling.md) on these parameters and how they impact scheduling decisions.
 
 Take the following as an example of how your `[X-Fleet]` section could be written:
 

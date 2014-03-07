@@ -9,7 +9,7 @@ The Engine simply accepts the first bid that is submitted for a given offer and 
 
 **NOTE:** The current approach of accepting the first bid is only temporary - the Engine will make an effort to fairly schedule across the entire schedule in the near future.
 
-Read more about [fleet's architecture and data model](architecture.md).
+Read more about [fleet's architecture and data model](https://github.com/coreos/fleet/blob/master/Documentation/architecture.md).
 
 ## User-Defined Requirements
 
@@ -40,7 +40,7 @@ $ fleetctl start --require region=us-east-1,region=us-east-2
 This would allow a machine to match just one of the provided values to consider themselves capable of running a job.
 
 A machine is not automatically configured with metadata.
-A deployer may define machine metadata using the `metadata` [config option](configuration.md).
+A deployer may define machine metadata using the `metadata` [config option](https://github.com/coreos/fleet/blob/master/Documentation/configuration.md).
 
 ##### Schedule unit next to another unit
 
