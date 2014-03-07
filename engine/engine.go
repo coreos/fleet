@@ -2,6 +2,7 @@ package engine
 
 import (
 	"errors"
+	"sort"
 
 	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
 
@@ -59,6 +60,22 @@ func (self *Engine) UnscheduleJob(jobName string) {
 	log.Infof("Unscheduled Job(%s)", jobName)
 }
 
+// partitionCluster returns a slice of bootids from a subset of active machines
+// that should be considered for scheduling the specified job.
+// The returned slice is sorted.
+func (self *Engine) partitionCluster(j *job.Job) ([]string, error) {
+	// TODO: for now it returns all active bootids
+	// we can experiment here with returning a random half of them
+	machines := self.registry.GetActiveMachines()
+
+	machineBootIds := make([]string, len(machines))
+	for i, mach := range machines {
+		machineBootIds[i] = mach.BootId
+	}
+	sort.Strings(machineBootIds)
+	return machineBootIds, nil
+}
+
 func (self *Engine) OfferJob(j job.Job) error {
 	log.V(2).Infof("Attempting to lock Job(%s)", j.Name)
 
@@ -71,7 +88,12 @@ func (self *Engine) OfferJob(j job.Job) error {
 
 	log.V(1).Infof("Claimed Job", j.Name)
 
-	offer := job.NewOfferFromJob(j)
+	machineBootIds, err := self.partitionCluster(&j)
+	if err != nil {
+		return err
+	}
+
+	offer := job.NewOfferFromJob(j, machineBootIds)
 
 	log.V(2).Infof("Publishing JobOffer(%s)", offer.Job.Name)
 	self.registry.CreateJobOffer(offer)
