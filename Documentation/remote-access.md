@@ -9,7 +9,7 @@ This requires two things:
 
 Authorizing a user's SSH key within a cluster is up to the deployer. See the [deployment doc][d] for help doing this.
 
-[d]: deployment.md
+[d]: https://github.com/coreos/fleet/blob/master/Documentation/deployment.md
 
 Running an ssh-agent is the responsibility of the user. Many unix-based distros conveniently provide the necessary tools on a base install, or in an ssh-related package. For example, Ubuntu provides the `ssh-agent` and `ssh-add` binaries in the `openssh-client` package. If you cannot find the necessary binaries on your system, please consult your distro's documentation.
 

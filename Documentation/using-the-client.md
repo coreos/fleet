@@ -28,11 +28,11 @@ One can also provide `--tunnel` through the environment variable `FLEETCTL_TUNNE
 
 When using `--tunnel` and `--endpoint` together, it is important to note that all etcd requests will be made through the SSH tunnel. The address in the `--endpoint` flag must be routable from the server hosting the tunnel.
 
-See more about [configuring remote access](remote-access.md).
+See more about [configuring remote access](https://github.com/coreos/fleet/blob/master/Documentation/remote-access.md).
 
 ## Interact with units
 
-For information about the additional unit file parameters fleet will interact with, see [this documentation](unit-files.md).
+For information about the additional unit file parameters fleet will interact with, see [this documentation](https://github.com/coreos/fleet/blob/master/Documentation/unit-files.md).
 
 ### Explore existing units
 
