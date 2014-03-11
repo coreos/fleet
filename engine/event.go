@@ -1,10 +1,11 @@
 package engine
 
 import (
-	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
-
 	"github.com/coreos/fleet/event"
 	"github.com/coreos/fleet/job"
+	"github.com/coreos/fleet/machine"
+
+	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
 )
 
 type EventHandler struct {
@@ -20,6 +21,17 @@ func (self *EventHandler) HandleEventJobCreated(ev event.Event) {
 
 	log.V(1).Infof("EventJobCreated(%s): publishing JobOffer", j.Name)
 	self.engine.OfferJob(j)
+}
+
+func (self *EventHandler) HandleEventJobScheduled(ev event.Event) {
+	jobName := ev.Payload.(string)
+	machineState := ev.Payload.(machine.MachineState)
+	self.engine.clust.jobScheduled(jobName, &machineState)
+}
+
+func (self *EventHandler) HandleEventJobStopped(ev event.Event) {
+	jobName := ev.Payload.(string)
+	self.engine.clust.jobStopped(jobName)
 }
 
 func (self *EventHandler) HandleEventJobBidSubmitted(ev event.Event) {

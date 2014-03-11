@@ -2,7 +2,6 @@ package engine
 
 import (
 	"errors"
-	"sort"
 
 	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
 
@@ -16,12 +15,13 @@ type Engine struct {
 	registry *registry.Registry
 	events   *event.EventBus
 	machine  *machine.Machine
-
-	stop chan bool
+	// keeps a picture of the load in the cluster for more intelligent scheduling
+	clust *cluster
+	stop  chan bool
 }
 
 func New(reg *registry.Registry, events *event.EventBus, mach *machine.Machine) *Engine {
-	return &Engine{reg, events, mach, nil}
+	return &Engine{reg, events, mach, newCluster(), nil}
 }
 
 func (self *Engine) Run() {
@@ -58,22 +58,6 @@ func (self *Engine) GetJobsScheduledToMachine(machBootId string) []job.Job {
 func (self *Engine) UnscheduleJob(jobName string) {
 	self.registry.UnscheduleJob(jobName)
 	log.Infof("Unscheduled Job(%s)", jobName)
-}
-
-// partitionCluster returns a slice of bootids from a subset of active machines
-// that should be considered for scheduling the specified job.
-// The returned slice is sorted by ascending lexicographical string value of machine boot id.
-func (self *Engine) partitionCluster(j *job.Job) ([]string, error) {
-	// TODO: for now it returns all active bootids
-	// we can experiment here with returning a random half of them
-	machines := self.registry.GetActiveMachines()
-
-	machineBootIds := make([]string, len(machines))
-	for i, mach := range machines {
-		machineBootIds[i] = mach.BootId
-	}
-	sort.Strings(machineBootIds)
-	return machineBootIds, nil
 }
 
 func (self *Engine) OfferJob(j job.Job) error {
