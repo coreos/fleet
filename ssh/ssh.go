@@ -2,13 +2,20 @@ package ssh
 
 import (
 	"bufio"
+	"encoding/binary"
 	"errors"
+	"io"
 	"net"
 	"os"
 	"time"
 
 	gossh "github.com/coreos/fleet/third_party/code.google.com/p/go.crypto/ssh"
 	"github.com/coreos/fleet/third_party/code.google.com/p/go.crypto/ssh/terminal"
+)
+
+var (
+	ErrKeyOutofIndex = errors.New("key index is out of range")
+	ErrMalformedResp = errors.New("malformed signature response from agent client")
 )
 
 func Execute(client *gossh.ClientConn, cmd string) (*bufio.Reader, error) {
@@ -64,7 +71,7 @@ func Shell(client *gossh.ClientConn) error {
 	return nil
 }
 
-func sshClientConfig(user string) (*gossh.ClientConfig, error) {
+func sshAgentClient() (*gossh.AgentClient, error) {
 	sock := os.Getenv("SSH_AUTH_SOCK")
 	if sock == "" {
 		return nil, errors.New("SSH_AUTH_SOCK environment variable is not set. Verify ssh-agent is running. See https://github.com/coreos/fleet/blob/master/Documentation/remote-access.md for help.")
@@ -75,10 +82,19 @@ func sshClientConfig(user string) (*gossh.ClientConfig, error) {
 		return nil, err
 	}
 
+	return gossh.NewAgentClient(agent), nil
+}
+
+func sshClientConfig(user string) (*gossh.ClientConfig, error) {
+	agentClient, err := sshAgentClient()
+	if err != nil {
+		return nil, err
+	}
+
 	cfg := gossh.ClientConfig{
-		User:	user,
-		Auth:	[]gossh.ClientAuth{
-			gossh.ClientAuthAgent(gossh.NewAgentClient(agent)),
+		User: user,
+		Auth: []gossh.ClientAuth{
+			gossh.ClientAuthAgent(agentClient),
 		},
 	}
 
@@ -149,4 +165,70 @@ func timeoutSSHDial(dial func(chan error)) error {
 	case err = <-echan:
 		return err
 	}
+}
+
+// AgentKeyring implements the interface of gossh.ClientKeyring.
+type AgentKeyring struct {
+	client *gossh.AgentClient
+	keys   []*gossh.AgentKey
+}
+
+// NewSSHAgentKeyring inits AgentKeyring variable and returns
+func NewSSHAgentKeyring() (*AgentKeyring, error) {
+	client, err := sshAgentClient()
+	if err != nil {
+		return nil, err
+	}
+
+	return &AgentKeyring{client, nil}, nil
+}
+
+// Key returns i-th key in the keyring
+func (ak *AgentKeyring) Key(i int) (gossh.PublicKey, error) {
+	if ak.keys == nil {
+		var err error
+		if ak.keys, err = ak.client.RequestIdentities(); err != nil {
+			return nil, err
+		}
+	}
+
+	if i >= len(ak.keys) || i < 0 {
+		return nil, ErrKeyOutofIndex
+	}
+	return ak.keys[i].Key()
+}
+
+func parseString(in []byte) (out, rest []byte, ok bool) {
+	if len(in) < 4 {
+		return
+	}
+	// First 4-byte is the length of the field
+	length := binary.BigEndian.Uint32(in)
+	if uint32(len(in)) < length+4 {
+		return
+	}
+	return in[4:length+4], in[length+4:], true
+}
+
+// Sign returns the signing of data using i-th key in the keyring
+func (ak *AgentKeyring) Sign(i int, rand io.Reader, data []byte) ([]byte, error) {
+	key, err := ak.Key(i)
+	if err != nil {
+		return nil, err
+	}
+
+	sig, err := ak.client.SignRequest(key, data)
+	if err != nil {
+		return nil, err
+	}
+
+	// Unmarshal the signature
+	var ok bool
+	if _, sig, ok = parseString(sig); !ok {
+		return nil, ErrMalformedResp
+	}
+	if sig, _, ok = parseString(sig); !ok {
+		return nil, ErrMalformedResp
+	}
+	return sig, nil
 }

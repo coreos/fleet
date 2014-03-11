@@ -28,12 +28,13 @@ func (eh *EventHandler) HandleEventJobOffered(ev event.Event) {
 	// offers starting here for future bidding even if we can't bid now
 	eh.agent.TrackOffer(jo)
 
-	if eh.agent.AbleToRun(&jo.Job) {
-		log.Infof("EventJobOffered(%s): passed all criteria, submitting JobBid", jo.Job.Name)
-		eh.agent.Bid(jo.Job.Name)
-	} else {
+	if !eh.agent.AbleToRun(&jo.Job) {
 		log.V(1).Infof("EventJobOffered(%s): not all criteria met, not bidding", jo.Job.Name)
+		return
 	}
+
+	log.Infof("EventJobOffered(%s): passed all criteria, submitting JobBid", jo.Job.Name)
+	eh.agent.Bid(jo.Job.Name)
 }
 
 func (eh *EventHandler) HandleEventJobScheduled(ev event.Event) {
@@ -52,7 +53,12 @@ func (eh *EventHandler) HandleEventJobScheduled(ev event.Event) {
 
 	j := eh.agent.FetchJob(jobName)
 	if j == nil {
-		log.Errorf("EventJobScheduled(%s): Failed to fetch Job")
+		log.Errorf("EventJobScheduled(%s): Failed to fetch Job", jobName)
+		return
+	}
+
+	if !eh.agent.VerifyJob(j) {
+		log.Errorf("EventJobScheduled(%s): Failed to verify job", j.Name)
 		return
 	}
 
@@ -66,7 +72,7 @@ func (eh *EventHandler) HandleEventJobScheduled(ev event.Event) {
 	eh.agent.StartJob(j)
 
 	log.V(1).Infof("EventJobScheduled(%s): Bidding for all possible peers of Job", j.Name)
-	eh.agent.BidForPossiblePeers(jobName)
+	eh.agent.BidForPossiblePeers(j.Name)
 }
 
 func (eh *EventHandler) HandleEventJobStopped(ev event.Event) {
@@ -79,6 +85,26 @@ func (eh *EventHandler) HandleEventJobStopped(ev event.Event) {
 
 	log.V(1).Infof("EventJobStopped(%s): revisiting unresolved JobOffers", jobName)
 	eh.agent.BidForPossibleJobs()
+}
+
+func (eh *EventHandler) HandleEventJobUpdated(ev event.Event) {
+	j := ev.Payload.(job.Job)
+
+	localBootId := eh.agent.Machine().State().BootId
+	targetBootId := ev.Context.(string)
+
+	if targetBootId != localBootId {
+		log.V(1).Infof("EventJobUpdated(%s): Job not scheduled to Agent %s, skipping", j.Name, localBootId)
+		return
+	}
+
+	if ok := eh.agent.VerifyJob(&j); !ok {
+		log.Errorf("EventJobUpdated(%s): Failed to verify job", j.Name)
+		return
+	}
+
+	log.V(1).Infof("EventJobUpdated(%s): Starting Job", j.Name)
+	eh.agent.StartJob(&j)
 }
 
 func (eh *EventHandler) HandleEventJobStateUpdated(ev event.Event) {

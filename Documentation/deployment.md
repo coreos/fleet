@@ -11,7 +11,7 @@ Each `fleet` daemon must be configured to talk to the same [etcd cluster][etcd].
 `fleet` requires etcd be of version 0.3.0+.
 
 [etcd]: https://coreos.com/docs/cluster-management/setup/getting-started-with-etcd
-[config]: configuration.md
+[config]: https://github.com/coreos/fleet/blob/master/Documentation/configuration.md
 
 ### systemd
 

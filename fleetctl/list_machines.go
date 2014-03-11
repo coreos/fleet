@@ -9,8 +9,8 @@ import (
 
 func newListMachinesCommand() cli.Command {
 	return cli.Command{
-		Name:	"list-machines",
-		Usage:	"Enumerate the current hosts in the cluster",
+		Name:  "list-machines",
+		Usage: "Enumerate the current hosts in the cluster",
 		Description: `Lists all active machines within the cluster. Previously active machines will
 not appear in this list.
 
@@ -19,7 +19,7 @@ fleetctl list-machines --no-legend
 
 Output the list without truncation:
 fleetctl list-machines --full`,
-		Action:	listMachinesAction,
+		Action: listMachinesAction,
 		Flags: []cli.Flag{
 			cli.BoolFlag{"full, l", "Do not ellipsize fields on output"},
 			cli.BoolFlag{"no-legend", "Do not print a legend (column headers)"},
@@ -28,15 +28,13 @@ fleetctl list-machines --full`,
 }
 
 func listMachinesAction(c *cli.Context) {
-	r := getRegistry(c)
-
 	if !c.Bool("no-legend") {
 		fmt.Fprintln(out, "MACHINE\tIP\tMETADATA")
 	}
 
 	full := c.Bool("full")
 
-	for _, m := range r.GetActiveMachines() {
+	for _, m := range registryCtl.GetActiveMachines() {
 		mach := m.BootId
 		if !full {
 			mach = ellipsize(mach, 8)

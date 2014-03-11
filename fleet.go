@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
@@ -14,6 +15,7 @@ import (
 	"github.com/coreos/fleet/agent"
 	"github.com/coreos/fleet/config"
 	"github.com/coreos/fleet/server"
+	"github.com/coreos/fleet/sign"
 	"github.com/coreos/fleet/version"
 )
 
@@ -49,6 +51,8 @@ func main() {
 	cfgset.String("metadata", "", "List of key-value metadata to assign to the fleet machine")
 	cfgset.String("unit_prefix", "", "Prefix that should be used for all systemd units")
 	cfgset.String("agent_ttl", agent.DefaultTTL, "TTL in seconds of fleet machine state in etcd")
+	cfgset.Bool("verify_units", false, "Verify unit file signatures using local SSH identities")
+	cfgset.String("authorized_keys_file", sign.DefaultAuthorizedKeysFile, "File containing public SSH keys to be used for signature verification")
 
 	globalconf.Register("", cfgset)
 	cfg, err := getConfig(cfgset, *cfgPath)
@@ -82,10 +86,30 @@ func main() {
 		syscall.Exit(0)
 	}
 
+	writeState := func() {
+		glog.Infof("Dumping server state")
+
+		encoded, err := json.Marshal(srv)
+		if err != nil {
+			glog.Errorf("Failed to dump server state: %v", err)
+			return
+		}
+
+		if _, err := os.Stdout.Write(encoded); err != nil {
+			glog.Errorf("Failed to dump server state: %v", err)
+			return
+		}
+
+		os.Stdout.Write([]byte("\n"))
+
+		glog.V(1).Infof("Finished dumping server state")
+	}
+
 	signals := map[os.Signal]func(){
 		syscall.SIGHUP:  reconfigure,
 		syscall.SIGTERM: shutdown,
 		syscall.SIGINT:  shutdown,
+		syscall.SIGUSR1: writeState,
 	}
 
 	listenForSignals(signals)
@@ -126,6 +150,8 @@ func getConfig(flagset *flag.FlagSet, userCfgFile string) (*config.Config, error
 		RawMetadata: (*flagset.Lookup("metadata")).Value.(flag.Getter).Get().(string),
 		UnitPrefix: (*flagset.Lookup("unit_prefix")).Value.(flag.Getter).Get().(string),
 		AgentTTL: (*flagset.Lookup("agent_ttl")).Value.(flag.Getter).Get().(string),
+		VerifyUnits: (*flagset.Lookup("verify_units")).Value.(flag.Getter).Get().(bool),
+		AuthorizedKeysFile: (*flagset.Lookup("authorized_keys_file")).Value.(flag.Getter).Get().(string),
 	}
 
 	config.UpdateLoggingFlagsFromConfig(flag.CommandLine, &cfg)

@@ -1,7 +1,10 @@
 package server
 
 import (
+	"encoding/json"
+
 	"github.com/coreos/fleet/third_party/github.com/coreos/go-etcd/etcd"
+	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
 
 	"github.com/coreos/fleet/agent"
 	"github.com/coreos/fleet/config"
@@ -9,15 +12,16 @@ import (
 	"github.com/coreos/fleet/event"
 	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/registry"
+	"github.com/coreos/fleet/sign"
 )
 
 type Server struct {
-	agent		*agent.Agent
-	engine		*engine.Engine
-	machine		*machine.Machine
-	registry	*registry.Registry
-	eventBus	*event.EventBus
-	eventStream	*registry.EventStream
+	agent       *agent.Agent
+	engine      *engine.Engine
+	machine     *machine.Machine
+	registry    *registry.Registry
+	eventBus    *event.EventBus
+	eventStream *registry.EventStream
 }
 
 func New(cfg config.Config) *Server {
@@ -33,9 +37,19 @@ func New(cfg config.Config) *Server {
 
 	eventClient := etcd.NewClient(cfg.EtcdServers)
 	eventClient.SetConsistency(etcd.STRONG_CONSISTENCY)
-	es := registry.NewEventStream(eventClient)
+	es := registry.NewEventStream(eventClient, r)
 
-	a, err := agent.New(r, eb, m, cfg.AgentTTL, cfg.UnitPrefix)
+	var verifier *sign.SignatureVerifier
+	if cfg.VerifyUnits {
+		var err error
+		verifier, err = sign.NewSignatureVerifierFromAuthorizedKeysFile(cfg.AuthorizedKeysFile)
+		if err != nil {
+			log.Errorln("Failed to get any key from authorized key file in verify_units mode:", err)
+			verifier = sign.NewSignatureVerifier()
+		}
+	}
+
+	a, err := agent.New(r, eb, m, cfg.AgentTTL, cfg.UnitPrefix, verifier)
 	if err != nil {
 		//TODO: return this as an error object rather than panicking
 		panic(err)
@@ -44,6 +58,10 @@ func New(cfg config.Config) *Server {
 	e := engine.New(r, eb, m)
 
 	return &Server{a, e, m, r, eb, es}
+}
+
+func (self *Server) MarshalJSON() ([]byte, error) {
+	return json.Marshal(struct{ Agent *agent.Agent }{Agent: self.agent})
 }
 
 func (self *Server) Run() {

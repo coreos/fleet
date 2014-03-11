@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"encoding/json"
 	"path"
 	"sync"
 
@@ -47,6 +48,22 @@ func (self *AgentState) Unlock() {
 	log.V(2).Infof("Attempting to unlock AgentState")
 	self.mutex.Unlock()
 	log.V(2).Infof("AgentState unlocked")
+}
+
+func (self *AgentState) MarshalJSON() ([]byte, error) {
+	type ds struct {
+		Offers    map[string]job.JobOffer
+		Conflicts map[string][]string
+		Bids      []string
+		Peers     map[string][]string
+	}
+	data := ds{
+		Offers:    self.offers,
+		Conflicts: self.conflicts,
+		Bids:      self.bids,
+		Peers:     self.peers,
+	}
+	return json.Marshal(data)
 }
 
 // Store a list of conflicts on behalf of a given Job

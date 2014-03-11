@@ -13,13 +13,15 @@ import (
 )
 
 type Config struct {
-	BootId      string
-	EtcdServers []string
-	PublicIP    string
-	Verbosity   int
-	RawMetadata string
-	UnitPrefix  string
-	AgentTTL    string
+	BootId             string
+	EtcdServers        []string
+	PublicIP           string
+	Verbosity          int
+	RawMetadata        string
+	UnitPrefix         string
+	AgentTTL           string
+	VerifyUnits        bool
+	AuthorizedKeysFile string
 }
 
 func (self *Config) Metadata() map[string]string {

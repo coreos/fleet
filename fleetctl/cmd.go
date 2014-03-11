@@ -26,6 +26,7 @@ import (
 
 var out *tabwriter.Writer
 var flagset *flag.FlagSet = flag.NewFlagSet("fleetctl", flag.ExitOnError)
+var registryCtl Registry
 
 func init() {
 	out = new(tabwriter.Writer)
@@ -42,7 +43,7 @@ OPTIONS:
 `
 }
 
-func getRegistry(context *cli.Context) *registry.Registry {
+func getRegistry() *registry.Registry {
 	tun := getTunnelFlag()
 	endpoint := getEndpointFlag()
 
@@ -97,6 +98,7 @@ func main() {
 		newListMachinesCommand(),
 		newJournalCommand(),
 		newSSHCommand(),
+		newVerifyUnitCommand(),
 	}
 
 	for _, f := range app.Flags {
@@ -117,6 +119,7 @@ func main() {
 	gconf, _ := globalconf.NewWithOptions(&opts)
 	gconf.ParseSet("", flagset)
 
+	registryCtl = NewRegistry(getRegistry())
 	app.Run(os.Args)
 }
 

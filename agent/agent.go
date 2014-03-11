@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -11,6 +12,7 @@ import (
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/registry"
+	"github.com/coreos/fleet/sign"
 	"github.com/coreos/fleet/systemd"
 )
 
@@ -30,6 +32,9 @@ type Agent struct {
 	machine       *machine.Machine
 	ttl           time.Duration
 	systemdPrefix string
+	// verifier is used to verify job payload. A nil one implies that
+	// all payloads are accepted.
+	verifier      *sign.SignatureVerifier
 
 	state   *AgentState
 	systemd *systemd.SystemdManager
@@ -38,7 +43,7 @@ type Agent struct {
 	stop chan bool
 }
 
-func New(registry *registry.Registry, events *event.EventBus, machine *machine.Machine, ttl, unitPrefix string) (*Agent, error) {
+func New(registry *registry.Registry, events *event.EventBus, machine *machine.Machine, ttl, unitPrefix string, verifier *sign.SignatureVerifier) (*Agent, error) {
 	ttldur, err := time.ParseDuration(ttl)
 	if err != nil {
 		return nil, err
@@ -47,12 +52,16 @@ func New(registry *registry.Registry, events *event.EventBus, machine *machine.M
 	state := NewState()
 	mgr := systemd.NewSystemdManager(machine, unitPrefix)
 
-	return &Agent{registry, events, machine, ttldur, unitPrefix, state, mgr, nil}, nil
+	return &Agent{registry, events, machine, ttldur, unitPrefix, verifier, state, mgr, nil}, nil
 }
 
 // Access Agent's machine field
 func (a *Agent) Machine() *machine.Machine {
 	return a.machine
+}
+
+func (a *Agent) MarshalJSON() ([]byte, error) {
+	return json.Marshal(struct{ State *AgentState }{State: a.state})
 }
 
 // Trigger all async processes the Agent intends to run
@@ -87,6 +96,8 @@ func (a *Agent) Purge() {
 	}
 
 	for _, j := range a.registry.GetAllJobsByMachine(bootId) {
+		a.VerifyJob(&j)
+
 		log.V(1).Infof("Clearing JobState(%s) from Registry", j.Name)
 		a.registry.RemoveJobState(j.Name)
 
@@ -240,8 +251,25 @@ func (a *Agent) FetchJob(jobName string) *job.Job {
 	j := a.registry.GetJob(jobName)
 	if j == nil {
 		log.V(1).Infof("Job not found in Registry")
+		return nil
 	}
 	return j
+}
+
+// Verify a Job through SignatureSet
+func (a *Agent) VerifyJob(j *job.Job) bool {
+	if a.verifier == nil {
+		return true
+	}
+
+	payload := j.Payload
+	s := a.registry.GetSignatureSetOfPayload(payload.Name)
+	ok, err := a.verifier.VerifyPayload(payload, s)
+	if !ok || err != nil {
+		log.V(1).Infof("Payload(%s) doesn't fit its signature: %v", payload.Name, err)
+		return false
+	}
+	return true
 }
 
 // Submit all possible bids for known peers of the provided job
@@ -265,6 +293,11 @@ func (a *Agent) BidForPossiblePeers(jobName string) {
 
 // Determine if the Agent can run the provided Job
 func (a *Agent) AbleToRun(j *job.Job) bool {
+	if !a.VerifyJob(j) {
+		log.V(1).Infof("Failed to verify Job(%s)", j.Name)
+		return false
+	}
+
 	requirements := j.Requirements()
 	if len(requirements) == 0 {
 		log.V(1).Infof("Job(%s) has no requirements", j.Name)
