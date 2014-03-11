@@ -101,6 +101,7 @@ func (clust *cluster) refreshFrom(cu *cluster) {
 
 	clust.jobsToMachines = cu.jobsToMachines
 	clust.machineJobCount = cu.machineJobCount
+	clust.uptodate = true
 }
 
 func (clust *cluster) populateJob(jobName string, machineBootID string) {
