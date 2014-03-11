@@ -21,7 +21,7 @@ func (eh *EventHandler) HandleEventJobOffered(ev event.Event) {
 	log.V(1).Infof("EventJobOffered(%s): verifying ability to run Job", jo.Job.Name)
 
 	if !jo.OfferedTo(eh.agent.Machine().State().BootId) {
-		log.V(3).Infof("EventJobOffered(%s): not offered to this machine", jo.Job.Name)
+		log.V(1).Infof("EventJobOffered(%s): not offered to this machine", jo.Job.Name)
 		return
 	}
 	// Everything we check against could change over time, so we track all

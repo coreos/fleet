@@ -62,7 +62,7 @@ func (self *Engine) UnscheduleJob(jobName string) {
 
 // partitionCluster returns a slice of bootids from a subset of active machines
 // that should be considered for scheduling the specified job.
-// The returned slice is sorted.
+// The returned slice is sorted by ascending lexicographical string value of machine boot id.
 func (self *Engine) partitionCluster(j *job.Job) ([]string, error) {
 	// TODO: for now it returns all active bootids
 	// we can experiment here with returning a random half of them
@@ -90,6 +90,7 @@ func (self *Engine) OfferJob(j job.Job) error {
 
 	machineBootIds, err := self.partitionCluster(&j)
 	if err != nil {
+		log.Errorf("Failed partitioning cluster for Job(%s): %v", j.Name, err)
 		return err
 	}
 
