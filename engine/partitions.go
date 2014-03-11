@@ -91,11 +91,11 @@ func (clust *cluster) isUptodate() bool {
 }
 
 // refreshFrom refreshes from a specified cluster
-func (clust *cluster) refreshFrom(cu *cluster) {
+func (clust *cluster) refreshFrom(cu *cluster, force bool) {
 	clust.mutex.Lock()
 	defer clust.mutex.Unlock()
 
-	if clust.uptodate {
+	if !force && clust.uptodate {
 		return
 	}
 
@@ -157,7 +157,7 @@ func (eg *Engine) refreshCluster(force bool) {
 		cu.populateJob(j.Name, mst.BootId)
 	}
 
-	eg.clust.refreshFrom(cu)
+	eg.clust.refreshFrom(cu, force)
 }
 
 // requiresMachine returns whether specified job requires a specific machine.
