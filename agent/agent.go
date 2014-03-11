@@ -90,7 +90,7 @@ func (a *Agent) Purge() {
 		log.V(1).Infof("Clearing JobState(%s) from Registry", j.Name)
 		a.registry.RemoveJobState(j.Name)
 
-		// TODO: agent placing offer ?
+		// TODO(uwedeportivo): agent placing offer ?
 		offer := job.NewOfferFromJob(j, nil)
 		log.V(2).Infof("Publishing JobOffer(%s)", offer.Job.Name)
 		a.registry.CreateJobOffer(offer)
@@ -138,7 +138,7 @@ func (a *Agent) RescheduleJob(j *job.Job) {
 	log.V(2).Infof("Stopping Job(%s)", j.Name)
 	a.registry.UnscheduleJob(j.Name)
 
-	// TODO: agent placing offer ?
+	// TODO(uwedeportivo): agent placing offer ?
 	offer := job.NewOfferFromJob(*j, nil)
 	log.V(2).Infof("Publishing JobOffer(%s)", offer.Job.Name)
 	a.registry.CreateJobOffer(offer)
