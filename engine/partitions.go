@@ -13,24 +13,6 @@ const (
 	partitionSize = 5
 )
 
-type countbyname map[string]int
-
-func (cbn countbyname) inc(key string) {
-	v, ok := cbn[key]
-	if !ok {
-		cbn[key] = 0
-	}
-	cbn[key] = v + 1
-}
-
-func (cbn countbyname) dec(key string) {
-	v, ok := cbn[key]
-	if !ok {
-		return
-	}
-	cbn[key] = v - 1
-}
-
 type namedCount struct {
 	name  string
 	count int
@@ -52,7 +34,7 @@ type cluster struct {
 	// where are jobs running
 	jobsToMachines map[string]string
 	// how many jobs on a machine
-	machineJobCount countbyname
+	machineJobCount map[string]int
 }
 
 func newCluster() *cluster {
@@ -106,7 +88,7 @@ func (clust *cluster) refreshFrom(cu *cluster, force bool) {
 
 func (clust *cluster) populateJob(jobName string, machineBootID string) {
 	clust.jobsToMachines[jobName] = machineBootID
-	clust.machineJobCount.inc(machineBootID)
+	clust.machineJobCount[machineBootID] = clust.machineJobCount[machineBootID] + 1
 }
 
 func (clust *cluster) deleteJob(jobName string) {
@@ -117,7 +99,7 @@ func (clust *cluster) deleteJob(jobName string) {
 		return
 	}
 
-	clust.machineJobCount.dec(machineBootID)
+	clust.machineJobCount[machineBootID] = clust.machineJobCount[machineBootID] - 1
 }
 
 func (clust *cluster) kLeastLoaded(k int) []string {
