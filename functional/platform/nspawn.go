@@ -3,6 +3,7 @@ package platform
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"os"
@@ -80,9 +81,14 @@ func (nc *nspawnCluster) prep() (err error) {
 	return nil
 }
 
-func (nc *nspawnCluster) prepFleet(dir, ip string, publicSSHKey []byte) error {
+func (nc *nspawnCluster) prepFleet(dir, ip, sshKeySrc, fleetBinSrc string) error {
 	cmd := fmt.Sprintf("mkdir -p %s/opt/fleet", dir)
 	if _, _, err := run(cmd); err != nil {
+		return err
+	}
+
+	fleetBinDst := path.Join(dir, "opt", "fleet", "fleet")
+	if err := copyFile(fleetBinSrc, fleetBinDst, 0755); err != nil {
 		return err
 	}
 
@@ -97,15 +103,15 @@ public_ip=%s
 	}
 
 	unitContents := `[Service]
-ExecStart=/usr/bin/fleet -config /opt/fleet/fleet.conf
+ExecStart=/opt/fleet/fleet -config /opt/fleet/fleet.conf
 `
 	unitPath := path.Join(dir, "opt", "fleet", "fleet-local.service")
 	if err := ioutil.WriteFile(unitPath, []byte(unitContents), 0644); err != nil {
 		return err
 	}
 
-	sshKeyPath := path.Join(dir, "opt", "fleet", "id_rsa.pub")
-	if err := ioutil.WriteFile(sshKeyPath, publicSSHKey, 0644); err != nil {
+	sshKeyDst := path.Join(dir, "opt", "fleet", "id_rsa.pub")
+	if err := copyFile(sshKeySrc, sshKeyDst, 0644); err != nil {
 		return err
 	}
 
@@ -134,14 +140,10 @@ func (nc *nspawnCluster) create(name string, num int) (err error) {
 		}
 	}
 
-	publicSSHKey, err := ioutil.ReadFile(path.Join("fixtures", "id_rsa.pub"))
-	if err != nil {
-		log.Printf("Failed reading public SSH key: %v", err)
-		return err
-	}
-
 	ip := fmt.Sprintf("172.17.1.%d", 100+num)
-	if err = nc.prepFleet(fsdir, ip, publicSSHKey); err != nil {
+	sshKeySrc := path.Join("fixtures", "id_rsa.pub")
+	fleetBinSrc := path.Join("../", "bin", "fleet")
+	if err = nc.prepFleet(fsdir, ip, sshKeySrc, fleetBinSrc); err != nil {
 		log.Printf("Failed preparing fleet in filesystem: %v", err)
 		return
 	}
@@ -307,4 +309,33 @@ func run(command string) (string, string, error) {
 	cmd.Stderr = &stderrBytes
 	err := cmd.Run()
 	return stdoutBytes.String(), stderrBytes.String(), err
+}
+
+func copyFile(src, dst string, mode int) error {
+	log.Printf("Copying %s -> %s", src, dst)
+
+	in, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+
+	out, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	if _, err = io.Copy(out, in); err != nil {
+		return err
+	}
+	if err = out.Sync(); err != nil {
+		return err
+	}
+
+	if err = os.Chmod(dst, os.FileMode(mode)); err != nil {
+		return err
+	}
+
+	return nil
 }

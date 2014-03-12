@@ -1,6 +1,7 @@
 package functional
 
 import (
+	"log"
 	"bytes"
 	"fmt"
 	"os"
@@ -31,6 +32,7 @@ func init() {
 }
 
 func fleetctl(args ...string) (string, string, error) {
+	log.Printf("%s %s", fleetctlBinPath, strings.Join(args, " "))
 	var stdoutBytes, stderrBytes bytes.Buffer
 	cmd := exec.Command(fleetctlBinPath, args...)
 	cmd.Stdout = &stdoutBytes
