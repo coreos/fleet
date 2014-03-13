@@ -25,8 +25,8 @@ func (a namedCounts) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a namedCounts) Less(i, j int) bool { return a[i].count < a[j].count }
 
 type cluster struct {
-	uptodate bool
-	mutex    *sync.Mutex
+	upToDate bool
+	mutex    sync.Mutex
 
 	// some statistics about what goes on in the cluster
 	// this will get more sophisticated as needed
@@ -34,11 +34,38 @@ type cluster struct {
 	// where are jobs running
 	jobsToMachines map[string]string
 	// how many jobs on a machine
+	// each active machine has at least one job,
+	// otherwise it won't show up here
 	machineJobCount map[string]int
 }
 
 func newCluster() *cluster {
-	return &cluster{false, new(sync.Mutex), make(map[string]string), make(map[string]int)}
+	return &cluster{
+		jobsToMachines:  make(map[string]string),
+		machineJobCount: make(map[string]int),
+	}
+}
+
+func (clust *cluster) machineCreated(bootId string) {
+	clust.mutex.Lock()
+	defer clust.mutex.Unlock()
+
+	if !clust.upToDate {
+		return
+	}
+
+	clust.populateMachine(bootId)
+}
+
+func (clust *cluster) machineRemoved(bootId string) {
+	clust.mutex.Lock()
+	defer clust.mutex.Unlock()
+
+	if !clust.upToDate {
+		return
+	}
+
+	clust.deleteMachine(bootId)
 }
 
 // jobScheduled handles the job scheduled event
@@ -46,7 +73,7 @@ func (clust *cluster) jobScheduled(jobName string, mst *machine.MachineState) {
 	clust.mutex.Lock()
 	defer clust.mutex.Unlock()
 
-	if !clust.uptodate {
+	if !clust.upToDate {
 		return
 	}
 
@@ -58,18 +85,18 @@ func (clust *cluster) jobStopped(jobName string) {
 	clust.mutex.Lock()
 	defer clust.mutex.Unlock()
 
-	if !clust.uptodate {
+	if !clust.upToDate {
 		return
 	}
 
 	clust.deleteJob(jobName)
 }
 
-// isUptodate returns whether the cluster has been told what happened before it got created
-func (clust *cluster) isUptodate() bool {
+// isUpToDate returns whether the cluster has been told what happened before it got created
+func (clust *cluster) isUpToDate() bool {
 	clust.mutex.Lock()
 	defer clust.mutex.Unlock()
-	return clust.uptodate
+	return clust.upToDate
 }
 
 // refreshFrom refreshes from a specified cluster
@@ -77,13 +104,13 @@ func (clust *cluster) refreshFrom(cu *cluster, force bool) {
 	clust.mutex.Lock()
 	defer clust.mutex.Unlock()
 
-	if !force && clust.uptodate {
+	if !force && clust.upToDate {
 		return
 	}
 
 	clust.jobsToMachines = cu.jobsToMachines
 	clust.machineJobCount = cu.machineJobCount
-	clust.uptodate = true
+	clust.upToDate = true
 }
 
 func (clust *cluster) populateJob(jobName string, machineBootID string) {
@@ -100,6 +127,15 @@ func (clust *cluster) deleteJob(jobName string) {
 	}
 
 	clust.machineJobCount[machineBootID] = clust.machineJobCount[machineBootID] - 1
+	delete(clust.jobsToMachines, jobName)
+}
+
+func (clust *cluster) populateMachine(bootId string) {
+	clust.machineJobCount[bootId] = 1
+}
+
+func (clust *cluster) deleteMachine(bootId string) {
+	delete(clust.machineJobCount, bootId)
 }
 
 func (clust *cluster) kLeastLoaded(k int) []string {
@@ -108,6 +144,7 @@ func (clust *cluster) kLeastLoaded(k int) []string {
 
 	mas := make(namedCounts, len(clust.machineJobCount))
 	cursor := 0
+
 	for k, v := range clust.machineJobCount {
 		mas[cursor] = &namedCount{k, v}
 		cursor++
@@ -120,18 +157,23 @@ func (clust *cluster) kLeastLoaded(k int) []string {
 	}
 
 	mbis := make([]string, l)
-	for i, nc := range mas {
-		mbis[i] = nc.name
+	for i := 0; i < l; i++ {
+		mbis[i] = mas[i].name
 	}
 	return mbis
 }
 
 func (eg *Engine) refreshCluster(force bool) {
-	if !force && eg.clust.isUptodate() {
+	if !force && eg.clust.isUpToDate() {
 		return
 	}
 
 	cu := newCluster()
+
+	ms := eg.registry.GetActiveMachines()
+	for _, m := range ms {
+		cu.populateMachine(m.BootId)
+	}
 
 	jobs := eg.registry.GetAllJobs()
 	for _, j := range jobs {

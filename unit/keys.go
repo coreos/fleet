@@ -1,7 +1,7 @@
 package unit
 
 // Fleet specific unit file requirement keys.
-// "x-" prefix only appears in unit file and dropped
+// "X-" prefix only appears in unit file and dropped
 // in code before value is used.
 const (
 	// Require the unit be scheduled to a specific machine defined by given boot ID.

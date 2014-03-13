@@ -1,11 +1,11 @@
 package engine
 
 import (
+	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
+
 	"github.com/coreos/fleet/event"
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/machine"
-
-	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
 )
 
 type EventHandler struct {
@@ -25,12 +25,14 @@ func (self *EventHandler) HandleEventJobCreated(ev event.Event) {
 
 func (self *EventHandler) HandleEventJobScheduled(ev event.Event) {
 	jobName := ev.Payload.(string)
-	machineState := ev.Payload.(machine.MachineState)
+	machineState := ev.Context.(machine.MachineState)
+	log.V(1).Infof("EventJobScheduled(%s): updating cluster", jobName)
 	self.engine.clust.jobScheduled(jobName, &machineState)
 }
 
 func (self *EventHandler) HandleEventJobStopped(ev event.Event) {
 	jobName := ev.Payload.(string)
+	log.V(1).Infof("EventJobStopped(%s): updating cluster", jobName)
 	self.engine.clust.jobStopped(jobName)
 }
 
@@ -44,6 +46,12 @@ func (self *EventHandler) HandleEventJobBidSubmitted(ev event.Event) {
 	} else {
 		log.V(1).Infof("EventJobBidSubmitted(%s): failed to schedule Job to Machine(%s)", jb.JobName, jb.MachineBootId)
 	}
+}
+
+func (self *EventHandler) HandleEventMachineCreated(ev event.Event) {
+	machineState := ev.Payload.(machine.MachineState)
+	log.V(1).Infof("EventMachineCreated(%s): updating cluster", machineState.BootId)
+	self.engine.clust.machineCreated(machineState.BootId)
 }
 
 func (self *EventHandler) HandleEventMachineRemoved(ev event.Event) {
@@ -67,4 +75,5 @@ func (self *EventHandler) HandleEventMachineRemoved(ev event.Event) {
 		log.V(1).Infof("EventMachineRemoved(%s): re-publishing JobOffer(%s)", machBootId, j.Name)
 		self.engine.OfferJob(j)
 	}
+	self.engine.clust.machineRemoved(machBootId)
 }
