@@ -57,3 +57,20 @@ func (t TestRegistry) GetSignatureSetOfPayload(name string) *sign.SignatureSet {
 
 func (t TestRegistry) DestroySignatureSetOfPayload(name string) {
 }
+
+func (t TestRegistry) GetJobTarget(name string) *machine.MachineState {
+	js := t.jobStates[name]
+	if js != nil {
+		return js.MachineState
+	}
+	return nil
+}
+
+func (t TestRegistry) GetMachineState(bootId string) *machine.MachineState {
+	for _, ms := range t.machines {
+		if ms.BootId == bootId {
+			return &ms
+		}
+	}
+	return nil
+}

@@ -35,10 +35,7 @@ func listMachinesAction(c *cli.Context) {
 	full := c.Bool("full")
 
 	for _, m := range registryCtl.GetActiveMachines() {
-		mach := m.BootId
-		if !full {
-			mach = ellipsize(mach, 8)
-		}
+		mach := machineBootIdLegend(m, full)
 
 		ip := m.PublicIP
 		if len(ip) == 0 {

@@ -18,6 +18,7 @@ import (
 	"github.com/coreos/fleet/third_party/github.com/rakyll/globalconf"
 
 	"github.com/coreos/fleet/job"
+	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/registry"
 	"github.com/coreos/fleet/ssh"
 	"github.com/coreos/fleet/unit"
@@ -123,18 +124,6 @@ func main() {
 	app.Run(os.Args)
 }
 
-func ellipsize(field string, n int) string {
-	// When ellipsing a field, we want to display the first n
-	// characters. We check for n+3 so we don't inadvertently
-	// make fields with fewer than n+3 characters even longer
-	// by adding unnecessary ellipses.
-	if len(field) > n+3 {
-		return fmt.Sprintf("%s...", field[0:n])
-	} else {
-		return field
-	}
-}
-
 func getJobPayloadFromFile(file string) (*job.JobPayload, error) {
 	out, err := ioutil.ReadFile(file)
 	if err != nil {
@@ -159,4 +148,32 @@ func getTunnelFlag() string {
 
 func getEndpointFlag() string {
 	return (*flagset.Lookup("endpoint")).Value.(flag.Getter).Get().(string)
+}
+
+func machineBootIdLegend(ms machine.MachineState, full bool) string {
+	legend := ms.BootId
+	if !full {
+		legend = ellipsize(legend, 8)
+	}
+	return legend
+}
+
+func machineFullLegend(ms machine.MachineState, full bool) string {
+	legend := machineBootIdLegend(ms, full)
+	if len(ms.PublicIP) > 0 {
+		legend = fmt.Sprintf("%s/%s", legend, ms.PublicIP)
+	}
+	return legend
+}
+
+func ellipsize(field string, n int) string {
+	// When ellipsing a field, we want to display the first n
+	// characters. We check for n+3 so we don't inadvertently
+	// make fields with fewer than n+3 characters even longer
+	// by adding unnecessary ellipses.
+	if len(field) > n+3 {
+		return fmt.Sprintf("%s...", field[0:n])
+	} else {
+		return field
+	}
 }
