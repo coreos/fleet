@@ -74,3 +74,7 @@ func (t TestRegistry) GetMachineState(bootId string) *machine.MachineState {
 	}
 	return nil
 }
+
+func (t TestRegistry) GetDebugInfo() (string, error) {
+	return "", nil
+}
