@@ -2,13 +2,21 @@ package main
 
 import (
 	"fmt"
+	"io"
+	"os"
 	"path"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/coreos/fleet/third_party/github.com/codegangsta/cli"
 
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/sign"
+)
+
+const (
+	unitCheckInterval = 1 * time.Second
 )
 
 func newStartUnitCommand() cli.Command {
@@ -34,6 +42,8 @@ fleetctl start --require region=us-east foo.service`,
 			cli.StringFlag{"require", "", "Filter suitable hosts with a set of requirements. Format is comma-delimited list of <key>=<value> pairs."},
 			cli.BoolFlag{"sign", "Sign unit file signatures using local SSH identities"},
 			cli.BoolFlag{"verify", "Verify unit file signatures using local SSH identities"},
+			cli.IntFlag{"block-attempts", 10, "Wait until the jobs are scheduled. Perform N attempts before giving up, 10 by default."},
+			cli.BoolFlag{"no-block", "Do not wait until the units have been scheduled to exit start."},
 		},
 		Action: startUnitAction,
 	}
@@ -100,12 +110,19 @@ func startUnitAction(c *cli.Context) {
 	requirements := parseRequirements(c.String("require"))
 
 	// TODO: This must be done in a transaction!
+	registeredJobs := make(map[string]bool)
 	for _, jp := range payloads {
 		j := job.NewJob(jp.Name, requirements, &jp, nil)
 		err := registryCtl.CreateJob(j)
 		if err != nil {
 			fmt.Printf("Creation of job %s failed: %v\n", j.Name, err)
+			continue
 		}
+		registeredJobs[j.Name] = true
+	}
+
+	if !c.Bool("no-block") {
+		waitForScheduledUnits(registeredJobs, c.Int("block-attempts"), os.Stdout)
 	}
 }
 
@@ -134,4 +151,32 @@ func parseRequirements(arg string) map[string][]string {
 	}
 
 	return reqs
+}
+
+func waitForScheduledUnits(jobs map[string]bool, maxAttempts int, out io.Writer) {
+	var wg sync.WaitGroup
+
+	for jobName, _ := range jobs {
+		wg.Add(1)
+		go checkJobTarget(jobName, maxAttempts, out, &wg)
+	}
+
+	wg.Wait()
+}
+
+func checkJobTarget(jobName string, maxAttempts int, out io.Writer, wg *sync.WaitGroup) {
+	defer wg.Done()
+
+	for attempts := 0; attempts < maxAttempts; attempts++ {
+		ms := registryCtl.GetJobTarget(jobName)
+
+		if ms != nil {
+			m := registryCtl.GetMachineState(ms.BootId)
+			fmt.Fprintf(out, "Job %s started on %s\n", jobName, machineFullLegend(*m, false))
+			return
+		}
+
+		time.Sleep(unitCheckInterval)
+	}
+	fmt.Fprintf(out, "Job %s in queue to be scheduled\n", jobName)
 }
