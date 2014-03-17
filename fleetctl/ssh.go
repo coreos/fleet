@@ -6,7 +6,7 @@ import (
 	"log"
 	"strings"
 
-	gossh "github.com/coreos/fleet/third_party/code.google.com/p/go.crypto/ssh"
+	gossh "github.com/coreos/fleet/third_party/code.google.com/p/gosshnew/ssh"
 	"github.com/coreos/fleet/third_party/github.com/codegangsta/cli"
 
 	"github.com/coreos/fleet/machine"
@@ -69,7 +69,7 @@ func sshAction(c *cli.Context) {
 		log.Fatalf("Requested machine could not be found")
 	}
 
-	var sshClient *gossh.ClientConn
+	var sshClient *gossh.Client
 	if tun := getTunnelFlag(); tun != "" {
 		sshClient, err = ssh.NewTunnelledSSHClient("core", tun, addr, getChecker())
 	} else {

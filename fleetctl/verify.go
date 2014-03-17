@@ -12,11 +12,11 @@ import (
 
 func newVerifyUnitCommand() cli.Command {
 	return cli.Command{
-		Name:	"verify",
-		Usage:	"Verify unit file signatures using local SSH identities",
+		Name:  "verify",
+		Usage: "Verify unit file signatures using local SSH identities",
 		Description: `Outputs whether or not unit file fits its signature. Useful to secure
 the data of a unit.`,
-		Action:	verifyUnitAction,
+		Action: verifyUnitAction,
 	}
 }
 

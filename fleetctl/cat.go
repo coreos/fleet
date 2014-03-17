@@ -14,7 +14,7 @@ func newCatUnitCommand() cli.Command {
 		Usage: "Output the contents of a submitted unit",
 		Description: `Outputs the unit file that is currently loaded in the cluster. Useful to verify
 the correct version of a unit is running.`,
-		Action:	printUnitAction,
+		Action: printUnitAction,
 	}
 }
 
