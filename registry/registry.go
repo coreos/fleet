@@ -6,6 +6,9 @@ import (
 	"fmt"
 
 	"github.com/coreos/fleet/third_party/github.com/coreos/go-etcd/etcd"
+	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
+
+	"github.com/coreos/fleet/version"
 )
 
 const (
@@ -13,11 +16,20 @@ const (
 )
 
 type Registry struct {
-	etcd *etcd.Client
+	etcd	   *etcd.Client
+	negotiator *version.Negotiator
 }
 
-func New(client *etcd.Client) (registry *Registry) {
-	return &Registry{client}
+func New(client *etcd.Client, neg *version.Negotiator) (registry *Registry) {
+	return &Registry{client, neg}
+}
+
+func (r *Registry) Version() int {
+	ver, err := r.negotiator.GetCurrentVersion()
+	if err != nil {
+		log.V(1).Infof("%v", err)
+	}
+	return ver
 }
 
 func marshal(obj interface{}) (string, error) {
