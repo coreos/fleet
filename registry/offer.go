@@ -9,6 +9,7 @@ import (
 
 	"github.com/coreos/fleet/event"
 	"github.com/coreos/fleet/job"
+	"github.com/coreos/fleet/mutex"
 )
 
 const (
@@ -58,7 +59,7 @@ func (r *Registry) UnresolvedJobOffers() []job.JobOffer {
 	return offers
 }
 
-func (r *Registry) LockJobOffer(jobName, context string) *TimedResourceMutex {
+func (r *Registry) LockJobOffer(jobName, context string) *mutex.TimedResourceMutex {
 	key := path.Join(keyPrefix, offerPrefix, jobName)
 	_, err := r.etcd.Get(key, false, true)
 	if err != nil {

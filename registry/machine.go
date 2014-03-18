@@ -8,6 +8,7 @@ import (
 
 	"github.com/coreos/fleet/event"
 	"github.com/coreos/fleet/machine"
+	"github.com/coreos/fleet/mutex"
 )
 
 const (
@@ -85,7 +86,7 @@ func (r *Registry) RemoveMachineState(machBootId string) error {
 }
 
 // Attempt to acquire a lock on a given machine for a given amount of time
-func (r *Registry) LockMachine(machBootId, context string) *TimedResourceMutex {
+func (r *Registry) LockMachine(machBootId, context string) *mutex.TimedResourceMutex {
 	return r.lockResource("machine", machBootId, context)
 }
 

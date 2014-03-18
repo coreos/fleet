@@ -10,6 +10,7 @@ import (
 	"github.com/coreos/fleet/event"
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/machine"
+	"github.com/coreos/fleet/mutex"
 )
 
 const (
@@ -169,7 +170,7 @@ func (r *Registry) StopJob(jobName string) {
 	r.etcd.Delete(key, true)
 }
 
-func (r *Registry) LockJob(jobName, context string) *TimedResourceMutex {
+func (r *Registry) LockJob(jobName, context string) *mutex.TimedResourceMutex {
 	return r.lockResource("job", jobName, context)
 }
 
