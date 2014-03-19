@@ -1,5 +1,4 @@
 bin/
-third_party/pkg
 gopath/
 *.swp
 fleet.conf
