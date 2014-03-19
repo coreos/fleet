@@ -8,6 +8,7 @@ import (
 	"github.com/coreos/fleet/event"
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/machine"
+	"github.com/coreos/fleet/mutex"
 	"github.com/coreos/fleet/registry"
 )
 
@@ -120,15 +121,15 @@ func (self *Engine) RemoveJobState(jobName string) {
 	self.registry.RemoveJobState(jobName)
 }
 
-func (self *Engine) lockJobOffer(jobName string) *registry.TimedResourceMutex {
+func (self *Engine) lockJobOffer(jobName string) *mutex.TimedResourceMutex {
 	return self.registry.LockJobOffer(jobName, self.machine.State().BootId)
 }
 
-func (self *Engine) lockJob(jobName string) *registry.TimedResourceMutex {
+func (self *Engine) lockJob(jobName string) *mutex.TimedResourceMutex {
 	return self.registry.LockJob(jobName, self.machine.State().BootId)
 }
 
 // Pass-through to Registry.LockMachine
-func (self *Engine) LockMachine(machBootId string) *registry.TimedResourceMutex {
+func (self *Engine) LockMachine(machBootId string) *mutex.TimedResourceMutex {
 	return self.registry.LockMachine(machBootId, self.machine.State().BootId)
 }

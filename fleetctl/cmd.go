@@ -75,7 +75,16 @@ func getRegistry() *registry.Registry {
 		client.SetTransport(&tr)
 	}
 
-	return registry.New(client)
+	n, err := version.NewNegotiator("fleetctl", 0, 0)
+	if err != nil {
+		panic(err)
+	}
+	reg := registry.New(client, n)
+	cluster := registry.NewClusterState(reg)
+	ver, _, _ := cluster.Version()
+	n.SetCurrentVersion(ver)
+
+	return reg
 }
 
 func main() {

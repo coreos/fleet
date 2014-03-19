@@ -13,6 +13,7 @@ import (
 	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/registry"
 	"github.com/coreos/fleet/sign"
+	"github.com/coreos/fleet/version"
 )
 
 type Server struct {
@@ -22,15 +23,21 @@ type Server struct {
 	registry    *registry.Registry
 	eventBus    *event.EventBus
 	eventStream *registry.EventStream
+	negotiator  *version.Negotiator
 }
 
 func New(cfg config.Config) *Server {
 	m := machine.New(cfg.BootId, cfg.PublicIP, cfg.Metadata())
 	m.RefreshState()
 
+	n, err := version.NewNegotiator(m.State().BootId, 0, 0)
+	if err != nil {
+		panic(err)
+	}
+
 	regClient := etcd.NewClient(cfg.EtcdServers)
 	regClient.SetConsistency(etcd.STRONG_CONSISTENCY)
-	r := registry.New(regClient)
+	r := registry.New(regClient, n)
 
 	eb := event.NewEventBus()
 	eb.Listen()
@@ -57,22 +64,33 @@ func New(cfg config.Config) *Server {
 
 	e := engine.New(r, eb, m)
 
-	return &Server{a, e, m, r, eb, es}
+	return &Server{a, e, m, r, eb, es, n}
 }
 
 func (self *Server) MarshalJSON() ([]byte, error) {
 	return json.Marshal(struct{ Agent *agent.Agent }{Agent: self.agent})
 }
 
-func (self *Server) Run() {
+func (self *Server) Run() error {
+	cluster := registry.NewClusterState(self.registry)
+	if err := cluster.Publish(self.negotiator, version.NegotiatorTTL); err != nil {
+		return err
+	}
+
+	go self.negotiator.Run(cluster, self.eventBus)
+
 	go self.agent.Run()
 	go self.engine.Run()
 
 	go self.eventBus.Listen()
 	go self.eventStream.Stream(self.eventBus.Channel)
+
+	return nil
 }
 
 func (self *Server) Stop() {
+	self.negotiator.Stop()
+
 	self.agent.Stop()
 	self.engine.Stop()
 
