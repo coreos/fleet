@@ -14,6 +14,7 @@ import (
 	"github.com/coreos/fleet/registry"
 	"github.com/coreos/fleet/sign"
 	"github.com/coreos/fleet/systemd"
+	"github.com/coreos/fleet/unit"
 )
 
 const (
@@ -34,7 +35,7 @@ type Agent struct {
 	systemdPrefix string
 	// verifier is used to verify job payload. A nil one implies that
 	// all payloads are accepted.
-	verifier      *sign.SignatureVerifier
+	verifier *sign.SignatureVerifier
 
 	state   *AgentState
 	systemd *systemd.SystemdManager
@@ -101,7 +102,8 @@ func (a *Agent) Purge() {
 		log.V(1).Infof("Clearing JobState(%s) from Registry", j.Name)
 		a.registry.RemoveJobState(j.Name)
 
-		offer := job.NewOfferFromJob(j)
+		// TODO(uwedeportivo): agent placing offer ?
+		offer := job.NewOfferFromJob(j, nil)
 		log.V(2).Infof("Publishing JobOffer(%s)", offer.Job.Name)
 		a.registry.CreateJobOffer(offer)
 		log.Infof("Published JobOffer(%s)", offer.Job.Name)
@@ -148,7 +150,8 @@ func (a *Agent) RescheduleJob(j *job.Job) {
 	log.V(2).Infof("Stopping Job(%s)", j.Name)
 	a.registry.UnscheduleJob(j.Name)
 
-	offer := job.NewOfferFromJob(*j)
+	// TODO(uwedeportivo): agent placing offer ?
+	offer := job.NewOfferFromJob(*j, nil)
 	log.V(2).Infof("Publishing JobOffer(%s)", offer.Job.Name)
 	a.registry.CreateJobOffer(offer)
 	log.Infof("Published JobOffer(%s)", offer.Job.Name)
@@ -302,16 +305,18 @@ func (a *Agent) AbleToRun(j *job.Job) bool {
 		return true
 	}
 
-	var reqString string
-	for key, slice := range requirements {
-		reqString += fmt.Sprintf("%s = [", key)
-		for _, val := range slice {
-			reqString += fmt.Sprintf("%s, ", val)
+	if log.V(1) {
+		var reqString string
+		for key, slice := range requirements {
+			reqString += fmt.Sprintf("%s = [", key)
+			for _, val := range slice {
+				reqString += fmt.Sprintf("%s, ", val)
+			}
+			reqString += fmt.Sprint("] ")
 		}
-		reqString += fmt.Sprint("] ")
-	}
 
-	log.V(1).Infof("Job(%s) has requirements: %s", j.Name, reqString)
+		log.Infof("Job(%s) has requirements: %s", j.Name, reqString)
+	}
 
 	metadata := extractMachineMetadata(requirements)
 	log.V(1).Infof("Job(%s) requires machine metadata: %v", j.Name, metadata)
@@ -320,7 +325,7 @@ func (a *Agent) AbleToRun(j *job.Job) bool {
 		return false
 	}
 
-	bootID, ok := requirements["ConditionMachineBootID"]
+	bootID, ok := requirements[unit.FleetXConditionMachineBootID]
 	if ok && len(bootID) > 0 && a.machine.State().BootId == bootID[0] {
 		log.V(1).Infof("Agent does not pass MachineBootID condition for Job(%s)", j.Name)
 		return false

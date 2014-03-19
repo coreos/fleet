@@ -20,6 +20,10 @@ func (eh *EventHandler) HandleEventJobOffered(ev event.Event) {
 	jo := ev.Payload.(job.JobOffer)
 	log.V(1).Infof("EventJobOffered(%s): verifying ability to run Job", jo.Job.Name)
 
+	if !jo.OfferedTo(eh.agent.Machine().State().BootId) {
+		log.V(1).Infof("EventJobOffered(%s): not offered to this machine", jo.Job.Name)
+		return
+	}
 	// Everything we check against could change over time, so we track all
 	// offers starting here for future bidding even if we can't bid now
 	eh.agent.TrackOffer(jo)

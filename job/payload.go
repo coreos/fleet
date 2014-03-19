@@ -9,8 +9,8 @@ import (
 )
 
 type JobPayload struct {
-	Name         string
-	Unit         unit.SystemdUnitFile
+	Name string
+	Unit unit.SystemdUnitFile
 }
 
 func NewJobPayload(name string, uFile unit.SystemdUnitFile) *JobPayload {
@@ -28,7 +28,7 @@ func (jp *JobPayload) Type() (string, error) {
 }
 
 func (jp *JobPayload) Peers() []string {
-	peers, ok := jp.Unit.Requirements()["ConditionMachineOf"]
+	peers, ok := jp.Unit.Requirements()[unit.FleetXConditionMachineOf]
 
 	if !ok {
 		jpType, err := jp.Type()

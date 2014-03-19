@@ -15,12 +15,13 @@ type Engine struct {
 	registry *registry.Registry
 	events   *event.EventBus
 	machine  *machine.Machine
-
-	stop chan bool
+	// keeps a picture of the load in the cluster for more intelligent scheduling
+	clust *cluster
+	stop  chan bool
 }
 
 func New(reg *registry.Registry, events *event.EventBus, mach *machine.Machine) *Engine {
-	return &Engine{reg, events, mach, nil}
+	return &Engine{reg, events, mach, newCluster(), nil}
 }
 
 func (self *Engine) Run() {
@@ -71,7 +72,13 @@ func (self *Engine) OfferJob(j job.Job) error {
 
 	log.V(1).Infof("Claimed Job", j.Name)
 
-	offer := job.NewOfferFromJob(j)
+	machineBootIds, err := self.partitionCluster(&j)
+	if err != nil {
+		log.Errorf("Failed partitioning cluster for Job(%s): %v", j.Name, err)
+		return err
+	}
+
+	offer := job.NewOfferFromJob(j, machineBootIds)
 
 	log.V(2).Infof("Publishing JobOffer(%s)", offer.Job.Name)
 	self.registry.CreateJobOffer(offer)
