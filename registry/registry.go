@@ -20,6 +20,14 @@ func New(client *etcd.Client) (registry *Registry) {
 	return &Registry{client}
 }
 
+func (r *Registry) GetDebugInfo() (string, error) {
+	resp, err :=  r.etcd.RawGet(keyPrefix, true, true)
+	if err != nil {
+		return "", err
+	}
+	return string(resp.Body), nil
+}
+
 func marshal(obj interface{}) (string, error) {
 	encoded, err := json.Marshal(obj)
 	if err == nil {

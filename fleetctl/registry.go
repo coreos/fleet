@@ -22,6 +22,7 @@ type Registry interface {
 	DestroySignatureSetOfPayload(name string)
 	GetJobTarget(name string) *machine.MachineState
 	GetMachineState(bootId string) *machine.MachineState
+	GetDebugInfo() (string, error)
 }
 
 type MainRegistry struct {
@@ -86,4 +87,8 @@ func (m MainRegistry) GetJobTarget(name string) *machine.MachineState {
 
 func (m MainRegistry) GetMachineState(bootId string) *machine.MachineState {
 	return m.registry.GetMachineState(bootId)
+}
+
+func (m MainRegistry) GetDebugInfo() (string, error) {
+	return m.registry.GetDebugInfo()
 }

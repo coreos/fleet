@@ -100,6 +100,7 @@ func main() {
 		newJournalCommand(),
 		newSSHCommand(),
 		newVerifyUnitCommand(),
+		newDebugInfoCommand(),
 	}
 
 	for _, f := range app.Flags {
