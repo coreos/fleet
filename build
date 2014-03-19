@@ -1,12 +1,12 @@
 #!/bin/bash -e
 
-if [ ! -h src/github.com/coreos/fleet ]; then
-	mkdir -p src/github.com/coreos/
-	ln -s ../../.. src/github.com/coreos/fleet
+if [ ! -h gopath/src/github.com/coreos/fleet ]; then
+	mkdir -p gopath/src/github.com/coreos/
+	ln -s ../../../.. gopath/src/github.com/coreos/fleet
 fi
 
 export GOBIN=${PWD}/bin
-export GOPATH=${PWD}
+export GOPATH=${PWD}/gopath
 
 eval $(go env)
 
