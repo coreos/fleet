@@ -90,13 +90,13 @@ func (a *Agent) Stop() {
 // Clear any presence data from the Registry
 func (a *Agent) Purge() {
 	log.V(1).Info("Removing Agent from Registry")
-	bootId := a.machine.State().BootId
-	err := a.registry.RemoveMachineState(bootId)
+	bootID := a.machine.State().BootID
+	err := a.registry.RemoveMachineState(bootID)
 	if err != nil {
-		log.Errorf("Failed to remove Machine %s from Registry: %s", bootId, err.Error())
+		log.Errorf("Failed to remove Machine %s from Registry: %s", bootID, err.Error())
 	}
 
-	for _, j := range a.registry.GetAllJobsByMachine(bootId) {
+	for _, j := range a.registry.GetAllJobsByMachine(bootID) {
 		a.VerifyJob(&j)
 
 		log.V(1).Infof("Clearing JobState(%s) from Registry", j.Name)
@@ -211,7 +211,7 @@ func (a *Agent) BidForPossibleJobs() {
 func (a *Agent) Bid(jobName string) {
 	log.Infof("Submitting JobBid for Job(%s)", jobName)
 
-	jb := job.NewBid(jobName, a.machine.State().BootId)
+	jb := job.NewBid(jobName, a.machine.State().BootID)
 	a.registry.SubmitJobBid(jb)
 
 	a.state.Lock()
@@ -326,7 +326,7 @@ func (a *Agent) AbleToRun(j *job.Job) bool {
 	}
 
 	bootID, ok := requirements[unit.FleetXConditionMachineBootID]
-	if ok && len(bootID) > 0 && a.machine.State().BootId != bootID[0] {
+	if ok && len(bootID) > 0 && a.machine.State().BootID != bootID[0] {
 		log.V(1).Infof("Agent does not pass MachineBootID condition for Job(%s)", j.Name)
 		return false
 	}
@@ -380,7 +380,7 @@ func (a *Agent) peerScheduledHere(jobName, peerName string) bool {
 	log.V(1).Infof("Looking for target of Peer(%s)", peerName)
 
 	//FIXME: ideally the machine would use its own knowledge rather than calling GetJobTarget
-	if tgt := a.registry.GetJobTarget(peerName); tgt == nil || tgt.BootId != a.machine.State().BootId {
+	if tgt := a.registry.GetJobTarget(peerName); tgt == nil || tgt.BootID != a.machine.State().BootID {
 		log.V(1).Infof("Peer(%s) of Job(%s) not scheduled here", peerName, jobName)
 		return false
 	}

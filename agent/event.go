@@ -20,7 +20,7 @@ func (eh *EventHandler) HandleEventJobOffered(ev event.Event) {
 	jo := ev.Payload.(job.JobOffer)
 	log.V(1).Infof("EventJobOffered(%s): verifying ability to run Job", jo.Job.Name)
 
-	if !jo.OfferedTo(eh.agent.Machine().State().BootId) {
+	if !jo.OfferedTo(eh.agent.Machine().State().BootID) {
 		log.V(1).Infof("EventJobOffered(%s): not offered to this machine", jo.Job.Name)
 		return
 	}
@@ -43,7 +43,7 @@ func (eh *EventHandler) HandleEventJobScheduled(ev event.Event) {
 
 	eh.agent.OfferResolved(jobName)
 
-	if ev.Context.(machine.MachineState).BootId != eh.agent.Machine().State().BootId {
+	if ev.Context.(machine.MachineState).BootID != eh.agent.Machine().State().BootID {
 		log.V(1).Infof("EventJobScheduled(%s): Job not scheduled to this Agent, checking unbade offers", jobName)
 		eh.agent.BidForPossibleJobs()
 		return
@@ -90,11 +90,11 @@ func (eh *EventHandler) HandleEventJobStopped(ev event.Event) {
 func (eh *EventHandler) HandleEventJobUpdated(ev event.Event) {
 	j := ev.Payload.(job.Job)
 
-	localBootId := eh.agent.Machine().State().BootId
-	targetBootId := ev.Context.(string)
+	localBootID := eh.agent.Machine().State().BootID
+	targetBootID := ev.Context.(string)
 
-	if targetBootId != localBootId {
-		log.V(1).Infof("EventJobUpdated(%s): Job not scheduled to Agent %s, skipping", j.Name, localBootId)
+	if targetBootID != localBootID {
+		log.V(1).Infof("EventJobUpdated(%s): Job not scheduled to Agent %s, skipping", j.Name, localBootID)
 		return
 	}
 
@@ -126,22 +126,22 @@ func (eh *EventHandler) HandleEventJobStateUpdated(ev event.Event) {
 
 func (eh *EventHandler) HandleEventMachineCreated(ev event.Event) {
 	mach := ev.Payload.(machine.MachineState)
-	if mach.BootId != eh.agent.Machine().State().BootId {
-		log.V(1).Infof("EventMachineCreated(%s): references other Machine, discarding event", mach.BootId)
+	if mach.BootID != eh.agent.Machine().State().BootID {
+		log.V(1).Infof("EventMachineCreated(%s): references other Machine, discarding event", mach.BootID)
 	}
 
 	for _, jo := range eh.agent.UnresolvedJobOffers() {
-		log.V(1).Infof("EventMachineCreated(%s): verifying ability to run Job(%s)", mach.BootId, jo.Job.Name)
+		log.V(1).Infof("EventMachineCreated(%s): verifying ability to run Job(%s)", mach.BootID, jo.Job.Name)
 
 		// Everything we check against could change over time, so we track all
 		// offers starting here for future bidding even if we can't bid now
 		eh.agent.TrackOffer(jo)
 
 		if eh.agent.AbleToRun(&jo.Job) {
-			log.Infof("EventMachineCreated(%s): passed all criteria, submitting JobBid(%s)", mach.BootId, jo.Job.Name)
+			log.Infof("EventMachineCreated(%s): passed all criteria, submitting JobBid(%s)", mach.BootID, jo.Job.Name)
 			eh.agent.Bid(jo.Job.Name)
 		} else {
-			log.V(1).Infof("EventMachineCreated(%s): not all criteria met, not bidding for Job(%s)", mach.BootId, jo.Job.Name)
+			log.V(1).Infof("EventMachineCreated(%s): not all criteria met, not bidding for Job(%s)", mach.BootID, jo.Job.Name)
 		}
 	}
 }

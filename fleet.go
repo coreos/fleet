@@ -145,7 +145,7 @@ func getConfig(flagset *flag.FlagSet, userCfgFile string) (*config.Config, error
 	cfg := config.Config{
 		Verbosity: (*flagset.Lookup("verbosity")).Value.(flag.Getter).Get().(int),
 		EtcdServers: (*flagset.Lookup("etcd_servers")).Value.(flag.Getter).Get().(stringSlice),
-		BootId: (*flagset.Lookup("boot_id")).Value.(flag.Getter).Get().(string),
+		BootID: (*flagset.Lookup("boot_id")).Value.(flag.Getter).Get().(string),
 		PublicIP: (*flagset.Lookup("public_ip")).Value.(flag.Getter).Get().(string),
 		RawMetadata: (*flagset.Lookup("metadata")).Value.(flag.Getter).Get().(string),
 		UnitPrefix: (*flagset.Lookup("unit_prefix")).Value.(flag.Getter).Get().(string),

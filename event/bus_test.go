@@ -33,7 +33,7 @@ func TestEventBus(t *testing.T) {
 		if recv.Payload.(string) != "payload" {
 			t.Error("event payload is incorrect")
 		}
-		if recv.Context.(*machine.Machine).State().BootId != "Y" {
+		if recv.Context.(*machine.Machine).State().BootID != "Y" {
 			t.Error("event context is incorrect")
 		}
 	}

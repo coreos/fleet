@@ -151,8 +151,8 @@ func getEndpointFlag() string {
 	return (*flagset.Lookup("endpoint")).Value.(flag.Getter).Get().(string)
 }
 
-func machineBootIdLegend(ms machine.MachineState, full bool) string {
-	legend := ms.BootId
+func machineBootIDLegend(ms machine.MachineState, full bool) string {
+	legend := ms.BootID
 	if !full {
 		legend = ellipsize(legend, 8)
 	}
@@ -160,7 +160,7 @@ func machineBootIdLegend(ms machine.MachineState, full bool) string {
 }
 
 func machineFullLegend(ms machine.MachineState, full bool) string {
-	legend := machineBootIdLegend(ms, full)
+	legend := machineBootIDLegend(ms, full)
 	if len(ms.PublicIP) > 0 {
 		legend = fmt.Sprintf("%s/%s", legend, ms.PublicIP)
 	}

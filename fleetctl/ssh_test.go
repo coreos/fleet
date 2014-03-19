@@ -71,7 +71,7 @@ func TestGlobalLookupByUnknownArgument(t *testing.T) {
 	}
 }
 
-func TestGlobalLookupByBootId(t *testing.T) {
+func TestGlobalLookupByBootID(t *testing.T) {
 	registryCtl = newTestRegistryForSsh()
 
 	ip, err := globalMachineLookup([]string{"c31e44e1-f858-436e-933e-59c642517860"})
