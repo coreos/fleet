@@ -63,7 +63,7 @@ func (r *Registry) GetAllJobs() []job.Job {
 	return jobs
 }
 
-func (r *Registry) GetAllJobsByMachine(machBootId string) []job.Job {
+func (r *Registry) GetAllJobsByMachine(machBootID string) []job.Job {
 	var jobs []job.Job
 
 	key := path.Join(keyPrefix, jobPrefix)
@@ -77,7 +77,7 @@ func (r *Registry) GetAllJobsByMachine(machBootId string) []job.Job {
 	for _, node := range resp.Node.Nodes {
 		if j := r.GetJob(path.Base(node.Key)); j != nil {
 			tgt := r.GetJobTarget(j.Name)
-			if tgt != nil && tgt.BootId == machBootId {
+			if tgt != nil && tgt.BootID == machBootID {
 				jobs = append(jobs, *j)
 			}
 		}
@@ -153,9 +153,9 @@ func (r *Registry) CreateJob(j *job.Job) (err error) {
 	return
 }
 
-func (r *Registry) ScheduleJob(jobName string, machBootId string) error {
+func (r *Registry) ScheduleJob(jobName string, machBootID string) error {
 	key := jobTargetAgentPath(jobName)
-	_, err := r.etcd.Create(key, machBootId, 0)
+	_, err := r.etcd.Create(key, machBootID, 0)
 	return err
 }
 

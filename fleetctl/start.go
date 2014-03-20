@@ -171,7 +171,7 @@ func checkJobTarget(jobName string, maxAttempts int, out io.Writer, wg *sync.Wai
 		ms := registryCtl.GetJobTarget(jobName)
 
 		if ms != nil {
-			m := registryCtl.GetMachineState(ms.BootId)
+			m := registryCtl.GetMachineState(ms.BootID)
 			fmt.Fprintf(out, "Job %s started on %s\n", jobName, machineFullLegend(*m, false))
 			return
 		}

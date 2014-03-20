@@ -10,30 +10,31 @@ import (
 	"github.com/coreos/fleet/third_party/github.com/dotcloud/docker/pkg/netlink"
 )
 
-const bootIdPath = "/proc/sys/kernel/random/boot_id"
+const bootIDPath = "/proc/sys/kernel/random/boot_id"
 
 // MachineState represents a point-in-time snapshot of the
 // state of the local host.
 type MachineState struct {
-	BootId   string
+	// BootID started life as BootId in the datastore. It cannot be changed without a migration.
+	BootID   string `json:"BootId"`
 	PublicIP string
 	Metadata map[string]string
 }
 
 func (ms MachineState) String() string {
-	return fmt.Sprintf("MachineState{BootId: %q, PublicIp: %q, Metadata: %v}", ms.BootId, ms.PublicIP, ms.Metadata)
+	return fmt.Sprintf("MachineState{BootID: %q, PublicIp: %q, Metadata: %v}", ms.BootID, ms.PublicIP, ms.Metadata)
 }
 
 // NewDynamicMachineState generates a MachineState object with
 // the values read from the local system
 func CurrentState() MachineState {
-	bootId := readLocalBootId()
+	bootID := readLocalBootID()
 	publicIP := getLocalIP()
-	return MachineState{bootId, publicIP, make(map[string]string, 0)}
+	return MachineState{bootID, publicIP, make(map[string]string, 0)}
 }
 
-func readLocalBootId() string {
-	id, err := ioutil.ReadFile(bootIdPath)
+func readLocalBootID() string {
+	id, err := ioutil.ReadFile(bootIDPath)
 	if err != nil {
 		panic(err)
 	}
@@ -98,8 +99,8 @@ func stackState(top, bottom MachineState) MachineState {
 		state.PublicIP = top.PublicIP
 	}
 
-	if top.BootId != "" {
-		state.BootId = top.BootId
+	if top.BootID != "" {
+		state.BootID = top.BootID
 	}
 
 	//FIXME: This will *always* overwrite the bottom's metadata,

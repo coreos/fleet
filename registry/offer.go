@@ -80,7 +80,7 @@ func (r *Registry) ResolveJobOffer(jobName string) error {
 }
 
 func (r *Registry) SubmitJobBid(jb *job.JobBid) {
-	key := path.Join(keyPrefix, offerPrefix, jb.JobName, "bids", jb.MachineBootId)
+	key := path.Join(keyPrefix, offerPrefix, jb.JobName, "bids", jb.MachineBootID)
 	//TODO: Use a TTL
 	r.etcd.Set(key, "", 0)
 }
@@ -127,12 +127,12 @@ func (self *EventStream) filterEventJobUpdated(resp *etcd.Response) *event.Event
 		return nil
 	}
 
-	var bootId string
+	var bootID string
 	if target := self.registry.GetJobTarget(j.Name); target != nil {
-		bootId = target.BootId
+		bootID = target.BootID
 	}
 
-	return &event.Event{"EventJobUpdated", j, bootId}
+	return &event.Event{"EventJobUpdated", j, bootID}
 }
 
 func filterEventJobBidSubmitted(resp *etcd.Response) *event.Event {
@@ -140,7 +140,7 @@ func filterEventJobBidSubmitted(resp *etcd.Response) *event.Event {
 		return nil
 	}
 
-	dir, machBootId := path.Split(resp.Node.Key)
+	dir, machBootID := path.Split(resp.Node.Key)
 	dir, prefix := path.Split(strings.TrimSuffix(dir, "/"))
 
 	if prefix != "bids" {
@@ -154,6 +154,6 @@ func filterEventJobBidSubmitted(resp *etcd.Response) *event.Event {
 		return nil
 	}
 
-	jb := job.NewBid(jobName, machBootId)
+	jb := job.NewBid(jobName, machBootID)
 	return &event.Event{"EventJobBidSubmitted", *jb, nil}
 }

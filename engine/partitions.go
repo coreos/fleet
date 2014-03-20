@@ -46,7 +46,7 @@ func newCluster() *cluster {
 	}
 }
 
-func (clust *cluster) machineCreated(bootId string) {
+func (clust *cluster) machineCreated(bootID string) {
 	clust.mutex.Lock()
 	defer clust.mutex.Unlock()
 
@@ -54,10 +54,10 @@ func (clust *cluster) machineCreated(bootId string) {
 		return
 	}
 
-	clust.populateMachine(bootId)
+	clust.populateMachine(bootID)
 }
 
-func (clust *cluster) machineRemoved(bootId string) {
+func (clust *cluster) machineRemoved(bootID string) {
 	clust.mutex.Lock()
 	defer clust.mutex.Unlock()
 
@@ -65,7 +65,7 @@ func (clust *cluster) machineRemoved(bootId string) {
 		return
 	}
 
-	clust.deleteMachine(bootId)
+	clust.deleteMachine(bootID)
 }
 
 // jobScheduled handles the job scheduled event
@@ -77,7 +77,7 @@ func (clust *cluster) jobScheduled(jobName string, mst *machine.MachineState) {
 		return
 	}
 
-	clust.populateJob(jobName, mst.BootId)
+	clust.populateJob(jobName, mst.BootID)
 }
 
 // jobStopped handles the job stopped event
@@ -130,12 +130,12 @@ func (clust *cluster) deleteJob(jobName string) {
 	delete(clust.jobsToMachines, jobName)
 }
 
-func (clust *cluster) populateMachine(bootId string) {
-	clust.machineJobCount[bootId] = 1
+func (clust *cluster) populateMachine(bootID string) {
+	clust.machineJobCount[bootID] = 1
 }
 
-func (clust *cluster) deleteMachine(bootId string) {
-	delete(clust.machineJobCount, bootId)
+func (clust *cluster) deleteMachine(bootID string) {
+	delete(clust.machineJobCount, bootID)
 }
 
 func (clust *cluster) kLeastLoaded(k int) []string {
@@ -172,14 +172,14 @@ func (eg *Engine) refreshCluster(force bool) {
 
 	ms := eg.registry.GetActiveMachines()
 	for _, m := range ms {
-		cu.populateMachine(m.BootId)
+		cu.populateMachine(m.BootID)
 	}
 
 	jobs := eg.registry.GetAllJobs()
 	for _, j := range jobs {
 		mst := eg.registry.GetJobTarget(j.Name)
 		if mst != nil {
-			cu.populateJob(j.Name, mst.BootId)
+			cu.populateJob(j.Name, mst.BootID)
 		}
 	}
 
@@ -207,20 +207,20 @@ func (eg *Engine) partitionCluster(j *job.Job) ([]string, error) {
 	if len(j.Requirements()) > 0 {
 		machines := eg.registry.GetActiveMachines()
 
-		machineBootIds := make([]string, len(machines))
+		machineBootIDs := make([]string, len(machines))
 		for i, mach := range machines {
-			machineBootIds[i] = mach.BootId
+			machineBootIDs[i] = mach.BootID
 		}
-		sort.Strings(machineBootIds)
-		return machineBootIds, nil
+		sort.Strings(machineBootIDs)
+		return machineBootIDs, nil
 	}
 
 	// this is usually a cheap no-op
 	eg.refreshCluster(false)
 
 	// as an initial heuristic, choose the k least loaded, with k = partitionSize
-	machineBootIds := eg.clust.kLeastLoaded(partitionSize)
+	machineBootIDs := eg.clust.kLeastLoaded(partitionSize)
 
-	sort.Strings(machineBootIds)
-	return machineBootIds, nil
+	sort.Strings(machineBootIDs)
+	return machineBootIDs, nil
 }

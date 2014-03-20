@@ -38,7 +38,7 @@ func NewSystemdManager(machine *machine.Machine, unitPrefix string) *SystemdMana
 		panic(err)
 	}
 
-	name := "fleet-" + machine.State().BootId + ".target"
+	name := "fleet-" + machine.State().BootID + ".target"
 	target := NewSystemdTarget(name)
 
 	mgr := &SystemdManager{systemd, target, machine, unitPrefix, defaultSystemdRuntimePath, systemd.NewSubscriptionSet(), nil}

@@ -11,7 +11,7 @@ type EventListener struct {
 
 func (self *EventListener) String() string {
 	if self.Context != nil {
-		return self.Context.State().BootId
+		return self.Context.State().BootID
 	} else {
 		return "N/A"
 	}

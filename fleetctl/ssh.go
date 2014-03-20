@@ -136,7 +136,7 @@ func findAddressInMachineList(lookup string) (string, bool) {
 
 	for i, _ := range states {
 		machState := states[i]
-		if !strings.HasPrefix(machState.BootId, lookup) {
+		if !strings.HasPrefix(machState.BootID, lookup) {
 			continue
 		} else if match != nil {
 			log.Fatalf("Found more than one Machine, be more specfic")
