@@ -85,7 +85,7 @@ func sshAgentClient() (*gossh.AgentClient, error) {
 	return gossh.NewAgentClient(agent), nil
 }
 
-func sshClientConfig(user string) (*gossh.ClientConfig, error) {
+func sshClientConfig(user string, checker gossh.HostKeyChecker) (*gossh.ClientConfig, error) {
 	agentClient, err := sshAgentClient()
 	if err != nil {
 		return nil, err
@@ -96,13 +96,14 @@ func sshClientConfig(user string) (*gossh.ClientConfig, error) {
 		Auth: []gossh.ClientAuth{
 			gossh.ClientAuthAgent(agentClient),
 		},
+		HostKeyChecker: checker,
 	}
 
 	return &cfg, nil
 }
 
-func NewSSHClient(user, addr string) (*gossh.ClientConn, error) {
-	clientConfig, err := sshClientConfig(user)
+func NewSSHClient(user, addr string, checker gossh.HostKeyChecker) (*gossh.ClientConn, error) {
+	clientConfig, err := sshClientConfig(user, checker)
 	if err != nil {
 		return nil, err
 	}
@@ -117,8 +118,8 @@ func NewSSHClient(user, addr string) (*gossh.ClientConn, error) {
 	return client, err
 }
 
-func NewTunnelledSSHClient(user, tunaddr, tgtaddr string) (*gossh.ClientConn, error) {
-	clientConfig, err := sshClientConfig(user)
+func NewTunnelledSSHClient(user, tunaddr, tgtaddr string, checker gossh.HostKeyChecker) (*gossh.ClientConn, error) {
+	clientConfig, err := sshClientConfig(user, checker)
 	if err != nil {
 		return nil, err
 	}

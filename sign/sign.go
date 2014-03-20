@@ -5,12 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"os/user"
-	"strings"
 
 	gossh "github.com/coreos/fleet/third_party/code.google.com/p/go.crypto/ssh"
 
 	"github.com/coreos/fleet/ssh"
+	"github.com/coreos/fleet/pkg"
 )
 
 const (
@@ -100,7 +99,7 @@ func NewSignatureVerifierFromKeyring(keyring gossh.ClientKeyring) (*SignatureVer
 
 // NewSignatureVerifierFromAuthorizedKeysFile return SignatureVerifier which uses authorized key file to verify
 func NewSignatureVerifierFromAuthorizedKeysFile(filepath string) (*SignatureVerifier, error) {
-	out, err := ioutil.ReadFile(parseFilepath(filepath))
+	out, err := ioutil.ReadFile(pkg.ParseFilepath(filepath))
 	if err != nil {
 		return nil, err
 	}
@@ -129,20 +128,6 @@ func (sv *SignatureVerifier) Verify(data []byte, s *SignatureSet) (bool, error) 
 	}
 
 	return false, nil
-}
-
-// get file path considering user home directory
-func parseFilepath(path string) string {
-	if strings.Index(path, "~") != 0 {
-		return path
-	}
-
-	usr, err := user.Current()
-	if err == nil {
-		path = strings.Replace(path, "~", usr.HomeDir, 1)
-	}
-
-	return path
 }
 
 func parseAuthorizedKeys(in []byte) ([]gossh.PublicKey, error) {

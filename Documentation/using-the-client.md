@@ -189,3 +189,11 @@ $ fleetctl ssh --unit hello.service
 \____/\____/_/   \___/\____//____/
 core@ip-172-31-5-250 ~ $
 ```
+
+### Known-hosts checking
+
+When connecting to a remote host, if the host was verified before it will compare the recorded key fingerprint with the one from this connection. If there is a mismatch between the fingerprints it will warn the user and exit. User should check the reason for difference on key, and delete the corresponded host line from known_hosts file to move forward.
+
+If the host was not recorded before, it will ask the user if they wish to accept the new fingerprint into the known-hosts list. It will build the connection with answer 'yes', or it will exit.
+
+The known_hosts file is located at `./.fleet/known_hosts` as default.

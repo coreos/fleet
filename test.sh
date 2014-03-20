@@ -3,7 +3,7 @@
 source ./build
 
 if [ -z "$PKG" ]; then
-    PKG="./agent ./config ./event ./fleetctl ./job ./machine ./registry ./sign ./unit ./integration-tests"
+    PKG="./agent ./config ./event ./fleetctl ./job ./machine ./pkg ./registry ./sign ./ssh ./unit ./integration-tests"
 fi
 
 # Unit tests

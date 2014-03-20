@@ -210,14 +210,6 @@ func TestBadVerify(t *testing.T) {
 	}
 }
 
-// TestParseFilepath tests parsing filepath
-func TestParseFilepath(t *testing.T) {
-	path := parseFilepath("~/")
-	if path[0] != '/' {
-		t.Fatal("fail to parse ~")
-	}
-}
-
 // TestBadMarshal tests incorrect marshal
 func TestBadMarshal(t *testing.T) {
 	c := make(chan bool)
