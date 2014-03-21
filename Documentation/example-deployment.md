@@ -76,7 +76,7 @@ X-ConditionMachineOf=subgun-http.1.service
 At this point, it is simple enough to hand the two unit files over to fleet:
 
 ```
-$ fleetctl submit subgun-presence.*.service subgun.*.service
+$ fleetctl submit subgun-presence.*.service subgun-http.*.service
 $ fleetctl list-units
 UNIT						LOAD	ACTIVE	SUB	DESC	MACHINE
 subgun-presence.1.service	-		-		-	-		-
@@ -90,7 +90,7 @@ subgun.3.service			-		-		-	-		-
 And now they can be started:
 
 ```
-$ fleetctl start subgun-presence.*.service subgun.*.service
+$ fleetctl start subgun-presence.*.service subgun-http.*.service
 $ fleetctl list-units
 UNIT						LOAD	ACTIVE	SUB		DESC	MACHINE
 subgun-presence.1.service	loaded	active	running	-		148a18ff...
