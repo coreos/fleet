@@ -21,10 +21,11 @@ import (
 const (
 	DefaultKnownHostsFile = "~/.fleetctl/known_hosts"
 
-	warningRemoteHostChanged = `@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-	@    WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED!     @
-	@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-	IT IS POSSIBLE THAT SOMEONE IS DOING SOMETHING NASTY!`
+	warningRemoteHostChanged =
+`@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+@    WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED!     @
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+IT IS POSSIBLE THAT SOMEONE IS DOING SOMETHING NASTY!`
 )
 
 var (
@@ -105,13 +106,13 @@ func (kc *HostKeyChecker) Check(addr string, remote net.Addr, algo string, keyBy
 
 	if hostKey.PublicKeyAlgo() != algo || bytes.Compare(hostKey.Marshal(), key.Marshal()) != 0 {
 		kc.errLog.Printf(`%s
-		Someone could be eavesdropping on you right now (man-in-the-middle attack)!
-		It is also possible that a host key has just been changed.
-		The fingerprint for the %v key sent by the remote host is
-		%v.
-		Please contact your system administrator.
-		Add correct host key in %v to get rid of this message.
-		Host key verification failed.%c`,
+Someone could be eavesdropping on you right now (man-in-the-middle attack)!
+It is also possible that a host key has just been changed.
+The fingerprint for the %v key sent by the remote host is
+%v.
+Please contact your system administrator.
+Add correct host key in %v to get rid of this message.
+Host key verification failed.%c`,
 		warningRemoteHostChanged, algoStr, keyFingerprintStr, kc.m.String(), '\n')
 
 		return ErrUnmatchKey
