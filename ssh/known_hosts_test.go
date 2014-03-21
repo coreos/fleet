@@ -7,7 +7,7 @@ import (
 	"os"
 	"testing"
 
-	gossh "github.com/coreos/fleet/third_party/code.google.com/p/go.crypto/ssh"
+	gossh "github.com/coreos/fleet/third_party/code.google.com/p/gosshnew/ssh"
 )
 
 const (
@@ -36,17 +36,13 @@ func TestHostKeyChecker(t *testing.T) {
 	addr, key, _ := parseHostLine([]byte(hostLine))
 	tcpAddr, _ := net.ResolveTCPAddr("tcp", addr)
 
-	if err := checker.Check("localhost", tcpAddr, key.PublicKeyAlgo(), gossh.MarshalPublicKey(key)); err != nil {
+	if err := checker.Check("localhost", tcpAddr, key); err != nil {
 		t.Fatalf("checker should succeed for %v: %v", tcpAddr.String(), err)
 	}
 
 	wrongKey, _, _, _, _ := gossh.ParseAuthorizedKey([]byte(wrongAuthorizedKey))
-	if err := checker.Check("localhost", tcpAddr, wrongKey.PublicKeyAlgo(), gossh.MarshalPublicKey(wrongKey)); err != ErrUnmatchKey {
+	if err := checker.Check("localhost", tcpAddr, wrongKey); err != ErrUnmatchKey {
 		t.Fatalf("checker should fail with %v", ErrUnmatchKey)
-	}
-
-	if err := checker.Check("localhost", tcpAddr, key.PublicKeyAlgo(), []byte("")); err != ErrUnparsableKey {
-		t.Fatalf("checker should fail with %v", ErrUnparsableKey)
 	}
 }
 
@@ -62,19 +58,19 @@ func TestHostKeyCheckerInteraction(t *testing.T) {
 	tcpAddr, _ := net.ResolveTCPAddr("tcp", addr)
 
 	// Refuse to add new host key
-	if err := checker.Check("localhost", tcpAddr, key.PublicKeyAlgo(), gossh.MarshalPublicKey(key)); err != ErrUntrustHost {
+	if err := checker.Check("localhost", tcpAddr, key); err != ErrUntrustHost {
 		t.Fatalf("checker should fail to put %v, %v in known_hosts", addr, tcpAddr.String())
 	}
 
 	// Accept to add new host key
 	checker.SetTrustHost(trustHostAlways)
-	if err := checker.Check("localhost", tcpAddr, key.PublicKeyAlgo(), gossh.MarshalPublicKey(key)); err != nil {
+	if err := checker.Check("localhost", tcpAddr, key); err != nil {
 		t.Fatalf("checker should succeed to put %v, %v in known_hosts", addr, tcpAddr.String())
 	}
 
 	// Use authorized key that have been added
 	checker.SetTrustHost(trustHostNever)
-	if err := checker.Check("localhost", tcpAddr, key.PublicKeyAlgo(), gossh.MarshalPublicKey(key)); err != nil {
+	if err := checker.Check("localhost", tcpAddr, key); err != nil {
 		t.Fatalf("checker should succeed to put %v, %v in known_hosts", addr, tcpAddr.String())
 	}
 }
@@ -85,8 +81,8 @@ func TestHostLine(t *testing.T) {
 	if addr != addrInHostLine {
 		t.Fatalf("addr is %v instead of %v", addr, addrInHostLine)
 	}
-	if key.PublicKeyAlgo() != gossh.KeyAlgoRSA {
-		t.Fatalf("key type is %v instead of %v", key.PublicKeyAlgo(), gossh.KeyAlgoRSA)
+	if key.Type() != gossh.KeyAlgoRSA {
+		t.Fatalf("key type is %v instead of %v", key.Type(), gossh.KeyAlgoRSA)
 	}
 
 	line := renderHostLine(addr, key)

@@ -13,7 +13,6 @@ import (
 	"strings"
 	"text/tabwriter"
 
-	gossh "github.com/coreos/fleet/third_party/code.google.com/p/go.crypto/ssh"
 	"github.com/coreos/fleet/third_party/github.com/codegangsta/cli"
 	"github.com/coreos/fleet/third_party/github.com/coreos/go-etcd/etcd"
 	"github.com/coreos/fleet/third_party/github.com/rakyll/globalconf"
@@ -79,7 +78,7 @@ func getRegistry() *registry.Registry {
 	return registry.New(client)
 }
 
-func getChecker() gossh.HostKeyChecker {
+func getChecker() *ssh.HostKeyChecker {
 	if !(*flagset.Lookup("strict-host-key-checking")).Value.(flag.Getter).Get().(bool) {
 		return nil
 	}

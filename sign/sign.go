@@ -1,14 +1,15 @@
 package sign
 
 import (
+	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
 
-	gossh "github.com/coreos/fleet/third_party/code.google.com/p/go.crypto/ssh"
+	gossh "github.com/coreos/fleet/third_party/code.google.com/p/gosshnew/ssh"
+	gosshagent "github.com/coreos/fleet/third_party/code.google.com/p/gosshnew/ssh/agent"
 
-	"github.com/coreos/fleet/ssh"
 	"github.com/coreos/fleet/pkg"
 )
 
@@ -16,26 +17,27 @@ const (
 	DefaultAuthorizedKeysFile = "~/.ssh/authorized_keys"
 )
 
+var (
+	ErrMalformedResp = errors.New("malformed signature response from agent client")
+)
+
 type SignatureSet struct {
-	Tag string
-	Signs [][]byte
+	Tag   string
+	Signs []*gossh.Signature
 }
 
 type SignatureCreator struct {
 	// keyring is used to sign data
-	keyring gossh.ClientKeyring
+	keyring gosshagent.Agent
 }
 
-func NewSignatureCreator(keyring gossh.ClientKeyring) *SignatureCreator {
+func NewSignatureCreator(keyring gosshagent.Agent) *SignatureCreator {
 	return &SignatureCreator{keyring}
 }
 
 // NewSignatureCreatorFromSSHAgent return SignatureCreator which uses ssh-agent to sign
 func NewSignatureCreatorFromSSHAgent() (*SignatureCreator, error) {
-	keyring, err := ssh.NewSSHAgentKeyring()
-	if err != nil {
-		return nil, err
-	}
+	keyring := gosshagent.NewKeyring()
 	return &SignatureCreator{keyring}, nil
 }
 
@@ -45,16 +47,19 @@ func (sc *SignatureCreator) Sign(tag string, data []byte) (*SignatureSet, error)
 		return nil, errors.New("signature creator is uninitialized")
 	}
 
-	sigs := make([][]byte, 0)
-	// Generate all possible signatures
-	for i := 0; ; i++ {
-		sig, err := sc.keyring.Sign(i, nil, data)
-		if err == ssh.ErrKeyOutofIndex {
-			break
-		}
+	sigs := make([]*gossh.Signature, 0)
+
+	keys, err := sc.keyring.List()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, k := range keys {
+		sig, err := sc.keyring.Sign(k, data)
 		if err != nil {
 			return nil, err
 		}
+
 		sigs = append(sigs, sig)
 	}
 
@@ -72,26 +77,21 @@ func NewSignatureVerifier() *SignatureVerifier {
 
 // NewSignatureVerifierFromSSHAgent return SignatureVerifier which uses ssh-agent to verify
 func NewSignatureVerifierFromSSHAgent() (*SignatureVerifier, error) {
-	keyring, err := ssh.NewSSHAgentKeyring()
-	if err != nil {
-		return nil, err
-	}
+	keyring := gosshagent.NewKeyring()
 	return NewSignatureVerifierFromKeyring(keyring)
 }
 
 // NewSignatureVerifierFromKeyring return SignatureVerifier which uses public keys fetched from keyring to verify
-func NewSignatureVerifierFromKeyring(keyring gossh.ClientKeyring) (*SignatureVerifier, error) {
+func NewSignatureVerifierFromKeyring(keyring gosshagent.Agent) (*SignatureVerifier, error) {
+	keys, err := keyring.List()
+	if err != nil {
+		return nil, err
+	}
 
-	pubkeys := make([]gossh.PublicKey, 0)
-	for i := 0; ; i++ {
-		pubkey, err := keyring.Key(i)
-		if err == ssh.ErrKeyOutofIndex {
-			break
-		}
-		if err != nil {
-			return nil, err
-		}
-		pubkeys = append(pubkeys, pubkey)
+	pubkeys := make([]gossh.PublicKey, len(keys))
+
+	for _, k := range keys {
+		pubkeys = append(pubkeys, k)
 	}
 
 	return &SignatureVerifier{pubkeys}, nil
@@ -120,8 +120,12 @@ func (sv *SignatureVerifier) Verify(data []byte, s *SignatureSet) (bool, error) 
 
 	// Enumerate all pairs to verify signatures
 	for _, authKey := range sv.pubkeys {
+		if authKey == nil {
+			continue
+		}
+
 		for _, sign := range s.Signs {
-			if authKey.Verify(data, sign) {
+			if err := authKey.Verify(data, sign); err == nil {
 				return true, nil
 			}
 		}
@@ -133,9 +137,9 @@ func (sv *SignatureVerifier) Verify(data []byte, s *SignatureSet) (bool, error) 
 func parseAuthorizedKeys(in []byte) ([]gossh.PublicKey, error) {
 	pubkeys := make([]gossh.PublicKey, 0)
 	for len(in) > 0 {
-		pubkey, _, _, rest, ok := gossh.ParseAuthorizedKey(in)
-		if !ok {
-			return nil, errors.New("fail to parse authorized key file")
+		pubkey, _, _, rest, err := gossh.ParseAuthorizedKey(in)
+		if err != nil {
+			return nil, err
 		}
 		in = rest
 
@@ -152,4 +156,16 @@ func marshal(obj interface{}) ([]byte, error) {
 	} else {
 		return nil, errors.New(fmt.Sprintf("Unable to JSON-serialize object: %s", err))
 	}
+}
+
+func parseString(in []byte) (out, rest []byte, ok bool) {
+	if len(in) < 4 {
+		return
+	}
+	// First 4-byte is the length of the field
+	length := binary.BigEndian.Uint32(in)
+	if uint32(len(in)) < length+4 {
+		return
+	}
+	return in[4 : length+4], in[length+4:], true
 }

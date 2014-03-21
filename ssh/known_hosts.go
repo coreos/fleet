@@ -13,7 +13,7 @@ import (
 	"path"
 	"strings"
 
-	gossh "github.com/coreos/fleet/third_party/code.google.com/p/go.crypto/ssh"
+	gossh "github.com/coreos/fleet/third_party/code.google.com/p/gosshnew/ssh"
 
 	"github.com/coreos/fleet/pkg"
 )
@@ -21,8 +21,7 @@ import (
 const (
 	DefaultKnownHostsFile = "~/.fleetctl/known_hosts"
 
-	warningRemoteHostChanged =
-`@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+	warningRemoteHostChanged = `@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 @    WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED!     @
 @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 IT IS POSSIBLE THAT SOMEONE IS DOING SOMETHING NASTY!`
@@ -42,7 +41,7 @@ type HostKeyChecker struct {
 	m         HostKeyManager
 	trustHost func(addr, algo, fingerprint string) bool
 	// errLog is used to print out error/warning message
-	errLog    *log.Logger
+	errLog *log.Logger
 }
 
 // NewHostKeyChecker returns new HostKeyChecker
@@ -67,19 +66,14 @@ func (kc *HostKeyChecker) SetTrustHost(trustHost func(addr, algo, fingerprint st
 // ssh.ParsePublicKey. The address before DNS resolution is
 // passed in the addr argument, so the key can also be checked
 // against the hostname.
-func (kc *HostKeyChecker) Check(addr string, remote net.Addr, algo string, keyByte []byte) error {
-	key, _, ok := gossh.ParsePublicKey(keyByte)
-	if !ok {
-		return ErrUnparsableKey
-	}
-
+func (kc *HostKeyChecker) Check(addr string, remote net.Addr, key gossh.PublicKey) error {
 	remoteAddr := remote.String()
-	algoStr := algoString(algo)
-	keyFingerprintStr := md5String(md5.Sum(keyByte))
+	algoStr := algoString(key.Type())
+	keyFingerprintStr := md5String(md5.Sum(key.Marshal()))
 
 	// get existing host keys
 	hostKeys, err := kc.m.GetHostKeys()
-	_, ok = err.(*os.PathError)
+	_, ok := err.(*os.PathError)
 	if err != nil && !ok {
 		kc.errLog.Println("Warning: read host file with", err)
 	}
@@ -104,7 +98,7 @@ func (kc *HostKeyChecker) Check(addr string, remote net.Addr, algo string, keyBy
 		return nil
 	}
 
-	if hostKey.PublicKeyAlgo() != algo || bytes.Compare(hostKey.Marshal(), key.Marshal()) != 0 {
+	if hostKey.Type() != key.Type() || bytes.Compare(hostKey.Marshal(), key.Marshal()) != 0 {
 		kc.errLog.Printf(`%s
 Someone could be eavesdropping on you right now (man-in-the-middle attack)!
 It is also possible that a host key has just been changed.
@@ -113,7 +107,7 @@ The fingerprint for the %v key sent by the remote host is
 Please contact your system administrator.
 Add correct host key in %v to get rid of this message.
 Host key verification failed.%c`,
-		warningRemoteHostChanged, algoStr, keyFingerprintStr, kc.m.String(), '\n')
+			warningRemoteHostChanged, algoStr, keyFingerprintStr, kc.m.String(), '\n')
 
 		return ErrUnmatchKey
 	}
@@ -192,9 +186,9 @@ func parseHostLine(line []byte) (string, gossh.PublicKey, error) {
 	}
 	addr := string(line[:end])
 	keyByte := line[end+1:]
-	key, _, _, _, ok := gossh.ParseAuthorizedKey(keyByte)
-	if !ok {
-		return "", nil, ErrUnparsableKey
+	key, _, _, _, err := gossh.ParseAuthorizedKey(keyByte)
+	if err != nil {
+		return "", nil, err
 	}
 	return addr, key, nil
 }
