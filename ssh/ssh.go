@@ -12,9 +12,39 @@ import (
 	"github.com/coreos/fleet/third_party/code.google.com/p/gosshnew/ssh/terminal"
 )
 
-func Execute(client *gossh.Client, cmd string) (*bufio.Reader, error) {
+type SSHForwardingClient struct {
+	agentForwarding bool
+	*gossh.Client
+}
+
+func (s *SSHForwardingClient) ForwardAgentAuthentication(session *gossh.Session) error {
+	if s.agentForwarding {
+		return gosshagent.RequestAgentForwarding(session)
+	}
+	return nil
+}
+
+func newSSHForwardingClient(client *gossh.Client, agentForwarding bool) (*SSHForwardingClient, error) {
+	a, err := sshAgentClient()
+	if err != nil {
+		return nil, err
+	}
+
+	err = gosshagent.ForwardToAgent(client, a)
+	if err != nil {
+		return nil, err
+	}
+
+	return &SSHForwardingClient{agentForwarding, client}, nil
+}
+
+func Execute(client *SSHForwardingClient, cmd string) (*bufio.Reader, error) {
 	session, err := client.NewSession()
 	if err != nil {
+		return nil, err
+	}
+
+	if err = client.ForwardAgentAuthentication(session); err != nil {
 		return nil, err
 	}
 
@@ -27,12 +57,16 @@ func Execute(client *gossh.Client, cmd string) (*bufio.Reader, error) {
 	return bstdout, nil
 }
 
-func Shell(client *gossh.Client) error {
+func Shell(client *SSHForwardingClient) error {
 	session, err := client.NewSession()
 	if err != nil {
 		return err
 	}
 	defer session.Close()
+
+	if err = client.ForwardAgentAuthentication(session); err != nil {
+		return err
+	}
 
 	modes := gossh.TerminalModes{
 		gossh.ECHO:          1,     // enable echoing
@@ -101,7 +135,7 @@ func sshClientConfig(user string, checker *HostKeyChecker) (*gossh.ClientConfig,
 	return &cfg, nil
 }
 
-func NewSSHClient(user, addr string, checker *HostKeyChecker) (*gossh.Client, error) {
+func NewSSHClient(user, addr string, checker *HostKeyChecker, agentForwarding bool) (*SSHForwardingClient, error) {
 	clientConfig, err := sshClientConfig(user, checker)
 	if err != nil {
 		return nil, err
@@ -114,10 +148,14 @@ func NewSSHClient(user, addr string, checker *HostKeyChecker) (*gossh.Client, er
 		echan <- err
 	}
 	err = timeoutSSHDial(dialFunc)
-	return client, err
+	if err != nil {
+		return nil, err
+	}
+
+	return newSSHForwardingClient(client, agentForwarding)
 }
 
-func NewTunnelledSSHClient(user, tunaddr, tgtaddr string, checker *HostKeyChecker) (*gossh.Client, error) {
+func NewTunnelledSSHClient(user, tunaddr, tgtaddr string, checker *HostKeyChecker, agentForwarding bool) (*SSHForwardingClient, error) {
 	clientConfig, err := sshClientConfig(user, checker)
 	if err != nil {
 		return nil, err
@@ -153,7 +191,7 @@ func NewTunnelledSSHClient(user, tunaddr, tgtaddr string, checker *HostKeyChecke
 	if err != nil {
 		return nil, err
 	}
-	return gossh.NewClient(c, chans, reqs), nil
+	return newSSHForwardingClient(gossh.NewClient(c, chans, reqs), agentForwarding)
 }
 
 func timeoutSSHDial(dial func(chan error)) error {
