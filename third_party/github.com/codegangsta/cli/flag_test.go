@@ -2,12 +2,13 @@ package cli_test
 
 import (
 	"github.com/coreos/fleet/third_party/github.com/codegangsta/cli"
+	"reflect"
 	"testing"
 )
 
 var boolFlagTests = []struct {
-	name		string
-	expected	string
+	name     string
+	expected string
 }{
 	{"help", "--help\t"},
 	{"h", "-h\t"},
@@ -26,8 +27,8 @@ func TestBoolFlagHelpOutput(t *testing.T) {
 }
 
 var stringFlagTests = []struct {
-	name		string
-	expected	string
+	name     string
+	expected string
 }{
 	{"help", "--help ''\t"},
 	{"h", "-h ''\t"},
@@ -46,8 +47,8 @@ func TestStringFlagHelpOutput(t *testing.T) {
 }
 
 var intFlagTests = []struct {
-	name		string
-	expected	string
+	name     string
+	expected string
 }{
 	{"help", "--help '0'\t"},
 	{"h", "-h '0'\t"},
@@ -66,8 +67,8 @@ func TestIntFlagHelpOutput(t *testing.T) {
 }
 
 var float64FlagTests = []struct {
-	name		string
-	expected	string
+	name     string
+	expected string
 }{
 	{"help", "--help '0'\t"},
 	{"h", "-h '0'\t"},
@@ -99,6 +100,22 @@ func TestParseMultiString(t *testing.T) {
 			}
 		},
 	}).Run([]string{"run", "-s", "10"})
+}
+
+func TestParseMultiStringSlice(t *testing.T) {
+	(&cli.App{
+		Flags: []cli.Flag{
+			cli.StringSliceFlag{Name: "serve, s", Value: &cli.StringSlice{}},
+		},
+		Action: func(ctx *cli.Context) {
+			if !reflect.DeepEqual(ctx.StringSlice("serve"), []string{"10", "20"}) {
+				t.Errorf("main name not set")
+			}
+			if !reflect.DeepEqual(ctx.StringSlice("s"), []string{"10", "20"}) {
+				t.Errorf("short name not set")
+			}
+		},
+	}).Run([]string{"run", "-s", "10", "-s", "20"})
 }
 
 func TestParseMultiInt(t *testing.T) {

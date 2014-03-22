@@ -24,6 +24,40 @@ func ExampleApp() {
 	// Hello Jeremy
 }
 
+func ExampleAppHelp() {
+	// set args for examples sake
+	os.Args = []string{"greet", "h", "describeit"}
+
+	app := cli.NewApp()
+	app.Name = "greet"
+	app.Flags = []cli.Flag{
+		cli.StringFlag{Name: "name", Value: "bob", Usage: "a name to say"},
+	}
+	app.Commands = []cli.Command{
+		{
+			Name: "describeit",
+			ShortName: "d",
+			Usage: "use it to see a description",
+			Description: "This is how we describe describeit the function",
+			Action: func(c *cli.Context) {
+				fmt.Printf("i like to describe things")
+			},
+		},
+	}
+	app.Run(os.Args)
+	// Output:
+	// NAME:
+	//    describeit - use it to see a description
+	//
+	// USAGE:
+	//    command describeit [command options] [arguments...]
+	//
+	// DESCRIPTION:
+	//    This is how we describe describeit the function
+	//
+	// OPTIONS:
+}
+
 func TestApp_Run(t *testing.T) {
 	s := ""
 
@@ -40,8 +74,8 @@ func TestApp_Run(t *testing.T) {
 }
 
 var commandAppTests = []struct {
-	name		string
-	expected	bool
+	name     string
+	expected bool
 }{
 	{"foobar", true},
 	{"batbaz", true},
@@ -70,7 +104,7 @@ func TestApp_CommandWithArgBeforeFlags(t *testing.T) {
 
 	app := cli.NewApp()
 	command := cli.Command{
-		Name:	"cmd",
+		Name: "cmd",
 		Flags: []cli.Flag{
 			cli.StringFlag{Name: "option", Value: "", Usage: "some option"},
 		},
@@ -109,7 +143,7 @@ func TestApp_ParseSliceFlags(t *testing.T) {
 
 	app := cli.NewApp()
 	command := cli.Command{
-		Name:	"cmd",
+		Name: "cmd",
 		Flags: []cli.Flag{
 			cli.IntSliceFlag{Name: "p", Value: &cli.IntSlice{}, Usage: "set one or more ip addr"},
 			cli.StringSliceFlag{Name: "ip", Value: &cli.StringSlice{}, Usage: "set one or more ports to open"},
@@ -179,7 +213,7 @@ func TestApp_BeforeFunc(t *testing.T) {
 
 	app.Commands = []cli.Command{
 		cli.Command{
-			Name:	"sub",
+			Name: "sub",
 			Action: func(c *cli.Context) {
 				subcommandRun = true
 			},
