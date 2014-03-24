@@ -145,6 +145,9 @@ func NewTunnelledSSHClient(user, tunaddr, tgtaddr string, checker *HostKeyChecke
 	}
 
 	c, chans, reqs, err := gossh.NewClientConn(targetConn, tgtaddr, clientConfig)
+	if err != nil {
+		return nil, err
+	}
 	return gossh.NewClient(c, chans, reqs), nil
 }
 
