@@ -38,7 +38,13 @@ func newSSHForwardingClient(client *gossh.Client, agentForwarding bool) (*SSHFor
 	return &SSHForwardingClient{agentForwarding, client}, nil
 }
 
-func Execute(client *SSHForwardingClient, cmd string) (*bufio.Reader, error) {
+type Channel struct {
+	Stdout *bufio.Reader
+	Stderr *bufio.Reader
+	Exit   chan error
+}
+
+func Execute(client *SSHForwardingClient, cmd string) (*Channel, error) {
 	session, err := client.NewSession()
 	if err != nil {
 		return nil, err
@@ -49,12 +55,23 @@ func Execute(client *SSHForwardingClient, cmd string) (*bufio.Reader, error) {
 	}
 
 	stdout, _ := session.StdoutPipe()
-	bstdout := bufio.NewReader(stdout)
+	stderr, _ := session.StderrPipe()
+
+	channel := &Channel{
+		bufio.NewReader(stdout),
+		bufio.NewReader(stderr),
+		make(chan error),
+	}
 
 	session.Start(cmd)
-	go session.Wait()
+	go func() {
+		err := session.Wait()
 
-	return bstdout, nil
+		channel.Exit <- err
+		session.Close()
+	}()
+
+	return channel, nil
 }
 
 func Shell(client *SSHForwardingClient) error {

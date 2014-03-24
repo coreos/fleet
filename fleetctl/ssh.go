@@ -3,9 +3,14 @@ package main
 import (
 	"errors"
 	"fmt"
+	"io"
 	"log"
+	"os"
+	"os/exec"
 	"strings"
+	"syscall"
 
+	gossh "github.com/coreos/fleet/third_party/code.google.com/p/gosshnew/ssh"
 	"github.com/coreos/fleet/third_party/github.com/codegangsta/cli"
 
 	"github.com/coreos/fleet/machine"
@@ -89,23 +94,12 @@ func sshAction(c *cli.Context) {
 
 	if len(args) > 0 {
 		cmd := strings.Join(args, " ")
-		stdout, err := ssh.Execute(sshClient, cmd)
+		channel, err := ssh.Execute(sshClient, cmd)
 		if err != nil {
 			log.Fatalf("Unable to run command over SSH: %s", err.Error())
 		}
 
-		for {
-			bytes, prefix, err := stdout.ReadLine()
-			if err != nil {
-				break
-			}
-
-			fmt.Print(string(bytes))
-			if !prefix {
-				fmt.Print("\n")
-			}
-		}
-
+		readSSHChannel(channel)
 	} else {
 		if err := ssh.Shell(sshClient); err != nil {
 			log.Fatalf(err.Error())
@@ -162,4 +156,45 @@ func findAddressInRunningUnits(lookup string) (string, bool) {
 		return "", false
 	}
 	return fmt.Sprintf("%s:22", js.MachineState.PublicIP), true
+}
+
+func readSSHChannel(channel *ssh.Channel) {
+	for {
+		select {
+		case exitErr := <-channel.Exit:
+			if exitErr == nil {
+				return
+			}
+
+			for {
+				bytes, err := channel.Stderr.ReadBytes('\n')
+				if err != nil {
+					break
+				}
+
+				fmt.Print(string(bytes))
+			}
+
+			exitStatus := -1
+			switch exitError := exitErr.(type) {
+			case *gossh.ExitError:
+				exitStatus = exitError.ExitStatus()
+			case *exec.ExitError:
+				status := exitError.Sys().(syscall.WaitStatus)
+				exitStatus = status.ExitStatus()
+			}
+
+			os.Exit(exitStatus)
+		default:
+			bytes, err := channel.Stdout.ReadBytes('\n')
+			if err != nil {
+				if err != io.EOF {
+					return // unknown error reading stdout, finishing.
+				}
+				break // let the exit channel to finish properly.
+			}
+
+			fmt.Print(string(bytes))
+		}
+	}
 }

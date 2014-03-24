@@ -65,20 +65,10 @@ func printUnitStatus(c *cli.Context, jobName string) {
 	defer sshClient.Close()
 
 	cmd := fmt.Sprintf("systemctl status -l %s", jobName)
-	stdout, err := ssh.Execute(sshClient, cmd)
+	channel, err := ssh.Execute(sshClient, cmd)
 	if err != nil {
 		log.Fatalf("Unable to execute command over SSH: %s", err.Error())
 	}
 
-	for true {
-		bytes, prefix, err := stdout.ReadLine()
-		if err != nil {
-			break
-		}
-
-		fmt.Print(string(bytes))
-		if !prefix {
-			fmt.Print("\n")
-		}
-	}
+	readSSHChannel(channel)
 }
