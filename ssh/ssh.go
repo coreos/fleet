@@ -136,7 +136,12 @@ func NewTunnelledSSHClient(user, tunaddr, tgtaddr string, checker *HostKeyChecke
 
 	var targetConn net.Conn
 	dialFunc = func(echan chan error) {
-		targetConn, err = tunnelClient.Dial("tcp", tgtaddr)
+		tgtTCPAddr, err := net.ResolveTCPAddr("tcp", tgtaddr)
+		if err != nil {
+			echan <- err
+			return
+		}
+		targetConn, err = tunnelClient.DialTCP("tcp", nil, tgtTCPAddr)
 		echan <- err
 	}
 	err = timeoutSSHDial(dialFunc)
