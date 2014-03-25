@@ -1,6 +1,7 @@
 package job
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/coreos/fleet/unit"
@@ -78,5 +79,65 @@ func TestJobPayloadConflictsNotProvided(t *testing.T) {
 
 	if len(conflicts) > 0 {
 		t.Fatalf("Expected no conflicts, received %v", conflicts)
+	}
+}
+
+func TestMapUnitContentsV0ToV1(t *testing.T) {
+	contents := map[string]map[string]string{
+		"key1": map[string]string{
+			"subkey1": "value1",
+			"subkey2": "value2",
+		},
+		"key2": map[string]string{
+			"subkey3": "value3",
+			"subkey4": "value4",
+		},
+	}
+
+	expected := map[string]map[string][]string{
+		"key1": map[string][]string{
+			"subkey1": []string{"value1"},
+			"subkey2": []string{"value2"},
+		},
+		"key2": map[string][]string{
+			"subkey3": []string{"value3"},
+			"subkey4": []string{"value4"},
+		},
+	}
+
+	actual := mapUnitContentsV0ToV1(contents)
+
+	if !reflect.DeepEqual(actual, expected) {
+		t.Fatalf("Map func did not produce expected output.\nActual=%v\nExpected=%v", actual, expected)
+	}
+}
+
+func TestMapUnitContentsV1ToV0(t *testing.T) {
+	contents := map[string]map[string][]string{
+		"key1": map[string][]string{
+			"subkey1": []string{"value1", "altvalue1"},
+			"subkey2": []string{"value2"},
+		},
+		"key2": map[string][]string{
+			"subkey3": []string{"value3"},
+			"subkey4": []string{"value4", "altvalue2"},
+		},
+	}
+
+	expected := map[string]map[string]string{
+		"key1": map[string]string{
+			"subkey1": "altvalue1",
+			"subkey2": "value2",
+		},
+		"key2": map[string]string{
+			"subkey3": "value3",
+			"subkey4": "altvalue2",
+		},
+	}
+
+	actual := mapUnitContentsV1ToV0(contents)
+
+	if !reflect.DeepEqual(actual, expected) {
+		t.Fatalf("Map func did not produce expected output.\nActual=%v\nExpected=%v", actual, expected)
 	}
 }

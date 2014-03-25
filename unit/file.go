@@ -6,25 +6,23 @@ import (
 )
 
 type SystemdUnitFile struct {
-	Contents map[string]map[string]string
+	Options map[string]map[string][]string
 }
 
-func (self *SystemdUnitFile) GetSection(section string) map[string]string {
-	result, ok := self.Contents[section]
-	if ok {
-		return result
+func (self *SystemdUnitFile) GetSection(name string) map[string][]string {
+	if options, ok := self.Options[name]; ok {
+		return options
 	} else {
-		return make(map[string]string, 0)
+		return make(map[string][]string, 0)
 	}
 }
 
-func (self *SystemdUnitFile) SetField(section string, key string, value string) {
-	_, ok := self.Contents[section]
-	if !ok {
-		self.Contents[section] = make(map[string]string, 0)
+func (self *SystemdUnitFile) ReplaceField(section string, key string, value string) {
+	if _, ok := self.Options[section]; !ok {
+		self.Options[section] = make(map[string][]string, 0)
 	}
 
-	self.Contents[section][key] = value
+	self.Options[section][key] = []string{value}
 }
 
 func (self *SystemdUnitFile) Requirements() map[string][]string {
@@ -41,35 +39,42 @@ func (self *SystemdUnitFile) Requirements() map[string][]string {
 			requirements[key] = make([]string, 0)
 		}
 
-		requirements[key] = append(requirements[key], value)
+		requirements[key] = value
 	}
+
 	return requirements
 }
 
 func (self *SystemdUnitFile) Description() string {
-	return self.GetSection("Unit")["Description"]
+	values, ok := self.GetSection("Unit")["Description"]
+	if ok && len(values) > 0 {
+		return values[0]
+	} else {
+		return ""
+	}
 }
 
-func (self *SystemdUnitFile) String() string {
-	var serialized string
-	for section, keyMap := range self.Contents {
+func (self *SystemdUnitFile) String() (serialized string) {
+	for section, options := range self.Options {
 		serialized += fmt.Sprintf("[%s]\n", section)
-		for key, value := range keyMap {
-			serialized += fmt.Sprintf("%s=%s\n", key, value)
+		for key, values := range options {
+			for _, val := range values {
+				serialized += fmt.Sprintf("%s=%s\n", key, val)
+			}
 		}
 		serialized += "\n"
 	}
-	return serialized
+	return
 }
 
-func NewSystemdUnitFile(Contents string) *SystemdUnitFile {
-	parsed := deserializeUnitFile(Contents)
-	return &SystemdUnitFile{parsed}
+func NewSystemdUnitFile(contents string) *SystemdUnitFile {
+	parsed := deserializeUnitFile(contents)
+	return &SystemdUnitFile{Options: parsed}
 }
 
-// This is dangerously simple and should be rewritten to match the spec
-func deserializeUnitFile(contents string) map[string]map[string]string {
-	sections := make(map[string]map[string]string, 0)
+// deserializeUnitFile is dangerously simple and should be rewritten to match the systemd unit file spec
+func deserializeUnitFile(contents string) map[string]map[string][]string {
+	sections := make(map[string]map[string][]string, 0)
 	var section string
 	for _, line := range strings.Split(contents, "\n") {
 		// Ignore commented-out lines
@@ -87,7 +92,7 @@ func deserializeUnitFile(contents string) map[string]map[string]string {
 		// Check for section
 		if strings.HasPrefix(line, "[") && strings.HasSuffix(line, "]") {
 			section = line[1:len(line)-1]
-			sections[section] = make(map[string]string, 0)
+			sections[section] = make(map[string][]string, 0)
 			continue
 		}
 
@@ -98,7 +103,11 @@ func deserializeUnitFile(contents string) map[string]map[string]string {
 			value := strings.Trim(parts[1], " ")
 
 			if len(section) > 0 {
-				sections[section][key] = value
+				if _, ok := sections[section][key]; !ok {
+					sections[section][key] = make([]string, 0)
+				}
+
+				sections[section][key] = append(sections[section][key], value)
 			}
 
 		}

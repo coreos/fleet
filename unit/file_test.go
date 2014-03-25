@@ -20,20 +20,20 @@ WantedBy=fleet-ping.target
 	unitFile := NewSystemdUnitFile(contents)
 
 	section := unitFile.GetSection("Unit")
-	if section["Description"] != "Foo" {
+	if section["Description"][0] != "Foo" {
 		t.Fatalf("Unit.Description is incorrect")
 	}
 
 	section = unitFile.GetSection("Service")
-	if section["ExecStart"] != "echo \"ping\";" {
+	if section["ExecStart"][0] != "echo \"ping\";" {
 		t.Fatalf("Service.ExecStart is incorrect")
 	}
-	if section["ExecStop"] != "echo \"pong\";" {
+	if section["ExecStop"][0] != "echo \"pong\";" {
 		t.Fatalf("Service.ExecStop is incorrect")
 	}
 
 	section = unitFile.GetSection("Install")
-	if section["WantedBy"] != "fleet-ping.target" {
+	if section["WantedBy"][0] != "fleet-ping.target" {
 		t.Fatalf("Install.WantedBy is incorrect")
 	}
 }
@@ -44,12 +44,17 @@ func TestSerializeDeserialize(t *testing.T) {
 Description = Foo
 `
 	deserialized := NewSystemdUnitFile(contents)
+	section := deserialized.GetSection("Unit")
+	if val, ok := section["Description"]; !ok || val[0] != "Foo" {
+		t.Errorf("Failed to persist data through serialize/deserialize: %v", val)
+	}
+
 	serialized := deserialized.String()
 	deserialized = NewSystemdUnitFile(serialized)
 
-	section := deserialized.GetSection("Unit")
-	if val, ok := section["Description"]; !ok || val != "Foo" {
-		t.Fatalf("Failed to persist data through serialize/deserialize")
+	section = deserialized.GetSection("Unit")
+	if val, ok := section["Description"]; !ok || val[0] != "Foo" {
+		t.Errorf("Failed to persist data through serialize/deserialize: %v", val)
 	}
 }
 
@@ -59,19 +64,19 @@ func TestSerializeDeserializeWithChanges(t *testing.T) {
 Description = Foo
 `
 	deserialized := NewSystemdUnitFile(contents)
-	deserialized.SetField("Unit", "Description", "Bar")
-	deserialized.SetField("NewSection", "Field", "Baz")
+	deserialized.ReplaceField("Unit", "Description", "Bar")
+	deserialized.ReplaceField("NewSection", "Field", "Baz")
 	serialized := deserialized.String()
 	deserialized = NewSystemdUnitFile(serialized)
 
 	section := deserialized.GetSection("Unit")
-	if val, ok := section["Description"]; !ok || val != "Bar" {
-		t.Fatalf("Failed to persist data through serialize/deserialize")
+	if val, ok := section["Description"]; !ok || val[0] != "Bar" {
+		t.Errorf("Failed to persist data through serialize/deserialize: %v", val)
 	}
 
 	section = deserialized.GetSection("NewSection")
-	if val, ok := section["Field"]; !ok || val != "Baz" {
-		t.Fatalf("Failed to persist data through serialize/deserialize")
+	if val, ok := section["Field"]; !ok || val[0] != "Baz" {
+		t.Errorf("Failed to persist data through serialize/deserialize: %v", val)
 	}
 }
 
@@ -97,20 +102,26 @@ X-Key=Value
 	}
 }
 
-func TestParseRequirementsMultipleValuesForKeyOverwrite(t *testing.T) {
+func TestParseRequirementsMultipleValuesForKeyStack(t *testing.T) {
 	contents := `
 [X-Fleet]
 X-Foo=Bar
 X-Foo=Baz
+X-Ping=Pong
+X-Ping=Pang
 `
 	unitFile := NewSystemdUnitFile(contents)
 	reqs := unitFile.Requirements()
-	if len(reqs) != 1 {
-		t.Fatalf("Incorrect number of requirements; got %d, expected 1", len(reqs))
+	if len(reqs) != 2 {
+		t.Fatalf("Received %d requirements, expected 2: %v", len(reqs), reqs)
 	}
 
-	if len(reqs["Foo"]) != 1 || reqs["Foo"][0] != "Baz" {
-		t.Fatalf("Incorrect value %q of requirement 'Foo'", reqs["Foo"])
+	if len(reqs["Foo"]) != 2 || reqs["Foo"][0] != "Bar" || reqs["Foo"][1] != "Baz" {
+		t.Fatalf("Incorrect value %v of requirement 'Foo'", reqs["Foo"])
+	}
+
+	if len(reqs["Ping"]) != 2 || reqs["Ping"][0] != "Pong" || reqs["Ping"][1] != "Pang" {
+		t.Fatalf("Incorrect value %v of requirement 'Ping'", reqs["Ping"])
 	}
 }
 
@@ -176,53 +187,53 @@ WantedBy=fleet-ping.target
 	}
 }
 
-func TestSetFieldNewSection(t *testing.T) {
+func TestReplaceFieldNewSection(t *testing.T) {
 	contents := `
 [Unit]
 Description = Foo
 `
 	unitFile := NewSystemdUnitFile(contents)
-	unitFile.SetField("NewSection", "Field", "Bar")
+	unitFile.ReplaceField("NewSection", "Field", "Bar")
 
 	section := unitFile.GetSection("NewSection")
-	if val, ok := section["Field"]; !ok || val != "Bar" {
+	if val, ok := section["Field"]; !ok || val[0] != "Bar" {
 		t.Fatalf("Failed to persist value in new section")
 	}
 }
 
-func TestSetFieldExistingSectionNewOption(t *testing.T) {
+func TestReplaceFieldExistingSectionNewOption(t *testing.T) {
 	contents := `
 [Unit]
 Description = Foo
 `
 	unitFile := NewSystemdUnitFile(contents)
-	unitFile.SetField("Unit", "Description", "Bar")
+	unitFile.ReplaceField("Unit", "Description", "Bar")
 
 	section := unitFile.GetSection("Unit")
-	if val, ok := section["Description"]; !ok || val != "Bar" {
+	if val, ok := section["Description"]; !ok || val[0] != "Bar" {
 		t.Fatalf("Failed to persist value in existing section")
 	}
 }
 
-func TestSetFieldExistingSectionExistingOption(t *testing.T) {
+func TestReplaceFieldExistingSectionExistingOption(t *testing.T) {
 	contents := `
 [Unit]
 Description = Foo
 `
 	unitFile := NewSystemdUnitFile(contents)
-	unitFile.SetField("Unit", "Field", "Baz")
+	unitFile.ReplaceField("Unit", "Field", "Baz")
 
 	section := unitFile.GetSection("Unit")
-	if val, ok := section["Field"]; !ok || val != "Baz" {
+	if val, ok := section["Field"]; !ok || val[0] != "Baz" {
 		t.Fatalf("Failed to persist value in existing section")
 	}
 }
 
-func TestSetFieldChangesPersist(t *testing.T) {
+func TestReplaceFieldChangesPersist(t *testing.T) {
 	contents := `
 [Unit]
 Description = Foo
 `
 	unitFile := NewSystemdUnitFile(contents)
-	unitFile.SetField("NewSection", "Field", "Baz")
+	unitFile.ReplaceField("NewSection", "Field", "Baz")
 }
