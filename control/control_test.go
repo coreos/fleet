@@ -7,7 +7,7 @@ import (
 
 type mockUniformMachineDB struct{}
 
-func (mumdb *mockUniformMachineDB) Spec(host HostID) (*MachineSpec, error) {
+func (mumdb *mockUniformMachineDB) Spec(host string) (*MachineSpec, error) {
 	return &MachineSpec{
 		// 8 cores
 		Cores: 800,
@@ -19,11 +19,11 @@ func (mumdb *mockUniformMachineDB) Spec(host HostID) (*MachineSpec, error) {
 }
 
 type mockHostAgent struct {
-	host   HostID
-	record map[string]HostID
+	host   string
+	record map[string]string
 }
 
-func (mag *mockHostAgent) RunJob(user UserID, jid JobID, spec *JobSpec) error {
+func (mag *mockHostAgent) RunJob(user string, jid string, spec *JobSpec) error {
 	mag.record[spec.Name] = mag.host
 	return nil
 }
@@ -39,18 +39,18 @@ func newTestJob(index int, cores int, mem int, disk int) *JobSpec {
 
 type mockEtcd struct {
 	jwhs   []*JobWithHost
-	hs     []HostID
-	record map[string]HostID
+	hs     []string
+	record map[string]string
 }
 
-func (metcd *mockEtcd) declareJob(spec *JobSpec, host HostID) {
+func (metcd *mockEtcd) declareJob(spec *JobSpec, host string) {
 	metcd.jwhs = append(metcd.jwhs, &JobWithHost{
 		Spec: spec,
 		Host: host,
 	})
 }
 
-func (metcd *mockEtcd) declareHost(host HostID) {
+func (metcd *mockEtcd) declareHost(host string) {
 	metcd.hs = append(metcd.hs, host)
 }
 
@@ -58,11 +58,11 @@ func (metcd *mockEtcd) AllJobs() ([]*JobWithHost, error) {
 	return metcd.jwhs, nil
 }
 
-func (metcd *mockEtcd) AllHosts() ([]HostID, error) {
+func (metcd *mockEtcd) AllHosts() ([]string, error) {
 	return metcd.hs, nil
 }
 
-func (metcd *mockEtcd) HostAgent(host HostID) (HostAgent, error) {
+func (metcd *mockEtcd) HostAgent(host string) (HostAgent, error) {
 	mag := &mockHostAgent{
 		host:   host,
 		record: metcd.record,
@@ -70,8 +70,19 @@ func (metcd *mockEtcd) HostAgent(host HostID) (HostAgent, error) {
 	return mag, nil
 }
 
+func (metcd *mockEtcd) HostsForJob(name string) ([]string, error) {
+	var r []string
+
+	for _, jwh := range metcd.jwhs {
+		if jwh.Spec.Name == name {
+			r = append(r, jwh.Host)
+		}
+	}
+	return r, nil
+}
+
 func TestControl(t *testing.T) {
-	record := make(map[string]HostID)
+	record := make(map[string]string)
 
 	etcd := &mockEtcd{
 		record: record,

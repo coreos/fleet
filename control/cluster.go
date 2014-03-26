@@ -2,7 +2,7 @@ package control
 
 import log "github.com/coreos/fleet/third_party/github.com/golang/glog"
 
-func (clus *cluster) jobScheduled(host HostID, spec *JobSpec) {
+func (clus *cluster) jobScheduled(host string, spec *JobSpec) {
 	m := clus.loads[host]
 	m.Cores += spec.CoresRequired
 	m.LocalDiskSpace += spec.LocalDiskSpaceRequired
@@ -10,7 +10,7 @@ func (clus *cluster) jobScheduled(host HostID, spec *JobSpec) {
 	clus.loads[host] = m
 }
 
-func (clus *cluster) jobDowned(host HostID, spec *JobSpec) {
+func (clus *cluster) jobDowned(host string, spec *JobSpec) {
 	m := clus.loads[host]
 	m.Cores -= spec.CoresRequired
 	m.LocalDiskSpace -= spec.LocalDiskSpaceRequired
@@ -18,21 +18,21 @@ func (clus *cluster) jobDowned(host HostID, spec *JobSpec) {
 	clus.loads[host] = m
 }
 
-func (clus *cluster) JobScheduled(user UserID, jid JobID, host HostID, spec *JobSpec) {
+func (clus *cluster) JobScheduled(user string, jid string, host string, spec *JobSpec) {
 	clus.mutex.Lock()
 	defer clus.mutex.Unlock()
 
 	clus.jobScheduled(host, spec)
 }
 
-func (clus *cluster) JobDowned(user UserID, jid JobID, host HostID, spec *JobSpec) {
+func (clus *cluster) JobDowned(user string, jid string, host string, spec *JobSpec) {
 	clus.mutex.Lock()
 	defer clus.mutex.Unlock()
 
 	clus.jobDowned(host, spec)
 }
 
-func (clus *cluster) HostDown(host HostID) {
+func (clus *cluster) HostDown(host string) {
 	clus.mutex.Lock()
 	defer clus.mutex.Unlock()
 

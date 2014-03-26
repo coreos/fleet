@@ -7,16 +7,20 @@ import (
 	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
 )
 
+const (
+	numberOfAttemptsToSchedule = 5
+)
+
 type candHost struct {
 	mem   float64
 	disk  float64
 	cores float64
-	host  HostID
+	host  string
 }
 
 type cluster struct {
 	mutex    sync.Mutex
-	loads    map[HostID]MachineSpec
+	loads    map[string]MachineSpec
 	mdb      MachineDB
 	etcd     Etcd
 	strategy bestFitScoreMethod
@@ -36,7 +40,7 @@ func (clus *cluster) populate() error {
 		return err
 	}
 
-	clus.loads = make(map[HostID]MachineSpec)
+	clus.loads = make(map[string]MachineSpec)
 
 	var noLoad MachineSpec
 
@@ -63,7 +67,7 @@ func NewJobControl(etcd Etcd, mdb MachineDB) (JobControl, error) {
 	return clus, nil
 }
 
-func (clus *cluster) ScheduleJob(user UserID, spec *JobSpec) (JobID, error) {
+func (clus *cluster) ScheduleJob(user string, spec *JobSpec) (string, error) {
 	lhs, err := clus.candidates(spec)
 	if err != nil {
 		return "", err
@@ -80,7 +84,14 @@ func (clus *cluster) ScheduleJob(user UserID, spec *JobSpec) (JobID, error) {
 
 	lhs = strategies[clus.strategy](lhs)
 
-	jid := JobID(uuid.New())
+	n := numberOfAttemptsToSchedule
+	if n > len(lhs) {
+		n = len(lhs)
+	}
+
+	lhs = lhs[:n]
+
+	jid := string(uuid.New())
 
 	for _, h := range lhs {
 		ag, err := clus.etcd.HostAgent(h.host)

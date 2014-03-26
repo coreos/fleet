@@ -19,18 +19,14 @@ type MachineSpec struct {
 	LocalDiskSpace int
 }
 
-type HostID string
-type JobID string
-type UserID string
-
 type JobSpec struct {
 	// jobs are identified by name
 	Name string
 	// requires to run on a specific machine
-	RequiresHost HostID
+	RequiresHost string
 	// slice of job names that already need to run on the same machine
 	// dependency graph needs to be acyclic (otherwise it's unschedulable)
-	DependsOn []JobSpec
+	DependsOn []string
 	// slice of job name glob patterns that are not allowed to run on the same machine
 	ConflictsWith []string
 	// how much memory job requires, in MB
@@ -44,41 +40,44 @@ type JobSpec struct {
 }
 
 type JobControl interface {
-	ScheduleJob(user UserID, spec *JobSpec) (JobID, error)
+	// returns a unique job id for the scheduled job
+	ScheduleJob(user string, spec *JobSpec) (string, error)
 
 	// a job control needs to listen to these three events in the cluster
 	// to function properly. somebody needs to watch etcd and feed them into
 	// this job control
-	JobScheduled(user UserID, jid JobID, host HostID, spec *JobSpec)
-	JobDowned(user UserID, jid JobID, host HostID, spec *JobSpec)
-	HostDown(host HostID)
+	JobScheduled(user string, jid string, host string, spec *JobSpec)
+	JobDowned(user string, jid string, host string, spec *JobSpec)
+	HostDown(host string)
 }
 
 // A particular job with the user and host under which it runs
 type JobWithHost struct {
 	Spec *JobSpec
-	Host HostID
-	Jid  JobID
-	User UserID
+	Host string
+	Jid  string
+	User string
 }
 
 // An agent knows how to start and run a job. Each host in the cluster runs an agent
 type HostAgent interface {
-	RunJob(user UserID, jid JobID, spec *JobSpec) error
+	RunJob(user string, jid string, spec *JobSpec) error
 }
 
 // Knows the specs of all the machines in the cluster
 type MachineDB interface {
-	Spec(host HostID) (*MachineSpec, error)
+	Spec(host string) (*MachineSpec, error)
 }
 
 // This interface specifies what job control will ask etcd
 type Etcd interface {
 	// Give me all the currently active hosts
 	// (hosts that have an agent running, maintaining heartbeat with etcd)
-	AllHosts() ([]HostID, error)
+	AllHosts() ([]string, error)
 	// Give me all the jobs running in the cluster right now
 	AllJobs() ([]*JobWithHost, error)
 	// Give me an agent for the specified host
-	HostAgent(host HostID) (HostAgent, error)
+	HostAgent(host string) (HostAgent, error)
+	// Give me all hosts running jobs with specified name
+	HostsForJob(name string) ([]string, error)
 }
