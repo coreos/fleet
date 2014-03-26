@@ -33,6 +33,11 @@ func CurrentState() MachineState {
 	return MachineState{bootID, publicIP, make(map[string]string, 0)}
 }
 
+// IsLocalMachineState checks whether machine state matches the state of local machine
+func IsLocalMachineState(ms *MachineState) bool {
+	return ms.BootID == readLocalBootID()
+}
+
 func readLocalBootID() string {
 	id, err := ioutil.ReadFile(bootIDPath)
 	if err != nil {
