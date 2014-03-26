@@ -1,12 +1,16 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"log"
+	"os/exec"
+	"strings"
 	"syscall"
 
 	"github.com/coreos/fleet/third_party/github.com/codegangsta/cli"
 
+	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/ssh"
 )
 
@@ -44,32 +48,64 @@ func journalAction(c *cli.Context) {
 		syscall.Exit(1)
 	}
 
-	addr := fmt.Sprintf("%s:22", js.MachineState.PublicIP)
+	cmd := fmt.Sprintf("journalctl -u %s --no-pager -l -n %d", jobName, c.Int("lines"))
+	if c.Bool("follow") {
+		cmd += " -f"
+	}
 
+	// check if the job is running on this machine
+	var out *bufio.Reader
 	var err error
+	if machine.IsLocalMachineState(js.MachineState) {
+		out = runLocalCommand(cmd)
+	} else {
+		out, err = runRemoteCommand(cmd, js.MachineState.PublicIP)
+		if err != nil {
+			log.Fatalf("Unable to run command over SSH: %v", err)
+		}
+	}
+
+	readAllLines(out)
+}
+
+func runLocalCommand(cmd string) *bufio.Reader {
+	cmdSlice := strings.Split(cmd, " ")
+	osCmd := exec.Command(cmdSlice[0], cmdSlice[1:]...)
+	stdout, _ := osCmd.StdoutPipe()
+	bstdout := bufio.NewReader(stdout)
+
+	osCmd.Start()
+	go osCmd.Wait()
+
+	return bstdout
+}
+
+func runRemoteCommand(cmd string, ip string) (*bufio.Reader, error) {
+	addr := fmt.Sprintf("%s:22", ip)
+
 	var sshClient *ssh.SSHForwardingClient
+	var err error
 	if tun := getTunnelFlag(); tun != "" {
 		sshClient, err = ssh.NewTunnelledSSHClient("core", tun, addr, getChecker(), false)
 	} else {
 		sshClient, err = ssh.NewSSHClient("core", addr, getChecker(), false)
 	}
 	if err != nil {
-		log.Fatal(err.Error())
+		return nil, err
 	}
 
 	defer sshClient.Close()
 
-	cmd := fmt.Sprintf("journalctl -u %s --no-pager -l -n %d", jobName, c.Int("lines"))
-	if c.Bool("follow") {
-		cmd += " -f"
-	}
 	stdout, err := ssh.Execute(sshClient, cmd)
 	if err != nil {
-		log.Fatalf("Unable to run command over SSH: %s", err.Error())
+		return nil, err
 	}
+	return stdout, nil
+}
 
+func readAllLines(r *bufio.Reader) {
 	for true {
-		bytes, prefix, err := stdout.ReadLine()
+		bytes, prefix, err := r.ReadLine()
 		if err != nil {
 			break
 		}
