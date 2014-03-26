@@ -6,7 +6,6 @@ import (
 	"log"
 	"strings"
 
-	gossh "github.com/coreos/fleet/third_party/code.google.com/p/gosshnew/ssh"
 	"github.com/coreos/fleet/third_party/github.com/codegangsta/cli"
 
 	"github.com/coreos/fleet/machine"
@@ -26,6 +25,9 @@ Open a shell from your laptop, to the machine running a specific unit, using a
 cluster member as a bastion host:
 fleetctl --tunnel 10.10.10.10 ssh foo.service
 
+Open a shell on a machine and forward the authentication agent connection:
+fleetctl ssh -A 2444264c-eac2-4eff-a490-32d5e5e4af24
+
 Tip: fleetctl tries to detect whether your first argument is a machine or a unit. To skip this check use the flags "-m" and "-u".
 
 Pro-Tip: Create an alias for --tunnel:
@@ -34,6 +36,7 @@ Now you can run all fleet commands locally.`,
 		Flags: []cli.Flag{
 			cli.StringFlag{"machine, m", "", "Open SSH connection to a specific machine."},
 			cli.StringFlag{"unit, u", "", "Open SSH connection to machine running provided unit."},
+			cli.BoolFlag{"agent, A", "Enable SSH forwarding of the authentication agent connection."},
 		},
 		Action: sshAction,
 	}
@@ -69,11 +72,13 @@ func sshAction(c *cli.Context) {
 		log.Fatalf("Requested machine could not be found")
 	}
 
-	var sshClient *gossh.Client
+	agentForwarding := c.Bool("agent")
+
+	var sshClient *ssh.SSHForwardingClient
 	if tun := getTunnelFlag(); tun != "" {
-		sshClient, err = ssh.NewTunnelledSSHClient("core", tun, addr, getChecker())
+		sshClient, err = ssh.NewTunnelledSSHClient("core", tun, addr, getChecker(), agentForwarding)
 	} else {
-		sshClient, err = ssh.NewSSHClient("core", addr, getChecker())
+		sshClient, err = ssh.NewSSHClient("core", addr, getChecker(), agentForwarding)
 	}
 	if err != nil {
 		log.Fatal(err.Error())

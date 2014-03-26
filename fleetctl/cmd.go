@@ -52,7 +52,7 @@ func getRegistry() *registry.Registry {
 	client := etcd.NewClient(machines)
 
 	if tun != "" {
-		sshClient, err := ssh.NewSSHClient("core", tun, getChecker())
+		sshClient, err := ssh.NewSSHClient("core", tun, getChecker(), false)
 		if err != nil {
 			log.Fatalf("Failed initializing SSH client: %v", err)
 		}

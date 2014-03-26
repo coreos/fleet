@@ -6,7 +6,6 @@ import (
 	"path"
 	"syscall"
 
-	gossh "github.com/coreos/fleet/third_party/code.google.com/p/gosshnew/ssh"
 	"github.com/coreos/fleet/third_party/github.com/codegangsta/cli"
 
 	"github.com/coreos/fleet/ssh"
@@ -52,12 +51,12 @@ func printUnitStatus(c *cli.Context, jobName string) {
 	addr := fmt.Sprintf("%s:22", js.MachineState.PublicIP)
 
 	var err error
-	var sshClient *gossh.Client
+	var sshClient *ssh.SSHForwardingClient
 
 	if tun := getTunnelFlag(); tun != "" {
-		sshClient, err = ssh.NewTunnelledSSHClient("core", tun, addr, getChecker())
+		sshClient, err = ssh.NewTunnelledSSHClient("core", tun, addr, getChecker(), false)
 	} else {
-		sshClient, err = ssh.NewSSHClient("core", addr, getChecker())
+		sshClient, err = ssh.NewSSHClient("core", addr, getChecker(), false)
 	}
 	if err != nil {
 		log.Fatal(err.Error())
