@@ -49,6 +49,7 @@ type JobControl interface {
 	JobScheduled(user string, jid string, host string, spec *JobSpec)
 	JobDowned(user string, jid string, host string, spec *JobSpec)
 	HostDown(host string)
+	HostUp(host string)
 }
 
 // A particular job with the user and host under which it runs
