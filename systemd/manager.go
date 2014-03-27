@@ -110,7 +110,7 @@ func (m *SystemdManager) getUnitsByTarget(target *SystemdTarget) []SystemdUnit {
 }
 
 func (m *SystemdManager) StartJob(job *job.Job) {
-	job.Payload.Unit.SetField("Install", "WantedBy", m.Target.Name())
+	job.Payload.Unit.ReplaceField("Install", "WantedBy", m.Target.Name())
 
 	name := m.addUnitNamePrefix(job.Name)
 	m.writeUnit(name, job.Payload.Unit.String())
