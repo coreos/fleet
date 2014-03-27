@@ -94,7 +94,7 @@ func (r *Registry) GetJobTarget(jobName string) *machine.MachineState {
 		return nil
 	}
 
-	return &machine.MachineState{resp.Node.Value, "", make(map[string]string, 0)}
+	return &machine.MachineState{BootID: resp.Node.Value, PublicIP: "", Metadata: make(map[string]string, 0)}
 }
 
 func (r *Registry) GetJob(jobName string) *job.Job {
@@ -209,7 +209,7 @@ func filterEventJobScheduled(resp *etcd.Response) *event.Event {
 		return nil
 	}
 
-	mach := machine.MachineState{resp.Node.Value, "", make(map[string]string, 0)}
+	mach := machine.MachineState{BootID: resp.Node.Value, PublicIP: "", Metadata: make(map[string]string, 0)}
 	jobName := path.Base(strings.TrimSuffix(dir, "/"))
 
 	return &event.Event{"EventJobScheduled", jobName, mach}

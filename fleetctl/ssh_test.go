@@ -8,15 +8,16 @@ import (
 )
 
 func newTestRegistryForSsh() Registry {
-	m1 := machine.MachineState{"c31e44e1-f858-436e-933e-59c642517860", "1.2.3.4", map[string]string{"ping": "pong"}}
-	m2 := machine.MachineState{"595989bb-cbb7-49ce-8726-722d6e157b4e", "5.6.7.8", map[string]string{"foo": "bar"}}
-	m3 := machine.MachineState{"hello.service", "8.7.6.5", map[string]string{"foo": "bar"}}
-	machines := []machine.MachineState{m1, m2, m3}
+	machines := []machine.MachineState{
+		machine.MachineState{"c31e44e1-f858-436e-933e-59c642517860", "1.2.3.4", map[string]string{"ping": "pong"}, ""},
+		machine.MachineState{"595989bb-cbb7-49ce-8726-722d6e157b4e", "5.6.7.8", map[string]string{"foo": "bar"}, ""},
+		machine.MachineState{"hello.service", "8.7.6.5", map[string]string{"foo": "bar"}, ""},
+}
 
 	states := map[string]*job.JobState{
-		"j1":            job.NewJobState("loaded", "active", "listening", []string{}, &m1),
-		"j2":            job.NewJobState("loaded", "inactive", "dead", []string{}, &m2),
-		"hello.service": job.NewJobState("loaded", "inactive", "dead", []string{}, &m3),
+		"j1":            job.NewJobState("loaded", "active", "listening", []string{}, &machines[0]),
+		"j2":            job.NewJobState("loaded", "inactive", "dead", []string{}, &machines[1]),
+		"hello.service": job.NewJobState("loaded", "inactive", "dead", []string{}, &machines[2]),
 	}
 
 	return TestRegistry{machines: machines, jobStates: states}
