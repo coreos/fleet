@@ -16,10 +16,6 @@ type SystemdSocket struct {
 	name	string
 }
 
-func NewSystemdSocket(manager *SystemdManager, name string) *SystemdSocket {
-	return &SystemdSocket{manager, name}
-}
-
 func (ss *SystemdSocket) Name() string {
 	return ss.name
 }
@@ -30,7 +26,7 @@ func (ss *SystemdSocket) State() (string, string, string, []string, error) {
 		return "", "", "", nil, err
 	}
 
-	payload, _ := ss.Payload()
+	payload, _ := ss.payload()
 	sockets := parseSocketFile(payload)
 	sockStrings := []string{}
 	for _, sock := range sockets {
@@ -40,7 +36,7 @@ func (ss *SystemdSocket) State() (string, string, string, []string, error) {
 	return loadState, activeState, subState, sockStrings, nil
 }
 
-func (ss *SystemdSocket) Payload() (string, error) {
+func (ss *SystemdSocket) payload() (string, error) {
 	return ss.manager.readUnit(ss.Name())
 }
 

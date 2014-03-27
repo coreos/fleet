@@ -17,7 +17,3 @@ func (st *SystemdTarget) State() (string, string, string, []string, error) {
 	// targets today.
 	return "masked", "inactive", "dead", []string{}, nil
 }
-
-func (st *SystemdTarget) Payload() (string, error) {
-	return "", nil
-}

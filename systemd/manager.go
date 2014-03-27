@@ -74,19 +74,6 @@ func (m *SystemdManager) Publish(bus *event.EventBus, stopchan chan bool) {
 	m.Systemd.Unsubscribe()
 }
 
-func (m *SystemdManager) getUnitByName(name string) (*SystemdUnit, error) {
-	var unit SystemdUnit
-	if strings.HasSuffix(name, ".service") {
-		unit = NewSystemdService(m, name)
-	} else if strings.HasSuffix(name, ".socket") {
-		unit = NewSystemdSocket(m, name)
-	} else {
-		panic("WAT")
-	}
-
-	return &unit, nil
-}
-
 func (m *SystemdManager) StartJob(job *job.Job) {
 	name := m.addUnitNamePrefix(job.Name)
 	m.writeUnit(name, job.Payload.Unit.String())

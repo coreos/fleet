@@ -5,10 +5,6 @@ type SystemdService struct {
 	name    string
 }
 
-func NewSystemdService(manager *SystemdManager, name string) *SystemdService {
-	return &SystemdService{manager, name}
-}
-
 func (ss *SystemdService) Name() string {
 	return ss.name
 }
@@ -20,8 +16,4 @@ func (ss *SystemdService) State() (string, string, string, []string, error) {
 	}
 
 	return loadState, activeState, subState, make([]string, 0), nil
-}
-
-func (ss *SystemdService) Payload() (string, error) {
-	return ss.manager.readUnit(ss.Name())
 }
