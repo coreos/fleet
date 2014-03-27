@@ -45,28 +45,6 @@ Description = Foo
 	}
 }
 
-func TestSerializeDeserializeWithChanges(t *testing.T) {
-	contents := `
-[Unit]
-Description = Foo
-`
-	deserialized := NewSystemdUnitFile(contents)
-	deserialized.SetField("Unit", "Description", "Bar")
-	deserialized.SetField("NewSection", "Field", "Baz")
-	serialized := deserialized.String()
-	deserialized = NewSystemdUnitFile(serialized)
-
-	section := deserialized.GetSection("Unit")
-	if val, ok := section["Description"]; !ok || val != "Bar" {
-		t.Fatalf("Failed to persist data through serialize/deserialize")
-	}
-
-	section = deserialized.GetSection("NewSection")
-	if val, ok := section["Field"]; !ok || val != "Baz" {
-		t.Fatalf("Failed to persist data through serialize/deserialize")
-	}
-}
-
 func TestParseRequirements(t *testing.T) {
 	contents := `
 [X-Fleet]
@@ -160,55 +138,4 @@ ExecStop=echo "pong";
 	if unitFile.Description() != "" {
 		t.Fatalf("Unit.Description is incorrect")
 	}
-}
-
-func TestSetFieldNewSection(t *testing.T) {
-	contents := `
-[Unit]
-Description = Foo
-`
-	unitFile := NewSystemdUnitFile(contents)
-	unitFile.SetField("NewSection", "Field", "Bar")
-
-	section := unitFile.GetSection("NewSection")
-	if val, ok := section["Field"]; !ok || val != "Bar" {
-		t.Fatalf("Failed to persist value in new section")
-	}
-}
-
-func TestSetFieldExistingSectionNewOption(t *testing.T) {
-	contents := `
-[Unit]
-Description = Foo
-`
-	unitFile := NewSystemdUnitFile(contents)
-	unitFile.SetField("Unit", "Description", "Bar")
-
-	section := unitFile.GetSection("Unit")
-	if val, ok := section["Description"]; !ok || val != "Bar" {
-		t.Fatalf("Failed to persist value in existing section")
-	}
-}
-
-func TestSetFieldExistingSectionExistingOption(t *testing.T) {
-	contents := `
-[Unit]
-Description = Foo
-`
-	unitFile := NewSystemdUnitFile(contents)
-	unitFile.SetField("Unit", "Field", "Baz")
-
-	section := unitFile.GetSection("Unit")
-	if val, ok := section["Field"]; !ok || val != "Baz" {
-		t.Fatalf("Failed to persist value in existing section")
-	}
-}
-
-func TestSetFieldChangesPersist(t *testing.T) {
-	contents := `
-[Unit]
-Description = Foo
-`
-	unitFile := NewSystemdUnitFile(contents)
-	unitFile.SetField("NewSection", "Field", "Baz")
 }
