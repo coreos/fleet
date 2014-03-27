@@ -87,31 +87,7 @@ func (m *SystemdManager) getUnitByName(name string) (*SystemdUnit, error) {
 	return &unit, nil
 }
 
-func (m *SystemdManager) getUnitsByTarget(target *SystemdTarget) []SystemdUnit {
-	info, err := m.Systemd.GetUnitProperties(target.Name())
-
-	if err != nil {
-		panic(err)
-	}
-
-	names := info["Wants"].([]string)
-
-	var units []SystemdUnit
-	for _, name := range names {
-		unit, err := m.getUnitByName(name)
-		if err == nil {
-			units = append(units, *unit)
-		} else {
-			log.V(1).Infof("Unit %s seems to exist, yet unable to get corresponding SystemdUnit object", name)
-		}
-	}
-
-	return units
-}
-
 func (m *SystemdManager) StartJob(job *job.Job) {
-	job.Payload.Unit.SetField("Install", "WantedBy", m.Target.Name())
-
 	name := m.addUnitNamePrefix(job.Name)
 	m.writeUnit(name, job.Payload.Unit.String())
 	m.daemonReload()

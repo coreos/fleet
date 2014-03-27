@@ -18,15 +18,6 @@ func (self *SystemdUnitFile) GetSection(section string) map[string]string {
 	}
 }
 
-func (self *SystemdUnitFile) SetField(section string, key string, value string) {
-	_, ok := self.Contents[section]
-	if !ok {
-		self.Contents[section] = make(map[string]string, 0)
-	}
-
-	self.Contents[section][key] = value
-}
-
 func (self *SystemdUnitFile) Requirements() map[string][]string {
 	requirements := make(map[string][]string, 0)
 	for key, value := range self.GetSection("X-Fleet") {
