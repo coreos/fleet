@@ -12,9 +12,6 @@ Description = Foo
 [Service]
 ExecStart=echo "ping";
 ExecStop=echo "pong";
-
-[Install]
-WantedBy=fleet-ping.target
 `
 
 	unitFile := NewSystemdUnitFile(contents)
@@ -30,11 +27,6 @@ WantedBy=fleet-ping.target
 	}
 	if section["ExecStop"] != "echo \"pong\";" {
 		t.Fatalf("Service.ExecStop is incorrect")
-	}
-
-	section = unitFile.GetSection("Install")
-	if section["WantedBy"] != "fleet-ping.target" {
-		t.Fatalf("Install.WantedBy is incorrect")
 	}
 }
 
@@ -147,9 +139,6 @@ Description = Foo
 [Service]
 ExecStart=echo "ping";
 ExecStop=echo "pong";
-
-[Install]
-WantedBy=fleet-ping.target
 `
 
 	unitFile := NewSystemdUnitFile(contents)
@@ -165,9 +154,6 @@ func TestDescriptionNotDefined(t *testing.T) {
 [Service]
 ExecStart=echo "ping";
 ExecStop=echo "pong";
-
-[Install]
-WantedBy=fleet-ping.target
 `
 
 	unitFile := NewSystemdUnitFile(contents)

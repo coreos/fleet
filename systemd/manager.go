@@ -88,8 +88,6 @@ func (m *SystemdManager) getUnitByName(name string) (*SystemdUnit, error) {
 }
 
 func (m *SystemdManager) StartJob(job *job.Job) {
-	job.Payload.Unit.SetField("Install", "WantedBy", m.Target.Name())
-
 	name := m.addUnitNamePrefix(job.Name)
 	m.writeUnit(name, job.Payload.Unit.String())
 	m.daemonReload()
