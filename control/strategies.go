@@ -6,6 +6,9 @@ import (
 )
 
 // best fit: put job on machine with "smallest available hole"
+// heuristic for this: best fit preserves machine space for
+// subsequent larger jobs that in other strategies would face
+// fragmentation and cannot be scheduled
 
 // how to compute the hole size
 type bestFitScoreMethod int

@@ -1,6 +1,8 @@
 package control
 
 import (
+	"fmt"
+	"sort"
 	"strings"
 	"testing"
 )
@@ -50,56 +52,46 @@ func TestIntersect(t *testing.T) {
 	testIntersect([]string{"a", "b", "c"}, []string{"a", "f", "g", "h", "i"}, []string{"a"}, t)
 }
 
-func testHostsRunningAllJobs(clus *cluster, jobNames []string, expected []string, t *testing.T) {
-	hosts, err := clus.hostsRunningAllJobs(jobNames)
-	if err != nil {
-		t.Fatalf("couldn't execute hostsRunningAllJobs: %v", err)
-	}
+func testHostsRunningAllJobs(jobs2hosts map[string][]string, jobNames []string, expected []string, t *testing.T) {
+	hosts := hostsRunningAllJobs(jobNames, jobs2hosts)
 
 	if !equals(hosts, expected) {
 		t.Errorf("hostsRunningAllJobs: %s, expected %s, got %s", toS(jobNames), toS(expected), toS(hosts))
 	}
 }
 
+func declareJob(jobs2hosts map[string][]string, job, host int) {
+	jobName := fmt.Sprintf("job%d", job)
+	hostName := fmt.Sprintf("host%d", host)
+
+	jobs2hosts[jobName] = append(jobs2hosts[jobName], hostName)
+}
+
 func TestHostsRunningAllJobs(t *testing.T) {
-	record := make(map[string]string)
+	jobs2hosts := make(map[string][]string)
 
-	etcd := &mockEtcd{
-		record: record,
+	declareJob(jobs2hosts, 1, 1)
+	declareJob(jobs2hosts, 2, 1)
+	declareJob(jobs2hosts, 1, 2)
+	declareJob(jobs2hosts, 2, 2)
+	declareJob(jobs2hosts, 3, 3)
+	declareJob(jobs2hosts, 1, 3)
+	declareJob(jobs2hosts, 3, 6)
+	declareJob(jobs2hosts, 4, 6)
+	declareJob(jobs2hosts, 4, 4)
+	declareJob(jobs2hosts, 4, 1)
+
+	for _, hs := range jobs2hosts {
+		sort.Strings(hs)
 	}
 
-	etcd.declareHost("host1")
-	etcd.declareHost("host2")
-	etcd.declareHost("host3")
-	etcd.declareHost("host4")
-	etcd.declareHost("host5")
-	etcd.declareHost("host6")
-
-	etcd.declareJob(newTestJob(1, 100, 1024, 10), "host1")
-	etcd.declareJob(newTestJob(2, 100, 1024, 10), "host1")
-	etcd.declareJob(newTestJob(1, 100, 1024, 10), "host2")
-	etcd.declareJob(newTestJob(2, 100, 1024, 10), "host2")
-	etcd.declareJob(newTestJob(3, 100, 1024, 10), "host3")
-	etcd.declareJob(newTestJob(1, 100, 1024, 10), "host3")
-	etcd.declareJob(newTestJob(3, 100, 1024, 10), "host6")
-	etcd.declareJob(newTestJob(4, 100, 1024, 10), "host6")
-	etcd.declareJob(newTestJob(4, 100, 1024, 10), "host4")
-	etcd.declareJob(newTestJob(4, 100, 1024, 10), "host1")
-
-	ctrl, err := NewJobControl(etcd, new(mockUniformMachineDB))
-	if err != nil {
-		t.Fatalf("could create job control: %v", err)
-	}
-
-	clus := ctrl.(*cluster)
-
-	testHostsRunningAllJobs(clus, []string{"job1"}, []string{"host1", "host2", "host3"}, t)
-	testHostsRunningAllJobs(clus, []string{"job1", "job2"}, []string{"host1", "host2"}, t)
-	testHostsRunningAllJobs(clus, []string{"job1", "job3"}, []string{"host3"}, t)
-	testHostsRunningAllJobs(clus, []string{"job2", "job3"}, nil, t)
-	testHostsRunningAllJobs(clus, []string{"job3"}, []string{"host3", "host6"}, t)
-	testHostsRunningAllJobs(clus, []string{"job4"}, []string{"host1", "host4", "host6"}, t)
-	testHostsRunningAllJobs(clus, []string{"job2", "job4"}, []string{"host1"}, t)
-	testHostsRunningAllJobs(clus, []string{"job1", "job4"}, []string{"host1"}, t)
-	testHostsRunningAllJobs(clus, []string{"job3", "job4"}, []string{"host6"}, t)
+	testHostsRunningAllJobs(jobs2hosts, []string{"job1"}, []string{"host1", "host2", "host3"}, t)
+	testHostsRunningAllJobs(jobs2hosts, []string{"job1", "job2"}, []string{"host1", "host2"}, t)
+	testHostsRunningAllJobs(jobs2hosts, []string{"job1", "job3"}, []string{"host3"}, t)
+	testHostsRunningAllJobs(jobs2hosts, []string{"job2", "job3"}, nil, t)
+	testHostsRunningAllJobs(jobs2hosts, []string{"job3"}, []string{"host3", "host6"}, t)
+	testHostsRunningAllJobs(jobs2hosts, []string{"job4"}, []string{"host1", "host4", "host6"}, t)
+	testHostsRunningAllJobs(jobs2hosts, []string{"job2", "job4"}, []string{"host1"}, t)
+	testHostsRunningAllJobs(jobs2hosts, []string{"job1", "job4"}, []string{"host1"}, t)
+	testHostsRunningAllJobs(jobs2hosts, []string{"job3", "job4"}, []string{"host6"}, t)
 }

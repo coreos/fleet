@@ -41,13 +41,13 @@ type JobSpec struct {
 
 type JobControl interface {
 	// returns a unique job id for the scheduled job
-	ScheduleJob(user string, spec *JobSpec) (string, error)
+	ScheduleJob(spec *JobSpec) (string, error)
 
 	// a job control needs to listen to these three events in the cluster
 	// to function properly. somebody needs to watch etcd and feed them into
 	// this job control
-	JobScheduled(user string, jid string, host string, spec *JobSpec)
-	JobDowned(user string, jid string, host string, spec *JobSpec)
+	JobScheduled(jid string, host string, spec *JobSpec)
+	JobDowned(jid string, host string, spec *JobSpec)
 	HostDown(host string)
 	HostUp(host string)
 }
@@ -57,12 +57,11 @@ type JobWithHost struct {
 	Spec *JobSpec
 	Host string
 	Jid  string
-	User string
 }
 
 // An agent knows how to start and run a job. Each host in the cluster runs an agent
 type HostAgent interface {
-	RunJob(user string, jid string, spec *JobSpec) error
+	RunJob(jid string, spec *JobSpec) error
 }
 
 // Knows the specs of all the machines in the cluster
@@ -79,6 +78,4 @@ type Etcd interface {
 	AllJobs() ([]*JobWithHost, error)
 	// Give me an agent for the specified host
 	HostAgent(host string) (HostAgent, error)
-	// Give me all hosts running jobs with specified name
-	HostsForJob(name string) ([]string, error)
 }

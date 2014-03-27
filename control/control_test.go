@@ -23,7 +23,7 @@ type mockHostAgent struct {
 	record map[string]string
 }
 
-func (mag *mockHostAgent) RunJob(user string, jid string, spec *JobSpec) error {
+func (mag *mockHostAgent) RunJob(jid string, spec *JobSpec) error {
 	mag.record[spec.Name] = mag.host
 	return nil
 }
@@ -70,17 +70,6 @@ func (metcd *mockEtcd) HostAgent(host string) (HostAgent, error) {
 	return mag, nil
 }
 
-func (metcd *mockEtcd) HostsForJob(name string) ([]string, error) {
-	var r []string
-
-	for _, jwh := range metcd.jwhs {
-		if jwh.Spec.Name == name {
-			r = append(r, jwh.Host)
-		}
-	}
-	return r, nil
-}
-
 func TestControl(t *testing.T) {
 	record := make(map[string]string)
 
@@ -101,7 +90,7 @@ func TestControl(t *testing.T) {
 		t.Fatalf("could create job control: %v", err)
 	}
 
-	ctrl.ScheduleJob("user1", newTestJob(3, 200, 1024, 200))
+	ctrl.ScheduleJob(newTestJob(3, 200, 1024, 200))
 
 	for k, v := range record {
 		t.Logf("%s scheduled on %s", k, v)

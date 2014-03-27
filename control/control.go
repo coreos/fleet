@@ -8,6 +8,8 @@ import (
 )
 
 const (
+	// to how many agents we talk before we give up
+	// we talk to each agent only once
 	numberOfAttemptsToSchedule = 5
 )
 
@@ -17,6 +19,15 @@ type candHost struct {
 	cores float64
 	host  string
 }
+
+// We store an in-memory picture of load on each host but
+// we don't store individual job stats because it's
+// trickier to maintain and etcd already does it.
+// The tradeoff here is that when we are asked to schedule
+// jobs with dependsOn or conflictsWith clauses, we have to
+// talk to etcd one more time.
+// We believe jobs with those clauses are an exception, most
+// jobs we schedule won't have them.
 
 type cluster struct {
 	mutex    sync.Mutex
@@ -67,7 +78,7 @@ func NewJobControl(etcd Etcd, mdb MachineDB) (JobControl, error) {
 	return clus, nil
 }
 
-func (clus *cluster) ScheduleJob(user string, spec *JobSpec) (string, error) {
+func (clus *cluster) ScheduleJob(spec *JobSpec) (string, error) {
 	lhs, err := clus.candidates(spec)
 	if err != nil {
 		return "", err
@@ -75,11 +86,6 @@ func (clus *cluster) ScheduleJob(user string, spec *JobSpec) (string, error) {
 
 	if len(lhs) == 0 {
 		return "", ErrClusterFull
-	}
-
-	lhs, err = clus.filterCandidates(lhs, user, spec)
-	if err != nil {
-		return "", err
 	}
 
 	lhs = strategies[clus.strategy](lhs)
@@ -100,7 +106,7 @@ func (clus *cluster) ScheduleJob(user string, spec *JobSpec) (string, error) {
 			continue
 		}
 
-		err = ag.RunJob(user, jid, spec)
+		err = ag.RunJob(jid, spec)
 		if err != nil {
 			log.Errorf("failed to run job on host %v: %v, skipping to next host", h.host, err)
 			continue

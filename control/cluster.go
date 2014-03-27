@@ -1,10 +1,9 @@
 package control
 
-import (
-	"sort"
+import log "github.com/coreos/fleet/third_party/github.com/golang/glog"
 
-	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
-)
+// these next methods keep the machine loads up to date with
+// what happens in the cluster
 
 func (clus *cluster) jobScheduled(host string, spec *JobSpec) {
 	m := clus.loads[host]
@@ -22,14 +21,14 @@ func (clus *cluster) jobDowned(host string, spec *JobSpec) {
 	clus.loads[host] = m
 }
 
-func (clus *cluster) JobScheduled(user string, jid string, host string, spec *JobSpec) {
+func (clus *cluster) JobScheduled(jid string, host string, spec *JobSpec) {
 	clus.mutex.Lock()
 	defer clus.mutex.Unlock()
 
 	clus.jobScheduled(host, spec)
 }
 
-func (clus *cluster) JobDowned(user string, jid string, host string, spec *JobSpec) {
+func (clus *cluster) JobDowned(jid string, host string, spec *JobSpec) {
 	clus.mutex.Lock()
 	defer clus.mutex.Unlock()
 
@@ -52,57 +51,21 @@ func (clus *cluster) HostUp(host string) {
 	clus.loads[host] = noLoad
 }
 
-func remainingFree(load, newLoad, total int) (float64, bool) {
-	if load+newLoad > total {
-		return 0.0, false
-	}
-
-	return float64(total-load-newLoad) / float64(total), true
-}
-
+// Returns a list of host candidates where specified job could be
+// scheduled. List has  been filtered with respect to
+// DependsOn, ConflictsWith and RequiresHost clauses in the job spec.
 func (clus *cluster) candidates(spec *JobSpec) ([]candHost, error) {
-	candLoads := clus.loads
-
-	if len(spec.RequiresHost) > 0 {
-		host := spec.RequiresHost
-
-		candLoads = make(map[string]MachineSpec, 1)
-		candLoads[host] = clus.loads[host]
-
-		if len(spec.DependsOn) > 0 {
-			dependHosts, err := clus.hostsRunningAllJobs(spec.DependsOn)
-			if err != nil {
-				return nil, err
-			}
-
-			k := sort.SearchStrings(dependHosts, host)
-
-			if k == len(dependHosts) || dependHosts[k] != host {
-				return nil, ErrRequiredHostUnavailable
-			}
-		}
-	} else if len(spec.DependsOn) > 0 {
-		dependHosts, err := clus.hostsRunningAllJobs(spec.DependsOn)
-		if err != nil {
-			return nil, err
-		}
-
-		if len(dependHosts) == 0 {
-			return nil, ErrDependOnHostUnavailable
-		}
-
-		candLoads = make(map[string]MachineSpec, len(dependHosts))
-		for _, host := range dependHosts {
-			candLoads[host] = clus.loads[host]
-		}
-	}
-
 	clus.mutex.Lock()
-	defer clus.mutex.Unlock()
+	candLoads := make(map[string]MachineSpec, len(clus.loads))
+	for k, v := range clus.loads {
+		candLoads[k] = v
+	}
+	clus.mutex.Unlock()
 
 	var lhs []candHost
 	var lh candHost
 
+	// first we look which machines can fit the job
 	for host, load := range candLoads {
 		mspec, err := clus.mdb.Spec(host)
 		if err != nil {
@@ -131,5 +94,15 @@ func (clus *cluster) candidates(spec *JobSpec) ([]candHost, error) {
 		lh.host = host
 		lhs = append(lhs, lh)
 	}
-	return lhs, nil
+
+	// we also need to filter on DependsOn, ConflictsWith and RequiresHost clauses
+	return clus.filterCandidates(lhs, spec)
+}
+
+func remainingFree(load, newLoad, total int) (float64, bool) {
+	if load+newLoad > total {
+		return 0.0, false
+	}
+
+	return float64(total-load-newLoad) / float64(total), true
 }
