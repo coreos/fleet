@@ -20,7 +20,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/coreos/fleet/third_party/github.com/guelfey/go.dbus"
+	"github.com/godbus/dbus"
 )
 
 const (
@@ -76,7 +76,7 @@ func (c *Conn) initDispatch() {
 
 				unitName := signal.Body[2].(string)
 				var unitPath dbus.ObjectPath
-				c.sysobj.Call("org.freedesktop.systemd1.Manager.GetUnit", 0, unitName).Store(&unitPath)
+				c.sysobj.Call("GetUnit", 0, unitName).Store(&unitPath)
 				if unitPath != dbus.ObjectPath("") {
 					c.sendSubStateUpdate(unitPath)
 				}

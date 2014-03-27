@@ -17,7 +17,7 @@ limitations under the License.
 package dbus
 
 import (
-	"github.com/coreos/fleet/third_party/github.com/guelfey/go.dbus"
+	"github.com/godbus/dbus"
 )
 
 // From the systemd docs:
@@ -39,11 +39,6 @@ import (
 type Property struct {
 	Name  string
 	Value dbus.Variant
-}
-
-type PropertyCollection struct {
-	Name       string
-	Properties []Property
 }
 
 type execStart struct {

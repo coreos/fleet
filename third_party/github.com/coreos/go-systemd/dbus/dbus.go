@@ -21,7 +21,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/coreos/fleet/third_party/github.com/guelfey/go.dbus"
+	"github.com/godbus/dbus"
 )
 
 const signalBuffer = 100
