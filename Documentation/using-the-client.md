@@ -165,7 +165,7 @@ MACHINE									IP			METADATA
 
 ### SSH dynamically to host
 
-The `fleetctl ssh` command can be used to open a pseuto-terminal over SSH to a host in the fleet cluster. The command will look up the IP address of a machine based on the provided machine ID:
+The `fleetctl ssh` command can be used to open a pseudo-terminal over SSH to a host in the fleet cluster. The command will look up the IP address of a machine based on the provided machine ID:
 
 ```
 $ fleetctl ssh 491586a6-508f-4583-a71d-bfc4d146e996
