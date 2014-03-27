@@ -79,15 +79,15 @@ outer:
 
 // Finds hosts running only jobs not in conflict with specified conflict patterns cps.
 // Queries the hosts2jobs map for conflict resolution.
-func hostsNotInConflictWith(cps []string, hosts2jobs map[string][]string) []string {
-	var hids []string
+func hostsNotInConflictWith(cps []string, hosts2jobs map[string][]string, flhs []candHost) []candHost {
+	var hs []candHost
 
-	for host, js := range hosts2jobs {
-		if !conflicts(cps, js) {
-			hids = append(hids, host)
+	for _, ch := range flhs {
+		if !conflicts(cps, hosts2jobs[ch.host]) {
+			hs = append(hs, ch)
 		}
 	}
-	return hids
+	return hs
 }
 
 type candHostByHostID []candHost
@@ -125,6 +125,7 @@ func (clus *cluster) filterCandidates(lhs []candHost, spec *JobSpec) ([]candHost
 		}
 		jobs2hosts = make(map[string][]string)
 		hosts2jobs = make(map[string][]string)
+
 		for _, jwh := range jwhs {
 			hs := jobs2hosts[jwh.Spec.Name]
 			jobs2hosts[jwh.Spec.Name] = append(hs, jwh.Host)
@@ -174,16 +175,8 @@ func (clus *cluster) filterCandidates(lhs []candHost, spec *JobSpec) ([]candHost
 	// so don't move this clause before the DependsOn clause
 	// or make it sorted first
 	if len(spec.ConflictsWith) > 0 {
-		var hs []candHost
 
-		hosts := hostsNotInConflictWith(spec.ConflictsWith, hosts2jobs)
-		for _, host := range hosts {
-			k, ok := search(flhs, host)
-			if ok {
-				hs = append(hs, flhs[k])
-			}
-		}
-
+		hs := hostsNotInConflictWith(spec.ConflictsWith, hosts2jobs, flhs)
 		if len(hs) == 0 {
 			return nil, ErrConflictsWithHostUnavailable
 		}
