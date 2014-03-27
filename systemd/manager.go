@@ -23,7 +23,6 @@ const (
 
 type SystemdManager struct {
 	Systemd		*dbus.Conn
-	Target		*SystemdTarget
 	Machine		*machine.Machine
 	UnitPrefix	string
 	unitPath	string
@@ -38,13 +37,7 @@ func NewSystemdManager(machine *machine.Machine, unitPrefix string) *SystemdMana
 		panic(err)
 	}
 
-	name := "fleet-" + machine.State().BootID + ".target"
-	target := NewSystemdTarget(name)
-
-	mgr := &SystemdManager{systemd, target, machine, unitPrefix, defaultSystemdRuntimePath, systemd.NewSubscriptionSet(), nil}
-	mgr.writeUnit(target.Name(), "")
-
-	return mgr
+	return &SystemdManager{systemd, machine, unitPrefix, defaultSystemdRuntimePath, systemd.NewSubscriptionSet(), nil}
 }
 
 func (m *SystemdManager) Publish(bus *event.EventBus, stopchan chan bool) {
@@ -72,19 +65,6 @@ func (m *SystemdManager) Publish(bus *event.EventBus, stopchan chan bool) {
 
 	stream.Close()
 	m.Systemd.Unsubscribe()
-}
-
-func (m *SystemdManager) getUnitByName(name string) (*SystemdUnit, error) {
-	var unit SystemdUnit
-	if strings.HasSuffix(name, ".service") {
-		unit = NewSystemdService(m, name)
-	} else if strings.HasSuffix(name, ".socket") {
-		unit = NewSystemdSocket(m, name)
-	} else {
-		panic("WAT")
-	}
-
-	return &unit, nil
 }
 
 func (m *SystemdManager) StartJob(job *job.Job) {
@@ -123,7 +103,7 @@ func (m *SystemdManager) startUnit(name string) {
 	log.V(1).Infof("Starting systemd unit %s", name)
 
 	files := []string{name}
-	if ok, _, err := m.Systemd.EnableUnitFiles(files, true, false); !ok {
+	if _, _, err := m.Systemd.EnableUnitFiles(files, true, false); err != nil {
 		log.Errorf("Failed to enable systemd unit %s: %v", name, err)
 		return
 	} else {
@@ -152,10 +132,6 @@ func (m *SystemdManager) stopUnit(name string) {
 }
 
 func (m *SystemdManager) removeUnit(name string) {
-	log.Infof("Unlinking systemd unit %s from target %s", name, m.Target.Name())
-	link := m.getLocalPath(path.Join(m.Target.Name()+".wants", name))
-	syscall.Unlink(link)
-
 	file := m.getLocalPath(name)
 	log.Infof("Removing systemd unit file %s", file)
 	syscall.Unlink(file)
