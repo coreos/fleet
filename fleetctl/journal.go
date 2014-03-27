@@ -54,33 +54,42 @@ func journalAction(c *cli.Context) {
 	}
 
 	// check if the job is running on this machine
-	var out *bufio.Reader
+	var channel *ssh.Channel
 	var err error
 	if machine.IsLocalMachineState(js.MachineState) {
-		out = runLocalCommand(cmd)
+		channel = runLocalCommand(cmd)
 	} else {
-		out, err = runRemoteCommand(cmd, js.MachineState.PublicIP)
+		channel, err = runRemoteCommand(cmd, js.MachineState.PublicIP)
 		if err != nil {
 			log.Fatalf("Unable to run command over SSH: %v", err)
 		}
 	}
 
-	readAllLines(out)
+	readSSHChannel(channel)
 }
 
-func runLocalCommand(cmd string) *bufio.Reader {
+func runLocalCommand(cmd string) *ssh.Channel {
 	cmdSlice := strings.Split(cmd, " ")
 	osCmd := exec.Command(cmdSlice[0], cmdSlice[1:]...)
 	stdout, _ := osCmd.StdoutPipe()
-	bstdout := bufio.NewReader(stdout)
+	stderr, _ := osCmd.StderrPipe()
+
+	channel := &ssh.Channel{
+		bufio.NewReader(stdout),
+		bufio.NewReader(stderr),
+		make(chan error),
+	}
 
 	osCmd.Start()
-	go osCmd.Wait()
+	go func() {
+		err := osCmd.Wait()
+		channel.Exit <- err
+	}()
 
-	return bstdout
+	return channel
 }
 
-func runRemoteCommand(cmd string, ip string) (*bufio.Reader, error) {
+func runRemoteCommand(cmd string, ip string) (*ssh.Channel, error) {
 	addr := fmt.Sprintf("%s:22", ip)
 
 	var sshClient *ssh.SSHForwardingClient
@@ -96,23 +105,9 @@ func runRemoteCommand(cmd string, ip string) (*bufio.Reader, error) {
 
 	defer sshClient.Close()
 
-	stdout, err := ssh.Execute(sshClient, cmd)
+	channel, err := ssh.Execute(sshClient, cmd)
 	if err != nil {
 		return nil, err
 	}
-	return stdout, nil
-}
-
-func readAllLines(r *bufio.Reader) {
-	for true {
-		bytes, prefix, err := r.ReadLine()
-		if err != nil {
-			break
-		}
-
-		fmt.Print(string(bytes))
-		if !prefix {
-			fmt.Print("\n")
-		}
-	}
+	return channel, nil
 }
