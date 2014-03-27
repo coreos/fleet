@@ -143,14 +143,14 @@ func getConfig(flagset *flag.FlagSet, userCfgFile string) (*config.Config, error
 	gconf.ParseSet("", flagset)
 
 	cfg := config.Config{
-		Verbosity: (*flagset.Lookup("verbosity")).Value.(flag.Getter).Get().(int),
-		EtcdServers: (*flagset.Lookup("etcd_servers")).Value.(flag.Getter).Get().(stringSlice),
-		BootID: (*flagset.Lookup("boot_id")).Value.(flag.Getter).Get().(string),
-		PublicIP: (*flagset.Lookup("public_ip")).Value.(flag.Getter).Get().(string),
-		RawMetadata: (*flagset.Lookup("metadata")).Value.(flag.Getter).Get().(string),
-		UnitPrefix: (*flagset.Lookup("unit_prefix")).Value.(flag.Getter).Get().(string),
-		AgentTTL: (*flagset.Lookup("agent_ttl")).Value.(flag.Getter).Get().(string),
-		VerifyUnits: (*flagset.Lookup("verify_units")).Value.(flag.Getter).Get().(bool),
+		Verbosity:          (*flagset.Lookup("verbosity")).Value.(flag.Getter).Get().(int),
+		EtcdServers:        (*flagset.Lookup("etcd_servers")).Value.(flag.Getter).Get().(stringSlice),
+		BootID:             (*flagset.Lookup("boot_id")).Value.(flag.Getter).Get().(string),
+		PublicIP:           (*flagset.Lookup("public_ip")).Value.(flag.Getter).Get().(string),
+		RawMetadata:        (*flagset.Lookup("metadata")).Value.(flag.Getter).Get().(string),
+		UnitPrefix:         (*flagset.Lookup("unit_prefix")).Value.(flag.Getter).Get().(string),
+		AgentTTL:           (*flagset.Lookup("agent_ttl")).Value.(flag.Getter).Get().(string),
+		VerifyUnits:        (*flagset.Lookup("verify_units")).Value.(flag.Getter).Get().(bool),
 		AuthorizedKeysFile: (*flagset.Lookup("authorized_keys_file")).Value.(flag.Getter).Get().(string),
 	}
 
