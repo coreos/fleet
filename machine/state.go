@@ -1,7 +1,6 @@
 package machine
 
 import (
-	"fmt"
 	"io/ioutil"
 	"net"
 	"strings"
@@ -19,10 +18,7 @@ type MachineState struct {
 	BootID   string `json:"BootId"`
 	PublicIP string
 	Metadata map[string]string
-}
-
-func (ms MachineState) String() string {
-	return fmt.Sprintf("MachineState{BootID: %q, PublicIp: %q, Metadata: %v}", ms.BootID, ms.PublicIP, ms.Metadata)
+	Version  string
 }
 
 // NewDynamicMachineState generates a MachineState object with
@@ -30,7 +26,7 @@ func (ms MachineState) String() string {
 func CurrentState() MachineState {
 	bootID := readLocalBootID()
 	publicIP := getLocalIP()
-	return MachineState{bootID, publicIP, make(map[string]string, 0)}
+	return MachineState{BootID: bootID, PublicIP: publicIP, Metadata: make(map[string]string, 0)}
 }
 
 // IsLocalMachineState checks whether machine state matches the state of local machine
@@ -113,6 +109,10 @@ func stackState(top, bottom MachineState) MachineState {
 	// metadata on the bottom.
 	if len(top.Metadata) > 0 {
 		state.Metadata = top.Metadata
+	}
+
+	if top.Version != "" {
+		state.Version = top.Version
 	}
 
 	return state

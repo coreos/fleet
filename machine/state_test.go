@@ -5,8 +5,8 @@ import (
 )
 
 func TestStackState(t *testing.T) {
-	top := MachineState{"c31e44e1-f858-436e-933e-59c642517860", "1.2.3.4", map[string]string{"ping": "pong"}}
-	bottom := MachineState{"595989bb-cbb7-49ce-8726-722d6e157b4e", "5.6.7.8", map[string]string{"foo": "bar"}}
+	top := MachineState{"c31e44e1-f858-436e-933e-59c642517860", "1.2.3.4", map[string]string{"ping": "pong"}, "1"}
+	bottom := MachineState{"595989bb-cbb7-49ce-8726-722d6e157b4e", "5.6.7.8", map[string]string{"foo": "bar"}, ""}
 	stacked := stackState(top, bottom)
 
 	if stacked.BootID != "c31e44e1-f858-436e-933e-59c642517860" {
@@ -20,11 +20,15 @@ func TestStackState(t *testing.T) {
 	if len(stacked.Metadata) != 1 || stacked.Metadata["ping"] != "pong" {
 		t.Errorf("Unexpected Metadata %v", stacked.Metadata)
 	}
+
+	if stacked.Version != "1" {
+		t.Errorf("Unexpected Version value %s", stacked.Version)
+	}
 }
 
 func TestStackStateEmptyTop(t *testing.T) {
 	top := MachineState{}
-	bottom := MachineState{"595989bb-cbb7-49ce-8726-722d6e157b4e", "5.6.7.8", map[string]string{"foo": "bar"}}
+	bottom := MachineState{"595989bb-cbb7-49ce-8726-722d6e157b4e", "5.6.7.8", map[string]string{"foo": "bar"}, ""}
 	stacked := stackState(top, bottom)
 
 	if stacked.BootID != "595989bb-cbb7-49ce-8726-722d6e157b4e" {
@@ -37,5 +41,9 @@ func TestStackStateEmptyTop(t *testing.T) {
 
 	if len(stacked.Metadata) != 1 || stacked.Metadata["foo"] != "bar" {
 		t.Errorf("Unexpected Metadata %v", stacked.Metadata)
+	}
+
+	if stacked.Version != "" {
+		t.Errorf("Unexpected Version value %s", stacked.Version)
 	}
 }
