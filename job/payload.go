@@ -1,6 +1,7 @@
 package job
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -49,4 +50,43 @@ func (jp *JobPayload) Conflicts() []string {
 	} else {
 		return make([]string, 0)
 	}
+}
+
+func (jp *JobPayload) UnmarshalJSON(data []byte) error {
+	var jpm jobPayloadModel
+	err := json.Unmarshal(data, &jpm)
+	if err != nil {
+		return errors.New(fmt.Sprintf("Unable to JSON-deserialize object: %s", err))
+	}
+
+	if len(jpm.Unit.Raw) > 0 {
+		jp.Unit = *unit.NewSystemdUnitFile(jpm.Unit.Raw)
+	} else {
+		jp.Unit = *unit.NewSystemdUnitFileFromLegacyContents(jpm.Unit.Contents)
+	}
+
+	jp.Name = jpm.Name
+	return nil
+}
+
+func (jp *JobPayload) MarshalJSON() ([]byte, error) {
+	ufm := unitFileModel{
+		Contents: jp.Unit.LegacyContents(),
+		Raw:      jp.Unit.String(),
+	}
+	jpm := jobPayloadModel{Name: jp.Name, Unit: ufm}
+	return json.Marshal(jpm)
+}
+
+// unitFileModel is just used for serialization
+type unitFileModel struct {
+	// Contents is now a legacy field, only read by older instances of fleet
+	Contents map[string]map[string]string
+	Raw      string
+}
+
+// jobPayloadModel is just used for serialization
+type jobPayloadModel struct {
+	Name string
+	Unit unitFileModel
 }
