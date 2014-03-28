@@ -95,6 +95,10 @@ func (clus *cluster) candidates(spec *JobSpec) ([]candHost, error) {
 		lhs = append(lhs, lh)
 	}
 
+	if len(lhs) == 0 {
+		return nil, ErrClusterFull
+	}
+
 	// we also need to filter on DependsOn, ConflictsWith and RequiresHost clauses
 	return clus.filterCandidates(lhs, spec)
 }
