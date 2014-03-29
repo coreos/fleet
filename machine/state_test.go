@@ -47,3 +47,65 @@ func TestStackStateEmptyTop(t *testing.T) {
 		t.Errorf("Unexpected Version value %s", stacked.Version)
 	}
 }
+
+var shortBootIDTests = []struct {
+	m MachineState
+	s string
+	l string
+}{
+	{
+		m: MachineState{},
+		s: "",
+		l: "",
+	},
+	{
+		m: MachineState{
+			"595989bb-cbb7-49ce-8726-722d6e157b4e",
+			"5.6.7.8",
+			map[string]string{"foo": "bar"},
+			"",
+		},
+		s: "595989bb",
+		l: "595989bb-cbb7-49ce-8726-722d6e157b4e",
+	},
+	{
+		m: MachineState{
+			"5959",
+			"5.6.7.8",
+			map[string]string{"foo": "bar"},
+			"",
+		},
+		s: "5959",
+		l: "5959",
+	},
+}
+
+func TestStateShortBootID(t *testing.T) {
+	for i, tt := range shortBootIDTests {
+		if g := tt.m.ShortBootID(); g != tt.s {
+			t.Errorf("#%d: got %q, want %q", i, g, tt.s)
+		}
+	}
+}
+
+func TestStateMatchBootID(t *testing.T) {
+	for i, tt := range shortBootIDTests {
+		if tt.s != "" {
+			if ok := tt.m.MatchBootID(""); ok {
+				t.Errorf("#%d: expected %v", i, false)
+			}
+		}
+
+		if ok := tt.m.MatchBootID("foobar"); ok {
+			t.Errorf("#%d: expected %v", i, false)
+		}
+
+		if ok := tt.m.MatchBootID(tt.l); !ok {
+			t.Errorf("#%d: expected %v", i, true)
+		}
+
+		if ok := tt.m.MatchBootID(tt.s); !ok {
+			t.Errorf("#%d: expected %v", i, true)
+		}
+	}
+}
