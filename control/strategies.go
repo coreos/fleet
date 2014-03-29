@@ -5,6 +5,16 @@ import (
 	"sort"
 )
 
+// Resources:
+
+// http://en.wikipedia.org/wiki/Bin_packing_problem
+// we have an online bin packing problem,
+// where items are not known upfront,
+// so cannot be sorted before packing
+
+// Good overview:
+// http://i11www.iti.uni-karlsruhe.de/_media/teaching/sommer2010/approximationsonlinealgorithmen/onl-bp.pdf
+
 // best fit: put job on machine with "smallest available hole"
 // heuristic for this: best fit preserves machine space for
 // subsequent larger jobs that in other strategies would face
