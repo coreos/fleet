@@ -19,59 +19,42 @@ const (
 	powerTenScoreMethod
 )
 
-type scoreSortFun func([]candHost) []candHost
+type scoreFun func(candHost) float64
 
-var strategies map[bestFitScoreMethod]scoreSortFun
+var strategies map[bestFitScoreMethod]scoreFun
 
 func init() {
-	strategies = make(map[bestFitScoreMethod]scoreSortFun)
+	strategies = make(map[bestFitScoreMethod]scoreFun)
 
 	strategies[sumScoreMethod] = sumScore
 	strategies[sumSquareScoreMethod] = sumSquareScore
 	strategies[powerTenScoreMethod] = powerTenScore
 }
 
-type bySumScore []candHost
+type byScore []candHost
 
-func sum(h candHost) float64 {
+func (a byScore) Len() int           { return len(a) }
+func (a byScore) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a byScore) Less(i, j int) bool { return a[i].score < a[j].score }
+
+func sortBestFit(lhs []candHost, scoreMethod bestFitScoreMethod) {
+	sf := strategies[scoreMethod]
+
+	for i, h := range lhs {
+		lhs[i].score = sf(h)
+	}
+
+	sort.Sort(byScore(lhs))
+}
+
+func sumScore(h candHost) float64 {
 	return h.mem + h.cores
 }
 
-func (a bySumScore) Len() int           { return len(a) }
-func (a bySumScore) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-func (a bySumScore) Less(i, j int) bool { return sum(a[i]) < sum(a[j]) }
-
-func sumScore(lhs []candHost) []candHost {
-	sort.Sort(bySumScore(lhs))
-	return lhs
-}
-
-type bySumSquareScore []candHost
-
-func sumSquare(h candHost) float64 {
+func sumSquareScore(h candHost) float64 {
 	return h.mem*h.mem + h.cores*h.cores
 }
 
-func (a bySumSquareScore) Len() int           { return len(a) }
-func (a bySumSquareScore) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-func (a bySumSquareScore) Less(i, j int) bool { return sumSquare(a[i]) < sumSquare(a[j]) }
-
-func sumSquareScore(lhs []candHost) []candHost {
-	sort.Sort(bySumSquareScore(lhs))
-	return lhs
-}
-
-type byPowerTenScore []candHost
-
-func powerTen(h candHost) float64 {
+func powerTenScore(h candHost) float64 {
 	return math.Pow(10.0, h.mem) + math.Pow(10.0, h.cores)
-}
-
-func (a byPowerTenScore) Len() int           { return len(a) }
-func (a byPowerTenScore) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-func (a byPowerTenScore) Less(i, j int) bool { return powerTen(a[i]) < powerTen(a[j]) }
-
-func powerTenScore(lhs []candHost) []candHost {
-	sort.Sort(byPowerTenScore(lhs))
-	return lhs
 }

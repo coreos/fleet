@@ -17,6 +17,7 @@ type candHost struct {
 	mem   float64
 	disk  float64
 	cores float64
+	score float64
 	host  string
 }
 
@@ -88,7 +89,7 @@ func (clus *cluster) ScheduleJob(spec *JobSpec) (string, error) {
 		return "", ErrClusterFull
 	}
 
-	lhs = strategies[clus.strategy](lhs)
+	sortBestFit(lhs, clus.strategy)
 
 	n := numberOfAttemptsToSchedule
 	if n > len(lhs) {
