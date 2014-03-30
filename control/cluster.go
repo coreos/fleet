@@ -52,7 +52,7 @@ func (clus *cluster) HostUp(host string) {
 }
 
 // Returns a list of host candidates where specified job could be
-// scheduled. List has  been filtered with respect to
+// scheduled. List has been filtered with respect to
 // DependsOn, ConflictsWith and RequiresHost clauses in the job spec.
 func (clus *cluster) candidates(spec *JobSpec) ([]candHost, error) {
 	clus.mutex.Lock()

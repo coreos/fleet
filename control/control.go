@@ -107,6 +107,7 @@ func (clus *cluster) ScheduleJob(spec *JobSpec) (string, error) {
 			continue
 		}
 
+		// Agent checks again that all requirements and clauses in the job spec are satisfied
 		err = ag.RunJob(jid, spec)
 		if err != nil {
 			log.Errorf("failed to run job on host %v: %v, skipping to next host", h.host, err)

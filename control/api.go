@@ -3,11 +3,11 @@ package control
 import "errors"
 
 var (
-	ErrClusterFull                  = errors.New("Insufficient resources available to schedule job")
-	ErrRequiredHostUnavailable      = errors.New("Required host is not available")
-	ErrDependOnHostUnavailable      = errors.New("Host with required dependencies is not available")
-	ErrConflictsWithHostUnavailable = errors.New("Host that doesn't conflict is not available")
-	ErrAllAgentsFailedToRun         = errors.New("No agent was able to run job")
+	ErrClusterFull                  = errors.New("insufficient resources available to schedule job")
+	ErrRequiredHostUnavailable      = errors.New("required host is not available")
+	ErrDependOnHostUnavailable      = errors.New("host with required dependencies is not available")
+	ErrConflictsWithHostUnavailable = errors.New("host that doesn't conflict is not available")
+	ErrAllAgentsFailedToRun         = errors.New("no agent was able to run job")
 )
 
 type MachineSpec struct {
@@ -61,6 +61,8 @@ type JobWithHost struct {
 
 // An agent knows how to start and run a job. Each host in the cluster runs an agent
 type HostAgent interface {
+	// Agent has the right to refuse to run the job. It needs to check again
+	// that job spec is satisfied
 	RunJob(jid string, spec *JobSpec) error
 }
 

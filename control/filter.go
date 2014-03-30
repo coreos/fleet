@@ -10,8 +10,7 @@ import (
 // both arguments must be sorted, result is sorted too
 // operation is linear
 func intersect(a, b []string) []string {
-	ia := 0
-	ib := 0
+	ia, ib := 0, 0
 
 	var r []string
 
@@ -61,13 +60,12 @@ func hostsRunningAllJobs(jobNames []string, jobs2hosts map[string][]string) []st
 }
 
 func conflicts(cps []string, js []string) bool {
-outer:
 	for _, pattern := range cps {
 		for _, jobName := range js {
 			matched, err := path.Match(pattern, jobName)
 			if err != nil {
-				log.Errorf("ConflictsWith pattern malformed: %s, error %v", pattern, err)
-				continue outer
+				log.Errorf("conflictsWith pattern malformed: %s, error %v", pattern, err)
+				break
 			}
 			if matched {
 				return true
@@ -175,7 +173,6 @@ func (clus *cluster) filterCandidates(lhs []candHost, spec *JobSpec) ([]candHost
 	// so don't move this clause before the DependsOn clause
 	// or make it sorted first
 	if len(spec.ConflictsWith) > 0 {
-
 		hs := hostsNotInConflictWith(spec.ConflictsWith, hosts2jobs, flhs)
 		if len(hs) == 0 {
 			return nil, ErrConflictsWithHostUnavailable
