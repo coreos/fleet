@@ -208,15 +208,17 @@ func (nc *nspawnCluster) DestroyAll() error {
 	// altogether until this is fixed.
 	run("etcdctl rm --recursive /_coreos.com/fleet")
 
+	run("systemctl daemon-reload")
+
 	return nil
 }
 
 func (nc *nspawnCluster) destroy(name string, num int) error {
 	dir := path.Join(os.TempDir(), name, strconv.Itoa(num))
 	cmds := []string{
-		fmt.Sprintf("systemctl stop %s%d.service", name, num),
-		fmt.Sprintf("rm -r /run/systemd/system/%s%d.service", name, num),
-		fmt.Sprintf("umount --recursive %s/fs/usr", dir),
+		fmt.Sprintf("machinectl terminate %s%d", name, num),
+		fmt.Sprintf("rm -f /run/systemd/system/%s%d.service", name, num),
+		fmt.Sprintf("rm -fr /run/systemd/system/%s%d.service.d", name, num),
 		fmt.Sprintf("rm -r %s", dir),
 	}
 
