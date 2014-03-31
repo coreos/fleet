@@ -146,7 +146,10 @@ func sshClientConfig(user string, checker *HostKeyChecker) (*gossh.ClientConfig,
 		Auth: []gossh.AuthMethod{
 			gossh.PublicKeys(signers...),
 		},
-		HostKeyCallback: checker.Check,
+	}
+
+	if checker != nil {
+		cfg.HostKeyCallback = checker.Check
 	}
 
 	return &cfg, nil
