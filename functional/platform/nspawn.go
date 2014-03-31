@@ -149,8 +149,10 @@ func (nc *nspawnCluster) create(name string, num int) (err error) {
 	}
 
 	exec := fmt.Sprintf("/usr/bin/systemd-nspawn -b -M %s%d --network-bridge fleet0 -D %s", name, num, fsdir)
+	log.Printf("Creating nspawn container: %s", exec)
 	err = nc.systemd(fmt.Sprintf("%s%d.service", name, num), exec)
 	if err != nil {
+		log.Printf("Failed creating nspawn container: %v", err)
 		return
 	}
 
