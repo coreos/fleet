@@ -19,6 +19,7 @@ type MachineSpec struct {
 	LocalDiskSpace int
 }
 
+// JobSpec defines the characteristics and requirements of a job in the cluster.
 type JobSpec struct {
 	// jobs are identified by name
 	Name string
@@ -39,11 +40,16 @@ type JobSpec struct {
 	Unit string
 }
 
+// JobControl schedules jobs in the cluster.
 type JobControl interface {
-	// returns a unique job id for the scheduled job
+	// ScheduleJob returns a unique job id for the scheduled job if it was
+	// scheduled successfully. Otherwise returns ErrClusterFull if cluster
+	// cannot fit the job anymore or it returns one of the other errors defined
+	// above if clauses of the job couldn't be satisfied.
+	// Can also return network errors if communication with Etcd or HostAgent failed.
 	ScheduleJob(spec *JobSpec) (string, error)
 
-	// a job control needs to listen to these three events in the cluster
+	// a job control needs to listen to these four events in the cluster
 	// to function properly. somebody needs to watch etcd and feed them into
 	// this job control
 	JobScheduled(jid string, host string, spec *JobSpec)
@@ -52,26 +58,28 @@ type JobControl interface {
 	HostUp(host string)
 }
 
-// A particular job with the user and host under which it runs
+// JobWithHost is job with the host under which it runs.
 type JobWithHost struct {
 	Spec *JobSpec
 	Host string
 	Jid  string
 }
 
-// An agent knows how to start and run a job. Each host in the cluster runs an agent
+// HostAgent knows how to start and run a job. Each host in the cluster runs an agent/
 type HostAgent interface {
-	// Agent has the right to refuse to run the job. It needs to check again
-	// that job spec is satisfied
+	// RunJob starts and runs the specified job.
+	// An agent has the right to refuse to run the job. It needs to check again
+	// that the job spec is satisfied, specifically with regards to DependsOn and ConflictsWith clauses.
 	RunJob(jid string, spec *JobSpec) error
 }
 
-// Knows the specs of all the machines in the cluster
+// MachineDB knows the specs of all the machines in the cluster.
 type MachineDB interface {
+	// Spec returns the machine spec of the given host.
 	Spec(host string) (*MachineSpec, error)
 }
 
-// This interface specifies what job control will ask etcd
+// Etcd interface specifies what job control will ask etcd.
 type Etcd interface {
 	// Give me all the currently active hosts
 	// (hosts that have an agent running, maintaining heartbeat with etcd)

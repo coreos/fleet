@@ -66,6 +66,8 @@ func (clus *cluster) populate() error {
 	return nil
 }
 
+// NewJobControl returns a newly created JobControl that will use
+// the specified Etcd and the specified MachineDB.
 func NewJobControl(etcd Etcd, mdb MachineDB) (JobControl, error) {
 	clus := new(cluster)
 	clus.etcd = etcd
