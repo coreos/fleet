@@ -105,7 +105,7 @@ public_ip=%s
 	unitContents := `[Service]
 ExecStart=/opt/fleet/fleet -config /opt/fleet/fleet.conf
 `
-	unitPath := path.Join(dir, "opt", "fleet", "fleet-local.service")
+	unitPath := path.Join(dir, "opt", "fleet", "fleet.service")
 	if err := ioutil.WriteFile(unitPath, []byte(unitContents), 0644); err != nil {
 		return err
 	}
@@ -172,15 +172,15 @@ func (nc *nspawnCluster) create(name string, num int) (err error) {
 		return
 	}
 
-	err = nc.nsenter(name, num, "ln -s /opt/fleet/fleet-local.service /run/systemd/system/fleet-local.service")
+	err = nc.nsenter(name, num, "ln -s /opt/fleet/fleet.service /etc/systemd/system/fleet.service")
 	if err != nil {
-		log.Printf("Failed symlinking fleet-local.service: %v", err)
+		log.Printf("Failed symlinking fleet.service: %v", err)
 		return
 	}
 
-	err = nc.nsenter(name, num, "systemctl start fleet-local.service")
+	err = nc.nsenter(name, num, "systemctl start fleet.service")
 	if err != nil {
-		log.Printf("Failed starting fleet-local.service: %v", err)
+		log.Printf("Failed starting fleet.service: %v", err)
 		return
 	}
 
