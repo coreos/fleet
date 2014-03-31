@@ -122,14 +122,15 @@ func (nc *nspawnCluster) create(name string, num int) (err error) {
 	basedir := path.Join(os.TempDir(), name)
 	fsdir := path.Join(basedir, strconv.Itoa(num), "fs")
 	cmds := []string{
-		fmt.Sprintf("mkdir -p %s", fsdir),
-		fmt.Sprintf("mount -o bind / %s", fsdir),
-		fmt.Sprintf("mount -t tmpfs tmpfs %s", path.Join(fsdir, "home")),
-		fmt.Sprintf("mount -t tmpfs tmpfs %s", path.Join(fsdir, "opt")),
-		fmt.Sprintf("mount -t tmpfs tmpfs %s", path.Join(fsdir, "srv")),
-		fmt.Sprintf("mount -t tmpfs tmpfs %s", path.Join(fsdir, "var")),
-		fmt.Sprintf("mount -t tmpfs tmpfs %s", path.Join(fsdir, "etc/systemd/system")),
-		fmt.Sprintf("ln -s /dev/null %s", path.Join(fsdir, "/etc/systemd/system/etcd.service")),
+		fmt.Sprintf("mkdir -p %s/etc/systemd/system", fsdir),
+		fmt.Sprintf("cp /etc/os-release %s/etc", fsdir),
+		fmt.Sprintf("mkdir -p %s/usr", fsdir),
+		fmt.Sprintf("ln -s usr/lib64 %s/lib64", fsdir),
+		fmt.Sprintf("ln -s lib64 %s/lib", fsdir),
+		fmt.Sprintf("ln -s usr/bin %s/bin", fsdir),
+		fmt.Sprintf("ln -s usr/sbin %s/sbin", fsdir),
+		fmt.Sprintf("mkdir -p %s/home/core", fsdir),
+		fmt.Sprintf("chown core:core %s/home/core", fsdir),
 	}
 
 	for _, cmd := range cmds {
@@ -148,7 +149,7 @@ func (nc *nspawnCluster) create(name string, num int) (err error) {
 		return
 	}
 
-	exec := fmt.Sprintf("/usr/bin/systemd-nspawn -b -M %s%d --network-bridge fleet0 -D %s", name, num, fsdir)
+	exec := fmt.Sprintf("/usr/bin/systemd-nspawn --bind-ro=/usr -b -M %s%d --network-bridge fleet0 -D %s", name, num, fsdir)
 	log.Printf("Creating nspawn container: %s", exec)
 	err = nc.systemd(fmt.Sprintf("%s%d.service", name, num), exec)
 	if err != nil {
@@ -215,7 +216,7 @@ func (nc *nspawnCluster) destroy(name string, num int) error {
 	cmds := []string{
 		fmt.Sprintf("systemctl stop %s%d.service", name, num),
 		fmt.Sprintf("rm -r /run/systemd/system/%s%d.service", name, num),
-		fmt.Sprintf("umount --recursive %s/fs", dir),
+		fmt.Sprintf("umount --recursive %s/fs/usr", dir),
 		fmt.Sprintf("rm -r %s", dir),
 	}
 
