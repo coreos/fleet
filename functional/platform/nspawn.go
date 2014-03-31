@@ -267,18 +267,22 @@ func (nc *nspawnCluster) systemd(unitName, exec string) error {
 }
 
 func (nc *nspawnCluster) machinePID(name string, num int) (int, error) {
-	mach := fmt.Sprintf("%s%d", name, num)
-	stdout, _, err := run(fmt.Sprintf("machinectl status %s", mach))
-	if err != nil {
-		return -1, fmt.Errorf("Failed detecting machine %s status: %v", mach, err)
-	}
+	for i := 0; i < 5; i++ {
+		mach := fmt.Sprintf("%s%d", name, num)
+		stdout, _, err := run(fmt.Sprintf("machinectl status %s", mach))
+		if err != nil {
+			if i != 4 { time.Sleep(time.Second); continue }
+			return -1, fmt.Errorf("Failed detecting machine %s status: %v", mach, err)
+		}
 
-	re := regexp.MustCompile("Leader:\\s(.*\\d)")
-	pid := re.FindStringSubmatch(stdout)[1]
-	if pid == "" {
-		return -1, fmt.Errorf("Could not cast result '%s' to int", pid)
+		re := regexp.MustCompile("Leader:\\s(.*\\d)")
+		pid := re.FindStringSubmatch(stdout)[1]
+		if pid == "" {
+			return -1, fmt.Errorf("Could not cast result '%s' to int", pid)
+		}
+		return strconv.Atoi(pid)
 	}
-	return strconv.Atoi(pid)
+	return -1, fmt.Errorf("Unable to detect machine PID")
 }
 
 func (nc *nspawnCluster) nsenter(name string, num int, cmd string) error {
