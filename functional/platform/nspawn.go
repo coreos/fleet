@@ -105,7 +105,7 @@ public_ip=%s
 	unitContents := `[Service]
 ExecStart=/opt/fleet/fleet -config /opt/fleet/fleet.conf
 `
-	unitPath := path.Join(dir, "opt", "fleet", "fleet-local.service")
+	unitPath := path.Join(dir, "opt", "fleet", "fleet.service")
 	if err := ioutil.WriteFile(unitPath, []byte(unitContents), 0644); err != nil {
 		return err
 	}
@@ -122,14 +122,15 @@ func (nc *nspawnCluster) create(name string, num int) (err error) {
 	basedir := path.Join(os.TempDir(), name)
 	fsdir := path.Join(basedir, strconv.Itoa(num), "fs")
 	cmds := []string{
-		fmt.Sprintf("mkdir -p %s", fsdir),
-		fmt.Sprintf("mount -o bind / %s", fsdir),
-		fmt.Sprintf("mount -t tmpfs tmpfs %s", path.Join(fsdir, "home")),
-		fmt.Sprintf("mount -t tmpfs tmpfs %s", path.Join(fsdir, "opt")),
-		fmt.Sprintf("mount -t tmpfs tmpfs %s", path.Join(fsdir, "srv")),
-		fmt.Sprintf("mount -t tmpfs tmpfs %s", path.Join(fsdir, "var")),
-		fmt.Sprintf("mount -t tmpfs tmpfs %s", path.Join(fsdir, "etc/systemd/system")),
-		fmt.Sprintf("ln -s /dev/null %s", path.Join(fsdir, "/etc/systemd/system/etcd.service")),
+		fmt.Sprintf("mkdir -p %s/etc/systemd/system", fsdir),
+		fmt.Sprintf("cp /etc/os-release %s/etc", fsdir),
+		fmt.Sprintf("mkdir -p %s/usr", fsdir),
+		fmt.Sprintf("ln -s usr/lib64 %s/lib64", fsdir),
+		fmt.Sprintf("ln -s lib64 %s/lib", fsdir),
+		fmt.Sprintf("ln -s usr/bin %s/bin", fsdir),
+		fmt.Sprintf("ln -s usr/sbin %s/sbin", fsdir),
+		fmt.Sprintf("mkdir -p %s/home/core", fsdir),
+		fmt.Sprintf("chown core:core %s/home/core", fsdir),
 	}
 
 	for _, cmd := range cmds {
@@ -148,9 +149,11 @@ func (nc *nspawnCluster) create(name string, num int) (err error) {
 		return
 	}
 
-	exec := fmt.Sprintf("/usr/bin/systemd-nspawn -b -M %s%d --network-bridge fleet0 -D %s", name, num, fsdir)
+	exec := fmt.Sprintf("/usr/bin/systemd-nspawn --bind-ro=/usr -b -M %s%d --network-bridge fleet0 -D %s", name, num, fsdir)
+	log.Printf("Creating nspawn container: %s", exec)
 	err = nc.systemd(fmt.Sprintf("%s%d.service", name, num), exec)
 	if err != nil {
+		log.Printf("Failed creating nspawn container: %v", err)
 		return
 	}
 
@@ -170,15 +173,15 @@ func (nc *nspawnCluster) create(name string, num int) (err error) {
 		return
 	}
 
-	err = nc.nsenter(name, num, "ln -s /opt/fleet/fleet-local.service /run/systemd/system/fleet-local.service")
+	err = nc.nsenter(name, num, "ln -s /opt/fleet/fleet.service /etc/systemd/system/fleet.service")
 	if err != nil {
-		log.Printf("Failed symlinking fleet-local.service: %v", err)
+		log.Printf("Failed symlinking fleet.service: %v", err)
 		return
 	}
 
-	err = nc.nsenter(name, num, "systemctl start fleet-local.service")
+	err = nc.nsenter(name, num, "systemctl start fleet.service")
 	if err != nil {
-		log.Printf("Failed starting fleet-local.service: %v", err)
+		log.Printf("Failed starting fleet.service: %v", err)
 		return
 	}
 
@@ -205,15 +208,17 @@ func (nc *nspawnCluster) DestroyAll() error {
 	// altogether until this is fixed.
 	run("etcdctl rm --recursive /_coreos.com/fleet")
 
+	run("systemctl daemon-reload")
+
 	return nil
 }
 
 func (nc *nspawnCluster) destroy(name string, num int) error {
 	dir := path.Join(os.TempDir(), name, strconv.Itoa(num))
 	cmds := []string{
-		fmt.Sprintf("systemctl stop %s%d.service", name, num),
-		fmt.Sprintf("rm -r /run/systemd/system/%s%d.service", name, num),
-		fmt.Sprintf("umount --recursive %s/fs", dir),
+		fmt.Sprintf("machinectl terminate %s%d", name, num),
+		fmt.Sprintf("rm -f /run/systemd/system/%s%d.service", name, num),
+		fmt.Sprintf("rm -fr /run/systemd/system/%s%d.service.d", name, num),
 		fmt.Sprintf("rm -r %s", dir),
 	}
 
@@ -262,18 +267,22 @@ func (nc *nspawnCluster) systemd(unitName, exec string) error {
 }
 
 func (nc *nspawnCluster) machinePID(name string, num int) (int, error) {
-	mach := fmt.Sprintf("%s%d", name, num)
-	stdout, _, err := run(fmt.Sprintf("machinectl status %s", mach))
-	if err != nil {
-		return -1, fmt.Errorf("Failed detecting machine %s status: %v", mach, err)
-	}
+	for i := 0; i < 5; i++ {
+		mach := fmt.Sprintf("%s%d", name, num)
+		stdout, _, err := run(fmt.Sprintf("machinectl status %s", mach))
+		if err != nil {
+			if i != 4 { time.Sleep(time.Second); continue }
+			return -1, fmt.Errorf("Failed detecting machine %s status: %v", mach, err)
+		}
 
-	re := regexp.MustCompile("Leader:\\s(.*\\d)")
-	pid := re.FindStringSubmatch(stdout)[1]
-	if pid == "" {
-		return -1, fmt.Errorf("Could not cast result '%s' to int", pid)
+		re := regexp.MustCompile("Leader:\\s(.*\\d)")
+		pid := re.FindStringSubmatch(stdout)[1]
+		if pid == "" {
+			return -1, fmt.Errorf("Could not cast result '%s' to int", pid)
+		}
+		return strconv.Atoi(pid)
 	}
-	return strconv.Atoi(pid)
+	return -1, fmt.Errorf("Unable to detect machine PID")
 }
 
 func (nc *nspawnCluster) nsenter(name string, num int, cmd string) error {

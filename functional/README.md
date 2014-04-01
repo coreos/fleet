@@ -3,9 +3,9 @@
 This functional test suite deploys a fleet cluster nspawn containers and asserts fleet is functioning properly.
 It shares etcd deployed on the host machine with each of the nspawn containers.
 
-The caller must do two things before running the tests:
+The caller must do three things before running the tests:
 
-1. Ensure ssh-agent is running with the functional-testing SSH key. The `SSH_AUTH_SOCK` environment variable must be set.
+1. Ensure an ssh-agent is running and the functional-testing identity is loaded. The `SSH_AUTH_SOCK` environment variable must be set.
 
 ```
 $ ssh-agent
@@ -17,6 +17,12 @@ $ echo $SSH_AUTH_SOCK
 
 ```
 $ export FLEETCTL_BIN=/usr/bin/fleetctl
+```
+
+3. Make sure etcd is running on the host system
+
+```
+$ systemctl start etcd
 ```
 
 Then the tests can be run (probably as root):
