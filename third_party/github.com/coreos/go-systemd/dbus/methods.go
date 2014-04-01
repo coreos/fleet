@@ -18,7 +18,7 @@ package dbus
 
 import (
 	"errors"
-	"github.com/coreos/fleet/third_party/github.com/guelfey/go.dbus"
+	"github.com/coreos/fleet/third_party/github.com/godbus/dbus"
 )
 
 func (c *Conn) initJobs() {
@@ -84,42 +84,42 @@ func (c *Conn) runJob(job string, args ...interface{}) (string, error) {
 // has been removed too. skipped indicates that a job was skipped because it
 // didn't apply to the units current state.
 func (c *Conn) StartUnit(name string, mode string) (string, error) {
-	return c.runJob("org.freedesktop.systemd1.Manager.StartUnit", name, mode)
+	return c.runJob("StartUnit", name, mode)
 }
 
 // StopUnit is similar to StartUnit but stops the specified unit rather
 // than starting it.
 func (c *Conn) StopUnit(name string, mode string) (string, error) {
-	return c.runJob("org.freedesktop.systemd1.Manager.StopUnit", name, mode)
+	return c.runJob("StopUnit", name, mode)
 }
 
 // ReloadUnit reloads a unit.  Reloading is done only if the unit is already running and fails otherwise.
 func (c *Conn) ReloadUnit(name string, mode string) (string, error) {
-	return c.runJob("org.freedesktop.systemd1.Manager.ReloadUnit", name, mode)
+	return c.runJob("ReloadUnit", name, mode)
 }
 
 // RestartUnit restarts a service.  If a service is restarted that isn't
 // running it will be started.
 func (c *Conn) RestartUnit(name string, mode string) (string, error) {
-	return c.runJob("org.freedesktop.systemd1.Manager.RestartUnit", name, mode)
+	return c.runJob("RestartUnit", name, mode)
 }
 
 // TryRestartUnit is like RestartUnit, except that a service that isn't running
 // is not affected by the restart.
 func (c *Conn) TryRestartUnit(name string, mode string) (string, error) {
-	return c.runJob("org.freedesktop.systemd1.Manager.TryRestartUnit", name, mode)
+	return c.runJob("TryRestartUnit", name, mode)
 }
 
 // ReloadOrRestart attempts a reload if the unit supports it and use a restart
 // otherwise.
 func (c *Conn) ReloadOrRestartUnit(name string, mode string) (string, error) {
-	return c.runJob("org.freedesktop.systemd1.Manager.ReloadOrRestartUnit", name, mode)
+	return c.runJob("ReloadOrRestartUnit", name, mode)
 }
 
 // ReloadOrTryRestart attempts a reload if the unit supports it and use a "Try"
 // flavored restart otherwise.
 func (c *Conn) ReloadOrTryRestartUnit(name string, mode string) (string, error) {
-	return c.runJob("org.freedesktop.systemd1.Manager.ReloadOrTryRestartUnit", name, mode)
+	return c.runJob("ReloadOrTryRestartUnit", name, mode)
 }
 
 // StartTransientUnit() may be used to create and start a transient unit, which
@@ -128,13 +128,16 @@ func (c *Conn) ReloadOrTryRestartUnit(name string, mode string) (string, error) 
 // unique. mode is the same as in StartUnit(), properties contains properties
 // of the unit.
 func (c *Conn) StartTransientUnit(name string, mode string, properties ...Property) (string, error) {
-	return c.runJob("org.freedesktop.systemd1.Manager.StartTransientUnit", name, mode, properties, make([]PropertyCollection, 0))
+	// the dbus interface for this method does not use the last argument and
+	// should simply be given an empty list.  We use a concrete type here
+	// (instead of the more appropriate interface{}) to satisfy the dbus library.
+	return c.runJob("StartTransientUnit", name, mode, properties, make([]string, 0))
 }
 
 // KillUnit takes the unit name and a UNIX signal number to send.  All of the unit's
 // processes are killed.
 func (c *Conn) KillUnit(name string, signal int32) {
-	c.sysobj.Call("org.freedesktop.systemd1.Manager.KillUnit", 0, name, "all", signal).Store()
+	c.sysobj.Call("KillUnit", 0, name, "all", signal).Store()
 }
 
 // GetUnitProperties takes the unit name and returns all of its dbus object properties.
@@ -166,7 +169,7 @@ func (c *Conn) GetUnitProperties(unit string) (map[string]interface{}, error) {
 // be more unit names loaded than actual units behind them.
 func (c *Conn) ListUnits() ([]UnitStatus, error) {
 	result := make([][]interface{}, 0)
-	err := c.sysobj.Call("org.freedesktop.systemd1.Manager.ListUnits", 0).Store(&result)
+	err := c.sysobj.Call("ListUnits", 0).Store(&result)
 	if err != nil {
 		return nil, err
 	}
@@ -191,16 +194,16 @@ func (c *Conn) ListUnits() ([]UnitStatus, error) {
 }
 
 type UnitStatus struct {
-	Name        string          // The primary unit name as string
-	Description string          // The human readable description string
-	LoadState   string          // The load state (i.e. whether the unit file has been loaded successfully)
-	ActiveState string          // The active state (i.e. whether the unit is currently started or not)
-	SubState    string          // The sub state (a more fine-grained version of the active state that is specific to the unit type, which the active state is not)
-	Followed    string          // A unit that is being followed in its state by this unit, if there is any, otherwise the empty string.
-	Path        dbus.ObjectPath // The unit object path
-	JobId       uint32          // If there is a job queued for the job unit the numeric job id, 0 otherwise
-	JobType     string          // The job type as string
-	JobPath     dbus.ObjectPath // The job object path
+	Name		string		// The primary unit name as string
+	Description	string		// The human readable description string
+	LoadState	string		// The load state (i.e. whether the unit file has been loaded successfully)
+	ActiveState	string		// The active state (i.e. whether the unit is currently started or not)
+	SubState	string		// The sub state (a more fine-grained version of the active state that is specific to the unit type, which the active state is not)
+	Followed	string		// A unit that is being followed in its state by this unit, if there is any, otherwise the empty string.
+	Path		dbus.ObjectPath	// The unit object path
+	JobId		uint32		// If there is a job queued for the job unit the numeric job id, 0 otherwise
+	JobType		string		// The job type as string
+	JobPath		dbus.ObjectPath	// The job object path
 }
 
 // EnableUnitFiles() may be used to enable one or more units in the system (by
@@ -223,7 +226,7 @@ func (c *Conn) EnableUnitFiles(files []string, runtime bool, force bool) (bool, 
 	var carries_install_info bool
 
 	result := make([][]interface{}, 0)
-	err := c.sysobj.Call("org.freedesktop.systemd1.Manager.EnableUnitFiles", 0, files, runtime, force).Store(&carries_install_info, &result)
+	err := c.sysobj.Call("EnableUnitFiles", 0, files, runtime, force).Store(&carries_install_info, &result)
 	if err != nil {
 		return false, nil, err
 	}
@@ -248,13 +251,7 @@ func (c *Conn) EnableUnitFiles(files []string, runtime bool, force bool) (bool, 
 }
 
 type EnableUnitFileChange struct {
-	Type        string // Type of the change (one of symlink or unlink)
-	Filename    string // File name of the symlink
-	Destination string // Destination of the symlink
-}
-
-// Reload instructs systemd to scan for and reload unit files. This is
-// equivalent to a 'systemctl daemon-reload'.
-func (c *Conn) Reload() (string, error) {
-	return c.runJob("org.freedesktop.systemd1.Manager.Reload")
+	Type		string	// Type of the change (one of symlink or unlink)
+	Filename	string	// File name of the symlink
+	Destination	string	// Destination of the symlink
 }
