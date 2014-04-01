@@ -200,14 +200,14 @@ func fleetctlWithInput(input string, args ...string) (string, string, error) {
 	return stdoutBytes.String(), stderrBytes.String(), err
 }
 
-// Wait up to 60s to find the specified number of machines, retrying periodically.
+// Wait up to 10s to find the specified number of machines, retrying periodically.
 func waitForNMachines(count int) ([]string, error) {
 	var machines []string
 
-	timeout := time.Minute
+	timeout := 10 * time.Second
 	alarm := time.After(timeout)
 
-	ticker := time.Tick(5 * time.Second)
+	ticker := time.Tick(time.Second)
 loop:
 	for {
 		select {
@@ -236,9 +236,9 @@ loop:
 	return machines, nil
 }
 
-// Wait up to 5s to find the specified number of active units, retrying periodically.
+// Wait up to 10s to find the specified number of active units, retrying periodically.
 func waitForNActiveUnits(count int) error {
-	timeout := 5 * time.Second
+	timeout := 10 * time.Second
 	alarm := time.After(timeout)
 
 	ticker := time.Tick(time.Second)
