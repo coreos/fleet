@@ -140,7 +140,7 @@ func (a *Agent) Heartbeat(ttl time.Duration, stop chan bool) {
 	}
 
 	heartbeat := func() error {
-		return a.registry.SetMachineState(a.machine.State(), a.ttl)
+		return a.registry.SetMachineState(a.machine.State(), ttl)
 	}
 
 	// Explicitly heartbeat immediately to push state to the
