@@ -18,7 +18,7 @@ package dbus
 
 import (
 	"errors"
-	"github.com/coreos/fleet/third_party/github.com/guelfey/go.dbus"
+	"github.com/coreos/fleet/third_party/github.com/godbus/dbus"
 )
 
 func (c *Conn) initJobs() {
@@ -35,6 +35,7 @@ func (c *Conn) jobComplete(signal *dbus.Signal) {
 	out, ok := c.jobListener.jobs[job]
 	if ok {
 		out <- result
+		delete(c.jobListener.jobs, job)
 	}
 	c.jobListener.Unlock()
 }
@@ -137,8 +138,8 @@ func (c *Conn) KillUnit(name string, signal int32) {
 	c.sysobj.Call("org.freedesktop.systemd1.Manager.KillUnit", 0, name, "all", signal).Store()
 }
 
-// GetUnitProperties takes the unit name and returns all of its dbus object properties.
-func (c *Conn) GetUnitProperties(unit string) (map[string]interface{}, error) {
+// getProperties takes the unit name and returns all of its dbus object properties, for the given dbus interface
+func (c *Conn) getProperties(unit string, dbusInterface string) (map[string]interface{}, error) {
 	var err error
 	var props map[string]dbus.Variant
 
@@ -148,7 +149,7 @@ func (c *Conn) GetUnitProperties(unit string) (map[string]interface{}, error) {
 	}
 
 	obj := c.sysconn.Object("org.freedesktop.systemd1", path)
-	err = obj.Call("org.freedesktop.DBus.Properties.GetAll", 0, "org.freedesktop.systemd1.Unit").Store(&props)
+	err = obj.Call("org.freedesktop.DBus.Properties.GetAll", 0, dbusInterface).Store(&props)
 	if err != nil {
 		return nil, err
 	}
@@ -159,6 +160,55 @@ func (c *Conn) GetUnitProperties(unit string) (map[string]interface{}, error) {
 	}
 
 	return out, nil
+}
+
+// GetUnitProperties takes the unit name and returns all of its dbus object properties.
+func (c *Conn) GetUnitProperties(unit string) (map[string]interface{}, error) {
+	return c.getProperties(unit, "org.freedesktop.systemd1.Unit")
+}
+
+func (c *Conn) getProperty(unit string, dbusInterface string, propertyName string) (*Property, error) {
+	var err error
+	var prop dbus.Variant
+
+	path := ObjectPath("/org/freedesktop/systemd1/unit/" + unit)
+	if !path.IsValid() {
+		return nil, errors.New("invalid unit name: " + unit)
+	}
+
+	obj := c.sysconn.Object("org.freedesktop.systemd1", path)
+	err = obj.Call("org.freedesktop.DBus.Properties.Get", 0, dbusInterface, propertyName).Store(&prop)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Property{Name: propertyName, Value: prop}, nil
+}
+
+func (c *Conn) GetUnitProperty(unit string, propertyName string) (*Property, error) {
+	return c.getProperty(unit, "org.freedesktop.systemd1.Unit", propertyName)
+}
+
+// GetUnitTypeProperties returns the extra properties for a unit, specific to the unit type.
+// Valid values for unitType: Service, Socket, Target, Device, Mount, Automount, Snapshot, Timer, Swap, Path, Slice, Scope
+// return "dbus.Error: Unknown interface" if the unitType is not the correct type of the unit
+func (c *Conn) GetUnitTypeProperties(unit string, unitType string) (map[string]interface{}, error) {
+	return c.getProperties(unit, "org.freedesktop.systemd1."+unitType)
+}
+
+// SetUnitProperties() may be used to modify certain unit properties at runtime.
+// Not all properties may be changed at runtime, but many resource management
+// settings (primarily those in systemd.cgroup(5)) may. The changes are applied
+// instantly, and stored on disk for future boots, unless runtime is true, in which
+// case the settings only apply until the next reboot. name is the name of the unit
+// to modify. properties are the settings to set, encoded as an array of property
+// name and value pairs.
+func (c *Conn) SetUnitProperties(name string, runtime bool, properties ...Property) error {
+	return c.sysobj.Call("SetUnitProperties", 0, name, runtime, properties).Store()
+}
+
+func (c *Conn) GetUnitTypeProperty(unit string, unitType string, propertyName string) (*Property, error) {
+	return c.getProperty(unit, "org.freedesktop.systemd1." + unitType, propertyName)
 }
 
 // ListUnits returns an array with all currently loaded units. Note that
@@ -253,8 +303,52 @@ type EnableUnitFileChange struct {
 	Destination string // Destination of the symlink
 }
 
+// DisableUnitFiles() may be used to disable one or more units in the system (by
+// removing symlinks to them from /etc or /run).
+//
+// It takes a list of unit files to disable (either just file names or full
+// absolute paths if the unit files are residing outside the usual unit
+// search paths), and one boolean: whether the unit was enabled for runtime
+// only (true, /run), or persistently (false, /etc).
+//
+// This call returns an array with the changes made. The changes list
+// consists of structures with three strings: the type of the change (one of
+// symlink or unlink), the file name of the symlink and the destination of the
+// symlink.
+func (c *Conn) DisableUnitFiles(files []string, runtime bool) ([]DisableUnitFileChange, error) {
+	result := make([][]interface{}, 0)
+	err := c.sysobj.Call("DisableUnitFiles", 0, files, runtime).Store(&result)
+	if err != nil {
+		return nil, err
+	}
+
+	resultInterface := make([]interface{}, len(result))
+	for i := range result {
+		resultInterface[i] = result[i]
+	}
+
+	changes := make([]DisableUnitFileChange, len(result))
+	changesInterface := make([]interface{}, len(changes))
+	for i := range changes {
+		changesInterface[i] = &changes[i]
+	}
+
+	err = dbus.Store(resultInterface, changesInterface...)
+	if err != nil {
+		return nil, err
+	}
+
+	return changes, nil
+}
+
+type DisableUnitFileChange struct {
+	Type        string // Type of the change (one of symlink or unlink)
+	Filename    string // File name of the symlink
+	Destination string // Destination of the symlink
+}
+
 // Reload instructs systemd to scan for and reload unit files. This is
 // equivalent to a 'systemctl daemon-reload'.
-func (c *Conn) Reload() (string, error) {
-	return c.runJob("org.freedesktop.systemd1.Manager.Reload")
+func (c *Conn) Reload() error {
+	return c.sysobj.Call("org.freedesktop.systemd1.Manager.Reload", 0).Store()
 }

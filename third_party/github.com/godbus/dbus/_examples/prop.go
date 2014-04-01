@@ -2,9 +2,9 @@ package main
 
 import (
 	"fmt"
-	"github.com/coreos/fleet/third_party/github.com/guelfey/go.dbus"
-	"github.com/coreos/fleet/third_party/github.com/guelfey/go.dbus/introspect"
-	"github.com/coreos/fleet/third_party/github.com/guelfey/go.dbus/prop"
+	"github.com/coreos/fleet/third_party/github.com/godbus/dbus"
+	"github.com/coreos/fleet/third_party/github.com/godbus/dbus/introspect"
+	"github.com/coreos/fleet/third_party/github.com/godbus/dbus/prop"
 	"os"
 )
 

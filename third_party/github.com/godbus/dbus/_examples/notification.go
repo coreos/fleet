@@ -1,6 +1,6 @@
 package main
 
-import "github.com/coreos/fleet/third_party/github.com/guelfey/go.dbus"
+import "github.com/coreos/fleet/third_party/github.com/godbus/dbus"
 
 func main() {
 	conn, err := dbus.SessionBus()

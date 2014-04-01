@@ -439,7 +439,9 @@ func (conn *Conn) sendError(e Error, dest string, serial uint32) {
 	msg.Type = TypeError
 	msg.serial = conn.getSerial()
 	msg.Headers = make(map[HeaderField]Variant)
-	msg.Headers[FieldDestination] = MakeVariant(dest)
+	if dest != "" {
+		msg.Headers[FieldDestination] = MakeVariant(dest)
+	}
 	msg.Headers[FieldErrorName] = MakeVariant(e.Name)
 	msg.Headers[FieldReplySerial] = MakeVariant(serial)
 	msg.Body = e.Body
@@ -460,7 +462,9 @@ func (conn *Conn) sendReply(dest string, serial uint32, values ...interface{}) {
 	msg.Type = TypeMethodReply
 	msg.serial = conn.getSerial()
 	msg.Headers = make(map[HeaderField]Variant)
-	msg.Headers[FieldDestination] = MakeVariant(dest)
+	if dest != "" {
+		msg.Headers[FieldDestination] = MakeVariant(dest)
+	}
 	msg.Headers[FieldReplySerial] = MakeVariant(serial)
 	msg.Body = values
 	if len(values) > 0 {

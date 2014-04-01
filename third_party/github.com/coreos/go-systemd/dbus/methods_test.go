@@ -18,9 +18,11 @@ package dbus
 
 import (
 	"fmt"
+	"github.com/coreos/fleet/third_party/github.com/godbus/dbus"
 	"math/rand"
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 )
 
@@ -50,13 +52,16 @@ func setupUnit(target string, conn *Conn, t *testing.T) {
 	fixture := []string{abs}
 
 	install, changes, err := conn.EnableUnitFiles(fixture, true, true)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	if install != false {
 		t.Fatal("Install was true")
 	}
 
 	if len(changes) < 1 {
-		t.Fatal("Expected one change, got %v", changes)
+		t.Fatalf("Expected one change, got %v", changes)
 	}
 
 	if changes[0].Filename != targetRun {
@@ -118,6 +123,37 @@ func TestStartStopUnit(t *testing.T) {
 	}
 }
 
+// Enables a unit and then immediately tears it down
+func TestEnableDisableUnit(t *testing.T) {
+	target := "enable-disable.service"
+	conn := setupConn(t)
+
+	setupUnit(target, conn, t)
+
+	abs, err := filepath.Abs("../fixtures/" + target)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	path := filepath.Join("/run/systemd/system/", target)
+
+	// 2. Disable the unit
+	changes, err := conn.DisableUnitFiles([]string{abs}, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(changes) != 1 {
+		t.Fatalf("Changes should include the path, %v", changes)
+	}
+	if changes[0].Filename != path {
+		t.Fatalf("Change should include correct filename, %+v", changes[0])
+	}
+	if changes[0].Destination != "" {
+		t.Fatalf("Change destination should be empty, %+v", changes[0])
+	}
+}
+
 // TestGetUnitProperties reads the `-.mount` which should exist on all systemd
 // systems and ensures that one of its properties is valid.
 func TestGetUnitProperties(t *testing.T) {
@@ -139,6 +175,20 @@ func TestGetUnitProperties(t *testing.T) {
 	if names[0] != "system.slice" {
 		t.Fatal("unexpected wants for /")
 	}
+
+	prop, err := conn.GetUnitProperty(unit, "Wants")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if prop.Name != "Wants" {
+		t.Fatal("unexpected property name")
+	}
+
+	val := prop.Value.Value().([]string)
+	if !reflect.DeepEqual(val, names) {
+		t.Fatal("unexpected property value")
+	}
 }
 
 // TestGetUnitPropertiesRejectsInvalidName attempts to get the properties for a
@@ -150,9 +200,36 @@ func TestGetUnitPropertiesRejectsInvalidName(t *testing.T) {
 	unit := "//invalid#$^/"
 
 	_, err := conn.GetUnitProperties(unit)
-
 	if err == nil {
 		t.Fatal("Expected an error, got nil")
+	}
+
+	_, err = conn.GetUnitProperty(unit, "Wants")
+	if err == nil {
+		t.Fatal("Expected an error, got nil")
+	}
+}
+
+// TestSetUnitProperties changes a cgroup setting on the `tmp.mount`
+// which should exist on all systemd systems and ensures that the
+// property was set.
+func TestSetUnitProperties(t *testing.T) {
+	conn := setupConn(t)
+
+	unit := "tmp.mount"
+
+	if err := conn.SetUnitProperties(unit, true, Property{"CPUShares", dbus.MakeVariant(uint64(1023))}); err != nil {
+		t.Fatal(err)
+	}
+
+	info, err := conn.GetUnitTypeProperties(unit, "Mount")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	value := info["CPUShares"].(uint64)
+	if value != 1023 {
+		t.Fatal("CPUShares of unit is not 1023, %s", value)
 	}
 }
 
@@ -209,5 +286,29 @@ func TestStartStopTransientUnit(t *testing.T) {
 
 	if unit != nil {
 		t.Fatalf("Test unit found in list, should be stopped")
+	}
+}
+
+func TestConnJobListener(t *testing.T) {
+	target := "start-stop.service"
+	conn := setupConn(t)
+
+	setupUnit(target, conn, t)
+
+	jobSize := len(conn.jobListener.jobs)
+
+	_, err := conn.StartUnit(target, "replace")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = conn.StopUnit(target, "replace")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	currentJobSize := len(conn.jobListener.jobs)
+	if jobSize != currentJobSize {
+		t.Fatal("JobListener jobs leaked")
 	}
 }

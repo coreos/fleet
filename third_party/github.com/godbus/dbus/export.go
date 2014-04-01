@@ -49,7 +49,7 @@ func (conn *Conn) handleCall(msg *Message) {
 	name := msg.Headers[FieldMember].value.(string)
 	path := msg.Headers[FieldPath].value.(ObjectPath)
 	ifaceName, hasIface := msg.Headers[FieldInterface].value.(string)
-	sender := msg.Headers[FieldSender].value.(string)
+	sender, hasSender := msg.Headers[FieldSender].value.(string)
 	serial := msg.serial
 	if ifaceName == "org.freedesktop.DBus.Peer" {
 		switch name {
@@ -132,7 +132,9 @@ func (conn *Conn) handleCall(msg *Message) {
 		reply.Type = TypeMethodReply
 		reply.serial = conn.getSerial()
 		reply.Headers = make(map[HeaderField]Variant)
-		reply.Headers[FieldDestination] = msg.Headers[FieldSender]
+		if hasSender {
+			reply.Headers[FieldDestination] = msg.Headers[FieldSender]
+		}
 		reply.Headers[FieldReplySerial] = MakeVariant(msg.serial)
 		reply.Body = make([]interface{}, len(ret)-1)
 		for i := 0; i < len(ret)-1; i++ {
