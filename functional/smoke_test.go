@@ -49,7 +49,7 @@ func TestCluster(t *testing.T) {
 
 	// Ensure we can SSH into each machine using fleetctl
 	for _, machine := range machines {
-		if _, _, err := fleetctl("ssh", "--strict-host-key-checking=false", machine, "uptime"); err != nil {
+		if _, _, err := fleetctl("--strict-host-key-checking=false", "ssh", machine, "uptime"); err != nil {
 			t.Errorf("Unable to SSH into fleet machine: %v", err)
 		}
 	}
