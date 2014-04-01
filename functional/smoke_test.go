@@ -3,10 +3,12 @@ package functional
 import (
 	"bytes"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 
@@ -91,6 +93,62 @@ func TestCluster(t *testing.T) {
 	}
 }
 
+func TestKnownHostsVerification(t *testing.T) {
+	cluster, err := platform.NewNspawnCluster("smoke")
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+	defer cluster.DestroyAll()
+
+	if err := cluster.Create(1); err != nil {
+		t.Fatalf(err.Error())
+	}
+	machines, err := waitForNMachines(1)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+	machine := machines[0]
+
+	tmp, err := ioutil.TempFile(os.TempDir(), "known-hosts")
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+	tmp.Close()
+	defer syscall.Unlink(tmp.Name())
+
+	khFile := tmp.Name()
+
+	if _, _, err := fleetctlWithInput("yes", "--strict-host-key-checking=true", fmt.Sprintf("--known-hosts-file=%s", khFile), "ssh", machine, "uptime"); err != nil {
+		t.Errorf("Unable to SSH into fleet machine: %v", err)
+	}
+
+	// Recreation of the cluster simulates a change in the server's host key
+	cluster.DestroyAll()
+	cluster.Create(1)
+	machines, err = waitForNMachines(1)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+	machine = machines[0]
+
+	// SSH'ing to the cluster member should now fail with a host key mismatch
+	if _, _, err := fleetctl("--strict-host-key-checking=true", fmt.Sprintf("--known-hosts-file=%s", khFile), "ssh", machine, "uptime"); err == nil {
+		t.Errorf("Expected error while SSH'ing to fleet machine")
+	}
+
+	// Overwrite the known-hosts file to simulate removing the old host key
+	if err := ioutil.WriteFile(khFile, []byte{}, os.FileMode(0644)); err != nil {
+		t.Fatalf("Unable to overwrite known-hosts file: %v", err)
+	}
+
+	// And SSH should work again
+	if _, _, err := fleetctlWithInput("yes", "--strict-host-key-checking=true", fmt.Sprintf("--known-hosts-file=%s", khFile), "ssh", machine, "uptime"); err != nil {
+		t.Errorf("Unable to SSH into fleet machine: %v", err)
+	}
+
+
+}
+
 func parseUnitStates(units []string) []string {
 	states := make([]string, len(units))
 	for i, unit := range units {
@@ -118,6 +176,28 @@ func fleetctl(args ...string) (string, string, error) {
 	cmd.Stdout = &stdoutBytes
 	cmd.Stderr = &stderrBytes
 	err := cmd.Run()
+	return stdoutBytes.String(), stderrBytes.String(), err
+}
+
+func fleetctlWithInput(input string, args ...string) (string, string, error) {
+	log.Printf("%s %s", fleetctlBinPath, strings.Join(args, " "))
+	var stdoutBytes, stderrBytes bytes.Buffer
+	cmd := exec.Command(fleetctlBinPath, args...)
+	cmd.Stdout = &stdoutBytes
+	cmd.Stderr = &stderrBytes
+	stdin, err := cmd.StdinPipe()
+	if err != nil {
+		return "", "", err
+	}
+
+	if err = cmd.Start(); err != nil {
+		return "", "", err
+	}
+
+	stdin.Write([]byte(input))
+	stdin.Close()
+	err = cmd.Wait()
+
 	return stdoutBytes.String(), stderrBytes.String(), err
 }
 
