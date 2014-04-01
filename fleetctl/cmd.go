@@ -166,7 +166,7 @@ func getEndpointFlag() string {
 func machineBootIDLegend(ms machine.MachineState, full bool) string {
 	legend := ms.BootID
 	if !full {
-		legend = ellipsize(legend, 8)
+		legend = fmt.Sprintf("%s...", ms.ShortBootID())
 	}
 	return legend
 }
@@ -177,18 +177,6 @@ func machineFullLegend(ms machine.MachineState, full bool) string {
 		legend = fmt.Sprintf("%s/%s", legend, ms.PublicIP)
 	}
 	return legend
-}
-
-func ellipsize(field string, n int) string {
-	// When ellipsing a field, we want to display the first n
-	// characters. We check for n+3 so we don't inadvertently
-	// make fields with fewer than n+3 characters even longer
-	// by adding unnecessary ellipses.
-	if len(field) > n+3 {
-		return fmt.Sprintf("%s...", field[0:n])
-	} else {
-		return field
-	}
 }
 
 func askToTrustHost(addr, algo, fingerprint string) bool {

@@ -9,7 +9,10 @@ import (
 	"github.com/coreos/fleet/third_party/github.com/dotcloud/docker/pkg/netlink"
 )
 
-const bootIDPath = "/proc/sys/kernel/random/boot_id"
+const (
+	bootIDPath     = "/proc/sys/kernel/random/boot_id"
+	shortBootIDLen = 8
+)
 
 // MachineState represents a point-in-time snapshot of the
 // state of the local host.
@@ -27,6 +30,17 @@ func CurrentState() MachineState {
 	bootID := readLocalBootID()
 	publicIP := getLocalIP()
 	return MachineState{BootID: bootID, PublicIP: publicIP, Metadata: make(map[string]string, 0)}
+}
+
+func (s MachineState) ShortBootID() string {
+	if len(s.BootID) <= shortBootIDLen {
+		return s.BootID
+	}
+	return s.BootID[0:shortBootIDLen]
+}
+
+func (s MachineState) MatchBootID(bootID string) bool {
+	return s.BootID == bootID || s.ShortBootID() == bootID
 }
 
 // IsLocalMachineState checks whether machine state matches the state of local machine
