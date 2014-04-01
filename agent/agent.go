@@ -151,12 +151,13 @@ func (a *Agent) Heartbeat(ttl time.Duration, stop chan bool) {
 	}
 
 	interval := ttl / refreshInterval
-	for true {
+	ticker := time.Tick(interval)
+	for {
 		select {
 		case <-stop:
 			log.V(2).Info("MachineHeartbeat exiting due to stop signal")
 			return
-		case <-time.Tick(interval):
+		case <-ticker:
 			log.V(2).Info("MachineHeartbeat tick")
 			a.machine.RefreshState()
 			if err := attempt(3, heartbeat); err != nil {
