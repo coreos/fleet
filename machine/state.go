@@ -3,6 +3,7 @@ package machine
 import (
 	"io/ioutil"
 	"net"
+	"path/filepath"
 	"strings"
 
 	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
@@ -27,7 +28,7 @@ type MachineState struct {
 // NewDynamicMachineState generates a MachineState object with
 // the values read from the local system
 func CurrentState() MachineState {
-	bootID := readLocalBootID()
+	bootID := readLocalBootID("/")
 	publicIP := getLocalIP()
 	return MachineState{BootID: bootID, PublicIP: publicIP, Metadata: make(map[string]string, 0)}
 }
@@ -45,13 +46,14 @@ func (s MachineState) MatchBootID(bootID string) bool {
 
 // IsLocalMachineState checks whether machine state matches the state of local machine
 func IsLocalMachineState(ms *MachineState) bool {
-	return ms.BootID == readLocalBootID()
+	return ms.BootID == readLocalBootID("/")
 }
 
-func readLocalBootID() string {
-	id, err := ioutil.ReadFile(bootIDPath)
+func readLocalBootID(root string) string {
+	fullPath := filepath.Join(root, bootIDPath)
+	id, err := ioutil.ReadFile(fullPath)
 	if err != nil {
-		panic(err)
+		return ""
 	}
 	return strings.TrimSpace(string(id))
 }
