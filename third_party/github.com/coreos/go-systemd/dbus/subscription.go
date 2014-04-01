@@ -20,7 +20,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/coreos/fleet/third_party/github.com/guelfey/go.dbus"
+	"github.com/coreos/fleet/third_party/github.com/godbus/dbus"
 )
 
 const (

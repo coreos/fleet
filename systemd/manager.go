@@ -149,8 +149,7 @@ func (m *SystemdManager) readUnit(name string) (string, error) {
 
 func (m *SystemdManager) daemonReload() error {
 	log.Infof("Instructing systemd to reload units")
-	_, err := m.Systemd.Reload()
-	return err
+	return m.Systemd.Reload()
 }
 
 func (m *SystemdManager) writeUnit(name string, contents string) error {
