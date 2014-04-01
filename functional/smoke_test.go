@@ -146,7 +146,6 @@ func TestKnownHostsVerification(t *testing.T) {
 		t.Errorf("Unable to SSH into fleet machine: %v", err)
 	}
 
-
 }
 
 func parseUnitStates(units []string) []string {
@@ -201,59 +200,68 @@ func fleetctlWithInput(input string, args ...string) (string, string, error) {
 	return stdoutBytes.String(), stderrBytes.String(), err
 }
 
+// Wait up to 10s to find the specified number of machines, retrying periodically.
 func waitForNMachines(count int) ([]string, error) {
 	var machines []string
-	for i := 0; i <= 7; i++ {
-		if i == 7 {
-			return nil, fmt.Errorf("Failed to find %d machines within the time limit", count)
+
+	timeout := 10 * time.Second
+	alarm := time.After(timeout)
+
+	ticker := time.Tick(time.Second)
+loop:
+	for {
+		select {
+		case <-alarm:
+			return machines, fmt.Errorf("Failed to find %d machines within %v", count, timeout)
+		case <-ticker:
+			stdout, _, err := fleetctl("list-machines", "--no-legend", "-l")
+			stdout = strings.TrimSpace(stdout)
+			if stdout == "" || err != nil {
+				continue
+			}
+
+			machines = strings.Split(stdout, "\n")
+			if len(machines) != count {
+				continue
+			}
+
+			for k, v := range machines {
+				machines[k] = strings.SplitN(v, "\t", 2)[0]
+			}
+
+			break loop
 		}
-
-		log.Printf("Waiting 5s for %d fleet services to check in...", count)
-		time.Sleep(5 * time.Second)
-
-		stdout, _, err := fleetctl("list-machines", "--no-legend", "-l")
-		stdout = strings.TrimSpace(stdout)
-		if stdout == "" || err != nil {
-			continue
-		}
-
-		machines = strings.Split(stdout, "\n")
-		if len(machines) != count {
-			continue
-		}
-
-		for k, v := range machines {
-			machines[k] = strings.SplitN(v, "\t", 2)[0]
-		}
-
-		break
 	}
 
 	return machines, nil
 }
 
+// Wait up to 10s to find the specified number of active units, retrying periodically.
 func waitForNActiveUnits(count int) error {
-	for i := 0; i <= 6; i++ {
-		if i == 6 {
-			return fmt.Errorf("Failed to find %d active units within the time limit", count)
+	timeout := 10 * time.Second
+	alarm := time.After(timeout)
+
+	ticker := time.Tick(time.Second)
+loop:
+	for {
+		select {
+		case <-alarm:
+			return fmt.Errorf("Failed to find %d active units within %v", count, timeout)
+		case <-ticker:
+			stdout, _, err := fleetctl("list-units", "--no-legend")
+			stdout = strings.TrimSpace(stdout)
+			if stdout == "" || err != nil {
+				continue
+			}
+
+			units := strings.Split(stdout, "\n")
+			states := parseUnitStates(units)
+			if activeCount(states) != count {
+				continue
+			}
+
+			break loop
 		}
-
-		log.Printf("Waiting 1s for %d fleet units to become active...", count)
-		time.Sleep(time.Second)
-
-		stdout, _, err := fleetctl("list-units", "--no-legend")
-		stdout = strings.TrimSpace(stdout)
-		if stdout == "" || err != nil {
-			continue
-		}
-
-		units := strings.Split(stdout, "\n")
-		states := parseUnitStates(units)
-		if activeCount(states) != count {
-			continue
-		}
-
-		break
 	}
 
 	return nil
