@@ -9,8 +9,8 @@ import (
 type TestRegistry struct {
 	machines  []machine.MachineState
 	jobStates map[string]*job.JobState
-	jobs      []job.Job
-	payloads  []job.JobPayload
+	jobs      map[string]*job.Job
+	payloads  map[string]*job.JobPayload
 }
 
 func (t TestRegistry) GetActiveMachines() []machine.MachineState {
@@ -22,15 +22,23 @@ func (t TestRegistry) GetJobState(name string) *job.JobState {
 }
 
 func (t TestRegistry) GetAllPayloads() []job.JobPayload {
-	return t.payloads
+	var payloads []job.JobPayload
+	for _, v := range t.payloads {
+	    payloads = append(payloads, *v)
+	}
+	return payloads
 }
 
 func (t TestRegistry) GetAllJobs() []job.Job {
-	return t.jobs
+	var jobs []job.Job
+	for _, v := range t.jobs {
+	    jobs = append(jobs, *v)
+	}
+	return jobs
 }
 
 func (t TestRegistry) GetPayload(name string) *job.JobPayload {
-	return nil
+	return t.payloads[name]
 }
 
 func (t TestRegistry) StopJob(name string) {
@@ -40,10 +48,12 @@ func (t TestRegistry) DestroyPayload(name string) {
 }
 
 func (t TestRegistry) CreatePayload(jp *job.JobPayload) error {
+	t.payloads[jp.Name] = jp
 	return nil
 }
 
 func (t TestRegistry) CreateJob(j *job.Job) error {
+	t.jobs[j.Name] = j
 	return nil
 }
 

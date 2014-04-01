@@ -23,7 +23,19 @@ func newTestRegistryForListUnits(payloads []job.JobPayload, jobs []job.Job) Regi
 		}
 	}
 
-	return TestRegistry{jobs: j, payloads: p}
+	registry := TestRegistry{}
+
+	registry.payloads = make(map[string]*job.JobPayload, 0)
+	for _, jp := range p {
+		registry.CreatePayload(&jp)
+	}
+
+	registry.jobs = make(map[string]*job.Job, 0)
+	for _, j := range j {
+		registry.CreateJob(&j)
+	}
+
+	return registry
 }
 
 func TestGetAllJobs(t *testing.T) {
@@ -70,8 +82,8 @@ Description=PING
 	registryCtl = newTestRegistryForListUnits(nil, j)
 
 	names, _ := findAllUnits()
-	if len(names) != 3 {
-		t.Errorf("Expected to find three units: %v\n", names)
+	if len(names) != 2 {
+		t.Errorf("Expected to find two units: %v\n", names)
 	}
 
 	if names["ping.service"] != "PING" {
@@ -87,11 +99,31 @@ Description=PING
 	registryCtl = newTestRegistryForListUnits(jp, nil)
 
 	names, _ := findAllUnits()
-	if len(names) != 3 {
-		t.Errorf("Expected to find three units: %v\n", names)
+	if len(names) != 2 {
+		t.Errorf("Expected to find two units: %v\n", names)
 	}
 
 	if names["ping.service"] != "PING" {
 		t.Errorf("Expected to have `PING` as a description, but it was %s\n", names["ping.service"])
+	}
+}
+
+func TestPayloadHash(t *testing.T) {
+	contents := `[Unit]
+Description=PING
+`
+	jp := []job.JobPayload{*job.NewJobPayload("ping.service", *unit.NewSystemdUnitFile(contents))}
+	registryCtl = newTestRegistryForListUnits(jp, nil)
+
+	partialHash := getUnitHash("ping.service", false)
+
+	if partialHash != "c631d6f6..." {
+		t.Errorf("Expected partial hash, but it was %s\n", partialHash)
+	}
+
+	fullHash := getUnitHash("ping.service", true)
+
+	if fullHash != "c631d6f6ed3cd008c625e358c39df20f" {
+		t.Errorf("Expected full hash, but it was %s\n", fullHash)
 	}
 }

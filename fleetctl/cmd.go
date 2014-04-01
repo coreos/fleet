@@ -29,6 +29,10 @@ var out *tabwriter.Writer
 var flagset *flag.FlagSet = flag.NewFlagSet("fleetctl", flag.ExitOnError)
 var registryCtl Registry
 
+const (
+	ellipsizeMax = 8
+)
+
 func init() {
 	out = new(tabwriter.Writer)
 	out.Init(os.Stdout, 0, 8, 1, '\t', 0)
@@ -166,7 +170,7 @@ func getEndpointFlag() string {
 func machineBootIDLegend(ms machine.MachineState, full bool) string {
 	legend := ms.BootID
 	if !full {
-		legend = ellipsize(legend, 8)
+		legend = ellipsize(legend, ellipsizeMax)
 	}
 	return legend
 }
