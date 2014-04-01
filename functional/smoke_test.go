@@ -132,11 +132,12 @@ func waitForNMachines(count int) ([]string, error) {
 		time.Sleep(5 * time.Second)
 
 		stdout, _, err := fleetctl("list-machines", "--no-legend", "-l")
-		if err != nil {
+		stdout = strings.TrimSpace(stdout)
+		if stdout == "" || err != nil {
 			continue
 		}
 
-		machines := strings.Split(strings.TrimSpace(stdout), "\n")
+		machines = strings.Split(stdout, "\n")
 		if len(machines) != count {
 			continue
 		}
@@ -161,11 +162,12 @@ func waitForNActiveUnits(count int) error {
 		time.Sleep(time.Second)
 
 		stdout, _, err := fleetctl("list-units", "--no-legend")
-		if err != nil {
+		stdout = strings.TrimSpace(stdout)
+		if stdout == "" || err != nil {
 			continue
 		}
 
-		units := strings.Split(strings.TrimSpace(stdout), "\n")
+		units := strings.Split(stdout, "\n")
 		states := parseUnitStates(units)
 		if activeCount(states) != count {
 			continue
