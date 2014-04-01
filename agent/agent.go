@@ -112,13 +112,43 @@ func (a *Agent) Purge() {
 
 // Periodically report to the Registry at an interval equal to
 // half of the provided ttl. Stop reporting when the provided
-// channel is closed.
+// channel is closed. Failed attempts to report state to the
+// Registry are retried twice before moving on to the next
+// reporting interval.
 func (a *Agent) Heartbeat(ttl time.Duration, stop chan bool) {
+	attempt := func(attempts int, f func() error) (err error) {
+		if attempts < 1 {
+			return fmt.Errorf("attempts argument must be 1 or greater, got %d", attempts)
+		}
+
+		// The amount of time the retry mechanism waits after a failed attempt
+		// doubles following each failure. This is a simple exponential backoff.
+		sleep := time.Second
+
+		for i := 1; i <= attempts; i++ {
+			err = f()
+			if err == nil || i == attempts {
+				break
+			}
+
+			sleep = sleep * 2
+			log.V(2).Infof("function returned err, retrying in %v: %v", sleep, err)
+			time.Sleep(sleep)
+		}
+
+		return err
+	}
+
+	heartbeat := func() error {
+		return a.registry.SetMachineState(a.machine.State(), a.ttl)
+	}
 
 	// Explicitly heartbeat immediately to push state to the
 	// Registry as quickly as possible
 	a.machine.RefreshState()
-	a.registry.SetMachineState(a.machine.State(), a.ttl)
+	if err := attempt(3, heartbeat); err != nil {
+		log.Errorf("Failed heartbeat after 3 attempts: %v", err)
+	}
 
 	interval := ttl / refreshInterval
 	for true {
@@ -129,9 +159,8 @@ func (a *Agent) Heartbeat(ttl time.Duration, stop chan bool) {
 		case <-time.Tick(interval):
 			log.V(2).Info("MachineHeartbeat tick")
 			a.machine.RefreshState()
-			err := a.registry.SetMachineState(a.machine.State(), a.ttl)
-			if err != nil {
-				log.Errorf("MachineHeartbeat failed: %v", err)
+			if err := attempt(3, heartbeat); err != nil {
+				log.Errorf("Failed heartbeat after 3 attempts: %v", err)
 			}
 		}
 	}
