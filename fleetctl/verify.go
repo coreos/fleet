@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"path"
-	"syscall"
 
 	"github.com/coreos/fleet/third_party/github.com/codegangsta/cli"
 
@@ -25,7 +25,7 @@ func verifyUnitAction(c *cli.Context) {
 
 	if len(c.Args()) != 1 {
 		fmt.Println("One unit file must be provided.")
-		syscall.Exit(1)
+		os.Exit(1)
 	}
 
 	name := path.Base(c.Args()[0])
@@ -33,20 +33,20 @@ func verifyUnitAction(c *cli.Context) {
 
 	if payload == nil {
 		fmt.Println("Job not found.")
-		syscall.Exit(1)
+		os.Exit(1)
 	}
 
 	sv, err := sign.NewSignatureVerifierFromSSHAgent()
 	if err != nil {
 		fmt.Println("Fail to create SignatureVerifier:", err)
-		return
+		os.Exit(1)
 	}
 
 	s := r.GetSignatureSetOfPayload(name)
 	ok, err := sv.VerifyPayload(payload, s)
 	if !ok || err != nil {
 		fmt.Printf("Check of payload %s failed: %v\n", payload.Name, err)
-		return
+		os.Exit(1)
 	}
 
 	fmt.Printf("Succeed to verify job(%s).\n", payload.Name)

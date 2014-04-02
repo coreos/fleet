@@ -3,8 +3,8 @@ package main
 import (
 	"fmt"
 	"log"
+	"os"
 	"path"
-	"syscall"
 
 	"github.com/coreos/fleet/third_party/github.com/codegangsta/cli"
 
@@ -45,7 +45,7 @@ func printUnitStatus(c *cli.Context, jobName string) {
 
 	if js == nil {
 		fmt.Printf("%s does not appear to be running\n", jobName)
-		syscall.Exit(1)
+		os.Exit(1)
 	}
 
 	addr := fmt.Sprintf("%s:22", js.MachineState.PublicIP)
@@ -70,5 +70,5 @@ func printUnitStatus(c *cli.Context, jobName string) {
 		log.Fatalf("Unable to execute command over SSH: %s", err.Error())
 	}
 
-	readSSHChannel(channel)
+	os.Exit(readSSHChannel(channel))
 }

@@ -87,7 +87,6 @@ func sshAction(c *cli.Context) {
 	}
 	if err != nil {
 		log.Fatal(err.Error())
-		return
 	}
 
 	defer sshClient.Close()
@@ -99,7 +98,7 @@ func sshAction(c *cli.Context) {
 			log.Fatalf("Unable to run command over SSH: %s", err.Error())
 		}
 
-		readSSHChannel(channel)
+		os.Exit(readSSHChannel(channel))
 	} else {
 		if err := ssh.Shell(sshClient); err != nil {
 			log.Fatalf(err.Error())
@@ -158,12 +157,12 @@ func findAddressInRunningUnits(lookup string) (string, bool) {
 	return fmt.Sprintf("%s:22", js.MachineState.PublicIP), true
 }
 
-func readSSHChannel(channel *ssh.Channel) {
+func readSSHChannel(channel *ssh.Channel) int {
 	readSSHChannelOutput(channel.Stdout)
 
 	exitErr := <-channel.Exit
 	if exitErr == nil {
-		return
+		return 0
 	}
 
 	readSSHChannelOutput(channel.Stderr)
@@ -177,7 +176,7 @@ func readSSHChannel(channel *ssh.Channel) {
 		exitStatus = status.ExitStatus()
 	}
 
-	os.Exit(exitStatus)
+	return exitStatus
 }
 
 func readSSHChannelOutput(o *bufio.Reader) {

@@ -4,9 +4,9 @@ import (
 	"bufio"
 	"fmt"
 	"log"
+	"os"
 	"os/exec"
 	"strings"
-	"syscall"
 
 	"github.com/coreos/fleet/third_party/github.com/codegangsta/cli"
 
@@ -37,7 +37,7 @@ fleetctl journal --lines 100 foo.service`,
 func journalAction(c *cli.Context) {
 	if len(c.Args()) != 1 {
 		fmt.Println("One unit file must be provided.")
-		syscall.Exit(1)
+		os.Exit(1)
 	}
 	jobName := c.Args()[0]
 
@@ -45,7 +45,7 @@ func journalAction(c *cli.Context) {
 
 	if js == nil {
 		fmt.Printf("%s does not appear to be running\n", jobName)
-		syscall.Exit(1)
+		os.Exit(1)
 	}
 
 	cmd := fmt.Sprintf("journalctl -u %s --no-pager -l -n %d", jobName, c.Int("lines"))
@@ -53,18 +53,21 @@ func journalAction(c *cli.Context) {
 		cmd += " -f"
 	}
 
+	var retcode int
+	var err error
 	// check if the job is running on this machine
 	if machine.IsLocalMachineState(js.MachineState) {
-		runLocalCommand(cmd)
+		retcode = runLocalCommand(cmd)
 	} else {
-		err := runRemoteCommand(cmd, js.MachineState.PublicIP)
-		if err != nil {
-			log.Fatalf("Unable to run command over SSH: %v", err)
-		}
+		retcode, err = runRemoteCommand(cmd, js.MachineState.PublicIP)
 	}
+	if err != nil {
+		log.Fatalf("Unable to run command over SSH: %v", err)
+	}
+	os.Exit(retcode)
 }
 
-func runLocalCommand(cmd string) {
+func runLocalCommand(cmd string) int {
 	cmdSlice := strings.Split(cmd, " ")
 	osCmd := exec.Command(cmdSlice[0], cmdSlice[1:]...)
 	stdout, _ := osCmd.StdoutPipe()
@@ -82,10 +85,10 @@ func runLocalCommand(cmd string) {
 		channel.Exit <- err
 	}()
 
-	readSSHChannel(channel)
+	return readSSHChannel(channel)
 }
 
-func runRemoteCommand(cmd string, ip string) error {
+func runRemoteCommand(cmd string, ip string) (int, error) {
 	addr := fmt.Sprintf("%s:22", ip)
 
 	var sshClient *ssh.SSHForwardingClient
@@ -96,16 +99,15 @@ func runRemoteCommand(cmd string, ip string) error {
 		sshClient, err = ssh.NewSSHClient("core", addr, getChecker(), false)
 	}
 	if err != nil {
-		return err
+		return -1, err
 	}
 
 	defer sshClient.Close()
 
 	channel, err := ssh.Execute(sshClient, cmd)
 	if err != nil {
-		return err
+		return -1, err
 	}
 
-	readSSHChannel(channel)
-	return nil
+	return readSSHChannel(channel), nil
 }
