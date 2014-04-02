@@ -1,9 +1,9 @@
 package main
 
 import (
+	"bufio"
 	"errors"
 	"fmt"
-	"io"
 	"log"
 	"os"
 	"os/exec"
@@ -159,42 +159,34 @@ func findAddressInRunningUnits(lookup string) (string, bool) {
 }
 
 func readSSHChannel(channel *ssh.Channel) {
+	readSSHChannelOutput(channel.Stdout)
+
+	exitErr := <-channel.Exit
+	if exitErr == nil {
+		return
+	}
+
+	readSSHChannelOutput(channel.Stderr)
+
+	exitStatus := -1
+	switch exitError := exitErr.(type) {
+	case *gossh.ExitError:
+		exitStatus = exitError.ExitStatus()
+	case *exec.ExitError:
+		status := exitError.Sys().(syscall.WaitStatus)
+		exitStatus = status.ExitStatus()
+	}
+
+	os.Exit(exitStatus)
+}
+
+func readSSHChannelOutput(o *bufio.Reader) {
 	for {
-		select {
-		case exitErr := <-channel.Exit:
-			if exitErr == nil {
-				return
-			}
-
-			for {
-				bytes, err := channel.Stderr.ReadBytes('\n')
-				if err != nil {
-					break
-				}
-
-				fmt.Print(string(bytes))
-			}
-
-			exitStatus := -1
-			switch exitError := exitErr.(type) {
-			case *gossh.ExitError:
-				exitStatus = exitError.ExitStatus()
-			case *exec.ExitError:
-				status := exitError.Sys().(syscall.WaitStatus)
-				exitStatus = status.ExitStatus()
-			}
-
-			os.Exit(exitStatus)
-		default:
-			bytes, err := channel.Stdout.ReadBytes('\n')
-			if err != nil {
-				if err != io.EOF {
-					return // unknown error reading stdout, finishing.
-				}
-				break // let the exit channel to finish properly.
-			}
-
-			fmt.Print(string(bytes))
+		bytes, err := o.ReadBytes('\n')
+		if err != nil {
+			break
 		}
+
+		fmt.Print(string(bytes))
 	}
 }
