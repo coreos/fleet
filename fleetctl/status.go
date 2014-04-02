@@ -70,5 +70,5 @@ func printUnitStatus(c *cli.Context, jobName string) {
 		log.Fatalf("Unable to execute command over SSH: %s", err.Error())
 	}
 
-	readSSHChannel(channel)
+	os.Exit(readSSHChannel(channel))
 }
