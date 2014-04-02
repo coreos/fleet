@@ -9,6 +9,7 @@ import (
 
 	gossh "github.com/coreos/fleet/third_party/code.google.com/p/gosshnew/ssh"
 	gosshagent "github.com/coreos/fleet/third_party/code.google.com/p/gosshnew/ssh/agent"
+	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
 
 	"github.com/coreos/fleet/pkg"
 	"github.com/coreos/fleet/ssh"
@@ -127,8 +128,16 @@ func (sv *SignatureVerifier) Verify(data []byte, s *SignatureSet) (bool, error) 
 
 	// Enumerate all pairs to verify signatures
 	for _, authKey := range sv.pubkeys {
+		// Manually coerce the keys provided by the agent to PublicKeys
+		// since gosshnew does not want to do it for us.
+		key, err := gossh.ParsePublicKey(authKey.Marshal())
+		if err != nil {
+			log.V(1).Infof("Unable to use SSH key: %v", err)
+			continue
+		}
+
 		for _, sign := range s.Signs {
-			if err := authKey.Verify(data, sign); err == nil {
+			if err := key.Verify(data, sign); err == nil {
 				return true, nil
 			}
 		}
