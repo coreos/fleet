@@ -87,7 +87,6 @@ func sshAction(c *cli.Context) {
 	}
 	if err != nil {
 		log.Fatal(err.Error())
-		return
 	}
 
 	defer sshClient.Close()
