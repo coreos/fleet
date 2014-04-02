@@ -14,22 +14,22 @@ import (
 func TestKnownHostsVerification(t *testing.T) {
 	cluster, err := platform.NewNspawnCluster("smoke")
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err)
 	}
 	defer cluster.DestroyAll()
 
 	if err := cluster.CreateMultiple(1, platform.MachineConfig{}); err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err)
 	}
 	machines, err := waitForNMachines(1)
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err)
 	}
 	machine := machines[0]
 
 	tmp, err := ioutil.TempFile(os.TempDir(), "known-hosts")
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err)
 	}
 	tmp.Close()
 	defer syscall.Unlink(tmp.Name())
@@ -45,7 +45,7 @@ func TestKnownHostsVerification(t *testing.T) {
 	cluster.CreateMultiple(1, platform.MachineConfig{})
 	machines, err = waitForNMachines(1)
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err)
 	}
 	machine = machines[0]
 

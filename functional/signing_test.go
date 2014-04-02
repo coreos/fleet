@@ -9,17 +9,17 @@ import (
 func TestSignedRequests(t *testing.T) {
 	cluster, err := platform.NewNspawnCluster("smoke")
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err)
 	}
 	defer cluster.DestroyAll()
 
 	cfg := platform.MachineConfig{VerifyUnits: true}
 	if err := cluster.CreateMultiple(1, cfg); err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err)
 	}
 	_, err = waitForNMachines(1)
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err)
 	}
 
 	_, _, err = fleetctl("start", "--no-block", "--sign=false", "fixtures/units/hello.service")
@@ -34,7 +34,7 @@ func TestSignedRequests(t *testing.T) {
 
 	units, err := waitForNActiveUnits(1)
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err)
 	}
 
 	if len(units) != 1 || units[0] != "goodbye.service" {

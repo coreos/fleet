@@ -11,17 +11,17 @@ import (
 func TestSmoke(t *testing.T) {
 	cluster, err := platform.NewNspawnCluster("smoke")
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err)
 	}
 	defer cluster.DestroyAll()
 
 	// Start with a simple three-node cluster
 	if err := cluster.CreateMultiple(3, platform.MachineConfig{}); err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err)
 	}
 	machines, err := waitForNMachines(3)
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err)
 	}
 
 	// Ensure we can SSH into each machine using fleetctl
@@ -51,19 +51,19 @@ func TestSmoke(t *testing.T) {
 		t.Fatalf("Did not find five units in cluster: \n%s", stdout)
 	}
 	if _, err := waitForNActiveUnits(3); err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err)
 	}
 
 	// Add two more machines to the cluster and ensure the remaining
 	// unscheduled services are picked up.
 	if err := cluster.CreateMultiple(2, platform.MachineConfig{}); err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err)
 	}
 	machines, err = waitForNMachines(5)
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err)
 	}
 	if _, err := waitForNActiveUnits(5); err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err)
 	}
 }
