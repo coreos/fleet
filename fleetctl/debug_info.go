@@ -22,13 +22,13 @@ func debugInfoAction(c *cli.Context) {
 	info, err := registryCtl.GetDebugInfo()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "Get response from etcd error:", err)
-		return
+		os.Exit(1)
 	}
 
 	fmt.Println("All fleet entries in etcd service:")
 	buf := new(bytes.Buffer)
 	if err = json.Indent(buf, []byte(info), "", "\t"); err != nil {
-		return
+		os.Exit(1)
 	}
 	fmt.Println(buf.String())
 }
