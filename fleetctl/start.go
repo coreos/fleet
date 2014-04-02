@@ -70,10 +70,12 @@ func startUnitAction(c *cli.Context) {
 		}
 	}
 
-	payloads := make([]job.JobPayload, len(c.Args()))
+	requirements := parseRequirements(c.String("require"))
+
+	jobs := make([]job.Job, len(c.Args()))
 	for i, v := range c.Args() {
 		name := path.Base(v)
-		payload := registryCtl.GetPayload(name)
+		payload := findPayload(name)
 		if payload == nil {
 			payload, err = getJobPayloadFromFile(v)
 			if err != nil {
@@ -104,16 +106,13 @@ func startUnitAction(c *cli.Context) {
 			}
 		}
 
-		payloads[i] = *payload
+		jobs[i] = *job.NewJob(name, requirements, payload, nil)
 	}
-
-	requirements := parseRequirements(c.String("require"))
 
 	// TODO: This must be done in a transaction!
 	registeredJobs := make(map[string]bool)
-	for _, jp := range payloads {
-		j := job.NewJob(jp.Name, requirements, &jp, nil)
-		err := registryCtl.CreateJob(j)
+	for _, j := range jobs {
+		err := registryCtl.CreateJob(&j)
 		if err != nil {
 			fmt.Printf("Creation of job %s failed: %v\n", j.Name, err)
 			continue
@@ -179,4 +178,22 @@ func checkJobTarget(jobName string, maxAttempts int, out io.Writer, wg *sync.Wai
 		time.Sleep(unitCheckInterval)
 	}
 	fmt.Fprintf(out, "Job %s in queue to be scheduled\n", jobName)
+}
+
+func findPayload(name string) *job.JobPayload {
+	if payload := registryCtl.GetPayload(name); payload != nil {
+		return payload
+	}
+
+	templateIndex := strings.Index(name, "@")
+	extIndex := strings.LastIndex(name, ".")
+	if templateIndex != -1 && extIndex != -1 {
+		templateName := name[0:templateIndex+1] + name[extIndex:]
+		println(templateName)
+		if payload := registryCtl.GetPayload(templateName); payload != nil {
+			return payload
+		}
+	}
+
+	return nil
 }

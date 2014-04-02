@@ -68,21 +68,25 @@ func (m *SystemdManager) Publish(bus *event.EventBus, stopchan chan bool) {
 }
 
 func (m *SystemdManager) StartJob(job *job.Job) {
-	name := m.addUnitNamePrefix(job.Name)
-	m.writeUnit(name, job.Payload.Unit.String())
+	unitFileName := m.addUnitNamePrefix(job.Payload.Name)
+	m.writeUnit(unitFileName, job.Payload.Unit.String())
+
 	m.daemonReload()
 
-	m.subscriptions.Add(name)
-
-	m.startUnit(name)
+	unitName := m.addUnitNamePrefix(job.Name)
+	m.subscriptions.Add(unitName)
+	m.startUnit(unitName)
 }
 
 func (m *SystemdManager) StopJob(jobName string) {
 	unitName := m.addUnitNamePrefix(jobName)
-
 	m.subscriptions.Remove(jobName)
-
 	m.stopUnit(unitName)
+
+	//TODO(bcwaldon): This actually needs to remove unit files only
+	// if they are not template units. Otherwise, the template unit
+	// file should be removed only if there are no other local units
+	// using it.
 	m.removeUnit(unitName)
 }
 
