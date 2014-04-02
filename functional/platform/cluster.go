@@ -8,4 +8,5 @@ type Cluster interface {
 // MachineConfig defines the parameters that should
 // be considered when creating a new cluster member.
 type MachineConfig struct {
+	VerifyUnits bool
 }

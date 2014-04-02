@@ -75,7 +75,7 @@ func TestCluster(t *testing.T) {
 	if len(units) != 5 {
 		t.Fatalf("Did not find five units in cluster: \n%s", stdout)
 	}
-	if err := waitForNActiveUnits(3); err != nil {
+	if _, err := waitForNActiveUnits(3); err != nil {
 		t.Fatalf(err.Error())
 	}
 
@@ -88,7 +88,7 @@ func TestCluster(t *testing.T) {
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
-	if err := waitForNActiveUnits(5); err != nil {
+	if _, err := waitForNActiveUnits(5); err != nil {
 		t.Fatalf(err.Error())
 	}
 }
@@ -148,24 +148,61 @@ func TestKnownHostsVerification(t *testing.T) {
 
 }
 
-func parseUnitStates(units []string) []string {
-	states := make([]string, len(units))
-	for i, unit := range units {
+func parseUnitStates(units []string) map[string]string {
+	states := make(map[string]string)
+	for _, unit := range units {
 		cols := strings.SplitN(unit, "\t", 6)
 		if len(cols) == 6 {
-			states[i] = cols[2]
+			states[cols[0]] = cols[2]
 		}
 	}
 	return states
 }
 
-func activeCount(states []string) (count int) {
-	for _, state := range states {
+func filterActiveUnits(states map[string]string) map[string]string {
+	filtered := make(map[string]string)
+	for unit, state := range states {
 		if state == "active" {
-			count++
+			filtered[unit] = state
 		}
 	}
-	return
+	return filtered
+}
+
+func TestSignedRequests(t *testing.T) {
+	cluster, err := platform.NewNspawnCluster("smoke")
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+	defer cluster.DestroyAll()
+
+	cfg := platform.MachineConfig{VerifyUnits: true}
+	if err := cluster.CreateMultiple(1, cfg); err != nil {
+		t.Fatalf(err.Error())
+	}
+	_, err = waitForNMachines(1)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+
+	_, _, err = fleetctl("start", "--no-block", "--sign=false", "fixtures/units/hello.service")
+	if err != nil {
+		t.Fatalf("Failed starting hello.service: %v", err)
+	}
+
+	_, _, err = fleetctl("start", "--no-block", "--sign=true", "fixtures/units/goodbye.service")
+	if err != nil {
+		t.Fatalf("Failed starting goodbye.service: %v", err)
+	}
+
+	units, err := waitForNActiveUnits(1)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+
+	if len(units) != 1 || units[0] != "goodbye.service" {
+		t.Fatalf("Expected goodbye.service to be sole active unit, got %v", units)
+	}
 }
 
 func fleetctl(args ...string) (string, string, error) {
@@ -237,7 +274,9 @@ loop:
 }
 
 // Wait up to 10s to find the specified number of active units, retrying periodically.
-func waitForNActiveUnits(count int) error {
+func waitForNActiveUnits(count int) ([]string, error) {
+	var units []string
+
 	timeout := 10 * time.Second
 	alarm := time.After(timeout)
 
@@ -246,7 +285,7 @@ loop:
 	for {
 		select {
 		case <-alarm:
-			return fmt.Errorf("Failed to find %d active units within %v", count, timeout)
+			return nil, fmt.Errorf("Failed to find %d active units within %v", count, timeout)
 		case <-ticker:
 			stdout, _, err := fleetctl("list-units", "--no-legend")
 			stdout = strings.TrimSpace(stdout)
@@ -254,15 +293,19 @@ loop:
 				continue
 			}
 
-			units := strings.Split(stdout, "\n")
-			states := parseUnitStates(units)
-			if activeCount(states) != count {
+			lines := strings.Split(stdout, "\n")
+			states := parseUnitStates(lines)
+			active := filterActiveUnits(states)
+			if len(active) != count {
 				continue
 			}
 
+			for unit, _ := range active {
+				units = append(units, unit)
+			}
 			break loop
 		}
 	}
 
-	return nil
+	return units, nil
 }
