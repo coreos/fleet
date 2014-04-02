@@ -39,14 +39,14 @@ func verifyUnitAction(c *cli.Context) {
 	sv, err := sign.NewSignatureVerifierFromSSHAgent()
 	if err != nil {
 		fmt.Println("Fail to create SignatureVerifier:", err)
-		return
+		os.Exit(1)
 	}
 
 	s := r.GetSignatureSetOfPayload(name)
 	ok, err := sv.VerifyPayload(payload, s)
 	if !ok || err != nil {
 		fmt.Printf("Check of payload %s failed: %v\n", payload.Name, err)
-		return
+		os.Exit(1)
 	}
 
 	fmt.Printf("Succeed to verify job(%s).\n", payload.Name)
