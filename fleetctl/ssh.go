@@ -189,3 +189,59 @@ func readSSHChannelOutput(o *bufio.Reader) {
 		fmt.Print(string(bytes))
 	}
 }
+
+// runCommand will attempt to run a command on a given machine. It will attempt
+// to SSH to the machine if it is identified as being remote.
+func runCommand(cmd string, ms *machine.MachineState) (retcode int, err error) {
+	if machine.IsLocalMachineState(ms) {
+		retcode = runLocalCommand(cmd)
+	} else {
+		retcode, err = runRemoteCommand(cmd, ms.PublicIP)
+	}
+	return
+}
+
+func runLocalCommand(cmd string) int {
+	cmdSlice := strings.Split(cmd, " ")
+	osCmd := exec.Command(cmdSlice[0], cmdSlice[1:]...)
+	stdout, _ := osCmd.StdoutPipe()
+	stderr, _ := osCmd.StderrPipe()
+
+	channel := &ssh.Channel{
+		bufio.NewReader(stdout),
+		bufio.NewReader(stderr),
+		make(chan error),
+	}
+
+	osCmd.Start()
+	go func() {
+		err := osCmd.Wait()
+		channel.Exit <- err
+	}()
+
+	return readSSHChannel(channel)
+}
+
+func runRemoteCommand(cmd string, ip string) (int, error) {
+	addr := fmt.Sprintf("%s:22", ip)
+
+	var sshClient *ssh.SSHForwardingClient
+	var err error
+	if tun := getTunnelFlag(); tun != "" {
+		sshClient, err = ssh.NewTunnelledSSHClient("core", tun, addr, getChecker(), false)
+	} else {
+		sshClient, err = ssh.NewSSHClient("core", addr, getChecker(), false)
+	}
+	if err != nil {
+		return -1, err
+	}
+
+	defer sshClient.Close()
+
+	channel, err := ssh.Execute(sshClient, cmd)
+	if err != nil {
+		return -1, err
+	}
+
+	return readSSHChannel(channel), nil
+}

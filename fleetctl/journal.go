@@ -1,17 +1,11 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
 	"log"
 	"os"
-	"os/exec"
-	"strings"
 
 	"github.com/coreos/fleet/third_party/github.com/codegangsta/cli"
-
-	"github.com/coreos/fleet/machine"
-	"github.com/coreos/fleet/ssh"
 )
 
 func newJournalCommand() cli.Command {
@@ -53,61 +47,10 @@ func journalAction(c *cli.Context) {
 		cmd += " -f"
 	}
 
-	var retcode int
-	var err error
-	// check if the job is running on this machine
-	if machine.IsLocalMachineState(js.MachineState) {
-		retcode = runLocalCommand(cmd)
-	} else {
-		retcode, err = runRemoteCommand(cmd, js.MachineState.PublicIP)
-	}
+	retcode, err := runCommand(cmd, js.MachineState)
 	if err != nil {
 		log.Fatalf("Unable to run command over SSH: %v", err)
 	}
+
 	os.Exit(retcode)
-}
-
-func runLocalCommand(cmd string) int {
-	cmdSlice := strings.Split(cmd, " ")
-	osCmd := exec.Command(cmdSlice[0], cmdSlice[1:]...)
-	stdout, _ := osCmd.StdoutPipe()
-	stderr, _ := osCmd.StderrPipe()
-
-	channel := &ssh.Channel{
-		bufio.NewReader(stdout),
-		bufio.NewReader(stderr),
-		make(chan error),
-	}
-
-	osCmd.Start()
-	go func() {
-		err := osCmd.Wait()
-		channel.Exit <- err
-	}()
-
-	return readSSHChannel(channel)
-}
-
-func runRemoteCommand(cmd string, ip string) (int, error) {
-	addr := fmt.Sprintf("%s:22", ip)
-
-	var sshClient *ssh.SSHForwardingClient
-	var err error
-	if tun := getTunnelFlag(); tun != "" {
-		sshClient, err = ssh.NewTunnelledSSHClient("core", tun, addr, getChecker(), false)
-	} else {
-		sshClient, err = ssh.NewSSHClient("core", addr, getChecker(), false)
-	}
-	if err != nil {
-		return -1, err
-	}
-
-	defer sshClient.Close()
-
-	channel, err := ssh.Execute(sshClient, cmd)
-	if err != nil {
-		return -1, err
-	}
-
-	return readSSHChannel(channel), nil
 }
