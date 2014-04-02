@@ -22,6 +22,8 @@ func TestSignedRequests(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// The start command should succeed, but the unit should not actually get scheduled
+	// and started on an agent since it is not signed.
 	_, _, err = fleetctl("start", "--no-block", "--sign=false", "fixtures/units/hello.service")
 	if err != nil {
 		t.Fatalf("Failed starting hello.service: %v", err)
