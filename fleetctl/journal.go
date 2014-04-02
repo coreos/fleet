@@ -54,21 +54,17 @@ func journalAction(c *cli.Context) {
 	}
 
 	// check if the job is running on this machine
-	var channel *ssh.Channel
-	var err error
 	if machine.IsLocalMachineState(js.MachineState) {
-		channel = runLocalCommand(cmd)
+		runLocalCommand(cmd)
 	} else {
-		channel, err = runRemoteCommand(cmd, js.MachineState.PublicIP)
+		err := runRemoteCommand(cmd, js.MachineState.PublicIP)
 		if err != nil {
 			log.Fatalf("Unable to run command over SSH: %v", err)
 		}
 	}
-
-	readSSHChannel(channel)
 }
 
-func runLocalCommand(cmd string) *ssh.Channel {
+func runLocalCommand(cmd string) {
 	cmdSlice := strings.Split(cmd, " ")
 	osCmd := exec.Command(cmdSlice[0], cmdSlice[1:]...)
 	stdout, _ := osCmd.StdoutPipe()
@@ -86,10 +82,10 @@ func runLocalCommand(cmd string) *ssh.Channel {
 		channel.Exit <- err
 	}()
 
-	return channel
+	readSSHChannel(channel)
 }
 
-func runRemoteCommand(cmd string, ip string) (*ssh.Channel, error) {
+func runRemoteCommand(cmd string, ip string) error {
 	addr := fmt.Sprintf("%s:22", ip)
 
 	var sshClient *ssh.SSHForwardingClient
@@ -100,14 +96,16 @@ func runRemoteCommand(cmd string, ip string) (*ssh.Channel, error) {
 		sshClient, err = ssh.NewSSHClient("core", addr, getChecker(), false)
 	}
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	defer sshClient.Close()
 
 	channel, err := ssh.Execute(sshClient, cmd)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	return channel, nil
+
+	readSSHChannel(channel)
+	return nil
 }
