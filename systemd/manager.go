@@ -22,13 +22,13 @@ const (
 )
 
 type SystemdManager struct {
-	Systemd		*dbus.Conn
-	Machine		*machine.Machine
-	UnitPrefix	string
-	unitPath	string
+	Systemd    *dbus.Conn
+	Machine    *machine.Machine
+	UnitPrefix string
+	unitPath   string
 
-	subscriptions	*dbus.SubscriptionSet
-	stop		chan bool
+	subscriptions *dbus.SubscriptionSet
+	stop          chan bool
 }
 
 func NewSystemdManager(machine *machine.Machine, unitPrefix string) *SystemdManager {
