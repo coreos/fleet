@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/coreos/fleet/third_party/github.com/codegangsta/cli"
 
@@ -36,7 +37,7 @@ func submitUnitsAction(c *cli.Context) {
 		sc, err = sign.NewSignatureCreatorFromSSHAgent()
 		if err != nil {
 			fmt.Println("Fail to create SignatureVerifier:", err)
-			return
+			os.Exit(1)
 		}
 	}
 
@@ -46,7 +47,7 @@ func submitUnitsAction(c *cli.Context) {
 		payload, err := getJobPayloadFromFile(v)
 		if err != nil {
 			fmt.Println(err.Error())
-			return
+			os.Exit(1)
 		}
 		payloads[i] = *payload
 	}
@@ -57,13 +58,13 @@ func submitUnitsAction(c *cli.Context) {
 		err := registryCtl.CreatePayload(&payload)
 		if err != nil {
 			fmt.Printf("Creation of payload %s failed: %v\n", payload.Name, err)
-			return
+			os.Exit(1)
 		}
 		if toSign {
 			s, err := sc.SignPayload(&payload)
 			if err != nil {
 				fmt.Printf("Creation of sign for payload %s failed: %v\n", payload.Name, err)
-				return
+				os.Exit(1)
 			}
 			registryCtl.CreateSignatureSet(s)
 		}
