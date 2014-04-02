@@ -96,8 +96,8 @@ func main() {
 	app.Flags = []cli.Flag{
 		cli.StringFlag{"endpoint", "http://127.0.0.1:4001", "Fleet Engine API endpoint (etcd)"},
 		cli.StringFlag{"tunnel", "", "Establish an SSH tunnel through the provided address for communication with fleet and etcd."},
-		cli.BoolTFlag{"strict-host-key-checking", "Do strict check on known hosts for ssh connection. Defaults to 'true'."},
-		cli.StringFlag{"known-hosts-file", ssh.DefaultKnownHostsFile, "Location for known_hosts file"},
+		cli.BoolTFlag{"strict-host-key-checking", "Verify host keys presented by remote machines before initiating SSH connections."},
+		cli.StringFlag{"known-hosts-file", ssh.DefaultKnownHostsFile, "File used to store remote machine fingerprints. Ignored if strict host key checking is disabled."},
 	}
 
 	app.Commands = []cli.Command{
