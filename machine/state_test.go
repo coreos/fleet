@@ -1,6 +1,9 @@
 package machine
 
 import (
+	"io/ioutil"
+	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -107,5 +110,40 @@ func TestStateMatchBootID(t *testing.T) {
 		if ok := tt.m.MatchBootID(tt.s); !ok {
 			t.Errorf("#%d: expected %v", i, true)
 		}
+	}
+}
+
+func TestReadLocalBootIDMissing(t *testing.T) {
+	dir, err := ioutil.TempDir(os.TempDir(), "fleet-")
+	if err != nil {
+		t.Fatalf("Failed creating tempdir: %v", err)
+	}
+	defer os.RemoveAll(dir)
+
+	if bootID := readLocalBootID(dir); bootID != "" {
+		t.Fatalf("Received incorrect bootID: %s", bootID)
+	}
+}
+
+func TestReadLocalBootIDFound(t *testing.T) {
+	dir, err := ioutil.TempDir(os.TempDir(), "fleet-")
+	if err != nil {
+		t.Fatalf("Failed creating tempdir: %v", err)
+	}
+	defer os.RemoveAll(dir)
+
+	tmpBootIDPath := filepath.Join(dir, "/proc/sys/kernel/random/boot_id")
+	err = os.MkdirAll(filepath.Dir(tmpBootIDPath), os.FileMode(0755))
+	if err != nil {
+		t.Fatalf("Failed setting up fake boot ID path: %v", err)
+	}
+
+	err = ioutil.WriteFile(tmpBootIDPath, []byte("pingpong"), os.FileMode(0644))
+	if err != nil {
+		t.Fatalf("Failed writing fake boot ID file: %v", err)
+	}
+
+	if bootID := readLocalBootID(dir); bootID != "pingpong" {
+		t.Fatalf("Received incorrect bootID %q, expected 'pingpong'", bootID)
 	}
 }
