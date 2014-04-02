@@ -61,12 +61,12 @@ func startUnitAction(c *cli.Context) {
 		sc, err = sign.NewSignatureCreatorFromSSHAgent()
 		if err != nil {
 			fmt.Println("Fail to create SignatureCreator:", err)
-			return
+			os.Exit(1)
 		}
 		sv, err = sign.NewSignatureVerifierFromSSHAgent()
 		if err != nil {
 			fmt.Println("Fail to create SignatureVerifier:", err)
-			return
+			os.Exit(1)
 		}
 	}
 
@@ -78,19 +78,19 @@ func startUnitAction(c *cli.Context) {
 			payload, err = getJobPayloadFromFile(v)
 			if err != nil {
 				fmt.Println(err.Error())
-				return
+				os.Exit(1)
 			}
 
 			err = registryCtl.CreatePayload(payload)
 			if err != nil {
 				fmt.Printf("Creation of payload %s failed: %v\n", payload.Name, err)
-				return
+				os.Exit(1)
 			}
 			if toSign {
 				s, err := sc.SignPayload(payload)
 				if err != nil {
 					fmt.Printf("Creation of sign for payload %s failed: %v\n", payload.Name, err)
-					return
+					os.Exit(1)
 				}
 				registryCtl.CreateSignatureSet(s)
 			}
@@ -100,7 +100,7 @@ func startUnitAction(c *cli.Context) {
 			ok, err := sv.VerifyPayload(payload, s)
 			if !ok || err != nil {
 				fmt.Printf("Check of payload %s failed: %v\n", payload.Name, err)
-				return
+				os.Exit(1)
 			}
 		}
 
@@ -116,7 +116,7 @@ func startUnitAction(c *cli.Context) {
 		err := registryCtl.CreateJob(j)
 		if err != nil {
 			fmt.Printf("Creation of job %s failed: %v\n", j.Name, err)
-			continue
+			os.Exit(1)
 		}
 		registeredJobs[j.Name] = true
 	}
