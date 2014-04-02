@@ -41,7 +41,7 @@ func TestCluster(t *testing.T) {
 	defer cluster.DestroyAll()
 
 	// Start with a simple three-node cluster
-	if err := cluster.Create(3); err != nil {
+	if err := cluster.CreateMultiple(3, platform.MachineConfig{}); err != nil {
 		t.Fatalf(err.Error())
 	}
 	machines, err := waitForNMachines(3)
@@ -81,7 +81,7 @@ func TestCluster(t *testing.T) {
 
 	// Add two more machines to the cluster and ensure the remaining
 	// unscheduled services are picked up.
-	if err := cluster.Create(2); err != nil {
+	if err := cluster.CreateMultiple(2, platform.MachineConfig{}); err != nil {
 		t.Fatalf(err.Error())
 	}
 	machines, err = waitForNMachines(5)
@@ -100,7 +100,7 @@ func TestKnownHostsVerification(t *testing.T) {
 	}
 	defer cluster.DestroyAll()
 
-	if err := cluster.Create(1); err != nil {
+	if err := cluster.CreateMultiple(1, platform.MachineConfig{}); err != nil {
 		t.Fatalf(err.Error())
 	}
 	machines, err := waitForNMachines(1)
@@ -124,7 +124,7 @@ func TestKnownHostsVerification(t *testing.T) {
 
 	// Recreation of the cluster simulates a change in the server's host key
 	cluster.DestroyAll()
-	cluster.Create(1)
+	cluster.CreateMultiple(1, platform.MachineConfig{})
 	machines, err = waitForNMachines(1)
 	if err != nil {
 		t.Fatalf(err.Error())
