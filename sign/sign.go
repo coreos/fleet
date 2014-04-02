@@ -11,6 +11,7 @@ import (
 	gosshagent "github.com/coreos/fleet/third_party/code.google.com/p/gosshnew/ssh/agent"
 
 	"github.com/coreos/fleet/pkg"
+	"github.com/coreos/fleet/ssh"
 )
 
 const (
@@ -37,7 +38,10 @@ func NewSignatureCreator(keyring gosshagent.Agent) *SignatureCreator {
 
 // NewSignatureCreatorFromSSHAgent return SignatureCreator which uses ssh-agent to sign
 func NewSignatureCreatorFromSSHAgent() (*SignatureCreator, error) {
-	keyring := gosshagent.NewKeyring()
+	keyring, err := ssh.SSHAgentClient()
+	if err != nil {
+		return nil, err
+	}
 	return &SignatureCreator{keyring}, nil
 }
 
@@ -77,7 +81,10 @@ func NewSignatureVerifier() *SignatureVerifier {
 
 // NewSignatureVerifierFromSSHAgent return SignatureVerifier which uses ssh-agent to verify
 func NewSignatureVerifierFromSSHAgent() (*SignatureVerifier, error) {
-	keyring := gosshagent.NewKeyring()
+	keyring, err := ssh.SSHAgentClient()
+	if err != nil {
+		return nil, err
+	}
 	return NewSignatureVerifierFromKeyring(keyring)
 }
 

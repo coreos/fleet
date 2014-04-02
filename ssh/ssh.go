@@ -25,7 +25,7 @@ func (s *SSHForwardingClient) ForwardAgentAuthentication(session *gossh.Session)
 }
 
 func newSSHForwardingClient(client *gossh.Client, agentForwarding bool) (*SSHForwardingClient, error) {
-	a, err := sshAgentClient()
+	a, err := SSHAgentClient()
 	if err != nil {
 		return nil, err
 	}
@@ -116,7 +116,7 @@ func Shell(client *SSHForwardingClient) error {
 	return nil
 }
 
-func sshAgentClient() (gosshagent.Agent, error) {
+func SSHAgentClient() (gosshagent.Agent, error) {
 	sock := os.Getenv("SSH_AUTH_SOCK")
 	if sock == "" {
 		return nil, errors.New("SSH_AUTH_SOCK environment variable is not set. Verify ssh-agent is running. See https://github.com/coreos/fleet/blob/master/Documentation/remote-access.md for help.")
@@ -131,7 +131,7 @@ func sshAgentClient() (gosshagent.Agent, error) {
 }
 
 func sshClientConfig(user string, checker *HostKeyChecker) (*gossh.ClientConfig, error) {
-	agentClient, err := sshAgentClient()
+	agentClient, err := SSHAgentClient()
 	if err != nil {
 		return nil, err
 	}
