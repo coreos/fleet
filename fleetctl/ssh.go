@@ -41,7 +41,7 @@ Now you can run all fleet commands locally.`,
 		Flags: []cli.Flag{
 			cli.StringFlag{"machine, m", "", "Open SSH connection to a specific machine."},
 			cli.StringFlag{"unit, u", "", "Open SSH connection to machine running provided unit."},
-			cli.BoolFlag{"agent, A", "Enable SSH forwarding of the authentication agent connection."},
+			cli.BoolFlag{"forward-agent, A", "Forward local ssh-agent to target machine."},
 		},
 		Action: sshAction,
 	}
@@ -77,7 +77,7 @@ func sshAction(c *cli.Context) {
 		log.Fatalf("Requested machine could not be found")
 	}
 
-	agentForwarding := c.Bool("agent")
+	agentForwarding := c.Bool("forward-agent")
 
 	var sshClient *ssh.SSHForwardingClient
 	if tun := getTunnelFlag(); tun != "" {
