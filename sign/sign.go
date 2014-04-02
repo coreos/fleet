@@ -9,8 +9,10 @@ import (
 
 	gossh "github.com/coreos/fleet/third_party/code.google.com/p/gosshnew/ssh"
 	gosshagent "github.com/coreos/fleet/third_party/code.google.com/p/gosshnew/ssh/agent"
+	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
 
 	"github.com/coreos/fleet/pkg"
+	"github.com/coreos/fleet/ssh"
 )
 
 const (
@@ -37,7 +39,10 @@ func NewSignatureCreator(keyring gosshagent.Agent) *SignatureCreator {
 
 // NewSignatureCreatorFromSSHAgent return SignatureCreator which uses ssh-agent to sign
 func NewSignatureCreatorFromSSHAgent() (*SignatureCreator, error) {
-	keyring := gosshagent.NewKeyring()
+	keyring, err := ssh.SSHAgentClient()
+	if err != nil {
+		return nil, err
+	}
 	return &SignatureCreator{keyring}, nil
 }
 
@@ -77,7 +82,10 @@ func NewSignatureVerifier() *SignatureVerifier {
 
 // NewSignatureVerifierFromSSHAgent return SignatureVerifier which uses ssh-agent to verify
 func NewSignatureVerifierFromSSHAgent() (*SignatureVerifier, error) {
-	keyring := gosshagent.NewKeyring()
+	keyring, err := ssh.SSHAgentClient()
+	if err != nil {
+		return nil, err
+	}
 	return NewSignatureVerifierFromKeyring(keyring)
 }
 
@@ -90,8 +98,8 @@ func NewSignatureVerifierFromKeyring(keyring gosshagent.Agent) (*SignatureVerifi
 
 	pubkeys := make([]gossh.PublicKey, len(keys))
 
-	for _, k := range keys {
-		pubkeys = append(pubkeys, k)
+	for i, k := range keys {
+		pubkeys[i] = k
 	}
 
 	return &SignatureVerifier{pubkeys}, nil
@@ -120,12 +128,16 @@ func (sv *SignatureVerifier) Verify(data []byte, s *SignatureSet) (bool, error) 
 
 	// Enumerate all pairs to verify signatures
 	for _, authKey := range sv.pubkeys {
-		if authKey == nil {
+		// Manually coerce the keys provided by the agent to PublicKeys
+		// since gosshnew does not want to do it for us.
+		key, err := gossh.ParsePublicKey(authKey.Marshal())
+		if err != nil {
+			log.V(1).Infof("Unable to use SSH key: %v", err)
 			continue
 		}
 
 		for _, sign := range s.Signs {
-			if err := authKey.Verify(data, sign); err == nil {
+			if err := key.Verify(data, sign); err == nil {
 				return true, nil
 			}
 		}
