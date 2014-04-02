@@ -4,9 +4,9 @@ import (
 	"bufio"
 	"fmt"
 	"log"
+	"os"
 	"os/exec"
 	"strings"
-	"syscall"
 
 	"github.com/coreos/fleet/third_party/github.com/codegangsta/cli"
 
@@ -37,7 +37,7 @@ fleetctl journal --lines 100 foo.service`,
 func journalAction(c *cli.Context) {
 	if len(c.Args()) != 1 {
 		fmt.Println("One unit file must be provided.")
-		syscall.Exit(1)
+		os.Exit(1)
 	}
 	jobName := c.Args()[0]
 
@@ -45,7 +45,7 @@ func journalAction(c *cli.Context) {
 
 	if js == nil {
 		fmt.Printf("%s does not appear to be running\n", jobName)
-		syscall.Exit(1)
+		os.Exit(1)
 	}
 
 	cmd := fmt.Sprintf("journalctl -u %s --no-pager -l -n %d", jobName, c.Int("lines"))
