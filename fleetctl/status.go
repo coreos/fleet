@@ -7,8 +7,6 @@ import (
 	"path"
 
 	"github.com/coreos/fleet/third_party/github.com/codegangsta/cli"
-
-	"github.com/coreos/fleet/ssh"
 )
 
 func newStatusUnitsCommand() cli.Command {
@@ -48,27 +46,11 @@ func printUnitStatus(c *cli.Context, jobName string) {
 		os.Exit(1)
 	}
 
-	addr := fmt.Sprintf("%s:22", js.MachineState.PublicIP)
-
-	var err error
-	var sshClient *ssh.SSHForwardingClient
-
-	if tun := getTunnelFlag(); tun != "" {
-		sshClient, err = ssh.NewTunnelledSSHClient("core", tun, addr, getChecker(), false)
-	} else {
-		sshClient, err = ssh.NewSSHClient("core", addr, getChecker(), false)
-	}
-	if err != nil {
-		log.Fatal(err.Error())
-	}
-
-	defer sshClient.Close()
-
 	cmd := fmt.Sprintf("systemctl status -l %s", jobName)
-	channel, err := ssh.Execute(sshClient, cmd)
+	retcode, err := runCommand(cmd, js.MachineState)
 	if err != nil {
-		log.Fatalf("Unable to execute command over SSH: %s", err.Error())
+		log.Fatalf("Unable to run command over SSH: %v", err)
 	}
 
-	os.Exit(readSSHChannel(channel))
+	os.Exit(retcode)
 }
