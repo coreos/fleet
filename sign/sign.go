@@ -97,8 +97,8 @@ func NewSignatureVerifierFromKeyring(keyring gosshagent.Agent) (*SignatureVerifi
 
 	pubkeys := make([]gossh.PublicKey, len(keys))
 
-	for _, k := range keys {
-		pubkeys = append(pubkeys, k)
+	for i, k := range keys {
+		pubkeys[i] = k
 	}
 
 	return &SignatureVerifier{pubkeys}, nil
@@ -127,10 +127,6 @@ func (sv *SignatureVerifier) Verify(data []byte, s *SignatureSet) (bool, error) 
 
 	// Enumerate all pairs to verify signatures
 	for _, authKey := range sv.pubkeys {
-		if authKey == nil {
-			continue
-		}
-
 		for _, sign := range s.Signs {
 			if err := authKey.Verify(data, sign); err == nil {
 				return true, nil
