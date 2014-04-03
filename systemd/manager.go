@@ -1,6 +1,7 @@
 package systemd
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -22,13 +23,13 @@ const (
 )
 
 type SystemdManager struct {
-	Systemd		*dbus.Conn
-	Machine		*machine.Machine
-	UnitPrefix	string
-	unitPath	string
+	Systemd    *dbus.Conn
+	Machine    *machine.Machine
+	UnitPrefix string
+	unitPath   string
 
-	subscriptions	*dbus.SubscriptionSet
-	stop		chan bool
+	subscriptions *dbus.SubscriptionSet
+	stop          chan bool
 }
 
 func NewSystemdManager(machine *machine.Machine, unitPrefix string) *SystemdManager {
@@ -38,6 +39,15 @@ func NewSystemdManager(machine *machine.Machine, unitPrefix string) *SystemdMana
 	}
 
 	return &SystemdManager{systemd, machine, unitPrefix, defaultSystemdRuntimePath, systemd.NewSubscriptionSet(), nil}
+}
+
+func (m *SystemdManager) MarshalJSON() ([]byte, error) {
+	data := struct {
+		DBUSSubscriptions []string
+	} {
+		DBUSSubscriptions: m.subscriptions.Values(),
+	}
+	return json.Marshal(data)
 }
 
 func (m *SystemdManager) Publish(bus *event.EventBus, stopchan chan bool) {

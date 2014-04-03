@@ -62,7 +62,14 @@ func (a *Agent) Machine() *machine.Machine {
 }
 
 func (a *Agent) MarshalJSON() ([]byte, error) {
-	return json.Marshal(struct{ State *AgentState }{State: a.state})
+	data := struct{
+		Systemd *systemd.SystemdManager
+		State *AgentState
+	} {
+		Systemd: a.systemd,
+		State: a.state,
+	}
+	return json.Marshal(data)
 }
 
 // Trigger all async processes the Agent intends to run
