@@ -52,7 +52,7 @@ func TestPrintJobStarted(t *testing.T) {
 	b := bytes.NewBufferString("")
 	waitForScheduledUnits(jobs, 1, b)
 
-	if b.String() != "Job pong.service started on c31e44e1.../1.2.3.4\n" {
+	if b.String() != "Job pong.service scheduled to c31e44e1.../1.2.3.4\n" {
 		t.Errorf("Found unexpected start output: %s", b.String())
 	}
 }
@@ -64,8 +64,8 @@ func TestPrintSeveralJobs(t *testing.T) {
 	b := bytes.NewBufferString("")
 	waitForScheduledUnits(jobs, 1, b)
 
-	expected := `Job pong.service started on c31e44e1.../1.2.3.4
-Job hello.service started on 595989bb.../5.6.7.8
+	expected := `Job pong.service scheduled to c31e44e1.../1.2.3.4
+Job hello.service scheduled to 595989bb.../5.6.7.8
 `
 
 	if b.String() != expected {
@@ -80,8 +80,8 @@ func TestPrintJobPending(t *testing.T) {
 	b := bytes.NewBufferString("")
 	waitForScheduledUnits(jobs, 1, b)
 
-	expected := `Job pong.service started on c31e44e1.../1.2.3.4
-Job echo.service in queue to be scheduled
+	expected := `Job pong.service scheduled to c31e44e1.../1.2.3.4
+Job echo.service still queued for scheduling
 `
 
 	if b.String() != expected {
@@ -96,7 +96,7 @@ func TestPrintJobWithoutPublicIP(t *testing.T) {
 	b := bytes.NewBufferString("")
 	waitForScheduledUnits(jobs, 1, b)
 
-	if b.String() != "Job private.service started on 520983A8...\n" {
+	if b.String() != "Job private.service scheduled to 520983A8...\n" {
 		t.Errorf("Found unexpected start output: %s", b.String())
 	}
 }
