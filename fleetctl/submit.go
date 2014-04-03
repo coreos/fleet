@@ -3,8 +3,10 @@ package main
 import (
 	"fmt"
 	"os"
+	"path"
 
 	"github.com/coreos/fleet/third_party/github.com/codegangsta/cli"
+	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
 
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/sign"
@@ -30,43 +32,75 @@ fleetctl submit myservice/*`,
 }
 
 func submitUnitsAction(c *cli.Context) {
-	toSign := c.Bool("sign")
+	_, err := submitPayloads(c.Args(), c.Bool("sign"))
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed creating payloads: %v", err)
+		os.Exit(1)
+	}
+}
+
+func submitPayloads(names []string, signPayloads bool) ([]job.JobPayload, error) {
+	var err error
+
+	// If signing is explicitly set to on, verification will be done also.
 	var sc *sign.SignatureCreator
-	if toSign {
-		var err error
+	var sv *sign.SignatureVerifier
+	if signPayloads {
 		sc, err = sign.NewSignatureCreatorFromSSHAgent()
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed creating SignatureVerifier: %v\n", err)
-			os.Exit(1)
+			return nil, fmt.Errorf("Failed creating SignatureCreator: %v", err)
+		}
+		sv, err = sign.NewSignatureVerifierFromSSHAgent()
+		if err != nil {
+			return nil, fmt.Errorf("Failed creating SignatureVerifier: %v", err)
 		}
 	}
 
-	// First, validate each of the provided payloads
-	payloads := make([]job.JobPayload, len(c.Args()))
-	for i, v := range c.Args() {
-		payload, err := getJobPayloadFromFile(v)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed fetching payload from %v: %v\n", v, err)
-			os.Exit(1)
+	payloads := make([]job.JobPayload, len(names))
+	for i, v := range names {
+		name := path.Base(v)
+		payload := registryCtl.GetPayload(name)
+		if payload == nil {
+			log.V(1).Infof("Payload(%s) not found in Registry", name)
+			payload, err = getJobPayloadFromFile(v)
+			if err != nil {
+				return nil, err
+			}
+
+			log.V(1).Infof("Payload(%s) found in local filesystem", name)
+
+			err = registryCtl.CreatePayload(payload)
+			if err != nil {
+				return nil, fmt.Errorf("Failed creating payload %s: %v", payload.Name, err)
+			}
+
+			log.V(1).Infof("Created Payload(%s) in Registry", name)
+
+			if signPayloads {
+				s, err := sc.SignPayload(payload)
+				if err != nil {
+					return nil, fmt.Errorf("Failed creating sign for payload %s: %v", payload.Name, err)
+				}
+
+				registryCtl.CreateSignatureSet(s)
+				log.V(1).Infof("Signed Payload(%s)", name)
+			}
+		} else {
+			log.V(1).Infof("Found Payload(%s) in Registry", name)
 		}
+
+		if signPayloads {
+			s := registryCtl.GetSignatureSetOfPayload(name)
+			ok, err := sv.VerifyPayload(payload, s)
+			if !ok || err != nil {
+				return nil, fmt.Errorf("Failed checking payload %s: %v", payload.Name, err)
+			}
+
+			log.V(1).Infof("Verified signature of Payload(%s)", name)
+		}
+
 		payloads[i] = *payload
 	}
 
-	// Only after all the provided payloads have been validated
-	// do we push any changes to the Registry
-	for _, payload := range payloads {
-		err := registryCtl.CreatePayload(&payload)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed creating payload %s: %v\n", payload.Name, err)
-			os.Exit(1)
-		}
-		if toSign {
-			s, err := sc.SignPayload(&payload)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Failed creating sign for payload %s: %v\n", payload.Name, err)
-				os.Exit(1)
-			}
-			registryCtl.CreateSignatureSet(s)
-		}
-	}
+	return payloads, nil
 }

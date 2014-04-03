@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"path"
 
 	"github.com/coreos/fleet/third_party/github.com/codegangsta/cli"
@@ -30,5 +31,6 @@ func stopUnitAction(c *cli.Context) {
 	for _, v := range c.Args() {
 		name := path.Base(v)
 		registryCtl.StopJob(name)
+		fmt.Printf("Requested Job %s stop\n", name)
 	}
 }
