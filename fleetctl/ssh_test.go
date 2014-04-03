@@ -12,7 +12,7 @@ func newTestRegistryForSsh() Registry {
 		machine.MachineState{"c31e44e1-f858-436e-933e-59c642517860", "1.2.3.4", map[string]string{"ping": "pong"}, ""},
 		machine.MachineState{"595989bb-cbb7-49ce-8726-722d6e157b4e", "5.6.7.8", map[string]string{"foo": "bar"}, ""},
 		machine.MachineState{"hello.service", "8.7.6.5", map[string]string{"foo": "bar"}, ""},
-}
+	}
 
 	states := map[string]*job.JobState{
 		"j1":            job.NewJobState("loaded", "active", "listening", []string{}, &machines[0]),

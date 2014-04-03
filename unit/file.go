@@ -10,7 +10,7 @@ type SystemdUnitFile struct {
 	// This field must be considered readonly.
 	Contents map[string]map[string][]string
 
-	raw      string
+	raw string
 }
 
 func (self *SystemdUnitFile) String() string {
