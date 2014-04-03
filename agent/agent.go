@@ -62,12 +62,12 @@ func (a *Agent) Machine() *machine.Machine {
 }
 
 func (a *Agent) MarshalJSON() ([]byte, error) {
-	data := struct{
+	data := struct {
 		Systemd *systemd.SystemdManager
-		State *AgentState
-	} {
+		State   *AgentState
+	}{
 		Systemd: a.systemd,
-		State: a.state,
+		State:   a.state,
 	}
 	return json.Marshal(data)
 }

@@ -12,8 +12,8 @@ import (
 )
 
 type SystemdSocket struct {
-	manager	*SystemdManager
-	name	string
+	manager *SystemdManager
+	name    string
 }
 
 func (ss *SystemdSocket) Name() string {
@@ -57,8 +57,8 @@ func parseSocketFile(contents string) []ListenSocket {
 }
 
 type ListenSocket struct {
-	Type	string
-	Port	int
+	Type string
+	Port int
 }
 
 func (ls *ListenSocket) String(ip string) string {
@@ -88,9 +88,9 @@ func filterListenLines(lines []string) []string {
 
 func parseListenLine(line string) (string, int, error) {
 	keyMap := map[string]string{
-		"ListenSequentialPacket":	"unix",
-		"ListenDatagram":		"udp",
-		"ListenStream":			"tcp",
+		"ListenSequentialPacket": "unix",
+		"ListenDatagram":         "udp",
+		"ListenStream":           "tcp",
 	}
 
 	parts := strings.SplitN(line, "=", 2)

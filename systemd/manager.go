@@ -44,7 +44,7 @@ func NewSystemdManager(machine *machine.Machine, unitPrefix string) *SystemdMana
 func (m *SystemdManager) MarshalJSON() ([]byte, error) {
 	data := struct {
 		DBUSSubscriptions []string
-	} {
+	}{
 		DBUSSubscriptions: m.subscriptions.Values(),
 	}
 	return json.Marshal(data)

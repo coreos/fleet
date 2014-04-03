@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
 	"github.com/coreos/fleet/third_party/github.com/dotcloud/docker/pkg/netlink"
+	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
 )
 
 const (

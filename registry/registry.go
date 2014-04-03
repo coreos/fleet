@@ -21,7 +21,7 @@ func New(client *etcd.Client) (registry *Registry) {
 }
 
 func (r *Registry) GetDebugInfo() (string, error) {
-	resp, err :=  r.etcd.RawGet(keyPrefix, true, true)
+	resp, err := r.etcd.RawGet(keyPrefix, true, true)
 	if err != nil {
 		return "", err
 	}

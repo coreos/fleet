@@ -25,7 +25,7 @@ ExecStop=echo post
 		},
 		"Service": map[string][]string{
 			"ExecStart": []string{"echo \"ping\";"},
-			"ExecStop": []string{"echo \"pong\"", "echo post"},
+			"ExecStop":  []string{"echo \"pong\"", "echo post"},
 		},
 	}
 
@@ -148,7 +148,7 @@ func TestLegacyContents(t *testing.T) {
 	contents := map[string]map[string][]string{
 		"Unit": map[string][]string{
 			"Description": []string{"foobar"},
-			"Wants": []string{},
+			"Wants":       []string{},
 		},
 		"Service": map[string][]string{
 			"Type":      []string{"oneshot"},
