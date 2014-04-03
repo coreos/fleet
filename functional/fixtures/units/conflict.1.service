@@ -2,7 +2,7 @@
 Description=Test Unit
 
 [Service]
-ExecStart=/usr/bin/sleep 120
+ExecStart=/bin/bash -c "while true; do echo Hello, World!; sleep 1; done"
 
 [X-Fleet]
 X-Conflicts=conflict.*.service

@@ -44,7 +44,10 @@ func (eh *EventHandler) HandleEventJobScheduled(ev event.Event) {
 	eh.agent.OfferResolved(jobName)
 
 	if ev.Context.(machine.MachineState).BootID != eh.agent.Machine().State().BootID {
-		log.V(1).Infof("EventJobScheduled(%s): Job not scheduled to this Agent, checking unbade offers", jobName)
+		log.V(1).Infof("EventJobScheduled(%s): Job not scheduled to this Agent, purging related data from cache", jobName)
+		eh.agent.ForgetJob(jobName)
+
+		log.V(1).Infof("EventJobScheduled(%s): Checking outstanding job offers", jobName)
 		eh.agent.BidForPossibleJobs()
 		return
 	}
@@ -136,12 +139,7 @@ func (eh *EventHandler) HandleEventMachineCreated(ev event.Event) {
 		// Everything we check against could change over time, so we track all
 		// offers starting here for future bidding even if we can't bid now
 		eh.agent.TrackOffer(jo)
-
-		if eh.agent.AbleToRun(&jo.Job) {
-			log.Infof("EventMachineCreated(%s): passed all criteria, submitting JobBid(%s)", mach.BootID, jo.Job.Name)
-			eh.agent.Bid(jo.Job.Name)
-		} else {
-			log.V(1).Infof("EventMachineCreated(%s): not all criteria met, not bidding for Job(%s)", mach.BootID, jo.Job.Name)
-		}
 	}
+
+	eh.agent.BidForPossibleJobs()
 }

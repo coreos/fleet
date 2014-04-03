@@ -109,8 +109,9 @@ ExecStart=/opt/fleet/fleet -config /opt/fleet/fleet.conf
 }
 
 func (nc *nspawnCluster) CreateMultiple(count int, cfg MachineConfig) error {
+	initialMemberCount := len(nc.members)
 	for i := 0; i < count; i++ {
-		name := strconv.Itoa(len(nc.members) + i)
+		name := strconv.Itoa(initialMemberCount + i)
 		if err := nc.create(name, cfg); err != nil {
 			return err
 		}
