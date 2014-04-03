@@ -203,9 +203,9 @@ func (a *Agent) StopJob(jobName string) {
 
 	a.state.Lock()
 	reversePeers := a.state.GetJobsByPeer(jobName)
-	a.state.DropPeersJob(jobName)
-	a.state.DropJobConflicts(jobName)
 	a.state.Unlock()
+
+	a.ForgetJob(jobName)
 
 	for _, peer := range reversePeers {
 		log.Infof("Stopping Peer(%s) of Job(%s)", peer, jobName)
@@ -281,6 +281,17 @@ func (a *Agent) OfferResolved(jobName string) {
 	a.state.DropOffer(jobName)
 
 	a.state.DropBid(jobName)
+}
+
+// ForgetJob purges all state related to a given job from
+// the local cache
+func (a *Agent) ForgetJob(jobName string) {
+	a.state.Lock()
+	defer a.state.Unlock()
+
+	log.V(2).Infof("Purging all information for Job(%s)", jobName)
+	a.state.DropPeersJob(jobName)
+	a.state.DropJobConflicts(jobName)
 }
 
 // Pull a Job and its payload from the Registry
