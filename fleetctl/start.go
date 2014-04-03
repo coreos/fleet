@@ -172,11 +172,11 @@ func checkJobTarget(jobName string, maxAttempts int, out io.Writer, wg *sync.Wai
 
 		if ms != nil {
 			m := registryCtl.GetMachineState(ms.BootID)
-			fmt.Fprintf(out, "Job %s started on %s\n", jobName, machineFullLegend(*m, false))
+			fmt.Fprintf(out, "Job %s scheduled to %s\n", jobName, machineFullLegend(*m, false))
 			return
 		}
 
 		time.Sleep(unitCheckInterval)
 	}
-	fmt.Fprintf(out, "Job %s in queue to be scheduled\n", jobName)
+	fmt.Fprintf(out, "Job %s still queued for scheduling\n", jobName)
 }
