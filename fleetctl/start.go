@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path"
 	"strings"
 	"sync"
 	"time"
@@ -13,7 +12,6 @@ import (
 	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
 
 	"github.com/coreos/fleet/job"
-	"github.com/coreos/fleet/sign"
 )
 
 const (
@@ -50,71 +48,11 @@ fleetctl start --require region=us-east foo.service`,
 }
 
 func startUnitAction(c *cli.Context) {
-	var err error
-
-	// If signing is explicitly set to on, verification will be done also.
-	toSign := c.Bool("sign")
-	var sc *sign.SignatureCreator
-	var sv *sign.SignatureVerifier
-	if toSign {
-		var err error
-		sc, err = sign.NewSignatureCreatorFromSSHAgent()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed creating SignatureCreator: %v\n", err)
-			os.Exit(1)
-		}
-		sv, err = sign.NewSignatureVerifierFromSSHAgent()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed creating SignatureVerifier: %v\n", err)
-			os.Exit(1)
-		}
-	}
-
-	payloads := make([]job.JobPayload, len(c.Args()))
-	for i, v := range c.Args() {
-		name := path.Base(v)
-		payload := registryCtl.GetPayload(name)
-		if payload == nil {
-			log.V(1).Infof("Payload(%s) not found in Registry", name)
-			payload, err = getJobPayloadFromFile(v)
-			if err != nil {
-				fmt.Println(err.Error())
-				os.Exit(1)
-			}
-
-			log.V(1).Infof("Payload(%s) found in local filesystem", name)
-
-			err = registryCtl.CreatePayload(payload)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Failed creating payload %s: %v\n", payload.Name, err)
-				os.Exit(1)
-			}
-			log.V(1).Infof("Created Payload(%s) in Registry", name)
-
-			if toSign {
-				s, err := sc.SignPayload(payload)
-				if err != nil {
-					fmt.Fprintf(os.Stderr, "Failed creating sign for payload %s: %v\n", payload.Name, err)
-					os.Exit(1)
-				}
-				registryCtl.CreateSignatureSet(s)
-				log.V(1).Infof("Signed Payload(%s)", name)
-			}
-		} else {
-			log.V(1).Infof("Found Payload(%s) in Registry", name)
-		}
-
-		if toSign {
-			s := registryCtl.GetSignatureSetOfPayload(name)
-			ok, err := sv.VerifyPayload(payload, s)
-			if !ok || err != nil {
-				fmt.Fprintf(os.Stderr, "Failed checking payload %s: %v\n", payload.Name, err)
-				os.Exit(1)
-			}
-			log.V(1).Infof("Verified signature of Payload(%s)", name)
-		}
-
-		payloads[i] = *payload
+	// Attempt to create payloads for convenience
+	payloads, err := submitPayloads(c.Args(), c.Bool("sign"))
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed creating payloads: %v", err)
+		os.Exit(1)
 	}
 
 	requirements := parseRequirements(c.String("require"))
