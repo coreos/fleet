@@ -39,7 +39,8 @@ func TestSignedRequests(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if len(units) != 1 || units[0] != "goodbye.service" {
+	_, ok := units["goodbye.service"]
+	if len(units) != 1 || !ok {
 		t.Fatalf("Expected goodbye.service to be sole active unit, got %v", units)
 	}
 }

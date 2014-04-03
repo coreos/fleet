@@ -3,6 +3,7 @@ package functional
 import (
 	"bytes"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
@@ -96,9 +97,11 @@ loop:
 	return machines, nil
 }
 
-// Wait up to 10s to find the specified number of active units, retrying periodically.
-func waitForNActiveUnits(count int) ([]string, error) {
-	var units []string
+// waitForNActiveUnits polls fleet for up to 10s, exiting when N units are
+// found to be in an active state. It returns a map of active units to
+// their target machines.
+func waitForNActiveUnits(count int) (map[string]UnitState, error) {
+	states := make(map[string]UnitState)
 
 	timeout := 10 * time.Second
 	alarm := time.After(timeout)
@@ -110,46 +113,74 @@ loop:
 		case <-alarm:
 			return nil, fmt.Errorf("Failed to find %d active units within %v", count, timeout)
 		case <-ticker:
-			stdout, _, err := fleetctl("list-units", "--no-legend")
+			stdout, _, err := fleetctl("list-units", "--no-legend", "-l")
 			stdout = strings.TrimSpace(stdout)
 			if stdout == "" || err != nil {
 				continue
 			}
 
 			lines := strings.Split(stdout, "\n")
-			states := parseUnitStates(lines)
-			active := filterActiveUnits(states)
+			allStates := parseUnitStates(lines)
+			active := filterActiveUnits(allStates)
 			if len(active) != count {
 				continue
 			}
 
-			for unit, _ := range active {
-				units = append(units, unit)
+			for _, state := range active {
+				states[state.Name] = state
 			}
 			break loop
 		}
 	}
 
-	return units, nil
+	return states, nil
 }
 
-func parseUnitStates(units []string) map[string]string {
-	states := make(map[string]string)
+type UnitState struct {
+	Name        string
+	ActiveState string
+	Machine     string
+}
+
+func parseUnitStates(units []string) map[string]UnitState {
+	states := make(map[string]UnitState)
 	for _, unit := range units {
 		cols := strings.SplitN(unit, "\t", 6)
 		if len(cols) == 6 {
-			states[cols[0]] = cols[2]
+			machine := strings.SplitN(cols[5], "/", 2)[0]
+			states[cols[0]] = UnitState{cols[0], cols[2], machine}
 		}
 	}
 	return states
 }
 
-func filterActiveUnits(states map[string]string) map[string]string {
-	filtered := make(map[string]string)
+func filterActiveUnits(states map[string]UnitState) map[string]UnitState {
+	filtered := make(map[string]UnitState)
 	for unit, state := range states {
-		if state == "active" {
+		if state.ActiveState == "active" {
 			filtered[unit] = state
 		}
 	}
 	return filtered
+}
+
+// tempUnit creates a local unit file with the given contents, returning
+// the name of the file
+func tempUnit(contents string) (string, error) {
+	tmp, err := ioutil.TempFile(os.TempDir(), "fleet-test-unit-")
+	if err != nil {
+		return "", err
+	}
+
+	tmp.Write([]byte(contents))
+	tmp.Close()
+
+	svc := fmt.Sprintf("%s.service", tmp.Name())
+	err = os.Rename(tmp.Name(), svc)
+	if err != nil {
+		os.Remove(tmp.Name())
+		return "", err
+	}
+
+	return svc, nil
 }

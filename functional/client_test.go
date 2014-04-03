@@ -90,7 +90,8 @@ func TestSSHActions(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if len(units) != 1 || units[0] != "hello.service" {
+	_, found := units["hello.service"]
+	if len(units) != 1 || !found {
 		t.Fatalf("Expected hello.service to be sole active unit, got %v", units)
 	}
 
