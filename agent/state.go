@@ -136,6 +136,11 @@ func (self *AgentState) DropPeersJob(jobName string) {
 		for i, idx := range idxs {
 			self.peers[peer] = append(self.peers[peer][0:idx-i], self.peers[peer][idx-i+1:]...)
 		}
+
+		// Clean up empty peer relations when possible
+		if len(self.peers[peer]) == 0 {
+			delete(self.peers, peer)
+		}
 	}
 }
 
