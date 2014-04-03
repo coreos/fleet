@@ -165,7 +165,7 @@ func findAddressInRunningUnits(lookup string) (string, bool) {
 }
 
 // Read stdout from SSH channel and print to local stdout.
-// If remote command fails, also read stderr and print to local stdout.
+// If remote command fails, also read stderr and print to local stderr.
 // Returns exit status from remote command.
 func readSSHChannel(channel *ssh.Channel) int {
 	readSSHChannelOutput(channel.Stdout, os.Stdout)
