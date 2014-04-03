@@ -7,6 +7,59 @@ import (
 	"github.com/coreos/fleet/functional/platform"
 )
 
+func TestUnitRestart(t *testing.T) {
+	cluster, err := platform.NewNspawnCluster("smoke")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cluster.DestroyAll()
+
+	if err := cluster.CreateMultiple(1, platform.MachineConfig{}); err != nil {
+		t.Fatal(err)
+	}
+	_, err = waitForNMachines(1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, _, err := fleetctl("start", "fixtures/units/hello.service"); err != nil {
+		t.Fatalf("Unable to start fleet unit: %v", err)
+	}
+
+	units, err := waitForNActiveUnits(1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, found := units["hello.service"]
+	if len(units) != 1 || !found {
+		t.Fatalf("Expected hello.service to be sole active unit, got %v", units)
+	}
+
+	if _, _, err := fleetctl("stop", "hello.service"); err != nil {
+		t.Fatal(err)
+	}
+	units, err = waitForNActiveUnits(0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(units) != 0 {
+		t.Fatal("Zero units should be running, found %v", units)
+	}
+
+	if _, _, err := fleetctl("start", "hello.service"); err != nil {
+		t.Fatalf("Unable to start fleet unit: %v", err)
+	}
+	units, err = waitForNActiveUnits(1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, found = units["hello.service"]
+	if len(units) != 1 || !found {
+		t.Fatalf("Expected hello.service to be sole active unit, got %v", units)
+	}
+
+}
+
 func TestUnitSSHActions(t *testing.T) {
 	cluster, err := platform.NewNspawnCluster("smoke")
 	if err != nil {
