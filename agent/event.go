@@ -139,12 +139,7 @@ func (eh *EventHandler) HandleEventMachineCreated(ev event.Event) {
 		// Everything we check against could change over time, so we track all
 		// offers starting here for future bidding even if we can't bid now
 		eh.agent.TrackOffer(jo)
-
-		if eh.agent.AbleToRun(&jo.Job) {
-			log.Infof("EventMachineCreated(%s): passed all criteria, submitting JobBid(%s)", mach.BootID, jo.Job.Name)
-			eh.agent.Bid(jo.Job.Name)
-		} else {
-			log.V(1).Infof("EventMachineCreated(%s): not all criteria met, not bidding for Job(%s)", mach.BootID, jo.Job.Name)
-		}
 	}
+
+	eh.agent.BidForPossibleJobs()
 }
