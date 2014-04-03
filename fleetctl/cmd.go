@@ -91,7 +91,8 @@ func getChecker() *ssh.HostKeyChecker {
 func main() {
 	app := cli.NewApp()
 	app.Name = "fleetctl"
-	app.Usage = "fleetctl is a command line driven interface to the cluster wide CoreOS init system."
+	app.Usage = "fleetctl is a command-line interface to fleet, the cluster-wide CoreOS init system."
+	app.Version = version.Version
 
 	app.Flags = []cli.Flag{
 		cli.StringFlag{"endpoint", "http://127.0.0.1:4001", "Fleet Engine API endpoint (etcd)"},
