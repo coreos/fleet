@@ -2,6 +2,7 @@ package functional
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -184,6 +185,7 @@ X-ConditionMachineBootID=%s
 		if err != nil {
 			t.Fatalf("Failed creating temporary unit: %v", err)
 		}
+		defer os.Remove(unitFile)
 
 		_, _, err = fleetctl("start", unitFile)
 		if err != nil {
