@@ -42,7 +42,6 @@ fleetctl start --require region=us-east foo.service`,
 		Flags: []cli.Flag{
 			cli.StringFlag{"require", "", "Filter suitable hosts with a set of requirements. Format is comma-delimited list of <key>=<value> pairs."},
 			cli.BoolFlag{"sign", "Sign unit file signatures using local SSH identities"},
-			cli.BoolFlag{"verify", "Verify unit file signatures using local SSH identities"},
 			cli.IntFlag{"block-attempts", 10, "Wait until the jobs are scheduled. Perform N attempts before giving up, 10 by default."},
 			cli.BoolFlag{"no-block", "Do not wait until the units have been scheduled to exit start."},
 		},
