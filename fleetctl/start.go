@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/coreos/fleet/third_party/github.com/codegangsta/cli"
+	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
 
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/sign"
@@ -75,17 +76,22 @@ func startUnitAction(c *cli.Context) {
 		name := path.Base(v)
 		payload := registryCtl.GetPayload(name)
 		if payload == nil {
+			log.V(1).Infof("Payload(%s) not found in Registry", name)
 			payload, err = getJobPayloadFromFile(v)
 			if err != nil {
 				fmt.Println(err.Error())
 				os.Exit(1)
 			}
 
+			log.V(1).Infof("Payload(%s) found in local filesystem", name)
+
 			err = registryCtl.CreatePayload(payload)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Failed creating payload %s: %v\n", payload.Name, err)
 				os.Exit(1)
 			}
+			log.V(1).Infof("Created Payload(%s) in Registry", name)
+
 			if toSign {
 				s, err := sc.SignPayload(payload)
 				if err != nil {
@@ -93,8 +99,12 @@ func startUnitAction(c *cli.Context) {
 					os.Exit(1)
 				}
 				registryCtl.CreateSignatureSet(s)
+				log.V(1).Infof("Signed Payload(%s)", name)
 			}
+		} else {
+			log.V(1).Infof("Found Payload(%s) in Registry", name)
 		}
+
 		if toSign {
 			s := registryCtl.GetSignatureSetOfPayload(name)
 			ok, err := sv.VerifyPayload(payload, s)
@@ -102,6 +112,7 @@ func startUnitAction(c *cli.Context) {
 				fmt.Fprintf(os.Stderr, "Failed checking payload %s: %v\n", payload.Name, err)
 				os.Exit(1)
 			}
+			log.V(1).Infof("Verified signature of Payload(%s)", name)
 		}
 
 		payloads[i] = *payload
@@ -113,6 +124,7 @@ func startUnitAction(c *cli.Context) {
 	registeredJobs := make(map[string]bool)
 	for _, jp := range payloads {
 		j := job.NewJob(jp.Name, requirements, &jp, nil)
+		log.V(1).Infof("Created new Job(%s) from Payload(%s)", j.Name, jp.Name)
 		err := registryCtl.CreateJob(j)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Failed creating job %s: %v\n", j.Name, err)
