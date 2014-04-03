@@ -164,6 +164,9 @@ func findAddressInRunningUnits(lookup string) (string, bool) {
 	return fmt.Sprintf("%s:22", js.MachineState.PublicIP), true
 }
 
+// Read stdout from SSH channel and print to local stdout.
+// If remote command fails, also read stderr and print to local stderr.
+// Returns exit status from remote command.
 func readSSHChannel(channel *ssh.Channel) int {
 	readSSHChannelOutput(channel.Stdout, os.Stdout)
 
@@ -187,6 +190,7 @@ func readSSHChannel(channel *ssh.Channel) int {
 	return exitStatus
 }
 
+// Read bytes from a bufio.Reader and write as a string to out
 func readSSHChannelOutput(in *bufio.Reader, out io.Writer) {
 	for {
 		bytes, err := in.ReadBytes('\n')
