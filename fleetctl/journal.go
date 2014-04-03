@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"os"
 
 	"github.com/coreos/fleet/third_party/github.com/codegangsta/cli"
@@ -30,7 +29,7 @@ fleetctl journal --lines 100 foo.service`,
 
 func journalAction(c *cli.Context) {
 	if len(c.Args()) != 1 {
-		fmt.Println("One unit file must be provided.")
+		fmt.Fprintln(os.Stderr, "One unit file must be provided.")
 		os.Exit(1)
 	}
 	jobName := c.Args()[0]
@@ -38,7 +37,7 @@ func journalAction(c *cli.Context) {
 	js := registryCtl.GetJobState(jobName)
 
 	if js == nil {
-		fmt.Printf("%s does not appear to be running\n", jobName)
+		fmt.Fprintf(os.Stderr, "Job %s does not appear to be running.\n", jobName)
 		os.Exit(1)
 	}
 
@@ -49,7 +48,8 @@ func journalAction(c *cli.Context) {
 
 	retcode, err := runCommand(cmd, js.MachineState)
 	if err != nil {
-		log.Fatalf("Unable to run command over SSH: %v", err)
+		fmt.Fprintf(os.Stderr, "Failed running command over SSH: %v\n", err)
+		os.Exit(1)
 	}
 
 	os.Exit(retcode)

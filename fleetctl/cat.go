@@ -20,7 +20,7 @@ the correct version of a unit is running.`,
 
 func printUnitAction(c *cli.Context) {
 	if len(c.Args()) != 1 {
-		fmt.Println("One unit file must be provided.")
+		fmt.Fprintln(os.Stderr, "One unit file must be provided.")
 		os.Exit(1)
 	}
 
@@ -28,7 +28,7 @@ func printUnitAction(c *cli.Context) {
 	payload := registryCtl.GetPayload(name)
 
 	if payload == nil {
-		fmt.Println("Job not found.")
+		fmt.Fprintf(os.Stderr, "Job %s not found.\n", name)
 		os.Exit(1)
 	}
 

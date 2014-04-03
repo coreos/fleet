@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"path"
 
@@ -42,14 +41,15 @@ func printUnitStatus(c *cli.Context, jobName string) {
 	js := registryCtl.GetJobState(jobName)
 
 	if js == nil {
-		fmt.Printf("%s does not appear to be running\n", jobName)
+		fmt.Fprintf(os.Stderr, "Job %s does not appear to be running.\n", jobName)
 		os.Exit(1)
 	}
 
 	cmd := fmt.Sprintf("systemctl status -l %s", jobName)
 	retcode, err := runCommand(cmd, js.MachineState)
 	if err != nil {
-		log.Fatalf("Unable to run command over SSH: %v", err)
+		fmt.Fprintf(os.Stderr, "Failed running command over SSH: %v\n", err)
+		os.Exit(1)
 	}
 
 	os.Exit(retcode)
