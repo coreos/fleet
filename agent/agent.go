@@ -88,6 +88,28 @@ func (a *Agent) Run() {
 	a.events.RemoveListener("agent", a.machine)
 }
 
+// Initialize pushes the local machine state to the Registry
+// repeatedly until it succeeds. It returns the modification
+// index of the first successful response received from etcd.
+func (a *Agent) Initialize() uint64 {
+	log.V(1).Infof("Initializing Agent")
+	a.machine.RefreshState()
+
+	var idx uint64
+	wait := time.Second
+	for {
+		var err error
+		if idx, err = a.registry.SetMachineState(a.machine.State(), a.ttl); err == nil {
+			log.V(1).Infof("Heartbeat succeeded")
+			break
+		}
+		log.V(1).Infof("Failed heartbeat, retrying in %v", wait)
+		time.Sleep(wait)
+	}
+
+	return idx
+}
+
 // Stop all async processes the Agent is running
 func (a *Agent) Stop() {
 	log.V(1).Info("Stopping Agent")
@@ -147,14 +169,8 @@ func (a *Agent) Heartbeat(ttl time.Duration, stop chan bool) {
 	}
 
 	heartbeat := func() error {
-		return a.registry.SetMachineState(a.machine.State(), ttl)
-	}
-
-	// Explicitly heartbeat immediately to push state to the
-	// Registry as quickly as possible
-	a.machine.RefreshState()
-	if err := attempt(3, heartbeat); err != nil {
-		log.Errorf("Failed heartbeat after 3 attempts: %v", err)
+		_, err := a.registry.SetMachineState(a.machine.State(), ttl)
+		return err
 	}
 
 	interval := ttl / refreshInterval

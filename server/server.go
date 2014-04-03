@@ -65,11 +65,15 @@ func (self *Server) MarshalJSON() ([]byte, error) {
 }
 
 func (self *Server) Run() {
+	// Block on the agent being able to publish its
+	// presence and bootstrap its cache
+	idx := self.agent.Initialize()
+
 	go self.agent.Run()
 	go self.engine.Run()
 
 	go self.eventBus.Listen()
-	go self.eventStream.Stream(self.eventBus.Channel)
+	go self.eventStream.Stream(idx, self.eventBus.Channel)
 }
 
 func (self *Server) Stop() {
