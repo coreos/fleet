@@ -4,7 +4,7 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
-	"log"
+	"io"
 	"os"
 	"os/exec"
 	"strings"
@@ -52,7 +52,8 @@ func sshAction(c *cli.Context) {
 	machine := c.String("machine")
 
 	if unit != "" && machine != "" {
-		log.Fatal("Both flags, machine and unit provided, please specify only one")
+		fmt.Fprintln(os.Stderr, "Both flags, machine and unit provided, please specify only one.")
+		os.Exit(1)
 	}
 
 	args := c.Args()
@@ -70,11 +71,13 @@ func sshAction(c *cli.Context) {
 	}
 
 	if err != nil {
-		log.Fatal(err)
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
 	}
 
 	if addr == "" {
-		log.Fatalf("Requested machine could not be found")
+		fmt.Fprintln(os.Stderr, "Requested machine could not be found.")
+		os.Exit(1)
 	}
 
 	agentForwarding := c.Bool("forward-agent")
@@ -86,7 +89,8 @@ func sshAction(c *cli.Context) {
 		sshClient, err = ssh.NewSSHClient("core", addr, getChecker(), agentForwarding)
 	}
 	if err != nil {
-		log.Fatal(err.Error())
+		fmt.Fprintf(os.Stderr, "Failed building SSH client: %v\n", err)
+		os.Exit(1)
 	}
 
 	defer sshClient.Close()
@@ -95,20 +99,22 @@ func sshAction(c *cli.Context) {
 		cmd := strings.Join(args, " ")
 		channel, err := ssh.Execute(sshClient, cmd)
 		if err != nil {
-			log.Fatalf("Unable to run command over SSH: %s", err.Error())
+			fmt.Fprintf(os.Stderr, "Failed running command over SSH: %v\n", err)
+			os.Exit(1)
 		}
 
 		os.Exit(readSSHChannel(channel))
 	} else {
 		if err := ssh.Shell(sshClient); err != nil {
-			log.Fatalf(err.Error())
+			fmt.Fprintf(os.Stderr, "Failed opening shell over SSH: %v\n", err)
+			os.Exit(1)
 		}
 	}
 }
 
 func globalMachineLookup(args []string) (string, error) {
 	if len(args) == 0 {
-		log.Fatalf("Provide one machine or unit")
+		return "", errors.New("Provide one machine or unit.")
 	}
 
 	lookup := args[0]
@@ -118,7 +124,7 @@ func globalMachineLookup(args []string) (string, error) {
 
 	switch {
 	case machineOk && unitOk:
-		return "", errors.New(fmt.Sprintf("Ambiguous argument, both machine and unit found for `%s`.\nPlease use flag `-m` or `-u` to refine the search", lookup))
+		return "", fmt.Errorf("Ambiguous argument, both machine and unit found for `%s`.\nPlease use flag `-m` or `-u` to refine the search.", lookup)
 	case machineOk:
 		return machineAddr, nil
 	case unitOk:
@@ -137,7 +143,8 @@ func findAddressInMachineList(lookup string) (string, bool) {
 		if !strings.HasPrefix(machState.BootID, lookup) {
 			continue
 		} else if match != nil {
-			log.Fatalf("Found more than one Machine, be more specfic")
+			fmt.Fprintln(os.Stderr, "Found more than one Machine, be more specific.")
+			os.Exit(1)
 		}
 		match = &machState
 	}
@@ -158,14 +165,14 @@ func findAddressInRunningUnits(lookup string) (string, bool) {
 }
 
 func readSSHChannel(channel *ssh.Channel) int {
-	readSSHChannelOutput(channel.Stdout)
+	readSSHChannelOutput(channel.Stdout, os.Stdout)
 
 	exitErr := <-channel.Exit
 	if exitErr == nil {
 		return 0
 	}
 
-	readSSHChannelOutput(channel.Stderr)
+	readSSHChannelOutput(channel.Stderr, os.Stderr)
 
 	exitStatus := -1
 	switch exitError := exitErr.(type) {
@@ -176,17 +183,18 @@ func readSSHChannel(channel *ssh.Channel) int {
 		exitStatus = status.ExitStatus()
 	}
 
+	fmt.Fprintf(os.Stderr, "Failed reading SSH channel: %v\n", exitErr)
 	return exitStatus
 }
 
-func readSSHChannelOutput(o *bufio.Reader) {
+func readSSHChannelOutput(in *bufio.Reader, out io.Writer) {
 	for {
-		bytes, err := o.ReadBytes('\n')
+		bytes, err := in.ReadBytes('\n')
 		if err != nil {
 			break
 		}
 
-		fmt.Print(string(bytes))
+		fmt.Fprint(out, string(bytes))
 	}
 }
 
@@ -233,14 +241,14 @@ func runRemoteCommand(cmd string, ip string) (int, error) {
 		sshClient, err = ssh.NewSSHClient("core", addr, getChecker(), false)
 	}
 	if err != nil {
-		return -1, err
+		return 1, err
 	}
 
 	defer sshClient.Close()
 
 	channel, err := ssh.Execute(sshClient, cmd)
 	if err != nil {
-		return -1, err
+		return 1, err
 	}
 
 	return readSSHChannel(channel), nil

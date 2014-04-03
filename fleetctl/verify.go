@@ -24,7 +24,7 @@ func verifyUnitAction(c *cli.Context) {
 	r := getRegistry()
 
 	if len(c.Args()) != 1 {
-		fmt.Println("One unit file must be provided.")
+		fmt.Fprintln(os.Stderr, "One unit file must be provided.")
 		os.Exit(1)
 	}
 
@@ -32,22 +32,26 @@ func verifyUnitAction(c *cli.Context) {
 	payload := r.GetPayload(name)
 
 	if payload == nil {
-		fmt.Println("Job not found.")
+		fmt.Fprintf(os.Stderr, "Job %s not found.\n", name)
 		os.Exit(1)
 	}
 
 	sv, err := sign.NewSignatureVerifierFromSSHAgent()
 	if err != nil {
-		fmt.Println("Fail to create SignatureVerifier:", err)
+		fmt.Fprintf(os.Stderr, "Failed creating SignatureVerifier: %v\n", err)
 		os.Exit(1)
 	}
 
 	s := r.GetSignatureSetOfPayload(name)
 	ok, err := sv.VerifyPayload(payload, s)
-	if !ok || err != nil {
-		fmt.Printf("Check of payload %s failed: %v\n", payload.Name, err)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed checking payload %s: %v\n", payload.Name, err)
 		os.Exit(1)
 	}
 
+	if !ok {
+		fmt.Printf("Failed to verify job(%s).\n", payload.Name)
+		os.Exit(1)
+	}
 	fmt.Printf("Succeed to verify job(%s).\n", payload.Name)
 }
