@@ -9,7 +9,7 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/coreos/fleet/third_party/github.com/golang/glog"
+	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
 	"github.com/coreos/fleet/third_party/github.com/rakyll/globalconf"
 
 	"github.com/coreos/fleet/agent"
@@ -35,7 +35,7 @@ func main() {
 	err := userset.Parse(os.Args[1:])
 	if err == flag.ErrHelp {
 		userset.Usage()
-		syscall.Exit(1)
+		os.Exit(1)
 	}
 
 	if *printVersion {
@@ -57,52 +57,57 @@ func main() {
 	globalconf.Register("", cfgset)
 	cfg, err := getConfig(cfgset, *cfgPath)
 	if err != nil {
-		glog.Error(err.Error())
-		syscall.Exit(1)
+		log.Fatalf(err.Error())
 	}
 
-	srv := server.New(*cfg)
+	log.V(1).Infof("Creating Server")
+	srv, err := server.New(*cfg)
+	if err != nil {
+		log.Fatalf(err.Error())
+	}
 	srv.Run()
 
 	reconfigure := func() {
-		glog.Infof("Reloading configuration from %s", *cfgPath)
+		log.Infof("Reloading configuration from %s", *cfgPath)
 
 		cfg, err := getConfig(cfgset, *cfgPath)
 		if err != nil {
-			glog.Errorf(err.Error())
-			syscall.Exit(1)
+			log.Fatalf(err.Error())
 		}
 
 		srv.Stop()
 
-		srv = server.New(*cfg)
+		srv, err = server.New(*cfg)
+		if err != nil {
+			log.Fatalf(err.Error())
+		}
 		srv.Run()
 	}
 
 	shutdown := func() {
-		glog.Infof("Gracefully shutting down")
+		log.Infof("Gracefully shutting down")
 		srv.Stop()
 		srv.Purge()
-		syscall.Exit(0)
+		os.Exit(0)
 	}
 
 	writeState := func() {
-		glog.Infof("Dumping server state")
+		log.Infof("Dumping server state")
 
 		encoded, err := json.Marshal(srv)
 		if err != nil {
-			glog.Errorf("Failed to dump server state: %v", err)
+			log.Errorf("Failed to dump server state: %v", err)
 			return
 		}
 
 		if _, err := os.Stdout.Write(encoded); err != nil {
-			glog.Errorf("Failed to dump server state: %v", err)
+			log.Errorf("Failed to dump server state: %v", err)
 			return
 		}
 
 		os.Stdout.Write([]byte("\n"))
 
-		glog.V(1).Infof("Finished dumping server state")
+		log.V(1).Infof("Finished dumping server state")
 	}
 
 	signals := map[os.Signal]func(){
@@ -120,19 +125,22 @@ func getConfig(flagset *flag.FlagSet, userCfgFile string) (*config.Config, error
 
 	if userCfgFile != "" {
 		// Fail hard if a user-provided config is not usable
-		if _, err := os.Stat(userCfgFile); err != nil {
-			glog.Errorf("Unable to use config file %s: %v", userCfgFile, err)
-			os.Exit(1)
+		fi, err := os.Stat(userCfgFile)
+		if err != nil {
+			log.Fatalf("Unable to use config file %s: %v", userCfgFile, err)
+		}
+		if fi.IsDir() {
+			log.Fatalf("Provided config %s is a directory, not a file", userCfgFile)
 		}
 
-		glog.Infof("Using provided config file %s", userCfgFile)
+		log.Infof("Using provided config file %s", userCfgFile)
 		opts.Filename = userCfgFile
 
 	} else if _, err := os.Stat(DefaultConfigFile); err == nil {
-		glog.Infof("Using default config file %s", DefaultConfigFile)
+		log.Infof("Using default config file %s", DefaultConfigFile)
 		opts.Filename = DefaultConfigFile
 	} else {
-		glog.Infof("Continuing without config file")
+		log.Infof("No provided or default config file found - proceeding without")
 	}
 
 	gconf, err := globalconf.NewWithOptions(&opts)
