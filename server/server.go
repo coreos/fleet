@@ -24,9 +24,8 @@ type Server struct {
 	eventStream *registry.EventStream
 }
 
-func New(cfg config.Config) *Server {
+func New(cfg config.Config) (*Server, error) {
 	m := machine.New(cfg.BootID, cfg.PublicIP, cfg.Metadata())
-	m.RefreshState()
 
 	regClient := etcd.NewClient(cfg.EtcdServers)
 	regClient.SetConsistency(etcd.STRONG_CONSISTENCY)
@@ -51,13 +50,13 @@ func New(cfg config.Config) *Server {
 
 	a, err := agent.New(r, eb, m, cfg.AgentTTL, cfg.UnitPrefix, verifier)
 	if err != nil {
-		//TODO: return this as an error object rather than panicking
-		panic(err)
+		log.Errorf("Error creating Agent")
+		return nil, err
 	}
 
 	e := engine.New(r, eb, m)
 
-	return &Server{a, e, m, r, eb, es}
+	return &Server{a, e, m, r, eb, es}, nil
 }
 
 func (self *Server) MarshalJSON() ([]byte, error) {
