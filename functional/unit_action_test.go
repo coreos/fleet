@@ -12,9 +12,9 @@ func TestUnitRestart(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer cluster.DestroyAll()
+	defer cluster.Destroy()
 
-	if err := cluster.CreateMultiple(1, platform.MachineConfig{}); err != nil {
+	if err := platform.CreateNClusterMembers(cluster, 1, platform.MachineConfig{}); err != nil {
 		t.Fatal(err)
 	}
 	_, err = waitForNMachines(1)
@@ -65,9 +65,9 @@ func TestUnitSSHActions(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer cluster.DestroyAll()
+	defer cluster.Destroy()
 
-	if err := cluster.CreateMultiple(1, platform.MachineConfig{}); err != nil {
+	if err := platform.CreateNClusterMembers(cluster, 1, platform.MachineConfig{}); err != nil {
 		t.Fatal(err)
 	}
 	_, err = waitForNMachines(1)

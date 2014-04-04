@@ -2,6 +2,7 @@ package platform
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -19,7 +20,7 @@ import (
 
 type nspawnCluster struct {
 	name    string
-	members []string
+	members map[string]string
 }
 
 func (nc *nspawnCluster) prepCluster() (err error) {
@@ -108,20 +109,48 @@ ExecStart=/opt/fleet/fleet -config /opt/fleet/fleet.conf
 	return nil
 }
 
-func (nc *nspawnCluster) CreateMultiple(count int, cfg MachineConfig) error {
-	initialMemberCount := len(nc.members)
-	for i := 0; i < count; i++ {
-		name := strconv.Itoa(initialMemberCount + i)
-		if err := nc.create(name, cfg); err != nil {
-			return err
-		}
+func (nc *nspawnCluster) Members() []string {
+	names := make([]string, 0)
+	for member, _ := range nc.members {
+		names = append(names, member)
 	}
-	return nil
+	return names
 }
 
-func (nc *nspawnCluster) create(name string, cfg MachineConfig) (err error) {
+func (nc *nspawnCluster) MemberCommand(member string, args ...string) (string, error) {
+	ip := nc.members[member]
+	baseArgs := []string{"-o", "UserKnownHostsFile=/dev/null", "-o", "StrictHostKeyChecking=no", fmt.Sprintf("core@%s", ip)}
+	args = append(baseArgs, args...)
+	log.Printf("ssh %s", strings.Join(args, " "))
+	var stdoutBytes bytes.Buffer
+	cmd := exec.Command("ssh", args...)
+	cmd.Stdout = &stdoutBytes
+	err := cmd.Run()
+	return stdoutBytes.String(), err
+}
+
+func (nc *nspawnCluster) findUsableIP() (string, error) {
+	base := 100
+ip:
+	for octet := base; octet < 256; octet++ {
+		ip := fmt.Sprintf("172.17.1.%d", octet)
+		for _, memberIP := range nc.members {
+			if ip == memberIP {
+				continue ip
+			}
+		}
+		return ip, nil
+	}
+	return "", errors.New("Unable to find unused IP address")
+}
+
+func (nc *nspawnCluster) CreateMember(name string, cfg MachineConfig) (err error) {
 	log.Printf("Creating nspawn machine %s in cluster %s", name, nc.name)
-	nc.members = append(nc.members, name)
+	ip, err := nc.findUsableIP()
+	if err != nil {
+		return err
+	}
+	nc.members[name] = ip
 
 	basedir := path.Join(os.TempDir(), nc.name)
 	fsdir := path.Join(basedir, name, "fs")
@@ -145,7 +174,6 @@ func (nc *nspawnCluster) create(name string, cfg MachineConfig) (err error) {
 		}
 	}
 
-	ip := fmt.Sprintf("172.17.1.%d", 100+len(nc.members))
 	sshKeySrc := path.Join("fixtures", "id_rsa.pub")
 	fleetBinSrc := path.Join("../", "bin", "fleet")
 	if err = nc.prepFleet(fsdir, ip, sshKeySrc, fleetBinSrc, cfg); err != nil {
@@ -192,22 +220,15 @@ func (nc *nspawnCluster) create(name string, cfg MachineConfig) (err error) {
 	return nil
 }
 
-func (nc *nspawnCluster) DestroyAll() error {
-	for _, name := range nc.members {
+func (nc *nspawnCluster) Destroy() error {
+	for name, _ := range nc.members {
 		log.Printf("Destroying nspawn machine %s", name)
-		nc.destroy(name)
+		nc.DestroyMember(name)
 	}
-
-	// All members were destroyed, reset to nil
-	nc.members = []string{}
 
 	dir := path.Join(os.TempDir(), nc.name)
 	if _, _, err := run(fmt.Sprintf("rm -fr %s", dir)); err != nil {
 		log.Printf("Failed cleaning up cluster workspace: %v", err)
-	}
-
-	if err := nc.systemdReload(); err != nil {
-		log.Printf("Failed systemd daemon-reload: %v", err)
 	}
 
 	// TODO(bcwaldon): This returns 4 on success, but we can't easily
@@ -218,7 +239,7 @@ func (nc *nspawnCluster) DestroyAll() error {
 	return nil
 }
 
-func (nc *nspawnCluster) destroy(name string) error {
+func (nc *nspawnCluster) DestroyMember(name string) error {
 	dir := path.Join(os.TempDir(), nc.name, name)
 	cmds := []string{
 		fmt.Sprintf("machinectl terminate %s%s", nc.name, name),
@@ -233,6 +254,12 @@ func (nc *nspawnCluster) destroy(name string) error {
 			log.Printf("Command '%s' failed, but operation will continue: %v", cmd, err)
 		}
 	}
+
+	if err := nc.systemdReload(); err != nil {
+		log.Printf("Failed systemd daemon-reload: %v", err)
+	}
+
+	delete(nc.members, name)
 
 	return nil
 }
@@ -311,7 +338,7 @@ func (nc *nspawnCluster) nsenter(name string, cmd string) error {
 }
 
 func NewNspawnCluster(name string) (Cluster, error) {
-	nc := &nspawnCluster{name, []string{}}
+	nc := &nspawnCluster{name, map[string]string{}}
 	err := nc.prepCluster()
 	return nc, err
 }
