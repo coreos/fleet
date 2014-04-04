@@ -126,9 +126,10 @@ func (a *Agent) Purge() {
 	}
 
 	for _, j := range a.registry.GetAllJobsByMachine(bootID) {
-		a.StopJob(j.Name)
-
-		a.VerifyJob(&j)
+		log.Infof("Purging Job(%s)", j.Name)
+		a.systemd.StopJob(j.Name)
+		a.ForgetJob(j.Name)
+		a.ReportJobState(j.Name, nil)
 
 		// TODO(uwedeportivo): agent placing offer ?
 		offer := job.NewOfferFromJob(j, nil)
