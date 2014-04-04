@@ -131,8 +131,6 @@ func (a *Agent) Purge() {
 		a.ForgetJob(j.Name)
 		a.ReportJobState(j.Name, nil)
 
-		a.VerifyJob(&j)
-
 		// TODO(uwedeportivo): agent placing offer ?
 		offer := job.NewOfferFromJob(j, nil)
 		log.V(2).Infof("Publishing JobOffer(%s)", offer.Job.Name)
