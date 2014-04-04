@@ -80,7 +80,10 @@ func (m *SystemdManager) Publish(bus *event.EventBus, stopchan chan bool) {
 func (m *SystemdManager) StartJob(job *job.Job) {
 	name := m.addUnitNamePrefix(job.Name)
 	m.writeUnit(name, job.Payload.Unit.String())
-	m.daemonReload()
+
+	if m.unitRequiresDaemonReload(name) {
+		m.daemonReload()
+	}
 
 	m.subscriptions.Add(name)
 
@@ -155,6 +158,15 @@ func (m *SystemdManager) readUnit(name string) (string, error) {
 	} else {
 		return "", errors.New(fmt.Sprintf("No unit file at local path %s", path))
 	}
+}
+
+func (m *SystemdManager) unitRequiresDaemonReload(name string) bool {
+	prop, err := m.Systemd.GetUnitProperty(name, "NeedDaemonReload")
+	if prop == nil || err != nil {
+		return false
+	}
+
+	return prop.Value.Value().(bool)
 }
 
 func (m *SystemdManager) daemonReload() error {
