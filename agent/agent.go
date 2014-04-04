@@ -126,10 +126,9 @@ func (a *Agent) Purge() {
 	}
 
 	for _, j := range a.registry.GetAllJobsByMachine(bootID) {
-		a.VerifyJob(&j)
+		a.StopJob(j.Name)
 
-		log.V(1).Infof("Clearing JobState(%s) from Registry", j.Name)
-		a.registry.RemoveJobState(j.Name)
+		a.VerifyJob(&j)
 
 		// TODO(uwedeportivo): agent placing offer ?
 		offer := job.NewOfferFromJob(j, nil)
