@@ -15,10 +15,10 @@ Read more about [fleet's architecture and data model](https://github.com/coreos/
 
 ##### Schedule unit to specific machine
 
-The `X-ConditionMachineBootId` option of a unit file causes the system to schedule a unit to a machine with a boot ID matching the option's value.
+The `X-ConditionMachineBootID` option of a unit file causes the system to schedule a unit to a machine with a boot ID matching the option's value.
 
 The boot ID of each machine is currently published in the `MACHINE` column in the output of `fleetctl list-machines -l`.
-One must use the entire boot ID when setting `X-ConditionMachineBootId` - the shortened ID returned by `fleetctl list-machines` without the `-l` flag is not acceptable.
+One must use the entire boot ID when setting `X-ConditionMachineBootID` - the shortened ID returned by `fleetctl list-machines` without the `-l` flag is not acceptable.
 
 It is important to note that a machine's boot ID is ephemeral and will change across reboots.
 

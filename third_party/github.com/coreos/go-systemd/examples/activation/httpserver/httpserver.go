@@ -4,7 +4,7 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/coreos/go-systemd/activation"
+	"github.com/coreos/fleet/third_party/github.com/coreos/go-systemd/activation"
 )
 
 func HelloServer(w http.ResponseWriter, req *http.Request) {

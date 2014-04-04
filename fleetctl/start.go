@@ -4,15 +4,14 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/coreos/fleet/third_party/github.com/codegangsta/cli"
+	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
 
 	"github.com/coreos/fleet/job"
-	"github.com/coreos/fleet/sign"
 )
 
 const (
@@ -41,7 +40,6 @@ fleetctl start --require region=us-east foo.service`,
 		Flags: []cli.Flag{
 			cli.StringFlag{"require", "", "Filter suitable hosts with a set of requirements. Format is comma-delimited list of <key>=<value> pairs."},
 			cli.BoolFlag{"sign", "Sign unit file signatures using local SSH identities"},
-			cli.BoolFlag{"verify", "Verify unit file signatures using local SSH identities"},
 			cli.IntFlag{"block-attempts", 10, "Wait until the jobs are scheduled. Perform N attempts before giving up, 10 by default."},
 			cli.BoolFlag{"no-block", "Do not wait until the units have been scheduled to exit start."},
 		},
@@ -50,61 +48,11 @@ fleetctl start --require region=us-east foo.service`,
 }
 
 func startUnitAction(c *cli.Context) {
-	var err error
-
-	// If signing is explicitly set to on, verification will be done also.
-	toSign := c.Bool("sign")
-	var sc *sign.SignatureCreator
-	var sv *sign.SignatureVerifier
-	if toSign {
-		var err error
-		sc, err = sign.NewSignatureCreatorFromSSHAgent()
-		if err != nil {
-			fmt.Println("Fail to create SignatureCreator:", err)
-			return
-		}
-		sv, err = sign.NewSignatureVerifierFromSSHAgent()
-		if err != nil {
-			fmt.Println("Fail to create SignatureVerifier:", err)
-			return
-		}
-	}
-
-	payloads := make([]job.JobPayload, len(c.Args()))
-	for i, v := range c.Args() {
-		name := path.Base(v)
-		payload := registryCtl.GetPayload(name)
-		if payload == nil {
-			payload, err = getJobPayloadFromFile(v)
-			if err != nil {
-				fmt.Println(err.Error())
-				return
-			}
-
-			err = registryCtl.CreatePayload(payload)
-			if err != nil {
-				fmt.Printf("Creation of payload %s failed: %v\n", payload.Name, err)
-				return
-			}
-			if toSign {
-				s, err := sc.SignPayload(payload)
-				if err != nil {
-					fmt.Printf("Creation of sign for payload %s failed: %v\n", payload.Name, err)
-					return
-				}
-				registryCtl.CreateSignatureSet(s)
-			}
-		}
-		if toSign {
-			s := registryCtl.GetSignatureSetOfPayload(name)
-			ok, err := sv.VerifyPayload(payload, s)
-			if !ok || err != nil {
-				fmt.Printf("Check of payload %s failed: %v\n", payload.Name, err)
-				return
-			}
-		}
-
-		payloads[i] = *payload
+	// Attempt to create payloads for convenience
+	payloads, err := submitPayloads(c.Args(), c.Bool("sign"))
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed creating payloads: %v", err)
+		os.Exit(1)
 	}
 
 	requirements := parseRequirements(c.String("require"))
@@ -113,10 +61,11 @@ func startUnitAction(c *cli.Context) {
 	registeredJobs := make(map[string]bool)
 	for _, jp := range payloads {
 		j := job.NewJob(jp.Name, requirements, &jp, nil)
+		log.V(1).Infof("Created new Job(%s) from Payload(%s)", j.Name, jp.Name)
 		err := registryCtl.CreateJob(j)
 		if err != nil {
-			fmt.Printf("Creation of job %s failed: %v\n", j.Name, err)
-			continue
+			fmt.Fprintf(os.Stderr, "Failed creating job %s: %v\n", j.Name, err)
+			os.Exit(1)
 		}
 		registeredJobs[j.Name] = true
 	}
@@ -171,12 +120,12 @@ func checkJobTarget(jobName string, maxAttempts int, out io.Writer, wg *sync.Wai
 		ms := registryCtl.GetJobTarget(jobName)
 
 		if ms != nil {
-			m := registryCtl.GetMachineState(ms.BootId)
-			fmt.Fprintf(out, "Job %s started on %s\n", jobName, machineFullLegend(*m, false))
+			m := registryCtl.GetMachineState(ms.BootID)
+			fmt.Fprintf(out, "Job %s scheduled to %s\n", jobName, machineFullLegend(*m, false))
 			return
 		}
 
 		time.Sleep(unitCheckInterval)
 	}
-	fmt.Fprintf(out, "Job %s in queue to be scheduled\n", jobName)
+	fmt.Fprintf(out, "Job %s still queued for scheduling\n", jobName)
 }

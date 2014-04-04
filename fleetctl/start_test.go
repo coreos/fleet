@@ -30,9 +30,9 @@ func (b BlockedTestRegistry) GetJobTarget(name string) *machine.MachineState {
 }
 
 func setupRegistryForStart(echoAttempts int) {
-	m1 := machine.MachineState{"c31e44e1-f858-436e-933e-59c642517860", "1.2.3.4", map[string]string{"ping": "pong"}}
-	m2 := machine.MachineState{"595989bb-cbb7-49ce-8726-722d6e157b4e", "5.6.7.8", map[string]string{"foo": "bar"}}
-	m3 := machine.MachineState{"520983A8-FB9C-4A68-B49C-CED5BB2E9D08", "", map[string]string{"foo": "bar"}}
+	m1 := machine.MachineState{"c31e44e1-f858-436e-933e-59c642517860", "1.2.3.4", map[string]string{"ping": "pong"}, ""}
+	m2 := machine.MachineState{"595989bb-cbb7-49ce-8726-722d6e157b4e", "5.6.7.8", map[string]string{"foo": "bar"}, ""}
+	m3 := machine.MachineState{"520983A8-FB9C-4A68-B49C-CED5BB2E9D08", "", map[string]string{"foo": "bar"}, ""}
 
 	js := job.NewJobState("loaded", "active", "listening", []string{}, &m1)
 	js2 := job.NewJobState("loaded", "inactive", "dead", []string{}, &m2)
@@ -52,7 +52,7 @@ func TestPrintJobStarted(t *testing.T) {
 	b := bytes.NewBufferString("")
 	waitForScheduledUnits(jobs, 1, b)
 
-	if b.String() != "Job pong.service started on c31e44e1.../1.2.3.4\n" {
+	if b.String() != "Job pong.service scheduled to c31e44e1.../1.2.3.4\n" {
 		t.Errorf("Found unexpected start output: %s", b.String())
 	}
 }
@@ -64,8 +64,8 @@ func TestPrintSeveralJobs(t *testing.T) {
 	b := bytes.NewBufferString("")
 	waitForScheduledUnits(jobs, 1, b)
 
-	expected := `Job pong.service started on c31e44e1.../1.2.3.4
-Job hello.service started on 595989bb.../5.6.7.8
+	expected := `Job pong.service scheduled to c31e44e1.../1.2.3.4
+Job hello.service scheduled to 595989bb.../5.6.7.8
 `
 
 	if b.String() != expected {
@@ -80,8 +80,8 @@ func TestPrintJobPending(t *testing.T) {
 	b := bytes.NewBufferString("")
 	waitForScheduledUnits(jobs, 1, b)
 
-	expected := `Job pong.service started on c31e44e1.../1.2.3.4
-Job echo.service in queue to be scheduled
+	expected := `Job pong.service scheduled to c31e44e1.../1.2.3.4
+Job echo.service still queued for scheduling
 `
 
 	if b.String() != expected {
@@ -96,7 +96,7 @@ func TestPrintJobWithoutPublicIP(t *testing.T) {
 	b := bytes.NewBufferString("")
 	waitForScheduledUnits(jobs, 1, b)
 
-	if b.String() != "Job private.service started on 520983A8...\n" {
+	if b.String() != "Job private.service scheduled to 520983A8...\n" {
 		t.Errorf("Found unexpected start output: %s", b.String())
 	}
 }

@@ -165,7 +165,7 @@ MACHINE									IP			METADATA
 
 ### SSH dynamically to host
 
-The `fleetctl ssh` command can be used to open a pseuto-terminal over SSH to a host in the fleet cluster. The command will look up the IP address of a machine based on the provided machine ID:
+The `fleetctl ssh` command can be used to open a pseudo-terminal over SSH to a host in the fleet cluster. The command will look up the IP address of a machine based on the provided machine ID:
 
 ```
 $ fleetctl ssh 491586a6-508f-4583-a71d-bfc4d146e996
@@ -189,3 +189,10 @@ $ fleetctl ssh --unit hello.service
 \____/\____/_/   \___/\____//____/
 core@ip-172-31-5-250 ~ $
 ```
+
+### Known-Hosts Verification
+
+Fingerprints of machines accessed through fleetctl are stored in `$HOME/.fleetctl/known_hosts` and used for the verification of machine identity.
+If a machine presents a fingerprint that differs from that found in the known_hosts file, the SSH connection will be aborted.
+
+Disable the storage of fingerprints with `--strict-host-key-checking=false`, or change the location of your fingerprints with the `--known-hosts-file=<LOCATION>` flag.

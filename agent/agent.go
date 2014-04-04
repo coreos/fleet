@@ -62,7 +62,14 @@ func (a *Agent) Machine() *machine.Machine {
 }
 
 func (a *Agent) MarshalJSON() ([]byte, error) {
-	return json.Marshal(struct{ State *AgentState }{State: a.state})
+	data := struct {
+		Systemd *systemd.SystemdManager
+		State   *AgentState
+	}{
+		Systemd: a.systemd,
+		State:   a.state,
+	}
+	return json.Marshal(data)
 }
 
 // Trigger all async processes the Agent intends to run
@@ -81,6 +88,28 @@ func (a *Agent) Run() {
 	a.events.RemoveListener("agent", a.machine)
 }
 
+// Initialize pushes the local machine state to the Registry
+// repeatedly until it succeeds. It returns the modification
+// index of the first successful response received from etcd.
+func (a *Agent) Initialize() uint64 {
+	log.V(1).Infof("Initializing Agent")
+	a.machine.RefreshState()
+
+	var idx uint64
+	wait := time.Second
+	for {
+		var err error
+		if idx, err = a.registry.SetMachineState(a.machine.State(), a.ttl); err == nil {
+			log.V(1).Infof("Heartbeat succeeded")
+			break
+		}
+		log.V(1).Infof("Failed heartbeat, retrying in %v", wait)
+		time.Sleep(wait)
+	}
+
+	return idx
+}
+
 // Stop all async processes the Agent is running
 func (a *Agent) Stop() {
 	log.V(1).Info("Stopping Agent")
@@ -90,13 +119,13 @@ func (a *Agent) Stop() {
 // Clear any presence data from the Registry
 func (a *Agent) Purge() {
 	log.V(1).Info("Removing Agent from Registry")
-	bootId := a.machine.State().BootId
-	err := a.registry.RemoveMachineState(bootId)
+	bootID := a.machine.State().BootID
+	err := a.registry.RemoveMachineState(bootID)
 	if err != nil {
-		log.Errorf("Failed to remove Machine %s from Registry: %s", bootId, err.Error())
+		log.Errorf("Failed to remove Machine %s from Registry: %s", bootID, err.Error())
 	}
 
-	for _, j := range a.registry.GetAllJobsByMachine(bootId) {
+	for _, j := range a.registry.GetAllJobsByMachine(bootID) {
 		a.VerifyJob(&j)
 
 		log.V(1).Infof("Clearing JobState(%s) from Registry", j.Name)
@@ -112,26 +141,50 @@ func (a *Agent) Purge() {
 
 // Periodically report to the Registry at an interval equal to
 // half of the provided ttl. Stop reporting when the provided
-// channel is closed.
+// channel is closed. Failed attempts to report state to the
+// Registry are retried twice before moving on to the next
+// reporting interval.
 func (a *Agent) Heartbeat(ttl time.Duration, stop chan bool) {
+	attempt := func(attempts int, f func() error) (err error) {
+		if attempts < 1 {
+			return fmt.Errorf("attempts argument must be 1 or greater, got %d", attempts)
+		}
 
-	// Explicitly heartbeat immediately to push state to the
-	// Registry as quickly as possible
-	a.machine.RefreshState()
-	a.registry.SetMachineState(a.machine.State(), a.ttl)
+		// The amount of time the retry mechanism waits after a failed attempt
+		// doubles following each failure. This is a simple exponential backoff.
+		sleep := time.Second
+
+		for i := 1; i <= attempts; i++ {
+			err = f()
+			if err == nil || i == attempts {
+				break
+			}
+
+			sleep = sleep * 2
+			log.V(2).Infof("function returned err, retrying in %v: %v", sleep, err)
+			time.Sleep(sleep)
+		}
+
+		return err
+	}
+
+	heartbeat := func() error {
+		_, err := a.registry.SetMachineState(a.machine.State(), ttl)
+		return err
+	}
 
 	interval := ttl / refreshInterval
-	for true {
+	ticker := time.Tick(interval)
+	for {
 		select {
 		case <-stop:
 			log.V(2).Info("MachineHeartbeat exiting due to stop signal")
 			return
-		case <-time.Tick(interval):
+		case <-ticker:
 			log.V(2).Info("MachineHeartbeat tick")
 			a.machine.RefreshState()
-			err := a.registry.SetMachineState(a.machine.State(), a.ttl)
-			if err != nil {
-				log.Errorf("MachineHeartbeat failed: %v", err)
+			if err := attempt(3, heartbeat); err != nil {
+				log.Errorf("Failed heartbeat after 3 attempts: %v", err)
 			}
 		}
 	}
@@ -166,9 +219,9 @@ func (a *Agent) StopJob(jobName string) {
 
 	a.state.Lock()
 	reversePeers := a.state.GetJobsByPeer(jobName)
-	a.state.DropPeersJob(jobName)
-	a.state.DropJobConflicts(jobName)
 	a.state.Unlock()
+
+	a.ForgetJob(jobName)
 
 	for _, peer := range reversePeers {
 		log.Infof("Stopping Peer(%s) of Job(%s)", peer, jobName)
@@ -211,7 +264,7 @@ func (a *Agent) BidForPossibleJobs() {
 func (a *Agent) Bid(jobName string) {
 	log.Infof("Submitting JobBid for Job(%s)", jobName)
 
-	jb := job.NewBid(jobName, a.machine.State().BootId)
+	jb := job.NewBid(jobName, a.machine.State().BootID)
 	a.registry.SubmitJobBid(jb)
 
 	a.state.Lock()
@@ -244,6 +297,17 @@ func (a *Agent) OfferResolved(jobName string) {
 	a.state.DropOffer(jobName)
 
 	a.state.DropBid(jobName)
+}
+
+// ForgetJob purges all state related to a given job from
+// the local cache
+func (a *Agent) ForgetJob(jobName string) {
+	a.state.Lock()
+	defer a.state.Unlock()
+
+	log.V(2).Infof("Purging all information for Job(%s)", jobName)
+	a.state.DropPeersJob(jobName)
+	a.state.DropJobConflicts(jobName)
 }
 
 // Pull a Job and its payload from the Registry
@@ -326,7 +390,7 @@ func (a *Agent) AbleToRun(j *job.Job) bool {
 	}
 
 	bootID, ok := requirements[unit.FleetXConditionMachineBootID]
-	if ok && len(bootID) > 0 && a.machine.State().BootId == bootID[0] {
+	if ok && len(bootID) > 0 && !a.machine.State().MatchBootID(bootID[0]) {
 		log.V(1).Infof("Agent does not pass MachineBootID condition for Job(%s)", j.Name)
 		return false
 	}
@@ -380,7 +444,7 @@ func (a *Agent) peerScheduledHere(jobName, peerName string) bool {
 	log.V(1).Infof("Looking for target of Peer(%s)", peerName)
 
 	//FIXME: ideally the machine would use its own knowledge rather than calling GetJobTarget
-	if tgt := a.registry.GetJobTarget(peerName); tgt == nil || tgt.BootId != a.machine.State().BootId {
+	if tgt := a.registry.GetJobTarget(peerName); tgt == nil || tgt.BootID != a.machine.State().BootID {
 		log.V(1).Infof("Peer(%s) of Job(%s) not scheduled here", peerName, jobName)
 		return false
 	}

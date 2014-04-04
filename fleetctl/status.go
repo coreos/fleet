@@ -2,14 +2,10 @@ package main
 
 import (
 	"fmt"
-	"log"
+	"os"
 	"path"
-	"syscall"
 
-	gossh "github.com/coreos/fleet/third_party/code.google.com/p/go.crypto/ssh"
 	"github.com/coreos/fleet/third_party/github.com/codegangsta/cli"
-
-	"github.com/coreos/fleet/ssh"
 )
 
 func newStatusUnitsCommand() cli.Command {
@@ -45,40 +41,16 @@ func printUnitStatus(c *cli.Context, jobName string) {
 	js := registryCtl.GetJobState(jobName)
 
 	if js == nil {
-		fmt.Printf("%s does not appear to be running\n", jobName)
-		syscall.Exit(1)
+		fmt.Fprintf(os.Stderr, "Job %s does not appear to be running.\n", jobName)
+		os.Exit(1)
 	}
-
-	addr := fmt.Sprintf("%s:22", js.MachineState.PublicIP)
-
-	var err error
-	var sshClient *gossh.ClientConn
-	if tun := getTunnelFlag(); tun != "" {
-		sshClient, err = ssh.NewTunnelledSSHClient("core", tun, addr)
-	} else {
-		sshClient, err = ssh.NewSSHClient("core", addr)
-	}
-	if err != nil {
-		log.Fatal(err.Error())
-	}
-
-	defer sshClient.Close()
 
 	cmd := fmt.Sprintf("systemctl status -l %s", jobName)
-	stdout, err := ssh.Execute(sshClient, cmd)
+	retcode, err := runCommand(cmd, js.MachineState)
 	if err != nil {
-		log.Fatalf("Unable to execute command over SSH: %s", err.Error())
+		fmt.Fprintf(os.Stderr, "Failed running command over SSH: %v\n", err)
+		os.Exit(1)
 	}
 
-	for true {
-		bytes, prefix, err := stdout.ReadLine()
-		if err != nil {
-			break
-		}
-
-		fmt.Print(string(bytes))
-		if !prefix {
-			fmt.Print("\n")
-		}
-	}
+	os.Exit(retcode)
 }

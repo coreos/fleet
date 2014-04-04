@@ -11,24 +11,25 @@ import (
 
 func newDebugInfoCommand() cli.Command {
 	return cli.Command{
-		Name:  "debug-info",
-		Usage: "Print out debug information",
+		Name:        "debug-info",
+		Usage:       "Print out debug information",
 		Description: `Lists all values stored in etcd, which could reflect the status of the cluster comprehensively`,
-		Action: debugInfoAction,
+		Action:      debugInfoAction,
 	}
 }
 
 func debugInfoAction(c *cli.Context) {
 	info, err := registryCtl.GetDebugInfo()
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "Get response from etcd error:", err)
-		return
+		fmt.Fprintf(os.Stderr, "Failed communicating with etcd: %v\n", err)
+		os.Exit(1)
 	}
 
 	fmt.Println("All fleet entries in etcd service:")
 	buf := new(bytes.Buffer)
 	if err = json.Indent(buf, []byte(info), "", "\t"); err != nil {
-		return
+		fmt.Fprintf(os.Stderr, "Failed indenting json: %v\n", err)
+		os.Exit(1)
 	}
 	fmt.Println(buf.String())
 }

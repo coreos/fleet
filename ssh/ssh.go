@@ -2,43 +2,88 @@ package ssh
 
 import (
 	"bufio"
-	"encoding/binary"
 	"errors"
-	"io"
 	"net"
 	"os"
 	"time"
 
-	gossh "github.com/coreos/fleet/third_party/code.google.com/p/go.crypto/ssh"
-	"github.com/coreos/fleet/third_party/code.google.com/p/go.crypto/ssh/terminal"
+	gossh "github.com/coreos/fleet/third_party/code.google.com/p/gosshnew/ssh"
+	gosshagent "github.com/coreos/fleet/third_party/code.google.com/p/gosshnew/ssh/agent"
+	"github.com/coreos/fleet/third_party/code.google.com/p/gosshnew/ssh/terminal"
 )
 
-var (
-	ErrKeyOutofIndex = errors.New("key index is out of range")
-	ErrMalformedResp = errors.New("malformed signature response from agent client")
-)
+type SSHForwardingClient struct {
+	agentForwarding bool
+	*gossh.Client
+}
 
-func Execute(client *gossh.ClientConn, cmd string) (*bufio.Reader, error) {
+func (s *SSHForwardingClient) ForwardAgentAuthentication(session *gossh.Session) error {
+	if s.agentForwarding {
+		return gosshagent.RequestAgentForwarding(session)
+	}
+	return nil
+}
+
+func newSSHForwardingClient(client *gossh.Client, agentForwarding bool) (*SSHForwardingClient, error) {
+	a, err := SSHAgentClient()
+	if err != nil {
+		return nil, err
+	}
+
+	err = gosshagent.ForwardToAgent(client, a)
+	if err != nil {
+		return nil, err
+	}
+
+	return &SSHForwardingClient{agentForwarding, client}, nil
+}
+
+type Channel struct {
+	Stdout *bufio.Reader
+	Stderr *bufio.Reader
+	Exit   chan error
+}
+
+func Execute(client *SSHForwardingClient, cmd string) (*Channel, error) {
 	session, err := client.NewSession()
 	if err != nil {
 		return nil, err
 	}
 
+	if err = client.ForwardAgentAuthentication(session); err != nil {
+		return nil, err
+	}
+
 	stdout, _ := session.StdoutPipe()
-	bstdout := bufio.NewReader(stdout)
+	stderr, _ := session.StderrPipe()
+
+	channel := &Channel{
+		bufio.NewReader(stdout),
+		bufio.NewReader(stderr),
+		make(chan error),
+	}
 
 	session.Start(cmd)
-	go session.Wait()
+	go func() {
+		err := session.Wait()
 
-	return bstdout, nil
+		channel.Exit <- err
+		session.Close()
+	}()
+
+	return channel, nil
 }
 
-func Shell(client *gossh.ClientConn) error {
+func Shell(client *SSHForwardingClient) error {
 	session, err := client.NewSession()
 	if err != nil {
 		return err
 	}
 	defer session.Close()
+
+	if err = client.ForwardAgentAuthentication(session); err != nil {
+		return err
+	}
 
 	modes := gossh.TerminalModes{
 		gossh.ECHO:          1,     // enable echoing
@@ -71,7 +116,7 @@ func Shell(client *gossh.ClientConn) error {
 	return nil
 }
 
-func sshAgentClient() (*gossh.AgentClient, error) {
+func SSHAgentClient() (gosshagent.Agent, error) {
 	sock := os.Getenv("SSH_AUTH_SOCK")
 	if sock == "" {
 		return nil, errors.New("SSH_AUTH_SOCK environment variable is not set. Verify ssh-agent is running. See https://github.com/coreos/fleet/blob/master/Documentation/remote-access.md for help.")
@@ -82,48 +127,61 @@ func sshAgentClient() (*gossh.AgentClient, error) {
 		return nil, err
 	}
 
-	return gossh.NewAgentClient(agent), nil
+	return gosshagent.NewClient(agent), nil
 }
 
-func sshClientConfig(user string) (*gossh.ClientConfig, error) {
-	agentClient, err := sshAgentClient()
+func sshClientConfig(user string, checker *HostKeyChecker) (*gossh.ClientConfig, error) {
+	agentClient, err := SSHAgentClient()
+	if err != nil {
+		return nil, err
+	}
+
+	signers, err := agentClient.Signers()
 	if err != nil {
 		return nil, err
 	}
 
 	cfg := gossh.ClientConfig{
 		User: user,
-		Auth: []gossh.ClientAuth{
-			gossh.ClientAuthAgent(agentClient),
+		Auth: []gossh.AuthMethod{
+			gossh.PublicKeys(signers...),
 		},
+	}
+
+	if checker != nil {
+		cfg.HostKeyCallback = checker.Check
 	}
 
 	return &cfg, nil
 }
 
-func NewSSHClient(user, addr string) (*gossh.ClientConn, error) {
-	clientConfig, err := sshClientConfig(user)
+func NewSSHClient(user, addr string, checker *HostKeyChecker, agentForwarding bool) (*SSHForwardingClient, error) {
+	clientConfig, err := sshClientConfig(user, checker)
 	if err != nil {
 		return nil, err
 	}
 
-	var client *gossh.ClientConn
+	var client *gossh.Client
 	dialFunc := func(echan chan error) {
 		var err error
 		client, err = gossh.Dial("tcp", addr, clientConfig)
 		echan <- err
 	}
 	err = timeoutSSHDial(dialFunc)
-	return client, err
-}
-
-func NewTunnelledSSHClient(user, tunaddr, tgtaddr string) (*gossh.ClientConn, error) {
-	clientConfig, err := sshClientConfig(user)
 	if err != nil {
 		return nil, err
 	}
 
-	var tunnelClient *gossh.ClientConn
+	return newSSHForwardingClient(client, agentForwarding)
+}
+
+func NewTunnelledSSHClient(user, tunaddr, tgtaddr string, checker *HostKeyChecker, agentForwarding bool) (*SSHForwardingClient, error) {
+	clientConfig, err := sshClientConfig(user, checker)
+	if err != nil {
+		return nil, err
+	}
+
+	var tunnelClient *gossh.Client
 	dialFunc := func(echan chan error) {
 		var err error
 		tunnelClient, err = gossh.Dial("tcp", tunaddr, clientConfig)
@@ -136,8 +194,12 @@ func NewTunnelledSSHClient(user, tunaddr, tgtaddr string) (*gossh.ClientConn, er
 
 	var targetConn net.Conn
 	dialFunc = func(echan chan error) {
-		var err error
-		targetConn, err = tunnelClient.Dial("tcp", tgtaddr)
+		tgtTCPAddr, err := net.ResolveTCPAddr("tcp", tgtaddr)
+		if err != nil {
+			echan <- err
+			return
+		}
+		targetConn, err = tunnelClient.DialTCP("tcp", nil, tgtTCPAddr)
 		echan <- err
 	}
 	err = timeoutSSHDial(dialFunc)
@@ -145,12 +207,11 @@ func NewTunnelledSSHClient(user, tunaddr, tgtaddr string) (*gossh.ClientConn, er
 		return nil, err
 	}
 
-	targetClient, err := gossh.Client(targetConn, clientConfig)
+	c, chans, reqs, err := gossh.NewClientConn(targetConn, tgtaddr, clientConfig)
 	if err != nil {
 		return nil, err
 	}
-
-	return targetClient, nil
+	return newSSHForwardingClient(gossh.NewClient(c, chans, reqs), agentForwarding)
 }
 
 func timeoutSSHDial(dial func(chan error)) error {
@@ -165,70 +226,4 @@ func timeoutSSHDial(dial func(chan error)) error {
 	case err = <-echan:
 		return err
 	}
-}
-
-// AgentKeyring implements the interface of gossh.ClientKeyring.
-type AgentKeyring struct {
-	client *gossh.AgentClient
-	keys   []*gossh.AgentKey
-}
-
-// NewSSHAgentKeyring inits AgentKeyring variable and returns
-func NewSSHAgentKeyring() (*AgentKeyring, error) {
-	client, err := sshAgentClient()
-	if err != nil {
-		return nil, err
-	}
-
-	return &AgentKeyring{client, nil}, nil
-}
-
-// Key returns i-th key in the keyring
-func (ak *AgentKeyring) Key(i int) (gossh.PublicKey, error) {
-	if ak.keys == nil {
-		var err error
-		if ak.keys, err = ak.client.RequestIdentities(); err != nil {
-			return nil, err
-		}
-	}
-
-	if i >= len(ak.keys) || i < 0 {
-		return nil, ErrKeyOutofIndex
-	}
-	return ak.keys[i].Key()
-}
-
-func parseString(in []byte) (out, rest []byte, ok bool) {
-	if len(in) < 4 {
-		return
-	}
-	// First 4-byte is the length of the field
-	length := binary.BigEndian.Uint32(in)
-	if uint32(len(in)) < length+4 {
-		return
-	}
-	return in[4:length+4], in[length+4:], true
-}
-
-// Sign returns the signing of data using i-th key in the keyring
-func (ak *AgentKeyring) Sign(i int, rand io.Reader, data []byte) ([]byte, error) {
-	key, err := ak.Key(i)
-	if err != nil {
-		return nil, err
-	}
-
-	sig, err := ak.client.SignRequest(key, data)
-	if err != nil {
-		return nil, err
-	}
-
-	// Unmarshal the signature
-	var ok bool
-	if _, sig, ok = parseString(sig); !ok {
-		return nil, ErrMalformedResp
-	}
-	if sig, _, ok = parseString(sig); !ok {
-		return nil, ErrMalformedResp
-	}
-	return sig, nil
 }

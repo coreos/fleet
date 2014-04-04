@@ -2,7 +2,6 @@ package systemd
 
 type SystemdUnit interface {
 	Name() string
-	Payload() (string, error)
 
 	// The first three strings correspond to the LoadState,
 	// ActiveState and SubState of a unit.

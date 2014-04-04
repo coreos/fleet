@@ -66,9 +66,9 @@ func (t TestRegistry) GetJobTarget(name string) *machine.MachineState {
 	return nil
 }
 
-func (t TestRegistry) GetMachineState(bootId string) *machine.MachineState {
+func (t TestRegistry) GetMachineState(bootID string) *machine.MachineState {
 	for _, ms := range t.machines {
-		if ms.BootId == bootId {
+		if ms.BootID == bootID {
 			return &ms
 		}
 	}

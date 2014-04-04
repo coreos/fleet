@@ -1,6 +1,7 @@
 package systemd
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -22,14 +23,13 @@ const (
 )
 
 type SystemdManager struct {
-	Systemd		*dbus.Conn
-	Target		*SystemdTarget
-	Machine		*machine.Machine
-	UnitPrefix	string
-	unitPath	string
+	Systemd    *dbus.Conn
+	Machine    *machine.Machine
+	UnitPrefix string
+	unitPath   string
 
-	subscriptions	*dbus.SubscriptionSet
-	stop		chan bool
+	subscriptions *dbus.SubscriptionSet
+	stop          chan bool
 }
 
 func NewSystemdManager(machine *machine.Machine, unitPrefix string) *SystemdManager {
@@ -38,13 +38,16 @@ func NewSystemdManager(machine *machine.Machine, unitPrefix string) *SystemdMana
 		panic(err)
 	}
 
-	name := "fleet-" + machine.State().BootId + ".target"
-	target := NewSystemdTarget(name)
+	return &SystemdManager{systemd, machine, unitPrefix, defaultSystemdRuntimePath, systemd.NewSubscriptionSet(), nil}
+}
 
-	mgr := &SystemdManager{systemd, target, machine, unitPrefix, defaultSystemdRuntimePath, systemd.NewSubscriptionSet(), nil}
-	mgr.writeUnit(target.Name(), "")
-
-	return mgr
+func (m *SystemdManager) MarshalJSON() ([]byte, error) {
+	data := struct {
+		DBUSSubscriptions []string
+	}{
+		DBUSSubscriptions: m.subscriptions.Values(),
+	}
+	return json.Marshal(data)
 }
 
 func (m *SystemdManager) Publish(bus *event.EventBus, stopchan chan bool) {
@@ -74,44 +77,7 @@ func (m *SystemdManager) Publish(bus *event.EventBus, stopchan chan bool) {
 	m.Systemd.Unsubscribe()
 }
 
-func (m *SystemdManager) getUnitByName(name string) (*SystemdUnit, error) {
-	var unit SystemdUnit
-	if strings.HasSuffix(name, ".service") {
-		unit = NewSystemdService(m, name)
-	} else if strings.HasSuffix(name, ".socket") {
-		unit = NewSystemdSocket(m, name)
-	} else {
-		panic("WAT")
-	}
-
-	return &unit, nil
-}
-
-func (m *SystemdManager) getUnitsByTarget(target *SystemdTarget) []SystemdUnit {
-	info, err := m.Systemd.GetUnitProperties(target.Name())
-
-	if err != nil {
-		panic(err)
-	}
-
-	names := info["Wants"].([]string)
-
-	var units []SystemdUnit
-	for _, name := range names {
-		unit, err := m.getUnitByName(name)
-		if err == nil {
-			units = append(units, *unit)
-		} else {
-			log.V(1).Infof("Unit %s seems to exist, yet unable to get corresponding SystemdUnit object", name)
-		}
-	}
-
-	return units
-}
-
 func (m *SystemdManager) StartJob(job *job.Job) {
-	job.Payload.Unit.SetField("Install", "WantedBy", m.Target.Name())
-
 	name := m.addUnitNamePrefix(job.Name)
 	m.writeUnit(name, job.Payload.Unit.String())
 	m.daemonReload()
@@ -147,7 +113,7 @@ func (m *SystemdManager) startUnit(name string) {
 	log.V(1).Infof("Starting systemd unit %s", name)
 
 	files := []string{name}
-	if ok, _, err := m.Systemd.EnableUnitFiles(files, true, false); !ok {
+	if _, _, err := m.Systemd.EnableUnitFiles(files, true, false); err != nil {
 		log.Errorf("Failed to enable systemd unit %s: %v", name, err)
 		return
 	} else {
@@ -176,10 +142,6 @@ func (m *SystemdManager) stopUnit(name string) {
 }
 
 func (m *SystemdManager) removeUnit(name string) {
-	log.Infof("Unlinking systemd unit %s from target %s", name, m.Target.Name())
-	link := m.getLocalPath(path.Join(m.Target.Name()+".wants", name))
-	syscall.Unlink(link)
-
 	file := m.getLocalPath(name)
 	log.Infof("Removing systemd unit file %s", file)
 	syscall.Unlink(file)
@@ -197,8 +159,7 @@ func (m *SystemdManager) readUnit(name string) (string, error) {
 
 func (m *SystemdManager) daemonReload() error {
 	log.Infof("Instructing systemd to reload units")
-	_, err := m.Systemd.Reload()
-	return err
+	return m.Systemd.Reload()
 }
 
 func (m *SystemdManager) writeUnit(name string, contents string) error {

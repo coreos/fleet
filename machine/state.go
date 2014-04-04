@@ -1,41 +1,59 @@
 package machine
 
 import (
-	"fmt"
 	"io/ioutil"
 	"net"
+	"path/filepath"
 	"strings"
 
-	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
 	"github.com/coreos/fleet/third_party/github.com/dotcloud/docker/pkg/netlink"
+	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
 )
 
-const bootIdPath = "/proc/sys/kernel/random/boot_id"
+const (
+	bootIDPath     = "/proc/sys/kernel/random/boot_id"
+	shortBootIDLen = 8
+)
 
 // MachineState represents a point-in-time snapshot of the
 // state of the local host.
 type MachineState struct {
-	BootId   string
+	// BootID started life as BootId in the datastore. It cannot be changed without a migration.
+	BootID   string `json:"BootId"`
 	PublicIP string
 	Metadata map[string]string
-}
-
-func (ms MachineState) String() string {
-	return fmt.Sprintf("MachineState{BootId: %q, PublicIp: %q, Metadata: %v}", ms.BootId, ms.PublicIP, ms.Metadata)
+	Version  string
 }
 
 // NewDynamicMachineState generates a MachineState object with
 // the values read from the local system
 func CurrentState() MachineState {
-	bootId := readLocalBootId()
+	bootID := readLocalBootID("/")
 	publicIP := getLocalIP()
-	return MachineState{bootId, publicIP, make(map[string]string, 0)}
+	return MachineState{BootID: bootID, PublicIP: publicIP, Metadata: make(map[string]string, 0)}
 }
 
-func readLocalBootId() string {
-	id, err := ioutil.ReadFile(bootIdPath)
+func (s MachineState) ShortBootID() string {
+	if len(s.BootID) <= shortBootIDLen {
+		return s.BootID
+	}
+	return s.BootID[0:shortBootIDLen]
+}
+
+func (s MachineState) MatchBootID(bootID string) bool {
+	return s.BootID == bootID || s.ShortBootID() == bootID
+}
+
+// IsLocalMachineState checks whether machine state matches the state of local machine
+func IsLocalMachineState(ms *MachineState) bool {
+	return ms.BootID == readLocalBootID("/")
+}
+
+func readLocalBootID(root string) string {
+	fullPath := filepath.Join(root, bootIDPath)
+	id, err := ioutil.ReadFile(fullPath)
 	if err != nil {
-		panic(err)
+		return ""
 	}
 	return strings.TrimSpace(string(id))
 }
@@ -98,8 +116,8 @@ func stackState(top, bottom MachineState) MachineState {
 		state.PublicIP = top.PublicIP
 	}
 
-	if top.BootId != "" {
-		state.BootId = top.BootId
+	if top.BootID != "" {
+		state.BootID = top.BootID
 	}
 
 	//FIXME: This will *always* overwrite the bottom's metadata,
@@ -107,6 +125,10 @@ func stackState(top, bottom MachineState) MachineState {
 	// metadata on the bottom.
 	if len(top.Metadata) > 0 {
 		state.Metadata = top.Metadata
+	}
+
+	if top.Version != "" {
+		state.Version = top.Version
 	}
 
 	return state

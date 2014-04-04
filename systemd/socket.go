@@ -12,12 +12,8 @@ import (
 )
 
 type SystemdSocket struct {
-	manager	*SystemdManager
-	name	string
-}
-
-func NewSystemdSocket(manager *SystemdManager, name string) *SystemdSocket {
-	return &SystemdSocket{manager, name}
+	manager *SystemdManager
+	name    string
 }
 
 func (ss *SystemdSocket) Name() string {
@@ -30,7 +26,7 @@ func (ss *SystemdSocket) State() (string, string, string, []string, error) {
 		return "", "", "", nil, err
 	}
 
-	payload, _ := ss.Payload()
+	payload, _ := ss.payload()
 	sockets := parseSocketFile(payload)
 	sockStrings := []string{}
 	for _, sock := range sockets {
@@ -40,7 +36,7 @@ func (ss *SystemdSocket) State() (string, string, string, []string, error) {
 	return loadState, activeState, subState, sockStrings, nil
 }
 
-func (ss *SystemdSocket) Payload() (string, error) {
+func (ss *SystemdSocket) payload() (string, error) {
 	return ss.manager.readUnit(ss.Name())
 }
 
@@ -61,8 +57,8 @@ func parseSocketFile(contents string) []ListenSocket {
 }
 
 type ListenSocket struct {
-	Type	string
-	Port	int
+	Type string
+	Port int
 }
 
 func (ls *ListenSocket) String(ip string) string {
@@ -92,9 +88,9 @@ func filterListenLines(lines []string) []string {
 
 func parseListenLine(line string) (string, int, error) {
 	keyMap := map[string]string{
-		"ListenSequentialPacket":	"unix",
-		"ListenDatagram":		"udp",
-		"ListenStream":			"tcp",
+		"ListenSequentialPacket": "unix",
+		"ListenDatagram":         "udp",
+		"ListenStream":           "tcp",
 	}
 
 	parts := strings.SplitN(line, "=", 2)

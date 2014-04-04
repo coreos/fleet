@@ -1,4 +1,5 @@
 package log
+
 // Copyright 2013, CoreOS, Inc. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,7 +19,7 @@ package log
 
 import (
 	"fmt"
-	"github.com/coreos/go-systemd/journal"
+	"github.com/coreos/fleet/third_party/github.com/coreos/go-systemd/journal"
 	"io"
 	"strings"
 	"sync"
@@ -32,17 +33,17 @@ type Sink interface {
 
 type nullSink struct{}
 
-func (sink *nullSink) Log(fields Fields) {}
+func (sink *nullSink) Log(fields Fields)	{}
 
 func NullSink() Sink {
 	return &nullSink{}
 }
 
 type writerSink struct {
-	lock   sync.Mutex
-	out    io.Writer
-	format string
-	fields []string
+	lock	sync.Mutex
+	out	io.Writer
+	format	string
+	fields	[]string
 }
 
 func (sink *writerSink) Log(fields Fields) {
@@ -62,9 +63,9 @@ func (sink *writerSink) Log(fields Fields) {
 
 func WriterSink(out io.Writer, format string, fields []string) Sink {
 	return &writerSink{
-		out:    out,
-		format: format,
-		fields: fields,
+		out:	out,
+		format:	format,
+		fields:	fields,
 	}
 }
 
@@ -134,8 +135,8 @@ func CombinedSink(writer io.Writer, format string, fields []string) Sink {
 }
 
 type priorityFilter struct {
-	priority Priority
-	target   Sink
+	priority	Priority
+	target		Sink
 }
 
 func (filter *priorityFilter) Log(fields Fields) {
@@ -147,7 +148,7 @@ func (filter *priorityFilter) Log(fields Fields) {
 
 func PriorityFilter(priority Priority, target Sink) Sink {
 	return &priorityFilter{
-		priority: priority,
-		target:   target,
+		priority:	priority,
+		target:		target,
 	}
 }

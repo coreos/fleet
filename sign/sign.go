@@ -1,15 +1,17 @@
 package sign
 
 import (
+	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"os/user"
-	"strings"
 
-	gossh "github.com/coreos/fleet/third_party/code.google.com/p/go.crypto/ssh"
+	gossh "github.com/coreos/fleet/third_party/code.google.com/p/gosshnew/ssh"
+	gosshagent "github.com/coreos/fleet/third_party/code.google.com/p/gosshnew/ssh/agent"
+	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
 
+	"github.com/coreos/fleet/pkg"
 	"github.com/coreos/fleet/ssh"
 )
 
@@ -17,23 +19,27 @@ const (
 	DefaultAuthorizedKeysFile = "~/.ssh/authorized_keys"
 )
 
+var (
+	ErrMalformedResp = errors.New("malformed signature response from agent client")
+)
+
 type SignatureSet struct {
-	Tag string
-	Signs [][]byte
+	Tag   string
+	Signs []*gossh.Signature
 }
 
 type SignatureCreator struct {
 	// keyring is used to sign data
-	keyring gossh.ClientKeyring
+	keyring gosshagent.Agent
 }
 
-func NewSignatureCreator(keyring gossh.ClientKeyring) *SignatureCreator {
+func NewSignatureCreator(keyring gosshagent.Agent) *SignatureCreator {
 	return &SignatureCreator{keyring}
 }
 
 // NewSignatureCreatorFromSSHAgent return SignatureCreator which uses ssh-agent to sign
 func NewSignatureCreatorFromSSHAgent() (*SignatureCreator, error) {
-	keyring, err := ssh.NewSSHAgentKeyring()
+	keyring, err := ssh.SSHAgentClient()
 	if err != nil {
 		return nil, err
 	}
@@ -46,16 +52,19 @@ func (sc *SignatureCreator) Sign(tag string, data []byte) (*SignatureSet, error)
 		return nil, errors.New("signature creator is uninitialized")
 	}
 
-	sigs := make([][]byte, 0)
-	// Generate all possible signatures
-	for i := 0; ; i++ {
-		sig, err := sc.keyring.Sign(i, nil, data)
-		if err == ssh.ErrKeyOutofIndex {
-			break
-		}
+	sigs := make([]*gossh.Signature, 0)
+
+	keys, err := sc.keyring.List()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, k := range keys {
+		sig, err := sc.keyring.Sign(k, data)
 		if err != nil {
 			return nil, err
 		}
+
 		sigs = append(sigs, sig)
 	}
 
@@ -73,7 +82,7 @@ func NewSignatureVerifier() *SignatureVerifier {
 
 // NewSignatureVerifierFromSSHAgent return SignatureVerifier which uses ssh-agent to verify
 func NewSignatureVerifierFromSSHAgent() (*SignatureVerifier, error) {
-	keyring, err := ssh.NewSSHAgentKeyring()
+	keyring, err := ssh.SSHAgentClient()
 	if err != nil {
 		return nil, err
 	}
@@ -81,18 +90,16 @@ func NewSignatureVerifierFromSSHAgent() (*SignatureVerifier, error) {
 }
 
 // NewSignatureVerifierFromKeyring return SignatureVerifier which uses public keys fetched from keyring to verify
-func NewSignatureVerifierFromKeyring(keyring gossh.ClientKeyring) (*SignatureVerifier, error) {
+func NewSignatureVerifierFromKeyring(keyring gosshagent.Agent) (*SignatureVerifier, error) {
+	keys, err := keyring.List()
+	if err != nil {
+		return nil, err
+	}
 
-	pubkeys := make([]gossh.PublicKey, 0)
-	for i := 0; ; i++ {
-		pubkey, err := keyring.Key(i)
-		if err == ssh.ErrKeyOutofIndex {
-			break
-		}
-		if err != nil {
-			return nil, err
-		}
-		pubkeys = append(pubkeys, pubkey)
+	pubkeys := make([]gossh.PublicKey, len(keys))
+
+	for i, k := range keys {
+		pubkeys[i] = k
 	}
 
 	return &SignatureVerifier{pubkeys}, nil
@@ -100,7 +107,7 @@ func NewSignatureVerifierFromKeyring(keyring gossh.ClientKeyring) (*SignatureVer
 
 // NewSignatureVerifierFromAuthorizedKeysFile return SignatureVerifier which uses authorized key file to verify
 func NewSignatureVerifierFromAuthorizedKeysFile(filepath string) (*SignatureVerifier, error) {
-	out, err := ioutil.ReadFile(parseFilepath(filepath))
+	out, err := ioutil.ReadFile(pkg.ParseFilepath(filepath))
 	if err != nil {
 		return nil, err
 	}
@@ -121,8 +128,16 @@ func (sv *SignatureVerifier) Verify(data []byte, s *SignatureSet) (bool, error) 
 
 	// Enumerate all pairs to verify signatures
 	for _, authKey := range sv.pubkeys {
+		// Manually coerce the keys provided by the agent to PublicKeys
+		// since gosshnew does not want to do it for us.
+		key, err := gossh.ParsePublicKey(authKey.Marshal())
+		if err != nil {
+			log.V(1).Infof("Unable to use SSH key: %v", err)
+			continue
+		}
+
 		for _, sign := range s.Signs {
-			if authKey.Verify(data, sign) {
+			if err := key.Verify(data, sign); err == nil {
 				return true, nil
 			}
 		}
@@ -131,26 +146,12 @@ func (sv *SignatureVerifier) Verify(data []byte, s *SignatureSet) (bool, error) 
 	return false, nil
 }
 
-// get file path considering user home directory
-func parseFilepath(path string) string {
-	if strings.Index(path, "~") != 0 {
-		return path
-	}
-
-	usr, err := user.Current()
-	if err == nil {
-		path = strings.Replace(path, "~", usr.HomeDir, 1)
-	}
-
-	return path
-}
-
 func parseAuthorizedKeys(in []byte) ([]gossh.PublicKey, error) {
 	pubkeys := make([]gossh.PublicKey, 0)
 	for len(in) > 0 {
-		pubkey, _, _, rest, ok := gossh.ParseAuthorizedKey(in)
-		if !ok {
-			return nil, errors.New("fail to parse authorized key file")
+		pubkey, _, _, rest, err := gossh.ParseAuthorizedKey(in)
+		if err != nil {
+			return nil, err
 		}
 		in = rest
 
@@ -167,4 +168,16 @@ func marshal(obj interface{}) ([]byte, error) {
 	} else {
 		return nil, errors.New(fmt.Sprintf("Unable to JSON-serialize object: %s", err))
 	}
+}
+
+func parseString(in []byte) (out, rest []byte, ok bool) {
+	if len(in) < 4 {
+		return
+	}
+	// First 4-byte is the length of the field
+	length := binary.BigEndian.Uint32(in)
+	if uint32(len(in)) < length+4 {
+		return
+	}
+	return in[4 : length+4], in[length+4:], true
 }
