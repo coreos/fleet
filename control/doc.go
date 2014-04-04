@@ -34,11 +34,5 @@ host activated and host downed events.
 When a job control gets created, it needs to catch up to the current load situation in the cluster. It will use
 Etcd to ask about all the active hosts and all the jobs runnning on them.
 
-Host Agent
-
-When job control has picked a host to schedule a job on it, it will talk to the hosts HostAgent. This is an http/rpc
-interface into the host agent running locally on the chosen host. Job control asks host agent to run the job. Host agent
-can refuse to do so if it determines that job requirements are not satisfied anymore since the host was chosen or that
-it has other reasons to refuse to run the job.
 */
 package control

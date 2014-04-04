@@ -15,13 +15,13 @@ type MachineSpec struct {
 	Cores int
 	// in MB
 	Memory int
-	// in GB
-	LocalDiskSpace int
+	// in MB
+	DiskSpace int
 }
 
-// JobSpec defines the characteristics and requirements of a job in the cluster.
+// JobSpec defines the requirements of a job in the cluster.
 type JobSpec struct {
-	// jobs are identified by name
+	// jobs are identified by name, unique within the cluster
 	Name string
 	// requires to run on a specific machine
 	RequiresHost string
@@ -34,58 +34,48 @@ type JobSpec struct {
 	MemoryRequired int
 	// how many cores job requires: 100=1core, 50=0.5core, 200=2cores, etc
 	CoresRequired int
-	// how much local disk space job requires, in GB
-	LocalDiskSpaceRequired int
-	// system.d unit file description of job
-	Unit string
+	// how much local disk space job requires, in MB
+	DiskSpaceRequired int
 }
 
 // JobControl schedules jobs in the cluster.
 type JobControl interface {
-	// ScheduleJob returns a unique job id for the scheduled job if it was
-	// scheduled successfully. Otherwise returns ErrClusterFull if cluster
-	// cannot fit the job anymore or it returns one of the other errors defined
+	// ScheduleJob returns a slice of boot ids of hosts that can run the specified job.
+	// Slice is sorted by what job control considers best fit. So first boot id is
+	// best suited to run the job, followed by the second etc.
+	// Returns ErrClusterFull if cluster
+	// cannot fit the job. Returns one of the other errors defined
 	// above if clauses of the job couldn't be satisfied.
-	// Can also return network errors if communication with Etcd or HostAgent failed.
-	ScheduleJob(spec *JobSpec) (string, error)
+	// Returns network errors if communication with Etcd failed.
+	ScheduleJob(spec *JobSpec) ([]string, error)
 
 	// a job control needs to listen to these four events in the cluster
 	// to function properly. somebody needs to watch etcd and feed them into
 	// this job control
-	JobScheduled(jid string, host string, spec *JobSpec)
-	JobDowned(jid string, host string, spec *JobSpec)
-	HostDown(host string)
-	HostUp(host string)
+	JobScheduled(jobName string, bootID string, spec *JobSpec)
+	JobDowned(jobName string, bootID string, spec *JobSpec)
+	HostDown(bootID string)
+	HostUp(bootID string)
 }
 
-// JobWithHost is job with the host under which it runs.
+// JobWithHost is job with the host on which it runs.
 type JobWithHost struct {
-	Spec *JobSpec
-	Host string
-	Jid  string
-}
-
-// HostAgent knows how to start and run a job. Each host in the cluster runs an agent/
-type HostAgent interface {
-	// RunJob starts and runs the specified job.
-	// An agent has the right to refuse to run the job. It needs to check again
-	// that the job spec is satisfied, specifically with regards to DependsOn and ConflictsWith clauses.
-	RunJob(jid string, spec *JobSpec) error
+	Spec    *JobSpec
+	BootID  string
+	JobName string
 }
 
 // MachineDB knows the specs of all the machines in the cluster.
 type MachineDB interface {
 	// Spec returns the machine spec of the given host.
-	Spec(host string) (*MachineSpec, error)
+	Spec(bootID string) (*MachineSpec, error)
 }
 
 // Etcd interface specifies what job control will ask etcd.
 type Etcd interface {
 	// Give me all the currently active hosts
 	// (hosts that have an agent running, maintaining heartbeat with etcd)
-	AllHosts() ([]string, error)
+	Hosts() ([]string, error)
 	// Give me all the jobs running in the cluster right now
-	AllJobs() ([]*JobWithHost, error)
-	// Give me an agent for the specified host
-	HostAgent(host string) (HostAgent, error)
+	Jobs() ([]*JobWithHost, error)
 }

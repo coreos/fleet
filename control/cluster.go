@@ -5,62 +5,62 @@ import log "github.com/coreos/fleet/third_party/github.com/golang/glog"
 // these next methods keep the machine loads up to date with
 // what happens in the cluster
 
-func (clus *cluster) jobScheduled(host string, spec *JobSpec) {
-	m := clus.loads[host]
+func (clus *cluster) jobScheduled(bootID string, spec *JobSpec) {
+	m := clus.loads[bootID]
 	m.Cores += spec.CoresRequired
-	m.LocalDiskSpace += spec.LocalDiskSpaceRequired
+	m.DiskSpace += spec.DiskSpaceRequired
 	m.Memory += spec.MemoryRequired
-	clus.loads[host] = m
+	clus.loads[bootID] = m
 }
 
-func (clus *cluster) jobDowned(host string, spec *JobSpec) {
-	m := clus.loads[host]
+func (clus *cluster) jobDowned(bootID string, spec *JobSpec) {
+	m := clus.loads[bootID]
 	m.Cores -= spec.CoresRequired
-	m.LocalDiskSpace -= spec.LocalDiskSpaceRequired
+	m.DiskSpace -= spec.DiskSpaceRequired
 	m.Memory -= spec.MemoryRequired
-	clus.loads[host] = m
+	clus.loads[bootID] = m
 }
 
-func (clus *cluster) JobScheduled(jid string, host string, spec *JobSpec) {
-	clus.mutex.Lock()
-	defer clus.mutex.Unlock()
+func (clus *cluster) JobScheduled(jobName string, bootID string, spec *JobSpec) {
+	clus.mu.Lock()
+	defer clus.mu.Unlock()
 
-	clus.jobScheduled(host, spec)
+	clus.jobScheduled(bootID, spec)
 }
 
-func (clus *cluster) JobDowned(jid string, host string, spec *JobSpec) {
-	clus.mutex.Lock()
-	defer clus.mutex.Unlock()
+func (clus *cluster) JobDowned(jobName string, bootID string, spec *JobSpec) {
+	clus.mu.Lock()
+	defer clus.mu.Unlock()
 
-	clus.jobDowned(host, spec)
+	clus.jobDowned(bootID, spec)
 }
 
-func (clus *cluster) HostDown(host string) {
-	clus.mutex.Lock()
-	defer clus.mutex.Unlock()
+func (clus *cluster) HostDown(bootID string) {
+	clus.mu.Lock()
+	defer clus.mu.Unlock()
 
-	delete(clus.loads, host)
+	delete(clus.loads, bootID)
 }
 
-func (clus *cluster) HostUp(host string) {
-	clus.mutex.Lock()
-	defer clus.mutex.Unlock()
+func (clus *cluster) HostUp(bootID string) {
+	clus.mu.Lock()
+	defer clus.mu.Unlock()
 
 	var noLoad MachineSpec
 
-	clus.loads[host] = noLoad
+	clus.loads[bootID] = noLoad
 }
 
 // Returns a list of host candidates where specified job could be
 // scheduled. List has been filtered with respect to
 // DependsOn, ConflictsWith and RequiresHost clauses in the job spec.
 func (clus *cluster) candidates(spec *JobSpec) ([]candHost, error) {
-	clus.mutex.Lock()
+	clus.mu.Lock()
 	candLoads := make(map[string]MachineSpec, len(clus.loads))
 	for k, v := range clus.loads {
 		candLoads[k] = v
 	}
-	clus.mutex.Unlock()
+	clus.mu.Unlock()
 
 	var lhs []candHost
 	var lh candHost
@@ -85,7 +85,7 @@ func (clus *cluster) candidates(spec *JobSpec) ([]candHost, error) {
 		}
 		lh.mem = v
 
-		v, ok = remainingFree(load.LocalDiskSpace, spec.LocalDiskSpaceRequired, mspec.LocalDiskSpace)
+		v, ok = remainingFree(load.DiskSpace, spec.DiskSpaceRequired, mspec.DiskSpace)
 		if !ok {
 			continue
 		}

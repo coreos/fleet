@@ -11,8 +11,8 @@ func checkLoad(host string, mload MachineSpec, cores, memory, disk int, t *testi
 		t.Errorf("host %s: expected %d memory load, got %d", host, memory, mload.Memory)
 	}
 
-	if mload.LocalDiskSpace != disk {
-		t.Errorf("host %s: expected %d disk load, got %d", host, disk, mload.LocalDiskSpace)
+	if mload.DiskSpace != disk {
+		t.Errorf("host %s: expected %d disk load, got %d", host, disk, mload.DiskSpace)
 	}
 }
 

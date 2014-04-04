@@ -3,6 +3,7 @@ package control
 import (
 	"fmt"
 	"math/rand"
+	"strings"
 	"testing"
 )
 
@@ -15,45 +16,30 @@ func (mumdb *mockUniformMachineDB) Spec(host string) (*MachineSpec, error) {
 		// 32 gb ram
 		Memory: 32768,
 		// 1 tb disk
-		LocalDiskSpace: 1000,
+		DiskSpace: 1000,
 	}, nil
-}
-
-type mockHostAgent struct {
-	host   string
-	record map[string]string
-	clus   *cluster
-}
-
-func (mag *mockHostAgent) RunJob(jid string, spec *JobSpec) error {
-	mag.record[spec.Name] = mag.host
-	if mag.clus != nil {
-		mag.clus.JobScheduled(jid, mag.host, spec)
-	}
-	return nil
 }
 
 func newTestJob(index int, cores int, mem int, disk int) *JobSpec {
 	return &JobSpec{
-		Name:                   fmt.Sprintf("job%d", index),
-		MemoryRequired:         mem,
-		CoresRequired:          cores,
-		LocalDiskSpaceRequired: disk,
+		Name:              fmt.Sprintf("job%d", index),
+		MemoryRequired:    mem,
+		CoresRequired:     cores,
+		DiskSpaceRequired: disk,
 	}
 }
 
 type mockEtcd struct {
-	jwhs          []*JobWithHost
-	hs            []string
-	record        map[string]string
-	clus          *cluster
-	updateCluster bool
+	jwhs   []*JobWithHost
+	hs     []string
+	record map[string]string
+	clus   *cluster
 }
 
 func (metcd *mockEtcd) declareJob(spec *JobSpec, host string) {
 	metcd.jwhs = append(metcd.jwhs, &JobWithHost{
-		Spec: spec,
-		Host: host,
+		Spec:   spec,
+		BootID: host,
 	})
 }
 
@@ -61,24 +47,12 @@ func (metcd *mockEtcd) declareHost(host string) {
 	metcd.hs = append(metcd.hs, host)
 }
 
-func (metcd *mockEtcd) AllJobs() ([]*JobWithHost, error) {
+func (metcd *mockEtcd) Jobs() ([]*JobWithHost, error) {
 	return metcd.jwhs, nil
 }
 
-func (metcd *mockEtcd) AllHosts() ([]string, error) {
+func (metcd *mockEtcd) Hosts() ([]string, error) {
 	return metcd.hs, nil
-}
-
-func (metcd *mockEtcd) HostAgent(host string) (HostAgent, error) {
-	mag := &mockHostAgent{
-		host:   host,
-		record: metcd.record,
-	}
-
-	if metcd.updateCluster {
-		mag.clus = metcd.clus
-	}
-	return mag, nil
 }
 
 func ExampleScheduleJob() {
@@ -98,16 +72,19 @@ func ExampleScheduleJob() {
 
 	ctrl, err := NewJobControl(etcd, new(mockUniformMachineDB))
 	if err != nil {
-		fmt.Printf("could create job control: %v", err)
+		fmt.Printf("couldn't create job control: %v", err)
 		return
 	}
 
-	ctrl.ScheduleJob(newTestJob(3, 200, 1024, 200))
-
-	for k, v := range record {
-		fmt.Printf("%s scheduled on %s", k, v)
+	bootIDs, err := ctrl.ScheduleJob(newTestJob(3, 200, 1024, 200))
+	if err != nil {
+		fmt.Printf("couldn't schedule job: %v", err)
+		return
 	}
-	// Output: job3 scheduled on host2
+
+	fmt.Printf("[%s]", strings.Join(bootIDs, ", "))
+
+	// Output: [host2, host1, host3, host4]
 }
 
 func newRandomJob(index int) *JobSpec {
@@ -116,10 +93,10 @@ func newRandomJob(index int) *JobSpec {
 	disk := 10 + rand.Intn(100)
 
 	return &JobSpec{
-		Name:                   fmt.Sprintf("job%d", index),
-		MemoryRequired:         mem,
-		CoresRequired:          cores,
-		LocalDiskSpaceRequired: disk,
+		Name:              fmt.Sprintf("job%d", index),
+		MemoryRequired:    mem,
+		CoresRequired:     cores,
+		DiskSpaceRequired: disk,
 	}
 }
 
@@ -147,18 +124,24 @@ func BenchmarkScheduleJob(b *testing.B) {
 	}
 
 	etcd.clus = ctrl.(*cluster)
-	etcd.updateCluster = true
 
 	for i := 0; i < numJobs; i++ {
-		_, err = ctrl.ScheduleJob(newRandomJob(i))
+		spec := newRandomJob(i)
+		bootIDs, err := ctrl.ScheduleJob(spec)
 		if err != nil && err != ErrClusterFull {
 			fmt.Printf("couldn't schedule job %d: %v", i, err)
 			return
 		}
+
+		if len(bootIDs) == 0 {
+			fmt.Printf("couldn't schedule job %d: %v", i, err)
+			return
+		}
+
+		etcd.clus.jobScheduled(bootIDs[0], spec)
 	}
 
 	spec := newRandomJob(numJobs)
-	etcd.updateCluster = false
 
 	b.ResetTimer()
 

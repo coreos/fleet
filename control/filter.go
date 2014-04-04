@@ -117,7 +117,7 @@ func (clus *cluster) filterCandidates(lhs []candHost, spec *JobSpec) ([]candHost
 	var jobs2hosts map[string][]string
 	var hosts2jobs map[string][]string
 	if len(spec.DependsOn) > 0 || len(spec.ConflictsWith) > 0 {
-		jwhs, err := clus.etcd.AllJobs()
+		jwhs, err := clus.etcd.Jobs()
 		if err != nil {
 			return nil, err
 		}
@@ -126,9 +126,9 @@ func (clus *cluster) filterCandidates(lhs []candHost, spec *JobSpec) ([]candHost
 
 		for _, jwh := range jwhs {
 			hs := jobs2hosts[jwh.Spec.Name]
-			jobs2hosts[jwh.Spec.Name] = append(hs, jwh.Host)
-			js := hosts2jobs[jwh.Host]
-			hosts2jobs[jwh.Host] = append(js, jwh.Spec.Name)
+			jobs2hosts[jwh.Spec.Name] = append(hs, jwh.BootID)
+			js := hosts2jobs[jwh.BootID]
+			hosts2jobs[jwh.BootID] = append(js, jwh.Spec.Name)
 		}
 		for _, hs := range jobs2hosts {
 			sort.Strings(hs)

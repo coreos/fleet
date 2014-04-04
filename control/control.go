@@ -1,17 +1,6 @@
 package control
 
-import (
-	"sync"
-
-	uuid "github.com/coreos/fleet/third_party/code.google.com/p/go-uuid/uuid"
-	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
-)
-
-const (
-	// to how many agents we talk before we give up
-	// we talk to each agent only once
-	numberOfAttemptsToSchedule = 5
-)
+import "sync"
 
 type candHost struct {
 	mem   float64
@@ -31,7 +20,7 @@ type candHost struct {
 // jobs we schedule won't have them.
 
 type cluster struct {
-	mutex    sync.Mutex
+	mu       sync.Mutex
 	loads    map[string]MachineSpec
 	mdb      MachineDB
 	etcd     Etcd
@@ -39,15 +28,15 @@ type cluster struct {
 }
 
 func (clus *cluster) populate() error {
-	clus.mutex.Lock()
-	defer clus.mutex.Unlock()
+	clus.mu.Lock()
+	defer clus.mu.Unlock()
 
-	allJobs, err := clus.etcd.AllJobs()
+	allJobs, err := clus.etcd.Jobs()
 	if err != nil {
 		return err
 	}
 
-	allHosts, err := clus.etcd.AllHosts()
+	allHosts, err := clus.etcd.Hosts()
 	if err != nil {
 		return err
 	}
@@ -61,7 +50,7 @@ func (clus *cluster) populate() error {
 	}
 
 	for _, jwh := range allJobs {
-		clus.jobScheduled(jwh.Host, jwh.Spec)
+		clus.jobScheduled(jwh.BootID, jwh.Spec)
 	}
 	return nil
 }
@@ -81,42 +70,21 @@ func NewJobControl(etcd Etcd, mdb MachineDB) (JobControl, error) {
 	return clus, nil
 }
 
-func (clus *cluster) ScheduleJob(spec *JobSpec) (string, error) {
+func (clus *cluster) ScheduleJob(spec *JobSpec) ([]string, error) {
 	lhs, err := clus.candidates(spec)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	if len(lhs) == 0 {
-		return "", ErrClusterFull
+		return nil, ErrClusterFull
 	}
 
 	sortBestFit(lhs, clus.strategy)
 
-	n := numberOfAttemptsToSchedule
-	if n > len(lhs) {
-		n = len(lhs)
+	bootIDs := make([]string, len(lhs))
+	for i, v := range lhs {
+		bootIDs[i] = v.host
 	}
-
-	lhs = lhs[:n]
-
-	jid := string(uuid.New())
-
-	for _, h := range lhs {
-		ag, err := clus.etcd.HostAgent(h.host)
-		if err != nil {
-			log.Errorf("failed to get host agent %v: %v, skipping to next host", h.host, err)
-			continue
-		}
-
-		// Agent checks again that all requirements and clauses in the job spec are satisfied
-		err = ag.RunJob(jid, spec)
-		if err != nil {
-			log.Errorf("failed to run job on host %v: %v, skipping to next host", h.host, err)
-			continue
-		}
-		return jid, nil
-	}
-
-	return "", ErrAllAgentsFailedToRun
+	return bootIDs, nil
 }
