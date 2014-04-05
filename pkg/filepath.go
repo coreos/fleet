@@ -3,6 +3,8 @@ package pkg
 import (
 	"os/user"
 	"strings"
+
+	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
 )
 
 // get file path considering user home directory
@@ -12,9 +14,14 @@ func ParseFilepath(path string) string {
 	}
 
 	usr, err := user.Current()
+	var newPath string
 	if err == nil {
-		path = strings.Replace(path, "~", usr.HomeDir, 1)
+		newPath = strings.Replace(path, "~", usr.HomeDir, 1)
+	} else {
+		newPath = strings.Replace(path, "~", ".", 1)
+		log.Errorf("Failed to get current home directory")
 	}
+	log.V(1).Infof("Parse %v from path %v", newPath, path)
 
-	return path
+	return newPath
 }
