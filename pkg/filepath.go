@@ -9,7 +9,7 @@ import (
 
 // get file path considering user home directory
 func ParseFilepath(path string) string {
-	if strings.Index(path, "~") != 0 {
+	if strings.Index(path, "~") != 0 || len(path) != 1 && path[1] != '/' {
 		return path
 	}
 
