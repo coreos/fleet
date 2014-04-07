@@ -10,8 +10,8 @@ import (
 )
 
 const (
-	defaultMemoryRequired    = 512
-	defaultCoresRequired     = 100
+	defaultMemoryRequired    = 10
+	defaultCoresRequired     = 10
 	defaultDiskSpaceRequired = 1024
 )
 

@@ -51,13 +51,11 @@ func New(cfg config.Config) (*Server, error) {
 
 	a, err := agent.New(r, eb, m, cfg.AgentTTL, cfg.UnitPrefix, verifier)
 	if err != nil {
+		log.Errorf("Failed to create agent: %v", err)
 		return nil, err
 	}
 
-	e, err := engine.New(r, eb, m)
-	if err != nil {
-		return nil, err
-	}
+	e := engine.New(r, eb, m)
 
 	return &Server{a, e, m, r, eb, es}, nil
 }
@@ -70,6 +68,12 @@ func (self *Server) Run() {
 	// Block on the agent being able to publish its
 	// presence and bootstrap its cache
 	idx := self.agent.Initialize()
+
+	err := self.engine.Initialize()
+	if err != nil {
+		// TODO(uwedeportivo): return err
+		log.Errorf("Failed to initialize engine: %v", err)
+	}
 
 	go self.agent.Run()
 	go self.engine.Run()

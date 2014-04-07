@@ -43,7 +43,15 @@ func (r *Registry) GetMachineSpecs() (map[string]machine.MachineSpec, error) {
 	key := path.Join(keyPrefix, machineSpecPrefix)
 	resp, err := r.etcd.Get(key, false, true)
 	if err != nil {
-		return nil, err
+		switch terr := err.(type) {
+		case *etcd.EtcdError:
+			if terr.ErrorCode == etcderr.EcodeKeyNotFound {
+				return nil, nil
+			}
+			return nil, err
+		default:
+			return nil, err
+		}
 	}
 
 	specs := make(map[string]machine.MachineSpec)

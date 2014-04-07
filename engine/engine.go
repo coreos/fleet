@@ -25,12 +25,17 @@ type Engine struct {
 	stop       chan bool
 }
 
-func New(reg *registry.Registry, events *event.EventBus, mach *machine.Machine) (*Engine, error) {
-	jobControl, err := control.NewJobControl(control.NewRegistryEtcd(reg))
+func New(reg *registry.Registry, events *event.EventBus, mach *machine.Machine) *Engine {
+	return &Engine{reg, events, mach, nil, nil}
+}
+
+func (self *Engine) Initialize() error {
+	jobControl, err := control.NewJobControl(control.NewRegistryEtcd(self.registry))
 	if err != nil {
-		return nil, err
+		return err
 	}
-	return &Engine{reg, events, mach, jobControl, nil}, nil
+	self.jobControl = jobControl
+	return nil
 }
 
 func (self *Engine) Run() {
