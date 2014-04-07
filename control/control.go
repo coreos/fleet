@@ -1,6 +1,10 @@
 package control
 
-import "sync"
+import (
+	"sync"
+
+	"github.com/coreos/fleet/machine"
+)
 
 type candHost struct {
 	mem   float64
@@ -21,8 +25,8 @@ type candHost struct {
 
 type cluster struct {
 	mu       sync.Mutex
-	loads    map[string]MachineSpec
-	mdb      MachineDB
+	loads    map[string]machine.MachineSpec
+	specs    map[string]machine.MachineSpec
 	etcd     Etcd
 	strategy bestFitScoreMethod
 }
@@ -41,9 +45,15 @@ func (clus *cluster) populate() error {
 		return err
 	}
 
-	clus.loads = make(map[string]MachineSpec)
+	allSpecs, err := clus.etcd.Specs()
+	if err != nil {
+		return err
+	}
 
-	var noLoad MachineSpec
+	clus.loads = make(map[string]machine.MachineSpec)
+	clus.specs = allSpecs
+
+	var noLoad machine.MachineSpec
 
 	for _, h := range allHosts {
 		clus.loads[h] = noLoad
@@ -56,11 +66,10 @@ func (clus *cluster) populate() error {
 }
 
 // NewJobControl returns a newly created JobControl that will use
-// the specified Etcd and the specified MachineDB.
-func NewJobControl(etcd Etcd, mdb MachineDB) (JobControl, error) {
+// the specified Etcd.
+func NewJobControl(etcd Etcd) (JobControl, error) {
 	clus := new(cluster)
 	clus.etcd = etcd
-	clus.mdb = mdb
 	clus.strategy = sumScoreMethod
 
 	err := clus.populate()

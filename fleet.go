@@ -61,7 +61,11 @@ func main() {
 		syscall.Exit(1)
 	}
 
-	srv := server.New(*cfg)
+	srv, err := server.New(*cfg)
+	if err != nil {
+		glog.Error(err.Error())
+		syscall.Exit(1)
+	}
 	srv.Run()
 
 	reconfigure := func() {
@@ -75,7 +79,11 @@ func main() {
 
 		srv.Stop()
 
-		srv = server.New(*cfg)
+		srv, err = server.New(*cfg)
+		if err != nil {
+			glog.Errorf(err.Error())
+			syscall.Exit(1)
+		}
 		srv.Run()
 	}
 

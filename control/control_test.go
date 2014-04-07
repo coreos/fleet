@@ -5,19 +5,19 @@ import (
 	"math/rand"
 	"strings"
 	"testing"
+
+	"github.com/coreos/fleet/machine"
 )
 
-type mockUniformMachineDB struct{}
-
-func (mumdb *mockUniformMachineDB) Spec(host string) (*MachineSpec, error) {
-	return &MachineSpec{
+func someSpec() *machine.MachineSpec {
+	return &machine.MachineSpec{
 		// 8 cores
 		Cores: 800,
 		// 32 gb ram
 		Memory: 32768,
 		// 1 tb disk
 		DiskSpace: 1000,
-	}, nil
+	}
 }
 
 func newTestJob(index int, cores int, mem int, disk int) *JobSpec {
@@ -55,6 +55,18 @@ func (metcd *mockEtcd) Hosts() ([]string, error) {
 	return metcd.hs, nil
 }
 
+func (metcd *mockEtcd) Spec(bootID string) (*machine.MachineSpec, error) {
+	return someSpec(), nil
+}
+
+func (metcd *mockEtcd) Specs() (map[string]machine.MachineSpec, error) {
+	r := make(map[string]machine.MachineSpec)
+	for _, h := range metcd.hs {
+		r[h] = *someSpec()
+	}
+	return r, nil
+}
+
 func ExampleScheduleJob() {
 	record := make(map[string]string)
 
@@ -70,7 +82,7 @@ func ExampleScheduleJob() {
 	etcd.declareJob(newTestJob(1, 100, 1024, 10), "host1")
 	etcd.declareJob(newTestJob(2, 130, 2024, 100), "host2")
 
-	ctrl, err := NewJobControl(etcd, new(mockUniformMachineDB))
+	ctrl, err := NewJobControl(etcd)
 	if err != nil {
 		fmt.Printf("couldn't create job control: %v", err)
 		return
@@ -117,7 +129,7 @@ func BenchmarkScheduleJob(b *testing.B) {
 		etcd.declareHost(fmt.Sprintf("host%d", i))
 	}
 
-	ctrl, err := NewJobControl(etcd, new(mockUniformMachineDB))
+	ctrl, err := NewJobControl(etcd)
 	if err != nil {
 		fmt.Printf("could create job control: %v", err)
 		return

@@ -31,6 +31,7 @@ type Agent struct {
 	registry      *registry.Registry
 	events        *event.EventBus
 	machine       *machine.Machine
+	machineSpec   *machine.MachineSpec
 	ttl           time.Duration
 	systemdPrefix string
 	// verifier is used to verify job payload. A nil one implies that
@@ -53,7 +54,7 @@ func New(registry *registry.Registry, events *event.EventBus, machine *machine.M
 	state := NewState()
 	mgr := systemd.NewSystemdManager(machine, unitPrefix)
 
-	return &Agent{registry, events, machine, ttldur, unitPrefix, verifier, state, mgr, nil}, nil
+	return &Agent{registry, events, machine, nil, ttldur, unitPrefix, verifier, state, mgr, nil}, nil
 }
 
 // Access Agent's machine field
@@ -95,6 +96,12 @@ func (a *Agent) Initialize() uint64 {
 	log.V(1).Infof("Initializing Agent")
 	a.machine.RefreshState()
 
+	mSpec, err := machine.ReadLocalSpec()
+	if err != nil {
+		log.Fatalf("Unable to read local machine spec: %v. Exiting", err)
+	}
+	a.machineSpec = mSpec
+
 	var idx uint64
 	wait := time.Second
 	for {
@@ -104,6 +111,15 @@ func (a *Agent) Initialize() uint64 {
 			break
 		}
 		log.V(1).Infof("Failed heartbeat, retrying in %v", wait)
+		time.Sleep(wait)
+	}
+
+	for {
+		if err := a.registry.SetMachineSpec(a.machine.State().BootID, *a.machineSpec); err == nil {
+			log.V(1).Infof("MachineSpec declared succeeded")
+			break
+		}
+		log.V(1).Infof("Failed declaring machine spec, retrying in %v", wait)
 		time.Sleep(wait)
 	}
 

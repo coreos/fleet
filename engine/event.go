@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"github.com/coreos/fleet/control"
 	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
 
 	"github.com/coreos/fleet/event"
@@ -26,14 +27,21 @@ func (self *EventHandler) HandleEventJobCreated(ev event.Event) {
 func (self *EventHandler) HandleEventJobScheduled(ev event.Event) {
 	jobName := ev.Payload.(string)
 	machineState := ev.Context.(machine.MachineState)
-	log.V(1).Infof("EventJobScheduled(%s): updating cluster", jobName)
-	self.engine.clust.jobScheduled(jobName, &machineState)
+	log.V(1).Infof("EventJobScheduled(%s): updating job control", jobName)
+
+	job := self.engine.registry.GetJob(jobName)
+	spec := control.JobSpecFrom(job)
+	self.engine.jobControl.JobScheduled(jobName, machineState.BootID, spec)
 }
 
 func (self *EventHandler) HandleEventJobStopped(ev event.Event) {
 	jobName := ev.Payload.(string)
-	log.V(1).Infof("EventJobStopped(%s): updating cluster", jobName)
-	self.engine.clust.jobStopped(jobName)
+	machineState := ev.Context.(machine.MachineState)
+	log.V(1).Infof("EventJobStopped(%s): updating job control", jobName)
+
+	job := self.engine.registry.GetJob(jobName)
+	spec := control.JobSpecFrom(job)
+	self.engine.jobControl.JobDowned(jobName, machineState.BootID, spec)
 }
 
 func (self *EventHandler) HandleEventJobBidSubmitted(ev event.Event) {
@@ -50,8 +58,8 @@ func (self *EventHandler) HandleEventJobBidSubmitted(ev event.Event) {
 
 func (self *EventHandler) HandleEventMachineCreated(ev event.Event) {
 	machineState := ev.Payload.(machine.MachineState)
-	log.V(1).Infof("EventMachineCreated(%s): updating cluster", machineState.BootID)
-	self.engine.clust.machineCreated(machineState.BootID)
+	log.V(1).Infof("EventMachineCreated(%s): updating job control", machineState.BootID)
+	self.engine.jobControl.HostUp(machineState.BootID)
 }
 
 func (self *EventHandler) HandleEventMachineRemoved(ev event.Event) {
@@ -75,5 +83,5 @@ func (self *EventHandler) HandleEventMachineRemoved(ev event.Event) {
 		log.V(1).Infof("EventMachineRemoved(%s): re-publishing JobOffer(%s)", machBootID, j.Name)
 		self.engine.OfferJob(j)
 	}
-	self.engine.clust.machineRemoved(machBootID)
+	self.engine.jobControl.HostDown(machBootID)
 }

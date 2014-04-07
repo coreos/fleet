@@ -228,7 +228,8 @@ func filterEventJobStopped(resp *etcd.Response) *event.Event {
 		return nil
 	}
 
-	return &event.Event{"EventJobStopped", jobName, nil}
+	mach := machine.MachineState{BootID: resp.PrevNode.Value, PublicIP: "", Metadata: make(map[string]string, 0)}
+	return &event.Event{"EventJobStopped", jobName, mach}
 }
 
 func jobTargetAgentPath(jobName string) string {

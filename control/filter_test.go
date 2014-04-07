@@ -215,7 +215,7 @@ func TestFilterCandidates(t *testing.T) {
 	etcd.declareJob(newFilterTestJob("logging.service", "", nil, nil), "host1")
 	etcd.declareJob(newFilterTestJob("logging.service", "", nil, nil), "host2")
 
-	ctrl, err := NewJobControl(etcd, new(mockUniformMachineDB))
+	ctrl, err := NewJobControl(etcd)
 	if err != nil {
 		t.Fatalf("could create job control: %v", err)
 	}

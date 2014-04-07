@@ -2,7 +2,9 @@ package engine
 
 import (
 	"errors"
+	"sort"
 
+	"github.com/coreos/fleet/control"
 	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
 
 	"github.com/coreos/fleet/event"
@@ -11,17 +13,24 @@ import (
 	"github.com/coreos/fleet/registry"
 )
 
+const (
+	partitionSize = 5
+)
+
 type Engine struct {
-	registry *registry.Registry
-	events   *event.EventBus
-	machine  *machine.Machine
-	// keeps a picture of the load in the cluster for more intelligent scheduling
-	clust *cluster
-	stop  chan bool
+	registry   *registry.Registry
+	events     *event.EventBus
+	machine    *machine.Machine
+	jobControl control.JobControl
+	stop       chan bool
 }
 
-func New(reg *registry.Registry, events *event.EventBus, mach *machine.Machine) *Engine {
-	return &Engine{reg, events, mach, newCluster(), nil}
+func New(reg *registry.Registry, events *event.EventBus, mach *machine.Machine) (*Engine, error) {
+	jobControl, err := control.NewJobControl(control.NewRegistryEtcd(reg))
+	if err != nil {
+		return nil, err
+	}
+	return &Engine{reg, events, mach, jobControl, nil}, nil
 }
 
 func (self *Engine) Run() {
@@ -131,4 +140,26 @@ func (self *Engine) lockJob(jobName string) *registry.TimedResourceMutex {
 // Pass-through to Registry.LockMachine
 func (self *Engine) LockMachine(machBootID string) *registry.TimedResourceMutex {
 	return self.registry.LockMachine(machBootID, self.machine.State().BootID)
+}
+
+// partitionCluster returns a slice of bootids from a subset of active machines
+// that should be considered for scheduling the specified job.
+// The returned slice is sorted by ascending lexicographical string value of machine boot id.
+func (eg *Engine) partitionCluster(j *job.Job) ([]string, error) {
+	spec := control.JobSpecFrom(j)
+
+	machineBootIDs, err := eg.jobControl.ScheduleJob(spec)
+	if err != nil {
+		return nil, err
+	}
+
+	n := len(machineBootIDs)
+	if n > partitionSize {
+		n = partitionSize
+	}
+
+	machineBootIDs = machineBootIDs[:n]
+
+	sort.Strings(machineBootIDs)
+	return machineBootIDs, nil
 }

@@ -1,6 +1,9 @@
 package control
 
-import log "github.com/coreos/fleet/third_party/github.com/golang/glog"
+import (
+	"github.com/coreos/fleet/machine"
+	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
+)
 
 // these next methods keep the machine loads up to date with
 // what happens in the cluster
@@ -46,9 +49,15 @@ func (clus *cluster) HostUp(bootID string) {
 	clus.mu.Lock()
 	defer clus.mu.Unlock()
 
-	var noLoad MachineSpec
-
+	var noLoad machine.MachineSpec
 	clus.loads[bootID] = noLoad
+
+	spec, err := clus.etcd.Spec(bootID)
+	if err != nil {
+		log.Errorf("cannot determine machine spec for %s", bootID)
+	} else {
+		clus.specs[bootID] = *spec
+	}
 }
 
 // Returns a list of host candidates where specified job could be
@@ -56,7 +65,7 @@ func (clus *cluster) HostUp(bootID string) {
 // DependsOn, ConflictsWith and RequiresHost clauses in the job spec.
 func (clus *cluster) candidates(spec *JobSpec) ([]candHost, error) {
 	clus.mu.Lock()
-	candLoads := make(map[string]MachineSpec, len(clus.loads))
+	candLoads := make(map[string]machine.MachineSpec, len(clus.loads))
 	for k, v := range clus.loads {
 		candLoads[k] = v
 	}
@@ -67,11 +76,7 @@ func (clus *cluster) candidates(spec *JobSpec) ([]candHost, error) {
 
 	// first we look which machines can fit the job
 	for host, load := range candLoads {
-		mspec, err := clus.mdb.Spec(host)
-		if err != nil {
-			log.Errorf("unable to get machine spec for %v: %v, skipping scheduling for it", host, err)
-			continue
-		}
+		mspec := clus.specs[host]
 
 		v, ok := remainingFree(load.Cores, spec.CoresRequired, mspec.Cores)
 		if !ok {

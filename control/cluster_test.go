@@ -1,8 +1,12 @@
 package control
 
-import "testing"
+import (
+	"testing"
 
-func checkLoad(host string, mload MachineSpec, cores, memory, disk int, t *testing.T) {
+	"github.com/coreos/fleet/machine"
+)
+
+func checkLoad(host string, mload machine.MachineSpec, cores, memory, disk int, t *testing.T) {
 	if mload.Cores != cores {
 		t.Errorf("host %s: expected %d cores load, got %d", host, cores, mload.Cores)
 	}
@@ -31,9 +35,7 @@ func TestJobScheduled(t *testing.T) {
 	etcd.declareJob(newTestJob(1, 100, 1024, 10), "host1")
 	etcd.declareJob(newTestJob(2, 130, 2024, 100), "host2")
 
-	mdb := new(mockUniformMachineDB)
-
-	ctrl, err := NewJobControl(etcd, mdb)
+	ctrl, err := NewJobControl(etcd)
 	if err != nil {
 		t.Fatalf("could create job control: %v", err)
 	}
@@ -72,9 +74,7 @@ func TestJobDowned(t *testing.T) {
 	etcd.declareJob(newTestJob(1, 100, 1024, 10), "host1")
 	etcd.declareJob(newTestJob(2, 130, 2024, 100), "host2")
 
-	mdb := new(mockUniformMachineDB)
-
-	ctrl, err := NewJobControl(etcd, mdb)
+	ctrl, err := NewJobControl(etcd)
 	if err != nil {
 		t.Fatalf("could create job control: %v", err)
 	}
@@ -104,9 +104,7 @@ func TestHostUp(t *testing.T) {
 	etcd.declareJob(newTestJob(1, 100, 1024, 10), "host1")
 	etcd.declareJob(newTestJob(2, 130, 2024, 100), "host2")
 
-	mdb := new(mockUniformMachineDB)
-
-	ctrl, err := NewJobControl(etcd, mdb)
+	ctrl, err := NewJobControl(etcd)
 	if err != nil {
 		t.Fatalf("could create job control: %v", err)
 	}
@@ -138,9 +136,7 @@ func TestHostDown(t *testing.T) {
 	etcd.declareJob(newTestJob(1, 100, 1024, 10), "host1")
 	etcd.declareJob(newTestJob(2, 130, 2024, 100), "host2")
 
-	mdb := new(mockUniformMachineDB)
-
-	ctrl, err := NewJobControl(etcd, mdb)
+	ctrl, err := NewJobControl(etcd)
 	if err != nil {
 		t.Fatalf("could create job control: %v", err)
 	}
@@ -180,9 +176,7 @@ func TestCandidates(t *testing.T) {
 	etcd.declareJob(newTestJob(1, 100, 1024, 10), "host1")
 	etcd.declareJob(newTestJob(2, 130, 2024, 100), "host2")
 
-	mdb := new(mockUniformMachineDB)
-
-	ctrl, err := NewJobControl(etcd, mdb)
+	ctrl, err := NewJobControl(etcd)
 	if err != nil {
 		t.Fatalf("could create job control: %v", err)
 	}

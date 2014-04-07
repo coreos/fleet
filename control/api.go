@@ -1,6 +1,10 @@
 package control
 
-import "errors"
+import (
+	"errors"
+
+	"github.com/coreos/fleet/machine"
+)
 
 var (
 	ErrClusterFull                  = errors.New("insufficient resources available to schedule job")
@@ -9,15 +13,6 @@ var (
 	ErrConflictsWithHostUnavailable = errors.New("host that doesn't conflict is not available")
 	ErrAllAgentsFailedToRun         = errors.New("no agent was able to run job")
 )
-
-type MachineSpec struct {
-	// in hundreds, ie 100=1core, 50=0.5core, 200=2cores, etc
-	Cores int
-	// in MB
-	Memory int
-	// in MB
-	DiskSpace int
-}
 
 // JobSpec defines the requirements of a job in the cluster.
 type JobSpec struct {
@@ -41,8 +36,8 @@ type JobSpec struct {
 // JobControl schedules jobs in the cluster.
 type JobControl interface {
 	// ScheduleJob returns a slice of boot ids of hosts that can run the specified job.
-	// Slice is sorted by what job control considers best fit. So first boot id is
-	// best suited to run the job, followed by the second etc.
+	// Slice is sorted by what job control considers best suited: first boot id is
+	// best suited to run the job, followed by the second boot id ...etc.
 	// Returns ErrClusterFull if cluster
 	// cannot fit the job. Returns one of the other errors defined
 	// above if clauses of the job couldn't be satisfied.
@@ -65,12 +60,6 @@ type JobWithHost struct {
 	JobName string
 }
 
-// MachineDB knows the specs of all the machines in the cluster.
-type MachineDB interface {
-	// Spec returns the machine spec of the given host.
-	Spec(bootID string) (*MachineSpec, error)
-}
-
 // Etcd interface specifies what job control will ask etcd.
 type Etcd interface {
 	// Give me all the currently active hosts
@@ -78,4 +67,8 @@ type Etcd interface {
 	Hosts() ([]string, error)
 	// Give me all the jobs running in the cluster right now
 	Jobs() ([]*JobWithHost, error)
+	// Spec returns the machine spec of the given host.
+	Spec(bootID string) (*machine.MachineSpec, error)
+	// All specs
+	Specs() (map[string]machine.MachineSpec, error)
 }
