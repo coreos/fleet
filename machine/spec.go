@@ -28,6 +28,7 @@ func ReadLocalSpec() (*MachineSpec, error) {
 		return nil, err
 	}
 	spec.Memory = mem
+	spec.DiskSpace = 1024
 
 	return spec, nil
 }
