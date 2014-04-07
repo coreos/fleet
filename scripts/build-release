@@ -1,6 +1,9 @@
 #!/bin/sh -e
 
-VER=$1
+function usage {
+	echo "Usage: $0 <version> <operating-system>"
+	exit 1
+}
 
 function build {
 	proj=${1}
@@ -33,21 +36,24 @@ function package {
 	cp ${proj}/README.md ${target}/README.md
 }
 
+VER=$1
+GOOS=$2
 
-for i in darwin linux; do
-	export GOOS=${i}
-	export GOARCH="amd64"
+GOARCH="amd64"
 
-	build fleet ${VER}
+if [ "$GOOS" == "" ]; then
+	usage
+fi
 
-	TARGET="fleet-${VER}-${GOOS}-${GOARCH}"
-	mkdir ${TARGET}
+build fleet ${VER}
 
-	package fleet ${TARGET}
+TARGET="fleet-${VER}-${GOOS}-${GOARCH}"
+mkdir ${TARGET}
 
-	if [ ${GOOS} == "linux" ]; then
-		tar cvvfz ${TARGET}.tar.gz ${TARGET}
-	else
-		zip -r ${TARGET}.zip ${TARGET}
-	fi
-done
+package fleet ${TARGET}
+
+if [ ${GOOS} == "linux" ]; then
+	tar cvvfz ${TARGET}.tar.gz ${TARGET}
+else
+	zip -r ${TARGET}.zip ${TARGET}
+fi
