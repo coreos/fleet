@@ -26,7 +26,6 @@ type Server struct {
 
 func New(cfg config.Config) (*Server, error) {
 	m := machine.New(cfg.BootID, cfg.PublicIP, cfg.Metadata())
-	m.RefreshState()
 
 	regClient := etcd.NewClient(cfg.EtcdServers)
 	regClient.SetConsistency(etcd.STRONG_CONSISTENCY)
@@ -51,7 +50,7 @@ func New(cfg config.Config) (*Server, error) {
 
 	a, err := agent.New(r, eb, m, cfg.AgentTTL, cfg.UnitPrefix, verifier)
 	if err != nil {
-		log.Errorf("Failed to create agent: %v", err)
+		log.Errorf("Error creating Agent: %v", err)
 		return nil, err
 	}
 

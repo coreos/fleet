@@ -1,9 +1,11 @@
 package registry
 
 import (
+	"errors"
 	"path"
 	"strings"
 
+	etcdErr "github.com/coreos/fleet/third_party/github.com/coreos/etcd/error"
 	"github.com/coreos/fleet/third_party/github.com/coreos/go-etcd/etcd"
 	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
 
@@ -149,6 +151,9 @@ func (r *Registry) CreateJob(j *job.Job) (err error) {
 		_, err = r.etcd.Update(key, json, 0)
 	} else {
 		_, err = r.etcd.Create(key, json, 0)
+		if err != nil && err.(*etcd.EtcdError).ErrorCode == etcdErr.EcodeNodeExist {
+			err = errors.New("job already exists")
+		}
 	}
 	return
 }

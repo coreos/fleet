@@ -11,10 +11,10 @@ func TestSignedRequests(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer cluster.DestroyAll()
+	defer cluster.Destroy()
 
 	cfg := platform.MachineConfig{VerifyUnits: true}
-	if err := cluster.CreateMultiple(1, cfg); err != nil {
+	if err := cluster.CreateMember("1", cfg); err != nil {
 		t.Fatal(err)
 	}
 	_, err = waitForNMachines(1)

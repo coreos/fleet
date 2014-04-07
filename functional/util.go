@@ -77,12 +77,17 @@ loop:
 		case <-ticker:
 			stdout, _, err := fleetctl("list-machines", "--no-legend", "-l")
 			stdout = strings.TrimSpace(stdout)
-			if stdout == "" || err != nil {
+			if err != nil {
 				continue
 			}
 
-			machines = strings.Split(stdout, "\n")
-			if len(machines) != count {
+			found := 0
+			if stdout != "" {
+				machines = strings.Split(stdout, "\n")
+				found = len(machines)
+			}
+
+			if found != count {
 				continue
 			}
 

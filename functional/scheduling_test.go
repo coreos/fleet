@@ -17,10 +17,10 @@ func TestScheduleConditionMachineOf(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer cluster.DestroyAll()
+	defer cluster.Destroy()
 
 	// Start with a simple three-node cluster
-	if err := cluster.CreateMultiple(3, platform.MachineConfig{}); err != nil {
+	if err := platform.CreateNClusterMembers(cluster, 3, platform.MachineConfig{}); err != nil {
 		t.Fatal(err)
 	}
 	machines, err := waitForNMachines(3)
@@ -87,6 +87,29 @@ func TestScheduleConditionMachineOf(t *testing.T) {
 			t.Errorf("Units %s and %s are not on same machine", ping, pong)
 		}
 	}
+
+	// Ensure a pair of units migrate together when their host goes down
+	mach := states["ping.1.service"].Machine
+	if _, _, err = fleetctl("--strict-host-key-checking=false", "ssh", mach, "sudo", "systemctl", "stop", "fleet"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := waitForNMachines(2); err != nil {
+		t.Fatal(err)
+	}
+	states, err = waitForNActiveUnits(6)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	newPingMach := states["ping.1.service"].Machine
+	if mach == newPingMach {
+		t.Fatalf("Unit ping.1.service did not appear to migrate")
+	}
+
+	newPongMach := states["pong.1.service"].Machine
+	if newPingMach != newPongMach {
+		t.Errorf("Unit pong.1.service did not migrate with ping.1.service")
+	}
 }
 
 // Start 5 services that conflict with one another. Assert that only
@@ -96,10 +119,10 @@ func TestScheduleConflicts(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer cluster.DestroyAll()
+	defer cluster.Destroy()
 
 	// Start with a simple three-node cluster
-	if err := cluster.CreateMultiple(3, platform.MachineConfig{}); err != nil {
+	if err := platform.CreateNClusterMembers(cluster, 3, platform.MachineConfig{}); err != nil {
 		t.Fatal(err)
 	}
 	machines, err := waitForNMachines(3)
@@ -160,10 +183,10 @@ func TestScheduleConditionMachineBootID(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer cluster.DestroyAll()
+	defer cluster.Destroy()
 
 	// Start with a simple three-node cluster
-	if err := cluster.CreateMultiple(3, platform.MachineConfig{}); err != nil {
+	if err := platform.CreateNClusterMembers(cluster, 3, platform.MachineConfig{}); err != nil {
 		t.Fatal(err)
 	}
 	machines, err := waitForNMachines(3)

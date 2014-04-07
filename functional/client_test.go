@@ -15,9 +15,9 @@ func TestKnownHostsVerification(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer cluster.DestroyAll()
+	defer cluster.Destroy()
 
-	if err := cluster.CreateMultiple(1, platform.MachineConfig{}); err != nil {
+	if err := cluster.CreateMember("1", platform.MachineConfig{}); err != nil {
 		t.Fatal(err)
 	}
 	machines, err := waitForNMachines(1)
@@ -40,8 +40,8 @@ func TestKnownHostsVerification(t *testing.T) {
 	}
 
 	// Recreation of the cluster simulates a change in the server's host key
-	cluster.DestroyAll()
-	cluster.CreateMultiple(1, platform.MachineConfig{})
+	cluster.DestroyMember("1")
+	cluster.CreateMember("1", platform.MachineConfig{})
 	machines, err = waitForNMachines(1)
 	if err != nil {
 		t.Fatal(err)
