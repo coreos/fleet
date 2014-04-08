@@ -2,26 +2,38 @@ package pkg
 
 import (
 	"os/user"
+	"path/filepath"
 	"strings"
 
 	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
 )
 
-// get file path considering user home directory
+// ParseFilepath expand ~ and ~user constructions.
+// If user or its home directory is unknown, do nothing.
 func ParseFilepath(path string) string {
-	if strings.Index(path, "~") != 0 || len(path) != 1 && path[1] != '/' {
+	if !strings.HasPrefix(path, "~") {
 		return path
 	}
-
-	usr, err := user.Current()
-	var newPath string
-	if err == nil {
-		newPath = strings.Replace(path, "~", usr.HomeDir, 1)
-	} else {
-		newPath = strings.Replace(path, "~", ".", 1)
-		log.Errorf("Failed to get current home directory")
+	i := strings.Index(path, "/")
+	if i < 0 {
+		i = len(path)
 	}
-	log.V(1).Infof("Parse %v from path %v", newPath, path)
-
+	var usr *user.User
+	var err error
+	if i == 1 {
+		usr, err = user.Current()
+		if err != nil {
+			log.V(1).Infof("Failed to get current home directory: %v", err)
+			return path
+		}
+	} else {
+		usr, err = user.Lookup(path[1:i])
+		if err != nil {
+			log.V(1).Infof("Failed to get %v's home directory: %v", path[1:i], err)
+			return path
+		}
+	}
+	newPath := filepath.Join(usr.HomeDir, path[i:])
+	log.V(2).Infof("Parse %v from path %v", newPath, path)
 	return newPath
 }
