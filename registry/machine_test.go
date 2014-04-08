@@ -1,5 +1,6 @@
 package registry
 
+/*
 import (
 	"fmt"
 	"io/ioutil"
@@ -170,3 +171,4 @@ func TestGetAllMachineSpecs(t *testing.T) {
 		checkSpecs(&expected, &given, t)
 	}
 }
+*/
