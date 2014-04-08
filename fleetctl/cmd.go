@@ -122,6 +122,7 @@ func main() {
 	}
 
 	flagset.Bool("version", false, "Print the version and exit")
+	flagset.Bool("v", false, "Print the version and exit")
 
 	flagset.Parse(os.Args[1:])
 
