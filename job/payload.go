@@ -9,6 +9,18 @@ import (
 	"github.com/coreos/fleet/unit"
 )
 
+// Fleet specific unit file requirement keys.
+// "X-" prefix only appears in unit file and dropped
+// in code before value is used.
+const (
+	// Require the unit be scheduled to a specific machine defined by given boot ID.
+	FleetXConditionMachineBootID = "ConditionMachineBootID"
+	// Limit eligible machines to the one that hosts a specific unit.
+	FleetXConditionMachineOf = "ConditionMachineOf"
+	// Prevent a unit from being collocated with other units using glob-matching on the other unit names.
+	FleetXConflicts = "Conflicts"
+)
+
 type JobPayload struct {
 	Name string
 	Unit unit.SystemdUnitFile
@@ -29,7 +41,7 @@ func (jp *JobPayload) Type() (string, error) {
 }
 
 func (jp *JobPayload) Peers() []string {
-	peers, ok := jp.Requirements()[unit.FleetXConditionMachineOf]
+	peers, ok := jp.Requirements()[FleetXConditionMachineOf]
 
 	if !ok {
 		jpType, err := jp.Type()
