@@ -128,7 +128,8 @@ func main() {
 
 	setupGlog()
 
-	if (*flagset.Lookup("version")).Value.(flag.Getter).Get().(bool) {
+	if (*flagset.Lookup("version")).Value.(flag.Getter).Get().(bool) ||
+	   (*flagset.Lookup("v")).Value.(flag.Getter).Get().(bool) {
 		fmt.Println("fleetctl version", version.Version)
 		os.Exit(0)
 	}
