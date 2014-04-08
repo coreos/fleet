@@ -122,12 +122,14 @@ func main() {
 	}
 
 	flagset.Bool("version", false, "Print the version and exit")
+	flagset.Bool("v", false, "Print the version and exit")
 
 	flagset.Parse(os.Args[1:])
 
 	setupGlog()
 
-	if (*flagset.Lookup("version")).Value.(flag.Getter).Get().(bool) {
+	if (*flagset.Lookup("version")).Value.(flag.Getter).Get().(bool) ||
+		(*flagset.Lookup("v")).Value.(flag.Getter).Get().(bool) {
 		fmt.Println("fleetctl version", version.Version)
 		os.Exit(0)
 	}
