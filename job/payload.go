@@ -29,7 +29,7 @@ func (jp *JobPayload) Type() (string, error) {
 }
 
 func (jp *JobPayload) Peers() []string {
-	peers, ok := jp.Unit.Requirements()[unit.FleetXConditionMachineOf]
+	peers, ok := jp.Requirements()[unit.FleetXConditionMachineOf]
 
 	if !ok {
 		jpType, err := jp.Type()
@@ -44,12 +44,34 @@ func (jp *JobPayload) Peers() []string {
 }
 
 func (jp *JobPayload) Conflicts() []string {
-	conflicts, ok := jp.Unit.Requirements()["Conflicts"]
+	conflicts, ok := jp.Requirements()["Conflicts"]
 	if ok {
 		return conflicts
 	} else {
 		return make([]string, 0)
 	}
+}
+
+// Requirements returns all relevant options from the [X-Fleet] section
+// of a unit file. Relevant options are identified with a `X-` prefix.
+func (jp *JobPayload) Requirements() map[string][]string {
+	requirements := make(map[string][]string)
+	for key, value := range jp.Unit.Contents["X-Fleet"] {
+		if !strings.HasPrefix(key, "X-") {
+			continue
+		}
+
+		// Strip off leading X-
+		key = key[2:]
+
+		if _, ok := requirements[key]; !ok {
+			requirements[key] = make([]string, 0)
+		}
+
+		requirements[key] = value
+	}
+
+	return requirements
 }
 
 func (jp *JobPayload) UnmarshalJSON(data []byte) error {
