@@ -7,7 +7,7 @@ import (
 )
 
 func TestNewJobNilStateNilPayload(t *testing.T) {
-	j1 := NewJob("ping.service", map[string][]string{}, nil)
+	j1 := NewJob("ping.service", nil)
 
 	if j1.Name != "ping.service" {
 		t.Fatal("job.Job.Name != 'ping.service'")
@@ -24,7 +24,7 @@ func TestNewJobNilStateNilPayload(t *testing.T) {
 
 func TestNewJob(t *testing.T) {
 	jp1 := NewJobPayload("echo.service", *unit.NewSystemdUnitFile("Echo"))
-	j1 := NewJob("pong.service", map[string][]string{}, jp1)
+	j1 := NewJob("pong.service", jp1)
 
 	if j1.Name != "pong.service" {
 		t.Fatal("job.Job.Name != 'pong.service'")

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"strings"
 	"sync"
 	"time"
 
@@ -33,12 +32,8 @@ Start an entire directory of units with glob matching:
 fleetctl start myservice/*
 
 You may filter suitable hosts based on metadata provided by the machine.
-Machine metadata is located in the fleet configuration file.
-
-Start a unit on any "us-east" machine:
-fleetctl start --require region=us-east foo.service`,
+Machine metadata is located in the fleet configuration file.`,
 		Flags: []cli.Flag{
-			cli.StringFlag{"require", "", "Filter suitable hosts with a set of requirements. Format is comma-delimited list of <key>=<value> pairs."},
 			cli.BoolFlag{"sign", "Sign unit file signatures using local SSH identities"},
 			cli.IntFlag{"block-attempts", 10, "Wait until the jobs are scheduled. Perform N attempts before giving up, 10 by default."},
 			cli.BoolFlag{"no-block", "Do not wait until the units have been scheduled to exit start."},
@@ -55,12 +50,10 @@ func startUnitAction(c *cli.Context) {
 		os.Exit(1)
 	}
 
-	requirements := parseRequirements(c.String("require"))
-
 	// TODO: This must be done in a transaction!
 	registeredJobs := make(map[string]bool)
 	for _, jp := range payloads {
-		j := job.NewJob(jp.Name, requirements, &jp)
+		j := job.NewJob(jp.Name, &jp)
 		log.V(1).Infof("Created new Job(%s) from Payload(%s)", j.Name, jp.Name)
 		err := registryCtl.CreateJob(j)
 		if err != nil {
@@ -73,33 +66,6 @@ func startUnitAction(c *cli.Context) {
 	if !c.Bool("no-block") {
 		waitForScheduledUnits(registeredJobs, c.Int("block-attempts"), os.Stdout)
 	}
-}
-
-func parseRequirements(arg string) map[string][]string {
-	reqs := make(map[string][]string, 0)
-
-	add := func(key, val string) {
-		vals, ok := reqs[key]
-		if !ok {
-			vals = make([]string, 0)
-			reqs[key] = vals
-		}
-		vals = append(vals, val)
-		reqs[key] = vals
-	}
-
-	for _, pair := range strings.Split(arg, ",") {
-		parts := strings.SplitN(pair, "=", 2)
-		if len(parts) != 2 {
-			continue
-		}
-
-		key := fmt.Sprintf("MachineMetadata%s", strings.TrimSpace(parts[0]))
-		val := strings.TrimSpace(parts[1])
-		add(key, val)
-	}
-
-	return reqs
 }
 
 func waitForScheduledUnits(jobs map[string]bool, maxAttempts int, out io.Writer) {
