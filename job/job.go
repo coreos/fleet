@@ -15,7 +15,7 @@ func (self *Job) Requirements() map[string][]string {
 	if self.Payload != nil {
 		stacked := make(map[string][]string, 0)
 
-		for key, values := range self.Payload.Unit.Requirements() {
+		for key, values := range self.Payload.Requirements() {
 			stacked[key] = values
 		}
 

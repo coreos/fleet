@@ -14,7 +14,6 @@ import (
 	"github.com/coreos/fleet/registry"
 	"github.com/coreos/fleet/sign"
 	"github.com/coreos/fleet/systemd"
-	"github.com/coreos/fleet/unit"
 )
 
 const (
@@ -389,7 +388,7 @@ func (a *Agent) AbleToRun(j *job.Job) bool {
 		return false
 	}
 
-	bootID, ok := requirements[unit.FleetXConditionMachineBootID]
+	bootID, ok := requirements[job.FleetXConditionMachineBootID]
 	if ok && len(bootID) > 0 && !a.machine.State().MatchBootID(bootID[0]) {
 		log.V(1).Infof("Agent does not pass MachineBootID condition for Job(%s)", j.Name)
 		return false

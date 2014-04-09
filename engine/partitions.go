@@ -6,7 +6,6 @@ import (
 
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/machine"
-	"github.com/coreos/fleet/unit"
 )
 
 const (
@@ -190,7 +189,7 @@ func (eg *Engine) refreshCluster(force bool) {
 func (eg *Engine) requiresMachine(j *job.Job) ([]string, bool) {
 	requirements := j.Requirements()
 
-	bootID, ok := requirements[unit.FleetXConditionMachineBootID]
+	bootID, ok := requirements[job.FleetXConditionMachineBootID]
 	return bootID, ok && len(bootID) > 0
 }
 
