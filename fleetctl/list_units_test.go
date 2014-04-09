@@ -8,7 +8,7 @@ import (
 )
 
 func newTestRegistryForListUnits(payloads []job.JobPayload, jobs []job.Job) Registry {
-	j := []job.Job{*job.NewJob("pong.service", map[string][]string{}, nil, nil)}
+	j := []job.Job{*job.NewJob("pong.service", map[string][]string{}, nil)}
 	p := []job.JobPayload{*job.NewJobPayload("echo.service", *unit.NewSystemdUnitFile("Echo"))}
 
 	if payloads != nil {
@@ -66,7 +66,7 @@ func TestJobDescription(t *testing.T) {
 Description=PING
 `
 	jp := job.NewJobPayload("ping.service", *unit.NewSystemdUnitFile(contents))
-	j := []job.Job{*job.NewJob("ping.service", map[string][]string{}, jp, nil)}
+	j := []job.Job{*job.NewJob("ping.service", map[string][]string{}, jp)}
 	registryCtl = newTestRegistryForListUnits(nil, j)
 
 	names, _ := findAllUnits()

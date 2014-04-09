@@ -3,12 +3,11 @@ package job
 import (
 	"testing"
 
-	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/unit"
 )
 
 func TestNewJobNilStateNilPayload(t *testing.T) {
-	j1 := NewJob("ping.service", map[string][]string{}, nil, nil)
+	j1 := NewJob("ping.service", map[string][]string{}, nil)
 
 	if j1.Name != "ping.service" {
 		t.Fatal("job.Job.Name != 'ping.service'")
@@ -24,18 +23,11 @@ func TestNewJobNilStateNilPayload(t *testing.T) {
 }
 
 func TestNewJob(t *testing.T) {
-	ms := &machine.MachineState{"XXX", "", make(map[string]string, 0), ""}
-	js1 := NewJobState("loaded", "inactive", "running", []string{}, ms)
 	jp1 := NewJobPayload("echo.service", *unit.NewSystemdUnitFile("Echo"))
-
-	j1 := NewJob("pong.service", map[string][]string{}, jp1, js1)
+	j1 := NewJob("pong.service", map[string][]string{}, jp1)
 
 	if j1.Name != "pong.service" {
 		t.Fatal("job.Job.Name != 'pong.service'")
-	}
-
-	if j1.State != js1 {
-		t.Fatal("job.Job.State does not match expected value")
 	}
 
 	if j1.Payload.Name != jp1.Name {
