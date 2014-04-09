@@ -21,6 +21,10 @@ const (
 	FleetXConflicts = "Conflicts"
 )
 
+func SupportedUnitTypes() []string {
+	return []string{"service", "socket"}
+}
+
 type JobPayload struct {
 	Name string
 	Unit unit.SystemdUnitFile
@@ -31,26 +35,39 @@ func NewJobPayload(name string, uFile unit.SystemdUnitFile) *JobPayload {
 }
 
 func (jp *JobPayload) Type() (string, error) {
-	if strings.HasSuffix(jp.Name, ".service") {
-		return "systemd-service", nil
-	} else if strings.HasSuffix(jp.Name, ".socket") {
-		return "systemd-socket", nil
-	} else {
-		return "", errors.New(fmt.Sprintf("Unrecognized systemd unit %s", jp.Name))
-	}
-}
-
-func (jp *JobPayload) Peers() []string {
-	peers, ok := jp.Requirements()[FleetXConditionMachineOf]
-
-	if !ok {
-		jpType, err := jp.Type()
-		if err == nil && jpType == "systemd-socket" {
-			idx := len(jp.Name) - 7
-			baseName := jp.Name[0:idx]
-			peers = []string{fmt.Sprintf("%s.%s", baseName, "service")}
+	for _, ut := range SupportedUnitTypes() {
+		if strings.HasSuffix(jp.Name, fmt.Sprintf(".%s", ut)) {
+			return ut, nil
 		}
 	}
+
+	return "", errors.New(fmt.Sprintf("Unrecognized systemd unit %s", jp.Name))
+}
+
+// Peers returns a list of Payload names that must be scheduled to the same
+// machine as this Payload. If no peers were explicitly defined for certain unit
+// types, a default list of peers will be returned. This behavior only applies
+// to the socket unit type. For example, the default peer of foo.socket would
+// be foo.service.
+func (jp *JobPayload) Peers() []string {
+	if peers, ok := jp.Requirements()[FleetXConditionMachineOf]; ok {
+		return peers
+	}
+
+	peers := make([]string, 0)
+
+	jpType, err := jp.Type()
+	if err != nil {
+		return peers
+	}
+
+	if jpType != "socket" {
+		return peers
+	}
+
+	baseName := strings.TrimSuffix(jp.Name, fmt.Sprintf(".%s", jpType))
+	serviceName := fmt.Sprintf("%s.%s", baseName, "service")
+	peers = append(peers, serviceName)
 
 	return peers
 }

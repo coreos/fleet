@@ -1,17 +1,34 @@
 package job
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/coreos/fleet/unit"
 )
 
 func TestNewJobPayloadBadType(t *testing.T) {
-	j := NewJobPayload("foo.unknown", *unit.NewSystemdUnitFile("echo"))
-	_, err := j.Type()
+	if _, err := NewJobPayload("foo.unknown", *unit.NewSystemdUnitFile("echo")).Type(); err == nil {
+		t.Errorf("Expected non-nil error, got %v", err)
+	}
 
-	if err == nil {
-		t.Fatal("Expected non-nil error")
+}
+
+func TestNewJobPayloadGoodTypes(t *testing.T) {
+	cases := []string{
+		"service",
+		"socket",
+	}
+
+	test := func(ut string) {
+		name := fmt.Sprintf("foo.%s", ut)
+		if _, err := NewJobPayload(name, *unit.NewSystemdUnitFile("echo")).Type(); err != nil {
+			t.Errorf("Expected nil error, got %v", err)
+		}
+	}
+
+	for _, c := range cases {
+		test(c)
 	}
 }
 
@@ -22,7 +39,7 @@ func TestNewJobPayload(t *testing.T) {
 		t.Errorf("Payload has unexpected name '%s'", payload.Name)
 	}
 
-	if pt, _ := payload.Type(); pt != "systemd-service" {
+	if pt, _ := payload.Type(); pt != "service" {
 		t.Errorf("Payload has unexpected Type '%s'", pt)
 	}
 }
