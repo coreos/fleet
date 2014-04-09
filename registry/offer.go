@@ -127,11 +127,7 @@ func (self *EventStream) filterEventJobUpdated(resp *etcd.Response) *event.Event
 		return nil
 	}
 
-	var bootID string
-	if target := self.registry.GetJobTarget(j.Name); target != nil {
-		bootID = target.BootID
-	}
-
+	bootID := self.registry.GetJobTarget(j.Name)
 	return &event.Event{"EventJobUpdated", j, bootID}
 }
 

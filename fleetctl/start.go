@@ -117,10 +117,10 @@ func checkJobTarget(jobName string, maxAttempts int, out io.Writer, wg *sync.Wai
 	defer wg.Done()
 
 	for attempts := 0; attempts < maxAttempts; attempts++ {
-		ms := registryCtl.GetJobTarget(jobName)
+		tgt := registryCtl.GetJobTarget(jobName)
 
-		if ms != nil {
-			m := registryCtl.GetMachineState(ms.BootID)
+		if tgt != "" {
+			m := registryCtl.GetMachineState(tgt)
 			fmt.Fprintf(out, "Job %s scheduled to %s\n", jobName, machineFullLegend(*m, false))
 			return
 		}

@@ -46,7 +46,7 @@ func (self *Engine) GetJobsScheduledToMachine(machBootID string) []job.Job {
 
 	for _, j := range self.registry.GetAllJobs() {
 		tgt := self.registry.GetJobTarget(j.Name)
-		if tgt == nil || tgt.BootID != machBootID {
+		if tgt == "" || tgt != machBootID {
 			continue
 		}
 		jobs = append(jobs, j)

@@ -444,7 +444,7 @@ func (a *Agent) peerScheduledHere(jobName, peerName string) bool {
 	log.V(1).Infof("Looking for target of Peer(%s)", peerName)
 
 	//FIXME: ideally the machine would use its own knowledge rather than calling GetJobTarget
-	if tgt := a.registry.GetJobTarget(peerName); tgt == nil || tgt.BootID != a.machine.State().BootID {
+	if tgt := a.registry.GetJobTarget(peerName); tgt == "" || tgt != a.machine.State().BootID {
 		log.V(1).Infof("Peer(%s) of Job(%s) not scheduled here", peerName, jobName)
 		return false
 	}

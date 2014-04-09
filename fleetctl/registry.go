@@ -20,7 +20,7 @@ type Registry interface {
 	CreateSignatureSet(s *sign.SignatureSet) error
 	GetSignatureSetOfPayload(name string) *sign.SignatureSet
 	DestroySignatureSetOfPayload(name string)
-	GetJobTarget(name string) *machine.MachineState
+	GetJobTarget(name string) string
 	GetMachineState(bootID string) *machine.MachineState
 	GetDebugInfo() (string, error)
 }
@@ -81,7 +81,7 @@ func (m MainRegistry) DestroySignatureSetOfPayload(name string) {
 	m.registry.DestroySignatureSetOfPayload(name)
 }
 
-func (m MainRegistry) GetJobTarget(name string) *machine.MachineState {
+func (m MainRegistry) GetJobTarget(name string) string {
 	return m.registry.GetJobTarget(name)
 }
 
