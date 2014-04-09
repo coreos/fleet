@@ -13,7 +13,7 @@ func TestAbleToRunConditionMachineBootIDMatch(t *testing.T) {
 X-ConditionMachineBootID=XYZ
 `)
 	payload := job.NewJobPayload("example.service", *uf)
-	job := job.NewJob("example.service", make(map[string][]string, 0), payload)
+	job := job.NewJob("example.service", payload)
 
 	mach := machine.New("XYZ", "", make(map[string]string, 0))
 	agent := Agent{machine: mach, state: NewState()}
@@ -27,7 +27,7 @@ func TestAbleToRunConditionMachineBootIDMismatch(t *testing.T) {
 X-ConditionMachineBootID=XYZ
 `)
 	payload := job.NewJobPayload("example.service", *uf)
-	job := job.NewJob("example.service", make(map[string][]string, 0), payload)
+	job := job.NewJob("example.service", payload)
 
 	mach := machine.New("123", "", make(map[string]string, 0))
 	agent := Agent{machine: mach, state: NewState()}
