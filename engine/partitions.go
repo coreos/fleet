@@ -177,9 +177,9 @@ func (eg *Engine) refreshCluster(force bool) {
 
 	jobs := eg.registry.GetAllJobs()
 	for _, j := range jobs {
-		mst := eg.registry.GetJobTarget(j.Name)
-		if mst != nil {
-			cu.populateJob(j.Name, mst.BootID)
+		tgt := eg.registry.GetJobTarget(j.Name)
+		if tgt != "" {
+			cu.populateJob(j.Name, tgt)
 		}
 	}
 

@@ -79,7 +79,7 @@ func (r *Registry) GetAllJobsByMachine(machBootID string) []job.Job {
 	for _, node := range resp.Node.Nodes {
 		if j := r.GetJob(path.Base(node.Key)); j != nil {
 			tgt := r.GetJobTarget(j.Name)
-			if tgt != nil && tgt.BootID == machBootID {
+			if tgt != "" && tgt == machBootID {
 				jobs = append(jobs, *j)
 			}
 		}
@@ -88,15 +88,18 @@ func (r *Registry) GetAllJobsByMachine(machBootID string) []job.Job {
 	return jobs
 }
 
-func (r *Registry) GetJobTarget(jobName string) *machine.MachineState {
+// GetJobTarget looks up where the given job is scheduled. If the job has
+// been scheduled, the boot ID the target machine is returned. Otherwise,
+// an empty string is returned.
+func (r *Registry) GetJobTarget(jobName string) string {
 	// Figure out to which Machine this Job is scheduled
 	key := jobTargetAgentPath(jobName)
 	resp, err := r.etcd.Get(key, false, true)
 	if err != nil {
-		return nil
+		return ""
 	}
 
-	return &machine.MachineState{BootID: resp.Node.Value, PublicIP: "", Metadata: make(map[string]string, 0)}
+	return resp.Node.Value
 }
 
 func (r *Registry) GetJob(jobName string) *job.Job {
