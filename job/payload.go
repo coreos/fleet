@@ -65,7 +65,9 @@ func (jp *JobPayload) Conflicts() []string {
 }
 
 // Requirements returns all relevant options from the [X-Fleet] section
-// of a unit file. Relevant options are identified with a `X-` prefix.
+// of a unit file. Relevant options are identified with a `X-` prefix in
+// the unit. This prefix is stripped from relevant options before
+// being returned.
 func (jp *JobPayload) Requirements() map[string][]string {
 	requirements := make(map[string][]string)
 	for key, value := range jp.Unit.Contents["X-Fleet"] {
