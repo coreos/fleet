@@ -73,7 +73,7 @@ func (jp *JobPayload) Peers() []string {
 }
 
 func (jp *JobPayload) Conflicts() []string {
-	conflicts, ok := jp.Requirements()["Conflicts"]
+	conflicts, ok := jp.Requirements()[FleetXConflicts]
 	if ok {
 		return conflicts
 	} else {
