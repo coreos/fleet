@@ -60,7 +60,7 @@ func startUnitAction(c *cli.Context) {
 	// TODO: This must be done in a transaction!
 	registeredJobs := make(map[string]bool)
 	for _, jp := range payloads {
-		j := job.NewJob(jp.Name, requirements, &jp, nil)
+		j := job.NewJob(jp.Name, requirements, &jp)
 		log.V(1).Infof("Created new Job(%s) from Payload(%s)", j.Name, jp.Name)
 		err := registryCtl.CreateJob(j)
 		if err != nil {

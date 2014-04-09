@@ -7,8 +7,8 @@ type Job struct {
 	State           *JobState
 }
 
-func NewJob(name string, requirements map[string][]string, payload *JobPayload, state *JobState) *Job {
-	return &Job{name, requirements, payload, state}
+func NewJob(name string, requirements map[string][]string, payload *JobPayload) *Job {
+	return &Job{name, requirements, payload, nil}
 }
 
 func (self *Job) Requirements() map[string][]string {
