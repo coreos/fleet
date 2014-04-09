@@ -116,7 +116,7 @@ X-Ping=Pang
 	jp := NewJobPayload("foo.service", *unitFile)
 	reqs := jp.Requirements()
 	if len(reqs) != 2 {
-		t.Fatalf("Received %d requirements, expected 2: %v", len(reqs), reqs)
+		t.Fatalf("Incorrect number of requirements; got %d, expected 2: %v", len(reqs), reqs)
 	}
 
 	if len(reqs["Foo"]) != 2 || reqs["Foo"][0] != "Bar" || reqs["Foo"][1] != "Baz" {
