@@ -11,16 +11,19 @@ import (
 	"syscall"
 
 	gossh "github.com/coreos/fleet/third_party/code.google.com/p/gosshnew/ssh"
-	"github.com/coreos/fleet/third_party/github.com/codegangsta/cli"
 
 	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/ssh"
 )
 
-func newSSHCommand() cli.Command {
-	return cli.Command{
-		Name:  "ssh",
-		Usage: "Open interactive shell on a machine in the cluster",
+var (
+	flagMachine            string
+	flagUnit               string
+	flagSSHAgentForwarding bool
+	cmdSSH                 = &Command{
+		Name:    "ssh",
+		Summary: "Open interactive shell on a machine in the cluster",
+		Usage:   "ssh [options] (machine|unit)",
 		Description: `Open an interactive shell on a specific machine in the cluster or on the machine where the specified unit is located.
 
 Open a shell on a machine:
@@ -38,59 +41,56 @@ Tip: fleetctl tries to detect whether your first argument is a machine or a unit
 Pro-Tip: Create an alias for --tunnel:
 Add "alias fleetctl=fleetctl --tunnel 10.10.10.10" to your bash profile.
 Now you can run all fleet commands locally.`,
-		Flags: []cli.Flag{
-			cli.StringFlag{"machine, m", "", "Open SSH connection to a specific machine."},
-			cli.StringFlag{"unit, u", "", "Open SSH connection to machine running provided unit."},
-			cli.BoolFlag{"forward-agent, A", "Forward local ssh-agent to target machine."},
-		},
-		Action: sshAction,
+		Run: runSSH,
 	}
+)
+
+func init() {
+	cmdSSH.Flags.StringVar(&flagMachine, "machine", "", "Open SSH connection to a specific machine.")
+	cmdSSH.Flags.StringVar(&flagUnit, "unit", "", "Open SSH connection to machine running provided unit.")
+	cmdSSH.Flags.BoolVar(&flagSSHAgentForwarding, "forward-agent", false, "Forward local ssh-agent to target machine.")
 }
 
-func sshAction(c *cli.Context) {
-	unit := c.String("unit")
-	machine := c.String("machine")
-
-	if unit != "" && machine != "" {
-		fmt.Fprintln(os.Stderr, "Both flags, machine and unit provided, please specify only one.")
-		os.Exit(1)
+func runSSH(args []string) (exit int) {
+	if flagUnit != "" && flagMachine != "" {
+		fmt.Fprintln(os.Stderr, "Both machine and unit flags provided, please specify only one.")
+		return 1
 	}
 
-	args := c.Args()
 	var err error
 	var addr string
 
 	switch {
-	case machine != "":
-		addr, _ = findAddressInMachineList(machine)
-	case unit != "":
-		addr, _ = findAddressInRunningUnits(unit)
+	case flagMachine != "":
+		addr, _ = findAddressInMachineList(flagMachine)
+	case flagUnit != "":
+		addr, _ = findAddressInRunningUnits(flagUnit)
 	default:
 		addr, err = globalMachineLookup(args)
-		args = args[1:]
-	}
-
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return 1
+		}
+		// trim machine/unit name from args
+		if len(args) > 1 {
+			args = args[1:]
+		}
 	}
 
 	if addr == "" {
 		fmt.Fprintln(os.Stderr, "Requested machine could not be found.")
-		os.Exit(1)
+		return 1
 	}
-
-	agentForwarding := c.Bool("forward-agent")
 
 	var sshClient *ssh.SSHForwardingClient
 	if tun := getTunnelFlag(); tun != "" {
-		sshClient, err = ssh.NewTunnelledSSHClient("core", tun, addr, getChecker(), agentForwarding)
+		sshClient, err = ssh.NewTunnelledSSHClient("core", tun, addr, getChecker(), flagSSHAgentForwarding)
 	} else {
-		sshClient, err = ssh.NewSSHClient("core", addr, getChecker(), agentForwarding)
+		sshClient, err = ssh.NewSSHClient("core", addr, getChecker(), flagSSHAgentForwarding)
 	}
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed building SSH client: %v\n", err)
-		os.Exit(1)
+		return 1
 	}
 
 	defer sshClient.Close()
@@ -100,16 +100,17 @@ func sshAction(c *cli.Context) {
 		channel, err := ssh.Execute(sshClient, cmd)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Failed running command over SSH: %v\n", err)
-			os.Exit(1)
+			return 1
 		}
 
 		os.Exit(readSSHChannel(channel))
 	} else {
 		if err := ssh.Shell(sshClient); err != nil {
 			fmt.Fprintf(os.Stderr, "Failed opening shell over SSH: %v\n", err)
-			os.Exit(1)
+			return 1
 		}
 	}
+	return 0
 }
 
 func globalMachineLookup(args []string) (string, error) {

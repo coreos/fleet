@@ -4,38 +4,35 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/coreos/fleet/third_party/github.com/codegangsta/cli"
-
 	"github.com/coreos/fleet/job"
 )
 
-func newListUnitsCommand() cli.Command {
-	return cli.Command{
-		Name:  "list-units",
-		Usage: "Enumerate units loaded in the cluster",
-		Description: `Lists all units submitted or started on the cluster.
+var cmdListUnits = &Command{
+	Name:    "list-units",
+	Summary: "Enumerate units loaded in the cluster",
+	Description: `Lists all units submitted or started on the cluster.
 
 For easily parsable output, you can remove the column headers:
 fleetctl list-units --no-legend
 
 Output the list without ellipses:
 fleetctl list-units --full`,
-		Action: listUnitsAction,
-		Flags: []cli.Flag{
-			cli.BoolFlag{"full, l", "Do not ellipsize fields on output"},
-			cli.BoolFlag{"no-legend", "Do not print a legend (column headers)"},
-		},
-	}
+	Run: runListUnits,
 }
 
-func listUnitsAction(c *cli.Context) {
-	if !c.Bool("no-legend") {
+func init() {
+	// TODO(jonboulle): de-dupe with list_machines
+	cmdListUnits.Flags.BoolVar(&flagFull, "full", false, "Do not ellipsize fields on output")
+	cmdListUnits.Flags.BoolVar(&flagNoLegend, "no-legend", false, "Do not print a legend (column headers)")
+}
+
+func runListUnits(args []string) (exit int) {
+	if flagNoLegend {
 		fmt.Fprintln(out, "UNIT\tLOAD\tACTIVE\tSUB\tDESC\tMACHINE")
 	}
 
 	names, sortable := findAllUnits()
 
-	full := c.Bool("full")
 	for _, name := range sortable {
 		var ps *job.PayloadState
 		j := registryCtl.GetJob(name)
@@ -47,6 +44,7 @@ func listUnitsAction(c *cli.Context) {
 	}
 
 	out.Flush()
+	return 0
 }
 
 func findAllUnits() (names map[string]string, sortable sort.StringSlice) {
