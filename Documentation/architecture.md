@@ -56,7 +56,7 @@ Stopping a Job is a destructive action - no metadata is preserved. The Job's pay
 
 Both Jobs and Machines have dynamic state which is published both for the user and cluster to consume.
 
-A JobState object represents the state of a payload as reported by systemd on a given Machine. Only the Machine running an actual Job will publish a corresponding JobState object.
+A PayloadState object represents the state of a payload as reported by systemd on a given Machine. Only the Machine running an actual Job will publish a corresponding PayloadState object.
 
 A MachineState object represents the state of a host in the cluster at the time the object was generated. MachineState objects are published on an interval with a TTL, keeping the external view of a cluster relatively accurate at any given time.
 

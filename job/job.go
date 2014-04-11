@@ -1,9 +1,9 @@
 package job
 
 type Job struct {
-	Name    string
-	Payload JobPayload
-	State   *JobState
+	Name         string
+	Payload      JobPayload
+	PayloadState *PayloadState
 }
 
 func NewJob(name string, payload JobPayload) *Job {

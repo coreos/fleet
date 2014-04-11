@@ -157,11 +157,11 @@ func findAddressInMachineList(lookup string) (string, bool) {
 }
 
 func findAddressInRunningUnits(lookup string) (string, bool) {
-	js := registryCtl.GetJobState(lookup)
-	if js == nil {
+	j := registryCtl.GetJob(lookup)
+	if j == nil || j.PayloadState == nil {
 		return "", false
 	}
-	return fmt.Sprintf("%s:22", js.MachineState.PublicIP), true
+	return fmt.Sprintf("%s:22", j.PayloadState.MachineState.PublicIP), true
 }
 
 // Read stdout from SSH channel and print to local stdout.

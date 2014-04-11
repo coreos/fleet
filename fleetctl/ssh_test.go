@@ -14,13 +14,19 @@ func newTestRegistryForSsh() Registry {
 		machine.MachineState{"hello.service", "8.7.6.5", map[string]string{"foo": "bar"}, ""},
 	}
 
-	states := map[string]*job.JobState{
-		"j1":            job.NewJobState("loaded", "active", "listening", []string{}, &machines[0]),
-		"j2":            job.NewJobState("loaded", "inactive", "dead", []string{}, &machines[1]),
-		"hello.service": job.NewJobState("loaded", "inactive", "dead", []string{}, &machines[2]),
+	jobs := []job.Job{
+		*job.NewJob("j1", job.JobPayload{}),
+		*job.NewJob("j2", job.JobPayload{}),
+		*job.NewJob("hello.service", job.JobPayload{}),
 	}
 
-	return TestRegistry{machines: machines, jobStates: states}
+	states := map[string]*job.PayloadState{
+		"j1":            job.NewPayloadState("loaded", "active", "listening", []string{}, &machines[0]),
+		"j2":            job.NewPayloadState("loaded", "inactive", "dead", []string{}, &machines[1]),
+		"hello.service": job.NewPayloadState("loaded", "inactive", "dead", []string{}, &machines[2]),
+	}
+
+	return TestRegistry{machines: machines, jobStates: states, jobs: jobs}
 }
 
 func TestSshUnknownMachine(t *testing.T) {

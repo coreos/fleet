@@ -129,7 +129,7 @@ func (a *Agent) Purge() {
 		log.Infof("Purging Job(%s)", j.Name)
 		a.systemd.StopJob(j.Name)
 		a.ForgetJob(j.Name)
-		a.ReportJobState(j.Name, nil)
+		a.ReportPayloadState(j.Name, nil)
 
 		// TODO(uwedeportivo): agent placing offer ?
 		offer := job.NewOfferFromJob(j, nil)
@@ -215,7 +215,7 @@ func (a *Agent) RescheduleJob(j *job.Job) {
 func (a *Agent) StopJob(jobName string) {
 	log.Infof("Stopping Job(%s)", jobName)
 	a.systemd.StopJob(jobName)
-	a.ReportJobState(jobName, nil)
+	a.ReportPayloadState(jobName, nil)
 
 	a.state.Lock()
 	reversePeers := a.state.GetJobsByPeer(jobName)
@@ -230,14 +230,14 @@ func (a *Agent) StopJob(jobName string) {
 }
 
 // Persist the state of the given Job into the Registry
-func (a *Agent) ReportJobState(jobName string, jobState *job.JobState) {
-	if jobState == nil {
-		err := a.registry.RemoveJobState(jobName)
+func (a *Agent) ReportPayloadState(jobName string, ps *job.PayloadState) {
+	if ps == nil {
+		err := a.registry.RemovePayloadState(jobName)
 		if err != nil {
-			log.V(1).Infof("Failed to remove JobState from Registry: %s", jobName, err.Error())
+			log.V(1).Infof("Failed to remove PayloadState from Registry: %s", jobName, err.Error())
 		}
 	} else {
-		a.registry.SaveJobState(jobName, jobState)
+		a.registry.SavePayloadState(jobName, ps)
 	}
 }
 

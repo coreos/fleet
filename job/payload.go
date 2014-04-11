@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/unit"
 )
 
@@ -142,4 +143,16 @@ type unitFileModel struct {
 type jobPayloadModel struct {
 	Name string
 	Unit unitFileModel
+}
+
+type PayloadState struct {
+	LoadState    string                `json:"loadState"`
+	ActiveState  string                `json:"activeState"`
+	SubState     string                `json:"subState"`
+	Sockets      []string              `json:"sockets"`
+	MachineState *machine.MachineState `json:"machineState"`
+}
+
+func NewPayloadState(loadState, activeState, subState string, sockets []string, ms *machine.MachineState) *PayloadState {
+	return &PayloadState{loadState, activeState, subState, sockets, ms}
 }

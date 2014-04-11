@@ -9,10 +9,10 @@ import (
 
 type Registry interface {
 	GetActiveMachines() []machine.MachineState
-	GetJobState(name string) *job.JobState
 	GetAllPayloads() []job.JobPayload
 	GetAllJobs() []job.Job
 	GetPayload(name string) *job.JobPayload
+	GetJob(name string) *job.Job
 	StopJob(name string)
 	DestroyPayload(name string)
 	CreatePayload(jp *job.JobPayload) error
@@ -37,16 +37,16 @@ func (m MainRegistry) GetActiveMachines() []machine.MachineState {
 	return m.registry.GetActiveMachines()
 }
 
-func (m MainRegistry) GetJobState(name string) *job.JobState {
-	return m.registry.GetJobState(name)
-}
-
 func (m MainRegistry) GetAllPayloads() []job.JobPayload {
 	return m.registry.GetAllPayloads()
 }
 
 func (m MainRegistry) GetAllJobs() []job.Job {
 	return m.registry.GetAllJobs()
+}
+
+func (m MainRegistry) GetJob(name string) *job.Job {
+	return m.registry.GetJob(name)
 }
 
 func (m MainRegistry) GetPayload(name string) *job.JobPayload {

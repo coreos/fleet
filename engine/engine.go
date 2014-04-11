@@ -117,8 +117,8 @@ func (self *Engine) ResolveJobOffer(jobName string, machBootID string) error {
 	return nil
 }
 
-func (self *Engine) RemoveJobState(jobName string) {
-	self.registry.RemoveJobState(jobName)
+func (self *Engine) RemovePayloadState(jobName string) {
+	self.registry.RemovePayloadState(jobName)
 }
 
 func (self *Engine) lockJobOffer(jobName string) *registry.TimedResourceMutex {

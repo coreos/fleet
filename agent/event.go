@@ -110,21 +110,21 @@ func (eh *EventHandler) HandleEventJobUpdated(ev event.Event) {
 	eh.agent.StartJob(&j)
 }
 
-func (eh *EventHandler) HandleEventJobStateUpdated(ev event.Event) {
+func (eh *EventHandler) HandleEventPayloadStateUpdated(ev event.Event) {
 	jobName := ev.Context.(string)
-	state := ev.Payload.(*job.JobState)
+	state := ev.Payload.(*job.PayloadState)
 
 	if state == nil {
-		log.V(1).Infof("EventJobStateUpdated(%s): received nil JobState object", jobName)
+		log.V(1).Infof("EventPayloadStateUpdated(%s): received nil PayloadState object", jobName)
 	} else {
-		log.V(1).Infof("EventJobStateUpdated(%s): pushing state (loadState=%s, activeState=%s, subState=%s) to Registry", jobName, state.LoadState, state.ActiveState, state.SubState)
+		log.V(1).Infof("EventPayloadStateUpdated(%s): pushing state (loadState=%s, activeState=%s, subState=%s) to Registry", jobName, state.LoadState, state.ActiveState, state.SubState)
 
 		// FIXME: This should probably be set in the underlying event-generation code
 		ms := eh.agent.Machine().State()
 		state.MachineState = &ms
 	}
 
-	eh.agent.ReportJobState(jobName, state)
+	eh.agent.ReportPayloadState(jobName, state)
 }
 
 func (eh *EventHandler) HandleEventMachineCreated(ev event.Event) {
