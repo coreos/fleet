@@ -76,7 +76,8 @@ func (a *Agent) Run() {
 	a.stop = make(chan bool)
 
 	handler := NewEventHandler(a)
-	a.events.AddListener("agent", a.machine, handler)
+	bootID := a.machine.State().BootID
+	a.events.AddListener("agent", bootID, handler)
 
 	go a.systemd.Publish(a.events, a.stop)
 	go a.Heartbeat(a.ttl, a.stop)
@@ -84,7 +85,7 @@ func (a *Agent) Run() {
 	// Block until we receive a stop signal
 	<-a.stop
 
-	a.events.RemoveListener("agent", a.machine)
+	a.events.RemoveListener("agent", bootID)
 }
 
 // Initialize pushes the local machine state to the Registry

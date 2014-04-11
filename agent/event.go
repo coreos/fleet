@@ -43,7 +43,7 @@ func (eh *EventHandler) HandleEventJobScheduled(ev event.Event) {
 
 	eh.agent.OfferResolved(jobName)
 
-	if ev.Context.(machine.MachineState).BootID != eh.agent.Machine().State().BootID {
+	if ev.Context.(string) != eh.agent.Machine().State().BootID {
 		log.V(1).Infof("EventJobScheduled(%s): Job not scheduled to this Agent, purging related data from cache", jobName)
 		eh.agent.ForgetJob(jobName)
 
