@@ -28,12 +28,13 @@ func (self *Engine) Run() {
 	self.stop = make(chan bool)
 
 	handler := NewEventHandler(self)
-	self.events.AddListener("engine", self.machine, handler)
+	bootID := self.machine.State().BootID
+	self.events.AddListener("engine", bootID, handler)
 
 	// Block until we receive a stop signal
 	<-self.stop
 
-	self.events.RemoveListener("engine", self.machine)
+	self.events.RemoveListener("engine", bootID)
 }
 
 func (self *Engine) Stop() {

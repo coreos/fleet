@@ -3,8 +3,6 @@ package event
 import (
 	"testing"
 	"time"
-
-	"github.com/coreos/fleet/machine"
 )
 
 type TestListener struct {
@@ -19,11 +17,11 @@ func TestEventBus(t *testing.T) {
 	evchan := make(chan Event)
 
 	bus := NewEventBus()
-	bus.AddListener("test", machine.New("X", "", make(map[string]string, 0)), &TestListener{evchan})
+	bus.AddListener("test", "X", &TestListener{evchan})
 	bus.Listen()
 	defer bus.Stop()
 
-	ev := Event{"EventTypeOne", "payload", machine.New("Y", "", make(map[string]string, 0))}
+	ev := Event{"EventTypeOne", "payload", "Y"}
 	bus.Channel <- &ev
 
 	select {
@@ -33,7 +31,7 @@ func TestEventBus(t *testing.T) {
 		if recv.Payload.(string) != "payload" {
 			t.Error("event payload is incorrect")
 		}
-		if recv.Context.(*machine.Machine).State().BootID != "Y" {
+		if recv.Context.(string) != "Y" {
 			t.Error("event context is incorrect")
 		}
 	}
@@ -43,15 +41,15 @@ func TestEventBusNoDispatch(t *testing.T) {
 	evchan := make(chan Event)
 
 	bus := NewEventBus()
-	bus.AddListener("test", machine.New("X", "", make(map[string]string, 0)), &TestListener{evchan})
+	bus.AddListener("test", "X", &TestListener{evchan})
 	bus.Listen()
 	defer bus.Stop()
 
 	go func() {
-		ev := Event{"EventTypeTwo", "payload", machine.New("Y", "", make(map[string]string, 0))}
+		ev := Event{"EventTypeTwo", "payload", "Y"}
 		bus.Channel <- &ev
 
-		ev = Event{"EventTypeOne", "payload", machine.New("Y", "", make(map[string]string, 0))}
+		ev = Event{"EventTypeOne", "payload", "Y"}
 		bus.Channel <- &ev
 	}()
 

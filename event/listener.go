@@ -1,17 +1,13 @@
 package event
 
-import (
-	"github.com/coreos/fleet/machine"
-)
-
 type EventListener struct {
-	Context *machine.Machine
+	Context string
 	Handler interface{}
 }
 
 func (self *EventListener) String() string {
-	if self.Context != nil {
-		return self.Context.State().BootID
+	if self.Context != "" {
+		return self.Context
 	} else {
 		return "N/A"
 	}

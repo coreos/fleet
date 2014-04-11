@@ -11,7 +11,6 @@ import (
 
 	"github.com/coreos/fleet/event"
 	"github.com/coreos/fleet/job"
-	"github.com/coreos/fleet/machine"
 )
 
 const (
@@ -217,10 +216,9 @@ func filterEventJobScheduled(resp *etcd.Response) *event.Event {
 		return nil
 	}
 
-	mach := machine.MachineState{BootID: resp.Node.Value, PublicIP: "", Metadata: make(map[string]string, 0)}
 	jobName := path.Base(strings.TrimSuffix(dir, "/"))
 
-	return &event.Event{"EventJobScheduled", jobName, mach}
+	return &event.Event{"EventJobScheduled", jobName, resp.Node.Value}
 }
 
 func filterEventJobStopped(resp *etcd.Response) *event.Event {

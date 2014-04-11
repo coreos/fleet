@@ -5,8 +5,6 @@ import (
 	"reflect"
 
 	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
-
-	"github.com/coreos/fleet/machine"
 )
 
 type EventBus struct {
@@ -38,14 +36,14 @@ func (self *EventBus) Stop() {
 	close(self.stop)
 }
 
-func (self *EventBus) AddListener(name string, m *machine.Machine, l interface{}) {
-	listener := EventListener{m, l}
-	key := fmt.Sprintf("%s-%s", name, m.String())
+func (self *EventBus) AddListener(name, bootID string, l interface{}) {
+	listener := EventListener{bootID, l}
+	key := fmt.Sprintf("%s-%s", name, bootID)
 	self.listeners[key] = listener
 }
 
-func (self *EventBus) RemoveListener(name string, m *machine.Machine) {
-	key := fmt.Sprintf("%s-%s", name, m.String())
+func (self *EventBus) RemoveListener(name, bootID string) {
+	key := fmt.Sprintf("%s-%s", name, bootID)
 	if _, ok := self.listeners[key]; ok {
 		delete(self.listeners, key)
 	}

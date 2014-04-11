@@ -25,9 +25,9 @@ func (self *EventHandler) HandleEventJobCreated(ev event.Event) {
 
 func (self *EventHandler) HandleEventJobScheduled(ev event.Event) {
 	jobName := ev.Payload.(string)
-	machineState := ev.Context.(machine.MachineState)
+	target := ev.Context.(string)
 	log.V(1).Infof("EventJobScheduled(%s): updating cluster", jobName)
-	self.engine.clust.jobScheduled(jobName, &machineState)
+	self.engine.clust.jobScheduled(jobName, target)
 }
 
 func (self *EventHandler) HandleEventJobStopped(ev event.Event) {

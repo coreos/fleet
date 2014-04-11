@@ -5,7 +5,6 @@ import (
 	"sync"
 
 	"github.com/coreos/fleet/job"
-	"github.com/coreos/fleet/machine"
 )
 
 const (
@@ -68,7 +67,7 @@ func (clust *cluster) machineRemoved(bootID string) {
 }
 
 // jobScheduled handles the job scheduled event
-func (clust *cluster) jobScheduled(jobName string, mst *machine.MachineState) {
+func (clust *cluster) jobScheduled(jobName, target string) {
 	clust.mutex.Lock()
 	defer clust.mutex.Unlock()
 
@@ -76,7 +75,7 @@ func (clust *cluster) jobScheduled(jobName string, mst *machine.MachineState) {
 		return
 	}
 
-	clust.populateJob(jobName, mst.BootID)
+	clust.populateJob(jobName, target)
 }
 
 // jobStopped handles the job stopped event
