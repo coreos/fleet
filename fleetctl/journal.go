@@ -34,7 +34,7 @@ func journalAction(c *cli.Context) {
 	}
 	jobName := c.Args()[0]
 
-	js := registryCtl.GetJobState(jobName)
+	js := registryCtl.GetPayloadState(jobName)
 
 	if js == nil {
 		fmt.Fprintf(os.Stderr, "Job %s does not appear to be running.\n", jobName)

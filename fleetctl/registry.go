@@ -9,7 +9,7 @@ import (
 
 type Registry interface {
 	GetActiveMachines() []machine.MachineState
-	GetJobState(name string) *job.JobState
+	GetPayloadState(name string) *job.PayloadState
 	GetAllPayloads() []job.JobPayload
 	GetAllJobs() []job.Job
 	GetPayload(name string) *job.JobPayload
@@ -37,8 +37,8 @@ func (m MainRegistry) GetActiveMachines() []machine.MachineState {
 	return m.registry.GetActiveMachines()
 }
 
-func (m MainRegistry) GetJobState(name string) *job.JobState {
-	return m.registry.GetJobState(name)
+func (m MainRegistry) GetPayloadState(name string) *job.PayloadState {
+	return m.registry.GetPayloadState(name)
 }
 
 func (m MainRegistry) GetAllPayloads() []job.JobPayload {

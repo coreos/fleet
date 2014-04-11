@@ -157,7 +157,7 @@ func findAddressInMachineList(lookup string) (string, bool) {
 }
 
 func findAddressInRunningUnits(lookup string) (string, bool) {
-	js := registryCtl.GetJobState(lookup)
+	js := registryCtl.GetPayloadState(lookup)
 	if js == nil {
 		return "", false
 	}

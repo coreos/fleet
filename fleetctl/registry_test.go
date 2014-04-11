@@ -8,7 +8,7 @@ import (
 
 type TestRegistry struct {
 	machines  []machine.MachineState
-	jobStates map[string]*job.JobState
+	jobStates map[string]*job.PayloadState
 	jobs      []job.Job
 	payloads  []job.JobPayload
 }
@@ -17,7 +17,7 @@ func (t TestRegistry) GetActiveMachines() []machine.MachineState {
 	return t.machines
 }
 
-func (t TestRegistry) GetJobState(name string) *job.JobState {
+func (t TestRegistry) GetPayloadState(name string) *job.PayloadState {
 	return t.jobStates[name]
 }
 
