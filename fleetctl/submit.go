@@ -32,14 +32,14 @@ fleetctl submit myservice/*`,
 }
 
 func submitUnitsAction(c *cli.Context) {
-	_, err := submitPayloads(c.Args(), c.Bool("sign"))
+	_, err := findOrCreateJobs(c.Args(), c.Bool("sign"))
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed creating payloads: %v", err)
+		fmt.Fprintf(os.Stderr, "Failed creating jobs: %v", err)
 		os.Exit(1)
 	}
 }
 
-func submitPayloads(names []string, signPayloads bool) ([]job.JobPayload, error) {
+func findOrCreateJobs(names []string, signPayloads bool) ([]job.Job, error) {
 	var err error
 
 	// If signing is explicitly set to on, verification will be done also.
@@ -56,51 +56,52 @@ func submitPayloads(names []string, signPayloads bool) ([]job.JobPayload, error)
 		}
 	}
 
-	payloads := make([]job.JobPayload, len(names))
+	jobs := make([]job.Job, len(names))
 	for i, v := range names {
 		name := path.Base(v)
-		payload := registryCtl.GetPayload(name)
-		if payload == nil {
-			log.V(1).Infof("Payload(%s) not found in Registry", name)
-			payload, err = getJobPayloadFromFile(v)
+		j := registryCtl.GetJob(name)
+		if j == nil {
+			log.V(1).Infof("Job(%s) not found in Registry", name)
+			payload, err := getJobPayloadFromFile(v)
 			if err != nil {
 				return nil, err
 			}
 
 			log.V(1).Infof("Payload(%s) found in local filesystem", name)
+			j = job.NewJob(name, *payload)
 
-			err = registryCtl.CreatePayload(payload)
+			err = registryCtl.CreateJob(j)
 			if err != nil {
-				return nil, fmt.Errorf("Failed creating payload %s: %v", payload.Name, err)
+				return nil, fmt.Errorf("Failed creating job %s: %v", j.Name, err)
 			}
 
-			log.V(1).Infof("Created Payload(%s) in Registry", name)
+			log.V(1).Infof("Created Job(%s) in Registry", j.Name)
 
 			if signPayloads {
 				s, err := sc.SignPayload(payload)
 				if err != nil {
-					return nil, fmt.Errorf("Failed creating sign for payload %s: %v", payload.Name, err)
+					return nil, fmt.Errorf("Failed signing payload %s: %v", payload.Name, err)
 				}
 
 				registryCtl.CreateSignatureSet(s)
 				log.V(1).Infof("Signed Payload(%s)", name)
 			}
 		} else {
-			log.V(1).Infof("Found Payload(%s) in Registry", name)
+			log.V(1).Infof("Found Job(%s) in Registry", name)
 		}
 
 		if signPayloads {
 			s := registryCtl.GetSignatureSetOfPayload(name)
-			ok, err := sv.VerifyPayload(payload, s)
+			ok, err := sv.VerifyPayload(&(j.Payload), s)
 			if !ok || err != nil {
-				return nil, fmt.Errorf("Failed checking payload %s: %v", payload.Name, err)
+				return nil, fmt.Errorf("Failed checking payload %s: %v", j.Payload.Name, err)
 			}
 
-			log.V(1).Infof("Verified signature of Payload(%s)", name)
+			log.V(1).Infof("Verified signature of Payload(%s)", j.Payload.Name)
 		}
 
-		payloads[i] = *payload
+		jobs[i] = *j
 	}
 
-	return payloads, nil
+	return jobs, nil
 }

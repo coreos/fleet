@@ -25,12 +25,11 @@ func printUnitAction(c *cli.Context) {
 	}
 
 	name := path.Base(c.Args()[0])
-	payload := registryCtl.GetPayload(name)
-
-	if payload == nil {
+	j := registryCtl.GetJob(name)
+	if j == nil {
 		fmt.Fprintf(os.Stderr, "Job %s not found.\n", name)
 		os.Exit(1)
 	}
 
-	fmt.Print(payload.Unit.String())
+	fmt.Print(j.Payload.Unit.String())
 }

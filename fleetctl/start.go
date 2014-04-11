@@ -8,9 +8,6 @@ import (
 	"time"
 
 	"github.com/coreos/fleet/third_party/github.com/codegangsta/cli"
-	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
-
-	"github.com/coreos/fleet/job"
 )
 
 const (
@@ -44,22 +41,18 @@ Machine metadata is located in the fleet configuration file.`,
 
 func startUnitAction(c *cli.Context) {
 	// Attempt to create payloads for convenience
-	payloads, err := submitPayloads(c.Args(), c.Bool("sign"))
+	jobs, err := findOrCreateJobs(c.Args(), c.Bool("sign"))
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed creating payloads: %v", err)
+		fmt.Fprintf(os.Stderr, "Failed creating jobs: %v", err)
 		os.Exit(1)
 	}
 
 	// TODO: This must be done in a transaction!
 	registeredJobs := make(map[string]bool)
-	for _, jp := range payloads {
-		j := job.NewJob(jp.Name, jp)
-		log.V(1).Infof("Created new Job(%s) from Payload(%s)", j.Name, jp.Name)
-		err := registryCtl.CreateJob(j)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed creating job %s: %v\n", j.Name, err)
-			os.Exit(1)
-		}
+	for _, j := range jobs {
+		//TODO: Replace this with the actual method of starting once
+		// it is no longer covered by `fleetctl submit`
+		//registryCtl.StartJob(j.Name)
 		registeredJobs[j.Name] = true
 	}
 

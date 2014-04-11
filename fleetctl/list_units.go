@@ -53,13 +53,6 @@ func findAllUnits() (names map[string]string, sortable sort.StringSlice) {
 	names = make(map[string]string, 0)
 	sortable = make(sort.StringSlice, 0)
 
-	for _, p := range registryCtl.GetAllPayloads() {
-		if _, ok := names[p.Name]; !ok {
-			names[p.Name] = p.Unit.Description()
-			sortable = append(sortable, p.Name)
-		}
-	}
-
 	for _, j := range registryCtl.GetAllJobs() {
 		if _, ok := names[j.Name]; !ok {
 			var description string
