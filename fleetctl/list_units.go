@@ -37,9 +37,13 @@ func listUnitsAction(c *cli.Context) {
 
 	full := c.Bool("full")
 	for _, name := range sortable {
-		state := registryCtl.GetPayloadState(name)
+		var ps *job.PayloadState
+		j := registryCtl.GetJob(name)
+		if j != nil {
+			ps = j.PayloadState
+		}
 		description := names[name]
-		printPayloadState(name, description, state, full)
+		printPayloadState(name, description, ps, full)
 	}
 
 	out.Flush()

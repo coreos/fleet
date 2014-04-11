@@ -34,9 +34,11 @@ func journalAction(c *cli.Context) {
 	}
 	jobName := c.Args()[0]
 
-	js := registryCtl.GetPayloadState(jobName)
-
-	if js == nil {
+	j := registryCtl.GetJob(jobName)
+	if j == nil {
+		fmt.Fprintf(os.Stderr, "Job %s does not exist.\n", jobName)
+		os.Exit(1)
+	} else if j.PayloadState == nil {
 		fmt.Fprintf(os.Stderr, "Job %s does not appear to be running.\n", jobName)
 		os.Exit(1)
 	}
@@ -46,7 +48,7 @@ func journalAction(c *cli.Context) {
 		cmd += " -f"
 	}
 
-	retcode, err := runCommand(cmd, js.MachineState)
+	retcode, err := runCommand(cmd, j.PayloadState.MachineState)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed running command over SSH: %v\n", err)
 		os.Exit(1)

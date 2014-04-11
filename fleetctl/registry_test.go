@@ -17,16 +17,22 @@ func (t TestRegistry) GetActiveMachines() []machine.MachineState {
 	return t.machines
 }
 
-func (t TestRegistry) GetPayloadState(name string) *job.PayloadState {
-	return t.jobStates[name]
-}
-
 func (t TestRegistry) GetAllPayloads() []job.JobPayload {
 	return t.payloads
 }
 
 func (t TestRegistry) GetAllJobs() []job.Job {
 	return t.jobs
+}
+
+func (t TestRegistry) GetJob(name string) *job.Job {
+	for _, j := range t.jobs {
+		if j.Name == name {
+			j.PayloadState = t.jobStates[name]
+			return &j
+		}
+	}
+	return nil
 }
 
 func (t TestRegistry) GetPayload(name string) *job.JobPayload {

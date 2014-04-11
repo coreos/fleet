@@ -11,7 +11,7 @@ const (
 )
 
 // Get the current PayloadState of the provided Job's Payload
-func (r *Registry) GetPayloadState(jobName string) *job.PayloadState {
+func (r *Registry) getPayloadState(jobName string) *job.PayloadState {
 	key := path.Join(keyPrefix, statePrefix, jobName)
 	resp, err := r.etcd.Get(key, false, true)
 
