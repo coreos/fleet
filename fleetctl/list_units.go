@@ -59,9 +59,7 @@ func findAllUnits() (names map[string]string, sortable sort.StringSlice) {
 	for _, j := range registryCtl.GetAllJobs() {
 		if _, ok := names[j.Name]; !ok {
 			var description string
-			if j.Payload != nil {
-				description = j.Payload.Unit.Description()
-			}
+			description = j.Payload.Unit.Description()
 			names[j.Name] = description
 			sortable = append(sortable, j.Name)
 		}

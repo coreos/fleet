@@ -328,7 +328,7 @@ func (a *Agent) VerifyJob(j *job.Job) bool {
 
 	payload := j.Payload
 	s := a.registry.GetSignatureSetOfPayload(payload.Name)
-	ok, err := a.verifier.VerifyPayload(payload, s)
+	ok, err := a.verifier.VerifyPayload(&payload, s)
 	if !ok || err != nil {
 		log.V(1).Infof("Payload(%s) doesn't fit its signature: %v", payload.Name, err)
 		return false
