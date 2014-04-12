@@ -17,10 +17,6 @@ func (t TestRegistry) GetActiveMachines() []machine.MachineState {
 	return t.machines
 }
 
-func (t TestRegistry) GetAllPayloads() []job.JobPayload {
-	return t.payloads
-}
-
 func (t TestRegistry) GetAllJobs() []job.Job {
 	return t.jobs
 }
@@ -35,18 +31,13 @@ func (t TestRegistry) GetJob(name string) *job.Job {
 	return nil
 }
 
-func (t TestRegistry) GetPayload(name string) *job.JobPayload {
-	return nil
+func (t TestRegistry) StartJob(name string) {
 }
 
 func (t TestRegistry) StopJob(name string) {
 }
 
-func (t TestRegistry) DestroyPayload(name string) {
-}
-
-func (t TestRegistry) CreatePayload(jp *job.JobPayload) error {
-	return nil
+func (t TestRegistry) DestroyJob(name string) {
 }
 
 func (t TestRegistry) CreateJob(j *job.Job) error {
@@ -59,9 +50,6 @@ func (t TestRegistry) CreateSignatureSet(s *sign.SignatureSet) error {
 
 func (t TestRegistry) GetSignatureSetOfPayload(name string) *sign.SignatureSet {
 	return nil
-}
-
-func (t TestRegistry) DestroySignatureSetOfPayload(name string) {
 }
 
 func (t TestRegistry) GetJobTarget(name string) string {

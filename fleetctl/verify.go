@@ -29,9 +29,8 @@ func verifyUnitAction(c *cli.Context) {
 	}
 
 	name := path.Base(c.Args()[0])
-	payload := r.GetPayload(name)
-
-	if payload == nil {
+	j := r.GetJob(name)
+	if j == nil {
 		fmt.Fprintf(os.Stderr, "Job %s not found.\n", name)
 		os.Exit(1)
 	}
@@ -43,15 +42,15 @@ func verifyUnitAction(c *cli.Context) {
 	}
 
 	s := r.GetSignatureSetOfPayload(name)
-	ok, err := sv.VerifyPayload(payload, s)
+	ok, err := sv.VerifyPayload(&(j.Payload), s)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed checking payload %s: %v\n", payload.Name, err)
+		fmt.Fprintf(os.Stderr, "Failed checking payload %s: %v\n", j.Payload.Name, err)
 		os.Exit(1)
 	}
 
 	if !ok {
-		fmt.Printf("Failed to verify job(%s).\n", payload.Name)
+		fmt.Printf("Failed to verify job(%s).\n", j.Payload.Name)
 		os.Exit(1)
 	}
-	fmt.Printf("Succeed to verify job(%s).\n", payload.Name)
+	fmt.Printf("Succeed to verify job(%s).\n", j.Payload.Name)
 }
