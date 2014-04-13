@@ -17,7 +17,6 @@ import (
 	// flag "github.com/bgentry/pflag"
 
 	"github.com/coreos/fleet/third_party/github.com/coreos/go-etcd/etcd"
-	"github.com/coreos/fleet/third_party/github.com/rakyll/globalconf"
 
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/machine"
@@ -112,16 +111,16 @@ func main() {
 	// parse global arguments
 	flagset.Parse(os.Args[1:])
 
-	// deal specially with --version
-	if flagVersion {
-		os.Exit(cmdVersion.Run(make([]string, 0)))
-	}
-
 	var args = flagset.Args()
 
 	// no command specified - trigger help
 	if len(args) < 1 {
 		args = append(args, "help")
+	}
+
+	// deal specially with --version
+	if flagVersion {
+		args[0] = "version"
 	}
 
 	var cmd *Command
@@ -144,15 +143,37 @@ func main() {
 		os.Exit(2)
 	}
 
-	globalconf.Register("fleetctl", flagset)
-	opts := globalconf.Options{EnvPrefix: "FLEETCTL_"}
-	gconf, _ := globalconf.NewWithOptions(&opts)
-	gconf.ParseSet("", flagset)
+	getFlagsFromEnv(cliName, flagset)
 
-	registryCtl = NewRegistry(getRegistry())
+	// TODO(jonboulle): increase cleverness of registry initialization
+	if cmd.Name != "help" && cmd.Name != "version" {
+		registryCtl = NewRegistry(getRegistry())
+	}
 
 	os.Exit(cmd.Run(cmd.Flags.Args()))
 
+}
+
+// getFlagsFromEnv parses all registered flags in the given flagset, 
+// and if they are not already set it attempts to set their values from
+// environment variables. Environment variables take the name of the flag but
+// are UPPERCASE, have the given prefix, and any dashes are replaced by
+// underscores - for example: some-flag => PREFIX_SOME_FLAG
+func getFlagsFromEnv(prefix string, fs *flag.FlagSet) {
+	alreadySet := make(map[string]bool)
+	fs.Visit(func(f *flag.Flag) {
+		alreadySet[f.Name] = true
+	})
+	fs.VisitAll(func (f *flag.Flag) {
+		if !alreadySet[f.Name] {
+			key := strings.ToUpper(prefix + "_" + strings.Replace(f.Name, "-", "_", -1))
+			val := os.Getenv(key)
+			if val != "" {
+				fs.Set(f.Name, val)
+			}
+		}
+
+	})
 }
 
 // getRegistry initializes a connection to the Registry

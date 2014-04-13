@@ -37,6 +37,9 @@ COMMANDS:{{range .Commands}}
 GLOBAL OPTIONS:{{range .Flags}}
 {{printf "\t--%s=%s\t%s" .Name .DefValue .Usage}}{{end}}
 
+Global options can also be configured via upper-case environment variables prefixed with "FLEETCTL_"
+For example, "some-flag" => "FLEETCTL_SOME_FLAG"
+
 Run '{{.Executable}} help <command>' for more details on a specific command.
 
 `[1:]))
