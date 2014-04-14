@@ -11,6 +11,7 @@ import (
 var cmdVerifyUnit = &Command{
 	Name:    "verify",
 	Summary: "Verify unit file signatures using local SSH identities",
+	Usage:   "UNIT",
 	Description: `Outputs whether or not unit file fits its signature. Useful to secure
 the data of a unit.`,
 	Run: runVerifyUnit,
@@ -24,7 +25,7 @@ func runVerifyUnit(args []string) (exit int) {
 	}
 
 	name := path.Base(args[0])
-	j := r.GetJob(name)
+	j := registryCtl.GetJob(name)
 	if j == nil {
 		fmt.Fprintf(os.Stderr, "Job %s not found.\n", name)
 		return 1
@@ -36,7 +37,7 @@ func runVerifyUnit(args []string) (exit int) {
 		return 1
 	}
 
-	s := r.GetSignatureSetOfPayload(name)
+	s := registryCtl.GetSignatureSetOfPayload(name)
 	ok, err := sv.VerifyPayload(&(j.Payload), s)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed checking payload %s: %v\n", j.Payload.Name, err)
@@ -47,6 +48,6 @@ func runVerifyUnit(args []string) (exit int) {
 		fmt.Printf("Failed to verify job(%s).\n", j.Payload.Name)
 		return 1
 	}
-	fmt.Printf("Succeed to verify job(%s).\n", j.Payload.Name)
-	return 0
+	fmt.Printf("Succeeded verifying job(%s).\n", j.Payload.Name)
+	return
 }

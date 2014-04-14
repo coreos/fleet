@@ -28,8 +28,8 @@ const (
 )
 
 var (
-	out     *tabwriter.Writer
-	flagset *flag.FlagSet = flag.CommandLine
+	out           *tabwriter.Writer
+	globalFlagset *flag.FlagSet = flag.NewFlagSet("fleetctl", flag.ExitOnError)
 
 	// set of top-level commands
 	commands []*Command
@@ -39,6 +39,8 @@ var (
 
 	// flags used by all commands
 	globalFlags = struct {
+		Debug                 bool
+		Verbosity             int
 		Version               bool
 		Endpoint              string
 		KnownHostsFile        string
@@ -55,24 +57,24 @@ var (
 )
 
 func init() {
-	flagset.BoolVar(&globalFlags.Version, "version", false, "Print the version and exit")
-	flagset.StringVar(&globalFlags.Endpoint, "endpoint", "http://127.0.0.1:4001", "Fleet Engine API endpoint (etcd)")
-	flagset.StringVar(&globalFlags.KnownHostsFile, "known-hosts-file", ssh.DefaultKnownHostsFile, "File used to store remote machine fingerprints. Ignored if strict host key checking is disabled.")
-	flagset.BoolVar(&globalFlags.StrictHostKeyChecking, "strict-host-key-checking", true, "Verify host keys presented by remote machines before initiating SSH connections.")
-	flagset.StringVar(&globalFlags.Tunnel, "tunnel", "", "Establish an SSH tunnel through the provided address for communication with fleet and etcd.")
+	globalFlagset.BoolVar(&globalFlags.Debug, "debug", false, "Print out more debug information.")
+	globalFlagset.BoolVar(&globalFlags.Version, "version", false, "Print the version and exit")
+	globalFlagset.IntVar(&globalFlags.Verbosity, "verbosity", 0, "Log at a specified level")
+	globalFlagset.StringVar(&globalFlags.Endpoint, "endpoint", "http://127.0.0.1:4001", "Fleet Engine API endpoint (etcd)")
+	globalFlagset.StringVar(&globalFlags.KnownHostsFile, "known-hosts-file", ssh.DefaultKnownHostsFile, "File used to store remote machine fingerprints. Ignored if strict host key checking is disabled.")
+	globalFlagset.BoolVar(&globalFlags.StrictHostKeyChecking, "strict-host-key-checking", true, "Verify host keys presented by remote machines before initiating SSH connections.")
+	globalFlagset.StringVar(&globalFlags.Tunnel, "tunnel", "", "Establish an SSH tunnel through the provided address for communication with fleet and etcd.")
 }
 
 type Command struct {
-	Name        string
-	Summary     string
-	Usage       string
-	Description string
+	Name        string       // Name of the Command and the string to use to invoke it
+	Summary     string       // One-sentence summary of what the Command does
+	Usage       string       // Usage options/arguments
+	Description string       // Detailed description of command
+	Flags       flag.FlagSet // Set of flags associated with this command
 
-	// Run a command with the given arguments, return exit status
-	Run func(args []string) int
+	Run func(args []string) int // Run a command with the given arguments, return exit status
 
-	// Set of flags associated with this command
-	Flags flag.FlagSet
 }
 
 func init() {
@@ -97,7 +99,7 @@ func init() {
 }
 
 func getAllFlags() (flags []*flag.Flag) {
-	return getFlags(flagset)
+	return getFlags(globalFlagset)
 }
 
 func getFlags(flagset *flag.FlagSet) (flags []*flag.Flag) {
@@ -110,9 +112,17 @@ func getFlags(flagset *flag.FlagSet) (flags []*flag.Flag) {
 
 func main() {
 	// parse global arguments
-	flagset.Parse(os.Args[1:])
+	globalFlagset.Parse(os.Args[1:])
 
-	var args = flagset.Args()
+	var args = globalFlagset.Args()
+
+	getFlagsFromEnv(cliName, globalFlagset)
+
+	// configure glog, which uses the global command line options
+	if globalFlags.Debug {
+		flag.CommandLine.Lookup("v").Value.Set(strconv.Itoa(1))
+	}
+	flag.CommandLine.Lookup("logtostderr").Value.Set("true")
 
 	// no command specified - trigger help
 	if len(args) < 1 {
@@ -143,8 +153,6 @@ func main() {
 		fmt.Printf("Run '%v help' for usage.\n", cliName)
 		os.Exit(2)
 	}
-
-	getFlagsFromEnv(cliName, flagset)
 
 	// TODO(jonboulle): increase cleverness of registry initialization
 	if cmd.Name != "help" && cmd.Name != "version" {

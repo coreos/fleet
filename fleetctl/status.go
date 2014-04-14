@@ -9,12 +9,13 @@ import (
 var cmdStatusUnits = &Command{
 	Name:    "status",
 	Summary: "Output the status of one or more units in the cluster",
+	Usage:   "UNIT...",
 	Description: `Output the status of one or more units currently running in the cluster.
 Supports glob matching of units in the current working directory or matches
 previously started units.
 
 Show status of a single unit:
-fleetctl status foo.service
+	fleetctl status foo.service
 
 Show status of an entire directory with glob matching:
 fleetctl status myservice/*`,
@@ -22,7 +23,6 @@ fleetctl status myservice/*`,
 }
 
 func runStatusUnits(args []string) (exit int) {
-	var retcode int
 	for i, v := range args {
 		// This extra newline here to match systemctl status output
 		if i != 0 {
@@ -30,12 +30,12 @@ func runStatusUnits(args []string) (exit int) {
 		}
 
 		name := path.Base(v)
-		retcode = printUnitStatus(name)
-		if retcode != 0 {
+		exit = printUnitStatus(name)
+		if exit != 0 {
 			break
 		}
 	}
-	return retcode
+	return
 }
 
 func printUnitStatus(jobName string) int {

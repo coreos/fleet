@@ -23,24 +23,27 @@ var (
 	cmdSSH                 = &Command{
 		Name:    "ssh",
 		Summary: "Open interactive shell on a machine in the cluster",
-		Usage:   "ssh [options] (machine|unit)",
-		Description: `Open an interactive shell on a specific machine in the cluster or on the machine where the specified unit is located.
+		Usage:   "[--forward-agent] [--machine|--unit] {MACHINE|UNIT}",
+		Description: `Open an interactive shell on a specific machine in the cluster or on the machine 
+where the specified unit is located.
+
+fleetctl tries to detect whether your first argument is a machine or a unit. 
+To skip this check use the --machine or --unit flags.
 
 Open a shell on a machine:
-fleetctl ssh 2444264c-eac2-4eff-a490-32d5e5e4af24
+	fleetctl ssh 2444264c-eac2-4eff-a490-32d5e5e4af24
 
 Open a shell from your laptop, to the machine running a specific unit, using a
 cluster member as a bastion host:
-fleetctl --tunnel 10.10.10.10 ssh foo.service
+	fleetctl --tunnel 10.10.10.10 ssh foo.service
 
 Open a shell on a machine and forward the authentication agent connection:
-fleetctl ssh -A 2444264c-eac2-4eff-a490-32d5e5e4af24
+	fleetctl ssh --forward-agent 2444264c-eac2-4eff-a490-32d5e5e4af24
 
-Tip: fleetctl tries to detect whether your first argument is a machine or a unit. To skip this check use the flags "-m" and "-u".
 
-Pro-Tip: Create an alias for --tunnel:
-Add "alias fleetctl=fleetctl --tunnel 10.10.10.10" to your bash profile.
-Now you can run all fleet commands locally.`,
+Tip: Create an alias for --tunnel.
+	- Add "alias fleetctl=fleetctl --tunnel 10.10.10.10" to your bash profile.
+	- Now you can run all fleet commands locally.`,
 		Run: runSSH,
 	}
 )

@@ -8,6 +8,7 @@ import (
 var cmdListMachines = &Command{
 	Name:    "list-machines",
 	Summary: "Enumerate the current hosts in the cluster",
+	Usage:   "[--full] [--no-legend]",
 	Description: `Lists all active machines within the cluster. Previously active machines will
 not appear in this list.
 
@@ -46,7 +47,7 @@ func runListMachines(args []string) (exit int) {
 	}
 
 	out.Flush()
-	return 0
+	return
 }
 
 func formatMetadata(metadata map[string]string) string {

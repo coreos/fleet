@@ -10,6 +10,7 @@ var (
 	cmdCatUnit = &Command{
 		Name:    "cat",
 		Summary: "Output the contents of a submitted unit",
+		Usage:   "UNIT",
 		Description: `Outputs the unit file that is currently loaded in the cluster. Useful to verify
 the correct version of a unit is running.`,
 		Run: runCatUnit,
@@ -30,5 +31,5 @@ func runCatUnit(args []string) (exit int) {
 	}
 
 	fmt.Print(j.Payload.Unit.String())
-	return 0
+	return
 }

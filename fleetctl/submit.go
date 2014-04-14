@@ -14,16 +14,17 @@ import (
 var cmdSubmitUnit = &Command{
 	Name:    "submit",
 	Summary: "Upload one or more units to the cluster without starting them",
+	Usage:   "[--sign] UNIT...",
 	Description: `Upload one or more units to the cluster without starting them. Useful
-	for validating units before they are started.
+for validating units before they are started.
 
-	This operation is idempotent; if a named unit already exists in the cluster, it will not be resubmitted.
-	However, its signature will still be validated if "sign" is enabled.
+This operation is idempotent; if a named unit already exists in the cluster, it will not be resubmitted.
+However, its signature will still be validated if "sign" is enabled.
 
-	Submit a single unit:
+Submit a single unit:
 	fleetctl submit foo.service
 
-	Submit a directory of units with glob matching:
+Submit a directory of units with glob matching:
 	fleetctl submit myservice/*`,
 	Run: runSubmitUnits,
 }
@@ -33,12 +34,12 @@ func init() {
 }
 
 func runSubmitUnits(args []string) (exit int) {
-	_, err := findOrCreateJobs(args, sharedFlags.sign)
+	_, err := findOrCreateJobs(args, sharedFlags.Sign)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed creating jobs: %v", err)
-		return 1
+		fmt.Fprintf(os.Stderr, "Failed creating jobs: %v\n", err)
+		exit = 1
 	}
-	return 0
+	return
 }
 
 // findOrCreateJobs queries the Registry for Jobs matching the given names.
@@ -99,7 +100,7 @@ func findOrCreateJobs(names []string, signPayloads bool) ([]job.Job, error) {
 			s := registryCtl.GetSignatureSetOfPayload(name)
 			ok, err := sv.VerifyPayload(&(j.Payload), s)
 			if !ok || err != nil {
-				return nil, fmt.Errorf("Failed checking signature for Payload(%s): %v", j.payload.Name, err)
+				return nil, fmt.Errorf("Failed checking signature for Payload(%s): %v", j.Payload.Name, err)
 			}
 
 			log.V(1).Infof("Verified signature of Payload(%s)", j.Payload.Name)

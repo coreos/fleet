@@ -6,10 +6,6 @@ import (
 	"os"
 	"sync"
 	"time"
-
-	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
-
-	"github.com/coreos/fleet/job"
 )
 
 const (
@@ -24,15 +20,16 @@ var (
 	cmdStartUnit = &Command{
 		Name:    "start",
 		Summary: "Schedule and execute one or more units in the cluster",
+		Usage:   "[--sign] [--no-block|--block-attempts=N] UNIT...",
 		Description: `Start one or many units on the cluster. Select units to start by glob matching
 for units in the current working directory or matching names of previously
 submitted units.
 
 Start a single unit:
-fleetctl start foo.service
+	fleetctl start foo.service
 
 Start an entire directory of units with glob matching:
-fleetctl start myservice/*
+	fleetctl start myservice/*
 
 You may filter suitable hosts based on metadata provided by the machine.
 Machine metadata is located in the fleet configuration file.`,
@@ -51,7 +48,7 @@ func runStartUnit(args []string) (exit int) {
 		fmt.Fprintln(os.Stderr, "No units specified.")
 		return 1
 	}
-	jobs, err := findOrCreateJobs(args, sharedFlags.sign)
+	jobs, err := findOrCreateJobs(args, sharedFlags.Sign)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed creating jobs: %v", err)
 		return 1
@@ -69,7 +66,7 @@ func runStartUnit(args []string) (exit int) {
 	if !flagNoBlock {
 		waitForScheduledUnits(registeredJobs, flagBlockAttempts, os.Stdout)
 	}
-	return 0
+	return
 }
 
 func waitForScheduledUnits(jobs map[string]bool, maxAttempts int, out io.Writer) {

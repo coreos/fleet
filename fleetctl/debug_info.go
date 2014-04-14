@@ -28,5 +28,5 @@ func runDebugInfo(args []string) (exit int) {
 		return 1
 	}
 	fmt.Println(buf.String())
-	return 0
+	return
 }

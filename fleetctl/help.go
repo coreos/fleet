@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"strings"
 	"text/template"
 
 	"github.com/coreos/fleet/version"
@@ -12,12 +13,19 @@ var (
 	cmdHelp = &Command{
 		Name:        "help",
 		Summary:     "Show a list of commands or help for one command",
-		Description: "Show a list of commands or help for one command",
+		Usage:       "[COMMAND]",
+		Description: "Show a list of commands or detailed help for one command",
 		Run:         runHelp,
 	}
 
 	globalUsageTemplate  *template.Template
 	commandUsageTemplate *template.Template
+	templFuncs           = template.FuncMap{
+		"descToLines": func(s string) []string {
+			// trim leading/trailing whitespace and split into slice of lines
+			return strings.Split(strings.Trim(s, "\n\t "), "\n")
+		},
+	}
 )
 
 func init() {
@@ -40,30 +48,29 @@ GLOBAL OPTIONS:{{range .Flags}}
 Global options can also be configured via upper-case environment variables prefixed with "FLEETCTL_"
 For example, "some-flag" => "FLEETCTL_SOME_FLAG"
 
-Run '{{.Executable}} help <command>' for more details on a specific command.
-
+Run "{{.Executable}} help <command>" for more details on a specific command.
 `[1:]))
-	commandUsageTemplate = template.Must(template.New("command_usage").Parse(`
+	commandUsageTemplate = template.Must(template.New("command_usage").Funcs(templFuncs).Parse(`
 NAME:
 {{printf "\t%s - %s" .Cmd.Name .Cmd.Summary}}
 
 USAGE:
-{{"\t"}}{{.Executable}} [global options] {{.Cmd.Name}} {{.Cmd.Usage}}
+{{printf "\t%s %s %s" .Executable .Cmd.Name .Cmd.Usage}}
 
 DESCRIPTION:
-{{.Cmd.Description}}
-
-{{if .CmdFlags}}OPTIONS:{{range .CmdFlags}}
-{{printf "\t--%s=%s\t%s" .Name .DefValue .Usage}}{{end}}{{end}}
-
-For help on global options run "{{.Executable}} help"
+{{range $line := descToLines .Cmd.Description}}{{printf "\t%s" $line}}
+{{end}}
+{{if .CmdFlags}}OPTIONS:
+{{range .CmdFlags}}{{printf "\t--%s=%s\t%s" .Name .DefValue .Usage}}
+{{end}}
+{{end}}For help on global options run "{{.Executable}} help"
 `[1:]))
 }
 
 func runHelp(args []string) (exit int) {
 	if len(args) < 1 {
 		printGlobalUsage()
-		return 0
+		return
 	}
 
 	var cmd *Command
@@ -81,7 +88,7 @@ func runHelp(args []string) (exit int) {
 	}
 
 	printCommandUsage(cmd)
-	return 0
+	return
 }
 
 func printGlobalUsage() {
@@ -113,6 +120,3 @@ func printCommandUsage(cmd *Command) {
 	})
 	out.Flush()
 }
-
-//{{"\t"}}{{.Name | printf (print "%-" $.MaxCommandNameLength "s")}}{{"\t"}}{{.Usage}}{{end}}
-//{{"\t"}}{{printf "--%-*s\t%s" $.MaxFlagNameLength (printf "%s=%s" .Name .DefValue) .Usage}}{{end}}
