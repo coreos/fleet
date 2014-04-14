@@ -22,12 +22,12 @@ fleetctl list-units --full`,
 
 func init() {
 	// TODO(jonboulle): de-dupe with list_machines
-	cmdListUnits.Flags.BoolVar(&flagFull, "full", false, "Do not ellipsize fields on output")
-	cmdListUnits.Flags.BoolVar(&flagNoLegend, "no-legend", false, "Do not print a legend (column headers)")
+	cmdListUnits.Flags.BoolVar(&sharedFlags.Full, "full", false, "Do not ellipsize fields on output")
+	cmdListUnits.Flags.BoolVar(&sharedFlags.NoLegend, "no-legend", false, "Do not print a legend (column headers)")
 }
 
 func runListUnits(args []string) (exit int) {
-	if flagNoLegend {
+	if sharedFlags.NoLegend {
 		fmt.Fprintln(out, "UNIT\tLOAD\tACTIVE\tSUB\tDESC\tMACHINE")
 	}
 
@@ -40,11 +40,11 @@ func runListUnits(args []string) (exit int) {
 			ps = j.PayloadState
 		}
 		description := names[name]
-		printPayloadState(name, description, ps, full)
+		printPayloadState(name, description, ps, sharedFlags.full)
 	}
 
 	out.Flush()
-	return 0
+	return exit
 }
 
 func findAllUnits() (names map[string]string, sortable sort.StringSlice) {

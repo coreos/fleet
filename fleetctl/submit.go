@@ -29,11 +29,11 @@ var cmdSubmitUnit = &Command{
 }
 
 func init() {
-	cmdSubmitUnit.Flags.BoolVar(&flagSign, "sign", false, "Sign unit file signatures and verify submitted units using local SSH identities")
+	cmdSubmitUnit.Flags.BoolVar(&sharedFlags.Sign, "sign", false, "Sign unit file signatures and verify submitted units using local SSH identities")
 }
 
 func runSubmitUnits(args []string) (exit int) {
-	_, err := findOrCreateJobs(args, flagSign)
+	_, err := findOrCreateJobs(args, sharedFlags.sign)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed creating jobs: %v", err)
 		return 1

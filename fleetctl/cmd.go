@@ -13,9 +13,6 @@ import (
 	"strings"
 	"text/tabwriter"
 
-	// TODO(jonboulle): get this working with pflag, for parity with previous posix arguments
-	// flag "github.com/bgentry/pflag"
-
 	"github.com/coreos/fleet/third_party/github.com/coreos/go-etcd/etcd"
 
 	"github.com/coreos/fleet/job"
@@ -26,7 +23,7 @@ import (
 )
 
 const (
-	cliName = "fleetctl"
+	cliName        = "fleetctl"
 	cliDescription = "fleetctl is a command-line interface to fleet, the cluster-wide CoreOS init system."
 )
 
@@ -40,25 +37,29 @@ var (
 	// global Registry used by commands
 	registryCtl Registry
 
-	// global flags for all commands
-	flagVersion               bool
-	flagEndpoint              string
-	flagKnownHostsFile        string
-	flagStrictHostKeyChecking bool
-	flagTunnel                string
+	// flags used by all commands
+	globalFlags = struct {
+		Version               bool
+		Endpoint              string
+		KnownHostsFile        string
+		StrictHostKeyChecking bool
+		Tunnel                string
+	}{}
 
 	// flags used by multiple commands
-	flagSign     bool
-	flagFull     bool
-	flagNoLegend bool
+	sharedFlags = struct {
+		Sign     bool
+		Full     bool
+		NoLegend bool
+	}{}
 )
 
 func init() {
-	flagset.BoolVar(&flagVersion, "version", false, "Print the version and exit")
-	flagset.StringVar(&flagEndpoint, "endpoint", "http://127.0.0.1:4001", "Fleet Engine API endpoint (etcd)")
-	flagset.StringVar(&flagKnownHostsFile, "known-hosts-file", ssh.DefaultKnownHostsFile, "File used to store remote machine fingerprints. Ignored if strict host key checking is disabled.")
-	flagset.BoolVar(&flagStrictHostKeyChecking, "strict-host-key-checking", true, "Verify host keys presented by remote machines before initiating SSH connections.")
-	flagset.StringVar(&flagTunnel, "tunnel", "", "Establish an SSH tunnel through the provided address for communication with fleet and etcd.")
+	flagset.BoolVar(&globalFlags.Version, "version", false, "Print the version and exit")
+	flagset.StringVar(&globalFlags.Endpoint, "endpoint", "http://127.0.0.1:4001", "Fleet Engine API endpoint (etcd)")
+	flagset.StringVar(&globalFlags.KnownHostsFile, "known-hosts-file", ssh.DefaultKnownHostsFile, "File used to store remote machine fingerprints. Ignored if strict host key checking is disabled.")
+	flagset.BoolVar(&globalFlags.StrictHostKeyChecking, "strict-host-key-checking", true, "Verify host keys presented by remote machines before initiating SSH connections.")
+	flagset.StringVar(&globalFlags.Tunnel, "tunnel", "", "Establish an SSH tunnel through the provided address for communication with fleet and etcd.")
 }
 
 type Command struct {
@@ -119,7 +120,7 @@ func main() {
 	}
 
 	// deal specially with --version
-	if flagVersion {
+	if globalFlags.Version {
 		args[0] = "version"
 	}
 
@@ -154,7 +155,7 @@ func main() {
 
 }
 
-// getFlagsFromEnv parses all registered flags in the given flagset, 
+// getFlagsFromEnv parses all registered flags in the given flagset,
 // and if they are not already set it attempts to set their values from
 // environment variables. Environment variables take the name of the flag but
 // are UPPERCASE, have the given prefix, and any dashes are replaced by
@@ -164,7 +165,7 @@ func getFlagsFromEnv(prefix string, fs *flag.FlagSet) {
 	fs.Visit(func(f *flag.Flag) {
 		alreadySet[f.Name] = true
 	})
-	fs.VisitAll(func (f *flag.Flag) {
+	fs.VisitAll(func(f *flag.Flag) {
 		if !alreadySet[f.Name] {
 			key := strings.ToUpper(prefix + "_" + strings.Replace(f.Name, "-", "_", -1))
 			val := os.Getenv(key)
@@ -180,7 +181,7 @@ func getFlagsFromEnv(prefix string, fs *flag.FlagSet) {
 func getRegistry() *registry.Registry {
 	tun := getTunnelFlag()
 
-	machines := []string{flagEndpoint}
+	machines := []string{globalFlags.Endpoint}
 	client := etcd.NewClient(machines)
 
 	if tun != "" {
@@ -213,11 +214,11 @@ func getRegistry() *registry.Registry {
 
 // getChecker creates and returns a HostKeyChecker, or nil if any error is encountered
 func getChecker() *ssh.HostKeyChecker {
-	if !flagStrictHostKeyChecking {
+	if !globalFlags.StrictHostKeyChecking {
 		return nil
 	}
 
-	keyFile := ssh.NewHostKeyFile(strconv.FormatBool(flagStrictHostKeyChecking))
+	keyFile := ssh.NewHostKeyFile(strconv.FormatBool(globalFlags.StrictHostKeyChecking))
 	return ssh.NewHostKeyChecker(keyFile, askToTrustHost, nil)
 }
 
@@ -238,7 +239,7 @@ func getJobPayloadFromFile(file string) (*job.JobPayload, error) {
 }
 
 func getTunnelFlag() string {
-	tun := flagTunnel
+	tun := globalFlags.Tunnel
 	if tun != "" && !strings.Contains(tun, ":") {
 		tun += ":22"
 	}

@@ -20,17 +20,17 @@ Output the list without truncation:
 }
 
 func init() {
-	cmdListMachines.Flags.BoolVar(&flagFull, "full", false, "Do not ellipsize fields on output")
-	cmdListMachines.Flags.BoolVar(&flagNoLegend, "no-legend", false, "Do not print a legend (column headers)")
+	cmdListMachines.Flags.BoolVar(&sharedFlags.Full, "full", false, "Do not ellipsize fields on output")
+	cmdListMachines.Flags.BoolVar(&sharedFlags.NoLegend, "no-legend", false, "Do not print a legend (column headers)")
 }
 
 func runListMachines(args []string) (exit int) {
-	if !flagNoLegend {
+	if !sharedFlags.NoLegend {
 		fmt.Fprintln(out, "MACHINE\tIP\tMETADATA")
 	}
 
 	for _, m := range registryCtl.GetActiveMachines() {
-		mach := machineBootIDLegend(m, flagFull)
+		mach := machineBootIDLegend(m, sharedFlags.Full)
 
 		ip := m.PublicIP
 		if len(ip) == 0 {

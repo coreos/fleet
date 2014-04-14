@@ -41,7 +41,7 @@ Machine metadata is located in the fleet configuration file.`,
 )
 
 func init() {
-	cmdStartUnit.Flags.BoolVar(&flagSign, "sign", false, "Sign unit file signatures using local SSH identities")
+	cmdStartUnit.Flags.BoolVar(&sharedFlags.Sign, "sign", false, "Sign unit file signatures using local SSH identities")
 	cmdStartUnit.Flags.IntVar(&flagBlockAttempts, "block-attempts", 10, "Wait until the jobs are scheduled. Perform N attempts before giving up.")
 	cmdStartUnit.Flags.BoolVar(&flagNoBlock, "no-block", false, "Do not wait until the units have been scheduled to exit start.")
 }
@@ -51,7 +51,7 @@ func runStartUnit(args []string) (exit int) {
 		fmt.Fprintln(os.Stderr, "No units specified.")
 		return 1
 	}
-	jobs, err := findOrCreateJobs(args, flagSign)
+	jobs, err := findOrCreateJobs(args, sharedFlags.sign)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed creating jobs: %v", err)
 		return 1
