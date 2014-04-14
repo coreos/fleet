@@ -129,14 +129,11 @@ func (r *Registry) CreateJob(j *job.Job) (err error) {
 	key := path.Join(keyPrefix, jobPrefix, j.Name, "object")
 	json, _ := marshal(j)
 
-	if r.JobScheduled(j.Name) {
-		_, err = r.etcd.Update(key, json, 0)
-	} else {
-		_, err = r.etcd.Create(key, json, 0)
-		if err != nil && err.(*etcd.EtcdError).ErrorCode == etcdErr.EcodeNodeExist {
-			err = errors.New("job already exists")
-		}
+	_, err = r.etcd.Create(key, json, 0)
+	if err != nil && err.(*etcd.EtcdError).ErrorCode == etcdErr.EcodeNodeExist {
+		err = errors.New("job already exists")
 	}
+
 	return
 }
 
