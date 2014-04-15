@@ -71,23 +71,51 @@ func (eh *EventHandler) HandleEventJobScheduled(ev event.Event) {
 		return
 	}
 
-	log.V(1).Infof("EventJobScheduled(%s): Starting Job", j.Name)
-	eh.agent.StartJob(j)
+	log.V(1).Infof("EventJobScheduled(%s): Loading Job", j.Name)
+	eh.agent.LoadJob(j)
 
 	log.V(1).Infof("EventJobScheduled(%s): Bidding for all possible peers of Job", j.Name)
 	eh.agent.BidForPossiblePeers(j.Name)
 }
 
-func (eh *EventHandler) HandleEventJobStopped(ev event.Event) {
-	//TODO(bcwaldon): We should check the context of the event before
-	// making any changes to local systemd or the registry
+func (eh *EventHandler) HandleCommandStartJob(ev event.Event) {
+	if ev.Context.(string) != eh.agent.Machine().State().BootID {
+		return
+	}
 
 	jobName := ev.Payload.(string)
-	log.Infof("EventJobStopped(%s): stopping corresponding unit", jobName)
+	log.Infof("CommandStartJob(%s): starting corresponding unit", jobName)
+	eh.agent.StartJob(jobName)
+}
+
+func (eh *EventHandler) HandleCommandStopJob(ev event.Event) {
+	if ev.Context.(string) != eh.agent.Machine().State().BootID {
+		return
+	}
+
+	jobName := ev.Payload.(string)
+	log.Infof("CommandStopJob(%s): stopping corresponding unit", jobName)
+	eh.agent.StopJob(jobName)
+}
+
+func (eh *EventHandler) HandleCommandUnloadJob(ev event.Event) {
+	jobName := ev.Payload.(string)
+
+	log.Infof("CommandUnloadJob(%s): stopping corresponding unit", jobName)
 	eh.agent.StopJob(jobName)
 
-	log.V(1).Infof("EventJobStopped(%s): revisiting unresolved JobOffers", jobName)
-	eh.agent.BidForPossibleJobs()
+	log.Infof("CommandUnloadJob(%s): unloading corresponding unit", jobName)
+	eh.agent.UnloadJob(jobName)
+}
+
+func (eh *EventHandler) HandleEventJobDestroyed(ev event.Event) {
+	jobName := ev.Payload.(string)
+
+	log.Infof("EventJobDestroyed(%s): stopping corresponding unit", jobName)
+	eh.agent.StopJob(jobName)
+
+	log.Infof("EventJobDestroyed(%s): unloading corresponding unit", jobName)
+	eh.agent.UnloadJob(jobName)
 }
 
 func (eh *EventHandler) HandleEventPayloadStateUpdated(ev event.Event) {
@@ -96,13 +124,14 @@ func (eh *EventHandler) HandleEventPayloadStateUpdated(ev event.Event) {
 
 	if state == nil {
 		log.V(1).Infof("EventPayloadStateUpdated(%s): received nil PayloadState object", jobName)
-	} else {
-		log.V(1).Infof("EventPayloadStateUpdated(%s): pushing state (loadState=%s, activeState=%s, subState=%s) to Registry", jobName, state.LoadState, state.ActiveState, state.SubState)
-
-		// FIXME: This should probably be set in the underlying event-generation code
-		ms := eh.agent.Machine().State()
-		state.MachineState = &ms
+		state, _ = eh.agent.systemd.GetPayloadState(jobName)
 	}
+
+	log.V(1).Infof("EventPayloadStateUpdated(%s): pushing state (loadState=%s, activeState=%s, subState=%s) to Registry", jobName, state.LoadState, state.ActiveState, state.SubState)
+
+	// FIXME: This should probably be set in the underlying event-generation code
+	ms := eh.agent.Machine().State()
+	state.MachineState = &ms
 
 	eh.agent.ReportPayloadState(jobName, state)
 }

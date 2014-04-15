@@ -27,6 +27,9 @@ type AgentState struct {
 
 	// index of local payload conflicts to the job they belong to
 	conflicts map[string][]string
+
+	// set of jobs that have been launched by the parent Agent
+	launched map[string]bool
 }
 
 func NewState() *AgentState {
@@ -35,6 +38,7 @@ func NewState() *AgentState {
 		bids:      make([]string, 0),
 		peers:     make(map[string][]string),
 		conflicts: make(map[string][]string, 0),
+		launched:  make(map[string]bool, 0),
 	}
 }
 
@@ -202,4 +206,20 @@ func globMatches(pattern, target string) bool {
 		log.V(2).Infof("Received error while matching pattern '%s': %v", pattern, err)
 	}
 	return matched
+}
+
+func (self *AgentState) TrackLaunchedJob(jobName string) {
+	self.launched[jobName] = true
+}
+
+func (self *AgentState) DropLaunchedJob(jobName string) {
+	delete(self.launched, jobName)
+}
+
+func (self *AgentState) LaunchedJobs() []string {
+	jobs := make([]string, 0, len(self.launched))
+	for j, _ := range self.launched {
+		jobs = append(jobs, j)
+	}
+	return jobs
 }

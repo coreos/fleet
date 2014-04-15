@@ -2,12 +2,14 @@ package main
 
 import (
 	"fmt"
-	"path"
+	"os"
+
+	"github.com/coreos/fleet/job"
 )
 
 var cmdStopUnit = &Command{
 	Name:    "stop",
-	Summary: "Halt one or more units in the cluster",
+	Summary: "Instruct systemd to stop one or more units in the cluster.",
 	Usage:   "UNIT...",
 	Description: `Stop one or more units from running in the cluster, but allow them to be
 started again in the future.
@@ -25,10 +27,19 @@ Stop an entire directory of units with glob matching:
 }
 
 func runStopUnit(args []string) (exit int) {
-	for _, v := range args {
-		name := path.Base(v)
-		registryCtl.StopJob(name)
-		fmt.Printf("Requested Job %s stop\n", name)
+	jobs, err := findJobs(args)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%v\n", err)
+		return 1
+	}
+
+	for _, j := range jobs {
+		if j.State == nil || *(j.State) != job.JobStateLaunched {
+			fmt.Fprintf(os.Stderr, "Unable to stop job in state %q\n", *(j.State))
+			return 1
+		}
+
+		registryCtl.SetJobTargetState(j.Name, "loaded")
 	}
 	return
 }

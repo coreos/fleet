@@ -30,9 +30,9 @@ func newTestRegistryForListUnits(payloads []job.JobPayload, jobs []job.Job) Regi
 func TestGetAllJobs(t *testing.T) {
 	registryCtl = newTestRegistryForListUnits(nil, nil)
 
-	names, sortable := findAllUnits()
-	if len(names) != 1 {
-		t.Fatalf("Expected to find one unit: %v\n", names)
+	jobs, sortable := findAllUnits()
+	if len(jobs) != 1 {
+		t.Fatalf("Expected to find one unit: %v\n", jobs)
 	}
 
 	if sortable[0] != "pong.service" {
@@ -48,12 +48,14 @@ Description=PING
 	j := []job.Job{*job.NewJob("ping.service", *jp)}
 	registryCtl = newTestRegistryForListUnits(nil, j)
 
-	names, _ := findAllUnits()
-	if len(names) != 2 {
-		t.Errorf("Expected to find two units: %v\n", names)
+	jobs, _ := findAllUnits()
+	if len(jobs) != 2 {
+		t.Errorf("Expected to find two units: %v\n", jobs)
 	}
 
-	if names["ping.service"] != "PING" {
-		t.Errorf("Expected to have `PING` as a description, but it was %s\n", names["ping.service"])
+	ping := jobs["ping.service"]
+	desc := ping.Payload.Unit.Description()
+	if desc != "PING" {
+		t.Errorf("Expected to have `PING` as a description, but it was %s\n", desc)
 	}
 }
