@@ -5,44 +5,50 @@ import (
 	"os"
 	"path"
 
-	"github.com/coreos/fleet/third_party/github.com/codegangsta/cli"
 	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
 
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/sign"
 )
 
-func newSubmitUnitCommand() cli.Command {
-	return cli.Command{
-		Name:  "submit",
-		Usage: "Upload one or more units to the cluster without starting them",
-		Description: `Upload one or more units to the cluster without starting them. Useful
-validating units before they are started.
+var cmdSubmitUnit = &Command{
+	Name:    "submit",
+	Summary: "Upload one or more units to the cluster without starting them",
+	Usage:   "[--sign] UNIT...",
+	Description: `Upload one or more units to the cluster without starting them. Useful
+for validating units before they are started.
+
+This operation is idempotent; if a named unit already exists in the cluster, it will not be resubmitted.
+However, its signature will still be validated if "sign" is enabled.
 
 Submit a single unit:
-fleetctl submit foo.service
+	fleetctl submit foo.service
 
 Submit a directory of units with glob matching:
-fleetctl submit myservice/*`,
-		Flags: []cli.Flag{
-			cli.BoolFlag{"sign", "Sign unit file signatures using local SSH identities"},
-		},
-		Action: submitUnitsAction,
-	}
+	fleetctl submit myservice/*`,
+	Run: runSubmitUnits,
 }
 
-func submitUnitsAction(c *cli.Context) {
-	_, err := findOrCreateJobs(c.Args(), c.Bool("sign"))
+func init() {
+	cmdSubmitUnit.Flags.BoolVar(&sharedFlags.Sign, "sign", false, "Sign unit file signatures and verify submitted units using local SSH identities")
+}
+
+func runSubmitUnits(args []string) (exit int) {
+	_, err := findOrCreateJobs(args, sharedFlags.Sign)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed creating jobs: %v", err)
-		os.Exit(1)
+		fmt.Fprintf(os.Stderr, "Failed creating jobs: %v\n", err)
+		exit = 1
 	}
+	return
 }
 
+// findOrCreateJobs queries the Registry for Jobs matching the given names.
+// If the Jobs are not found in the Registry, it submits them as new Jobs.
+// signPayloads controls whether signatures are created and/or checked.
+// It returns a slice of Jobs and any error encountered.
 func findOrCreateJobs(names []string, signPayloads bool) ([]job.Job, error) {
 	var err error
 
-	// If signing is explicitly set to on, verification will be done also.
 	var sc *sign.SignatureCreator
 	var sv *sign.SignatureVerifier
 	if signPayloads {
@@ -64,7 +70,7 @@ func findOrCreateJobs(names []string, signPayloads bool) ([]job.Job, error) {
 			log.V(1).Infof("Job(%s) not found in Registry", name)
 			payload, err := getJobPayloadFromFile(v)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("Failed getting Payload(%s) from file: %v", name, err)
 			}
 
 			log.V(1).Infof("Payload(%s) found in local filesystem", name)
@@ -80,11 +86,11 @@ func findOrCreateJobs(names []string, signPayloads bool) ([]job.Job, error) {
 			if signPayloads {
 				s, err := sc.SignPayload(payload)
 				if err != nil {
-					return nil, fmt.Errorf("Failed signing payload %s: %v", payload.Name, err)
+					return nil, fmt.Errorf("Failed creating signature for Payload(%s): %v", payload.Name, err)
 				}
 
 				registryCtl.CreateSignatureSet(s)
-				log.V(1).Infof("Signed Payload(%s)", name)
+				log.V(1).Infof("Created signature for Payload(%s)", name)
 			}
 		} else {
 			log.V(1).Infof("Found Job(%s) in Registry", name)
@@ -94,7 +100,7 @@ func findOrCreateJobs(names []string, signPayloads bool) ([]job.Job, error) {
 			s := registryCtl.GetSignatureSetOfPayload(name)
 			ok, err := sv.VerifyPayload(&(j.Payload), s)
 			if !ok || err != nil {
-				return nil, fmt.Errorf("Failed checking payload %s: %v", j.Payload.Name, err)
+				return nil, fmt.Errorf("Failed checking signature for Payload(%s): %v", j.Payload.Name, err)
 			}
 
 			log.V(1).Infof("Verified signature of Payload(%s)", j.Payload.Name)

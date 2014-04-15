@@ -9,45 +9,187 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"strconv"
 	"strings"
 	"text/tabwriter"
 
-	"github.com/coreos/fleet/third_party/github.com/codegangsta/cli"
 	"github.com/coreos/fleet/third_party/github.com/coreos/go-etcd/etcd"
-	"github.com/coreos/fleet/third_party/github.com/rakyll/globalconf"
 
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/registry"
 	"github.com/coreos/fleet/ssh"
 	"github.com/coreos/fleet/unit"
-	"github.com/coreos/fleet/version"
 )
 
-var out *tabwriter.Writer
-var flagset *flag.FlagSet = flag.NewFlagSet("fleetctl", flag.ExitOnError)
-var registryCtl Registry
+const (
+	cliName        = "fleetctl"
+	cliDescription = "fleetctl is a command-line interface to fleet, the cluster-wide CoreOS init system."
+)
+
+var (
+	out           *tabwriter.Writer
+	globalFlagset *flag.FlagSet = flag.NewFlagSet("fleetctl", flag.ExitOnError)
+
+	// set of top-level commands
+	commands []*Command
+
+	// global Registry used by commands
+	registryCtl Registry
+
+	// flags used by all commands
+	globalFlags = struct {
+		Debug                 bool
+		Verbosity             int
+		Version               bool
+		Endpoint              string
+		KnownHostsFile        string
+		StrictHostKeyChecking bool
+		Tunnel                string
+	}{}
+
+	// flags used by multiple commands
+	sharedFlags = struct {
+		Sign     bool
+		Full     bool
+		NoLegend bool
+	}{}
+)
+
+func init() {
+	globalFlagset.BoolVar(&globalFlags.Debug, "debug", false, "Print out more debug information.")
+	globalFlagset.BoolVar(&globalFlags.Version, "version", false, "Print the version and exit")
+	globalFlagset.IntVar(&globalFlags.Verbosity, "verbosity", 0, "Log at a specified level")
+	globalFlagset.StringVar(&globalFlags.Endpoint, "endpoint", "http://127.0.0.1:4001", "Fleet Engine API endpoint (etcd)")
+	globalFlagset.StringVar(&globalFlags.KnownHostsFile, "known-hosts-file", ssh.DefaultKnownHostsFile, "File used to store remote machine fingerprints. Ignored if strict host key checking is disabled.")
+	globalFlagset.BoolVar(&globalFlags.StrictHostKeyChecking, "strict-host-key-checking", true, "Verify host keys presented by remote machines before initiating SSH connections.")
+	globalFlagset.StringVar(&globalFlags.Tunnel, "tunnel", "", "Establish an SSH tunnel through the provided address for communication with fleet and etcd.")
+}
+
+type Command struct {
+	Name        string       // Name of the Command and the string to use to invoke it
+	Summary     string       // One-sentence summary of what the Command does
+	Usage       string       // Usage options/arguments
+	Description string       // Detailed description of command
+	Flags       flag.FlagSet // Set of flags associated with this command
+
+	Run func(args []string) int // Run a command with the given arguments, return exit status
+
+}
 
 func init() {
 	out = new(tabwriter.Writer)
 	out.Init(os.Stdout, 0, 8, 1, '\t', 0)
-	cli.CommandHelpTemplate = `NAME:
-   fleetctl {{.Name}} - {{.Usage}}
-
-DESCRIPTION:
-   {{.Description}}
-
-OPTIONS:
-   {{range .Flags}}{{.}}
-   {{end}}
-`
+	commands = []*Command{
+		cmdCatUnit,
+		cmdDebugInfo,
+		cmdDestroyUnit,
+		cmdHelp,
+		cmdJournal,
+		cmdListMachines,
+		cmdListUnits,
+		cmdSSH,
+		cmdStartUnit,
+		cmdStatusUnits,
+		cmdStopUnit,
+		cmdSubmitUnit,
+		cmdVerifyUnit,
+		cmdVersion,
+	}
 }
 
+func getAllFlags() (flags []*flag.Flag) {
+	return getFlags(globalFlagset)
+}
+
+func getFlags(flagset *flag.FlagSet) (flags []*flag.Flag) {
+	flags = make([]*flag.Flag, 0)
+	flagset.VisitAll(func(f *flag.Flag) {
+		flags = append(flags, f)
+	})
+	return
+}
+
+func main() {
+	// parse global arguments
+	globalFlagset.Parse(os.Args[1:])
+
+	var args = globalFlagset.Args()
+
+	getFlagsFromEnv(cliName, globalFlagset)
+
+	// configure glog, which uses the global command line options
+	if globalFlags.Debug {
+		flag.CommandLine.Lookup("v").Value.Set(strconv.Itoa(1))
+	}
+	flag.CommandLine.Lookup("logtostderr").Value.Set("true")
+
+	// no command specified - trigger help
+	if len(args) < 1 {
+		args = append(args, "help")
+	}
+
+	// deal specially with --version
+	if globalFlags.Version {
+		args[0] = "version"
+	}
+
+	var cmd *Command
+
+	// determine which Command should be run
+	for _, c := range commands {
+		if c.Name == args[0] {
+			cmd = c
+			if err := c.Flags.Parse(args[1:]); err != nil {
+				fmt.Println(err.Error())
+				os.Exit(2)
+			}
+			break
+		}
+	}
+
+	if cmd == nil {
+		fmt.Printf("%v: unknown subcommand: %q\n", cliName, args[0])
+		fmt.Printf("Run '%v help' for usage.\n", cliName)
+		os.Exit(2)
+	}
+
+	// TODO(jonboulle): increase cleverness of registry initialization
+	if cmd.Name != "help" && cmd.Name != "version" {
+		registryCtl = NewRegistry(getRegistry())
+	}
+
+	os.Exit(cmd.Run(cmd.Flags.Args()))
+
+}
+
+// getFlagsFromEnv parses all registered flags in the given flagset,
+// and if they are not already set it attempts to set their values from
+// environment variables. Environment variables take the name of the flag but
+// are UPPERCASE, have the given prefix, and any dashes are replaced by
+// underscores - for example: some-flag => PREFIX_SOME_FLAG
+func getFlagsFromEnv(prefix string, fs *flag.FlagSet) {
+	alreadySet := make(map[string]bool)
+	fs.Visit(func(f *flag.Flag) {
+		alreadySet[f.Name] = true
+	})
+	fs.VisitAll(func(f *flag.Flag) {
+		if !alreadySet[f.Name] {
+			key := strings.ToUpper(prefix + "_" + strings.Replace(f.Name, "-", "_", -1))
+			val := os.Getenv(key)
+			if val != "" {
+				fs.Set(f.Name, val)
+			}
+		}
+
+	})
+}
+
+// getRegistry initializes a connection to the Registry
 func getRegistry() *registry.Registry {
 	tun := getTunnelFlag()
-	endpoint := getEndpointFlag()
 
-	machines := []string{endpoint}
+	machines := []string{globalFlags.Endpoint}
 	client := etcd.NewClient(machines)
 
 	if tun != "" {
@@ -78,71 +220,18 @@ func getRegistry() *registry.Registry {
 	return registry.New(client)
 }
 
+// getChecker creates and returns a HostKeyChecker, or nil if any error is encountered
 func getChecker() *ssh.HostKeyChecker {
-	if !(*flagset.Lookup("strict-host-key-checking")).Value.(flag.Getter).Get().(bool) {
+	if !globalFlags.StrictHostKeyChecking {
 		return nil
 	}
 
-	knownHostsFile := (*flagset.Lookup("known-hosts-file")).Value.(flag.Getter).Get().(string)
-	keyFile := ssh.NewHostKeyFile(knownHostsFile)
+	keyFile := ssh.NewHostKeyFile(strconv.FormatBool(globalFlags.StrictHostKeyChecking))
 	return ssh.NewHostKeyChecker(keyFile, askToTrustHost, nil)
 }
 
-func main() {
-	app := cli.NewApp()
-	app.Name = "fleetctl"
-	app.Usage = "fleetctl is a command-line interface to fleet, the cluster-wide CoreOS init system."
-	app.Version = version.Version
-
-	app.Flags = []cli.Flag{
-		cli.StringFlag{"endpoint", "http://127.0.0.1:4001", "Fleet Engine API endpoint (etcd)"},
-		cli.StringFlag{"tunnel", "", "Establish an SSH tunnel through the provided address for communication with fleet and etcd."},
-		cli.BoolTFlag{"strict-host-key-checking", "Verify host keys presented by remote machines before initiating SSH connections."},
-		cli.StringFlag{"known-hosts-file", ssh.DefaultKnownHostsFile, "File used to store remote machine fingerprints. Ignored if strict host key checking is disabled."},
-		cli.BoolFlag{"debug", "Print out more debug information."},
-	}
-
-	app.Commands = []cli.Command{
-		newListUnitsCommand(),
-		newSubmitUnitCommand(),
-		newDestroyUnitCommand(),
-		newStartUnitCommand(),
-		newStopUnitCommand(),
-		newStatusUnitsCommand(),
-		newCatUnitCommand(),
-		newListMachinesCommand(),
-		newJournalCommand(),
-		newSSHCommand(),
-		newVerifyUnitCommand(),
-		newDebugInfoCommand(),
-	}
-
-	for _, f := range app.Flags {
-		f.Apply(flagset)
-	}
-
-	flagset.Bool("version", false, "Print the version and exit")
-	flagset.Bool("v", false, "Print the version and exit")
-
-	flagset.Parse(os.Args[1:])
-
-	setupGlog()
-
-	if (*flagset.Lookup("version")).Value.(flag.Getter).Get().(bool) ||
-		(*flagset.Lookup("v")).Value.(flag.Getter).Get().(bool) {
-		fmt.Println("fleetctl version", version.Version)
-		os.Exit(0)
-	}
-
-	globalconf.Register("fleetctl", flagset)
-	opts := globalconf.Options{EnvPrefix: "FLEETCTL_"}
-	gconf, _ := globalconf.NewWithOptions(&opts)
-	gconf.ParseSet("", flagset)
-
-	registryCtl = NewRegistry(getRegistry())
-	app.Run(os.Args)
-}
-
+// getJobPayloadFromFile attempts to load a Job from a given filename
+// It returns the Job or nil, and any error encountered
 func getJobPayloadFromFile(file string) (*job.JobPayload, error) {
 	out, err := ioutil.ReadFile(file)
 	if err != nil {
@@ -158,15 +247,11 @@ func getJobPayloadFromFile(file string) (*job.JobPayload, error) {
 }
 
 func getTunnelFlag() string {
-	tun := (*flagset.Lookup("tunnel")).Value.(flag.Getter).Get().(string)
+	tun := globalFlags.Tunnel
 	if tun != "" && !strings.Contains(tun, ":") {
 		tun += ":22"
 	}
 	return tun
-}
-
-func getEndpointFlag() string {
-	return (*flagset.Lookup("endpoint")).Value.(flag.Getter).Get().(string)
 }
 
 func machineBootIDLegend(ms machine.MachineState, full bool) string {
@@ -188,7 +273,6 @@ func machineFullLegend(ms machine.MachineState, full bool) string {
 func askToTrustHost(addr, algo, fingerprint string) bool {
 	var ans string
 
-	// Send it to stderr and don't pollute stdout
 	fmt.Fprintf(os.Stderr, "The authenticity of host '%v' can't be established.\n%v key fingerprint is %v.\nAre you sure you want to continue connecting (yes/no)? ", addr, algo, fingerprint)
 	fmt.Scanf("%s\n", &ans)
 
@@ -198,26 +282,4 @@ func askToTrustHost(addr, algo, fingerprint string) bool {
 	}
 
 	return true
-}
-
-// setupGlog sets the configuration for glog.
-// Check -debug flag, set the flags used by glog in the default set of
-// command-line flags, and reparse flagset to activate them.
-func setupGlog() {
-	verbosity := "0"
-	if (*flagset.Lookup("debug")).Value.(flag.Getter).Get().(bool) {
-		verbosity = "1"
-	}
-
-	err := flag.CommandLine.Lookup("v").Value.Set(verbosity)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to apply verbosity to flag.v: %v\n", err)
-	}
-
-	err = flag.CommandLine.Lookup("logtostderr").Value.Set("true")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to set flag.logtostderr to true: %v\n", err)
-	}
-
-	flagset.Parse(os.Args[1:])
 }

@@ -3,39 +3,35 @@ package main
 import (
 	"fmt"
 	"strings"
-
-	"github.com/coreos/fleet/third_party/github.com/codegangsta/cli"
 )
 
-func newListMachinesCommand() cli.Command {
-	return cli.Command{
-		Name:  "list-machines",
-		Usage: "Enumerate the current hosts in the cluster",
-		Description: `Lists all active machines within the cluster. Previously active machines will
+var cmdListMachines = &Command{
+	Name:    "list-machines",
+	Summary: "Enumerate the current hosts in the cluster",
+	Usage:   "[--full] [--no-legend]",
+	Description: `Lists all active machines within the cluster. Previously active machines will
 not appear in this list.
 
 For easily parsable output, you can remove the column headers:
-fleetctl list-machines --no-legend
+	fleetctl list-machines --no-legend
 
 Output the list without truncation:
-fleetctl list-machines --full`,
-		Action: listMachinesAction,
-		Flags: []cli.Flag{
-			cli.BoolFlag{"full, l", "Do not ellipsize fields on output"},
-			cli.BoolFlag{"no-legend", "Do not print a legend (column headers)"},
-		},
-	}
+	fleetctl list-machines --full`,
+	Run: runListMachines,
 }
 
-func listMachinesAction(c *cli.Context) {
-	if !c.Bool("no-legend") {
+func init() {
+	cmdListMachines.Flags.BoolVar(&sharedFlags.Full, "full", false, "Do not ellipsize fields on output")
+	cmdListMachines.Flags.BoolVar(&sharedFlags.NoLegend, "no-legend", false, "Do not print a legend (column headers)")
+}
+
+func runListMachines(args []string) (exit int) {
+	if !sharedFlags.NoLegend {
 		fmt.Fprintln(out, "MACHINE\tIP\tMETADATA")
 	}
 
-	full := c.Bool("full")
-
 	for _, m := range registryCtl.GetActiveMachines() {
-		mach := machineBootIDLegend(m, full)
+		mach := machineBootIDLegend(m, sharedFlags.Full)
 
 		ip := m.PublicIP
 		if len(ip) == 0 {
@@ -51,6 +47,7 @@ func listMachinesAction(c *cli.Context) {
 	}
 
 	out.Flush()
+	return
 }
 
 func formatMetadata(metadata map[string]string) string {

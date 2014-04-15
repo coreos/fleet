@@ -6,45 +6,52 @@ import (
 	"os"
 	"sync"
 	"time"
-
-	"github.com/coreos/fleet/third_party/github.com/codegangsta/cli"
 )
 
 const (
 	unitCheckInterval = 1 * time.Second
 )
 
-func newStartUnitCommand() cli.Command {
-	return cli.Command{
-		Name:  "start",
-		Usage: "Schedule and execute one or more units in the cluster",
+var (
+	flagRequire       string
+	flagBlockAttempts int
+	flagNoBlock       bool
+
+	cmdStartUnit = &Command{
+		Name:    "start",
+		Summary: "Schedule and execute one or more units in the cluster",
+		Usage:   "[--sign] [--no-block|--block-attempts=N] UNIT...",
 		Description: `Start one or many units on the cluster. Select units to start by glob matching
 for units in the current working directory or matching names of previously
 submitted units.
 
 Start a single unit:
-fleetctl start foo.service
+	fleetctl start foo.service
 
 Start an entire directory of units with glob matching:
-fleetctl start myservice/*
+	fleetctl start myservice/*
 
 You may filter suitable hosts based on metadata provided by the machine.
 Machine metadata is located in the fleet configuration file.`,
-		Flags: []cli.Flag{
-			cli.BoolFlag{"sign", "Sign unit file signatures using local SSH identities"},
-			cli.IntFlag{"block-attempts", 10, "Wait until the jobs are scheduled. Perform N attempts before giving up, 10 by default."},
-			cli.BoolFlag{"no-block", "Do not wait until the units have been scheduled to exit start."},
-		},
-		Action: startUnitAction,
+		Run: runStartUnit,
 	}
+)
+
+func init() {
+	cmdStartUnit.Flags.BoolVar(&sharedFlags.Sign, "sign", false, "Sign unit file signatures using local SSH identities")
+	cmdStartUnit.Flags.IntVar(&flagBlockAttempts, "block-attempts", 10, "Wait until the jobs are scheduled. Perform N attempts before giving up.")
+	cmdStartUnit.Flags.BoolVar(&flagNoBlock, "no-block", false, "Do not wait until the units have been scheduled to exit start.")
 }
 
-func startUnitAction(c *cli.Context) {
-	// Attempt to create payloads for convenience
-	jobs, err := findOrCreateJobs(c.Args(), c.Bool("sign"))
+func runStartUnit(args []string) (exit int) {
+	if len(args) < 1 {
+		fmt.Fprintln(os.Stderr, "No units specified.")
+		return 1
+	}
+	jobs, err := findOrCreateJobs(args, sharedFlags.Sign)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed creating jobs: %v", err)
-		os.Exit(1)
+		return 1
 	}
 
 	// TODO: This must be done in a transaction!
@@ -56,9 +63,10 @@ func startUnitAction(c *cli.Context) {
 		registeredJobs[j.Name] = true
 	}
 
-	if !c.Bool("no-block") {
-		waitForScheduledUnits(registeredJobs, c.Int("block-attempts"), os.Stdout)
+	if !flagNoBlock {
+		waitForScheduledUnits(registeredJobs, flagBlockAttempts, os.Stdout)
 	}
+	return
 }
 
 func waitForScheduledUnits(jobs map[string]bool, maxAttempts int, out io.Writer) {
