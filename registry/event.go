@@ -23,7 +23,7 @@ func NewEventStream(client *etcd.Client, registry *Registry) *EventStream {
 
 func (self *EventStream) Stream(idx uint64, eventchan chan *event.Event) {
 	watchMap := map[string][]func(*etcd.Response) *event.Event{
-		path.Join(keyPrefix, jobPrefix):     []func(*etcd.Response) *event.Event{filterEventJobCreated, filterEventJobScheduled, filterEventJobStopped, self.filterEventJobUpdated},
+		path.Join(keyPrefix, jobPrefix):     []func(*etcd.Response) *event.Event{filterEventJobCreated, filterEventJobScheduled, filterEventJobStopped},
 		path.Join(keyPrefix, machinePrefix): []func(*etcd.Response) *event.Event{self.filterEventMachineCreated, self.filterEventMachineRemoved},
 		path.Join(keyPrefix, offerPrefix):   []func(*etcd.Response) *event.Event{self.filterEventJobOffered, filterEventJobBidSubmitted},
 	}

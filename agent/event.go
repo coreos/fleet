@@ -90,26 +90,6 @@ func (eh *EventHandler) HandleEventJobStopped(ev event.Event) {
 	eh.agent.BidForPossibleJobs()
 }
 
-func (eh *EventHandler) HandleEventJobUpdated(ev event.Event) {
-	j := ev.Payload.(job.Job)
-
-	localBootID := eh.agent.Machine().State().BootID
-	targetBootID := ev.Context.(string)
-
-	if targetBootID != localBootID {
-		log.V(1).Infof("EventJobUpdated(%s): Job not scheduled to Agent %s, skipping", j.Name, localBootID)
-		return
-	}
-
-	if ok := eh.agent.VerifyJob(&j); !ok {
-		log.Errorf("EventJobUpdated(%s): Failed to verify job", j.Name)
-		return
-	}
-
-	log.V(1).Infof("EventJobUpdated(%s): Starting Job", j.Name)
-	eh.agent.StartJob(&j)
-}
-
 func (eh *EventHandler) HandleEventPayloadStateUpdated(ev event.Event) {
 	jobName := ev.Context.(string)
 	state := ev.Payload.(*job.PayloadState)
