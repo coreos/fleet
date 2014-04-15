@@ -27,7 +27,7 @@ func init() {
 }
 
 func runListUnits(args []string) (exit int) {
-	if sharedFlags.NoLegend {
+	if !sharedFlags.NoLegend {
 		fmt.Fprintln(out, "UNIT\tLOAD\tACTIVE\tSUB\tDESC\tMACHINE")
 	}
 
