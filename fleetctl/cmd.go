@@ -57,9 +57,9 @@ var (
 )
 
 func init() {
-	globalFlagset.BoolVar(&globalFlags.Debug, "debug", false, "Print out more debug information.")
+	globalFlagset.BoolVar(&globalFlags.Debug, "debug", false, "Print out more debug information to stderr. Equivalent to --verbosity=1")
 	globalFlagset.BoolVar(&globalFlags.Version, "version", false, "Print the version and exit")
-	globalFlagset.IntVar(&globalFlags.Verbosity, "verbosity", 0, "Log at a specified level")
+	globalFlagset.IntVar(&globalFlags.Verbosity, "verbosity", 0, "Log at a specified level of verbosity to stderr.")
 	globalFlagset.StringVar(&globalFlags.Endpoint, "endpoint", "http://127.0.0.1:4001", "Fleet Engine API endpoint (etcd)")
 	globalFlagset.StringVar(&globalFlags.KnownHostsFile, "known-hosts-file", ssh.DefaultKnownHostsFile, "File used to store remote machine fingerprints. Ignored if strict host key checking is disabled.")
 	globalFlagset.BoolVar(&globalFlags.StrictHostKeyChecking, "strict-host-key-checking", true, "Verify host keys presented by remote machines before initiating SSH connections.")
@@ -118,11 +118,15 @@ func main() {
 
 	getFlagsFromEnv(cliName, globalFlagset)
 
-	// configure glog, which uses the global command line options
-	if globalFlags.Debug {
-		flag.CommandLine.Lookup("v").Value.Set(strconv.Itoa(1))
+	if globalFlags.Debug && globalFlags.Verbosity < 1 {
+		globalFlags.Verbosity = 1
 	}
-	flag.CommandLine.Lookup("logtostderr").Value.Set("true")
+
+	// configure glog, which uses the global command line options
+	if globalFlags.Verbosity > 0 {
+		flag.CommandLine.Lookup("v").Value.Set(strconv.Itoa(globalFlags.Verbosity))
+		flag.CommandLine.Lookup("logtostderr").Value.Set("true")
+	}
 
 	// no command specified - trigger help
 	if len(args) < 1 {
