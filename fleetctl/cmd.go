@@ -30,6 +30,7 @@ import (
 const (
 	cliName        = "fleetctl"
 	cliDescription = "fleetctl is a command-line interface to fleet, the cluster-wide CoreOS init system."
+	serviceSuffix  = ".service"
 )
 
 var (
@@ -301,7 +302,7 @@ func askToTrustHost(addr, algo, fingerprint string) bool {
 func findJobs(args []string) (jobs []job.Job, err error) {
 	jobs = make([]job.Job, len(args))
 	for i, v := range args {
-		name := path.Base(v)
+		name := unitNameMangle(v)
 		j := registryCtl.GetJob(name)
 		if j == nil {
 			return nil, fmt.Errorf("Could not find Job(%s)", name)
@@ -362,7 +363,7 @@ func verifyJob(j *job.Job) error {
 
 func lazyCreateJobs(args []string, signAndVerify bool) error {
 	for _, arg := range args {
-		jobName := path.Base(arg)
+		jobName := unitNameMangle(arg)
 		if j := registryCtl.GetJob(jobName); j != nil {
 			log.V(1).Infof("Found Job(%s) in Registry, no need to recreate it", jobName)
 			if signAndVerify {
@@ -395,7 +396,7 @@ func lazyCreateJobs(args []string, signAndVerify bool) error {
 func lazyLoadJobs(args []string) ([]string, error) {
 	triggered := make([]string, 0)
 	for _, v := range args {
-		name := path.Base(v)
+		name := unitNameMangle(v)
 		j := registryCtl.GetJob(name)
 		if j == nil || j.State == nil {
 			return nil, fmt.Errorf("Unable to determine state of job %s", name)
@@ -415,7 +416,7 @@ func lazyLoadJobs(args []string) ([]string, error) {
 func lazyStartJobs(args []string) ([]string, error) {
 	triggered := make([]string, 0)
 	for _, v := range args {
-		name := path.Base(v)
+		name := unitNameMangle(v)
 		j := registryCtl.GetJob(name)
 		if j == nil {
 			return nil, fmt.Errorf("Unable to find job %q", name)
@@ -467,4 +468,18 @@ func checkJobState(jobName string, js job.JobState, maxAttempts int, out io.Writ
 	}
 
 	errchan <- fmt.Errorf("Timed out waiting for job %s to report state %s", jobName, js)
+}
+
+// unitNameMangle tries to turn a string that might not be a unit name into a
+// sensible unit name.
+func unitNameMangle(baseName string) string {
+	name := path.Base(baseName)
+
+	for _, t := range job.SupportedUnitTypes() {
+		if strings.HasSuffix(name, "."+t) {
+			return name
+		}
+	}
+
+	return name + serviceSuffix
 }

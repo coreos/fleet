@@ -15,14 +15,14 @@ func newTestRegistryForSsh() Registry {
 	}
 
 	jobs := []job.Job{
-		*job.NewJob("j1", job.JobPayload{}),
-		*job.NewJob("j2", job.JobPayload{}),
+		*job.NewJob("j1.service", job.JobPayload{}),
+		*job.NewJob("j2.service", job.JobPayload{}),
 		*job.NewJob("hello.service", job.JobPayload{}),
 	}
 
 	states := map[string]*job.PayloadState{
-		"j1":            job.NewPayloadState("loaded", "active", "listening", []string{}, &machines[0]),
-		"j2":            job.NewPayloadState("loaded", "inactive", "dead", []string{}, &machines[1]),
+		"j1.service":    job.NewPayloadState("loaded", "active", "listening", []string{}, &machines[0]),
+		"j2.service":    job.NewPayloadState("loaded", "inactive", "dead", []string{}, &machines[1]),
 		"hello.service": job.NewPayloadState("loaded", "inactive", "dead", []string{}, &machines[2]),
 	}
 

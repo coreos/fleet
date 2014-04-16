@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"path"
 )
 
 var (
@@ -23,7 +22,7 @@ func runCatUnit(args []string) (exit int) {
 		return 1
 	}
 
-	name := path.Base(args[0])
+	name := unitNameMangle(args[0])
 	j := registryCtl.GetJob(name)
 	if j == nil {
 		fmt.Fprintf(os.Stderr, "Job %s not found.\n", name)
