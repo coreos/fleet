@@ -13,7 +13,7 @@ type Registry interface {
 	GetJob(name string) *job.Job
 	CreateJob(j *job.Job) (err error)
 	DestroyJob(name string)
-	StopJob(name string)
+	SetJobTargetState(name string, target job.JobState) error
 	CreateSignatureSet(s *sign.SignatureSet) error
 	GetSignatureSetOfPayload(name string) *sign.SignatureSet
 	GetJobTarget(name string) string
@@ -41,8 +41,8 @@ func (m MainRegistry) GetJob(name string) *job.Job {
 	return m.registry.GetJob(name)
 }
 
-func (m MainRegistry) StopJob(name string) {
-	m.registry.StopJob(name)
+func (m MainRegistry) SetJobTargetState(name string, target job.JobState) error {
+	return m.registry.SetJobTargetState(name, target)
 }
 
 func (m MainRegistry) DestroyJob(name string) {

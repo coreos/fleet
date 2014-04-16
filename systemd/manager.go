@@ -50,6 +50,8 @@ func (m *SystemdManager) MarshalJSON() ([]byte, error) {
 	return json.Marshal(data)
 }
 
+// Publish is a long-running function that streams dbus events through
+// a translation layer and on to the EventBus
 func (m *SystemdManager) Publish(bus *event.EventBus, stopchan chan bool) {
 	m.Systemd.Subscribe()
 
@@ -77,26 +79,49 @@ func (m *SystemdManager) Publish(bus *event.EventBus, stopchan chan bool) {
 	m.Systemd.Unsubscribe()
 }
 
-func (m *SystemdManager) StartJob(job *job.Job) {
+// LoadJob writes the unit of the given Job to disk, subscribes to
+// relevant dbus events, and only if necessary, instructs the systemd
+// daemon to reload
+func (m *SystemdManager) LoadJob(job *job.Job) {
 	name := m.addUnitNamePrefix(job.Name)
 	m.writeUnit(name, job.Payload.Unit.String())
+	m.subscriptions.Add(name)
 
 	if m.unitRequiresDaemonReload(name) {
 		m.daemonReload()
 	}
+}
 
-	m.subscriptions.Add(name)
+// UnloadJob removes the unit associated with the indicated Job from
+// the filesystem, unsubscribing from relevant dbus events
+func (m *SystemdManager) UnloadJob(jobName string) {
+	unitName := m.addUnitNamePrefix(jobName)
+	m.subscriptions.Remove(jobName)
+	m.removeUnit(unitName)
+}
 
+// StartJob starts the unit created for the indicated Job
+func (m *SystemdManager) StartJob(jobName string) {
+	name := m.addUnitNamePrefix(jobName)
 	m.startUnit(name)
 }
 
+// StopJob stops the unit created for the indicated Job
 func (m *SystemdManager) StopJob(jobName string) {
 	unitName := m.addUnitNamePrefix(jobName)
-
-	m.subscriptions.Remove(jobName)
-
 	m.stopUnit(unitName)
-	m.removeUnit(unitName)
+}
+
+// GetPayloadState generates a PayloadState object representing the
+// current state of a Job's unit
+func (m *SystemdManager) GetPayloadState(jobName string) (*job.PayloadState, error) {
+	unitName := m.addUnitNamePrefix(jobName)
+	loadState, activeState, subState, err := m.getUnitStates(unitName)
+	if err != nil {
+		return nil, err
+	}
+	ms := m.Machine.State()
+	return job.NewPayloadState(loadState, activeState, subState, nil, &ms), nil
 }
 
 func (m *SystemdManager) getUnitStates(name string) (string, string, string, error) {

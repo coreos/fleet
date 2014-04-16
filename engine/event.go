@@ -16,11 +16,27 @@ func NewEventHandler(engine *Engine) *EventHandler {
 	return &EventHandler{engine}
 }
 
-func (self *EventHandler) HandleEventJobCreated(ev event.Event) {
-	j := ev.Payload.(job.Job)
+func (self *EventHandler) HandleCommandLoadJob(ev event.Event) {
+	jobName := ev.Payload.(string)
 
-	log.V(1).Infof("EventJobCreated(%s): publishing JobOffer", j.Name)
-	self.engine.OfferJob(j)
+	j := self.engine.registry.GetJob(jobName)
+	if j == nil {
+		log.Infof("CommandLoadJob(%s): asked to offer job that could not be found")
+		return
+	}
+
+	log.V(1).Infof("CommandLoadJob(%s): publishing JobOffer", jobName)
+	self.engine.OfferJob(*j)
+}
+
+func (self *EventHandler) HandleCommandUnloadJob(ev event.Event) {
+	jobName := ev.Payload.(string)
+
+	log.V(1).Infof("CommandUnloadJob(%s): clearing scheduling decision", jobName)
+	self.engine.UnscheduleJob(jobName)
+
+	log.V(1).Infof("CommandUnloadJob(%s): clearing payload state", jobName)
+	self.engine.RemovePayloadState(jobName)
 }
 
 func (self *EventHandler) HandleEventJobScheduled(ev event.Event) {
@@ -30,7 +46,7 @@ func (self *EventHandler) HandleEventJobScheduled(ev event.Event) {
 	self.engine.clust.jobScheduled(jobName, target)
 }
 
-func (self *EventHandler) HandleEventJobStopped(ev event.Event) {
+func (self *EventHandler) HandleCommandStopJob(ev event.Event) {
 	jobName := ev.Payload.(string)
 	log.V(1).Infof("EventJobStopped(%s): updating cluster", jobName)
 	self.engine.clust.jobStopped(jobName)

@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"flag"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -11,13 +12,17 @@ import (
 	"path"
 	"strconv"
 	"strings"
+	"sync"
 	"text/tabwriter"
+	"time"
 
 	"github.com/coreos/fleet/third_party/github.com/coreos/go-etcd/etcd"
+	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
 
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/registry"
+	"github.com/coreos/fleet/sign"
 	"github.com/coreos/fleet/ssh"
 	"github.com/coreos/fleet/unit"
 )
@@ -50,9 +55,11 @@ var (
 
 	// flags used by multiple commands
 	sharedFlags = struct {
-		Sign     bool
-		Full     bool
-		NoLegend bool
+		Sign          bool
+		Full          bool
+		NoLegend      bool
+		NoBlock       bool
+		BlockAttempts int
 	}{}
 )
 
@@ -88,11 +95,13 @@ func init() {
 		cmdJournal,
 		cmdListMachines,
 		cmdListUnits,
+		cmdLoadUnits,
 		cmdSSH,
 		cmdStartUnit,
 		cmdStatusUnits,
 		cmdStopUnit,
 		cmdSubmitUnit,
+		cmdUnloadUnit,
 		cmdVerifyUnit,
 		cmdVersion,
 	}
@@ -286,4 +295,159 @@ func askToTrustHost(addr, algo, fingerprint string) bool {
 	}
 
 	return true
+}
+
+func findJobs(args []string) (jobs []job.Job, err error) {
+	jobs = make([]job.Job, len(args))
+	for i, v := range args {
+		name := path.Base(v)
+		j := registryCtl.GetJob(name)
+		if j == nil {
+			return nil, fmt.Errorf("Could not find Job(%s)", name)
+		}
+
+		jobs[i] = *j
+	}
+
+	return jobs, nil
+}
+
+func lazyCreateJobs(args []string, signPayloads bool) error {
+	var err error
+
+	var sc *sign.SignatureCreator
+	var sv *sign.SignatureVerifier
+	if signPayloads {
+		sc, err = sign.NewSignatureCreatorFromSSHAgent()
+		if err != nil {
+			return fmt.Errorf("Failed creating SignatureCreator: %v", err)
+		}
+		sv, err = sign.NewSignatureVerifierFromSSHAgent()
+		if err != nil {
+			return fmt.Errorf("Failed creating SignatureVerifier: %v", err)
+		}
+	}
+
+	for _, v := range args {
+		name := path.Base(v)
+		j := registryCtl.GetJob(name)
+		if j == nil {
+			log.V(1).Infof("Job(%s) not found in Registry", name)
+			payload, err := getJobPayloadFromFile(v)
+			if err != nil {
+				return fmt.Errorf("Failed getting Payload(%s) from file: %v", name, err)
+			}
+
+			log.V(1).Infof("Payload(%s) found in local filesystem", name)
+			j = job.NewJob(name, *payload)
+
+			err = registryCtl.CreateJob(j)
+			if err != nil {
+				return fmt.Errorf("Failed creating job %s: %v", j.Name, err)
+			}
+
+			log.V(1).Infof("Created Job(%s) in Registry", j.Name)
+
+			if signPayloads {
+				s, err := sc.SignPayload(payload)
+				if err != nil {
+					return fmt.Errorf("Failed creating signature for Payload(%s): %v", payload.Name, err)
+				}
+
+				registryCtl.CreateSignatureSet(s)
+				log.V(1).Infof("Created signature for Payload(%s)", name)
+			}
+		} else {
+			log.V(1).Infof("Found Job(%s) in Registry", name)
+		}
+
+		if signPayloads {
+			s := registryCtl.GetSignatureSetOfPayload(name)
+			ok, err := sv.VerifyPayload(&(j.Payload), s)
+			if !ok || err != nil {
+				return fmt.Errorf("Failed checking signature for Payload(%s): %v", j.Payload.Name, err)
+			}
+
+			log.V(1).Infof("Verified signature of Payload(%s)", j.Payload.Name)
+		}
+	}
+
+	return nil
+}
+
+func lazyLoadJobs(args []string) ([]string, error) {
+	triggered := make([]string, 0)
+	for _, v := range args {
+		name := path.Base(v)
+		j := registryCtl.GetJob(name)
+		if j == nil || j.State == nil {
+			return nil, fmt.Errorf("Unable to determine state of job %s", name)
+		} else if *(j.State) == job.JobStateLoaded || *(j.State) == job.JobStateLaunched {
+			log.V(1).Infof("Job(%s) already %s, skipping.", j.Name, *(j.State))
+			continue
+		}
+
+		log.V(1).Infof("Setting Job(%s) target state to loaded", j.Name)
+		registryCtl.SetJobTargetState(j.Name, job.JobStateLoaded)
+		triggered = append(triggered, j.Name)
+	}
+
+	return triggered, nil
+}
+
+func lazyStartJobs(args []string) ([]string, error) {
+	triggered := make([]string, 0)
+	for _, v := range args {
+		name := path.Base(v)
+		j := registryCtl.GetJob(name)
+		if j == nil {
+			return nil, fmt.Errorf("Unable to find job %q", name)
+		} else if j.State == nil {
+			return nil, fmt.Errorf("Unable to determine current state of job")
+		} else if *(j.State) == job.JobStateInactive {
+			return nil, fmt.Errorf("Unable to start job in state %q", *(j.State))
+		} else if *(j.State) == job.JobStateLaunched {
+			log.V(1).Infof("Job(%s) already %s, skipping.", j.Name, *(j.State))
+			continue
+		}
+
+		log.V(1).Infof("Setting Job(%s) target state to launched", j.Name)
+		registryCtl.SetJobTargetState(j.Name, job.JobStateLaunched)
+		triggered = append(triggered, j.Name)
+	}
+
+	return triggered, nil
+}
+
+func waitForJobStates(jobs []string, js job.JobState, maxAttempts int, out io.Writer) error {
+	errchan := make(chan error)
+	var wg sync.WaitGroup
+	for _, name := range jobs {
+		wg.Add(1)
+		go checkJobState(name, js, maxAttempts, out, &wg, errchan)
+	}
+
+	go func() {
+		wg.Wait()
+		close(errchan)
+	}()
+
+	return <-errchan
+}
+
+func checkJobState(jobName string, js job.JobState, maxAttempts int, out io.Writer, wg *sync.WaitGroup, errchan chan error) {
+	defer wg.Done()
+
+	for attempts := 0; attempts < maxAttempts; attempts++ {
+		j := registryCtl.GetJob(jobName)
+		if j == nil || j.State == nil || *(j.State) != js {
+			time.Sleep(100 * time.Millisecond)
+			continue
+		}
+
+		fmt.Fprintf(out, "Job %s %s\n", jobName, *(j.State))
+		return
+	}
+
+	errchan <- fmt.Errorf("Timed out waiting for job %s to report state %s", jobName, js)
 }

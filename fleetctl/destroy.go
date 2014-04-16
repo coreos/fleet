@@ -22,7 +22,6 @@ Destroyed units are impossible to start unless re-submitted.`,
 func runDestroyUnits(args []string) (exit int) {
 	for _, v := range args {
 		name := path.Base(v)
-		registryCtl.StopJob(name)
 		registryCtl.DestroyJob(name)
 		fmt.Printf("Destroyed Job %s\n", name)
 	}

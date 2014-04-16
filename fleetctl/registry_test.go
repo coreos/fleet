@@ -31,17 +31,15 @@ func (t TestRegistry) GetJob(name string) *job.Job {
 	return nil
 }
 
-func (t TestRegistry) StartJob(name string) {
-}
-
-func (t TestRegistry) StopJob(name string) {
-}
-
-func (t TestRegistry) DestroyJob(name string) {
+func (m TestRegistry) SetJobTargetState(name string, target job.JobState) error {
+	return nil
 }
 
 func (t TestRegistry) CreateJob(j *job.Job) error {
 	return nil
+}
+
+func (t TestRegistry) DestroyJob(name string) {
 }
 
 func (t TestRegistry) CreateSignatureSet(s *sign.SignatureSet) error {

@@ -2,14 +2,9 @@ package main
 
 import (
 	"fmt"
-	"io"
 	"os"
-	"sync"
-	"time"
-)
 
-const (
-	unitCheckInterval = 1 * time.Second
+	"github.com/coreos/fleet/job"
 )
 
 var (
@@ -19,7 +14,7 @@ var (
 
 	cmdStartUnit = &Command{
 		Name:    "start",
-		Summary: "Schedule and execute one or more units in the cluster",
+		Summary: "Instruct systemd to start one or more units in the cluster, first submitting and loading if necessary.",
 		Usage:   "[--sign] [--no-block|--block-attempts=N] UNIT...",
 		Description: `Start one or many units on the cluster. Select units to start by glob matching
 for units in the current working directory or matching names of previously
@@ -38,61 +33,48 @@ Machine metadata is located in the fleet configuration file.`,
 )
 
 func init() {
-	cmdStartUnit.Flags.BoolVar(&sharedFlags.Sign, "sign", false, "Sign unit file signatures using local SSH identities")
-	cmdStartUnit.Flags.IntVar(&flagBlockAttempts, "block-attempts", 10, "Wait until the jobs are scheduled. Perform N attempts before giving up.")
-	cmdStartUnit.Flags.BoolVar(&flagNoBlock, "no-block", false, "Do not wait until the units have been scheduled to exit start.")
+	cmdStartUnit.Flags.BoolVar(&sharedFlags.Sign, "sign", false, "Sign unit file signatures using local SSH identities.")
+	cmdStartUnit.Flags.IntVar(&sharedFlags.BlockAttempts, "block-attempts", 10, "Wait until the jobs are launched, performing up to N attempts before giving up.")
+	cmdStartUnit.Flags.BoolVar(&sharedFlags.NoBlock, "no-block", false, "Do not wait until the jobs have been launched before exiting.")
 }
 
 func runStartUnit(args []string) (exit int) {
-	if len(args) < 1 {
-		fmt.Fprintln(os.Stderr, "No units specified.")
-		return 1
-	}
-	jobs, err := findOrCreateJobs(args, sharedFlags.Sign)
+	err := lazyCreateJobs(args, sharedFlags.Sign)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed creating jobs: %v", err)
+		fmt.Fprintf(os.Stderr, "%v\n", err)
 		return 1
 	}
 
-	// TODO: This must be done in a transaction!
-	registeredJobs := make(map[string]bool)
-	for _, j := range jobs {
-		//TODO: Replace this with the actual method of starting once
-		// it is no longer covered by `fleetctl submit`
-		//registryCtl.StartJob(j.Name)
-		registeredJobs[j.Name] = true
+	triggered, err := lazyLoadJobs(args)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%v\n", err)
+		return 1
 	}
 
-	if !flagNoBlock {
-		waitForScheduledUnits(registeredJobs, flagBlockAttempts, os.Stdout)
-	}
-	return
-}
-
-func waitForScheduledUnits(jobs map[string]bool, maxAttempts int, out io.Writer) {
-	var wg sync.WaitGroup
-
-	for jobName, _ := range jobs {
-		wg.Add(1)
-		go checkJobTarget(jobName, maxAttempts, out, &wg)
+	// Always wait for jobs that had to be loaded, regardless of the --no-block flag
+	err = waitForJobStates(triggered, job.JobStateLoaded, sharedFlags.BlockAttempts, os.Stdout)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%v\n", err)
+		return 1
 	}
 
-	wg.Wait()
-}
+	triggered, err = lazyStartJobs(args)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%v\n", err)
+		return 1
+	}
 
-func checkJobTarget(jobName string, maxAttempts int, out io.Writer, wg *sync.WaitGroup) {
-	defer wg.Done()
-
-	for attempts := 0; attempts < maxAttempts; attempts++ {
-		tgt := registryCtl.GetJobTarget(jobName)
-
-		if tgt != "" {
-			m := registryCtl.GetMachineState(tgt)
-			fmt.Fprintf(out, "Job %s scheduled to %s\n", jobName, machineFullLegend(*m, false))
-			return
+	if !sharedFlags.NoBlock {
+		err = waitForJobStates(triggered, job.JobStateLaunched, sharedFlags.BlockAttempts, os.Stdout)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "%v\n", err)
+			return 1
 		}
-
-		time.Sleep(unitCheckInterval)
+	} else {
+		for _, jobName := range triggered {
+			fmt.Printf("Triggered job %s start\n", jobName)
+		}
 	}
-	fmt.Fprintf(out, "Job %s still queued for scheduling\n", jobName)
+
+	return
 }

@@ -81,6 +81,7 @@ func (a *Agent) Run() {
 
 	go a.systemd.Publish(a.events, a.stop)
 	go a.Heartbeat(a.ttl, a.stop)
+	go a.HeartbeatJobs(a.ttl, a.stop)
 
 	// Block until we receive a stop signal
 	<-a.stop
@@ -125,9 +126,18 @@ func (a *Agent) Purge() {
 		log.Errorf("Failed to remove Machine %s from Registry: %s", bootID, err.Error())
 	}
 
+	a.state.Lock()
+	launched := a.state.LaunchedJobs()
+	a.state.Unlock()
+
+	// Explicitly clear heartbeats of jobs that were launched
+	// locally so it doesn't confuse later state calculations
+	for _, j := range launched {
+		a.registry.ClearJobHeartbeat(j)
+	}
+
 	for _, j := range a.registry.GetAllJobsByMachine(bootID) {
 		log.Infof("Purging Job(%s)", j.Name)
-		a.systemd.StopJob(j.Name)
 		a.ForgetJob(j.Name)
 		a.ReportPayloadState(j.Name, nil)
 
@@ -190,12 +200,85 @@ func (a *Agent) Heartbeat(ttl time.Duration, stop chan bool) {
 	}
 }
 
-// Instruct the Agent to start the provided Job
-func (a *Agent) StartJob(j *job.Job) {
-	a.state.TrackJobConflicts(j.Name, j.Payload.Conflicts())
+func (a *Agent) HeartbeatJobs(ttl time.Duration, stop chan bool) {
+	heartbeat := func() {
+		bootID := a.Machine().State().BootID
+		a.state.Lock()
+		launched := a.state.LaunchedJobs()
+		a.state.Unlock()
+		for _, j := range launched {
+			go a.registry.JobHeartbeat(j, bootID, ttl)
+		}
+	}
 
-	log.Infof("Starting Job(%s)", j.Name)
-	a.systemd.StartJob(j)
+	interval := ttl / refreshInterval
+	ticker := time.Tick(interval)
+	for {
+		select {
+		case <-stop:
+			log.V(2).Info("HeartbeatJobs exiting due to stop signal")
+			return
+		case <-ticker:
+			log.V(2).Info("HeartbeatJobs tick")
+			heartbeat()
+		}
+	}
+}
+
+func (a *Agent) LoadJob(j *job.Job) {
+	log.Infof("Loading Job(%s)", j.Name)
+
+	if len(j.Payload.Conflicts()) > 0 {
+		a.state.Lock()
+		a.state.TrackJobConflicts(j.Name, j.Payload.Conflicts())
+		a.state.Unlock()
+	}
+
+	a.systemd.LoadJob(j)
+
+	//TODO(bcwaldon): Investigate whether or not this manual
+	// fetching of the payload state is necessary.
+	ps, err := a.systemd.GetPayloadState(j.Name)
+	if err != nil {
+		log.Errorf("Failed fetching state of Job(%s)", j.Name)
+		return
+	}
+
+	a.ReportPayloadState(j.Name, ps)
+}
+
+func (a *Agent) StartJob(jobName string) {
+	a.state.Lock()
+	a.state.TrackLaunchedJob(jobName)
+	a.state.Unlock()
+
+	bootID := a.Machine().State().BootID
+	a.registry.JobHeartbeat(jobName, bootID, a.ttl)
+	a.systemd.StartJob(jobName)
+}
+
+func (a *Agent) StopJob(jobName string) {
+	a.state.Lock()
+	a.state.DropLaunchedJob(jobName)
+	a.state.Unlock()
+
+	a.registry.ClearJobHeartbeat(jobName)
+	a.systemd.StopJob(jobName)
+}
+
+func (a *Agent) UnloadJob(jobName string) {
+	a.state.Lock()
+	reversePeers := a.state.GetJobsByPeer(jobName)
+	a.state.Unlock()
+
+	a.ForgetJob(jobName)
+
+	a.systemd.UnloadJob(jobName)
+
+	for _, peer := range reversePeers {
+		log.Infof("Stopping Peer(%s) of Job(%s)", peer, jobName)
+		a.StopJob(peer)
+	}
 }
 
 // Inform the Registry that a Job must be rescheduled
@@ -208,25 +291,6 @@ func (a *Agent) RescheduleJob(j *job.Job) {
 	log.V(2).Infof("Publishing JobOffer(%s)", offer.Job.Name)
 	a.registry.CreateJobOffer(offer)
 	log.Infof("Published JobOffer(%s)", offer.Job.Name)
-}
-
-// Instruct the Agent to stop the provided Job and
-// all of its peers
-func (a *Agent) StopJob(jobName string) {
-	log.Infof("Stopping Job(%s)", jobName)
-	a.systemd.StopJob(jobName)
-	a.ReportPayloadState(jobName, nil)
-
-	a.state.Lock()
-	reversePeers := a.state.GetJobsByPeer(jobName)
-	a.state.Unlock()
-
-	a.ForgetJob(jobName)
-
-	for _, peer := range reversePeers {
-		log.Infof("Stopping Peer(%s) of Job(%s)", peer, jobName)
-		a.registry.StopJob(peer)
-	}
 }
 
 // Persist the state of the given Job into the Registry

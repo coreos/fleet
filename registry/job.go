@@ -97,6 +97,7 @@ func (r *Registry) GetJob(jobName string) *job.Job {
 	j := job.NewJob(jm.Name, *(jm.Payload))
 	j.PayloadState = r.getPayloadState(jm.Name)
 
+	j.State = r.determineJobState(jm.Name)
 	return j
 }
 
@@ -137,6 +138,60 @@ func (r *Registry) CreateJob(j *job.Job) (err error) {
 	return
 }
 
+func (r *Registry) SetJobTargetState(jobName string, state job.JobState) error {
+	key := path.Join(keyPrefix, jobPrefix, jobName, "target-state")
+	_, err := r.etcd.Set(key, string(state), 0)
+	return err
+}
+
+func (es *EventStream) filterJobTargetStateChanges(resp *etcd.Response) *event.Event {
+	if resp.Action != "set" {
+		return nil
+	}
+
+	dir, baseName := path.Split(resp.Node.Key)
+	if baseName != "target-state" {
+		return nil
+	}
+
+	jobName := path.Base(strings.TrimSuffix(dir, "/"))
+
+	ts := job.ParseJobState(resp.Node.Value)
+	if ts == nil {
+		return nil
+	}
+
+	cs := es.registry.determineJobState(jobName)
+	if *cs == *ts {
+		return nil
+	}
+
+	var cType string
+	switch *cs {
+	case job.JobStateInactive:
+		if *ts == job.JobStateLoaded {
+			cType = "CommandLoadJob"
+		}
+	case job.JobStateLoaded:
+		if *ts == job.JobStateInactive {
+			cType = "CommandUnloadJob"
+		} else if *ts == job.JobStateLaunched {
+			cType = "CommandStartJob"
+		}
+	case job.JobStateLaunched:
+		if *ts == job.JobStateLoaded {
+			cType = "CommandStopJob"
+		}
+	}
+
+	if cType == "" {
+		return nil
+	}
+
+	agent := es.registry.GetJobTarget(jobName)
+	return &event.Event{cType, jobName, agent}
+}
+
 func (r *Registry) ScheduleJob(jobName string, machBootID string) error {
 	key := jobTargetAgentPath(jobName)
 	_, err := r.etcd.Create(key, machBootID, 0)
@@ -148,39 +203,8 @@ func (r *Registry) UnscheduleJob(jobName string) {
 	r.etcd.Delete(key, true)
 }
 
-func (r *Registry) StopJob(jobName string) {
-	key := path.Join(keyPrefix, jobPrefix, jobName)
-	r.etcd.Delete(key, true)
-}
-
 func (r *Registry) LockJob(jobName, context string) *TimedResourceMutex {
 	return r.lockResource("job", jobName, context)
-}
-
-func (r *Registry) JobScheduled(jobName string) bool {
-	key := jobTargetAgentPath(jobName)
-	value, err := r.etcd.Get(key, false, true)
-	return err == nil && value != nil
-}
-
-func filterEventJobCreated(resp *etcd.Response) *event.Event {
-	if resp.Action != "create" {
-		return nil
-	}
-
-	baseName := path.Base(resp.Node.Key)
-	if baseName != "object" {
-		return nil
-	}
-
-	var j job.Job
-	err := unmarshal(resp.Node.Value, &j)
-	if err != nil {
-		log.V(1).Infof("Failed to deserialize Job: %s", err)
-		return nil
-	}
-
-	return &event.Event{"EventJobCreated", j, nil}
 }
 
 func filterEventJobScheduled(resp *etcd.Response) *event.Event {
@@ -198,8 +222,8 @@ func filterEventJobScheduled(resp *etcd.Response) *event.Event {
 	return &event.Event{"EventJobScheduled", jobName, resp.Node.Value}
 }
 
-func filterEventJobStopped(resp *etcd.Response) *event.Event {
-	if resp.Action != "delete" && resp.Action != "expire" {
+func filterEventJobDestroyed(resp *etcd.Response) *event.Event {
+	if resp.Action != "delete" {
 		return nil
 	}
 
@@ -211,7 +235,7 @@ func filterEventJobStopped(resp *etcd.Response) *event.Event {
 		return nil
 	}
 
-	return &event.Event{"EventJobStopped", jobName, nil}
+	return &event.Event{"EventJobDestroyed", jobName, nil}
 }
 
 func jobTargetAgentPath(jobName string) string {

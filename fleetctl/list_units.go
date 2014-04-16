@@ -28,44 +28,36 @@ func init() {
 
 func runListUnits(args []string) (exit int) {
 	if !sharedFlags.NoLegend {
-		fmt.Fprintln(out, "UNIT\tLOAD\tACTIVE\tSUB\tDESC\tMACHINE")
+		fmt.Fprintln(out, "UNIT\tSTATE\tLOAD\tACTIVE\tSUB\tDESC\tMACHINE")
 	}
 
-	names, sortable := findAllUnits()
+	jobs, sortable := findAllUnits()
 
 	for _, name := range sortable {
-		var ps *job.PayloadState
-		j := registryCtl.GetJob(name)
-		if j != nil {
-			ps = j.PayloadState
-		}
-		description := names[name]
-		printPayloadState(name, description, ps, sharedFlags.Full)
+		j := jobs[name]
+		printPayloadState(name, j.Payload.Unit.Description(), j.State, j.PayloadState, sharedFlags.Full)
 	}
 
 	out.Flush()
 	return
 }
 
-func findAllUnits() (names map[string]string, sortable sort.StringSlice) {
-	names = make(map[string]string, 0)
+func findAllUnits() (jobs map[string]job.Job, sortable sort.StringSlice) {
+	jobs = make(map[string]job.Job, 0)
 	sortable = make(sort.StringSlice, 0)
 
 	for _, j := range registryCtl.GetAllJobs() {
-		if _, ok := names[j.Name]; !ok {
-			var description string
-			description = j.Payload.Unit.Description()
-			names[j.Name] = description
-			sortable = append(sortable, j.Name)
-		}
+		jobs[j.Name] = j
+		sortable = append(sortable, j.Name)
 	}
 
 	sortable.Sort()
 
-	return names, sortable
+	return jobs, sortable
 }
 
-func printPayloadState(name, description string, js *job.PayloadState, full bool) {
+func printPayloadState(name, description string, js *job.JobState, ps *job.PayloadState, full bool) {
+	jobState := "-"
 	loadState := "-"
 	activeState := "-"
 	subState := "-"
@@ -76,14 +68,18 @@ func printPayloadState(name, description string, js *job.PayloadState, full bool
 	}
 
 	if js != nil {
-		loadState = js.LoadState
-		activeState = js.ActiveState
-		subState = js.SubState
+		jobState = string(*js)
+	}
 
-		if js.MachineState != nil {
-			mach = machineFullLegend(*js.MachineState, full)
+	if ps != nil {
+		loadState = ps.LoadState
+		activeState = ps.ActiveState
+		subState = ps.SubState
+
+		if ps.MachineState != nil {
+			mach = machineFullLegend(*ps.MachineState, full)
 		}
 	}
 
-	fmt.Fprintf(out, "%s\t%s\t%s\t%s\t%s\t%s\n", name, loadState, activeState, subState, description, mach)
+	fmt.Fprintf(out, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n", name, jobState, loadState, activeState, subState, description, mach)
 }
