@@ -143,6 +143,7 @@ loop:
 
 type UnitState struct {
 	Name        string
+	JobState    string
 	ActiveState string
 	Machine     string
 }
@@ -150,10 +151,10 @@ type UnitState struct {
 func parseUnitStates(units []string) map[string]UnitState {
 	states := make(map[string]UnitState)
 	for _, unit := range units {
-		cols := strings.SplitN(unit, "\t", 6)
-		if len(cols) == 6 {
-			machine := strings.SplitN(cols[5], "/", 2)[0]
-			states[cols[0]] = UnitState{cols[0], cols[2], machine}
+		cols := strings.SplitN(unit, "\t", 7)
+		if len(cols) == 7 {
+			machine := strings.SplitN(cols[6], "/", 2)[0]
+			states[cols[0]] = UnitState{cols[0], cols[2], cols[3], machine}
 		}
 	}
 	return states
