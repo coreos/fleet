@@ -75,7 +75,7 @@ func runSSH(args []string) (exit int) {
 			return 1
 		}
 		// trim machine/unit name from args
-		if len(args) > 1 {
+		if len(args) > 0 {
 			args = args[1:]
 		}
 	}
