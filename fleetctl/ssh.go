@@ -13,6 +13,7 @@ import (
 	gossh "github.com/coreos/fleet/third_party/code.google.com/p/gosshnew/ssh"
 
 	"github.com/coreos/fleet/machine"
+	"github.com/coreos/fleet/pkg"
 	"github.com/coreos/fleet/ssh"
 )
 
@@ -84,6 +85,8 @@ func runSSH(args []string) (exit int) {
 		fmt.Fprintln(os.Stderr, "Requested machine could not be found.")
 		return 1
 	}
+
+	args = pkg.TrimToDashes(args)
 
 	var sshClient *ssh.SSHForwardingClient
 	if tun := getTunnelFlag(); tun != "" {
