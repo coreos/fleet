@@ -239,7 +239,7 @@ func getChecker() *ssh.HostKeyChecker {
 		return nil
 	}
 
-	keyFile := ssh.NewHostKeyFile(strconv.FormatBool(globalFlags.StrictHostKeyChecking))
+	keyFile := ssh.NewHostKeyFile(globalFlags.KnownHostsFile)
 	return ssh.NewHostKeyChecker(keyFile, askToTrustHost, nil)
 }
 
