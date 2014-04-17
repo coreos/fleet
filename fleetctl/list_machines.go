@@ -8,7 +8,7 @@ import (
 var cmdListMachines = &Command{
 	Name:    "list-machines",
 	Summary: "Enumerate the current hosts in the cluster",
-	Usage:   "[--full] [--no-legend]",
+	Usage:   "[-l|--full] [--no-legend]",
 	Description: `Lists all active machines within the cluster. Previously active machines will
 not appear in this list.
 
@@ -22,6 +22,7 @@ Output the list without truncation:
 
 func init() {
 	cmdListMachines.Flags.BoolVar(&sharedFlags.Full, "full", false, "Do not ellipsize fields on output")
+	cmdListMachines.Flags.BoolVar(&sharedFlags.Full, "l", false, "Shorthand for --full")
 	cmdListMachines.Flags.BoolVar(&sharedFlags.NoLegend, "no-legend", false, "Do not print a legend (column headers)")
 }
 
