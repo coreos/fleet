@@ -116,35 +116,28 @@ func (a *Agent) Stop() {
 	close(a.stop)
 }
 
-// Clear any presence data from the Registry
+// Purge removes the Agent's state from the Registry
 func (a *Agent) Purge() {
-	log.V(1).Info("Removing Agent from Registry")
+	// Continue heartbeating the agent's machine state while attempting to
+	// stop all the locally-running jobs
+	purged := make(chan bool)
+	go a.Heartbeat(a.ttl, purged)
+
 	bootID := a.machine.State().BootID
-	err := a.registry.RemoveMachineState(bootID)
-	if err != nil {
-		log.Errorf("Failed to remove Machine %s from Registry: %s", bootID, err.Error())
-	}
 
-	a.state.Lock()
-	launched := a.state.LaunchedJobs()
-	a.state.Unlock()
-
-	// Explicitly clear heartbeats of jobs that were launched
-	// locally so it doesn't confuse later state calculations
-	for _, j := range launched {
-		a.registry.ClearJobHeartbeat(j)
-	}
-
+	//TODO(bcwaldon): The agent should not have to ask the Registry
+	// which jobs it is running in its local systemd
 	for _, j := range a.registry.GetAllJobsByMachine(bootID) {
-		log.Infof("Purging Job(%s)", j.Name)
-		a.ForgetJob(j.Name)
-		a.ReportPayloadState(j.Name, nil)
+		log.Infof("Unloading Job(%s)", j.Name)
+		a.UnloadJob(j.Name)
+	}
 
-		// TODO(uwedeportivo): agent placing offer ?
-		offer := job.NewOfferFromJob(j, nil)
-		log.V(2).Infof("Publishing JobOffer(%s)", offer.Job.Name)
-		a.registry.CreateJobOffer(offer)
-		log.Infof("Published JobOffer(%s)", offer.Job.Name)
+	// Jobs have been stopped, the heartbeat can stop
+	close(purged)
+
+	log.V(1).Info("Removing Agent from Registry")
+	if err := a.registry.RemoveMachineState(bootID); err != nil {
+		log.Errorf("Failed to remove Machine %s from Registry: %s", bootID, err.Error())
 	}
 }
 
