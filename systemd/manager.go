@@ -7,7 +7,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
-	"strings"
 	"syscall"
 
 	"github.com/coreos/fleet/third_party/github.com/coreos/go-systemd/dbus"
@@ -23,22 +22,21 @@ const (
 )
 
 type SystemdManager struct {
-	Systemd    *dbus.Conn
-	Machine    *machine.Machine
-	UnitPrefix string
-	unitPath   string
+	Systemd  *dbus.Conn
+	Machine  *machine.Machine
+	unitPath string
 
 	subscriptions *dbus.SubscriptionSet
 	stop          chan bool
 }
 
-func NewSystemdManager(machine *machine.Machine, unitPrefix string) *SystemdManager {
+func NewSystemdManager(machine *machine.Machine) *SystemdManager {
 	systemd, err := dbus.New()
 	if err != nil {
 		panic(err)
 	}
 
-	return &SystemdManager{systemd, machine, unitPrefix, defaultSystemdRuntimePath, systemd.NewSubscriptionSet(), nil}
+	return &SystemdManager{systemd, machine, defaultSystemdRuntimePath, systemd.NewSubscriptionSet(), nil}
 }
 
 func (m *SystemdManager) MarshalJSON() ([]byte, error) {
@@ -83,11 +81,10 @@ func (m *SystemdManager) Publish(bus *event.EventBus, stopchan chan bool) {
 // relevant dbus events, and only if necessary, instructs the systemd
 // daemon to reload
 func (m *SystemdManager) LoadJob(job *job.Job) {
-	name := m.addUnitNamePrefix(job.Name)
-	m.writeUnit(name, job.Payload.Unit.String())
-	m.subscriptions.Add(name)
+	m.writeUnit(job.Name, job.Payload.Unit.String())
+	m.subscriptions.Add(job.Name)
 
-	if m.unitRequiresDaemonReload(name) {
+	if m.unitRequiresDaemonReload(job.Name) {
 		m.daemonReload()
 	}
 }
@@ -95,28 +92,24 @@ func (m *SystemdManager) LoadJob(job *job.Job) {
 // UnloadJob removes the unit associated with the indicated Job from
 // the filesystem, unsubscribing from relevant dbus events
 func (m *SystemdManager) UnloadJob(jobName string) {
-	unitName := m.addUnitNamePrefix(jobName)
 	m.subscriptions.Remove(jobName)
-	m.removeUnit(unitName)
+	m.removeUnit(jobName)
 }
 
 // StartJob starts the unit created for the indicated Job
 func (m *SystemdManager) StartJob(jobName string) {
-	name := m.addUnitNamePrefix(jobName)
-	m.startUnit(name)
+	m.startUnit(jobName)
 }
 
 // StopJob stops the unit created for the indicated Job
 func (m *SystemdManager) StopJob(jobName string) {
-	unitName := m.addUnitNamePrefix(jobName)
-	m.stopUnit(unitName)
+	m.stopUnit(jobName)
 }
 
 // GetPayloadState generates a PayloadState object representing the
 // current state of a Job's unit
 func (m *SystemdManager) GetPayloadState(jobName string) (*job.PayloadState, error) {
-	unitName := m.addUnitNamePrefix(jobName)
-	loadState, activeState, subState, err := m.getUnitStates(unitName)
+	loadState, activeState, subState, err := m.getUnitStates(jobName)
 	if err != nil {
 		return nil, err
 	}
@@ -216,20 +209,4 @@ func (m *SystemdManager) writeUnit(name string, contents string) error {
 
 func (m *SystemdManager) getLocalPath(name string) string {
 	return path.Join(m.unitPath, name)
-}
-
-func (m *SystemdManager) addUnitNamePrefix(name string) string {
-	if len(m.UnitPrefix) > 0 {
-		return fmt.Sprintf("%s.%s", m.UnitPrefix, name)
-	} else {
-		return name
-	}
-}
-
-func (m *SystemdManager) stripUnitNamePrefix(name string) string {
-	if len(m.UnitPrefix) > 0 {
-		return strings.TrimPrefix(name, fmt.Sprintf("%s.", m.UnitPrefix))
-	} else {
-		return name
-	}
 }

@@ -48,7 +48,7 @@ func New(cfg config.Config) (*Server, error) {
 		}
 	}
 
-	a, err := agent.New(r, eb, m, cfg.AgentTTL, cfg.UnitPrefix, verifier)
+	a, err := agent.New(r, eb, m, cfg.AgentTTL, verifier)
 	if err != nil {
 		log.Errorf("Error creating Agent")
 		return nil, err

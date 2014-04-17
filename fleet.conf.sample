@@ -30,7 +30,3 @@
 # Unique identifier of fleet instance. The value defaults
 # to contents of /proc/sys/kernel/random/boot_id
 # bootid=""
-
-# Prefix to use when creating local systemd units. This prefix will never
-# be exposed outside of this machine.
-# unit_prefix=""

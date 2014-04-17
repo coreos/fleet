@@ -69,9 +69,3 @@ Default: "~/.ssh/authorized_keys""
 Unique identifier of fleet instance.
 
 Default: contents of file /proc/sys/kernel/random/boot_id
-
-##### unit_prefix
-
-Prefix to use when naming local systemd units. This prefix will never be exposed outside of this machine.
-
-Default: ""
