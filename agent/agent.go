@@ -27,11 +27,10 @@ const (
 // The Agent owns all of the coordination between the Registry, the local
 // Machine, and the local SystemdManager.
 type Agent struct {
-	registry      *registry.Registry
-	events        *event.EventBus
-	machine       *machine.Machine
-	ttl           time.Duration
-	systemdPrefix string
+	registry *registry.Registry
+	events   *event.EventBus
+	machine  *machine.Machine
+	ttl      time.Duration
 	// verifier is used to verify job payload. A nil one implies that
 	// all payloads are accepted.
 	verifier *sign.SignatureVerifier
@@ -43,16 +42,16 @@ type Agent struct {
 	stop chan bool
 }
 
-func New(registry *registry.Registry, events *event.EventBus, machine *machine.Machine, ttl, unitPrefix string, verifier *sign.SignatureVerifier) (*Agent, error) {
+func New(registry *registry.Registry, events *event.EventBus, machine *machine.Machine, ttl string, verifier *sign.SignatureVerifier) (*Agent, error) {
 	ttldur, err := time.ParseDuration(ttl)
 	if err != nil {
 		return nil, err
 	}
 
 	state := NewState()
-	mgr := systemd.NewSystemdManager(machine, unitPrefix)
+	mgr := systemd.NewSystemdManager(machine)
 
-	return &Agent{registry, events, machine, ttldur, unitPrefix, verifier, state, mgr, nil}, nil
+	return &Agent{registry, events, machine, ttldur, verifier, state, mgr, nil}, nil
 }
 
 // Access Agent's machine field

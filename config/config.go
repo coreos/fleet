@@ -18,7 +18,6 @@ type Config struct {
 	PublicIP           string
 	Verbosity          int
 	RawMetadata        string
-	UnitPrefix         string
 	AgentTTL           string
 	VerifyUnits        bool
 	AuthorizedKeysFile string
