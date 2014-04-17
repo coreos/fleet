@@ -31,12 +31,12 @@ func (self *EventHandler) HandleCommandLoadJob(ev event.Event) {
 
 func (self *EventHandler) HandleCommandUnloadJob(ev event.Event) {
 	jobName := ev.Payload.(string)
+	target := ev.Context.(string)
 
-	log.V(1).Infof("CommandUnloadJob(%s): clearing scheduling decision", jobName)
-	self.engine.UnscheduleJob(jobName)
-
-	log.V(1).Infof("CommandUnloadJob(%s): clearing payload state", jobName)
-	self.engine.RemovePayloadState(jobName)
+	if target != "" {
+		log.V(1).Infof("CommandUnloadJob(%s): clearing scheduling decision", jobName)
+		self.engine.registry.ClearJobTarget(jobName, target)
+	}
 }
 
 func (self *EventHandler) HandleEventJobScheduled(ev event.Event) {
@@ -44,6 +44,27 @@ func (self *EventHandler) HandleEventJobScheduled(ev event.Event) {
 	target := ev.Context.(string)
 	log.V(1).Infof("EventJobScheduled(%s): updating cluster", jobName)
 	self.engine.clust.jobScheduled(jobName, target)
+}
+
+// EventJobUnscheduled is triggered when a scheduling decision has been
+// rejected, or is now unfulfillable due to changes in the cluster.
+// Attempt to reschedule the job if it is in a non-inactive state.
+func (self *EventHandler) HandleEventJobUnscheduled(ev event.Event) {
+	jobName := ev.Payload.(string)
+
+	ts := self.engine.registry.GetJobTargetState(jobName)
+	if ts == nil || *ts == job.JobStateInactive {
+		return
+	}
+
+	j := self.engine.registry.GetJob(jobName)
+	if j == nil {
+		log.Errorf("EventJobUnscheduled(%s): unable to re-offer Job(%s), as it could not be found in the Registry", jobName)
+		return
+	}
+
+	log.V(1).Infof("EventJobUnscheduled(%s): publishing JobOffer", jobName)
+	self.engine.OfferJob(*j)
 }
 
 func (self *EventHandler) HandleCommandStopJob(ev event.Event) {
@@ -83,8 +104,8 @@ func (self *EventHandler) HandleEventMachineRemoved(ev event.Event) {
 
 	for _, j := range jobs {
 		log.V(1).Infof("EventMachineRemoved(%s): unscheduling Job(%s)", machBootID, j.Name)
+		self.engine.registry.ClearJobTarget(j.Name, machBootID)
 		self.engine.RemovePayloadState(j.Name)
-		self.engine.UnscheduleJob(j.Name)
 	}
 
 	for _, j := range jobs {

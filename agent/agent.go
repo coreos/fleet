@@ -266,30 +266,25 @@ func (a *Agent) StopJob(jobName string) {
 }
 
 func (a *Agent) UnloadJob(jobName string) {
+	a.StopJob(jobName)
+
 	a.state.Lock()
 	reversePeers := a.state.GetJobsByPeer(jobName)
 	a.state.Unlock()
 
 	a.ForgetJob(jobName)
-
 	a.systemd.UnloadJob(jobName)
+	a.ReportPayloadState(jobName, nil)
 
+	// Trigger rescheduling of all the peers of the job that was just unloaded
+	bootID := a.machine.State().BootID
 	for _, peer := range reversePeers {
-		log.Infof("Stopping Peer(%s) of Job(%s)", peer, jobName)
-		a.StopJob(peer)
+		log.Infof("Unloading Peer(%s) of Job(%s)", peer, jobName)
+		err := a.registry.ClearJobTarget(peer, bootID)
+		if err != nil {
+			log.Errorf("Failed unloading Peer(%s) of Job(%s): %v", peer, jobName, err)
+		}
 	}
-}
-
-// Inform the Registry that a Job must be rescheduled
-func (a *Agent) RescheduleJob(j *job.Job) {
-	log.V(2).Infof("Stopping Job(%s)", j.Name)
-	a.registry.UnscheduleJob(j.Name)
-
-	// TODO(uwedeportivo): agent placing offer ?
-	offer := job.NewOfferFromJob(*j, nil)
-	log.V(2).Infof("Publishing JobOffer(%s)", offer.Job.Name)
-	a.registry.CreateJobOffer(offer)
-	log.Infof("Published JobOffer(%s)", offer.Job.Name)
 }
 
 // Persist the state of the given Job into the Registry

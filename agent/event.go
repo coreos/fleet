@@ -39,11 +39,12 @@ func (eh *EventHandler) HandleEventJobOffered(ev event.Event) {
 
 func (eh *EventHandler) HandleEventJobScheduled(ev event.Event) {
 	jobName := ev.Payload.(string)
+	target := ev.Context.(string)
 	log.V(1).Infof("EventJobScheduled(%s): Dropping outstanding offers and bids", jobName)
 
 	eh.agent.OfferResolved(jobName)
 
-	if ev.Context.(string) != eh.agent.Machine().State().BootID {
+	if target != eh.agent.Machine().State().BootID {
 		log.V(1).Infof("EventJobScheduled(%s): Job not scheduled to this Agent, purging related data from cache", jobName)
 		eh.agent.ForgetJob(jobName)
 
@@ -66,8 +67,8 @@ func (eh *EventHandler) HandleEventJobScheduled(ev event.Event) {
 	}
 
 	if !eh.agent.AbleToRun(j) {
-		log.V(1).Infof("EventJobScheduled(%s): Unable to run scheduled Job, rescheduling.", jobName)
-		eh.agent.RescheduleJob(j)
+		log.V(1).Infof("EventJobScheduled(%s): Unable to run scheduled Job, unscheduling.", jobName)
+		eh.agent.registry.ClearJobTarget(jobName, target)
 		return
 	}
 
@@ -98,21 +99,21 @@ func (eh *EventHandler) HandleCommandStopJob(ev event.Event) {
 	eh.agent.StopJob(jobName)
 }
 
-func (eh *EventHandler) HandleCommandUnloadJob(ev event.Event) {
+func (eh *EventHandler) HandleEventJobUnscheduled(ev event.Event) {
 	jobName := ev.Payload.(string)
+	target := ev.Context.(string)
 
-	log.Infof("CommandUnloadJob(%s): stopping corresponding unit", jobName)
-	eh.agent.StopJob(jobName)
+	if target != eh.agent.Machine().State().BootID {
+		log.V(1).Infof("EventJobUnscheduled(%s): not scheduled here, ignoring ", jobName)
+		return
+	}
 
-	log.Infof("CommandUnloadJob(%s): unloading corresponding unit", jobName)
+	log.Infof("EventJobUnscheduled(%s): unloading job", jobName)
 	eh.agent.UnloadJob(jobName)
 }
 
 func (eh *EventHandler) HandleEventJobDestroyed(ev event.Event) {
 	jobName := ev.Payload.(string)
-
-	log.Infof("EventJobDestroyed(%s): stopping corresponding unit", jobName)
-	eh.agent.StopJob(jobName)
 
 	log.Infof("EventJobDestroyed(%s): unloading corresponding unit", jobName)
 	eh.agent.UnloadJob(jobName)
