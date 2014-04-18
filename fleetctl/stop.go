@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 
+	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
+
 	"github.com/coreos/fleet/job"
 )
 
@@ -26,6 +28,11 @@ Stop an entire directory of units with glob matching:
 	Run: runStopUnit,
 }
 
+func init() {
+	cmdStopUnit.Flags.IntVar(&sharedFlags.BlockAttempts, "block-attempts", 10, "Wait until the jobs are stopped, performing up to N attempts before giving up.")
+	cmdStopUnit.Flags.BoolVar(&sharedFlags.NoBlock, "no-block", false, "Do not wait until the jobs have stopped before exiting.")
+}
+
 func runStopUnit(args []string) (exit int) {
 	jobs, err := findJobs(args)
 	if err != nil {
@@ -33,13 +40,31 @@ func runStopUnit(args []string) (exit int) {
 		return 1
 	}
 
+	stopping := make([]string, 0)
 	for _, j := range jobs {
-		if j.State == nil || *(j.State) != job.JobStateLaunched {
-			fmt.Fprintf(os.Stderr, "Unable to stop job in state %q\n", *(j.State))
+		if j.State == nil {
+			fmt.Fprintf(os.Stderr, "Unable to determine state of %q\n", *(j.State))
 			return 1
 		}
 
-		registryCtl.SetJobTargetState(j.Name, "loaded")
+		if *(j.State) == job.JobStateInactive {
+			fmt.Fprintf(os.Stderr, "Unable to stop Job(%s) in state %s\n", j.Name, job.JobStateInactive)
+			return 1
+		} else if *(j.State) == job.JobStateLoaded {
+			log.V(1).Infof("Job(%s) already %s, skipping.", j.Name, job.JobStateLoaded)
+			continue
+		}
+
+		registryCtl.SetJobTargetState(j.Name, job.JobStateLoaded)
+		stopping = append(stopping, j.Name)
 	}
+
+	if !sharedFlags.NoBlock {
+		if err := waitForJobStates(stopping, job.JobStateLoaded, sharedFlags.BlockAttempts, os.Stdout); err != nil {
+			fmt.Fprintf(os.Stderr, "%v\n", err)
+			return 1
+		}
+	}
+
 	return
 }
