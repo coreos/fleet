@@ -75,6 +75,12 @@ func (r *Registry) GetJobTarget(jobName string) string {
 	return resp.Node.Value
 }
 
+func (r *Registry) ClearJobTarget(jobName, bootID string) error {
+	key := jobTargetAgentPath(jobName)
+	_, err := r.etcd.CompareAndDelete(key, bootID, 0)
+	return err
+}
+
 func (r *Registry) GetJob(jobName string) *job.Job {
 	key := path.Join(keyPrefix, jobPrefix, jobName, "object")
 	resp, err := r.etcd.Get(key, false, true)
@@ -138,8 +144,21 @@ func (r *Registry) CreateJob(j *job.Job) (err error) {
 	return
 }
 
+func (r *Registry) GetJobTargetState(jobName string) *job.JobState {
+	key := jobTargetStatePath(jobName)
+	resp, err := r.etcd.Get(key, false, false)
+	if err != nil {
+		if err.(*etcd.EtcdError).ErrorCode != etcdErr.EcodeNodeExist {
+			log.Errorf("Unable to determine target-state of Job(%s): %v", jobName, err)
+		}
+		return nil
+	}
+
+	return job.ParseJobState(resp.Node.Value)
+}
+
 func (r *Registry) SetJobTargetState(jobName string, state job.JobState) error {
-	key := path.Join(keyPrefix, jobPrefix, jobName, "target-state")
+	key := jobTargetStatePath(jobName)
 	_, err := r.etcd.Set(key, string(state), 0)
 	return err
 }
@@ -198,11 +217,6 @@ func (r *Registry) ScheduleJob(jobName string, machBootID string) error {
 	return err
 }
 
-func (r *Registry) UnscheduleJob(jobName string) {
-	key := jobTargetAgentPath(jobName)
-	r.etcd.Delete(key, true)
-}
-
 func (r *Registry) LockJob(jobName, context string) *TimedResourceMutex {
 	return r.lockResource("job", jobName, context)
 }
@@ -220,6 +234,24 @@ func filterEventJobScheduled(resp *etcd.Response) *event.Event {
 	jobName := path.Base(strings.TrimSuffix(dir, "/"))
 
 	return &event.Event{"EventJobScheduled", jobName, resp.Node.Value}
+}
+
+func filterEventJobUnscheduled(resp *etcd.Response) *event.Event {
+	if resp.Action != "delete" && resp.Action != "compareAndDelete" {
+		return nil
+	}
+
+	dir, baseName := path.Split(resp.Node.Key)
+	if baseName != "target" {
+		return nil
+	}
+
+	if resp.PrevNode == nil {
+		return nil
+	}
+
+	jobName := path.Base(strings.TrimSuffix(dir, "/"))
+	return &event.Event{"EventJobUnscheduled", jobName, resp.PrevNode.Value}
 }
 
 func filterEventJobDestroyed(resp *etcd.Response) *event.Event {
@@ -240,4 +272,8 @@ func filterEventJobDestroyed(resp *etcd.Response) *event.Event {
 
 func jobTargetAgentPath(jobName string) string {
 	return path.Join(keyPrefix, jobPrefix, jobName, "target")
+}
+
+func jobTargetStatePath(jobName string) string {
+	return path.Join(keyPrefix, jobPrefix, jobName, "target-state")
 }

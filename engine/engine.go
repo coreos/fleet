@@ -56,11 +56,6 @@ func (self *Engine) GetJobsScheduledToMachine(machBootID string) []job.Job {
 	return jobs
 }
 
-func (self *Engine) UnscheduleJob(jobName string) {
-	self.registry.UnscheduleJob(jobName)
-	log.Infof("Unscheduled Job(%s)", jobName)
-}
-
 func (self *Engine) OfferJob(j job.Job) error {
 	log.V(2).Infof("Attempting to lock Job(%s)", j.Name)
 
