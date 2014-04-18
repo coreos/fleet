@@ -23,7 +23,7 @@ const (
 )
 
 func SupportedUnitTypes() []string {
-	return []string{"service", "socket"}
+	return []string{"service", "socket", "timer"}
 }
 
 type JobPayload struct {
@@ -48,8 +48,8 @@ func (jp *JobPayload) Type() (string, error) {
 // Peers returns a list of Payload names that must be scheduled to the same
 // machine as this Payload. If no peers were explicitly defined for certain unit
 // types, a default list of peers will be returned. This behavior only applies
-// to the socket unit type. For example, the default peer of foo.socket would
-// be foo.service.
+// to the socket and timer unit types. For example, the default peer of foo.socket
+// or foo.timer would be foo.service.
 func (jp *JobPayload) Peers() []string {
 	if peers, ok := jp.Requirements()[FleetXConditionMachineOf]; ok {
 		return peers
@@ -62,7 +62,7 @@ func (jp *JobPayload) Peers() []string {
 		return peers
 	}
 
-	if jpType != "socket" {
+	if jpType != "socket" && jpType != "timer" {
 		return peers
 	}
 
