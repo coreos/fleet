@@ -56,7 +56,7 @@ Before you can deploy units, fleet must be [deployed][deploy] and [configured][c
 
 ### Building
 
-fleet must be built with Go 1.2 on a Linux machine, or in a [Go docker container](https://index.docker.io/u/miksago/ubuntu-go/). Simply run `./build` and then copy the binaries out of bin/ onto each of your machines.
+fleet must be built with Go 1.2 on a Linux machine, or in a [Go docker container](https://index.docker.io/u/miksago/ubuntu-go/). Simply run `scripts/build` and then copy the binaries out of bin/ onto each of your machines.
 
 ## Project Details
 

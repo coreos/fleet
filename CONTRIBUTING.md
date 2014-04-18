@@ -37,6 +37,11 @@ This is a rough outline of what a contributor's workflow looks like:
 
 Thanks for your contributions!
 
+### Testing
+
+Use `scripts/test` to run the the complete test suite.
+Set the env variable `PKG`, if you want to test only a specific package, for instance: `PKG=agent scripts/test`
+
 ### Format of the Commit Message
 
 We follow a rough convention for commit messages borrowed from AngularJS. This

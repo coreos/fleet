@@ -1,11 +1,14 @@
 #!/bin/bash -e
 
-source ./build
+source scripts/build
 
 if [ -z "$PKG" ]; then
 	PKG="./agent ./config ./event ./fleetctl ./job ./machine ./pkg ./registry ./sign ./ssh ./unit ./integration-tests"
 	GOFMTPATH="$PKG ./engine ./functional ./server ./systemd fleet.go"
 else
+	if [[ $PKG != ./* ]]; then
+		PKG="./$PKG"
+	fi
 	GOFMTPATH="$PKG"
 fi
 
