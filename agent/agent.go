@@ -234,16 +234,6 @@ func (a *Agent) LoadJob(j *job.Job) {
 	}
 
 	a.systemd.LoadJob(j)
-
-	//TODO(bcwaldon): Investigate whether or not this manual
-	// fetching of the payload state is necessary.
-	ps, err := a.systemd.GetPayloadState(j.Name)
-	if err != nil {
-		log.Errorf("Failed fetching state of Job(%s)", j.Name)
-		return
-	}
-
-	a.ReportPayloadState(j.Name, ps)
 }
 
 func (a *Agent) StartJob(jobName string) {

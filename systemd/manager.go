@@ -81,8 +81,8 @@ func (m *SystemdManager) Publish(bus *event.EventBus, stopchan chan bool) {
 // relevant dbus events, and only if necessary, instructs the systemd
 // daemon to reload
 func (m *SystemdManager) LoadJob(job *job.Job) {
-	m.writeUnit(job.Name, job.Payload.Unit.String())
 	m.subscriptions.Add(job.Name)
+	m.writeUnit(job.Name, job.Payload.Unit.String())
 
 	if m.unitRequiresDaemonReload(job.Name) {
 		m.daemonReload()
