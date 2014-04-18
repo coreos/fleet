@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"path"
 )
 
 var cmdSubmitUnit = &Command{
@@ -24,13 +25,31 @@ Submit a directory of units with glob matching:
 }
 
 func init() {
-	cmdSubmitUnit.Flags.BoolVar(&sharedFlags.Sign, "sign", false, "Sign unit file signatures and verify submitted units using local SSH identities")
+	cmdSubmitUnit.Flags.BoolVar(&sharedFlags.Sign, "sign", false, "Sign unit files units using local SSH identities")
 }
 
 func runSubmitUnits(args []string) (exit int) {
-	if err := lazyCreateJobs(args, sharedFlags.Sign); err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
-		return 1
+	for _, arg := range args {
+		jobName := path.Base(arg)
+		payload, err := getJobPayloadFromFile(arg)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed getting Payload(%s) from file: %v\n", jobName, err)
+			return 1
+		}
+
+		j, err := createJob(jobName, payload)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "%v\n", err)
+			return 1
+		}
+
+		if sharedFlags.Sign {
+			err := signJob(j)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "%v\n", err)
+				return 1
+			}
+		}
 	}
 
 	return

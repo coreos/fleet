@@ -39,8 +39,7 @@ func init() {
 }
 
 func runStartUnit(args []string) (exit int) {
-	err := lazyCreateJobs(args, sharedFlags.Sign)
-	if err != nil {
+	if err := lazyCreateJobs(args, sharedFlags.Sign); err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		return 1
 	}
