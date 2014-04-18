@@ -77,6 +77,14 @@ func (eh *EventHandler) HandleEventJobScheduled(ev event.Event) {
 
 	log.V(1).Infof("EventJobScheduled(%s): Bidding for all possible peers of Job", j.Name)
 	eh.agent.BidForPossiblePeers(j.Name)
+
+	ts := eh.agent.registry.GetJobTargetState(j.Name)
+	if ts == nil || *ts != job.JobStateLaunched {
+		return
+	}
+
+	log.V(1).Infof("EventJobScheduled(%s): Starting Job", j.Name)
+	eh.agent.StartJob(j.Name)
 }
 
 func (eh *EventHandler) HandleCommandStartJob(ev event.Event) {
