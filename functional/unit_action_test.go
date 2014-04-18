@@ -7,6 +7,65 @@ import (
 	"github.com/coreos/fleet/functional/platform"
 )
 
+func TestUnitSubmit(t *testing.T) {
+	cluster, err := platform.NewNspawnCluster("smoke")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cluster.Destroy()
+
+	if err := platform.CreateNClusterMembers(cluster, 1, platform.MachineConfig{}); err != nil {
+		t.Fatal(err)
+	}
+	_, err = waitForNMachines(1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// submit a unit and assert it shows up
+	if _, _, err := fleetctl("submit", "fixtures/units/hello.service"); err != nil {
+		t.Fatalf("Unable to submit fleet unit: %v", err)
+	}
+	stdout, _, err := fleetctl("list-units", "--no-legend")
+	if err != nil {
+		t.Fatalf("Failed to run list-units: %v", err)
+	}
+	units := strings.Split(strings.TrimSpace(stdout), "\n")
+	if len(units) != 1 {
+		t.Fatalf("Did not find 1 unit in cluster: \n%s", stdout)
+	}
+
+	// submitting the same unit should fail
+	if _, _, err = fleetctl("submit", "fixtures/units/hello.service"); err == nil {
+		t.Fatalf("Expected failure when double-submitting unit, got success.")
+	}
+
+	// destroy the unit and ensure it disappears from the unit list
+	if _, _, err := fleetctl("destroy", "fixtures/units/hello.service"); err != nil {
+		t.Fatalf("Failed to destroy unit: %v", err)
+	}
+	stdout, _, err = fleetctl("list-units", "--no-legend")
+	if err != nil {
+		t.Fatalf("Failed to run list-units: %v", err)
+	}
+	if strings.TrimSpace(stdout) != "" {
+		t.Fatalf("Did not find 0 units in cluster: \n%s", stdout)
+	}
+
+	// submitting the unit after destruction should succeed
+	if _, _, err := fleetctl("submit", "fixtures/units/hello.service"); err != nil {
+		t.Fatalf("Unable to submit fleet unit: %v", err)
+	}
+	stdout, _, err = fleetctl("list-units", "--no-legend")
+	if err != nil {
+		t.Fatalf("Failed to run list-units: %v", err)
+	}
+	units = strings.Split(strings.TrimSpace(stdout), "\n")
+	if len(units) != 1 {
+		t.Fatalf("Did not find 1 unit in cluster: \n%s", stdout)
+	}
+}
+
 func TestUnitRestart(t *testing.T) {
 	cluster, err := platform.NewNspawnCluster("smoke")
 	if err != nil {

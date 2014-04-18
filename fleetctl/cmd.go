@@ -251,10 +251,11 @@ func getJobPayloadFromFile(file string) (*job.JobPayload, error) {
 		return nil, err
 	}
 
-	unitFile := unit.NewSystemdUnitFile(string(out))
+	payloadName := path.Base(file)
+	log.V(1).Infof("Payload(%s) found in local filesystem", payloadName)
 
-	name := path.Base(file)
-	payload := job.NewJobPayload(name, *unitFile)
+	unitFile := unit.NewSystemdUnitFile(string(out))
+	payload := job.NewJobPayload(payloadName, *unitFile)
 
 	return payload, nil
 }
@@ -312,66 +313,82 @@ func findJobs(args []string) (jobs []job.Job, err error) {
 	return jobs, nil
 }
 
-func lazyCreateJobs(args []string, signPayloads bool) error {
-	var err error
+func createJob(jobName string, jobPayload *job.JobPayload) (*job.Job, error) {
+	j := job.NewJob(jobName, *jobPayload)
 
-	var sc *sign.SignatureCreator
-	var sv *sign.SignatureVerifier
-	if signPayloads {
-		sc, err = sign.NewSignatureCreatorFromSSHAgent()
-		if err != nil {
-			return fmt.Errorf("Failed creating SignatureCreator: %v", err)
-		}
-		sv, err = sign.NewSignatureVerifierFromSSHAgent()
-		if err != nil {
-			return fmt.Errorf("Failed creating SignatureVerifier: %v", err)
-		}
+	if err := registryCtl.CreateJob(j); err != nil {
+		return nil, fmt.Errorf("Failed creating job %s: %v", j.Name, err)
 	}
 
-	for _, v := range args {
-		name := path.Base(v)
-		j := registryCtl.GetJob(name)
-		if j == nil {
-			log.V(1).Infof("Job(%s) not found in Registry", name)
-			payload, err := getJobPayloadFromFile(v)
-			if err != nil {
-				return fmt.Errorf("Failed getting Payload(%s) from file: %v", name, err)
-			}
+	log.V(1).Infof("Created Job(%s) in Registry", j.Name)
 
-			log.V(1).Infof("Payload(%s) found in local filesystem", name)
-			j = job.NewJob(name, *payload)
+	return j, nil
+}
 
-			err = registryCtl.CreateJob(j)
-			if err != nil {
-				return fmt.Errorf("Failed creating job %s: %v", j.Name, err)
-			}
+func signJob(j *job.Job) error {
+	sc, err := sign.NewSignatureCreatorFromSSHAgent()
+	if err != nil {
+		return fmt.Errorf("Failed creating SignatureCreator: %v", err)
+	}
 
-			log.V(1).Infof("Created Job(%s) in Registry", j.Name)
+	s, err := sc.SignPayload(&j.Payload)
+	if err != nil {
+		return fmt.Errorf("Failed signing Payload(%s): %v", j.Payload.Name, err)
+	}
 
-			if signPayloads {
-				s, err := sc.SignPayload(payload)
-				if err != nil {
-					return fmt.Errorf("Failed creating signature for Payload(%s): %v", payload.Name, err)
+	registryCtl.CreateSignatureSet(s)
+	log.V(1).Infof("Signed Payload(%s)", j.Payload.Name)
+
+	return nil
+}
+
+func verifyJob(j *job.Job) error {
+	sv, err := sign.NewSignatureVerifierFromSSHAgent()
+	if err != nil {
+		return fmt.Errorf("Failed creating SignatureVerifier: %v", err)
+	}
+
+	s := registryCtl.GetSignatureSetOfPayload(j.Payload.Name)
+	verified, err := sv.VerifyPayload(&j.Payload, s)
+	if err != nil {
+		return fmt.Errorf("Failed attempting to verify Payload(%s): %v", j.Payload.Name, err)
+	} else if !verified {
+		return fmt.Errorf("Unable to verify Payload(%s)", j.Payload.Name)
+	}
+
+	log.V(1).Infof("Verified signature of Payload(%s)", j.Payload.Name)
+	return nil
+}
+
+func lazyCreateJobs(args []string, signAndVerify bool) error {
+	for _, arg := range args {
+		jobName := path.Base(arg)
+		if j := registryCtl.GetJob(jobName); j != nil {
+			log.V(1).Infof("Found Job(%s) in Registry, no need to recreate it", jobName)
+			if signAndVerify {
+				if err := verifyJob(j); err != nil {
+					return err
 				}
-
-				registryCtl.CreateSignatureSet(s)
-				log.V(1).Infof("Created signature for Payload(%s)", name)
 			}
-		} else {
-			log.V(1).Infof("Found Job(%s) in Registry", name)
+			continue
 		}
 
-		if signPayloads {
-			s := registryCtl.GetSignatureSetOfPayload(name)
-			ok, err := sv.VerifyPayload(&(j.Payload), s)
-			if !ok || err != nil {
-				return fmt.Errorf("Failed checking signature for Payload(%s): %v", j.Payload.Name, err)
-			}
+		payload, err := getJobPayloadFromFile(arg)
+		if err != nil {
+			return fmt.Errorf("Failed getting Payload(%s) from file: %v", jobName, err)
+		}
 
-			log.V(1).Infof("Verified signature of Payload(%s)", j.Payload.Name)
+		j, err := createJob(jobName, payload)
+		if err != nil {
+			return err
+		}
+
+		if signAndVerify {
+			if err := signJob(j); err != nil {
+				return err
+			}
 		}
 	}
-
 	return nil
 }
 
