@@ -24,7 +24,7 @@ var (
 	cmdSSH                 = &Command{
 		Name:    "ssh",
 		Summary: "Open interactive shell on a machine in the cluster",
-		Usage:   "[--forward-agent] [--machine|--unit] {MACHINE|UNIT}",
+		Usage:   "[-A|--forward-agent] [--machine|--unit] {MACHINE|UNIT}",
 		Description: `Open an interactive shell on a specific machine in the cluster or on the machine 
 where the specified unit is located.
 
@@ -53,6 +53,7 @@ func init() {
 	cmdSSH.Flags.StringVar(&flagMachine, "machine", "", "Open SSH connection to a specific machine.")
 	cmdSSH.Flags.StringVar(&flagUnit, "unit", "", "Open SSH connection to machine running provided unit.")
 	cmdSSH.Flags.BoolVar(&flagSSHAgentForwarding, "forward-agent", false, "Forward local ssh-agent to target machine.")
+	cmdSSH.Flags.BoolVar(&flagSSHAgentForwarding, "A", false, "Shorthand for --forward-agent")
 }
 
 func runSSH(args []string) (exit int) {

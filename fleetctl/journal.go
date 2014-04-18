@@ -11,7 +11,7 @@ var (
 	cmdJournal = &Command{
 		Name:    "journal",
 		Summary: "Print the journal of a unit in the cluster to stdout",
-		Usage:   "[--lines=N] [--follow] job",
+		Usage:   "[--lines=N] [-f|--follow] job",
 		Run:     runJournal,
 		Description: `Outputs the journal of a unit by connecting to the machine that the unit occupies.
 
@@ -26,6 +26,7 @@ Read the last 100 lines:
 func init() {
 	cmdJournal.Flags.IntVar(&flagLines, "lines", 10, "Number of recent log lines to return")
 	cmdJournal.Flags.BoolVar(&flagFollow, "follow", false, "Continuously print new entries as they are appended to the journal.")
+	cmdJournal.Flags.BoolVar(&flagFollow, "f", false, "Shorthand for --follow")
 }
 
 func runJournal(args []string) (exit int) {

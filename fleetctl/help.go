@@ -25,11 +25,18 @@ var (
 			// trim leading/trailing whitespace and split into slice of lines
 			return strings.Split(strings.Trim(s, "\n\t "), "\n")
 		},
+		"printOption": func(name, defvalue, usage string) string {
+			prefix := "--"
+			if len(name) == 1 {
+				prefix = "-"
+			}
+			return fmt.Sprintf("\t%s%s=%s\t%s", prefix, name, defvalue, usage)
+		},
 	}
 )
 
 func init() {
-	globalUsageTemplate = template.Must(template.New("global_usage").Parse(`
+	globalUsageTemplate = template.Must(template.New("global_usage").Funcs(templFuncs).Parse(`
 NAME:
 {{printf "\t%s - %s" .Executable .Description}}
 
@@ -43,7 +50,7 @@ COMMANDS:{{range .Commands}}
 {{printf "\t%s\t%s" .Name .Summary}}{{end}}
 
 GLOBAL OPTIONS:{{range .Flags}}
-{{printf "\t--%s=%s\t%s" .Name .DefValue .Usage}}{{end}}
+{{printOption .Name .DefValue .Usage}}{{end}}
 
 Global options can also be configured via upper-case environment variables prefixed with "FLEETCTL_"
 For example, "some-flag" => "FLEETCTL_SOME_FLAG"
@@ -60,9 +67,9 @@ USAGE:
 DESCRIPTION:
 {{range $line := descToLines .Cmd.Description}}{{printf "\t%s" $line}}
 {{end}}
-{{if .CmdFlags}}OPTIONS:
-{{range .CmdFlags}}{{printf "\t--%s=%s\t%s" .Name .DefValue .Usage}}
-{{end}}
+{{if .CmdFlags}}OPTIONS:{{range .CmdFlags}}
+{{printOption .Name .DefValue .Usage}}{{end}}
+
 {{end}}For help on global options run "{{.Executable}} help"
 `[1:]))
 }

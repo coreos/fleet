@@ -10,7 +10,7 @@ import (
 var cmdListUnits = &Command{
 	Name:    "list-units",
 	Summary: "Enumerate units loaded in the cluster",
-	Usage:   "[--no-legend] [--full]",
+	Usage:   "[--no-legend] [-l|--full]",
 	Description: `Lists all units submitted or started on the cluster.
 
 For easily parsable output, you can remove the column headers:
@@ -23,6 +23,7 @@ Output the list without ellipses:
 
 func init() {
 	cmdListUnits.Flags.BoolVar(&sharedFlags.Full, "full", false, "Do not ellipsize fields on output")
+	cmdListUnits.Flags.BoolVar(&sharedFlags.Full, "l", false, "Shorthand for --full")
 	cmdListUnits.Flags.BoolVar(&sharedFlags.NoLegend, "no-legend", false, "Do not print a legend (column headers)")
 }
 
