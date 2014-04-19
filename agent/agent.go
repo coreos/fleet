@@ -235,14 +235,14 @@ func (a *Agent) LoadJob(j *job.Job) {
 
 	a.systemd.LoadJob(j)
 
-	//TODO(bcwaldon): Investigate whether or not this manual
-	// fetching of the payload state is necessary.
+	// We must explicitly refresh the payload state, as the dbus
+	// event listener does not send an event when we write a unit
+	// file to disk.
 	ps, err := a.systemd.GetPayloadState(j.Name)
 	if err != nil {
-		log.Errorf("Failed fetching state of Job(%s)", j.Name)
+		log.Errorf("Failed fetching state of Payload(%s)", j.Name)
 		return
 	}
-
 	a.ReportPayloadState(j.Name, ps)
 }
 
@@ -274,6 +274,10 @@ func (a *Agent) UnloadJob(jobName string) {
 
 	a.ForgetJob(jobName)
 	a.systemd.UnloadJob(jobName)
+
+	// The dbus event systemd will not trigger an event telling
+	// us that the unit has been unloaded, so we must explicitly
+	// clear what is in the Registry.
 	a.ReportPayloadState(jobName, nil)
 
 	// Trigger rescheduling of all the peers of the job that was just unloaded
