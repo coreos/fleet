@@ -47,3 +47,19 @@ func TestFullLegendWithoutPublicIP(t *testing.T) {
 		t.Errorf("Expected full bootID without public IP, but it was %s\n", l)
 	}
 }
+
+var unitNameMangleTests = map[string]string{
+	"foo":            "foo.service",
+	"foo.1":          "foo.1.service",
+	"foo/bar.socket": "bar.socket",
+	"foo.socket":     "foo.socket",
+	"foo.service":    "foo.service",
+}
+
+func TestUnitNameMangle(t *testing.T) {
+	for n, w := range unitNameMangleTests {
+		if g := unitNameMangle(n); g != w {
+			t.Errorf("got %q, want %q", g, w)
+		}
+	}
+}

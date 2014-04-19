@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"path"
 )
 
 var cmdDestroyUnit = &Command{
@@ -21,7 +20,7 @@ Destroyed units are impossible to start unless re-submitted.`,
 
 func runDestroyUnits(args []string) (exit int) {
 	for _, v := range args {
-		name := path.Base(v)
+		name := unitNameMangle(v)
 		registryCtl.DestroyJob(name)
 		fmt.Printf("Destroyed Job %s\n", name)
 	}

@@ -34,7 +34,7 @@ func runJournal(args []string) (exit int) {
 		fmt.Fprintln(os.Stderr, "One unit file must be provided.")
 		return 1
 	}
-	jobName := args[0]
+	jobName := unitNameMangle(args[0])
 
 	j := registryCtl.GetJob(jobName)
 	if j == nil {

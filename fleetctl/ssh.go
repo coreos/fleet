@@ -164,8 +164,8 @@ func findAddressInMachineList(lookup string) (string, bool) {
 	return fmt.Sprintf("%s:22", match.PublicIP), true
 }
 
-func findAddressInRunningUnits(lookup string) (string, bool) {
-	j := registryCtl.GetJob(lookup)
+func findAddressInRunningUnits(jobName string) (string, bool) {
+	j := registryCtl.GetJob(unitNameMangle(jobName))
 	if j == nil || j.PayloadState == nil {
 		return "", false
 	}

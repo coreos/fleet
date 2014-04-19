@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"path"
 )
 
 var cmdStatusUnits = &Command{
@@ -29,7 +28,7 @@ func runStatusUnits(args []string) (exit int) {
 			fmt.Printf("\n")
 		}
 
-		name := path.Base(v)
+		name := unitNameMangle(v)
 		exit = printUnitStatus(name)
 		if exit != 0 {
 			break
