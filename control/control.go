@@ -16,36 +16,36 @@ type candHost struct {
 
 // We store an in-memory picture of load on each host but
 // we don't store individual job stats because it's
-// trickier to maintain and etcd already does it.
+// trickier to maintain and clusterCentral already does it.
 // The tradeoff here is that when we are asked to schedule
 // jobs with dependsOn or conflictsWith clauses, we have to
-// talk to etcd one more time.
+// talk to clusterCentral one more time.
 // We believe jobs with those clauses are an exception, most
 // jobs we schedule won't have them.
 
 type cluster struct {
-	mu       sync.Mutex
-	loads    map[string]machine.MachineSpec
-	specs    map[string]machine.MachineSpec
-	etcd     Etcd
-	strategy bestFitScoreMethod
+	mu             sync.Mutex
+	loads          map[string]machine.MachineSpec
+	specs          map[string]machine.MachineSpec
+	clusterCentral ClusterCentral
+	strategy       bestFitScoreMethod
 }
 
 func (clus *cluster) populate() error {
 	clus.mu.Lock()
 	defer clus.mu.Unlock()
 
-	allJobs, err := clus.etcd.Jobs()
+	allJobs, err := clus.clusterCentral.Jobs()
 	if err != nil {
 		return err
 	}
 
-	allHosts, err := clus.etcd.Hosts()
+	allHosts, err := clus.clusterCentral.Hosts()
 	if err != nil {
 		return err
 	}
 
-	allSpecs, err := clus.etcd.Specs()
+	allSpecs, err := clus.clusterCentral.Specs()
 	if err != nil {
 		return err
 	}
@@ -67,9 +67,9 @@ func (clus *cluster) populate() error {
 
 // NewJobControl returns a newly created JobControl that will use
 // the specified Etcd.
-func NewJobControl(etcd Etcd) (JobControl, error) {
+func NewJobControl(clusterCentral ClusterCentral) (JobControl, error) {
 	clus := new(cluster)
-	clus.etcd = etcd
+	clus.clusterCentral = clusterCentral
 	clus.strategy = sumScoreMethod
 
 	err := clus.populate()

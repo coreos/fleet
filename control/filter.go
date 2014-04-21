@@ -117,7 +117,7 @@ func (clus *cluster) filterCandidates(lhs []candHost, spec *JobSpec) ([]candHost
 	var jobs2hosts map[string][]string
 	var hosts2jobs map[string][]string
 	if len(spec.DependsOn) > 0 || len(spec.ConflictsWith) > 0 {
-		jwhs, err := clus.etcd.Jobs()
+		jwhs, err := clus.clusterCentral.Jobs()
 		if err != nil {
 			return nil, err
 		}

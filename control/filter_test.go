@@ -202,20 +202,20 @@ func testFilterCandidates(clus *cluster, chs []candHost, spec *JobSpec, expected
 func TestFilterCandidates(t *testing.T) {
 	record := make(map[string]string)
 
-	etcd := &mockEtcd{
+	clusterCentral := &mockClusterCentral{
 		record: record,
 	}
 
-	etcd.declareHost("host1")
-	etcd.declareHost("host2")
-	etcd.declareHost("host3")
-	etcd.declareHost("host4")
+	clusterCentral.declareHost("host1")
+	clusterCentral.declareHost("host2")
+	clusterCentral.declareHost("host3")
+	clusterCentral.declareHost("host4")
 
-	etcd.declareJob(newFilterTestJob("mysql.main", "", nil, nil), "host1")
-	etcd.declareJob(newFilterTestJob("logging.service", "", nil, nil), "host1")
-	etcd.declareJob(newFilterTestJob("logging.service", "", nil, nil), "host2")
+	clusterCentral.declareJob(newFilterTestJob("mysql.main", "", nil, nil), "host1")
+	clusterCentral.declareJob(newFilterTestJob("logging.service", "", nil, nil), "host1")
+	clusterCentral.declareJob(newFilterTestJob("logging.service", "", nil, nil), "host2")
 
-	ctrl, err := NewJobControl(etcd)
+	ctrl, err := NewJobControl(clusterCentral)
 	if err != nil {
 		t.Fatalf("could create job control: %v", err)
 	}

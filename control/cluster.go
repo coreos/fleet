@@ -52,7 +52,7 @@ func (clus *cluster) HostUp(bootID string) {
 	var noLoad machine.MachineSpec
 	clus.loads[bootID] = noLoad
 
-	spec, err := clus.etcd.Spec(bootID)
+	spec, err := clus.clusterCentral.Spec(bootID)
 	if err != nil {
 		log.Errorf("cannot determine machine spec for %s", bootID)
 	} else {

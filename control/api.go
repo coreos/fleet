@@ -60,10 +60,11 @@ type JobWithHost struct {
 	JobName string
 }
 
-// Etcd interface specifies what job control will ask etcd.
-type Etcd interface {
+// ClusterCentral interface specifies what job control will ask the
+// lock service in the cluster.
+type ClusterCentral interface {
 	// Give me all the currently active hosts
-	// (hosts that have an agent running, maintaining heartbeat with etcd)
+	// (hosts that have an agent running, maintaining heartbeat with lock service)
 	Hosts() ([]string, error)
 	// Give me all the jobs running in the cluster right now
 	Jobs() ([]*JobWithHost, error)

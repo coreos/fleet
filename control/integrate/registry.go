@@ -6,17 +6,17 @@ import (
 	"github.com/coreos/fleet/registry"
 )
 
-// registry-based implementation of the etcd interface
+// registry-based implementation of the ClusterCentral interface
 
-type registryEtcd struct {
+type registryClusterCentral struct {
 	registry *registry.Registry
 }
 
-func NewRegistryEtcd(registry *registry.Registry) control.Etcd {
-	return &registryEtcd{registry}
+func NewRegistryClusterCentral(registry *registry.Registry) control.ClusterCentral {
+	return &registryClusterCentral{registry}
 }
 
-func (re *registryEtcd) Hosts() ([]string, error) {
+func (re *registryClusterCentral) Hosts() ([]string, error) {
 	var hs []string
 	ms := re.registry.GetActiveMachines()
 	for _, m := range ms {
@@ -25,7 +25,7 @@ func (re *registryEtcd) Hosts() ([]string, error) {
 	return hs, nil
 }
 
-func (re *registryEtcd) Jobs() ([]*control.JobWithHost, error) {
+func (re *registryClusterCentral) Jobs() ([]*control.JobWithHost, error) {
 	var jws []*control.JobWithHost
 	jobs := re.registry.GetAllJobs()
 	for _, j := range jobs {
@@ -42,10 +42,10 @@ func (re *registryEtcd) Jobs() ([]*control.JobWithHost, error) {
 	return jws, nil
 }
 
-func (re *registryEtcd) Spec(bootID string) (*machine.MachineSpec, error) {
+func (re *registryClusterCentral) Spec(bootID string) (*machine.MachineSpec, error) {
 	return re.registry.GetMachineSpec(bootID)
 }
 
-func (re *registryEtcd) Specs() (map[string]machine.MachineSpec, error) {
+func (re *registryClusterCentral) Specs() (map[string]machine.MachineSpec, error) {
 	return re.registry.GetMachineSpecs()
 }

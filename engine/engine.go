@@ -31,7 +31,8 @@ func New(reg *registry.Registry, events *event.EventBus, mach *machine.Machine) 
 }
 
 func (self *Engine) Initialize() error {
-	jobControl, err := control.NewJobControl(controlintegrate.NewRegistryEtcd(self.registry))
+	jobControl, err :=
+		control.NewJobControl(controlintegrate.NewRegistryClusterCentral(self.registry))
 	if err != nil {
 		return err
 	}

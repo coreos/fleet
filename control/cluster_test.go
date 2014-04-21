@@ -23,19 +23,19 @@ func checkLoad(host string, mload machine.MachineSpec, cores, memory, disk int, 
 func TestJobScheduled(t *testing.T) {
 	record := make(map[string]string)
 
-	etcd := &mockEtcd{
+	clusterCentral := &mockClusterCentral{
 		record: record,
 	}
 
-	etcd.declareHost("host1")
-	etcd.declareHost("host2")
-	etcd.declareHost("host3")
-	etcd.declareHost("host4")
+	clusterCentral.declareHost("host1")
+	clusterCentral.declareHost("host2")
+	clusterCentral.declareHost("host3")
+	clusterCentral.declareHost("host4")
 
-	etcd.declareJob(newTestJob(1, 100, 1024, 10), "host1")
-	etcd.declareJob(newTestJob(2, 130, 2024, 100), "host2")
+	clusterCentral.declareJob(newTestJob(1, 100, 1024, 10), "host1")
+	clusterCentral.declareJob(newTestJob(2, 130, 2024, 100), "host2")
 
-	ctrl, err := NewJobControl(etcd)
+	ctrl, err := NewJobControl(clusterCentral)
 	if err != nil {
 		t.Fatalf("could create job control: %v", err)
 	}
@@ -62,19 +62,19 @@ func TestJobScheduled(t *testing.T) {
 func TestJobDowned(t *testing.T) {
 	record := make(map[string]string)
 
-	etcd := &mockEtcd{
+	clusterCentral := &mockClusterCentral{
 		record: record,
 	}
 
-	etcd.declareHost("host1")
-	etcd.declareHost("host2")
-	etcd.declareHost("host3")
-	etcd.declareHost("host4")
+	clusterCentral.declareHost("host1")
+	clusterCentral.declareHost("host2")
+	clusterCentral.declareHost("host3")
+	clusterCentral.declareHost("host4")
 
-	etcd.declareJob(newTestJob(1, 100, 1024, 10), "host1")
-	etcd.declareJob(newTestJob(2, 130, 2024, 100), "host2")
+	clusterCentral.declareJob(newTestJob(1, 100, 1024, 10), "host1")
+	clusterCentral.declareJob(newTestJob(2, 130, 2024, 100), "host2")
 
-	ctrl, err := NewJobControl(etcd)
+	ctrl, err := NewJobControl(clusterCentral)
 	if err != nil {
 		t.Fatalf("could create job control: %v", err)
 	}
@@ -92,19 +92,19 @@ func TestJobDowned(t *testing.T) {
 func TestHostUp(t *testing.T) {
 	record := make(map[string]string)
 
-	etcd := &mockEtcd{
+	clusterCentral := &mockClusterCentral{
 		record: record,
 	}
 
-	etcd.declareHost("host1")
-	etcd.declareHost("host2")
-	etcd.declareHost("host3")
-	etcd.declareHost("host4")
+	clusterCentral.declareHost("host1")
+	clusterCentral.declareHost("host2")
+	clusterCentral.declareHost("host3")
+	clusterCentral.declareHost("host4")
 
-	etcd.declareJob(newTestJob(1, 100, 1024, 10), "host1")
-	etcd.declareJob(newTestJob(2, 130, 2024, 100), "host2")
+	clusterCentral.declareJob(newTestJob(1, 100, 1024, 10), "host1")
+	clusterCentral.declareJob(newTestJob(2, 130, 2024, 100), "host2")
 
-	ctrl, err := NewJobControl(etcd)
+	ctrl, err := NewJobControl(clusterCentral)
 	if err != nil {
 		t.Fatalf("could create job control: %v", err)
 	}
@@ -124,19 +124,19 @@ func TestHostUp(t *testing.T) {
 func TestHostDown(t *testing.T) {
 	record := make(map[string]string)
 
-	etcd := &mockEtcd{
+	clusterCentral := &mockClusterCentral{
 		record: record,
 	}
 
-	etcd.declareHost("host1")
-	etcd.declareHost("host2")
-	etcd.declareHost("host3")
-	etcd.declareHost("host4")
+	clusterCentral.declareHost("host1")
+	clusterCentral.declareHost("host2")
+	clusterCentral.declareHost("host3")
+	clusterCentral.declareHost("host4")
 
-	etcd.declareJob(newTestJob(1, 100, 1024, 10), "host1")
-	etcd.declareJob(newTestJob(2, 130, 2024, 100), "host2")
+	clusterCentral.declareJob(newTestJob(1, 100, 1024, 10), "host1")
+	clusterCentral.declareJob(newTestJob(2, 130, 2024, 100), "host2")
 
-	ctrl, err := NewJobControl(etcd)
+	ctrl, err := NewJobControl(clusterCentral)
 	if err != nil {
 		t.Fatalf("could create job control: %v", err)
 	}
@@ -164,19 +164,19 @@ func testCandidates(clus *cluster, spec *JobSpec, expected []candHost, expectedE
 func TestCandidates(t *testing.T) {
 	record := make(map[string]string)
 
-	etcd := &mockEtcd{
+	clusterCentral := &mockClusterCentral{
 		record: record,
 	}
 
-	etcd.declareHost("host1")
-	etcd.declareHost("host2")
-	etcd.declareHost("host3")
-	etcd.declareHost("host4")
+	clusterCentral.declareHost("host1")
+	clusterCentral.declareHost("host2")
+	clusterCentral.declareHost("host3")
+	clusterCentral.declareHost("host4")
 
-	etcd.declareJob(newTestJob(1, 100, 1024, 10), "host1")
-	etcd.declareJob(newTestJob(2, 130, 2024, 100), "host2")
+	clusterCentral.declareJob(newTestJob(1, 100, 1024, 10), "host1")
+	clusterCentral.declareJob(newTestJob(2, 130, 2024, 100), "host2")
 
-	ctrl, err := NewJobControl(etcd)
+	ctrl, err := NewJobControl(clusterCentral)
 	if err != nil {
 		t.Fatalf("could create job control: %v", err)
 	}

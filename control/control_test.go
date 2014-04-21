@@ -29,39 +29,39 @@ func newTestJob(index int, cores int, mem int, disk int) *JobSpec {
 	}
 }
 
-type mockEtcd struct {
+type mockClusterCentral struct {
 	jwhs   []*JobWithHost
 	hs     []string
 	record map[string]string
 	clus   *cluster
 }
 
-func (metcd *mockEtcd) declareJob(spec *JobSpec, host string) {
-	metcd.jwhs = append(metcd.jwhs, &JobWithHost{
+func (mClusterCentral *mockClusterCentral) declareJob(spec *JobSpec, host string) {
+	mClusterCentral.jwhs = append(mClusterCentral.jwhs, &JobWithHost{
 		Spec:   spec,
 		BootID: host,
 	})
 }
 
-func (metcd *mockEtcd) declareHost(host string) {
-	metcd.hs = append(metcd.hs, host)
+func (mClusterCentral *mockClusterCentral) declareHost(host string) {
+	mClusterCentral.hs = append(mClusterCentral.hs, host)
 }
 
-func (metcd *mockEtcd) Jobs() ([]*JobWithHost, error) {
-	return metcd.jwhs, nil
+func (mClusterCentral *mockClusterCentral) Jobs() ([]*JobWithHost, error) {
+	return mClusterCentral.jwhs, nil
 }
 
-func (metcd *mockEtcd) Hosts() ([]string, error) {
-	return metcd.hs, nil
+func (mClusterCentral *mockClusterCentral) Hosts() ([]string, error) {
+	return mClusterCentral.hs, nil
 }
 
-func (metcd *mockEtcd) Spec(bootID string) (*machine.MachineSpec, error) {
+func (mClusterCentral *mockClusterCentral) Spec(bootID string) (*machine.MachineSpec, error) {
 	return someSpec(), nil
 }
 
-func (metcd *mockEtcd) Specs() (map[string]machine.MachineSpec, error) {
+func (mClusterCentral *mockClusterCentral) Specs() (map[string]machine.MachineSpec, error) {
 	r := make(map[string]machine.MachineSpec)
-	for _, h := range metcd.hs {
+	for _, h := range mClusterCentral.hs {
 		r[h] = *someSpec()
 	}
 	return r, nil
@@ -70,7 +70,7 @@ func (metcd *mockEtcd) Specs() (map[string]machine.MachineSpec, error) {
 func ExampleScheduleJob() {
 	record := make(map[string]string)
 
-	etcd := &mockEtcd{
+	etcd := &mockClusterCentral{
 		record: record,
 	}
 
@@ -121,7 +121,7 @@ func BenchmarkScheduleJob(b *testing.B) {
 
 	record := make(map[string]string)
 
-	etcd := &mockEtcd{
+	etcd := &mockClusterCentral{
 		record: record,
 	}
 
