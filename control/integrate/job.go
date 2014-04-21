@@ -1,10 +1,11 @@
-package control
+package integrate
 
 import (
 	"strconv"
 
 	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
 
+	"github.com/coreos/fleet/control"
 	"github.com/coreos/fleet/job"
 )
 
@@ -34,8 +35,8 @@ func intRequirement(key string, jr map[string][]string, defaultValue int) (int, 
 	return v, nil
 }
 
-func JobSpecFrom(j *job.Job) *JobSpec {
-	spec := new(JobSpec)
+func JobSpecFrom(j *job.Job) *control.JobSpec {
+	spec := new(control.JobSpec)
 	spec.Name = j.Name
 
 	jobRequirements := j.Requirements()

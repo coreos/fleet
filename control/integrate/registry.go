@@ -1,6 +1,7 @@
-package control
+package integrate
 
 import (
+	"github.com/coreos/fleet/control"
 	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/registry"
 )
@@ -11,7 +12,7 @@ type registryEtcd struct {
 	registry *registry.Registry
 }
 
-func NewRegistryEtcd(registry *registry.Registry) Etcd {
+func NewRegistryEtcd(registry *registry.Registry) control.Etcd {
 	return &registryEtcd{registry}
 }
 
@@ -24,13 +25,13 @@ func (re *registryEtcd) Hosts() ([]string, error) {
 	return hs, nil
 }
 
-func (re *registryEtcd) Jobs() ([]*JobWithHost, error) {
-	var jws []*JobWithHost
+func (re *registryEtcd) Jobs() ([]*control.JobWithHost, error) {
+	var jws []*control.JobWithHost
 	jobs := re.registry.GetAllJobs()
 	for _, j := range jobs {
 		bootID := re.registry.GetJobTarget(j.Name)
 		if bootID != "" {
-			jw := &JobWithHost{
+			jw := &control.JobWithHost{
 				Spec:    JobSpecFrom(&j),
 				BootID:  bootID,
 				JobName: j.Name,

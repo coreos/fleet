@@ -1,7 +1,7 @@
 package engine
 
 import (
-	"github.com/coreos/fleet/control"
+	controlintegrate "github.com/coreos/fleet/control/integrate"
 	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
 
 	"github.com/coreos/fleet/event"
@@ -50,7 +50,7 @@ func (self *EventHandler) HandleEventJobScheduled(ev event.Event) {
 		log.Errorf("EventJobScheduled(%s): Job(%s), could not be found in the Registry", jobName)
 		return
 	}
-	self.engine.jobControl.JobScheduled(jobName, target, control.JobSpecFrom(j))
+	self.engine.jobControl.JobScheduled(jobName, target, controlintegrate.JobSpecFrom(j))
 }
 
 // EventJobUnscheduled is triggered when a scheduling decision has been
@@ -80,7 +80,7 @@ func (self *EventHandler) HandleCommandStopJob(ev event.Event) {
 	log.V(1).Infof("EventJobStopped(%s): updating job control", jobName)
 
 	job := self.engine.registry.GetJob(jobName)
-	spec := control.JobSpecFrom(job)
+	spec := controlintegrate.JobSpecFrom(job)
 	self.engine.jobControl.JobDowned(jobName, machineState.BootID, spec)
 }
 

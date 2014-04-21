@@ -5,6 +5,7 @@ import (
 	"sort"
 
 	"github.com/coreos/fleet/control"
+	controlintegrate "github.com/coreos/fleet/control/integrate"
 	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
 
 	"github.com/coreos/fleet/event"
@@ -30,7 +31,7 @@ func New(reg *registry.Registry, events *event.EventBus, mach *machine.Machine) 
 }
 
 func (self *Engine) Initialize() error {
-	jobControl, err := control.NewJobControl(control.NewRegistryEtcd(self.registry))
+	jobControl, err := control.NewJobControl(controlintegrate.NewRegistryEtcd(self.registry))
 	if err != nil {
 		return err
 	}
@@ -147,7 +148,7 @@ func (self *Engine) LockMachine(machBootID string) *registry.TimedResourceMutex 
 // that should be considered for scheduling the specified job.
 // The returned slice is sorted by ascending lexicographical string value of machine boot id.
 func (eg *Engine) partitionCluster(j *job.Job) ([]string, error) {
-	spec := control.JobSpecFrom(j)
+	spec := controlintegrate.JobSpecFrom(j)
 
 	machineBootIDs, err := eg.jobControl.ScheduleJob(spec)
 	if err != nil {
