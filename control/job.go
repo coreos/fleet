@@ -6,7 +6,6 @@ import (
 	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
 
 	"github.com/coreos/fleet/job"
-	"github.com/coreos/fleet/unit"
 )
 
 const (
@@ -39,34 +38,27 @@ func JobSpecFrom(j *job.Job) *JobSpec {
 	spec := new(JobSpec)
 	spec.Name = j.Name
 
-	if j.JobRequirements == nil {
-		log.Errorf("missing mandatory requirements (memory, cores and disk): %s; filling in defaults", j.Name)
+	jobRequirements := j.Requirements()
 
-		spec.CoresRequired = defaultCoresRequired
-		spec.MemoryRequired = defaultMemoryRequired
-		spec.DiskSpaceRequired = defaultDiskSpaceRequired
-		return spec
-	}
+	spec.ConflictsWith = jobRequirements[job.FleetXConflicts]
+	spec.DependsOn = jobRequirements[job.FleetXConditionMachineOf]
+	spec.RequiresHost = stringRequirement(job.FleetXConditionMachineBootID, jobRequirements, "")
 
-	spec.ConflictsWith = j.JobRequirements[unit.FleetXConflicts]
-	spec.DependsOn = j.JobRequirements[unit.FleetXConditionMachineOf]
-	spec.RequiresHost = stringRequirement(unit.FleetXConditionMachineBootID, j.JobRequirements, "")
-
-	mem, err := intRequirement(unit.FleetXMemoryRequired, j.JobRequirements, defaultMemoryRequired)
+	mem, err := intRequirement(job.FleetXMemoryRequired, jobRequirements, defaultMemoryRequired)
 	if err != nil {
 		log.Errorf("failed to parse FleetXMemoryRequired: %s; filling in defaults", j.Name)
 		mem = defaultMemoryRequired
 	}
 	spec.MemoryRequired = mem
 
-	cores, err := intRequirement(unit.FleetXCoresRequired, j.JobRequirements, defaultCoresRequired)
+	cores, err := intRequirement(job.FleetXCoresRequired, jobRequirements, defaultCoresRequired)
 	if err != nil {
 		log.Errorf("failed to parse FleetXCoresRequired: %s; filling in defaults", j.Name)
 		cores = defaultCoresRequired
 	}
 	spec.CoresRequired = cores
 
-	disk, err := intRequirement(unit.FleetXDiskSpaceRequired, j.JobRequirements, defaultDiskSpaceRequired)
+	disk, err := intRequirement(job.FleetXDiskSpaceRequired, jobRequirements, defaultDiskSpaceRequired)
 	if err != nil {
 		log.Errorf("failed to parse FleetXDiskSpaceRequired: %s; filling in defaults", j.Name)
 		disk = defaultDiskSpaceRequired

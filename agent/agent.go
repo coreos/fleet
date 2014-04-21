@@ -14,7 +14,6 @@ import (
 	"github.com/coreos/fleet/registry"
 	"github.com/coreos/fleet/sign"
 	"github.com/coreos/fleet/systemd"
-	"github.com/coreos/fleet/unit"
 )
 
 const (
@@ -28,12 +27,11 @@ const (
 // The Agent owns all of the coordination between the Registry, the local
 // Machine, and the local SystemdManager.
 type Agent struct {
-	registry      *registry.Registry
-	events        *event.EventBus
-	machine       *machine.Machine
-	machineSpec   *machine.MachineSpec
-	ttl           time.Duration
-	systemdPrefix string
+	registry    *registry.Registry
+	events      *event.EventBus
+	machine     *machine.Machine
+	machineSpec *machine.MachineSpec
+	ttl         time.Duration
 	// verifier is used to verify job payload. A nil one implies that
 	// all payloads are accepted.
 	verifier *sign.SignatureVerifier
@@ -45,16 +43,16 @@ type Agent struct {
 	stop chan bool
 }
 
-func New(registry *registry.Registry, events *event.EventBus, machine *machine.Machine, ttl, unitPrefix string, verifier *sign.SignatureVerifier) (*Agent, error) {
+func New(registry *registry.Registry, events *event.EventBus, machine *machine.Machine, ttl string, verifier *sign.SignatureVerifier) (*Agent, error) {
 	ttldur, err := time.ParseDuration(ttl)
 	if err != nil {
 		return nil, err
 	}
 
 	state := NewState()
-	mgr := systemd.NewSystemdManager(machine, unitPrefix)
+	mgr := systemd.NewSystemdManager(machine)
 
-	return &Agent{registry, events, machine, nil, ttldur, unitPrefix, verifier, state, mgr, nil}, nil
+	return &Agent{registry, events, machine, nil, ttldur, verifier, state, mgr, nil}, nil
 }
 
 // Access Agent's machine field
@@ -78,15 +76,17 @@ func (a *Agent) Run() {
 	a.stop = make(chan bool)
 
 	handler := NewEventHandler(a)
-	a.events.AddListener("agent", a.machine, handler)
+	bootID := a.machine.State().BootID
+	a.events.AddListener("agent", bootID, handler)
 
 	go a.systemd.Publish(a.events, a.stop)
 	go a.Heartbeat(a.ttl, a.stop)
+	go a.HeartbeatJobs(a.ttl, a.stop)
 
 	// Block until we receive a stop signal
 	<-a.stop
 
-	a.events.RemoveListener("agent", a.machine)
+	a.events.RemoveListener("agent", bootID)
 }
 
 // Initialize pushes the local machine state to the Registry
@@ -132,26 +132,28 @@ func (a *Agent) Stop() {
 	close(a.stop)
 }
 
-// Clear any presence data from the Registry
+// Purge removes the Agent's state from the Registry
 func (a *Agent) Purge() {
-	log.V(1).Info("Removing Agent from Registry")
+	// Continue heartbeating the agent's machine state while attempting to
+	// stop all the locally-running jobs
+	purged := make(chan bool)
+	go a.Heartbeat(a.ttl, purged)
+
 	bootID := a.machine.State().BootID
-	err := a.registry.RemoveMachineState(bootID)
-	if err != nil {
-		log.Errorf("Failed to remove Machine %s from Registry: %s", bootID, err.Error())
+
+	//TODO(bcwaldon): The agent should not have to ask the Registry
+	// which jobs it is running in its local systemd
+	for _, j := range a.registry.GetAllJobsByMachine(bootID) {
+		log.Infof("Unloading Job(%s)", j.Name)
+		a.UnloadJob(j.Name)
 	}
 
-	for _, j := range a.registry.GetAllJobsByMachine(bootID) {
-		log.Infof("Purging Job(%s)", j.Name)
-		a.systemd.StopJob(j.Name)
-		a.ForgetJob(j.Name)
-		a.ReportJobState(j.Name, nil)
+	// Jobs have been stopped, the heartbeat can stop
+	close(purged)
 
-		// TODO(uwedeportivo): agent placing offer ?
-		offer := job.NewOfferFromJob(j, nil)
-		log.V(2).Infof("Publishing JobOffer(%s)", offer.Job.Name)
-		a.registry.CreateJobOffer(offer)
-		log.Infof("Published JobOffer(%s)", offer.Job.Name)
+	log.V(1).Info("Removing Agent from Registry")
+	if err := a.registry.RemoveMachineState(bootID); err != nil {
+		log.Errorf("Failed to remove Machine %s from Registry: %s", bootID, err.Error())
 	}
 }
 
@@ -206,54 +208,107 @@ func (a *Agent) Heartbeat(ttl time.Duration, stop chan bool) {
 	}
 }
 
-// Instruct the Agent to start the provided Job
-func (a *Agent) StartJob(j *job.Job) {
-	a.state.TrackJobConflicts(j.Name, j.Payload.Conflicts())
+func (a *Agent) HeartbeatJobs(ttl time.Duration, stop chan bool) {
+	heartbeat := func() {
+		bootID := a.Machine().State().BootID
+		a.state.Lock()
+		launched := a.state.LaunchedJobs()
+		a.state.Unlock()
+		for _, j := range launched {
+			go a.registry.JobHeartbeat(j, bootID, ttl)
+		}
+	}
 
-	log.Infof("Starting Job(%s)", j.Name)
-	a.systemd.StartJob(j)
+	interval := ttl / refreshInterval
+	ticker := time.Tick(interval)
+	for {
+		select {
+		case <-stop:
+			log.V(2).Info("HeartbeatJobs exiting due to stop signal")
+			return
+		case <-ticker:
+			log.V(2).Info("HeartbeatJobs tick")
+			heartbeat()
+		}
+	}
 }
 
-// Inform the Registry that a Job must be rescheduled
-func (a *Agent) RescheduleJob(j *job.Job) {
-	log.V(2).Infof("Stopping Job(%s)", j.Name)
-	a.registry.UnscheduleJob(j.Name)
+func (a *Agent) LoadJob(j *job.Job) {
+	log.Infof("Loading Job(%s)", j.Name)
 
-	// TODO(uwedeportivo): agent placing offer ?
-	offer := job.NewOfferFromJob(*j, nil)
-	log.V(2).Infof("Publishing JobOffer(%s)", offer.Job.Name)
-	a.registry.CreateJobOffer(offer)
-	log.Infof("Published JobOffer(%s)", offer.Job.Name)
+	if len(j.Payload.Conflicts()) > 0 {
+		a.state.Lock()
+		a.state.TrackJobConflicts(j.Name, j.Payload.Conflicts())
+		a.state.Unlock()
+	}
+
+	a.systemd.LoadJob(j)
+
+	// We must explicitly refresh the payload state, as the dbus
+	// event listener does not send an event when we write a unit
+	// file to disk.
+	ps, err := a.systemd.GetPayloadState(j.Name)
+	if err != nil {
+		log.Errorf("Failed fetching state of Payload(%s)", j.Name)
+		return
+	}
+	a.ReportPayloadState(j.Name, ps)
 }
 
-// Instruct the Agent to stop the provided Job and
-// all of its peers
+func (a *Agent) StartJob(jobName string) {
+	a.state.Lock()
+	a.state.TrackLaunchedJob(jobName)
+	a.state.Unlock()
+
+	bootID := a.Machine().State().BootID
+	a.registry.JobHeartbeat(jobName, bootID, a.ttl)
+	a.systemd.StartJob(jobName)
+}
+
 func (a *Agent) StopJob(jobName string) {
-	log.Infof("Stopping Job(%s)", jobName)
+	a.state.Lock()
+	a.state.DropLaunchedJob(jobName)
+	a.state.Unlock()
+
+	a.registry.ClearJobHeartbeat(jobName)
 	a.systemd.StopJob(jobName)
-	a.ReportJobState(jobName, nil)
+}
+
+func (a *Agent) UnloadJob(jobName string) {
+	a.StopJob(jobName)
 
 	a.state.Lock()
 	reversePeers := a.state.GetJobsByPeer(jobName)
 	a.state.Unlock()
 
 	a.ForgetJob(jobName)
+	a.systemd.UnloadJob(jobName)
 
+	// The dbus event systemd will not trigger an event telling
+	// us that the unit has been unloaded, so we must explicitly
+	// clear what is in the Registry.
+	a.ReportPayloadState(jobName, nil)
+
+	// Trigger rescheduling of all the peers of the job that was just unloaded
+	bootID := a.machine.State().BootID
 	for _, peer := range reversePeers {
-		log.Infof("Stopping Peer(%s) of Job(%s)", peer, jobName)
-		a.registry.StopJob(peer)
+		log.Infof("Unloading Peer(%s) of Job(%s)", peer, jobName)
+		err := a.registry.ClearJobTarget(peer, bootID)
+		if err != nil {
+			log.Errorf("Failed unloading Peer(%s) of Job(%s): %v", peer, jobName, err)
+		}
 	}
 }
 
 // Persist the state of the given Job into the Registry
-func (a *Agent) ReportJobState(jobName string, jobState *job.JobState) {
-	if jobState == nil {
-		err := a.registry.RemoveJobState(jobName)
+func (a *Agent) ReportPayloadState(jobName string, ps *job.PayloadState) {
+	if ps == nil {
+		err := a.registry.RemovePayloadState(jobName)
 		if err != nil {
-			log.V(1).Infof("Failed to remove JobState from Registry: %s", jobName, err.Error())
+			log.V(1).Infof("Failed to remove PayloadState from Registry: %s", jobName, err.Error())
 		}
 	} else {
-		a.registry.SaveJobState(jobName, jobState)
+		a.registry.SavePayloadState(jobName, ps)
 	}
 }
 
@@ -345,7 +400,7 @@ func (a *Agent) VerifyJob(j *job.Job) bool {
 
 	payload := j.Payload
 	s := a.registry.GetSignatureSetOfPayload(payload.Name)
-	ok, err := a.verifier.VerifyPayload(payload, s)
+	ok, err := a.verifier.VerifyPayload(&payload, s)
 	if !ok || err != nil {
 		log.V(1).Infof("Payload(%s) doesn't fit its signature: %v", payload.Name, err)
 		return false
@@ -405,7 +460,7 @@ func (a *Agent) AbleToRun(j *job.Job) bool {
 		return false
 	}
 
-	bootID, ok := requirements[unit.FleetXConditionMachineBootID]
+	bootID, ok := requirements[job.FleetXConditionMachineBootID]
 	if ok && len(bootID) > 0 && !a.machine.State().MatchBootID(bootID[0]) {
 		log.V(1).Infof("Agent does not pass MachineBootID condition for Job(%s)", j.Name)
 		return false
@@ -460,7 +515,7 @@ func (a *Agent) peerScheduledHere(jobName, peerName string) bool {
 	log.V(1).Infof("Looking for target of Peer(%s)", peerName)
 
 	//FIXME: ideally the machine would use its own knowledge rather than calling GetJobTarget
-	if tgt := a.registry.GetJobTarget(peerName); tgt == nil || tgt.BootID != a.machine.State().BootID {
+	if tgt := a.registry.GetJobTarget(peerName); tgt == "" || tgt != a.machine.State().BootID {
 		log.V(1).Infof("Peer(%s) of Job(%s) not scheduled here", peerName, jobName)
 		return false
 	}

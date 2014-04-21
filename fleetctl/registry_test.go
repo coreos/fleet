@@ -8,7 +8,7 @@ import (
 
 type TestRegistry struct {
 	machines  []machine.MachineState
-	jobStates map[string]*job.JobState
+	jobStates map[string]*job.PayloadState
 	jobs      []job.Job
 	payloads  []job.JobPayload
 }
@@ -17,34 +17,29 @@ func (t TestRegistry) GetActiveMachines() []machine.MachineState {
 	return t.machines
 }
 
-func (t TestRegistry) GetJobState(name string) *job.JobState {
-	return t.jobStates[name]
-}
-
-func (t TestRegistry) GetAllPayloads() []job.JobPayload {
-	return t.payloads
-}
-
 func (t TestRegistry) GetAllJobs() []job.Job {
 	return t.jobs
 }
 
-func (t TestRegistry) GetPayload(name string) *job.JobPayload {
+func (t TestRegistry) GetJob(name string) *job.Job {
+	for _, j := range t.jobs {
+		if j.Name == name {
+			j.PayloadState = t.jobStates[name]
+			return &j
+		}
+	}
 	return nil
 }
 
-func (t TestRegistry) StopJob(name string) {
-}
-
-func (t TestRegistry) DestroyPayload(name string) {
-}
-
-func (t TestRegistry) CreatePayload(jp *job.JobPayload) error {
+func (m TestRegistry) SetJobTargetState(name string, target job.JobState) error {
 	return nil
 }
 
 func (t TestRegistry) CreateJob(j *job.Job) error {
 	return nil
+}
+
+func (t TestRegistry) DestroyJob(name string) {
 }
 
 func (t TestRegistry) CreateSignatureSet(s *sign.SignatureSet) error {
@@ -55,15 +50,12 @@ func (t TestRegistry) GetSignatureSetOfPayload(name string) *sign.SignatureSet {
 	return nil
 }
 
-func (t TestRegistry) DestroySignatureSetOfPayload(name string) {
-}
-
-func (t TestRegistry) GetJobTarget(name string) *machine.MachineState {
+func (t TestRegistry) GetJobTarget(name string) string {
 	js := t.jobStates[name]
 	if js != nil {
-		return js.MachineState
+		return js.MachineState.BootID
 	}
-	return nil
+	return ""
 }
 
 func (t TestRegistry) GetMachineState(bootID string) *machine.MachineState {

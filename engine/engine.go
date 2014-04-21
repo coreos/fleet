@@ -42,12 +42,13 @@ func (self *Engine) Run() {
 	self.stop = make(chan bool)
 
 	handler := NewEventHandler(self)
-	self.events.AddListener("engine", self.machine, handler)
+	bootID := self.machine.State().BootID
+	self.events.AddListener("engine", bootID, handler)
 
 	// Block until we receive a stop signal
 	<-self.stop
 
-	self.events.RemoveListener("engine", self.machine)
+	self.events.RemoveListener("engine", bootID)
 }
 
 func (self *Engine) Stop() {
@@ -60,18 +61,13 @@ func (self *Engine) GetJobsScheduledToMachine(machBootID string) []job.Job {
 
 	for _, j := range self.registry.GetAllJobs() {
 		tgt := self.registry.GetJobTarget(j.Name)
-		if tgt == nil || tgt.BootID != machBootID {
+		if tgt == "" || tgt != machBootID {
 			continue
 		}
 		jobs = append(jobs, j)
 	}
 
 	return jobs
-}
-
-func (self *Engine) UnscheduleJob(jobName string) {
-	self.registry.UnscheduleJob(jobName)
-	log.Infof("Unscheduled Job(%s)", jobName)
 }
 
 func (self *Engine) OfferJob(j job.Job) error {
@@ -130,8 +126,8 @@ func (self *Engine) ResolveJobOffer(jobName string, machBootID string) error {
 	return nil
 }
 
-func (self *Engine) RemoveJobState(jobName string) {
-	self.registry.RemoveJobState(jobName)
+func (self *Engine) RemovePayloadState(jobName string) {
+	self.registry.RemovePayloadState(jobName)
 }
 
 func (self *Engine) lockJobOffer(jobName string) *registry.TimedResourceMutex {

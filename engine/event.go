@@ -17,24 +17,64 @@ func NewEventHandler(engine *Engine) *EventHandler {
 	return &EventHandler{engine}
 }
 
-func (self *EventHandler) HandleEventJobCreated(ev event.Event) {
-	j := ev.Payload.(job.Job)
+func (self *EventHandler) HandleCommandLoadJob(ev event.Event) {
+	jobName := ev.Payload.(string)
 
-	log.V(1).Infof("EventJobCreated(%s): publishing JobOffer", j.Name)
-	self.engine.OfferJob(j)
+	j := self.engine.registry.GetJob(jobName)
+	if j == nil {
+		log.Infof("CommandLoadJob(%s): asked to offer job that could not be found")
+		return
+	}
+
+	log.V(1).Infof("CommandLoadJob(%s): publishing JobOffer", jobName)
+	self.engine.OfferJob(*j)
+}
+
+func (self *EventHandler) HandleCommandUnloadJob(ev event.Event) {
+	jobName := ev.Payload.(string)
+	target := ev.Context.(string)
+
+	if target != "" {
+		log.V(1).Infof("CommandUnloadJob(%s): clearing scheduling decision", jobName)
+		self.engine.registry.ClearJobTarget(jobName, target)
+	}
 }
 
 func (self *EventHandler) HandleEventJobScheduled(ev event.Event) {
 	jobName := ev.Payload.(string)
-	machineState := ev.Context.(machine.MachineState)
-	log.V(1).Infof("EventJobScheduled(%s): updating job control", jobName)
+	target := ev.Context.(string)
+	log.V(1).Infof("EventJobScheduled(%s): updating cluster", jobName)
 
-	job := self.engine.registry.GetJob(jobName)
-	spec := control.JobSpecFrom(job)
-	self.engine.jobControl.JobScheduled(jobName, machineState.BootID, spec)
+	j := self.engine.registry.GetJob(jobName)
+	if j == nil {
+		log.Errorf("EventJobScheduled(%s): Job(%s), could not be found in the Registry", jobName)
+		return
+	}
+	self.engine.jobControl.JobScheduled(jobName, target, control.JobSpecFrom(j))
 }
 
-func (self *EventHandler) HandleEventJobStopped(ev event.Event) {
+// EventJobUnscheduled is triggered when a scheduling decision has been
+// rejected, or is now unfulfillable due to changes in the cluster.
+// Attempt to reschedule the job if it is in a non-inactive state.
+func (self *EventHandler) HandleEventJobUnscheduled(ev event.Event) {
+	jobName := ev.Payload.(string)
+
+	ts := self.engine.registry.GetJobTargetState(jobName)
+	if ts == nil || *ts == job.JobStateInactive {
+		return
+	}
+
+	j := self.engine.registry.GetJob(jobName)
+	if j == nil {
+		log.Errorf("EventJobUnscheduled(%s): unable to re-offer Job(%s), as it could not be found in the Registry", jobName)
+		return
+	}
+
+	log.V(1).Infof("EventJobUnscheduled(%s): publishing JobOffer", jobName)
+	self.engine.OfferJob(*j)
+}
+
+func (self *EventHandler) HandleCommandStopJob(ev event.Event) {
 	jobName := ev.Payload.(string)
 	machineState := ev.Context.(machine.MachineState)
 	log.V(1).Infof("EventJobStopped(%s): updating job control", jobName)
@@ -75,8 +115,8 @@ func (self *EventHandler) HandleEventMachineRemoved(ev event.Event) {
 
 	for _, j := range jobs {
 		log.V(1).Infof("EventMachineRemoved(%s): unscheduling Job(%s)", machBootID, j.Name)
-		self.engine.RemoveJobState(j.Name)
-		self.engine.UnscheduleJob(j.Name)
+		self.engine.registry.ClearJobTarget(j.Name, machBootID)
+		self.engine.RemovePayloadState(j.Name)
 	}
 
 	for _, j := range jobs {

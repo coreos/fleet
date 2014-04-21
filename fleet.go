@@ -49,7 +49,6 @@ func main() {
 	cfgset.String("boot_id", "", "Override default BootID of fleet machine")
 	cfgset.String("public_ip", "", "IP address that fleet machine should publish")
 	cfgset.String("metadata", "", "List of key-value metadata to assign to the fleet machine")
-	cfgset.String("unit_prefix", "", "Prefix that should be used for all systemd units")
 	cfgset.String("agent_ttl", agent.DefaultTTL, "TTL in seconds of fleet machine state in etcd")
 	cfgset.Bool("verify_units", false, "Verify unit file signatures using local SSH identities")
 	cfgset.String("authorized_keys_file", sign.DefaultAuthorizedKeysFile, "File containing public SSH keys to be used for signature verification")
@@ -156,7 +155,6 @@ func getConfig(flagset *flag.FlagSet, userCfgFile string) (*config.Config, error
 		BootID:             (*flagset.Lookup("boot_id")).Value.(flag.Getter).Get().(string),
 		PublicIP:           (*flagset.Lookup("public_ip")).Value.(flag.Getter).Get().(string),
 		RawMetadata:        (*flagset.Lookup("metadata")).Value.(flag.Getter).Get().(string),
-		UnitPrefix:         (*flagset.Lookup("unit_prefix")).Value.(flag.Getter).Get().(string),
 		AgentTTL:           (*flagset.Lookup("agent_ttl")).Value.(flag.Getter).Get().(string),
 		VerifyUnits:        (*flagset.Lookup("verify_units")).Value.(flag.Getter).Get().(bool),
 		AuthorizedKeysFile: (*flagset.Lookup("authorized_keys_file")).Value.(flag.Getter).Get().(string),

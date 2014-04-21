@@ -137,12 +137,30 @@ func TestScheduleConflicts(t *testing.T) {
 		}
 	}
 
-	// Start 5 conflicting pairs of services
+	// submit 5 conflicting pairs of services
 	for i := 0; i < 5; i++ {
 		unit := fmt.Sprintf("fixtures/units/conflict.%d.service", i)
-		_, _, err := fleetctl("start", "--no-block", unit)
+		_, _, err := fleetctl("submit", unit)
+		if err != nil {
+			t.Errorf("Failed submitting unit %s: %v", unit, err)
+		}
+	}
+
+	// starting the first 3 should be fine
+	for i := 0; i < 3; i++ {
+		unit := fmt.Sprintf("fixtures/units/conflict.%d.service", i)
+		_, _, err := fleetctl("start", unit)
 		if err != nil {
 			t.Errorf("Failed starting unit %s: %v", unit, err)
+		}
+	}
+
+	// starting the last 2 should fail?
+	for i := 3; i < 5; i++ {
+		unit := fmt.Sprintf("fixtures/units/conflict.%d.service", i)
+		_, _, err := fleetctl("start", unit)
+		if err == nil {
+			t.Errorf("Expected nonzero exit code while starting unscheduleable unit %s: %v", unit, err)
 		}
 	}
 

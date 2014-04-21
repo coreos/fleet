@@ -22,11 +22,16 @@ func TestSignedRequests(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	_, _, err = fleetctl("submit", "--sign=false", "fixtures/units/hello.service")
+	if err != nil {
+		t.Fatalf("Failed submitting hello.service: %v", err)
+	}
+
 	// The start command should succeed, but the unit should not actually get scheduled
 	// and started on an agent since it is not signed.
-	_, _, err = fleetctl("start", "--no-block", "--sign=false", "fixtures/units/hello.service")
+	_, _, err = fleetctl("load", "--no-block", "fixtures/units/hello.service")
 	if err != nil {
-		t.Fatalf("Failed starting hello.service: %v", err)
+		t.Fatalf("Failed calling load on hello.service: %v", err)
 	}
 
 	_, _, err = fleetctl("start", "--no-block", "--sign=true", "fixtures/units/goodbye.service")

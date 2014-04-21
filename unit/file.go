@@ -33,28 +33,6 @@ func (self *SystemdUnitFile) LegacyContents() map[string]map[string]string {
 	return coerced
 }
 
-// Requirements returns all relevant options from the [X-Fleet] section
-// of a unit file. Relevant options are identified with a `X-` prefix.
-func (self *SystemdUnitFile) Requirements() map[string][]string {
-	requirements := make(map[string][]string)
-	for key, value := range self.Contents["X-Fleet"] {
-		if !strings.HasPrefix(key, "X-") {
-			continue
-		}
-
-		// Strip off leading X-
-		key = key[2:]
-
-		if _, ok := requirements[key]; !ok {
-			requirements[key] = make([]string, 0)
-		}
-
-		requirements[key] = value
-	}
-
-	return requirements
-}
-
 // Description returns the first Description option found in the [Unit] section.
 // If the option is not defined, an empty string is returned.
 func (self *SystemdUnitFile) Description() string {

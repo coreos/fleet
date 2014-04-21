@@ -110,31 +110,6 @@ func (self *EventStream) filterEventJobOffered(resp *etcd.Response) *event.Event
 	return &event.Event{"EventJobOffered", jo, nil}
 }
 
-func (self *EventStream) filterEventJobUpdated(resp *etcd.Response) *event.Event {
-	if resp.Action != "update" {
-		return nil
-	}
-
-	baseName := path.Base(resp.Node.Key)
-	if baseName != "object" {
-		return nil
-	}
-
-	var j job.Job
-	err := unmarshal(resp.Node.Value, &j)
-	if err != nil {
-		log.V(1).Infof("Failed to deserialize Job: %s", err)
-		return nil
-	}
-
-	var bootID string
-	if target := self.registry.GetJobTarget(j.Name); target != nil {
-		bootID = target.BootID
-	}
-
-	return &event.Event{"EventJobUpdated", j, bootID}
-}
-
 func filterEventJobBidSubmitted(resp *etcd.Response) *event.Event {
 	if resp.Action != "set" {
 		return nil

@@ -3,34 +3,32 @@ package main
 import (
 	"fmt"
 	"os"
-	"path"
-
-	"github.com/coreos/fleet/third_party/github.com/codegangsta/cli"
 )
 
-func newCatUnitCommand() cli.Command {
-	return cli.Command{
-		Name:  "cat",
-		Usage: "Output the contents of a submitted unit",
+var (
+	cmdCatUnit = &Command{
+		Name:    "cat",
+		Summary: "Output the contents of a submitted unit",
+		Usage:   "UNIT",
 		Description: `Outputs the unit file that is currently loaded in the cluster. Useful to verify
 the correct version of a unit is running.`,
-		Action: printUnitAction,
+		Run: runCatUnit,
 	}
-}
+)
 
-func printUnitAction(c *cli.Context) {
-	if len(c.Args()) != 1 {
+func runCatUnit(args []string) (exit int) {
+	if len(args) != 1 {
 		fmt.Fprintln(os.Stderr, "One unit file must be provided.")
-		os.Exit(1)
+		return 1
 	}
 
-	name := path.Base(c.Args()[0])
-	payload := registryCtl.GetPayload(name)
-
-	if payload == nil {
+	name := unitNameMangle(args[0])
+	j := registryCtl.GetJob(name)
+	if j == nil {
 		fmt.Fprintf(os.Stderr, "Job %s not found.\n", name)
-		os.Exit(1)
+		return 1
 	}
 
-	fmt.Print(payload.Unit.String())
+	fmt.Print(j.Payload.Unit.String())
+	return
 }

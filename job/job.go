@@ -1,31 +1,32 @@
 package job
 
-type Job struct {
-	Name            string
-	JobRequirements map[string][]string
-	Payload         *JobPayload
-	State           *JobState
+type JobState string
+
+const (
+	JobStateInactive = JobState("inactive")
+	JobStateLoaded   = JobState("loaded")
+	JobStateLaunched = JobState("launched")
+)
+
+func ParseJobState(s string) *JobState {
+	js := JobState(s)
+	if js != JobStateInactive && js != JobStateLoaded && js != JobStateLaunched {
+		return nil
+	}
+	return &js
 }
 
-func NewJob(name string, requirements map[string][]string, payload *JobPayload, state *JobState) *Job {
-	return &Job{name, requirements, payload, state}
+type Job struct {
+	Name         string
+	Payload      JobPayload
+	State        *JobState
+	PayloadState *PayloadState
+}
+
+func NewJob(name string, payload JobPayload) *Job {
+	return &Job{name, payload, nil, nil}
 }
 
 func (self *Job) Requirements() map[string][]string {
-	if self.Payload != nil {
-		stacked := make(map[string][]string, 0)
-
-		for key, values := range self.Payload.Unit.Requirements() {
-			stacked[key] = values
-		}
-
-		for key, values := range self.JobRequirements {
-			stacked[key] = values
-		}
-
-		return stacked
-
-	} else {
-		return self.JobRequirements
-	}
+	return self.Payload.Requirements()
 }

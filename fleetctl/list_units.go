@@ -4,75 +4,61 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/coreos/fleet/third_party/github.com/codegangsta/cli"
-
 	"github.com/coreos/fleet/job"
 )
 
-func newListUnitsCommand() cli.Command {
-	return cli.Command{
-		Name:  "list-units",
-		Usage: "Enumerate units loaded in the cluster",
-		Description: `Lists all units submitted or started on the cluster.
+var cmdListUnits = &Command{
+	Name:    "list-units",
+	Summary: "Enumerate units loaded in the cluster",
+	Usage:   "[--no-legend] [-l|--full]",
+	Description: `Lists all units submitted or started on the cluster.
 
 For easily parsable output, you can remove the column headers:
-fleetctl list-units --no-legend
+	fleetctl list-units --no-legend
 
 Output the list without ellipses:
-fleetctl list-units --full`,
-		Action: listUnitsAction,
-		Flags: []cli.Flag{
-			cli.BoolFlag{"full, l", "Do not ellipsize fields on output"},
-			cli.BoolFlag{"no-legend", "Do not print a legend (column headers)"},
-		},
-	}
+	fleetctl list-units --full`,
+	Run: runListUnits,
 }
 
-func listUnitsAction(c *cli.Context) {
-	if !c.Bool("no-legend") {
-		fmt.Fprintln(out, "UNIT\tLOAD\tACTIVE\tSUB\tDESC\tMACHINE")
+func init() {
+	cmdListUnits.Flags.BoolVar(&sharedFlags.Full, "full", false, "Do not ellipsize fields on output")
+	cmdListUnits.Flags.BoolVar(&sharedFlags.Full, "l", false, "Shorthand for --full")
+	cmdListUnits.Flags.BoolVar(&sharedFlags.NoLegend, "no-legend", false, "Do not print a legend (column headers)")
+}
+
+func runListUnits(args []string) (exit int) {
+	if !sharedFlags.NoLegend {
+		fmt.Fprintln(out, "UNIT\tSTATE\tLOAD\tACTIVE\tSUB\tDESC\tMACHINE")
 	}
 
-	names, sortable := findAllUnits()
+	jobs, sortable := findAllUnits()
 
-	full := c.Bool("full")
 	for _, name := range sortable {
-		state := registryCtl.GetJobState(name)
-		description := names[name]
-		printJobState(name, description, state, full)
+		j := jobs[name]
+		printPayloadState(name, j.Payload.Unit.Description(), j.State, j.PayloadState, sharedFlags.Full)
 	}
 
 	out.Flush()
+	return
 }
 
-func findAllUnits() (names map[string]string, sortable sort.StringSlice) {
-	names = make(map[string]string, 0)
+func findAllUnits() (jobs map[string]job.Job, sortable sort.StringSlice) {
+	jobs = make(map[string]job.Job, 0)
 	sortable = make(sort.StringSlice, 0)
 
-	for _, p := range registryCtl.GetAllPayloads() {
-		if _, ok := names[p.Name]; !ok {
-			names[p.Name] = p.Unit.Description()
-			sortable = append(sortable, p.Name)
-		}
-	}
-
 	for _, j := range registryCtl.GetAllJobs() {
-		if _, ok := names[j.Name]; !ok {
-			var description string
-			if j.Payload != nil {
-				description = j.Payload.Unit.Description()
-			}
-			names[j.Name] = description
-			sortable = append(sortable, j.Name)
-		}
+		jobs[j.Name] = j
+		sortable = append(sortable, j.Name)
 	}
 
 	sortable.Sort()
 
-	return names, sortable
+	return jobs, sortable
 }
 
-func printJobState(name, description string, js *job.JobState, full bool) {
+func printPayloadState(name, description string, js *job.JobState, ps *job.PayloadState, full bool) {
+	jobState := "-"
 	loadState := "-"
 	activeState := "-"
 	subState := "-"
@@ -83,14 +69,18 @@ func printJobState(name, description string, js *job.JobState, full bool) {
 	}
 
 	if js != nil {
-		loadState = js.LoadState
-		activeState = js.ActiveState
-		subState = js.SubState
+		jobState = string(*js)
+	}
 
-		if js.MachineState != nil {
-			mach = machineFullLegend(*js.MachineState, full)
+	if ps != nil {
+		loadState = ps.LoadState
+		activeState = ps.ActiveState
+		subState = ps.SubState
+
+		if ps.MachineState != nil {
+			mach = machineFullLegend(*ps.MachineState, full)
 		}
 	}
 
-	fmt.Fprintf(out, "%s\t%s\t%s\t%s\t%s\t%s\n", name, loadState, activeState, subState, description, mach)
+	fmt.Fprintf(out, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n", name, jobState, loadState, activeState, subState, description, mach)
 }

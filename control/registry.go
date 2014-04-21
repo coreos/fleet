@@ -28,11 +28,11 @@ func (re *registryEtcd) Jobs() ([]*JobWithHost, error) {
 	var jws []*JobWithHost
 	jobs := re.registry.GetAllJobs()
 	for _, j := range jobs {
-		mst := re.registry.GetJobTarget(j.Name)
-		if mst != nil {
+		bootID := re.registry.GetJobTarget(j.Name)
+		if bootID != "" {
 			jw := &JobWithHost{
 				Spec:    JobSpecFrom(&j),
-				BootID:  mst.BootID,
+				BootID:  bootID,
 				JobName: j.Name,
 			}
 			jws = append(jws, jw)

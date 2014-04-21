@@ -38,11 +38,12 @@ func (eh *EventHandler) HandleEventJobOffered(ev event.Event) {
 
 func (eh *EventHandler) HandleEventJobScheduled(ev event.Event) {
 	jobName := ev.Payload.(string)
+	target := ev.Context.(string)
 	log.V(1).Infof("EventJobScheduled(%s): Dropping outstanding offers and bids", jobName)
 
 	eh.agent.OfferResolved(jobName)
 
-	if ev.Context.(machine.MachineState).BootID != eh.agent.Machine().State().BootID {
+	if target != eh.agent.Machine().State().BootID {
 		log.V(1).Infof("EventJobScheduled(%s): Job not scheduled to this Agent, purging related data from cache", jobName)
 		eh.agent.ForgetJob(jobName)
 
@@ -65,65 +66,82 @@ func (eh *EventHandler) HandleEventJobScheduled(ev event.Event) {
 	}
 
 	if !eh.agent.AbleToRun(j) {
-		log.V(1).Infof("EventJobScheduled(%s): Unable to run scheduled Job, rescheduling.", jobName)
-		eh.agent.RescheduleJob(j)
+		log.V(1).Infof("EventJobScheduled(%s): Unable to run scheduled Job, unscheduling.", jobName)
+		eh.agent.registry.ClearJobTarget(jobName, target)
+		return
+	}
+
+	log.V(1).Infof("EventJobScheduled(%s): Loading Job", j.Name)
+	eh.agent.LoadJob(j)
+
+	log.V(1).Infof("EventJobScheduled(%s): Bidding for all possible peers of Job", j.Name)
+	eh.agent.BidForPossiblePeers(j.Name)
+
+	ts := eh.agent.registry.GetJobTargetState(j.Name)
+	if ts == nil || *ts != job.JobStateLaunched {
 		return
 	}
 
 	log.V(1).Infof("EventJobScheduled(%s): Starting Job", j.Name)
-	eh.agent.StartJob(j)
-
-	log.V(1).Infof("EventJobScheduled(%s): Bidding for all possible peers of Job", j.Name)
-	eh.agent.BidForPossiblePeers(j.Name)
+	eh.agent.StartJob(j.Name)
 }
 
-func (eh *EventHandler) HandleEventJobStopped(ev event.Event) {
-	//TODO(bcwaldon): We should check the context of the event before
-	// making any changes to local systemd or the registry
+func (eh *EventHandler) HandleCommandStartJob(ev event.Event) {
+	if ev.Context.(string) != eh.agent.Machine().State().BootID {
+		return
+	}
 
 	jobName := ev.Payload.(string)
-	log.Infof("EventJobStopped(%s): stopping corresponding unit", jobName)
+	log.Infof("CommandStartJob(%s): starting corresponding unit", jobName)
+	eh.agent.StartJob(jobName)
+}
+
+func (eh *EventHandler) HandleCommandStopJob(ev event.Event) {
+	if ev.Context.(string) != eh.agent.Machine().State().BootID {
+		return
+	}
+
+	jobName := ev.Payload.(string)
+	log.Infof("CommandStopJob(%s): stopping corresponding unit", jobName)
 	eh.agent.StopJob(jobName)
-
-	log.V(1).Infof("EventJobStopped(%s): revisiting unresolved JobOffers", jobName)
-	eh.agent.BidForPossibleJobs()
 }
 
-func (eh *EventHandler) HandleEventJobUpdated(ev event.Event) {
-	j := ev.Payload.(job.Job)
+func (eh *EventHandler) HandleEventJobUnscheduled(ev event.Event) {
+	jobName := ev.Payload.(string)
+	target := ev.Context.(string)
 
-	localBootID := eh.agent.Machine().State().BootID
-	targetBootID := ev.Context.(string)
-
-	if targetBootID != localBootID {
-		log.V(1).Infof("EventJobUpdated(%s): Job not scheduled to Agent %s, skipping", j.Name, localBootID)
+	if target != eh.agent.Machine().State().BootID {
+		log.V(1).Infof("EventJobUnscheduled(%s): not scheduled here, ignoring ", jobName)
 		return
 	}
 
-	if ok := eh.agent.VerifyJob(&j); !ok {
-		log.Errorf("EventJobUpdated(%s): Failed to verify job", j.Name)
-		return
-	}
-
-	log.V(1).Infof("EventJobUpdated(%s): Starting Job", j.Name)
-	eh.agent.StartJob(&j)
+	log.Infof("EventJobUnscheduled(%s): unloading job", jobName)
+	eh.agent.UnloadJob(jobName)
 }
 
-func (eh *EventHandler) HandleEventJobStateUpdated(ev event.Event) {
+func (eh *EventHandler) HandleEventJobDestroyed(ev event.Event) {
+	jobName := ev.Payload.(string)
+
+	log.Infof("EventJobDestroyed(%s): unloading corresponding unit", jobName)
+	eh.agent.UnloadJob(jobName)
+}
+
+func (eh *EventHandler) HandleEventPayloadStateUpdated(ev event.Event) {
 	jobName := ev.Context.(string)
-	state := ev.Payload.(*job.JobState)
+	state := ev.Payload.(*job.PayloadState)
 
 	if state == nil {
-		log.V(1).Infof("EventJobStateUpdated(%s): received nil JobState object", jobName)
-	} else {
-		log.V(1).Infof("EventJobStateUpdated(%s): pushing state (loadState=%s, activeState=%s, subState=%s) to Registry", jobName, state.LoadState, state.ActiveState, state.SubState)
-
-		// FIXME: This should probably be set in the underlying event-generation code
-		ms := eh.agent.Machine().State()
-		state.MachineState = &ms
+		log.V(1).Infof("EventPayloadStateUpdated(%s): received nil PayloadState object", jobName)
+		state, _ = eh.agent.systemd.GetPayloadState(jobName)
 	}
 
-	eh.agent.ReportJobState(jobName, state)
+	log.V(1).Infof("EventPayloadStateUpdated(%s): pushing state (loadState=%s, activeState=%s, subState=%s) to Registry", jobName, state.LoadState, state.ActiveState, state.SubState)
+
+	// FIXME: This should probably be set in the underlying event-generation code
+	ms := eh.agent.Machine().State()
+	state.MachineState = &ms
+
+	eh.agent.ReportPayloadState(jobName, state)
 }
 
 func (eh *EventHandler) HandleEventMachineCreated(ev event.Event) {

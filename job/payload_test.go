@@ -1,17 +1,34 @@
 package job
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/coreos/fleet/unit"
 )
 
 func TestNewJobPayloadBadType(t *testing.T) {
-	j := NewJobPayload("foo.unknown", *unit.NewSystemdUnitFile("echo"))
-	_, err := j.Type()
+	if _, err := NewJobPayload("foo.unknown", *unit.NewSystemdUnitFile("echo")).Type(); err == nil {
+		t.Errorf("Expected non-nil error, got %v", err)
+	}
 
-	if err == nil {
-		t.Fatal("Expected non-nil error")
+}
+
+func TestNewJobPayloadGoodTypes(t *testing.T) {
+	cases := []string{
+		"service",
+		"socket",
+	}
+
+	test := func(ut string) {
+		name := fmt.Sprintf("foo.%s", ut)
+		if _, err := NewJobPayload(name, *unit.NewSystemdUnitFile("echo")).Type(); err != nil {
+			t.Errorf("Expected nil error, got %v", err)
+		}
+	}
+
+	for _, c := range cases {
+		test(c)
 	}
 }
 
@@ -22,7 +39,7 @@ func TestNewJobPayload(t *testing.T) {
 		t.Errorf("Payload has unexpected name '%s'", payload.Name)
 	}
 
-	if pt, _ := payload.Type(); pt != "systemd-service" {
+	if pt, _ := payload.Type(); pt != "service" {
 		t.Errorf("Payload has unexpected Type '%s'", pt)
 	}
 }
@@ -78,5 +95,65 @@ func TestJobPayloadConflictsNotProvided(t *testing.T) {
 
 	if len(conflicts) > 0 {
 		t.Fatalf("Expected no conflicts, received %v", conflicts)
+	}
+}
+
+func TestParseRequirements(t *testing.T) {
+	contents := `
+[X-Fleet]
+X-Foo=Bar
+Ping=Pong
+X-Key=Value
+`
+	unitFile := unit.NewSystemdUnitFile(contents)
+	jp := NewJobPayload("foo.service", *unitFile)
+	reqs := jp.Requirements()
+	if len(reqs) != 2 {
+		t.Fatalf("Incorrect number of requirements; got %d, expected 2", len(reqs))
+	}
+
+	if len(reqs["Foo"]) != 1 || reqs["Foo"][0] != "Bar" {
+		t.Fatalf("Incorrect value %q of requirement 'Foo'", reqs["Foo"])
+	}
+
+	if len(reqs["Key"]) != 1 || reqs["Key"][0] != "Value" {
+		t.Fatalf("Incorrect value %q of requirement 'Key'", reqs["Key"])
+	}
+}
+
+func TestParseRequirementsMultipleValuesForKeyStack(t *testing.T) {
+	contents := `
+[X-Fleet]
+X-Foo=Bar
+X-Foo=Baz
+X-Ping=Pong
+X-Ping=Pang
+`
+	unitFile := unit.NewSystemdUnitFile(contents)
+	jp := NewJobPayload("foo.service", *unitFile)
+	reqs := jp.Requirements()
+	if len(reqs) != 2 {
+		t.Fatalf("Incorrect number of requirements; got %d, expected 2: %v", len(reqs), reqs)
+	}
+
+	if len(reqs["Foo"]) != 2 || reqs["Foo"][0] != "Bar" || reqs["Foo"][1] != "Baz" {
+		t.Fatalf("Incorrect value %v of requirement 'Foo'", reqs["Foo"])
+	}
+
+	if len(reqs["Ping"]) != 2 || reqs["Ping"][0] != "Pong" || reqs["Ping"][1] != "Pang" {
+		t.Fatalf("Incorrect value %v of requirement 'Ping'", reqs["Ping"])
+	}
+}
+
+func TestParseRequirementsMissingSection(t *testing.T) {
+	contents := `
+[Unit]
+Description=Timmy
+`
+	unitFile := unit.NewSystemdUnitFile(contents)
+	jp := NewJobPayload("foo.service", *unitFile)
+	reqs := jp.Requirements()
+	if len(reqs) != 0 {
+		t.Fatalf("Incorrect number of requirements; got %d, expected 0", len(reqs))
 	}
 }

@@ -22,26 +22,6 @@ One must use the entire boot ID when setting `X-ConditionMachineBootID` - the sh
 
 It is important to note that a machine's boot ID is ephemeral and will change across reboots.
 
-##### Schedule unit to machine with specific metadata
-
-When calling `fleetctl start`, a user may provide a `--require` flag.
-The value of this flag is a comma-delimited list of `<key>=<value>` items.
-
-```
-$ fleetctl start --require region=us-east-1,host-type=SSD
-```
-
-This requires an eligible machine to have at least the `region` and `host-type` keys set accordingly. A single key may also be defined multiple times:
-
-```
-$ fleetctl start --require region=us-east-1,region=us-east-2
-```
-
-This would allow a machine to match just one of the provided values to consider themselves capable of running a job.
-
-A machine is not automatically configured with metadata.
-A deployer may define machine metadata using the `metadata` [config option](https://github.com/coreos/fleet/blob/master/Documentation/configuration.md).
-
 ##### Schedule unit next to another unit
 
 In order for a unit to be scheduled to the same machine as another unit, a unit file can define `X-ConditionMachineOf`.
