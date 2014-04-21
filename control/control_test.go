@@ -70,19 +70,19 @@ func (mClusterCentral *mockClusterCentral) Specs() (map[string]machine.MachineSp
 func ExampleScheduleJob() {
 	record := make(map[string]string)
 
-	etcd := &mockClusterCentral{
+	clusterCentral := &mockClusterCentral{
 		record: record,
 	}
 
-	etcd.declareHost("host1")
-	etcd.declareHost("host2")
-	etcd.declareHost("host3")
-	etcd.declareHost("host4")
+	clusterCentral.declareHost("host1")
+	clusterCentral.declareHost("host2")
+	clusterCentral.declareHost("host3")
+	clusterCentral.declareHost("host4")
 
-	etcd.declareJob(newTestJob(1, 100, 1024, 10), "host1")
-	etcd.declareJob(newTestJob(2, 130, 2024, 100), "host2")
+	clusterCentral.declareJob(newTestJob(1, 100, 1024, 10), "host1")
+	clusterCentral.declareJob(newTestJob(2, 130, 2024, 100), "host2")
 
-	ctrl, err := NewJobControl(etcd)
+	ctrl, err := NewJobControl(clusterCentral)
 	if err != nil {
 		fmt.Printf("couldn't create job control: %v", err)
 		return
@@ -121,21 +121,21 @@ func BenchmarkScheduleJob(b *testing.B) {
 
 	record := make(map[string]string)
 
-	etcd := &mockClusterCentral{
+	clusterCentral := &mockClusterCentral{
 		record: record,
 	}
 
 	for i := 0; i < numMachines; i++ {
-		etcd.declareHost(fmt.Sprintf("host%d", i))
+		clusterCentral.declareHost(fmt.Sprintf("host%d", i))
 	}
 
-	ctrl, err := NewJobControl(etcd)
+	ctrl, err := NewJobControl(clusterCentral)
 	if err != nil {
 		fmt.Printf("could create job control: %v", err)
 		return
 	}
 
-	etcd.clus = ctrl.(*cluster)
+	clusterCentral.clus = ctrl.(*cluster)
 
 	for i := 0; i < numJobs; i++ {
 		spec := newRandomJob(i)
@@ -150,7 +150,7 @@ func BenchmarkScheduleJob(b *testing.B) {
 			return
 		}
 
-		etcd.clus.jobScheduled(bootIDs[0], spec)
+		clusterCentral.clus.jobScheduled(bootIDs[0], spec)
 	}
 
 	spec := newRandomJob(numJobs)
