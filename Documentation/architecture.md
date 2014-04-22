@@ -18,7 +18,7 @@ An Agent is responsible for executing Jobs. To do this, an Agent must first bid 
 
 All outstanding JobOffers and JobBids are tracked by an Agent internally to facilitate rescheduling in response to failures. Once a JobOffer is announced as resolved (i.e. the Job is scheduled), the JobOffer and JobBid state is purged from a given Agent.
 
-If an Agent's JobBid is accepted, that Agent will run the Job by instructing its local instance of systemd to start the Job's payload. The Agent then subscribes to relevant D-Bus events which, when received, are published to the cluster.
+If an Agent's JobBid is accepted, that Agent will run the Job by instructing its local instance of systemd to start the Job's Unit. The Agent then subscribes to relevant D-Bus events which, when received, are published to the cluster.
 
 If an Agent's JobBid is rejected, that Agent simply forgets about it and moves on.
 
@@ -40,23 +40,21 @@ There are two EventStreams in fleet. The first watches etcd for changes, while t
 
 ### User-facing Objects
 
-#### Jobs and Payloads
+#### Jobs and Units
 
-A JobPayload represents a single systemd service or socket. Once a JobPayload is pushed to the cluster, it is immutable. A JobPayload must be destroyed and re-submitted for any modifications to be made.
+A Unit represents a single systemd service or socket. Once a Unit is pushed to the cluster, it is immutable. A Unit must be destroyed and re-submitted for any modifications to be made.
 
-The payload may define a set of requirements that must be fulfilled by a given host in order for that host to run the payload. These requirements can include resources, host metadata, locality relative to other payloads, etc.
+The Unit may define a set of requirements that must be fulfilled by a given host in order for that host to run the Unit. These requirements can include resources, host metadata, locality relative to other Units, etc.
 
-A Job represents a request to run a specific JobPayload in the cluster. All Jobs are treated as services rather than batch processes.
+A Job represents a request to run a specific Unit in the cluster. All Jobs are treated as services rather than batch processes.
 
-When creating a Job, a user may provide additional requirements that must be respected in addition to the requirements of the Job's payload. Once a Job has been started, no other Jobs may be started with its payload.
-
-Stopping a Job is a destructive action - no metadata is preserved. The Job's payload, however, is not removed from the cluster and subsequent Jobs may use it.
+Stopping a Job is a destructive action - no metadata is preserved. The Job's Unit, however, is not removed from the cluster and subsequent Jobs may use it.
 
 #### State
 
 Both Jobs and Machines have dynamic state which is published both for the user and cluster to consume.
 
-A PayloadState object represents the state of a payload as reported by systemd on a given Machine. Only the Machine running an actual Job will publish a corresponding PayloadState object.
+A UnitState object represents the state of a payload as reported by systemd on a given Machine. Only the Machine running an actual Job will publish a corresponding UnitState object.
 
 A MachineState object represents the state of a host in the cluster at the time the object was generated. MachineState objects are published on an interval with a TTL, keeping the external view of a cluster relatively accurate at any given time.
 

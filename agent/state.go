@@ -77,8 +77,8 @@ func (self *AgentState) TrackJob(j *job.Job) {
 	self.lock()
 	defer self.unlock()
 
-	self.trackJobPeers(j.Name, j.Payload.Peers())
-	self.trackJobConflicts(j.Name, j.Payload.Conflicts())
+	self.trackJobPeers(j.Name, j.Peers())
+	self.trackJobConflicts(j.Name, j.Unit.Conflicts())
 }
 
 // PurgeJob removes all state tracked on behalf of a given job

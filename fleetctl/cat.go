@@ -29,6 +29,6 @@ func runCatUnit(args []string) (exit int) {
 		return 1
 	}
 
-	fmt.Print(j.Payload.Unit.String())
+	fmt.Print(j.Unit.String())
 	return
 }

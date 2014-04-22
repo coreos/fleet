@@ -6,6 +6,7 @@ import (
 	"github.com/coreos/fleet/event"
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/machine"
+	"github.com/coreos/fleet/unit"
 )
 
 type EventHandler struct {
@@ -63,7 +64,7 @@ func (eh *EventHandler) HandleEventJobScheduled(ev event.Event) {
 	}
 
 	if !eh.agent.VerifyJob(j) {
-		log.Errorf("EventJobScheduled(%s): Failed to verify job", j.Name)
+		log.Errorf("EventJobScheduled(%s): Failed to verify Job", j.Name)
 		return
 	}
 
@@ -132,22 +133,22 @@ func (eh *EventHandler) HandleEventJobDestroyed(ev event.Event) {
 	eh.agent.UnloadJob(jobName)
 }
 
-func (eh *EventHandler) HandleEventPayloadStateUpdated(ev event.Event) {
+func (eh *EventHandler) HandleEventUnitStateUpdated(ev event.Event) {
 	jobName := ev.Context.(string)
-	state := ev.Payload.(*job.PayloadState)
+	state := ev.Payload.(*unit.UnitState)
 
 	if state == nil {
 		log.Infof("EventPayloadStateUpdated(%s): received nil PayloadState object", jobName)
-		state, _ = eh.agent.systemd.GetPayloadState(jobName)
+		state, _ = eh.agent.systemd.GetUnitState(jobName)
 	}
 
-	log.Infof("EventPayloadStateUpdated(%s): pushing state (loadState=%s, activeState=%s, subState=%s) to Registry", jobName, state.LoadState, state.ActiveState, state.SubState)
+	log.Infof("EventUnitStateUpdated(%s): pushing state (loadState=%s, activeState=%s, subState=%s) to Registry", jobName, state.LoadState, state.ActiveState, state.SubState)
 
 	// FIXME: This should probably be set in the underlying event-generation code
 	ms := eh.agent.Machine().State()
 	state.MachineState = &ms
 
-	eh.agent.ReportPayloadState(jobName, state)
+	eh.agent.ReportUnitState(jobName, state)
 }
 
 func (eh *EventHandler) HandleEventMachineCreated(ev event.Event) {

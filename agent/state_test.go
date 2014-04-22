@@ -11,19 +11,17 @@ import (
 func TestGetJobsByPeer(t *testing.T) {
 	state := NewState()
 
-	u1 := unit.NewSystemdUnitFile(`[X-Fleet]
+	u1 := unit.NewUnit(`[X-Fleet]
 X-ConditionMachineOf=b
 X-ConditionMachineOf=c
 `)
-	p1 := job.NewJobPayload("a", *u1)
-	j1 := job.NewJob("a", *p1)
+	j1 := job.NewJob("a", *u1)
 	state.TrackJob(j1)
 
-	u2 := unit.NewSystemdUnitFile(`[X-Fleet]
+	u2 := unit.NewUnit(`[X-Fleet]
 X-ConditionMachineOf=c
 `)
-	p2 := job.NewJobPayload("d", *u2)
-	j2 := job.NewJob("d", *p2)
+	j2 := job.NewJob("d", *u2)
 	state.TrackJob(j2)
 
 	peers := state.GetJobsByPeer("b")
@@ -39,11 +37,10 @@ X-ConditionMachineOf=c
 
 // Assert that no jobs are returned for unknown peers
 func TestGetJobsByPeerUnknown(t *testing.T) {
-	u := unit.NewSystemdUnitFile(`[X-Fleet]
+	u := unit.NewUnit(`[X-Fleet]
 X-ConditionMachineOf=b
 `)
-	p := job.NewJobPayload("a", *u)
-	j := job.NewJob("a", *p)
+	j := job.NewJob("a", *u)
 
 	state := NewState()
 	state.TrackJob(j)
@@ -59,19 +56,17 @@ X-ConditionMachineOf=b
 func TestDropPeersJob(t *testing.T) {
 	state := NewState()
 
-	u1 := unit.NewSystemdUnitFile(`[X-Fleet]
+	u1 := unit.NewUnit(`[X-Fleet]
 X-ConditionMachineOf=b
 X-ConditionMachineOf=c
 `)
-	p1 := job.NewJobPayload("a", *u1)
-	j1 := job.NewJob("a", *p1)
+	j1 := job.NewJob("a", *u1)
 	state.TrackJob(j1)
 
-	u2 := unit.NewSystemdUnitFile(`[X-Fleet]
+	u2 := unit.NewUnit(`[X-Fleet]
 X-ConditionMachineOf=c
 `)
-	p2 := job.NewJobPayload("d", *u2)
-	j2 := job.NewJob("d", *p2)
+	j2 := job.NewJob("d", *u2)
 	state.TrackJob(j2)
 
 	state.PurgeJob(j1.Name)

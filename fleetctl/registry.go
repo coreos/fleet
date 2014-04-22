@@ -15,7 +15,7 @@ type Registry interface {
 	DestroyJob(name string)
 	SetJobTargetState(name string, target job.JobState) error
 	CreateSignatureSet(s *sign.SignatureSet) error
-	GetSignatureSetOfPayload(name string) *sign.SignatureSet
+	GetSignatureSetOfJob(name string) *sign.SignatureSet
 	GetJobTarget(name string) string
 	GetMachineState(bootID string) *machine.MachineState
 	GetDebugInfo() (string, error)
@@ -57,8 +57,8 @@ func (m MainRegistry) CreateSignatureSet(s *sign.SignatureSet) error {
 	return m.registry.CreateSignatureSet(s)
 }
 
-func (m MainRegistry) GetSignatureSetOfPayload(name string) *sign.SignatureSet {
-	return m.registry.GetSignatureSetOfPayload(name)
+func (m MainRegistry) GetSignatureSetOfJob(name string) *sign.SignatureSet {
+	return m.registry.GetSignatureSetOfJob(name)
 }
 
 func (m MainRegistry) GetJobTarget(name string) string {

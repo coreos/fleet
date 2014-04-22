@@ -31,13 +31,13 @@ func init() {
 func runSubmitUnits(args []string) (exit int) {
 	for _, arg := range args {
 		jobName := path.Base(arg)
-		payload, err := getJobPayloadFromFile(arg)
+		unit, err := getUnitFromFile(arg)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed getting Payload(%s) from file: %v\n", jobName, err)
+			fmt.Fprintf(os.Stderr, "Failed getting Unit(%s) from file: %v\n", jobName, err)
 			return 1
 		}
 
-		j, err := createJob(jobName, payload)
+		j, err := createJob(jobName, unit)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "%v\n", err)
 			return 1

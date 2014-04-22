@@ -6,51 +6,23 @@ import (
 	"strings"
 )
 
-type SystemdUnitFile struct {
-	// Contents represents the parsed unit file.
-	// This field must be considered readonly.
-	Contents map[string]map[string][]string
-
-	raw string
-}
-
-func (self *SystemdUnitFile) String() string {
-	return self.raw
-}
-
-// LegacyContents serializes the contents of a unit file into an obsolete datastructure. This
-// datastructure is lossy and should only be used to remain backwards-compatible where necessary.
-func (self *SystemdUnitFile) LegacyContents() map[string]map[string]string {
-	coerced := make(map[string]map[string]string, len(self.Contents))
-	for section, options := range self.Contents {
-		coerced[section] = make(map[string]string)
-		for key, values := range options {
-			if len(values) == 0 {
-				continue
-			}
-			coerced[section][key] = values[len(values)-1]
-		}
-	}
-	return coerced
-}
-
 // Description returns the first Description option found in the [Unit] section.
 // If the option is not defined, an empty string is returned.
-func (self *SystemdUnitFile) Description() string {
+func (self *Unit) Description() string {
 	if values := self.Contents["Unit"]["Description"]; len(values) > 0 {
 		return values[0]
 	}
 	return ""
 }
 
-func NewSystemdUnitFile(raw string) *SystemdUnitFile {
+func NewUnit(raw string) *Unit {
 	parsed := deserializeUnitFile(raw)
-	return &SystemdUnitFile{parsed, raw}
+	return &Unit{parsed, raw}
 }
 
-// NewSystemdUnitFileFromLegacyContents creates a SystemdUnitFile object from an obsolete unit
+// NewUnitFromLegacyContents creates a Unit object from an obsolete unit
 // file datastructure. This should only be used to remain backwards-compatible where necessary.
-func NewSystemdUnitFileFromLegacyContents(contents map[string]map[string]string) *SystemdUnitFile {
+func NewUnitFromLegacyContents(contents map[string]map[string]string) *Unit {
 	var serialized string
 	for section, keyMap := range contents {
 		serialized += fmt.Sprintf("[%s]\n", section)
@@ -59,10 +31,11 @@ func NewSystemdUnitFileFromLegacyContents(contents map[string]map[string]string)
 		}
 		serialized += "\n"
 	}
-	return NewSystemdUnitFile(serialized)
+	return NewUnit(serialized)
 }
 
-// deserializeUnitFile is dangerously simple and should be rewritten to match the systemd unit file spec
+// deserializeUnitFile parses a systemd unit file and attempts to map its various sections and values.
+// Currently this function is dangerously simple and should be rewritten to match the systemd unit file spec
 func deserializeUnitFile(raw string) map[string]map[string][]string {
 	sections := make(map[string]map[string][]string)
 	var section string

@@ -5,6 +5,7 @@ import (
 
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/machine"
+	"github.com/coreos/fleet/unit"
 )
 
 func newTestRegistryForSsh() Registry {
@@ -15,15 +16,15 @@ func newTestRegistryForSsh() Registry {
 	}
 
 	jobs := []job.Job{
-		*job.NewJob("j1.service", job.JobPayload{}),
-		*job.NewJob("j2.service", job.JobPayload{}),
-		*job.NewJob("hello.service", job.JobPayload{}),
+		*job.NewJob("j1.service", unit.Unit{}),
+		*job.NewJob("j2.service", unit.Unit{}),
+		*job.NewJob("hello.service", unit.Unit{}),
 	}
 
-	states := map[string]*job.PayloadState{
-		"j1.service":    job.NewPayloadState("loaded", "active", "listening", []string{}, &machines[0]),
-		"j2.service":    job.NewPayloadState("loaded", "inactive", "dead", []string{}, &machines[1]),
-		"hello.service": job.NewPayloadState("loaded", "inactive", "dead", []string{}, &machines[2]),
+	states := map[string]*unit.UnitState{
+		"j1.service":    unit.NewUnitState("loaded", "active", "listening", []string{}, &machines[0]),
+		"j2.service":    unit.NewUnitState("loaded", "inactive", "dead", []string{}, &machines[1]),
+		"hello.service": unit.NewUnitState("loaded", "inactive", "dead", []string{}, &machines[2]),
 	}
 
 	return TestRegistry{machines: machines, jobStates: states, jobs: jobs}

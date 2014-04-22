@@ -244,21 +244,18 @@ func getChecker() *ssh.HostKeyChecker {
 	return ssh.NewHostKeyChecker(keyFile, askToTrustHost, nil)
 }
 
-// getJobPayloadFromFile attempts to load a Job from a given filename
+// getUnitFromFile attempts to load a Job from a given filename
 // It returns the Job or nil, and any error encountered
-func getJobPayloadFromFile(file string) (*job.JobPayload, error) {
+func getUnitFromFile(file string) (*unit.Unit, error) {
 	out, err := ioutil.ReadFile(file)
 	if err != nil {
 		return nil, err
 	}
 
-	payloadName := path.Base(file)
-	log.V(1).Infof("Payload(%s) found in local filesystem", payloadName)
+	unitName := path.Base(file)
+	log.V(1).Infof("Unit(%s) found in local filesystem", unitName)
 
-	unitFile := unit.NewSystemdUnitFile(string(out))
-	payload := job.NewJobPayload(payloadName, *unitFile)
-
-	return payload, nil
+	return unit.NewUnit(string(out)), nil
 }
 
 func getTunnelFlag() string {
@@ -314,8 +311,8 @@ func findJobs(args []string) (jobs []job.Job, err error) {
 	return jobs, nil
 }
 
-func createJob(jobName string, jobPayload *job.JobPayload) (*job.Job, error) {
-	j := job.NewJob(jobName, *jobPayload)
+func createJob(jobName string, unit *unit.Unit) (*job.Job, error) {
+	j := job.NewJob(jobName, *unit)
 
 	if err := registryCtl.CreateJob(j); err != nil {
 		return nil, fmt.Errorf("Failed creating job %s: %v", j.Name, err)
@@ -326,38 +323,45 @@ func createJob(jobName string, jobPayload *job.JobPayload) (*job.Job, error) {
 	return j, nil
 }
 
+// signJob signs the Unit of a Job using the public keys in the local SSH
+// agent, and pushes the resulting SignatureSet to the Registry
 func signJob(j *job.Job) error {
 	sc, err := sign.NewSignatureCreatorFromSSHAgent()
 	if err != nil {
 		return fmt.Errorf("Failed creating SignatureCreator: %v", err)
 	}
 
-	s, err := sc.SignPayload(&j.Payload)
+	ss, err := sc.SignJob(j)
 	if err != nil {
-		return fmt.Errorf("Failed signing Payload(%s): %v", j.Payload.Name, err)
+		return fmt.Errorf("Failed signing Job(%s): %v", j.Name, err)
 	}
 
-	registryCtl.CreateSignatureSet(s)
-	log.V(1).Infof("Signed Payload(%s)", j.Payload.Name)
+	err = registryCtl.CreateSignatureSet(ss)
+	if err != nil {
+		return fmt.Errorf("Failed storing Job signature in registry: %v", err)
+	}
 
+	log.V(1).Infof("Signed Job(%s)", j.Name)
 	return nil
 }
 
+// verifyJob attempts to verify the signature of the provided Job's unit using
+// the public keys in the local SSH agent
 func verifyJob(j *job.Job) error {
 	sv, err := sign.NewSignatureVerifierFromSSHAgent()
 	if err != nil {
 		return fmt.Errorf("Failed creating SignatureVerifier: %v", err)
 	}
 
-	s := registryCtl.GetSignatureSetOfPayload(j.Payload.Name)
-	verified, err := sv.VerifyPayload(&j.Payload, s)
+	ss := registryCtl.GetSignatureSetOfJob(j.Name)
+	verified, err := sv.VerifyJob(j, ss)
 	if err != nil {
-		return fmt.Errorf("Failed attempting to verify Payload(%s): %v", j.Payload.Name, err)
+		return fmt.Errorf("Failed attempting to verify Job(%s): %v", j.Name, err)
 	} else if !verified {
-		return fmt.Errorf("Unable to verify Payload(%s)", j.Payload.Name)
+		return fmt.Errorf("Unable to verify Job(%s)", j.Name)
 	}
 
-	log.V(1).Infof("Verified signature of Payload(%s)", j.Payload.Name)
+	log.V(1).Infof("Verified signature of Job(%s)", j.Name)
 	return nil
 }
 
@@ -374,12 +378,12 @@ func lazyCreateJobs(args []string, signAndVerify bool) error {
 			continue
 		}
 
-		payload, err := getJobPayloadFromFile(arg)
+		unit, err := getUnitFromFile(arg)
 		if err != nil {
-			return fmt.Errorf("Failed getting Payload(%s) from file: %v", jobName, err)
+			return fmt.Errorf("Failed getting Unit(%s) from file: %v", jobName, err)
 		}
 
-		j, err := createJob(jobName, payload)
+		j, err := createJob(jobName, unit)
 		if err != nil {
 			return err
 		}
@@ -479,7 +483,7 @@ func checkJobState(jobName string, js job.JobState, maxAttempts int, out io.Writ
 func unitNameMangle(baseName string) string {
 	name := path.Base(baseName)
 
-	for _, t := range job.SupportedUnitTypes() {
+	for _, t := range unit.SupportedUnitTypes() {
 		if strings.HasSuffix(name, "."+t) {
 			return name
 		}
