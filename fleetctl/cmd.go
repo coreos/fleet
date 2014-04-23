@@ -422,8 +422,6 @@ func lazyStartJobs(args []string) ([]string, error) {
 			return nil, fmt.Errorf("Unable to find job %q", name)
 		} else if j.State == nil {
 			return nil, fmt.Errorf("Unable to determine current state of job")
-		} else if *(j.State) == job.JobStateInactive {
-			return nil, fmt.Errorf("Unable to start job in state %q", *(j.State))
 		} else if *(j.State) == job.JobStateLaunched {
 			log.V(1).Infof("Job(%s) already %s, skipping.", j.Name, *(j.State))
 			continue

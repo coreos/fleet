@@ -30,8 +30,7 @@ func runUnloadUnit(args []string) (exit int) {
 		return 1
 	}
 
-	stopping := make([]string, 0)
-	unload := make([]string, 0)
+	wait := make([]string, 0)
 	for _, j := range jobs {
 		if j.State == nil {
 			fmt.Fprintf(os.Stderr, "Unable to determine state of %q\n", *(j.State))
@@ -41,29 +40,15 @@ func runUnloadUnit(args []string) (exit int) {
 		if *(j.State) == job.JobStateInactive {
 			log.V(1).Infof("Job(%s) already %s, skipping.", j.Name, job.JobStateInactive)
 			continue
-		} else if *(j.State) == job.JobStateLaunched {
-			log.V(1).Infof("Stopping Job(%s) before unloading", j.Name)
-			registryCtl.SetJobTargetState(j.Name, job.JobStateLoaded)
-			stopping = append(stopping, j.Name)
 		}
 
-		unload = append(unload, j.Name)
-	}
-
-	// Always wait for jobs that had to be stopped regardless of the --no-block flag
-	err = waitForJobStates(stopping, job.JobStateLoaded, sharedFlags.BlockAttempts, os.Stdout)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
-		return 1
-	}
-
-	for _, jobName := range unload {
-		log.V(1).Infof("Unloading Job(%s)", jobName)
-		registryCtl.SetJobTargetState(jobName, job.JobStateInactive)
+		log.V(1).Infof("Unloading Job(%s)", j.Name)
+		registryCtl.SetJobTargetState(j.Name, job.JobStateInactive)
+		wait = append(wait, j.Name)
 	}
 
 	if !sharedFlags.NoBlock {
-		if err := waitForJobStates(unload, job.JobStateInactive, sharedFlags.BlockAttempts, os.Stdout); err != nil {
+		if err := waitForJobStates(wait, job.JobStateInactive, sharedFlags.BlockAttempts, os.Stdout); err != nil {
 			fmt.Fprintf(os.Stderr, "%v\n", err)
 			return 1
 		}
