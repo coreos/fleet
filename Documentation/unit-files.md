@@ -5,7 +5,6 @@ fleet will schedule any valid service or socket systemd unit to a machine in the
 ## Unit Requirements
 
 * Only service and socket unit types are supported, and file names must have '.service' and '.socket' file extensions, respectively.
-* Unit files must not have an [Install] section.
 
 ## fleet-specific Options
 
