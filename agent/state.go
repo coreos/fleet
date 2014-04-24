@@ -28,8 +28,8 @@ type AgentState struct {
 	// index of local payload conflicts to the job they belong to
 	conflicts map[string][]string
 
-	// set of jobs that have been launched by the parent Agent
-	launched map[string]bool
+	// expected states of jobs scheduled to this agent
+	targetStates map[string]job.JobState
 }
 
 func NewState() *AgentState {
@@ -38,7 +38,7 @@ func NewState() *AgentState {
 		bids:         make(map[string]bool),
 		peers:        make(map[string][]string),
 		conflicts:    make(map[string][]string, 0),
-		launched:     make(map[string]bool, 0),
+		targetStates: make(map[string]job.JobState),
 	}
 }
 
@@ -77,8 +77,11 @@ func (self *AgentState) TrackJobConflicts(jobName string, conflicts []string) {
 
 // Determine whether there are any known conflicts with the given argument
 func (self *AgentState) HasConflict(potentialJobName string, potentialConflicts []string) (bool, string) {
-	// Iterate through each existing Job, asserting two things:
+	// Iterate through each Job that is scheduled here or has already been bid upon, asserting two things
 	for existingJobName, existingConflicts := range self.conflicts {
+		if !self.HasBid(existingJobName) && !self.ScheduledHere(existingJobName) {
+			continue
+		}
 
 		// 1. Each tracked Job does not conflict with the potential conflicts
 		for _, pc := range potentialConflicts {
@@ -193,18 +196,25 @@ func globMatches(pattern, target string) bool {
 	return matched
 }
 
-func (self *AgentState) TrackLaunchedJob(jobName string) {
-	self.launched[jobName] = true
+func (self *AgentState) SetTargetState(jobName string, state job.JobState) {
+	self.targetStates[jobName] = state
 }
 
-func (self *AgentState) DropLaunchedJob(jobName string) {
-	delete(self.launched, jobName)
+func (self *AgentState) DropTargetState(jobName string) {
+	delete(self.targetStates, jobName)
 }
 
 func (self *AgentState) LaunchedJobs() []string {
-	jobs := make([]string, 0, len(self.launched))
-	for j, _ := range self.launched {
-		jobs = append(jobs, j)
+	jobs := make([]string, 0)
+	for j, ts := range self.targetStates {
+		if ts == job.JobStateLaunched {
+			jobs = append(jobs, j)
+		}
 	}
 	return jobs
+}
+
+func (self *AgentState) ScheduledHere(jobName string) bool {
+	ts := self.targetStates[jobName]
+	return ts == job.JobStateLoaded || ts == job.JobStateLaunched
 }

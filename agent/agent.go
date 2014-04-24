@@ -220,11 +220,9 @@ func (a *Agent) HeartbeatJobs(ttl time.Duration, stop chan bool) {
 func (a *Agent) LoadJob(j *job.Job) {
 	log.Infof("Loading Job(%s)", j.Name)
 
-	if len(j.Payload.Conflicts()) > 0 {
-		a.state.Lock()
-		a.state.TrackJobConflicts(j.Name, j.Payload.Conflicts())
-		a.state.Unlock()
-	}
+	a.state.Lock()
+	a.state.SetTargetState(j.Name, job.JobStateLoaded)
+	a.state.Unlock()
 
 	a.systemd.LoadJob(j)
 
@@ -241,7 +239,7 @@ func (a *Agent) LoadJob(j *job.Job) {
 
 func (a *Agent) StartJob(jobName string) {
 	a.state.Lock()
-	a.state.TrackLaunchedJob(jobName)
+	a.state.SetTargetState(jobName, job.JobStateLaunched)
 	a.state.Unlock()
 
 	bootID := a.Machine().State().BootID
@@ -251,7 +249,7 @@ func (a *Agent) StartJob(jobName string) {
 
 func (a *Agent) StopJob(jobName string) {
 	a.state.Lock()
-	a.state.DropLaunchedJob(jobName)
+	a.state.SetTargetState(jobName, job.JobStateLoaded)
 	a.state.Unlock()
 
 	a.registry.ClearJobHeartbeat(jobName)
@@ -336,10 +334,6 @@ func (a *Agent) TrackOffer(jo job.JobOffer) {
 
 	log.V(2).Infof("Tracking JobOffer(%s)", jo.Job.Name)
 	a.state.TrackOffer(jo)
-
-	peers := jo.Job.Payload.Peers()
-	log.V(2).Infof("Tracking peers of JobOffer(%s): %v", jo.Job.Name, peers)
-	a.state.TrackJobPeers(jo.Job.Name, jo.Job.Payload.Peers())
 }
 
 // Instruct the Agent that the given offer has been resolved
@@ -353,6 +347,15 @@ func (a *Agent) ForgetOffer(jobName string) {
 	a.state.DropBid(jobName)
 }
 
+func (a *Agent) TrackJob(j *job.Job) {
+	a.state.Lock()
+	defer a.state.Unlock()
+
+	log.V(2).Infof("Tracking metadata of Job(%s)", j.Name)
+	a.state.TrackJobPeers(j.Name, j.Payload.Peers())
+	a.state.TrackJobConflicts(j.Name, j.Payload.Conflicts())
+}
+
 // ForgetJob purges all state related to a given job from
 // the local cache
 func (a *Agent) ForgetJob(jobName string) {
@@ -360,6 +363,7 @@ func (a *Agent) ForgetJob(jobName string) {
 	defer a.state.Unlock()
 
 	log.V(2).Infof("Purging all information for Job(%s)", jobName)
+	a.state.DropTargetState(jobName)
 	a.state.DropPeersJob(jobName)
 	a.state.DropJobConflicts(jobName)
 }

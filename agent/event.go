@@ -27,6 +27,7 @@ func (eh *EventHandler) HandleEventJobOffered(ev event.Event) {
 	// Everything we check against could change over time, so we track all
 	// offers starting here for future bidding even if we can't bid now
 	eh.agent.TrackOffer(jo)
+	eh.agent.TrackJob(&jo.Job)
 
 	if !eh.agent.AbleToRun(&jo.Job) {
 		log.V(1).Infof("EventJobOffered(%s): not all criteria met, not bidding", jo.Job.Name)
@@ -69,6 +70,7 @@ func (eh *EventHandler) HandleEventJobScheduled(ev event.Event) {
 	if !eh.agent.AbleToRun(j) {
 		log.V(1).Infof("EventJobScheduled(%s): Unable to run scheduled Job, unscheduling.", jobName)
 		eh.agent.registry.ClearJobTarget(jobName, target)
+		eh.agent.ForgetJob(jobName)
 		return
 	}
 
@@ -118,6 +120,9 @@ func (eh *EventHandler) HandleEventJobUnscheduled(ev event.Event) {
 
 	log.Infof("EventJobUnscheduled(%s): unloading job", jobName)
 	eh.agent.UnloadJob(jobName)
+
+	log.Infof("EventJobUnscheduled(%s): checking oustanding job offers", jobName)
+	eh.agent.BidForPossibleJobs()
 }
 
 func (eh *EventHandler) HandleEventJobDestroyed(ev event.Event) {
