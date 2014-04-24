@@ -60,9 +60,10 @@ func runStopUnit(args []string) (exit int) {
 	}
 
 	if !sharedFlags.NoBlock {
-		if err := waitForJobStates(stopping, job.JobStateLoaded, sharedFlags.BlockAttempts, os.Stdout); err != nil {
+		errchan := waitForJobStates(stopping, job.JobStateLoaded, sharedFlags.BlockAttempts, os.Stdout)
+		for err := range errchan {
 			fmt.Fprintf(os.Stderr, "%v\n", err)
-			return 1
+			exit = 1
 		}
 	}
 
