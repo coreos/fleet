@@ -218,3 +218,13 @@ func (self *AgentState) ScheduledHere(jobName string) bool {
 	ts := self.targetStates[jobName]
 	return ts == job.JobStateLoaded || ts == job.JobStateLaunched
 }
+
+func (self *AgentState) ScheduledJobs() []string {
+	jobs := make([]string, 0)
+	for j, ts := range self.targetStates {
+		if ts == job.JobStateLoaded || ts == job.JobStateLaunched {
+			jobs = append(jobs, j)
+		}
+	}
+	return jobs
+}

@@ -125,11 +125,11 @@ func (a *Agent) Purge() {
 
 	bootID := a.machine.State().BootID
 
-	//TODO(bcwaldon): The agent should not have to ask the Registry
-	// which jobs it is running in its local systemd
-	for _, j := range a.registry.GetAllJobsByMachine(bootID) {
-		log.Infof("Unloading Job(%s)", j.Name)
-		a.UnloadJob(j.Name)
+	for _, jobName := range a.state.ScheduledJobs() {
+		log.Infof("Unscheduling Job(%s) from local machine", jobName)
+		a.registry.ClearJobTarget(jobName, bootID)
+		log.Infof("Unloading Job(%s) from local machine", jobName)
+		a.UnloadJob(jobName)
 	}
 
 	// Jobs have been stopped, the heartbeat can stop
