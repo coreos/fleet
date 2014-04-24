@@ -344,13 +344,12 @@ func (a *Agent) TrackOffer(jo job.JobOffer) {
 
 // Instruct the Agent that the given offer has been resolved
 // and may be ignored in future conflict calculations
-func (a *Agent) OfferResolved(jobName string) {
+func (a *Agent) ForgetOffer(jobName string) {
 	a.state.Lock()
 	defer a.state.Unlock()
 
 	log.V(2).Infof("Dropping JobOffer(%s)", jobName)
 	a.state.DropOffer(jobName)
-
 	a.state.DropBid(jobName)
 }
 

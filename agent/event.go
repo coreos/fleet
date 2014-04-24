@@ -40,9 +40,9 @@ func (eh *EventHandler) HandleEventJobOffered(ev event.Event) {
 func (eh *EventHandler) HandleEventJobScheduled(ev event.Event) {
 	jobName := ev.Payload.(string)
 	target := ev.Context.(string)
-	log.V(1).Infof("EventJobScheduled(%s): Dropping outstanding offers and bids", jobName)
 
-	eh.agent.OfferResolved(jobName)
+	log.V(1).Infof("EventJobScheduled(%s): Dropping outstanding offers and bids", jobName)
+	eh.agent.ForgetOffer(jobName)
 
 	if target != eh.agent.Machine().State().BootID {
 		log.V(1).Infof("EventJobScheduled(%s): Job not scheduled to this Agent, purging related data from cache", jobName)
