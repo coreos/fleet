@@ -422,8 +422,6 @@ func lazyStartJobs(args []string) ([]string, error) {
 			return nil, fmt.Errorf("Unable to find job %q", name)
 		} else if j.State == nil {
 			return nil, fmt.Errorf("Unable to determine current state of job")
-		} else if *(j.State) == job.JobStateInactive {
-			return nil, fmt.Errorf("Unable to start job in state %q", *(j.State))
 		} else if *(j.State) == job.JobStateLaunched {
 			log.V(1).Infof("Job(%s) already %s, skipping.", j.Name, *(j.State))
 			continue
@@ -437,7 +435,13 @@ func lazyStartJobs(args []string) ([]string, error) {
 	return triggered, nil
 }
 
-func waitForJobStates(jobs []string, js job.JobState, maxAttempts int, out io.Writer) error {
+// waitForJobStates polls each of the indicated jobs until each of their
+// states is equal to that which the caller indicates, or until the
+// polling operation times out. waitForJobStates will retry up to N
+// times before timing out. Returned is an error channel used to
+// communicate when timeouts occur. The returned error channel will be
+// closed after all polling operation is complete.
+func waitForJobStates(jobs []string, js job.JobState, maxAttempts int, out io.Writer) chan error {
 	errchan := make(chan error)
 	var wg sync.WaitGroup
 	for _, name := range jobs {
@@ -450,7 +454,7 @@ func waitForJobStates(jobs []string, js job.JobState, maxAttempts int, out io.Wr
 		close(errchan)
 	}()
 
-	return <-errchan
+	return errchan
 }
 
 func checkJobState(jobName string, js job.JobState, maxAttempts int, out io.Writer, wg *sync.WaitGroup, errchan chan error) {

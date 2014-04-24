@@ -188,9 +188,7 @@ func (es *EventStream) filterJobTargetStateChanges(resp *etcd.Response) *event.E
 	var cType string
 	switch *cs {
 	case job.JobStateInactive:
-		if *ts == job.JobStateLoaded {
-			cType = "CommandLoadJob"
-		}
+		cType = "CommandLoadJob"
 	case job.JobStateLoaded:
 		if *ts == job.JobStateInactive {
 			cType = "CommandUnloadJob"
@@ -200,6 +198,8 @@ func (es *EventStream) filterJobTargetStateChanges(resp *etcd.Response) *event.E
 	case job.JobStateLaunched:
 		if *ts == job.JobStateLoaded {
 			cType = "CommandStopJob"
+		} else if *ts == job.JobStateInactive {
+			cType = "CommandUnloadJob"
 		}
 	}
 

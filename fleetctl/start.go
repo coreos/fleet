@@ -44,30 +44,17 @@ func runStartUnit(args []string) (exit int) {
 		return 1
 	}
 
-	triggered, err := lazyLoadJobs(args)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
-		return 1
-	}
-
-	// Always wait for jobs that had to be loaded, regardless of the --no-block flag
-	err = waitForJobStates(triggered, job.JobStateLoaded, sharedFlags.BlockAttempts, os.Stdout)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
-		return 1
-	}
-
-	triggered, err = lazyStartJobs(args)
+	triggered, err := lazyStartJobs(args)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		return 1
 	}
 
 	if !sharedFlags.NoBlock {
-		err = waitForJobStates(triggered, job.JobStateLaunched, sharedFlags.BlockAttempts, os.Stdout)
-		if err != nil {
+		errchan := waitForJobStates(triggered, job.JobStateLaunched, sharedFlags.BlockAttempts, os.Stdout)
+		for err := range errchan {
 			fmt.Fprintf(os.Stderr, "%v\n", err)
-			return 1
+			exit = 1
 		}
 	} else {
 		for _, jobName := range triggered {

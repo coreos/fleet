@@ -35,10 +35,10 @@ func runLoadUnits(args []string) (exit int) {
 	}
 
 	if !sharedFlags.NoBlock {
-		err = waitForJobStates(triggered, job.JobStateLoaded, sharedFlags.BlockAttempts, os.Stdout)
-		if err != nil {
+		errchan := waitForJobStates(triggered, job.JobStateLoaded, sharedFlags.BlockAttempts, os.Stdout)
+		for err := range errchan {
 			fmt.Fprintf(os.Stderr, "%v\n", err)
-			return 1
+			exit = 1
 		}
 	} else {
 		for _, jobName := range triggered {
