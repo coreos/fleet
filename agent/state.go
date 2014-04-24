@@ -164,11 +164,6 @@ func (self *AgentState) GetOffersWithoutBids() []job.JobOffer {
 	return offers
 }
 
-func (self *AgentState) GetOffer(name string) (job.JobOffer, bool) {
-	offer, ok := self.offers[name]
-	return offer, ok
-}
-
 func (self *AgentState) DropOffer(name string) {
 	if _, ok := self.offers[name]; !ok {
 		log.V(2).Infof("AgentState knows nothing of JobOffer(%s)", name)
