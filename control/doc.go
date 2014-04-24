@@ -1,6 +1,6 @@
 /*
 Package control schedules jobs in a cluster. Scheduling happens according to
-current cluster load along three coordinates (memory, CPU cores and local disk space).
+current cluster load along three dimensions (memory, CPU cores and local disk space).
 
 Basics
 

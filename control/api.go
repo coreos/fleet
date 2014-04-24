@@ -63,13 +63,13 @@ type JobWithHost struct {
 // ClusterCentral interface specifies what job control will ask the
 // lock service in the cluster.
 type ClusterCentral interface {
-	// Give me all the currently active hosts
+	// Hosts returns all the currently active hosts
 	// (hosts that have an agent running, maintaining heartbeat with lock service)
 	Hosts() ([]string, error)
-	// Give me all the jobs running in the cluster right now
+	// Jobs returns all the jobs running in the cluster right now
 	Jobs() ([]*JobWithHost, error)
 	// Spec returns the machine spec of the given host.
 	Spec(bootID string) (*machine.MachineSpec, error)
-	// All specs
+	// Specs returns all the machine specs.
 	Specs() (map[string]machine.MachineSpec, error)
 }

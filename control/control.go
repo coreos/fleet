@@ -66,7 +66,7 @@ func (clus *cluster) populate() error {
 }
 
 // NewJobControl returns a newly created JobControl that will use
-// the specified Etcd.
+// the specified ClusterCentral.
 func NewJobControl(clusterCentral ClusterCentral) (JobControl, error) {
 	clus := new(cluster)
 	clus.clusterCentral = clusterCentral

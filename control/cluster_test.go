@@ -1,6 +1,7 @@
 package control
 
 import (
+	"sort"
 	"testing"
 
 	"github.com/coreos/fleet/machine"
@@ -151,11 +152,19 @@ func TestHostDown(t *testing.T) {
 	checkLoad("host4", clus.loads["host4"], 0, 0, 0, t)
 }
 
+type byName []candHost
+
+func (a byName) Len() int           { return len(a) }
+func (a byName) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a byName) Less(i, j int) bool { return a[i].host < a[j].host }
+
 func testCandidates(clus *cluster, spec *JobSpec, expected []candHost, expectedError error, t *testing.T) {
 	hosts, err := clus.candidates(spec)
 	if err != nil && err != expectedError {
 		t.Fatalf("error computing candidates: %v", err)
 	}
+
+	sort.Sort(byName(hosts))
 	if !candHostSlicesEqual(hosts, expected) {
 		t.Errorf("candidates: %s, expected %s, got %s", spec.Name, ctoS(expected), ctoS(hosts))
 	}

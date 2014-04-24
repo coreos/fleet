@@ -140,10 +140,7 @@ func (r *Registry) SetMachineSpec(bootID string, spec machine.MachineSpec) error
 
 	key := path.Join(keyPrefix, machineSpecPrefix, bootID, "object")
 	_, err = r.etcd.RawSet(key, json, 0)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 // Remove Machine object from etcd

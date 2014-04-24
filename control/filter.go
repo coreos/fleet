@@ -110,7 +110,7 @@ func search(flhs []candHost, host string) (int, bool) {
 // hosts satisfies all three clauses.
 func (clus *cluster) filterCandidates(lhs []candHost, spec *JobSpec) ([]candHost, error) {
 	// If DependsOn or ConflictsWith clauses are in the job spec
-	// then we fetch jobs data from etcd to solve these clauses.
+	// then we fetch jobs data from ClusterCentral to solve these clauses.
 	// This happens once per job and not for every host and is necessary
 	// because clus only keeps total load stats for machines, nothing on where jobs are.
 	// Alternatively we could cache jobs2hosts and hosts2jobs maps and maintain them.

@@ -16,7 +16,7 @@ func someSpec() *machine.MachineSpec {
 		// 32 gb ram
 		Memory: 32768,
 		// 1 tb disk
-		DiskSpace: 1000,
+		DiskSpace: 1048576,
 	}
 }
 
@@ -131,7 +131,7 @@ func BenchmarkScheduleJob(b *testing.B) {
 
 	ctrl, err := NewJobControl(clusterCentral)
 	if err != nil {
-		fmt.Printf("could create job control: %v", err)
+		fmt.Printf("couldn't create job control: %v", err)
 		return
 	}
 

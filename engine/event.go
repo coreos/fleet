@@ -58,6 +58,7 @@ func (self *EventHandler) HandleEventJobScheduled(ev event.Event) {
 // Attempt to reschedule the job if it is in a non-inactive state.
 func (self *EventHandler) HandleEventJobUnscheduled(ev event.Event) {
 	jobName := ev.Payload.(string)
+	target := ev.Context.(string)
 
 	ts := self.engine.registry.GetJobTargetState(jobName)
 	if ts == nil || *ts == job.JobStateInactive {
@@ -72,16 +73,11 @@ func (self *EventHandler) HandleEventJobUnscheduled(ev event.Event) {
 
 	log.V(1).Infof("EventJobUnscheduled(%s): publishing JobOffer", jobName)
 	self.engine.OfferJob(*j)
+	spec := controlintegrate.JobSpecFrom(j)
+	self.engine.jobControl.JobDowned(jobName, target, spec)
 }
 
 func (self *EventHandler) HandleCommandStopJob(ev event.Event) {
-	jobName := ev.Payload.(string)
-	machineState := ev.Context.(machine.MachineState)
-	log.V(1).Infof("EventJobStopped(%s): updating job control", jobName)
-
-	job := self.engine.registry.GetJob(jobName)
-	spec := controlintegrate.JobSpecFrom(job)
-	self.engine.jobControl.JobDowned(jobName, machineState.BootID, spec)
 }
 
 func (self *EventHandler) HandleEventJobBidSubmitted(ev event.Event) {
