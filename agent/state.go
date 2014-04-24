@@ -56,16 +56,18 @@ func (self *AgentState) Unlock() {
 
 func (self *AgentState) MarshalJSON() ([]byte, error) {
 	type ds struct {
-		Offers    map[string]job.JobOffer
-		Conflicts map[string][]string
-		Bids      map[string]bool
-		Peers     map[string][]string
+		Offers       map[string]job.JobOffer
+		Conflicts    map[string][]string
+		Bids         map[string]bool
+		Peers        map[string][]string
+		TargetStates map[string]job.JobState
 	}
 	data := ds{
-		Offers:    self.offers,
-		Conflicts: self.conflicts,
-		Bids:      self.bids,
-		Peers:     self.peers,
+		Offers:       self.offers,
+		Conflicts:    self.conflicts,
+		Bids:         self.bids,
+		Peers:        self.peers,
+		TargetStates: self.targetStates,
 	}
 	return json.Marshal(data)
 }
