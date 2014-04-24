@@ -18,7 +18,7 @@ type AgentState struct {
 	offers map[string]job.JobOffer
 
 	// job names for which a bid has been submitted
-	bids []string
+	bids map[string]bool
 
 	// reverse index of peers that would cause a reassesment of a JobOffer this
 	// Agent could not have bid on previously
@@ -34,11 +34,11 @@ type AgentState struct {
 
 func NewState() *AgentState {
 	return &AgentState{
-		offers:    make(map[string]job.JobOffer),
-		bids:      make([]string, 0),
-		peers:     make(map[string][]string),
-		conflicts: make(map[string][]string, 0),
-		launched:  make(map[string]bool, 0),
+		offers:       make(map[string]job.JobOffer),
+		bids:         make(map[string]bool),
+		peers:        make(map[string][]string),
+		conflicts:    make(map[string][]string, 0),
+		launched:     make(map[string]bool, 0),
 	}
 }
 
@@ -58,7 +58,7 @@ func (self *AgentState) MarshalJSON() ([]byte, error) {
 	type ds struct {
 		Offers    map[string]job.JobOffer
 		Conflicts map[string][]string
-		Bids      []string
+		Bids      map[string]bool
 		Peers     map[string][]string
 	}
 	data := ds{
@@ -174,25 +174,15 @@ func (self *AgentState) DropOffer(name string) {
 }
 
 func (self *AgentState) TrackBid(name string) {
-	self.bids = append(self.bids, name)
+	self.bids[name] = true
 }
 
 func (self *AgentState) HasBid(name string) bool {
-	for _, val := range self.bids {
-		if val == name {
-			return true
-		}
-	}
-	return false
+	return self.bids[name]
 }
 
 func (self *AgentState) DropBid(name string) {
-	for idx, val := range self.bids {
-		if val == name {
-			self.bids = append(self.bids[0:idx], self.bids[idx+1:]...)
-			return
-		}
-	}
+	delete(self.bids, name)
 }
 
 func globMatches(pattern, target string) bool {
