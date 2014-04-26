@@ -38,6 +38,5 @@ func ParseFilepath(path string) string {
 		home = usr.HomeDir
 	}
 	path = filepath.Join(home, path[i:])
-	log.V(2).Infof("Parse out path %v", path)
 	return path
 }
