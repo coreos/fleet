@@ -82,30 +82,30 @@ func getLocalIP() string {
 }
 
 func getDefaultGatewayIface() *net.Interface {
-	log.V(2).Infof("Attempting to retrieve IP route info from netlink")
+	log.V(1).Infof("Attempting to retrieve IP route info from netlink")
 
 	routes, err := netlink.NetworkGetRoutes()
 	if err != nil {
-		log.V(2).Infof("Unable to detect default interface: %v", err)
+		log.V(1).Infof("Unable to detect default interface: %v", err)
 		return nil
 	}
 
 	if len(routes) == 0 {
-		log.V(2).Infof("Netlink returned zero routes")
+		log.V(1).Infof("Netlink returned zero routes")
 		return nil
 	}
 
 	for _, route := range routes {
 		if route.Default {
 			if route.Iface == nil {
-				log.V(2).Infof("Found default route but could not determine interface")
+				log.V(1).Infof("Found default route but could not determine interface")
 			}
-			log.V(2).Infof("Found default route with interface %v", route.Iface.Name)
+			log.V(1).Infof("Found default route with interface %v", route.Iface.Name)
 			return route.Iface
 		}
 	}
 
-	log.V(2).Infof("Unable to find default route")
+	log.V(1).Infof("Unable to find default route")
 	return nil
 }
 
