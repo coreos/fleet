@@ -132,7 +132,7 @@ func (sv *SignatureVerifier) Verify(data []byte, s *SignatureSet) (bool, error) 
 		// since gosshnew does not want to do it for us.
 		key, err := gossh.ParsePublicKey(authKey.Marshal())
 		if err != nil {
-			log.V(1).Infof("Unable to use SSH key: %v", err)
+			log.Errorf("Unable to use SSH key: %v", err)
 			continue
 		}
 
