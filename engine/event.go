@@ -25,7 +25,7 @@ func (self *EventHandler) HandleCommandLoadJob(ev event.Event) {
 		return
 	}
 
-	log.V(1).Infof("CommandLoadJob(%s): publishing JobOffer", jobName)
+	log.Infof("CommandLoadJob(%s): publishing JobOffer", jobName)
 	self.engine.OfferJob(*j)
 }
 
@@ -34,7 +34,7 @@ func (self *EventHandler) HandleCommandUnloadJob(ev event.Event) {
 	target := ev.Context.(string)
 
 	if target != "" {
-		log.V(1).Infof("CommandUnloadJob(%s): clearing scheduling decision", jobName)
+		log.Infof("CommandUnloadJob(%s): clearing scheduling decision", jobName)
 		self.engine.registry.ClearJobTarget(jobName, target)
 	}
 }
@@ -63,7 +63,7 @@ func (self *EventHandler) HandleEventJobUnscheduled(ev event.Event) {
 		return
 	}
 
-	log.V(1).Infof("EventJobUnscheduled(%s): publishing JobOffer", jobName)
+	log.Infof("EventJobUnscheduled(%s): publishing JobOffer", jobName)
 	self.engine.OfferJob(*j)
 }
 
@@ -76,12 +76,11 @@ func (self *EventHandler) HandleCommandStopJob(ev event.Event) {
 func (self *EventHandler) HandleEventJobBidSubmitted(ev event.Event) {
 	jb := ev.Payload.(job.JobBid)
 
-	log.V(1).Infof("EventJobBidSubmitted(%s): attempting to schedule Job to Machine(%s)", jb.JobName, jb.MachineBootID)
 	err := self.engine.ResolveJobOffer(jb.JobName, jb.MachineBootID)
 	if err == nil {
-		log.V(1).Infof("EventJobBidSubmitted(%s): successfully scheduled Job to Machine(%s)", jb.JobName, jb.MachineBootID)
+		log.Infof("EventJobBidSubmitted(%s): successfully scheduled Job to Machine(%s)", jb.JobName, jb.MachineBootID)
 	} else {
-		log.V(1).Infof("EventJobBidSubmitted(%s): failed to schedule Job to Machine(%s)", jb.JobName, jb.MachineBootID)
+		log.Infof("EventJobBidSubmitted(%s): failed to schedule Job to Machine(%s)", jb.JobName, jb.MachineBootID)
 	}
 }
 
@@ -95,7 +94,7 @@ func (self *EventHandler) HandleEventMachineRemoved(ev event.Event) {
 	machBootID := ev.Payload.(string)
 	mutex := self.engine.LockMachine(machBootID)
 	if mutex == nil {
-		log.V(2).Infof("EventMachineRemoved(%s): failed to lock Machine, ignoring event", machBootID)
+		log.V(1).Infof("EventMachineRemoved(%s): failed to lock Machine, ignoring event", machBootID)
 		return
 	}
 	defer mutex.Unlock()
@@ -103,13 +102,13 @@ func (self *EventHandler) HandleEventMachineRemoved(ev event.Event) {
 	jobs := self.engine.GetJobsScheduledToMachine(machBootID)
 
 	for _, j := range jobs {
-		log.V(1).Infof("EventMachineRemoved(%s): unscheduling Job(%s)", machBootID, j.Name)
+		log.Infof("EventMachineRemoved(%s): unscheduling Job(%s)", machBootID, j.Name)
 		self.engine.registry.ClearJobTarget(j.Name, machBootID)
 		self.engine.RemovePayloadState(j.Name)
 	}
 
 	for _, j := range jobs {
-		log.V(1).Infof("EventMachineRemoved(%s): re-publishing JobOffer(%s)", machBootID, j.Name)
+		log.Infof("EventMachineRemoved(%s): re-publishing JobOffer(%s)", machBootID, j.Name)
 		self.engine.OfferJob(j)
 	}
 	self.engine.clust.machineRemoved(machBootID)

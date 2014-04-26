@@ -38,7 +38,7 @@ func (self *Engine) Run() {
 }
 
 func (self *Engine) Stop() {
-	log.V(1).Info("Stopping Engine")
+	log.Info("Stopping Engine")
 	close(self.stop)
 }
 
@@ -57,7 +57,7 @@ func (self *Engine) GetJobsScheduledToMachine(machBootID string) []job.Job {
 }
 
 func (self *Engine) OfferJob(j job.Job) error {
-	log.V(2).Infof("Attempting to lock Job(%s)", j.Name)
+	log.V(1).Infof("Attempting to lock Job(%s)", j.Name)
 
 	mutex := self.lockJob(j.Name)
 	if mutex == nil {
@@ -76,7 +76,6 @@ func (self *Engine) OfferJob(j job.Job) error {
 
 	offer := job.NewOfferFromJob(j, machineBootIDs)
 
-	log.V(2).Infof("Publishing JobOffer(%s)", offer.Job.Name)
 	self.registry.CreateJobOffer(offer)
 	log.Infof("Published JobOffer(%s)", offer.Job.Name)
 
@@ -84,18 +83,17 @@ func (self *Engine) OfferJob(j job.Job) error {
 }
 
 func (self *Engine) ResolveJobOffer(jobName string, machBootID string) error {
-	log.V(2).Infof("Attempting to lock JobOffer(%s)", jobName)
+	log.V(1).Infof("Attempting to lock JobOffer(%s)", jobName)
 	mutex := self.lockJobOffer(jobName)
 
 	if mutex == nil {
-		log.V(2).Infof("Could not lock JobOffer(%s)", jobName)
+		log.V(1).Infof("Could not lock JobOffer(%s)", jobName)
 		return errors.New("Could not lock JobOffer")
 	}
 	defer mutex.Unlock()
 
-	log.V(2).Infof("Claimed JobOffer(%s)", jobName)
+	log.V(1).Infof("Claimed JobOffer(%s)", jobName)
 
-	log.V(2).Infof("Resolving JobOffer(%s), scheduling to Machine(%s)", jobName, machBootID)
 	err := self.registry.ResolveJobOffer(jobName)
 	if err != nil {
 		log.Errorf("Failed resolving JobOffer(%s): %v", jobName, err)
