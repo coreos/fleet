@@ -26,7 +26,8 @@ func (eh *EventHandler) HandleEventJobOffered(ev event.Event) {
 	}
 	// Everything we check against could change over time, so we track all
 	// offers starting here for future bidding even if we can't bid now
-	eh.agent.TrackOffer(jo)
+	eh.agent.state.TrackOffer(jo)
+	eh.agent.state.TrackJob(&jo.Job)
 
 	if !eh.agent.AbleToRun(&jo.Job) {
 		log.V(1).Infof("EventJobOffered(%s): not all criteria met, not bidding", jo.Job.Name)
@@ -40,13 +41,13 @@ func (eh *EventHandler) HandleEventJobOffered(ev event.Event) {
 func (eh *EventHandler) HandleEventJobScheduled(ev event.Event) {
 	jobName := ev.Payload.(string)
 	target := ev.Context.(string)
-	log.V(1).Infof("EventJobScheduled(%s): Dropping outstanding offers and bids", jobName)
 
-	eh.agent.OfferResolved(jobName)
+	log.V(1).Infof("EventJobScheduled(%s): Dropping outstanding offers and bids", jobName)
+	eh.agent.state.PurgeOffer(jobName)
 
 	if target != eh.agent.Machine().State().BootID {
 		log.V(1).Infof("EventJobScheduled(%s): Job not scheduled to this Agent, purging related data from cache", jobName)
-		eh.agent.ForgetJob(jobName)
+		eh.agent.state.PurgeJob(jobName)
 
 		log.V(1).Infof("EventJobScheduled(%s): Checking outstanding job offers", jobName)
 		eh.agent.BidForPossibleJobs()
@@ -69,6 +70,7 @@ func (eh *EventHandler) HandleEventJobScheduled(ev event.Event) {
 	if !eh.agent.AbleToRun(j) {
 		log.V(1).Infof("EventJobScheduled(%s): Unable to run scheduled Job, unscheduling.", jobName)
 		eh.agent.registry.ClearJobTarget(jobName, target)
+		eh.agent.state.PurgeJob(jobName)
 		return
 	}
 
@@ -118,6 +120,9 @@ func (eh *EventHandler) HandleEventJobUnscheduled(ev event.Event) {
 
 	log.Infof("EventJobUnscheduled(%s): unloading job", jobName)
 	eh.agent.UnloadJob(jobName)
+
+	log.Infof("EventJobUnscheduled(%s): checking oustanding job offers", jobName)
+	eh.agent.BidForPossibleJobs()
 }
 
 func (eh *EventHandler) HandleEventJobDestroyed(ev event.Event) {
@@ -156,7 +161,7 @@ func (eh *EventHandler) HandleEventMachineCreated(ev event.Event) {
 
 		// Everything we check against could change over time, so we track all
 		// offers starting here for future bidding even if we can't bid now
-		eh.agent.TrackOffer(jo)
+		eh.agent.state.TrackOffer(jo)
 	}
 
 	eh.agent.BidForPossibleJobs()

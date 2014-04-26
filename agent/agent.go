@@ -125,11 +125,11 @@ func (a *Agent) Purge() {
 
 	bootID := a.machine.State().BootID
 
-	//TODO(bcwaldon): The agent should not have to ask the Registry
-	// which jobs it is running in its local systemd
-	for _, j := range a.registry.GetAllJobsByMachine(bootID) {
-		log.Infof("Unloading Job(%s)", j.Name)
-		a.UnloadJob(j.Name)
+	for _, jobName := range a.state.ScheduledJobs() {
+		log.Infof("Unscheduling Job(%s) from local machine", jobName)
+		a.registry.ClearJobTarget(jobName, bootID)
+		log.Infof("Unloading Job(%s) from local machine", jobName)
+		a.UnloadJob(jobName)
 	}
 
 	// Jobs have been stopped, the heartbeat can stop
@@ -195,9 +195,7 @@ func (a *Agent) Heartbeat(ttl time.Duration, stop chan bool) {
 func (a *Agent) HeartbeatJobs(ttl time.Duration, stop chan bool) {
 	heartbeat := func() {
 		bootID := a.Machine().State().BootID
-		a.state.Lock()
 		launched := a.state.LaunchedJobs()
-		a.state.Unlock()
 		for _, j := range launched {
 			go a.registry.JobHeartbeat(j, bootID, ttl)
 		}
@@ -219,13 +217,7 @@ func (a *Agent) HeartbeatJobs(ttl time.Duration, stop chan bool) {
 
 func (a *Agent) LoadJob(j *job.Job) {
 	log.Infof("Loading Job(%s)", j.Name)
-
-	if len(j.Payload.Conflicts()) > 0 {
-		a.state.Lock()
-		a.state.TrackJobConflicts(j.Name, j.Payload.Conflicts())
-		a.state.Unlock()
-	}
-
+	a.state.SetTargetState(j.Name, job.JobStateLoaded)
 	a.systemd.LoadJob(j)
 
 	// We must explicitly refresh the payload state, as the dbus
@@ -240,20 +232,16 @@ func (a *Agent) LoadJob(j *job.Job) {
 }
 
 func (a *Agent) StartJob(jobName string) {
-	a.state.Lock()
-	a.state.TrackLaunchedJob(jobName)
-	a.state.Unlock()
+	a.state.SetTargetState(jobName, job.JobStateLaunched)
 
 	bootID := a.Machine().State().BootID
 	a.registry.JobHeartbeat(jobName, bootID, a.ttl)
+
 	a.systemd.StartJob(jobName)
 }
 
 func (a *Agent) StopJob(jobName string) {
-	a.state.Lock()
-	a.state.DropLaunchedJob(jobName)
-	a.state.Unlock()
-
+	a.state.SetTargetState(jobName, job.JobStateLoaded)
 	a.registry.ClearJobHeartbeat(jobName)
 	a.systemd.StopJob(jobName)
 }
@@ -261,11 +249,9 @@ func (a *Agent) StopJob(jobName string) {
 func (a *Agent) UnloadJob(jobName string) {
 	a.StopJob(jobName)
 
-	a.state.Lock()
 	reversePeers := a.state.GetJobsByPeer(jobName)
-	a.state.Unlock()
 
-	a.ForgetJob(jobName)
+	a.state.PurgeJob(jobName)
 	a.systemd.UnloadJob(jobName)
 
 	// The dbus event systemd will not trigger an event telling
@@ -298,9 +284,7 @@ func (a *Agent) ReportPayloadState(jobName string, ps *job.PayloadState) {
 
 // Submit all possible bids for unresolved offers
 func (a *Agent) BidForPossibleJobs() {
-	a.state.Lock()
 	offers := a.state.GetOffersWithoutBids()
-	a.state.Unlock()
 
 	log.V(2).Infof("Checking %d unbade offers", len(offers))
 	for i, _ := range offers {
@@ -322,47 +306,7 @@ func (a *Agent) Bid(jobName string) {
 	jb := job.NewBid(jobName, a.machine.State().BootID)
 	a.registry.SubmitJobBid(jb)
 
-	a.state.Lock()
-	defer a.state.Unlock()
-
 	a.state.TrackBid(jb.JobName)
-}
-
-// Instruct the Agent that an offer has been created and must
-// be tracked until it is resolved
-func (a *Agent) TrackOffer(jo job.JobOffer) {
-	a.state.Lock()
-	defer a.state.Unlock()
-
-	log.V(2).Infof("Tracking JobOffer(%s)", jo.Job.Name)
-	a.state.TrackOffer(jo)
-
-	peers := jo.Job.Payload.Peers()
-	log.V(2).Infof("Tracking peers of JobOffer(%s): %v", jo.Job.Name, peers)
-	a.state.TrackJobPeers(jo.Job.Name, jo.Job.Payload.Peers())
-}
-
-// Instruct the Agent that the given offer has been resolved
-// and may be ignored in future conflict calculations
-func (a *Agent) OfferResolved(jobName string) {
-	a.state.Lock()
-	defer a.state.Unlock()
-
-	log.V(2).Infof("Dropping JobOffer(%s)", jobName)
-	a.state.DropOffer(jobName)
-
-	a.state.DropBid(jobName)
-}
-
-// ForgetJob purges all state related to a given job from
-// the local cache
-func (a *Agent) ForgetJob(jobName string) {
-	a.state.Lock()
-	defer a.state.Unlock()
-
-	log.V(2).Infof("Purging all information for Job(%s)", jobName)
-	a.state.DropPeersJob(jobName)
-	a.state.DropJobConflicts(jobName)
 }
 
 // Pull a Job and its payload from the Registry
@@ -394,9 +338,7 @@ func (a *Agent) VerifyJob(j *job.Job) bool {
 
 // Submit all possible bids for known peers of the provided job
 func (a *Agent) BidForPossiblePeers(jobName string) {
-	a.state.Lock()
 	peers := a.state.GetJobsByPeer(jobName)
-	a.state.Unlock()
 
 	for _, peer := range peers {
 		log.V(1).Infof("Found unresolved offer for Peer(%s) of Job(%s)", peer, jobName)
@@ -463,7 +405,7 @@ func (a *Agent) AbleToRun(j *job.Job) bool {
 		log.V(2).Infof("Job(%s) has no peers to worry about", j.Name)
 	}
 
-	if conflicted, conflictedJobName := a.state.HasConflict(j.Name, j.Payload.Conflicts()); conflicted {
+	if conflicted, conflictedJobName := a.HasConflict(j.Name, j.Payload.Conflicts()); conflicted {
 		log.V(1).Infof("Job(%s) has conflict with Job(%s)", j.Name, conflictedJobName)
 		return false
 	}
@@ -510,4 +452,30 @@ func (a *Agent) peerScheduledHere(jobName, peerName string) bool {
 
 func (a *Agent) UnresolvedJobOffers() []job.JobOffer {
 	return a.registry.UnresolvedJobOffers()
+}
+
+// HasConflict determines whether there are any known conflicts with the given argument
+func (a *Agent) HasConflict(potentialJobName string, potentialConflicts []string) (bool, string) {
+	// Iterate through each Job that is scheduled here or has already been bid upon, asserting two things
+	for existingJobName, existingConflicts := range a.state.Conflicts {
+		if !a.state.HasBid(existingJobName) && !a.state.ScheduledHere(existingJobName) {
+			continue
+		}
+
+		// 1. Each tracked Job does not conflict with the potential conflicts
+		for _, pc := range potentialConflicts {
+			if globMatches(pc, existingJobName) {
+				return true, existingJobName
+			}
+		}
+
+		// 2. The new Job does not conflict with any of the tracked confclits
+		for _, ec := range existingConflicts {
+			if globMatches(ec, potentialJobName) {
+				return true, existingJobName
+			}
+		}
+	}
+
+	return false, ""
 }
