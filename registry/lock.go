@@ -20,17 +20,17 @@ const (
 // track by whom the mutex is currently locked.
 func (r *Registry) lockResource(class, id, context string) *TimedResourceMutex {
 	mutexName := fmt.Sprintf("%s-%s", class, id)
-	log.V(2).Infof("Attempting to acquire mutex on %s", mutexName)
+	log.V(1).Infof("Attempting to acquire mutex on %s", mutexName)
 
 	key := path.Join(keyPrefix, mutexPrefix, mutexName)
 	resp, err := r.etcd.Create(key, context, uint64(ResourceMutexTTL))
 
 	if err != nil {
-		log.V(2).Infof("Failed to acquire mutex on %s", mutexName)
+		log.V(1).Infof("Failed to acquire mutex on %s", mutexName)
 		return nil
 	}
 
-	log.V(2).Infof("Successfully acquired mutex on %s", mutexName)
+	log.V(1).Infof("Successfully acquired mutex on %s", mutexName)
 	return &TimedResourceMutex{r.etcd, *resp.Node}
 }
 
@@ -48,7 +48,7 @@ func (t *TimedResourceMutex) Unlock() error {
 	_, err := t.etcd.CompareAndDelete(t.node.Key, "", t.node.CreatedIndex)
 	if err != nil {
 		err = fmt.Errorf("Received error while unlocking mutex: %v", err)
-		log.V(2).Info(err)
+		log.Error(err)
 		return err
 	}
 	return nil
