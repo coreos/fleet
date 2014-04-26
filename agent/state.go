@@ -43,15 +43,15 @@ func NewState() *AgentState {
 }
 
 func (self *AgentState) lock() {
-	log.V(2).Infof("Attempting to lock AgentState")
+	log.V(1).Infof("Attempting to lock AgentState")
 	self.mutex.Lock()
-	log.V(2).Infof("AgentState locked")
+	log.V(1).Infof("AgentState locked")
 }
 
 func (self *AgentState) unlock() {
-	log.V(2).Infof("Attempting to unlock AgentState")
+	log.V(1).Infof("Attempting to unlock AgentState")
 	self.mutex.Unlock()
-	log.V(2).Infof("AgentState unlocked")
+	log.V(1).Infof("AgentState unlocked")
 }
 
 func (self *AgentState) MarshalJSON() ([]byte, error) {
@@ -195,7 +195,7 @@ func (self *AgentState) HasBid(name string) bool {
 func globMatches(pattern, target string) bool {
 	matched, err := path.Match(pattern, target)
 	if err != nil {
-		log.V(2).Infof("Received error while matching pattern '%s': %v", pattern, err)
+		log.V(1).Infof("Received error while matching pattern '%s': %v", pattern, err)
 	}
 	return matched
 }

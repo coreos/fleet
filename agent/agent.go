@@ -92,7 +92,7 @@ func (a *Agent) Run() {
 // repeatedly until it succeeds. It returns the modification
 // index of the first successful response received from etcd.
 func (a *Agent) Initialize() uint64 {
-	log.V(1).Infof("Initializing Agent")
+	log.Infof("Initializing Agent")
 	a.machine.RefreshState()
 
 	var idx uint64
@@ -112,7 +112,7 @@ func (a *Agent) Initialize() uint64 {
 
 // Stop all async processes the Agent is running
 func (a *Agent) Stop() {
-	log.V(1).Info("Stopping Agent")
+	log.Info("Stopping Agent")
 	close(a.stop)
 }
 
@@ -135,7 +135,7 @@ func (a *Agent) Purge() {
 	// Jobs have been stopped, the heartbeat can stop
 	close(purged)
 
-	log.V(1).Info("Removing Agent from Registry")
+	log.Info("Removing Agent from Registry")
 	if err := a.registry.RemoveMachineState(bootID); err != nil {
 		log.Errorf("Failed to remove Machine %s from Registry: %s", bootID, err.Error())
 	}
@@ -163,7 +163,7 @@ func (a *Agent) Heartbeat(ttl time.Duration, stop chan bool) {
 			}
 
 			sleep = sleep * 2
-			log.V(2).Infof("function returned err, retrying in %v: %v", sleep, err)
+			log.V(1).Infof("function returned err, retrying in %v: %v", sleep, err)
 			time.Sleep(sleep)
 		}
 
@@ -180,10 +180,10 @@ func (a *Agent) Heartbeat(ttl time.Duration, stop chan bool) {
 	for {
 		select {
 		case <-stop:
-			log.V(2).Info("MachineHeartbeat exiting due to stop signal")
+			log.V(1).Info("MachineHeartbeat exiting due to stop signal")
 			return
 		case <-ticker:
-			log.V(2).Info("MachineHeartbeat tick")
+			log.V(1).Info("MachineHeartbeat tick")
 			a.machine.RefreshState()
 			if err := attempt(3, heartbeat); err != nil {
 				log.Errorf("Failed heartbeat after 3 attempts: %v", err)
@@ -206,10 +206,10 @@ func (a *Agent) HeartbeatJobs(ttl time.Duration, stop chan bool) {
 	for {
 		select {
 		case <-stop:
-			log.V(2).Info("HeartbeatJobs exiting due to stop signal")
+			log.V(1).Info("HeartbeatJobs exiting due to stop signal")
 			return
 		case <-ticker:
-			log.V(2).Info("HeartbeatJobs tick")
+			log.V(1).Info("HeartbeatJobs tick")
 			heartbeat()
 		}
 	}
@@ -275,7 +275,7 @@ func (a *Agent) ReportPayloadState(jobName string, ps *job.PayloadState) {
 	if ps == nil {
 		err := a.registry.RemovePayloadState(jobName)
 		if err != nil {
-			log.V(1).Infof("Failed to remove PayloadState from Registry: %s", jobName, err.Error())
+			log.Errorf("Failed to remove PayloadState from Registry: %s", jobName, err.Error())
 		}
 	} else {
 		a.registry.SavePayloadState(jobName, ps)
@@ -286,15 +286,15 @@ func (a *Agent) ReportPayloadState(jobName string, ps *job.PayloadState) {
 func (a *Agent) BidForPossibleJobs() {
 	offers := a.state.GetOffersWithoutBids()
 
-	log.V(2).Infof("Checking %d unbade offers", len(offers))
+	log.V(1).Infof("Checking %d unbade offers", len(offers))
 	for i, _ := range offers {
 		offer := offers[i]
-		log.V(2).Infof("Checking ability to run Job(%s)", offer.Job.Name)
+		log.V(1).Infof("Checking ability to run Job(%s)", offer.Job.Name)
 		if a.AbleToRun(&offer.Job) {
-			log.V(2).Infof("Able to run Job(%s), submitting bid", offer.Job.Name)
+			log.V(1).Infof("Able to run Job(%s), submitting bid", offer.Job.Name)
 			a.Bid(offer.Job.Name)
 		} else {
-			log.V(2).Infof("Still unable to run Job(%s)", offer.Job.Name)
+			log.V(1).Infof("Still unable to run Job(%s)", offer.Job.Name)
 		}
 	}
 }
@@ -345,7 +345,6 @@ func (a *Agent) BidForPossiblePeers(jobName string) {
 
 		peerJob := a.FetchJob(peer)
 		if peerJob != nil && a.AbleToRun(peerJob) {
-			log.Infof("Submitting bid for Peer(%s) of Job(%s)", peer, jobName)
 			a.Bid(peer)
 		} else {
 			log.V(1).Infof("Unable to bid for Peer(%s) of Job(%s)", peer, jobName)
@@ -366,29 +365,18 @@ func (a *Agent) AbleToRun(j *job.Job) bool {
 		return true
 	}
 
-	if log.V(1) {
-		var reqString string
-		for key, slice := range requirements {
-			reqString += fmt.Sprintf("%s = [", key)
-			for _, val := range slice {
-				reqString += fmt.Sprintf("%s, ", val)
-			}
-			reqString += fmt.Sprint("] ")
-		}
-
-		log.Infof("Job(%s) has requirements: %s", j.Name, reqString)
-	}
+	log.Infof("Job(%s) has requirements: %s", j.Name, requirements)
 
 	metadata := extractMachineMetadata(requirements)
 	log.V(1).Infof("Job(%s) requires machine metadata: %v", j.Name, metadata)
 	if !a.machine.HasMetadata(metadata) {
-		log.V(1).Infof("Unable to run Job(%s), local Machine metadata insufficient", j.Name)
+		log.Infof("Unable to run Job(%s), local Machine metadata insufficient", j.Name)
 		return false
 	}
 
 	bootID, ok := requirements[job.FleetXConditionMachineBootID]
 	if ok && len(bootID) > 0 && !a.machine.State().MatchBootID(bootID[0]) {
-		log.V(1).Infof("Agent does not pass MachineBootID condition for Job(%s)", j.Name)
+		log.Infof("Agent does not pass MachineBootID condition for Job(%s)", j.Name)
 		return false
 	}
 
@@ -397,16 +385,16 @@ func (a *Agent) AbleToRun(j *job.Job) bool {
 		log.V(1).Infof("Asserting required Peers %v of Job(%s) are scheduled locally", peers, j.Name)
 		for _, peer := range peers {
 			if !a.peerScheduledHere(j.Name, peer) {
-				log.V(1).Infof("Required Peer(%s) of Job(%s) is not scheduled locally", peer, j.Name)
+				log.Infof("Required Peer(%s) of Job(%s) is not scheduled locally", peer, j.Name)
 				return false
 			}
 		}
 	} else {
-		log.V(2).Infof("Job(%s) has no peers to worry about", j.Name)
+		log.V(1).Infof("Job(%s) has no peers to worry about", j.Name)
 	}
 
 	if conflicted, conflictedJobName := a.HasConflict(j.Name, j.Payload.Conflicts()); conflicted {
-		log.V(1).Infof("Job(%s) has conflict with Job(%s)", j.Name, conflictedJobName)
+		log.Infof("Job(%s) has conflict with Job(%s)", j.Name, conflictedJobName)
 		return false
 	}
 
@@ -426,7 +414,7 @@ func extractMachineMetadata(requirements map[string][]string) map[string][]strin
 		key = key[15:]
 
 		if len(values) == 0 {
-			log.V(2).Infof("Machine metadata requirement %s provided no values, ignoring.", key)
+			log.V(1).Infof("Machine metadata requirement %s provided no values, ignoring.", key)
 			continue
 		}
 

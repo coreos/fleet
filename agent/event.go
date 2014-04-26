@@ -18,10 +18,10 @@ func NewEventHandler(agent *Agent) *EventHandler {
 
 func (eh *EventHandler) HandleEventJobOffered(ev event.Event) {
 	jo := ev.Payload.(job.JobOffer)
-	log.V(1).Infof("EventJobOffered(%s): verifying ability to run Job", jo.Job.Name)
+	log.Infof("EventJobOffered(%s): verifying ability to run Job", jo.Job.Name)
 
 	if !jo.OfferedTo(eh.agent.Machine().State().BootID) {
-		log.V(1).Infof("EventJobOffered(%s): not offered to this machine", jo.Job.Name)
+		log.Infof("EventJobOffered(%s): not offered to this machine", jo.Job.Name)
 		return
 	}
 	// Everything we check against could change over time, so we track all
@@ -30,7 +30,7 @@ func (eh *EventHandler) HandleEventJobOffered(ev event.Event) {
 	eh.agent.state.TrackJob(&jo.Job)
 
 	if !eh.agent.AbleToRun(&jo.Job) {
-		log.V(1).Infof("EventJobOffered(%s): not all criteria met, not bidding", jo.Job.Name)
+		log.Infof("EventJobOffered(%s): not all criteria met, not bidding", jo.Job.Name)
 		return
 	}
 
@@ -46,15 +46,15 @@ func (eh *EventHandler) HandleEventJobScheduled(ev event.Event) {
 	eh.agent.state.PurgeOffer(jobName)
 
 	if target != eh.agent.Machine().State().BootID {
-		log.V(1).Infof("EventJobScheduled(%s): Job not scheduled to this Agent, purging related data from cache", jobName)
+		log.Infof("EventJobScheduled(%s): Job not scheduled to this Agent, purging related data from cache", jobName)
 		eh.agent.state.PurgeJob(jobName)
 
-		log.V(1).Infof("EventJobScheduled(%s): Checking outstanding job offers", jobName)
+		log.Infof("EventJobScheduled(%s): Checking outstanding job offers", jobName)
 		eh.agent.BidForPossibleJobs()
 		return
 	}
 
-	log.V(1).Infof("EventJobScheduled(%s): Job scheduled to this Agent", jobName)
+	log.Infof("EventJobScheduled(%s): Job scheduled to this Agent", jobName)
 
 	j := eh.agent.FetchJob(jobName)
 	if j == nil {
@@ -68,16 +68,16 @@ func (eh *EventHandler) HandleEventJobScheduled(ev event.Event) {
 	}
 
 	if !eh.agent.AbleToRun(j) {
-		log.V(1).Infof("EventJobScheduled(%s): Unable to run scheduled Job, unscheduling.", jobName)
+		log.Infof("EventJobScheduled(%s): Unable to run scheduled Job, unscheduling.", jobName)
 		eh.agent.registry.ClearJobTarget(jobName, target)
 		eh.agent.state.PurgeJob(jobName)
 		return
 	}
 
-	log.V(1).Infof("EventJobScheduled(%s): Loading Job", j.Name)
+	log.Infof("EventJobScheduled(%s): Loading Job", j.Name)
 	eh.agent.LoadJob(j)
 
-	log.V(1).Infof("EventJobScheduled(%s): Bidding for all possible peers of Job", j.Name)
+	log.Infof("EventJobScheduled(%s): Bidding for all possible peers of Job", j.Name)
 	eh.agent.BidForPossiblePeers(j.Name)
 
 	ts := eh.agent.registry.GetJobTargetState(j.Name)
@@ -85,7 +85,7 @@ func (eh *EventHandler) HandleEventJobScheduled(ev event.Event) {
 		return
 	}
 
-	log.V(1).Infof("EventJobScheduled(%s): Starting Job", j.Name)
+	log.Infof("EventJobScheduled(%s): Starting Job", j.Name)
 	eh.agent.StartJob(j.Name)
 }
 
@@ -114,7 +114,7 @@ func (eh *EventHandler) HandleEventJobUnscheduled(ev event.Event) {
 	target := ev.Context.(string)
 
 	if target != eh.agent.Machine().State().BootID {
-		log.V(1).Infof("EventJobUnscheduled(%s): not scheduled here, ignoring ", jobName)
+		log.Infof("EventJobUnscheduled(%s): not scheduled here, ignoring ", jobName)
 		return
 	}
 
@@ -137,11 +137,11 @@ func (eh *EventHandler) HandleEventPayloadStateUpdated(ev event.Event) {
 	state := ev.Payload.(*job.PayloadState)
 
 	if state == nil {
-		log.V(1).Infof("EventPayloadStateUpdated(%s): received nil PayloadState object", jobName)
+		log.Infof("EventPayloadStateUpdated(%s): received nil PayloadState object", jobName)
 		state, _ = eh.agent.systemd.GetPayloadState(jobName)
 	}
 
-	log.V(1).Infof("EventPayloadStateUpdated(%s): pushing state (loadState=%s, activeState=%s, subState=%s) to Registry", jobName, state.LoadState, state.ActiveState, state.SubState)
+	log.Infof("EventPayloadStateUpdated(%s): pushing state (loadState=%s, activeState=%s, subState=%s) to Registry", jobName, state.LoadState, state.ActiveState, state.SubState)
 
 	// FIXME: This should probably be set in the underlying event-generation code
 	ms := eh.agent.Machine().State()
@@ -153,11 +153,11 @@ func (eh *EventHandler) HandleEventPayloadStateUpdated(ev event.Event) {
 func (eh *EventHandler) HandleEventMachineCreated(ev event.Event) {
 	mach := ev.Payload.(machine.MachineState)
 	if mach.BootID != eh.agent.Machine().State().BootID {
-		log.V(1).Infof("EventMachineCreated(%s): references other Machine, discarding event", mach.BootID)
+		log.Infof("EventMachineCreated(%s): references other Machine, discarding event", mach.BootID)
 	}
 
 	for _, jo := range eh.agent.UnresolvedJobOffers() {
-		log.V(1).Infof("EventMachineCreated(%s): verifying ability to run Job(%s)", mach.BootID, jo.Job.Name)
+		log.Infof("EventMachineCreated(%s): verifying ability to run Job(%s) from unresolved offer", mach.BootID, jo.Job.Name)
 
 		// Everything we check against could change over time, so we track all
 		// offers starting here for future bidding even if we can't bid now
