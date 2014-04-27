@@ -457,7 +457,7 @@ func (a *Agent) HasConflict(potentialJobName string, potentialConflicts []string
 			}
 		}
 
-		// 2. The new Job does not conflict with any of the tracked confclits
+		// 2. The new Job does not conflict with any of the tracked conflicts
 		for _, ec := range existingConflicts {
 			if globMatches(ec, potentialJobName) {
 				return true, existingJobName
