@@ -1,7 +1,6 @@
 package sign
 
 import (
-	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -173,16 +172,4 @@ func marshal(obj interface{}) ([]byte, error) {
 	} else {
 		return nil, errors.New(fmt.Sprintf("Unable to JSON-serialize object: %s", err))
 	}
-}
-
-func parseString(in []byte) (out, rest []byte, ok bool) {
-	if len(in) < 4 {
-		return
-	}
-	// First 4-byte is the length of the field
-	length := binary.BigEndian.Uint32(in)
-	if uint32(len(in)) < length+4 {
-		return
-	}
-	return in[4 : length+4], in[length+4:], true
 }
