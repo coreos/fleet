@@ -58,6 +58,9 @@ func (sc *SignatureCreator) Sign(tag string, data []byte) (*SignatureSet, error)
 	if err != nil {
 		return nil, err
 	}
+	if len(keys) == 0 {
+		return nil, errors.New("signature creator keyring is empty")
+	}
 
 	for _, k := range keys {
 		sig, err := sc.keyring.Sign(k, data)
@@ -115,6 +118,9 @@ func NewSignatureVerifierFromAuthorizedKeysFile(filepath string) (*SignatureVeri
 	pubkeys, err := parseAuthorizedKeys(out)
 	if err != nil {
 		return nil, err
+	}
+	if len(pubkeys) == 0 {
+		return nil, errors.New("no authorized keys found in file")
 	}
 
 	return &SignatureVerifier{pubkeys}, nil
