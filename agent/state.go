@@ -77,7 +77,13 @@ func (self *AgentState) TrackJob(j *job.Job) {
 	self.lock()
 	defer self.unlock()
 
-	self.trackJobPeers(j.Name, j.Payload.Peers())
+	peers, err := j.Payload.Peers()
+	if err != nil {
+		log.Error("Received error while getting peers for '%s': %v", j.Name, err)
+	} else {
+		self.trackJobPeers(j.Name, peers)
+	}
+
 	self.trackJobConflicts(j.Name, j.Payload.Conflicts())
 }
 
