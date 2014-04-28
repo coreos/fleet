@@ -121,7 +121,7 @@ func (eh *EventHandler) HandleEventJobUnscheduled(ev event.Event) {
 	log.Infof("EventJobUnscheduled(%s): unloading job", jobName)
 	eh.agent.UnloadJob(jobName)
 
-	log.Infof("EventJobUnscheduled(%s): checking oustanding job offers", jobName)
+	log.Infof("EventJobUnscheduled(%s): checking outstanding job offers", jobName)
 	eh.agent.BidForPossibleJobs()
 }
 

@@ -78,7 +78,7 @@ func TestHasConflictPotentialMatch(t *testing.T) {
 	}
 }
 
-// Assert that a existing jobs and potential jobs that do not conflict do not
+// Assert that existing jobs and potential jobs that do not conflict do not
 // trigger a match
 func TestHasConflictNoMatch(t *testing.T) {
 	state := NewState()
@@ -113,9 +113,9 @@ X-Conflicts=*.[1-9].service
 
 	matched, name := agent.HasConflict("other.2.service", []string{})
 	if !matched {
-		t.Errorf("Expected conflict with 'other.2.service', no conflict reported")
+		t.Errorf("Expected conflict with 'example.service', but no conflict reported")
 	} else if name != "example.service" {
-		t.Errorf("Expected conflict with 'other.2.service', but conflict found with %s", name)
+		t.Errorf("Expected conflict with 'example.service', but conflict found with %s", name)
 	}
 
 }
