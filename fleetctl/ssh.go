@@ -1,16 +1,14 @@
 package main
 
 import (
-	"bufio"
 	"errors"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
 	"strings"
+	"sync"
 	"syscall"
-
-	gossh "github.com/coreos/fleet/third_party/code.google.com/p/gosshnew/ssh"
 
 	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/pkg"
@@ -104,20 +102,17 @@ func runSSH(args []string) (exit int) {
 
 	if len(args) > 0 {
 		cmd := strings.Join(args, " ")
-		channel, err := ssh.Execute(sshClient, cmd)
+		err, exit = ssh.Execute(sshClient, cmd)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Failed running command over SSH: %v\n", err)
-			return 1
 		}
-
-		os.Exit(readSSHChannel(channel))
 	} else {
 		if err := ssh.Shell(sshClient); err != nil {
 			fmt.Fprintf(os.Stderr, "Failed opening shell over SSH: %v\n", err)
-			return 1
+			exit = 1
 		}
 	}
-	return 0
+	return
 }
 
 func globalMachineLookup(args []string) (string, error) {
@@ -172,96 +167,71 @@ func findAddressInRunningUnits(jobName string) (string, bool) {
 	return fmt.Sprintf("%s:22", j.PayloadState.MachineState.PublicIP), true
 }
 
-// Read stdout from SSH channel and print to local stdout.
-// If remote command fails, also read stderr and print to local stderr.
-// Returns exit status from remote command.
-func readSSHChannel(channel *ssh.Channel) int {
-	readSSHChannelOutput(channel.Stdout, os.Stdout)
-
-	exitErr := <-channel.Exit
-	if exitErr == nil {
-		return 0
-	}
-
-	readSSHChannelOutput(channel.Stderr, os.Stderr)
-
-	exitStatus := -1
-	switch exitError := exitErr.(type) {
-	case *gossh.ExitError:
-		exitStatus = exitError.ExitStatus()
-	case *exec.ExitError:
-		status := exitError.Sys().(syscall.WaitStatus)
-		exitStatus = status.ExitStatus()
-	}
-
-	fmt.Fprintf(os.Stderr, "Failed reading SSH channel: %v\n", exitErr)
-	return exitStatus
-}
-
-// Read bytes from a bufio.Reader and write as a string to out
-func readSSHChannelOutput(in *bufio.Reader, out io.Writer) {
-	for {
-		bytes, err := in.ReadBytes('\n')
-		if err != nil {
-			break
-		}
-
-		fmt.Fprint(out, string(bytes))
-	}
-}
-
 // runCommand will attempt to run a command on a given machine. It will attempt
 // to SSH to the machine if it is identified as being remote.
-func runCommand(cmd string, ms *machine.MachineState) (retcode int, err error) {
+func runCommand(cmd string, ms *machine.MachineState) (retcode int) {
+	var err error
 	if machine.IsLocalMachineState(ms) {
-		retcode = runLocalCommand(cmd)
+		err, retcode = runLocalCommand(cmd)
+		if err != nil {
+			fmt.Printf("Error running local command: %v\n", err)
+		}
 	} else {
-		retcode, err = runRemoteCommand(cmd, ms.PublicIP)
+		err, retcode = runRemoteCommand(cmd, ms.PublicIP)
+		if err != nil {
+			fmt.Printf("Error running remote command: %v\n", err)
+		}
 	}
 	return
 }
 
-func runLocalCommand(cmd string) int {
+// runLocalCommand runs the given command locally and returns any error encountered and the exit code of the command
+func runLocalCommand(cmd string) (error, int) {
 	cmdSlice := strings.Split(cmd, " ")
 	osCmd := exec.Command(cmdSlice[0], cmdSlice[1:]...)
 	stdout, _ := osCmd.StdoutPipe()
 	stderr, _ := osCmd.StderrPipe()
-
-	channel := &ssh.Channel{
-		bufio.NewReader(stdout),
-		bufio.NewReader(stderr),
-		make(chan error),
-	}
-
-	osCmd.Start()
+	var wg sync.WaitGroup
+	wg.Add(2)
 	go func() {
-		err := osCmd.Wait()
-		channel.Exit <- err
+		defer wg.Done()
+		io.Copy(os.Stdout, stdout)
 	}()
-
-	return readSSHChannel(channel)
+	go func() {
+		defer wg.Done()
+		io.Copy(os.Stderr, stderr)
+	}()
+	osCmd.Start()
+	err := osCmd.Wait()
+	if err != nil {
+		// Get the command's exit status if we can
+		if exiterr, ok := err.(*exec.ExitError); ok {
+			if status, ok := exiterr.Sys().(syscall.WaitStatus); ok {
+				return nil, status.ExitStatus()
+			}
+		}
+		// Otherwise, generic command error
+		return err, -1
+	}
+	return nil, 0
 }
 
-func runRemoteCommand(cmd string, ip string) (int, error) {
+// runLocalCommand runs the given command over SSH on the given IP, and returns
+// any error encountered and the exit status of the command
+func runRemoteCommand(cmd string, ip string) (err error, exit int) {
 	addr := fmt.Sprintf("%s:22", ip)
 
 	var sshClient *ssh.SSHForwardingClient
-	var err error
 	if tun := getTunnelFlag(); tun != "" {
 		sshClient, err = ssh.NewTunnelledSSHClient("core", tun, addr, getChecker(), false)
 	} else {
 		sshClient, err = ssh.NewSSHClient("core", addr, getChecker(), false)
 	}
 	if err != nil {
-		return 1, err
+		return err, -1
 	}
 
 	defer sshClient.Close()
 
-	channel, err := ssh.Execute(sshClient, cmd)
-	if err != nil {
-		return 1, err
-	}
-
-	return readSSHChannel(channel), nil
+	return ssh.Execute(sshClient, cmd)
 }

@@ -3,8 +3,10 @@ package ssh
 import (
 	"bufio"
 	"errors"
+	"io"
 	"net"
 	"os"
+	"sync"
 	"time"
 
 	gossh "github.com/coreos/fleet/third_party/code.google.com/p/gosshnew/ssh"
@@ -44,34 +46,64 @@ type Channel struct {
 	Exit   chan error
 }
 
-func Execute(client *SSHForwardingClient, cmd string) (*Channel, error) {
+// Execute runs the given command on the given client with stdin/stdout/stderr
+// connected to the controlling terminal. It returns any error encountered in the SSH session, and
+// the exit status of the remote command.
+func Execute(client *SSHForwardingClient, cmd string) (error, int) {
 	session, err := client.NewSession()
 	if err != nil {
-		return nil, err
+		return err, -1
 	}
 
 	if err = client.ForwardAgentAuthentication(session); err != nil {
-		return nil, err
+		return err, -1
+	}
+
+	modes := gossh.TerminalModes{
+		gossh.ECHO:          1,     // enable echoing
+		gossh.TTY_OP_ISPEED: 14400, // input speed = 14.4kbaud
+		gossh.TTY_OP_OSPEED: 14400, // output speed = 14.4kbaud
+	}
+
+	fd := int(os.Stdin.Fd())
+	oldState, err := terminal.MakeRaw(fd)
+	defer terminal.Restore(fd, oldState)
+
+	termWidth, termHeight, err := terminal.GetSize(fd)
+	if err != nil {
+		return err, -1
+	}
+
+	session.Stdin = os.Stdin
+
+	if err := session.RequestPty("xterm-256color", termHeight, termWidth, modes); err != nil {
+		return err, -1
 	}
 
 	stdout, _ := session.StdoutPipe()
 	stderr, _ := session.StderrPipe()
-
-	channel := &Channel{
-		bufio.NewReader(stdout),
-		bufio.NewReader(stderr),
-		make(chan error),
-	}
-
-	session.Start(cmd)
+	var wg sync.WaitGroup
+	wg.Add(2)
 	go func() {
-		err := session.Wait()
-
-		channel.Exit <- err
-		session.Close()
+		defer wg.Done()
+		io.Copy(os.Stdout, stdout)
 	}()
-
-	return channel, nil
+	go func() {
+		defer wg.Done()
+		io.Copy(os.Stderr, stderr)
+	}()
+	session.Start(cmd)
+	err = session.Wait()
+	if err == nil {
+		return nil, 0
+	}
+	// if the session terminated normally, err should be ExitError; in that
+	// case, return nil error and actual exit status of command
+	if werr, ok := err.(*gossh.ExitError); ok {
+		return nil, werr.ExitStatus()
+	}
+	// otherwise, we had an actual SSH error
+	return err, -1
 }
 
 func Shell(client *SSHForwardingClient) error {
