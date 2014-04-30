@@ -17,6 +17,10 @@ ExecStart=echo "ping";
 ExecStop=echo "pong"
 # ignore me, too
 ExecStop=echo post
+
+[Fleet]
+X-ConditionMachineMetadata=foo=bar
+X-ConditionMachineMetadata=baz=qux
 `
 
 	expected := map[string]map[string][]string{
@@ -24,8 +28,11 @@ ExecStop=echo post
 			"Description": []string{"Foo"},
 		},
 		"Service": map[string][]string{
-			"ExecStart": []string{"echo \"ping\";"},
-			"ExecStop":  []string{"echo \"pong\"", "echo post"},
+			"ExecStart": []string{`echo "ping";`},
+			"ExecStop":  []string{`echo "pong"`, "echo post"},
+		},
+		"Fleet": map[string][]string{
+			"X-ConditionMachineMetadata": []string{"foo=bar", "baz=qux"},
 		},
 	}
 
@@ -141,5 +148,27 @@ func TestNewSystemdUnitFileFromLegacyContents(t *testing.T) {
 
 	if !reflect.DeepEqual(actual, expected) {
 		t.Fatalf("Map func did not produce expected output.\nActual=%v\nExpected=%v", actual, expected)
+	}
+}
+
+func TestDeserializeLine(t *testing.T) {
+	deserializeLineExamples := map[string][]string{
+		`key=foo=bar`:             []string{`foo=bar`},
+		`key="foo=bar"`:           []string{`foo=bar`},
+		`key="foo=bar" "baz=qux"`: []string{`foo=bar`, `baz=qux`},
+		`key="foo=bar baz"`:       []string{`foo=bar baz`},
+		`key="foo=bar" baz`:       []string{`"foo=bar" baz`},
+		`key=baz "foo=bar"`:       []string{`baz "foo=bar"`},
+		`key="foo=bar baz=qux"`:   []string{`foo=bar baz=qux`},
+	}
+
+	for q, w := range deserializeLineExamples {
+		k, g := deserializeUnitLine(q)
+		if k != "key" {
+			t.Fatalf("Unexpected key, got %q, want %q", k, "key")
+		}
+		if !reflect.DeepEqual(g, w) {
+			t.Errorf("Unexpected line parse for %q:\ngot %q\nwant %q", q, g, w)
+		}
 	}
 }
