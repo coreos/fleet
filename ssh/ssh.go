@@ -1,7 +1,6 @@
 package ssh
 
 import (
-	"bufio"
 	"errors"
 	"net"
 	"os"
