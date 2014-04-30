@@ -3,10 +3,8 @@ package ssh
 import (
 	"bufio"
 	"errors"
-	"io"
 	"net"
 	"os"
-	"sync"
 	"time"
 
 	gossh "github.com/coreos/fleet/third_party/code.google.com/p/gosshnew/ssh"
@@ -46,17 +44,13 @@ type Channel struct {
 	Exit   chan error
 }
 
-// Execute runs the given command on the given client with stdin/stdout/stderr
-// connected to the controlling terminal. It returns any error encountered in the SSH session, and
-// the exit status of the remote command.
-func Execute(client *SSHForwardingClient, cmd string) (error, int) {
-	session, err := client.NewSession()
+func makePtySession(client *SSHForwardingClient) (session *gossh.Session, finalize func(), err error) {
+	session, err = client.NewSession()
 	if err != nil {
-		return err, -1
+		return
 	}
-
 	if err = client.ForwardAgentAuthentication(session); err != nil {
-		return err, -1
+		return
 	}
 
 	modes := gossh.TerminalModes{
@@ -67,33 +61,44 @@ func Execute(client *SSHForwardingClient, cmd string) (error, int) {
 
 	fd := int(os.Stdin.Fd())
 	oldState, err := terminal.MakeRaw(fd)
-	defer terminal.Restore(fd, oldState)
+	if err != nil {
+		return
+	}
+
+	finalize = func() {
+		session.Close()
+		terminal.Restore(fd, oldState)
+	}
 
 	termWidth, termHeight, err := terminal.GetSize(fd)
+
+	if err != nil {
+		return
+	}
+
+	session.Stdout = os.Stdout
+	session.Stderr = os.Stderr
+	session.Stdin = os.Stdin
+
+	err = session.RequestPty("xterm-256color", termHeight, termWidth, modes)
+	return
+}
+
+// Execute runs the given command on the given client with stdin/stdout/stderr
+// connected to the controlling terminal. It returns any error encountered in
+// the SSH session, and the exit status of the remote command.
+func Execute(client *SSHForwardingClient, cmd string) (error, int) {
+	session, finalize, err := makePtySession(client)
 	if err != nil {
 		return err, -1
 	}
 
-	session.Stdin = os.Stdin
+	defer finalize()
 
-	if err := session.RequestPty("xterm-256color", termHeight, termWidth, modes); err != nil {
-		return err, -1
-	}
-
-	stdout, _ := session.StdoutPipe()
-	stderr, _ := session.StderrPipe()
-	var wg sync.WaitGroup
-	wg.Add(2)
-	go func() {
-		defer wg.Done()
-		io.Copy(os.Stdout, stdout)
-	}()
-	go func() {
-		defer wg.Done()
-		io.Copy(os.Stderr, stderr)
-	}()
 	session.Start(cmd)
+
 	err = session.Wait()
+	// the command ran and exited successfully
 	if err == nil {
 		return nil, 0
 	}
@@ -106,39 +111,15 @@ func Execute(client *SSHForwardingClient, cmd string) (error, int) {
 	return err, -1
 }
 
+// Shell launches an interactive shell on the given client. It returns any
+// error encountered in setting up the SSH session.
 func Shell(client *SSHForwardingClient) error {
-	session, err := client.NewSession()
-	if err != nil {
-		return err
-	}
-	defer session.Close()
-
-	if err = client.ForwardAgentAuthentication(session); err != nil {
-		return err
-	}
-
-	modes := gossh.TerminalModes{
-		gossh.ECHO:          1,     // enable echoing
-		gossh.TTY_OP_ISPEED: 14400, // input speed = 14.4kbaud
-		gossh.TTY_OP_OSPEED: 14400, // output speed = 14.4kbaud
-	}
-
-	fd := int(os.Stdin.Fd())
-	oldState, err := terminal.MakeRaw(fd)
-	defer terminal.Restore(fd, oldState)
-
-	termWidth, termHeight, err := terminal.GetSize(fd)
+	session, finalize, err := makePtySession(client)
 	if err != nil {
 		return err
 	}
 
-	session.Stdout = os.Stdout
-	session.Stderr = os.Stderr
-	session.Stdin = os.Stdin
-
-	if err := session.RequestPty("xterm-256color", termHeight, termWidth, modes); err != nil {
-		return err
-	}
+	defer finalize()
 
 	if err = session.Shell(); err != nil {
 		return err

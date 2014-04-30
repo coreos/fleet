@@ -3,11 +3,9 @@ package main
 import (
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"strings"
-	"sync"
 	"syscall"
 
 	"github.com/coreos/fleet/machine"
@@ -189,18 +187,8 @@ func runCommand(cmd string, ms *machine.MachineState) (retcode int) {
 func runLocalCommand(cmd string) (error, int) {
 	cmdSlice := strings.Split(cmd, " ")
 	osCmd := exec.Command(cmdSlice[0], cmdSlice[1:]...)
-	stdout, _ := osCmd.StdoutPipe()
-	stderr, _ := osCmd.StderrPipe()
-	var wg sync.WaitGroup
-	wg.Add(2)
-	go func() {
-		defer wg.Done()
-		io.Copy(os.Stdout, stdout)
-	}()
-	go func() {
-		defer wg.Done()
-		io.Copy(os.Stderr, stderr)
-	}()
+	osCmd.Stderr = os.Stderr
+	osCmd.Stdout = os.Stdout
 	osCmd.Start()
 	err := osCmd.Wait()
 	if err != nil {
@@ -216,7 +204,7 @@ func runLocalCommand(cmd string) (error, int) {
 	return nil, 0
 }
 
-// runLocalCommand runs the given command over SSH on the given IP, and returns
+// runRemoteCommand runs the given command over SSH on the given IP, and returns
 // any error encountered and the exit status of the command
 func runRemoteCommand(cmd string, ip string) (err error, exit int) {
 	addr := fmt.Sprintf("%s:22", ip)
