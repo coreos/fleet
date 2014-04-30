@@ -38,12 +38,6 @@ func newSSHForwardingClient(client *gossh.Client, agentForwarding bool) (*SSHFor
 	return &SSHForwardingClient{agentForwarding, client}, nil
 }
 
-type Channel struct {
-	Stdout *bufio.Reader
-	Stderr *bufio.Reader
-	Exit   chan error
-}
-
 func makePtySession(client *SSHForwardingClient) (session *gossh.Session, finalize func(), err error) {
 	session, err = client.NewSession()
 	if err != nil {
