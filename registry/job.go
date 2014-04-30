@@ -38,29 +38,6 @@ func (r *Registry) GetAllJobs() []job.Job {
 	return jobs
 }
 
-func (r *Registry) GetAllJobsByMachine(machBootID string) []job.Job {
-	var jobs []job.Job
-
-	key := path.Join(keyPrefix, jobPrefix)
-	resp, err := r.etcd.Get(key, true, true)
-
-	if err != nil {
-		log.Errorf(err.Error())
-		return jobs
-	}
-
-	for _, node := range resp.Node.Nodes {
-		if j := r.GetJob(path.Base(node.Key)); j != nil {
-			tgt := r.GetJobTarget(j.Name)
-			if tgt != "" && tgt == machBootID {
-				jobs = append(jobs, *j)
-			}
-		}
-	}
-
-	return jobs
-}
-
 // GetJobTarget looks up where the given job is scheduled. If the job has
 // been scheduled, the boot ID the target machine is returned. Otherwise,
 // an empty string is returned.
