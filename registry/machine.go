@@ -155,7 +155,7 @@ func (r *Registry) LockMachine(machBootID, context string) *TimedResourceMutex {
 	return r.lockResource("machine", machBootID, context)
 }
 
-func (self *EventStream) filterEventMachineCreated(resp *etcd.Response) *event.Event {
+func filterEventMachineCreated(resp *etcd.Response) *event.Event {
 	if base := path.Base(resp.Node.Key); base != "object" {
 		return nil
 	}
@@ -169,7 +169,7 @@ func (self *EventStream) filterEventMachineCreated(resp *etcd.Response) *event.E
 	return &event.Event{"EventMachineCreated", m, nil}
 }
 
-func (self *EventStream) filterEventMachineRemoved(resp *etcd.Response) *event.Event {
+func filterEventMachineRemoved(resp *etcd.Response) *event.Event {
 	if base := path.Base(resp.Node.Key); base != "object" {
 		return nil
 	}

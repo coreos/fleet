@@ -85,7 +85,7 @@ func (r *Registry) SubmitJobBid(jb *job.JobBid) {
 	r.etcd.Set(key, "", 0)
 }
 
-func (self *EventStream) filterEventJobOffered(resp *etcd.Response) *event.Event {
+func filterEventJobOffered(resp *etcd.Response) *event.Event {
 	if resp.Action != "set" {
 		return nil
 	}

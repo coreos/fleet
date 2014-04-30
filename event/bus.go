@@ -32,7 +32,6 @@ func (self *EventBus) Listen() {
 }
 
 func (self *EventBus) Stop() {
-	log.V(1).Info("Stopping EventBus")
 	close(self.stop)
 }
 
@@ -51,13 +50,13 @@ func (self *EventBus) RemoveListener(name, bootID string) {
 
 // Distribute an Event to all listeners registered to Event.Type
 func (self *EventBus) dispatch(ev *Event) {
-	log.V(2).Infof("Dispatching %s to listeners", ev.Type)
+	log.V(1).Infof("Dispatching %s to listeners", ev.Type)
 	handlerFuncName := fmt.Sprintf("Handle%s", ev.Type)
 	for _, listener := range self.listeners {
-		log.V(2).Infof("Looking for event handler func %s on listener %s", handlerFuncName, listener.String())
+		log.V(1).Infof("Looking for event handler func %s on listener %s", handlerFuncName, listener.String())
 		handlerFunc := reflect.ValueOf(listener.Handler).MethodByName(handlerFuncName)
 		if handlerFunc.IsValid() {
-			log.V(2).Infof("Calling event handler for %s on listener %s", ev.Type, listener.String())
+			log.V(1).Infof("Calling event handler for %s on listener %s", ev.Type, listener.String())
 			go handlerFunc.Call([]reflect.Value{reflect.ValueOf(*ev)})
 		}
 	}

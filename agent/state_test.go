@@ -2,80 +2,29 @@ package agent
 
 import (
 	"testing"
+
+	"github.com/coreos/fleet/job"
+	"github.com/coreos/fleet/unit"
 )
-
-// Assert that an existing conflict is triggered against the potential job name
-func TestHasConflictExistingMatch(t *testing.T) {
-	state := NewState()
-	state.TrackJobConflicts("a", []string{"b"})
-
-	matched, name := state.HasConflict("b", []string{})
-	if !matched || name != "a" {
-		t.Errorf("Expected conflict with 'a'")
-	}
-}
-
-// Assert that a potential conflict is triggered against the existing job name
-func TestHasConflictPotentialMatch(t *testing.T) {
-	state := NewState()
-	state.TrackJobConflicts("a", []string{})
-
-	matched, name := state.HasConflict("b", []string{"a"})
-	if !matched || name != "a" {
-		t.Errorf("Expected conflict with 'a'")
-	}
-}
-
-// Assert that a existing jobs and potential jobs that do not conflict do not
-// trigger a match
-func TestHasConflictNoMatch(t *testing.T) {
-	state := NewState()
-	state.TrackJobConflicts("a", []string{"b"})
-
-	matched, _ := state.HasConflict("c", []string{"d"})
-	if matched {
-		t.Errorf("Expected no match")
-	}
-}
-
-// Assert that our glob-parser can handle relatively-complex matching
-func TestHasConflictComplexGlob(t *testing.T) {
-	state := NewState()
-	state.TrackJobConflicts("a", []string{"*.[1-9].service"})
-
-	matched, name := state.HasConflict("web.2.service", []string{})
-	if !matched || name != "a" {
-		t.Errorf("Expected conflict with 'a'")
-	}
-
-	matched, _ = state.HasConflict("app.99.service", []string{})
-	if matched {
-		t.Errorf("Expected no conflict")
-	}
-}
-
-// Assert that a conflict is truly gone when DropJobConflicts is called
-func TestHasConflictDropped(t *testing.T) {
-	state := NewState()
-	state.TrackJobConflicts("a", []string{"b"})
-
-	matched, name := state.HasConflict("b", []string{})
-	if !matched || name != "a" {
-		t.Errorf("Expected conflict with 'a'")
-	}
-
-	state.DropJobConflicts("a")
-	matched, _ = state.HasConflict("b", []string{})
-	if matched {
-		t.Errorf("Expected no conflict")
-	}
-}
 
 // Assert that jobs and their peers are properly indexed
 func TestGetJobsByPeer(t *testing.T) {
 	state := NewState()
-	state.TrackJobPeers("a", []string{"b", "c"})
-	state.TrackJobPeers("d", []string{"c"})
+
+	u1 := unit.NewSystemdUnitFile(`[X-Fleet]
+X-ConditionMachineOf=b
+X-ConditionMachineOf=c
+`)
+	p1 := job.NewJobPayload("a", *u1)
+	j1 := job.NewJob("a", *p1)
+	state.TrackJob(j1)
+
+	u2 := unit.NewSystemdUnitFile(`[X-Fleet]
+X-ConditionMachineOf=c
+`)
+	p2 := job.NewJobPayload("d", *u2)
+	j2 := job.NewJob("d", *p2)
+	state.TrackJob(j2)
 
 	peers := state.GetJobsByPeer("b")
 	if len(peers) != 1 || peers[0] != "a" {
@@ -90,8 +39,14 @@ func TestGetJobsByPeer(t *testing.T) {
 
 // Assert that no jobs are returned for unknown peers
 func TestGetJobsByPeerUnknown(t *testing.T) {
+	u := unit.NewSystemdUnitFile(`[X-Fleet]
+X-ConditionMachineOf=b
+`)
+	p := job.NewJobPayload("a", *u)
+	j := job.NewJob("a", *p)
+
 	state := NewState()
-	state.TrackJobPeers("a", []string{"b"})
+	state.TrackJob(j)
 
 	peers := state.GetJobsByPeer("c")
 	if len(peers) != 0 {
@@ -103,9 +58,23 @@ func TestGetJobsByPeerUnknown(t *testing.T) {
 // calling DropPeersJob
 func TestDropPeersJob(t *testing.T) {
 	state := NewState()
-	state.TrackJobPeers("a", []string{"b", "c"})
-	state.TrackJobPeers("d", []string{"c"})
-	state.DropPeersJob("a")
+
+	u1 := unit.NewSystemdUnitFile(`[X-Fleet]
+X-ConditionMachineOf=b
+X-ConditionMachineOf=c
+`)
+	p1 := job.NewJobPayload("a", *u1)
+	j1 := job.NewJob("a", *p1)
+	state.TrackJob(j1)
+
+	u2 := unit.NewSystemdUnitFile(`[X-Fleet]
+X-ConditionMachineOf=c
+`)
+	p2 := job.NewJobPayload("d", *u2)
+	j2 := job.NewJob("d", *p2)
+	state.TrackJob(j2)
+
+	state.PurgeJob(j1.Name)
 
 	peers := state.GetJobsByPeer("c")
 	if len(peers) != 1 || peers[0] != "d" {

@@ -24,8 +24,8 @@ func NewEventStream(client *etcd.Client, registry *Registry) *EventStream {
 func (self *EventStream) Stream(idx uint64, eventchan chan *event.Event) {
 	watchMap := map[string][]func(*etcd.Response) *event.Event{
 		path.Join(keyPrefix, jobPrefix):     []func(*etcd.Response) *event.Event{filterEventJobDestroyed, filterEventJobScheduled, filterEventJobUnscheduled, self.filterJobTargetStateChanges},
-		path.Join(keyPrefix, machinePrefix): []func(*etcd.Response) *event.Event{self.filterEventMachineCreated, self.filterEventMachineRemoved},
-		path.Join(keyPrefix, offerPrefix):   []func(*etcd.Response) *event.Event{self.filterEventJobOffered, filterEventJobBidSubmitted},
+		path.Join(keyPrefix, machinePrefix): []func(*etcd.Response) *event.Event{filterEventMachineCreated, filterEventMachineRemoved},
+		path.Join(keyPrefix, offerPrefix):   []func(*etcd.Response) *event.Event{filterEventJobOffered, filterEventJobBidSubmitted},
 	}
 
 	for key, funcs := range watchMap {
@@ -38,7 +38,6 @@ func (self *EventStream) Stream(idx uint64, eventchan chan *event.Event) {
 }
 
 func (self *EventStream) Close() {
-	log.V(1).Info("Closing EventStream")
 	close(self.close)
 }
 
@@ -48,13 +47,13 @@ func pipe(etcdchan chan *etcd.Response, translate func(resp *etcd.Response) *eve
 		case <-closechan:
 			return
 		case resp := <-etcdchan:
-			log.V(2).Infof("Received response from etcd watcher: Action=%s ModifiedIndex=%d Key=%s", resp.Action, resp.Node.ModifiedIndex, resp.Node.Key)
+			log.V(1).Infof("Received response from etcd watcher: Action=%s ModifiedIndex=%d Key=%s", resp.Action, resp.Node.ModifiedIndex, resp.Node.Key)
 			ev := translate(resp)
 			if ev != nil {
-				log.V(2).Infof("Translated response(ModifiedIndex=%d) to event(Type=%s)", resp.Node.ModifiedIndex, ev.Type)
+				log.V(1).Infof("Translated response(ModifiedIndex=%d) to event(Type=%s)", resp.Node.ModifiedIndex, ev.Type)
 				eventchan <- ev
 			} else {
-				log.V(2).Infof("Discarding response(ModifiedIndex=%d) from etcd watcher", resp.Node.ModifiedIndex)
+				log.V(1).Infof("Discarding response(ModifiedIndex=%d) from etcd watcher", resp.Node.ModifiedIndex)
 			}
 		}
 	}
@@ -64,17 +63,17 @@ func watch(client *etcd.Client, idx uint64, etcdchan chan *etcd.Response, key st
 	for true {
 		select {
 		case <-closechan:
-			log.V(2).Infof("Gracefully closing etcd watch loop: key=%s", key)
+			log.V(1).Infof("Gracefully closing etcd watch loop: key=%s", key)
 			return
 		default:
-			log.V(2).Infof("Creating etcd watcher: key=%s, index=%d, machines=%s", key, idx, strings.Join(client.GetCluster(), ","))
+			log.V(1).Infof("Creating etcd watcher: key=%s, index=%d, machines=%s", key, idx, strings.Join(client.GetCluster(), ","))
 			resp, err := client.Watch(key, idx, true, nil, nil)
 
 			if err == nil {
 				idx = resp.Node.ModifiedIndex + 1
 				etcdchan <- resp
 			} else {
-				log.V(2).Infof("etcd watcher returned error: key=%s, err=\"%s\"", key, err.Error())
+				log.Errorf("etcd watcher returned error: key=%s, err=\"%s\"", key, err.Error())
 
 				// Let's not slam the etcd server in the event that we know
 				// an unexpected error occurred.

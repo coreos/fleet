@@ -58,6 +58,9 @@ func (sc *SignatureCreator) Sign(tag string, data []byte) (*SignatureSet, error)
 	if err != nil {
 		return nil, err
 	}
+	if len(keys) == 0 {
+		return nil, errors.New("signature creator keyring is empty")
+	}
 
 	for _, k := range keys {
 		sig, err := sc.keyring.Sign(k, data)
@@ -116,6 +119,9 @@ func NewSignatureVerifierFromAuthorizedKeysFile(filepath string) (*SignatureVeri
 	if err != nil {
 		return nil, err
 	}
+	if len(pubkeys) == 0 {
+		return nil, errors.New("no authorized keys found in file")
+	}
 
 	return &SignatureVerifier{pubkeys}, nil
 }
@@ -132,7 +138,7 @@ func (sv *SignatureVerifier) Verify(data []byte, s *SignatureSet) (bool, error) 
 		// since gosshnew does not want to do it for us.
 		key, err := gossh.ParsePublicKey(authKey.Marshal())
 		if err != nil {
-			log.V(1).Infof("Unable to use SSH key: %v", err)
+			log.Errorf("Unable to use SSH key: %v", err)
 			continue
 		}
 

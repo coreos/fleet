@@ -22,11 +22,11 @@ func (self *EventStream) Stream(unitchan <-chan map[string]*dbus.UnitStatus, eve
 		case <-self.close:
 			return
 		case units := <-unitchan:
-			log.V(2).Infof("Received event from dbus")
+			log.V(1).Infof("Received event from dbus")
 			events := translateUnitStatusEvents(units)
 			for i, _ := range events {
 				ev := events[i]
-				log.V(2).Infof("Translated dbus event to event(Type=%s)", ev.Type)
+				log.V(1).Infof("Translated dbus event to event(Type=%s)", ev.Type)
 				eventchan <- &ev
 			}
 		}
@@ -34,7 +34,6 @@ func (self *EventStream) Stream(unitchan <-chan map[string]*dbus.UnitStatus, eve
 }
 
 func (self *EventStream) Close() {
-	log.V(1).Info("Closing EventStream")
 	close(self.close)
 }
 

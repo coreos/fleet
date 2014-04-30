@@ -131,14 +131,12 @@ func (m *SystemdManager) getUnitStates(name string) (string, string, string, err
 }
 
 func (m *SystemdManager) startUnit(name string) {
-	log.V(1).Infof("Starting systemd unit %s", name)
-
 	files := []string{name}
 	if _, _, err := m.Systemd.EnableUnitFiles(files, true, false); err != nil {
 		log.Errorf("Failed to enable systemd unit %s: %v", name, err)
 		return
 	} else {
-		log.V(1).Infof("Enabled systemd unit %s", name)
+		log.Infof("Enabled systemd unit %s", name)
 	}
 
 	if stat, err := m.Systemd.StartUnit(name, "replace"); err != nil {
@@ -149,8 +147,6 @@ func (m *SystemdManager) startUnit(name string) {
 }
 
 func (m *SystemdManager) stopUnit(name string) {
-	log.V(1).Infof("Stopping systemd unit %s", name)
-
 	if stat, err := m.Systemd.StopUnit(name, "replace"); err != nil {
 		log.Errorf("Failed to stop systemd unit %s: %v", name, err)
 	} else {

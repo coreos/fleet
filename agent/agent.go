@@ -22,6 +22,12 @@ const (
 
 	// Refresh TTLs at 1/2 the TTL length
 	refreshInterval = 2
+
+	// Machine metadata key for the deprecated `require` flag
+	requireFlagMachineMetadata = "MachineMetadata"
+
+	// Machine metadata key in the unit file, without the X- prefix
+	fleetXConditionMachineMetadata = "ConditionMachineMetadata"
 )
 
 // The Agent owns all of the coordination between the Registry, the local
@@ -93,7 +99,7 @@ func (a *Agent) Run() {
 // repeatedly until it succeeds. It returns the modification
 // index of the first successful response received from etcd.
 func (a *Agent) Initialize() uint64 {
-	log.V(1).Infof("Initializing Agent")
+	log.Infof("Initializing Agent")
 	a.machine.RefreshState()
 
 	mSpec, err := machine.ReadLocalSpec()
@@ -128,7 +134,7 @@ func (a *Agent) Initialize() uint64 {
 
 // Stop all async processes the Agent is running
 func (a *Agent) Stop() {
-	log.V(1).Info("Stopping Agent")
+	log.Info("Stopping Agent")
 	close(a.stop)
 }
 
@@ -141,17 +147,17 @@ func (a *Agent) Purge() {
 
 	bootID := a.machine.State().BootID
 
-	//TODO(bcwaldon): The agent should not have to ask the Registry
-	// which jobs it is running in its local systemd
-	for _, j := range a.registry.GetAllJobsByMachine(bootID) {
-		log.Infof("Unloading Job(%s)", j.Name)
-		a.UnloadJob(j.Name)
+	for _, jobName := range a.state.ScheduledJobs() {
+		log.Infof("Unscheduling Job(%s) from local machine", jobName)
+		a.registry.ClearJobTarget(jobName, bootID)
+		log.Infof("Unloading Job(%s) from local machine", jobName)
+		a.UnloadJob(jobName)
 	}
 
 	// Jobs have been stopped, the heartbeat can stop
 	close(purged)
 
-	log.V(1).Info("Removing Agent from Registry")
+	log.Info("Removing Agent from Registry")
 	if err := a.registry.RemoveMachineState(bootID); err != nil {
 		log.Errorf("Failed to remove Machine %s from Registry: %s", bootID, err.Error())
 	}
@@ -179,7 +185,7 @@ func (a *Agent) Heartbeat(ttl time.Duration, stop chan bool) {
 			}
 
 			sleep = sleep * 2
-			log.V(2).Infof("function returned err, retrying in %v: %v", sleep, err)
+			log.V(1).Infof("function returned err, retrying in %v: %v", sleep, err)
 			time.Sleep(sleep)
 		}
 
@@ -196,10 +202,10 @@ func (a *Agent) Heartbeat(ttl time.Duration, stop chan bool) {
 	for {
 		select {
 		case <-stop:
-			log.V(2).Info("MachineHeartbeat exiting due to stop signal")
+			log.V(1).Info("MachineHeartbeat exiting due to stop signal")
 			return
 		case <-ticker:
-			log.V(2).Info("MachineHeartbeat tick")
+			log.V(1).Info("MachineHeartbeat tick")
 			a.machine.RefreshState()
 			if err := attempt(3, heartbeat); err != nil {
 				log.Errorf("Failed heartbeat after 3 attempts: %v", err)
@@ -211,9 +217,7 @@ func (a *Agent) Heartbeat(ttl time.Duration, stop chan bool) {
 func (a *Agent) HeartbeatJobs(ttl time.Duration, stop chan bool) {
 	heartbeat := func() {
 		bootID := a.Machine().State().BootID
-		a.state.Lock()
 		launched := a.state.LaunchedJobs()
-		a.state.Unlock()
 		for _, j := range launched {
 			go a.registry.JobHeartbeat(j, bootID, ttl)
 		}
@@ -224,10 +228,10 @@ func (a *Agent) HeartbeatJobs(ttl time.Duration, stop chan bool) {
 	for {
 		select {
 		case <-stop:
-			log.V(2).Info("HeartbeatJobs exiting due to stop signal")
+			log.V(1).Info("HeartbeatJobs exiting due to stop signal")
 			return
 		case <-ticker:
-			log.V(2).Info("HeartbeatJobs tick")
+			log.V(1).Info("HeartbeatJobs tick")
 			heartbeat()
 		}
 	}
@@ -235,13 +239,7 @@ func (a *Agent) HeartbeatJobs(ttl time.Duration, stop chan bool) {
 
 func (a *Agent) LoadJob(j *job.Job) {
 	log.Infof("Loading Job(%s)", j.Name)
-
-	if len(j.Payload.Conflicts()) > 0 {
-		a.state.Lock()
-		a.state.TrackJobConflicts(j.Name, j.Payload.Conflicts())
-		a.state.Unlock()
-	}
-
+	a.state.SetTargetState(j.Name, job.JobStateLoaded)
 	a.systemd.LoadJob(j)
 
 	// We must explicitly refresh the payload state, as the dbus
@@ -256,20 +254,16 @@ func (a *Agent) LoadJob(j *job.Job) {
 }
 
 func (a *Agent) StartJob(jobName string) {
-	a.state.Lock()
-	a.state.TrackLaunchedJob(jobName)
-	a.state.Unlock()
+	a.state.SetTargetState(jobName, job.JobStateLaunched)
 
 	bootID := a.Machine().State().BootID
 	a.registry.JobHeartbeat(jobName, bootID, a.ttl)
+
 	a.systemd.StartJob(jobName)
 }
 
 func (a *Agent) StopJob(jobName string) {
-	a.state.Lock()
-	a.state.DropLaunchedJob(jobName)
-	a.state.Unlock()
-
+	a.state.SetTargetState(jobName, job.JobStateLoaded)
 	a.registry.ClearJobHeartbeat(jobName)
 	a.systemd.StopJob(jobName)
 }
@@ -277,11 +271,9 @@ func (a *Agent) StopJob(jobName string) {
 func (a *Agent) UnloadJob(jobName string) {
 	a.StopJob(jobName)
 
-	a.state.Lock()
 	reversePeers := a.state.GetJobsByPeer(jobName)
-	a.state.Unlock()
 
-	a.ForgetJob(jobName)
+	a.state.PurgeJob(jobName)
 	a.systemd.UnloadJob(jobName)
 
 	// The dbus event systemd will not trigger an event telling
@@ -305,7 +297,7 @@ func (a *Agent) ReportPayloadState(jobName string, ps *job.PayloadState) {
 	if ps == nil {
 		err := a.registry.RemovePayloadState(jobName)
 		if err != nil {
-			log.V(1).Infof("Failed to remove PayloadState from Registry: %s", jobName, err.Error())
+			log.Errorf("Failed to remove PayloadState from Registry: %s", jobName, err.Error())
 		}
 	} else {
 		a.registry.SavePayloadState(jobName, ps)
@@ -314,19 +306,17 @@ func (a *Agent) ReportPayloadState(jobName string, ps *job.PayloadState) {
 
 // Submit all possible bids for unresolved offers
 func (a *Agent) BidForPossibleJobs() {
-	a.state.Lock()
 	offers := a.state.GetOffersWithoutBids()
-	a.state.Unlock()
 
-	log.V(2).Infof("Checking %d unbade offers", len(offers))
+	log.V(1).Infof("Checking %d unbade offers", len(offers))
 	for i, _ := range offers {
 		offer := offers[i]
-		log.V(2).Infof("Checking ability to run Job(%s)", offer.Job.Name)
+		log.V(1).Infof("Checking ability to run Job(%s)", offer.Job.Name)
 		if a.AbleToRun(&offer.Job) {
-			log.V(2).Infof("Able to run Job(%s), submitting bid", offer.Job.Name)
+			log.V(1).Infof("Able to run Job(%s), submitting bid", offer.Job.Name)
 			a.Bid(offer.Job.Name)
 		} else {
-			log.V(2).Infof("Still unable to run Job(%s)", offer.Job.Name)
+			log.V(1).Infof("Still unable to run Job(%s)", offer.Job.Name)
 		}
 	}
 }
@@ -338,47 +328,7 @@ func (a *Agent) Bid(jobName string) {
 	jb := job.NewBid(jobName, a.machine.State().BootID)
 	a.registry.SubmitJobBid(jb)
 
-	a.state.Lock()
-	defer a.state.Unlock()
-
 	a.state.TrackBid(jb.JobName)
-}
-
-// Instruct the Agent that an offer has been created and must
-// be tracked until it is resolved
-func (a *Agent) TrackOffer(jo job.JobOffer) {
-	a.state.Lock()
-	defer a.state.Unlock()
-
-	log.V(2).Infof("Tracking JobOffer(%s)", jo.Job.Name)
-	a.state.TrackOffer(jo)
-
-	peers := jo.Job.Payload.Peers()
-	log.V(2).Infof("Tracking peers of JobOffer(%s): %v", jo.Job.Name, peers)
-	a.state.TrackJobPeers(jo.Job.Name, jo.Job.Payload.Peers())
-}
-
-// Instruct the Agent that the given offer has been resolved
-// and may be ignored in future conflict calculations
-func (a *Agent) OfferResolved(jobName string) {
-	a.state.Lock()
-	defer a.state.Unlock()
-
-	log.V(2).Infof("Dropping JobOffer(%s)", jobName)
-	a.state.DropOffer(jobName)
-
-	a.state.DropBid(jobName)
-}
-
-// ForgetJob purges all state related to a given job from
-// the local cache
-func (a *Agent) ForgetJob(jobName string) {
-	a.state.Lock()
-	defer a.state.Unlock()
-
-	log.V(2).Infof("Purging all information for Job(%s)", jobName)
-	a.state.DropPeersJob(jobName)
-	a.state.DropJobConflicts(jobName)
 }
 
 // Pull a Job and its payload from the Registry
@@ -410,16 +360,13 @@ func (a *Agent) VerifyJob(j *job.Job) bool {
 
 // Submit all possible bids for known peers of the provided job
 func (a *Agent) BidForPossiblePeers(jobName string) {
-	a.state.Lock()
 	peers := a.state.GetJobsByPeer(jobName)
-	a.state.Unlock()
 
 	for _, peer := range peers {
 		log.V(1).Infof("Found unresolved offer for Peer(%s) of Job(%s)", peer, jobName)
 
 		peerJob := a.FetchJob(peer)
 		if peerJob != nil && a.AbleToRun(peerJob) {
-			log.Infof("Submitting bid for Peer(%s) of Job(%s)", peer, jobName)
 			a.Bid(peer)
 		} else {
 			log.V(1).Infof("Unable to bid for Peer(%s) of Job(%s)", peer, jobName)
@@ -440,29 +387,18 @@ func (a *Agent) AbleToRun(j *job.Job) bool {
 		return true
 	}
 
-	if log.V(1) {
-		var reqString string
-		for key, slice := range requirements {
-			reqString += fmt.Sprintf("%s = [", key)
-			for _, val := range slice {
-				reqString += fmt.Sprintf("%s, ", val)
-			}
-			reqString += fmt.Sprint("] ")
-		}
-
-		log.Infof("Job(%s) has requirements: %s", j.Name, reqString)
-	}
+	log.Infof("Job(%s) has requirements: %s", j.Name, requirements)
 
 	metadata := extractMachineMetadata(requirements)
 	log.V(1).Infof("Job(%s) requires machine metadata: %v", j.Name, metadata)
 	if !a.machine.HasMetadata(metadata) {
-		log.V(1).Infof("Unable to run Job(%s), local Machine metadata insufficient", j.Name)
+		log.Infof("Unable to run Job(%s), local Machine metadata insufficient", j.Name)
 		return false
 	}
 
 	bootID, ok := requirements[job.FleetXConditionMachineBootID]
 	if ok && len(bootID) > 0 && !a.machine.State().MatchBootID(bootID[0]) {
-		log.V(1).Infof("Agent does not pass MachineBootID condition for Job(%s)", j.Name)
+		log.Infof("Agent does not pass MachineBootID condition for Job(%s)", j.Name)
 		return false
 	}
 
@@ -471,16 +407,16 @@ func (a *Agent) AbleToRun(j *job.Job) bool {
 		log.V(1).Infof("Asserting required Peers %v of Job(%s) are scheduled locally", peers, j.Name)
 		for _, peer := range peers {
 			if !a.peerScheduledHere(j.Name, peer) {
-				log.V(1).Infof("Required Peer(%s) of Job(%s) is not scheduled locally", peer, j.Name)
+				log.Infof("Required Peer(%s) of Job(%s) is not scheduled locally", peer, j.Name)
 				return false
 			}
 		}
 	} else {
-		log.V(2).Infof("Job(%s) has no peers to worry about", j.Name)
+		log.V(1).Infof("Job(%s) has no peers to worry about", j.Name)
 	}
 
-	if conflicted, conflictedJobName := a.state.HasConflict(j.Name, j.Payload.Conflicts()); conflicted {
-		log.V(1).Infof("Job(%s) has conflict with Job(%s)", j.Name, conflictedJobName)
+	if conflicted, conflictedJobName := a.HasConflict(j.Name, j.Payload.Conflicts()); conflicted {
+		log.Infof("Job(%s) has conflict with Job(%s)", j.Name, conflictedJobName)
 		return false
 	}
 
@@ -490,21 +426,37 @@ func (a *Agent) AbleToRun(j *job.Job) bool {
 // Return all machine-related metadata from a job requirements map
 func extractMachineMetadata(requirements map[string][]string) map[string][]string {
 	metadata := make(map[string][]string)
-
 	for key, values := range requirements {
-		if !strings.HasPrefix(key, "MachineMetadata") {
-			continue
+		// Deprecated syntax added to the metadata via the old `--require` flag.
+		if strings.HasPrefix(key, requireFlagMachineMetadata) {
+			if len(values) == 0 {
+				log.V(2).Infof("Machine metadata requirement %s provided no values, ignoring.", key)
+				continue
+			}
+
+			metadata[key[15:]] = values
+		} else if key == fleetXConditionMachineMetadata {
+			for _, valuePair := range values {
+				s := strings.Split(valuePair, "=")
+
+				if len(s) != 2 {
+					log.V(2).Infof("Machine metadata requirement %q has invalid format, ignoring.", valuePair)
+					continue
+				}
+
+				if len(s[0]) == 0 || len(s[1]) == 0 {
+					log.V(2).Infof("Machine metadata requirement %q provided no values, ignoring.", valuePair)
+					continue
+				}
+
+				var mValues []string
+				if mv, ok := metadata[s[0]]; ok {
+					mValues = mv
+				}
+
+				metadata[s[0]] = append(mValues, s[1])
+			}
 		}
-
-		// Strip off leading 'MachineMetadata'
-		key = key[15:]
-
-		if len(values) == 0 {
-			log.V(2).Infof("Machine metadata requirement %s provided no values, ignoring.", key)
-			continue
-		}
-
-		metadata[key] = values
 	}
 
 	return metadata
@@ -526,4 +478,30 @@ func (a *Agent) peerScheduledHere(jobName, peerName string) bool {
 
 func (a *Agent) UnresolvedJobOffers() []job.JobOffer {
 	return a.registry.UnresolvedJobOffers()
+}
+
+// HasConflict determines whether there are any known conflicts with the given argument
+func (a *Agent) HasConflict(potentialJobName string, potentialConflicts []string) (bool, string) {
+	// Iterate through each Job that is scheduled here or has already been bid upon, asserting two things
+	for existingJobName, existingConflicts := range a.state.Conflicts {
+		if !a.state.HasBid(existingJobName) && !a.state.ScheduledHere(existingJobName) {
+			continue
+		}
+
+		// 1. Each tracked Job does not conflict with the potential conflicts
+		for _, pc := range potentialConflicts {
+			if globMatches(pc, existingJobName) {
+				return true, existingJobName
+			}
+		}
+
+		// 2. The new Job does not conflict with any of the tracked conflicts
+		for _, ec := range existingConflicts {
+			if globMatches(ec, potentialJobName) {
+				return true, existingJobName
+			}
+		}
+	}
+
+	return false, ""
 }
