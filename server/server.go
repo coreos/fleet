@@ -9,7 +9,6 @@ import (
 	"github.com/coreos/fleet/agent"
 	"github.com/coreos/fleet/config"
 	"github.com/coreos/fleet/engine"
-	"github.com/coreos/fleet/event"
 	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/registry"
 	"github.com/coreos/fleet/sign"
@@ -18,31 +17,18 @@ import (
 type Server struct {
 	agent  *agent.Agent
 	engine *engine.Engine
-
-	machine     *machine.Machine
-	registry    *registry.Registry
-	eventBus    *event.EventBus
-	eventStream *registry.EventStream
-
-	stop chan bool
 }
 
 func New(cfg config.Config) (*Server, error) {
-	m := machine.New(cfg.BootID, cfg.PublicIP, cfg.Metadata())
+	mach := machine.New(cfg.BootID, cfg.PublicIP, cfg.Metadata())
 
 	regClient := etcd.NewClient(cfg.EtcdServers)
 	regClient.SetConsistency(etcd.STRONG_CONSISTENCY)
-	r := registry.New(regClient)
-
-	eb := event.NewEventBus()
-
-	eventClient := etcd.NewClient(cfg.EtcdServers)
-	eventClient.SetConsistency(etcd.STRONG_CONSISTENCY)
-	es := registry.NewEventStream(eventClient, r)
+	reg := registry.New(regClient)
 
 	aEventClient := etcd.NewClient(cfg.EtcdServers)
 	aEventClient.SetConsistency(etcd.STRONG_CONSISTENCY)
-	aEventStream := registry.NewEventStream(aEventClient, r)
+	aEventStream := registry.NewEventStream(aEventClient, reg)
 
 	var verifier *sign.SignatureVerifier
 	if cfg.VerifyUnits {
@@ -54,15 +40,19 @@ func New(cfg config.Config) (*Server, error) {
 		}
 	}
 
-	a, err := agent.New(r, aEventStream, m, cfg.AgentTTL, verifier)
+	a, err := agent.New(reg, aEventStream, mach, cfg.AgentTTL, verifier)
 	if err != nil {
 		log.Errorf("Error creating Agent")
 		return nil, err
 	}
 
-	e := engine.New(r, eb, m)
+	eEventClient := etcd.NewClient(cfg.EtcdServers)
+	eEventClient.SetConsistency(etcd.STRONG_CONSISTENCY)
+	eEventStream := registry.NewEventStream(eEventClient, reg)
 
-	return &Server{a, e, m, r, eb, es, nil}, nil
+	e := engine.New(reg, eEventStream, mach)
+
+	return &Server{a, e}, nil
 }
 
 func (self *Server) MarshalJSON() ([]byte, error) {
@@ -71,16 +61,10 @@ func (self *Server) MarshalJSON() ([]byte, error) {
 
 func (self *Server) Run() {
 	self.agent.Run()
-	go self.engine.Run()
-
-	self.stop = make(chan bool)
-	go self.eventBus.Listen(self.stop)
-	go self.eventStream.Stream(0, self.eventBus.Channel, self.stop)
+	self.engine.Run()
 }
 
 func (self *Server) Stop() {
-	close(self.stop)
-
 	self.agent.Stop()
 	self.engine.Stop()
 }
