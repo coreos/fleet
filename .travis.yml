@@ -5,4 +5,4 @@ install:
  - go get code.google.com/p/go.tools/cmd/cover
 
 script:
- - ./test.sh
+ - ./test
