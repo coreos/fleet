@@ -14,12 +14,14 @@ func (l *TestListener) HandleEventTypeOne(ev Event) {
 }
 
 func TestEventBus(t *testing.T) {
+	stopchan := make(chan bool)
+	defer close(stopchan)
+
 	evchan := make(chan Event)
 
 	bus := NewEventBus()
 	bus.AddListener("test", "X", &TestListener{evchan})
-	bus.Listen()
-	defer bus.Stop()
+	bus.Listen(stopchan)
 
 	ev := Event{"EventTypeOne", "payload", "Y"}
 	bus.Channel <- &ev
@@ -38,12 +40,14 @@ func TestEventBus(t *testing.T) {
 }
 
 func TestEventBusNoDispatch(t *testing.T) {
+	stopchan := make(chan bool)
+	defer close(stopchan)
+
 	evchan := make(chan Event)
 
 	bus := NewEventBus()
 	bus.AddListener("test", "X", &TestListener{evchan})
-	bus.Listen()
-	defer bus.Stop()
+	bus.Listen(stopchan)
 
 	go func() {
 		ev := Event{"EventTypeTwo", "payload", "Y"}

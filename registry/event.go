@@ -14,14 +14,13 @@ import (
 type EventStream struct {
 	etcd     *etcd.Client
 	registry *Registry
-	close    chan bool
 }
 
 func NewEventStream(client *etcd.Client, registry *Registry) *EventStream {
-	return &EventStream{client, registry, make(chan bool)}
+	return &EventStream{client, registry}
 }
 
-func (self *EventStream) Stream(idx uint64, eventchan chan *event.Event) {
+func (self *EventStream) Stream(idx uint64, eventchan chan *event.Event, stop chan bool) {
 	watchMap := map[string][]func(*etcd.Response) *event.Event{
 		path.Join(keyPrefix, jobPrefix):     []func(*etcd.Response) *event.Event{filterEventJobDestroyed, filterEventJobScheduled, filterEventJobUnscheduled, self.filterJobTargetStateChanges},
 		path.Join(keyPrefix, machinePrefix): []func(*etcd.Response) *event.Event{filterEventMachineCreated, filterEventMachineRemoved},
@@ -31,20 +30,16 @@ func (self *EventStream) Stream(idx uint64, eventchan chan *event.Event) {
 	for key, funcs := range watchMap {
 		for _, f := range funcs {
 			etcdchan := make(chan *etcd.Response)
-			go watch(self.etcd, idx, etcdchan, key, self.close)
-			go pipe(etcdchan, f, eventchan, self.close)
+			go watch(self.etcd, idx, etcdchan, key, stop)
+			go pipe(etcdchan, f, eventchan, stop)
 		}
 	}
 }
 
-func (self *EventStream) Close() {
-	close(self.close)
-}
-
-func pipe(etcdchan chan *etcd.Response, translate func(resp *etcd.Response) *event.Event, eventchan chan *event.Event, closechan chan bool) {
+func pipe(etcdchan chan *etcd.Response, translate func(resp *etcd.Response) *event.Event, eventchan chan *event.Event, stop chan bool) {
 	for true {
 		select {
-		case <-closechan:
+		case <-stop:
 			return
 		case resp := <-etcdchan:
 			log.V(1).Infof("Received response from etcd watcher: Action=%s ModifiedIndex=%d Key=%s", resp.Action, resp.Node.ModifiedIndex, resp.Node.Key)
@@ -59,10 +54,10 @@ func pipe(etcdchan chan *etcd.Response, translate func(resp *etcd.Response) *eve
 	}
 }
 
-func watch(client *etcd.Client, idx uint64, etcdchan chan *etcd.Response, key string, closechan chan bool) {
+func watch(client *etcd.Client, idx uint64, etcdchan chan *etcd.Response, key string, stop chan bool) {
 	for true {
 		select {
-		case <-closechan:
+		case <-stop:
 			log.V(1).Infof("Gracefully closing etcd watch loop: key=%s", key)
 			return
 		default:
