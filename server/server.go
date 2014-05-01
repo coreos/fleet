@@ -22,6 +22,8 @@ type Server struct {
 	registry    *registry.Registry
 	eventBus    *event.EventBus
 	eventStream *registry.EventStream
+
+	stop chan bool
 }
 
 func New(cfg config.Config) (*Server, error) {
@@ -56,7 +58,7 @@ func New(cfg config.Config) (*Server, error) {
 
 	e := engine.New(r, eb, m)
 
-	return &Server{a, e, m, r, eb, es}, nil
+	return &Server{a, e, m, r, eb, es, nil}, nil
 }
 
 func (self *Server) MarshalJSON() ([]byte, error) {
@@ -71,15 +73,17 @@ func (self *Server) Run() {
 	go self.agent.Run()
 	go self.engine.Run()
 
+	self.stop = make(chan bool)
 	go self.eventBus.Listen()
-	go self.eventStream.Stream(idx, self.eventBus.Channel)
+	go self.eventStream.Stream(idx, self.eventBus.Channel, self.stop)
 }
 
 func (self *Server) Stop() {
+	close(self.stop)
+
 	self.agent.Stop()
 	self.engine.Stop()
 
-	self.eventStream.Close()
 	self.eventBus.Stop()
 }
 
