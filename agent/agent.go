@@ -166,11 +166,7 @@ func (a *Agent) Purge() {
 	purged := make(chan bool)
 	go a.Heartbeat(a.ttl, purged)
 
-	bootID := a.machine.State().BootID
-
 	for _, jobName := range a.state.ScheduledJobs() {
-		log.Infof("Unscheduling Job(%s) from local machine", jobName)
-		a.registry.ClearJobTarget(jobName, bootID)
 		log.Infof("Unloading Job(%s) from local machine", jobName)
 		a.UnloadJob(jobName)
 	}
