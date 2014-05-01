@@ -20,15 +20,26 @@ type Server struct {
 }
 
 func New(cfg config.Config) (*Server, error) {
+	a, err := newAgentFromConfig(cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	e := newEngineFromConfig(cfg)
+
+	return &Server{a, e}, nil
+}
+
+func newAgentFromConfig(cfg config.Config) (*agent.Agent, error) {
 	mach := machine.New(cfg.BootID, cfg.PublicIP, cfg.Metadata())
 
 	regClient := etcd.NewClient(cfg.EtcdServers)
 	regClient.SetConsistency(etcd.STRONG_CONSISTENCY)
 	reg := registry.New(regClient)
 
-	aEventClient := etcd.NewClient(cfg.EtcdServers)
-	aEventClient.SetConsistency(etcd.STRONG_CONSISTENCY)
-	aEventStream := registry.NewEventStream(aEventClient, reg)
+	eClient := etcd.NewClient(cfg.EtcdServers)
+	eClient.SetConsistency(etcd.STRONG_CONSISTENCY)
+	eStream := registry.NewEventStream(eClient, reg)
 
 	var verifier *sign.SignatureVerifier
 	if cfg.VerifyUnits {
@@ -40,23 +51,21 @@ func New(cfg config.Config) (*Server, error) {
 		}
 	}
 
-	a, err := agent.New(reg, aEventStream, mach, cfg.AgentTTL, verifier)
-	if err != nil {
-		log.Errorf("Error creating Agent")
-		return nil, err
-	}
-
-	eEventClient := etcd.NewClient(cfg.EtcdServers)
-	eEventClient.SetConsistency(etcd.STRONG_CONSISTENCY)
-	eEventStream := registry.NewEventStream(eEventClient, reg)
-
-	e := engine.New(reg, eEventStream, mach)
-
-	return &Server{a, e}, nil
+	return agent.New(reg, eStream, mach, cfg.AgentTTL, verifier)
 }
 
-func (self *Server) MarshalJSON() ([]byte, error) {
-	return json.Marshal(struct{ Agent *agent.Agent }{Agent: self.agent})
+func newEngineFromConfig(cfg config.Config) *engine.Engine {
+	mach := machine.New(cfg.BootID, cfg.PublicIP, cfg.Metadata())
+
+	regClient := etcd.NewClient(cfg.EtcdServers)
+	regClient.SetConsistency(etcd.STRONG_CONSISTENCY)
+	reg := registry.New(regClient)
+
+	eClient := etcd.NewClient(cfg.EtcdServers)
+	eClient.SetConsistency(etcd.STRONG_CONSISTENCY)
+	eStream := registry.NewEventStream(eClient, reg)
+
+	return engine.New(reg, eStream, mach)
 }
 
 func (self *Server) Run() {
@@ -71,4 +80,8 @@ func (self *Server) Stop() {
 
 func (self *Server) Purge() {
 	self.agent.Purge()
+}
+
+func (self *Server) MarshalJSON() ([]byte, error) {
+	return json.Marshal(struct{ Agent *agent.Agent }{Agent: self.agent})
 }
