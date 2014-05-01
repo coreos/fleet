@@ -13,28 +13,30 @@ import (
 
 type Engine struct {
 	registry *registry.Registry
-	events   *event.EventBus
+	eStream  *registry.EventStream
+	eBus     *event.EventBus
 	machine  *machine.Machine
 	// keeps a picture of the load in the cluster for more intelligent scheduling
 	clust *cluster
 	stop  chan bool
 }
 
-func New(reg *registry.Registry, events *event.EventBus, mach *machine.Machine) *Engine {
-	return &Engine{reg, events, mach, newCluster(), nil}
+func New(reg *registry.Registry, eStream *registry.EventStream, mach *machine.Machine) *Engine {
+	eBus := event.NewEventBus()
+	e := &Engine{reg, eStream, eBus, mach, newCluster(), nil}
+
+	hdlr := NewEventHandler(e)
+	bootID := mach.State().BootID
+	eBus.AddListener("engine", bootID, hdlr)
+
+	return e
 }
 
 func (self *Engine) Run() {
 	self.stop = make(chan bool)
 
-	handler := NewEventHandler(self)
-	bootID := self.machine.State().BootID
-	self.events.AddListener("engine", bootID, handler)
-
-	// Block until we receive a stop signal
-	<-self.stop
-
-	self.events.RemoveListener("engine", bootID)
+	go self.eBus.Listen(self.stop)
+	go self.eStream.Stream(0, self.eBus.Channel, self.stop)
 }
 
 func (self *Engine) Stop() {

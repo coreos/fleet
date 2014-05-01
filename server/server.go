@@ -9,35 +9,37 @@ import (
 	"github.com/coreos/fleet/agent"
 	"github.com/coreos/fleet/config"
 	"github.com/coreos/fleet/engine"
-	"github.com/coreos/fleet/event"
 	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/registry"
 	"github.com/coreos/fleet/sign"
 )
 
 type Server struct {
-	agent       *agent.Agent
-	engine      *engine.Engine
-	machine     *machine.Machine
-	registry    *registry.Registry
-	eventBus    *event.EventBus
-	eventStream *registry.EventStream
-
-	stop chan bool
+	agent  *agent.Agent
+	engine *engine.Engine
 }
 
 func New(cfg config.Config) (*Server, error) {
-	m := machine.New(cfg.BootID, cfg.PublicIP, cfg.Metadata())
+	a, err := newAgentFromConfig(cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	e := newEngineFromConfig(cfg)
+
+	return &Server{a, e}, nil
+}
+
+func newAgentFromConfig(cfg config.Config) (*agent.Agent, error) {
+	mach := machine.New(cfg.BootID, cfg.PublicIP, cfg.Metadata())
 
 	regClient := etcd.NewClient(cfg.EtcdServers)
 	regClient.SetConsistency(etcd.STRONG_CONSISTENCY)
-	r := registry.New(regClient)
+	reg := registry.New(regClient)
 
-	eb := event.NewEventBus()
-
-	eventClient := etcd.NewClient(cfg.EtcdServers)
-	eventClient.SetConsistency(etcd.STRONG_CONSISTENCY)
-	es := registry.NewEventStream(eventClient, r)
+	eClient := etcd.NewClient(cfg.EtcdServers)
+	eClient.SetConsistency(etcd.STRONG_CONSISTENCY)
+	eStream := registry.NewEventStream(eClient, reg)
 
 	var verifier *sign.SignatureVerifier
 	if cfg.VerifyUnits {
@@ -49,41 +51,37 @@ func New(cfg config.Config) (*Server, error) {
 		}
 	}
 
-	a, err := agent.New(r, eb, m, cfg.AgentTTL, verifier)
-	if err != nil {
-		log.Errorf("Error creating Agent")
-		return nil, err
-	}
-
-	e := engine.New(r, eb, m)
-
-	return &Server{a, e, m, r, eb, es, nil}, nil
+	return agent.New(reg, eStream, mach, cfg.AgentTTL, verifier)
 }
 
-func (self *Server) MarshalJSON() ([]byte, error) {
-	return json.Marshal(struct{ Agent *agent.Agent }{Agent: self.agent})
+func newEngineFromConfig(cfg config.Config) *engine.Engine {
+	mach := machine.New(cfg.BootID, cfg.PublicIP, cfg.Metadata())
+
+	regClient := etcd.NewClient(cfg.EtcdServers)
+	regClient.SetConsistency(etcd.STRONG_CONSISTENCY)
+	reg := registry.New(regClient)
+
+	eClient := etcd.NewClient(cfg.EtcdServers)
+	eClient.SetConsistency(etcd.STRONG_CONSISTENCY)
+	eStream := registry.NewEventStream(eClient, reg)
+
+	return engine.New(reg, eStream, mach)
 }
 
 func (self *Server) Run() {
-	// Block on the agent being able to publish its
-	// presence and bootstrap its cache
-	idx := self.agent.Initialize()
-
-	go self.agent.Run()
-	go self.engine.Run()
-
-	self.stop = make(chan bool)
-	go self.eventBus.Listen(self.stop)
-	go self.eventStream.Stream(idx, self.eventBus.Channel, self.stop)
+	self.agent.Run()
+	self.engine.Run()
 }
 
 func (self *Server) Stop() {
-	close(self.stop)
-
 	self.agent.Stop()
 	self.engine.Stop()
 }
 
 func (self *Server) Purge() {
 	self.agent.Purge()
+}
+
+func (self *Server) MarshalJSON() ([]byte, error) {
+	return json.Marshal(struct{ Agent *agent.Agent }{Agent: self.agent})
 }
