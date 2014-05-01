@@ -2,7 +2,7 @@
 
 The official etcd v0.2 client library for Go.
 
-For usage, please refer to: [go-etcd/etcd](http://godoc.org/github.com/coreos/go-etcd/etcd).
+For usage, please refer to [![GoDoc](https://godoc.org/github.com/coreos/go-etcd/etcd?status.png)](https://godoc.org/github.com/coreos/go-etcd/etcd)
 
 ## Install
 
