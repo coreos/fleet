@@ -6,7 +6,7 @@ import (
 	"reflect"
 )
 
-type options map[string]interface{}
+type Options map[string]interface{}
 
 // An internally-used data structure that represents a mapping
 // between valid options and their kinds
@@ -42,7 +42,7 @@ var (
 )
 
 // Convert options to a string of HTML parameters
-func (ops options) toParameters(validOps validOptions) (string, error) {
+func (ops Options) toParameters(validOps validOptions) (string, error) {
 	p := "?"
 	values := url.Values{}
 

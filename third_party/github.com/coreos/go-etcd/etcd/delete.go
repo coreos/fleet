@@ -31,7 +31,7 @@ func (c *Client) DeleteDir(key string) (*Response, error) {
 }
 
 func (c *Client) RawDelete(key string, recursive bool, dir bool) (*RawResponse, error) {
-	ops := options{
+	ops := Options{
 		"recursive": recursive,
 		"dir":       dir,
 	}

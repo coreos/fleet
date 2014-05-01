@@ -87,7 +87,7 @@ func (c *Client) RawWatch(prefix string, waitIndex uint64, recursive bool,
 // return when there is change under the given prefix
 func (c *Client) watchOnce(key string, waitIndex uint64, recursive bool, stop chan bool) (*RawResponse, error) {
 
-	options := options{
+	options := Options{
 		"wait": true,
 	}
 	if waitIndex > 0 {

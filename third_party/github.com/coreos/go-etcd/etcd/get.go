@@ -18,7 +18,7 @@ func (c *Client) Get(key string, sort, recursive bool) (*Response, error) {
 }
 
 func (c *Client) RawGet(key string, sort, recursive bool) (*RawResponse, error) {
-	ops := options{
+	ops := Options{
 		"recursive": recursive,
 		"sorted":    sort,
 	}

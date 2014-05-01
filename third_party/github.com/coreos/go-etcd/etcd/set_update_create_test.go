@@ -98,6 +98,43 @@ func TestCreate(t *testing.T) {
 	}
 }
 
+func TestCreateInOrder(t *testing.T) {
+	c := NewClient(nil)
+	dir := "/queue"
+	defer func() {
+		c.DeleteDir(dir)
+	}()
+
+	var firstKey, secondKey string
+
+	resp, err := c.CreateInOrder(dir, "1", 5)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !(resp.Action == "create" && resp.Node.Value == "1" && resp.Node.TTL == 5) {
+		t.Fatalf("Create 1 failed: %#v", resp)
+	}
+
+	firstKey = resp.Node.Key
+
+	resp, err = c.CreateInOrder(dir, "2", 5)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !(resp.Action == "create" && resp.Node.Value == "2" && resp.Node.TTL == 5) {
+		t.Fatalf("Create 2 failed: %#v", resp)
+	}
+
+	secondKey = resp.Node.Key
+
+	if firstKey >= secondKey {
+		t.Fatalf("Expected first key to be greater than second key, but %s is not greater than %s",
+			firstKey, secondKey)
+	}
+}
+
 func TestSetDir(t *testing.T) {
 	c := NewClient(nil)
 	defer func() {
