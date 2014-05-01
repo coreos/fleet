@@ -48,11 +48,5 @@ func printUnitStatus(jobName string) int {
 	}
 
 	cmd := fmt.Sprintf("systemctl status -l %s", jobName)
-	retcode, err := runCommand(cmd, j.PayloadState.MachineState)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed running command over SSH: %v\n", err)
-		return 1
-	}
-
-	return retcode
+	return runCommand(cmd, j.PayloadState.MachineState)
 }

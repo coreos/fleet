@@ -50,11 +50,5 @@ func runJournal(args []string) (exit int) {
 		command += " -f"
 	}
 
-	retcode, err := runCommand(command, j.PayloadState.MachineState)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed running command over SSH: %v\n", err)
-		return 1
-	}
-
-	return retcode
+	return runCommand(command, j.PayloadState.MachineState)
 }
