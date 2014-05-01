@@ -16,8 +16,9 @@ import (
 )
 
 type Server struct {
-	agent       *agent.Agent
-	engine      *engine.Engine
+	agent  *agent.Agent
+	engine *engine.Engine
+
 	machine     *machine.Machine
 	registry    *registry.Registry
 	eventBus    *event.EventBus
@@ -39,6 +40,10 @@ func New(cfg config.Config) (*Server, error) {
 	eventClient.SetConsistency(etcd.STRONG_CONSISTENCY)
 	es := registry.NewEventStream(eventClient, r)
 
+	aEventClient := etcd.NewClient(cfg.EtcdServers)
+	aEventClient.SetConsistency(etcd.STRONG_CONSISTENCY)
+	aEventStream := registry.NewEventStream(aEventClient, r)
+
 	var verifier *sign.SignatureVerifier
 	if cfg.VerifyUnits {
 		var err error
@@ -49,7 +54,7 @@ func New(cfg config.Config) (*Server, error) {
 		}
 	}
 
-	a, err := agent.New(r, eb, m, cfg.AgentTTL, verifier)
+	a, err := agent.New(r, aEventStream, m, cfg.AgentTTL, verifier)
 	if err != nil {
 		log.Errorf("Error creating Agent")
 		return nil, err
@@ -65,16 +70,12 @@ func (self *Server) MarshalJSON() ([]byte, error) {
 }
 
 func (self *Server) Run() {
-	// Block on the agent being able to publish its
-	// presence and bootstrap its cache
-	idx := self.agent.Initialize()
-
-	go self.agent.Run()
+	self.agent.Run()
 	go self.engine.Run()
 
 	self.stop = make(chan bool)
 	go self.eventBus.Listen(self.stop)
-	go self.eventStream.Stream(idx, self.eventBus.Channel, self.stop)
+	go self.eventStream.Stream(0, self.eventBus.Channel, self.stop)
 }
 
 func (self *Server) Stop() {

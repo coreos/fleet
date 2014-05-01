@@ -34,7 +34,8 @@ const (
 // Machine, and the local SystemdManager.
 type Agent struct {
 	registry *registry.Registry
-	events   *event.EventBus
+	eStream  *registry.EventStream
+	eBus     *event.EventBus
 	machine  *machine.Machine
 	ttl      time.Duration
 	// verifier is used to verify job payload. A nil one implies that
@@ -48,16 +49,24 @@ type Agent struct {
 	stop chan bool
 }
 
-func New(registry *registry.Registry, events *event.EventBus, machine *machine.Machine, ttl string, verifier *sign.SignatureVerifier) (*Agent, error) {
+func New(reg *registry.Registry, eStream *registry.EventStream, mach *machine.Machine, ttl string, verifier *sign.SignatureVerifier) (*Agent, error) {
 	ttldur, err := time.ParseDuration(ttl)
 	if err != nil {
 		return nil, err
 	}
 
 	state := NewState()
-	mgr := systemd.NewSystemdManager(machine)
+	mgr := systemd.NewSystemdManager(mach)
 
-	return &Agent{registry, events, machine, ttldur, verifier, state, mgr, nil}, nil
+	eBus := event.NewEventBus()
+
+	a := &Agent{reg, eStream, eBus, mach, ttldur, verifier, state, mgr, nil}
+
+	hdlr := NewEventHandler(a)
+	bootID := mach.State().BootID
+	eBus.AddListener("agent", bootID, hdlr)
+
+	return a, nil
 }
 
 // Access Agent's machine field
@@ -80,24 +89,20 @@ func (a *Agent) MarshalJSON() ([]byte, error) {
 func (a *Agent) Run() {
 	a.stop = make(chan bool)
 
-	handler := NewEventHandler(a)
-	bootID := a.machine.State().BootID
-	a.events.AddListener("agent", bootID, handler)
+	idx := a.initialize()
+	go a.eBus.Listen(a.stop)
+	go a.eStream.Stream(idx, a.eBus.Channel, a.stop)
 
-	go a.systemd.Publish(a.events, a.stop)
+	go a.systemd.Publish(a.eBus, a.stop)
+
 	go a.Heartbeat(a.ttl, a.stop)
 	go a.HeartbeatJobs(a.ttl, a.stop)
-
-	// Block until we receive a stop signal
-	<-a.stop
-
-	a.events.RemoveListener("agent", bootID)
 }
 
-// Initialize pushes the local machine state to the Registry
+// initialize pushes the local machine state to the Registry
 // repeatedly until it succeeds. It returns the modification
 // index of the first successful response received from etcd.
-func (a *Agent) Initialize() uint64 {
+func (a *Agent) initialize() uint64 {
 	log.Infof("Initializing Agent")
 	a.machine.RefreshState()
 
