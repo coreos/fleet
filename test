@@ -1,0 +1,36 @@
+#!/bin/bash -e
+#
+# Run all fleet tests (not including functional)
+#   ./test
+#
+# Run tests for one package
+#  PKG=./unit ./test
+#
+
+# Invoke ./cover for HTML output
+COVER=${COVER:-"-cover"}
+
+source ./build
+
+declare -a TESTPKGS=(agent config event fleetctl job machine pkg registry sign ssh systemd unit integration-tests)
+
+if [ -z "$PKG" ]; then
+	GOFMTPATH="$TESTPKGS engine functional server fleet.go"
+	# prepend repo path to each package
+	TESTPKGS=${TESTPKGS[@]/#/${REPO_PATH}/}
+else
+	GOFMTPATH="$TESTPKGS"
+	# strip out slashes and dots from PKG=./foo/
+	TESTPKGS=${PKG//\//}
+	TESTPKGS=${TESTPKGS//./}
+	TESTPKGS=${TESTPKGS/#/${REPO_PATH}/}
+fi
+
+echo "Running tests..."
+go test -i ${TESTPKGS}
+go test ${COVER} -v ${TESTPKGS}
+
+echo "Checking gofmt..."
+fmtRes=$(gofmt -l $GOFMTPATH)
+
+echo "Success"

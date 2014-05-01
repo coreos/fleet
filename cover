@@ -1,0 +1,21 @@
+#!/bin/bash
+#
+# Generate coverage HTML for a package
+# e.g. PKG=./unit ./cover
+#
+
+if [ -z "$PKG" ]; then
+	echo "cover only works with a single package, sorry"
+	exit 255
+fi
+
+# strip out slashes and dots
+COVERPKG=${PKG//\//}
+COVERPKG=${COVERPKG//./}
+
+# generate arg for "go test"
+export COVER="-coverprofile ${COVERPKG}.out"
+
+source ./test
+
+go tool cover -html=${COVERPKG}.out
