@@ -5,7 +5,6 @@ import (
 
 	"github.com/coreos/fleet/event"
 	"github.com/coreos/fleet/job"
-	"github.com/coreos/fleet/machine"
 )
 
 type EventHandler struct {
@@ -148,21 +147,4 @@ func (eh *EventHandler) HandleEventPayloadStateUpdated(ev event.Event) {
 	state.MachineState = &ms
 
 	eh.agent.ReportPayloadState(jobName, state)
-}
-
-func (eh *EventHandler) HandleEventMachineCreated(ev event.Event) {
-	mach := ev.Payload.(machine.MachineState)
-	if mach.BootID != eh.agent.Machine().State().BootID {
-		log.Infof("EventMachineCreated(%s): references other Machine, discarding event", mach.BootID)
-	}
-
-	for _, jo := range eh.agent.UnresolvedJobOffers() {
-		log.Infof("EventMachineCreated(%s): verifying ability to run Job(%s) from unresolved offer", mach.BootID, jo.Job.Name)
-
-		// Everything we check against could change over time, so we track all
-		// offers starting here for future bidding even if we can't bid now
-		eh.agent.state.TrackOffer(jo)
-	}
-
-	eh.agent.BidForPossibleJobs()
 }

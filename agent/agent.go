@@ -118,6 +118,15 @@ func (a *Agent) initialize() uint64 {
 		time.Sleep(wait)
 	}
 
+	for _, jo := range a.UnresolvedJobOffers() {
+		// Everything we check against could change over time, so we track
+		// all offers starting here for future bidding even if we are
+		// currently unable to bid
+		a.state.TrackOffer(jo)
+	}
+
+	a.BidForPossibleJobs()
+
 	return idx
 }
 
