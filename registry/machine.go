@@ -4,6 +4,7 @@ import (
 	"path"
 	"time"
 
+	etcderr "github.com/coreos/fleet/third_party/github.com/coreos/etcd/error"
 	"github.com/coreos/fleet/third_party/github.com/coreos/go-etcd/etcd"
 
 	"github.com/coreos/fleet/event"
@@ -11,7 +12,8 @@ import (
 )
 
 const (
-	machinePrefix = "/machines/"
+	machinePrefix     = "/machines/"
+	machineSpecPrefix = "/machineSpecs"
 )
 
 // Describe all active Machines
@@ -37,6 +39,37 @@ func (r *Registry) GetActiveMachines() []machine.MachineState {
 	return machines
 }
 
+func (r *Registry) GetMachineSpecs() (map[string]machine.MachineSpec, error) {
+	key := path.Join(keyPrefix, machineSpecPrefix)
+	resp, err := r.etcd.Get(key, false, true)
+	if err != nil {
+		switch terr := err.(type) {
+		case *etcd.EtcdError:
+			if terr.ErrorCode == etcderr.EcodeKeyNotFound {
+				return nil, nil
+			}
+			return nil, err
+		default:
+			return nil, err
+		}
+	}
+
+	specs := make(map[string]machine.MachineSpec)
+
+	for _, kv := range resp.Node.Nodes {
+		_, bootID := path.Split(kv.Key)
+
+		spec, err := r.GetMachineSpec(bootID)
+		if err != nil {
+			return nil, err
+		}
+		if spec != nil {
+			specs[bootID] = *spec
+		}
+	}
+	return specs, nil
+}
+
 // Get Machine object from etcd
 func (r *Registry) GetMachineState(bootid string) *machine.MachineState {
 	key := path.Join(keyPrefix, machinePrefix, bootid, "object")
@@ -53,6 +86,28 @@ func (r *Registry) GetMachineState(bootid string) *machine.MachineState {
 	}
 
 	return &mach
+}
+
+func (r *Registry) GetMachineSpec(bootID string) (*machine.MachineSpec, error) {
+	key := path.Join(keyPrefix, machineSpecPrefix, bootID, "object")
+	resp, err := r.etcd.Get(key, false, true)
+	if err != nil {
+		switch terr := err.(type) {
+		case *etcd.EtcdError:
+			if terr.ErrorCode == etcderr.EcodeKeyNotFound {
+				return nil, nil
+			}
+			return nil, err
+		default:
+			return nil, err
+		}
+	}
+
+	var spec machine.MachineSpec
+	if err := unmarshal(resp.Node.Value, &spec); err != nil {
+		return nil, err
+	}
+	return &spec, nil
 }
 
 // Push Machine object to etcd
@@ -75,6 +130,17 @@ func (r *Registry) SetMachineState(ms machine.MachineState, ttl time.Duration) (
 	}
 
 	return resp.Node.ModifiedIndex, nil
+}
+
+func (r *Registry) SetMachineSpec(bootID string, spec machine.MachineSpec) error {
+	json, err := marshal(spec)
+	if err != nil {
+		return err
+	}
+
+	key := path.Join(keyPrefix, machineSpecPrefix, bootID, "object")
+	_, err = r.etcd.RawSet(key, json, 0)
+	return err
 }
 
 // Remove Machine object from etcd

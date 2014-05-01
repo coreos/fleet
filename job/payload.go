@@ -20,6 +20,10 @@ const (
 	FleetXConditionMachineOf = "ConditionMachineOf"
 	// Prevent a unit from being collocated with other units using glob-matching on the other unit names.
 	FleetXConflicts = "Conflicts"
+	// TODO(uwedeportivo): find standard keys from systemd more appropriate
+	FleetXCoresRequired     = "Cores"
+	FleetXMemoryRequired    = "Memory"
+	FleetXDiskSpaceRequired = "DiskSpace"
 )
 
 func SupportedUnitTypes() []string {

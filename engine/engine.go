@@ -2,26 +2,44 @@ package engine
 
 import (
 	"errors"
+	"sort"
 
+	"github.com/coreos/fleet/control"
 	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
 
+	controlintegrate "github.com/coreos/fleet/control/integrate"
 	"github.com/coreos/fleet/event"
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/registry"
 )
 
+const (
+	// How many machine from the cluster should be
+	// considered for scheduling a job
+	partitionSize = 5
+)
+
 type Engine struct {
-	registry *registry.Registry
-	events   *event.EventBus
-	machine  *machine.Machine
-	// keeps a picture of the load in the cluster for more intelligent scheduling
-	clust *cluster
-	stop  chan bool
+	registry   *registry.Registry
+	events     *event.EventBus
+	machine    *machine.Machine
+	jobControl control.JobControl
+	stop       chan bool
 }
 
 func New(reg *registry.Registry, events *event.EventBus, mach *machine.Machine) *Engine {
-	return &Engine{reg, events, mach, newCluster(), nil}
+	return &Engine{reg, events, mach, nil, nil}
+}
+
+func (self *Engine) Initialize() error {
+	jobControl, err :=
+		control.NewJobControl(controlintegrate.NewRegistryClusterCentral(self.registry))
+	if err != nil {
+		return err
+	}
+	self.jobControl = jobControl
+	return nil
 }
 
 func (self *Engine) Run() {
@@ -68,7 +86,7 @@ func (self *Engine) OfferJob(j job.Job) error {
 
 	log.V(1).Infof("Claimed Job", j.Name)
 
-	machineBootIDs, err := self.partitionCluster(&j)
+	machineBootIDs, err := self.jobCandidates(&j)
 	if err != nil {
 		log.Errorf("Failed partitioning cluster for Job(%s): %v", j.Name, err)
 		return err
@@ -125,4 +143,26 @@ func (self *Engine) lockJob(jobName string) *registry.TimedResourceMutex {
 // Pass-through to Registry.LockMachine
 func (self *Engine) LockMachine(machBootID string) *registry.TimedResourceMutex {
 	return self.registry.LockMachine(machBootID, self.machine.State().BootID)
+}
+
+// jobCandidates returns a slice of bootids from a subset of active machines
+// that should be considered for scheduling the specified job.
+// The returned slice is sorted by ascending lexicographical string value of machine boot id.
+func (self *Engine) jobCandidates(j *job.Job) ([]string, error) {
+	spec := controlintegrate.JobSpecFrom(j)
+
+	machineBootIDs, err := self.jobControl.ScheduleJob(spec)
+	if err != nil {
+		return nil, err
+	}
+
+	n := len(machineBootIDs)
+	if n > partitionSize {
+		n = partitionSize
+	}
+
+	machineBootIDs = machineBootIDs[:n]
+
+	sort.Strings(machineBootIDs)
+	return machineBootIDs, nil
 }

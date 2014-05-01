@@ -1,6 +1,7 @@
 package engine
 
 import (
+	controlintegrate "github.com/coreos/fleet/control/integrate"
 	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
 
 	"github.com/coreos/fleet/event"
@@ -43,7 +44,13 @@ func (self *EventHandler) HandleEventJobScheduled(ev event.Event) {
 	jobName := ev.Payload.(string)
 	target := ev.Context.(string)
 	log.V(1).Infof("EventJobScheduled(%s): updating cluster", jobName)
-	self.engine.clust.jobScheduled(jobName, target)
+
+	j := self.engine.registry.GetJob(jobName)
+	if j == nil {
+		log.Errorf("EventJobScheduled(%s): Job(%s), could not be found in the Registry", jobName)
+		return
+	}
+	self.engine.jobControl.JobScheduled(jobName, target, controlintegrate.JobSpecFrom(j))
 }
 
 // EventJobUnscheduled is triggered when a scheduling decision has been
@@ -51,6 +58,7 @@ func (self *EventHandler) HandleEventJobScheduled(ev event.Event) {
 // Attempt to reschedule the job if it is in a non-inactive state.
 func (self *EventHandler) HandleEventJobUnscheduled(ev event.Event) {
 	jobName := ev.Payload.(string)
+	target := ev.Context.(string)
 
 	ts := self.engine.registry.GetJobTargetState(jobName)
 	if ts == nil || *ts == job.JobStateInactive {
@@ -65,12 +73,11 @@ func (self *EventHandler) HandleEventJobUnscheduled(ev event.Event) {
 
 	log.Infof("EventJobUnscheduled(%s): publishing JobOffer", jobName)
 	self.engine.OfferJob(*j)
+	spec := controlintegrate.JobSpecFrom(j)
+	self.engine.jobControl.JobDowned(jobName, target, spec)
 }
 
 func (self *EventHandler) HandleCommandStopJob(ev event.Event) {
-	jobName := ev.Payload.(string)
-	log.V(1).Infof("EventJobStopped(%s): updating cluster", jobName)
-	self.engine.clust.jobStopped(jobName)
 }
 
 func (self *EventHandler) HandleEventJobBidSubmitted(ev event.Event) {
@@ -86,8 +93,8 @@ func (self *EventHandler) HandleEventJobBidSubmitted(ev event.Event) {
 
 func (self *EventHandler) HandleEventMachineCreated(ev event.Event) {
 	machineState := ev.Payload.(machine.MachineState)
-	log.V(1).Infof("EventMachineCreated(%s): updating cluster", machineState.BootID)
-	self.engine.clust.machineCreated(machineState.BootID)
+	log.V(1).Infof("EventMachineCreated(%s): updating job control", machineState.BootID)
+	self.engine.jobControl.HostUp(machineState.BootID)
 }
 
 func (self *EventHandler) HandleEventMachineRemoved(ev event.Event) {
@@ -111,5 +118,5 @@ func (self *EventHandler) HandleEventMachineRemoved(ev event.Event) {
 		log.Infof("EventMachineRemoved(%s): re-publishing JobOffer(%s)", machBootID, j.Name)
 		self.engine.OfferJob(j)
 	}
-	self.engine.clust.machineRemoved(machBootID)
+	self.engine.jobControl.HostDown(machBootID)
 }

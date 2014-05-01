@@ -1,0 +1,55 @@
+package control
+
+import (
+	"math"
+	"sort"
+)
+
+// how to compute the hole size
+type bestFitScoreMethod int
+
+const (
+	sumScoreMethod bestFitScoreMethod = iota
+	sumSquareScoreMethod
+	powerTenScoreMethod
+)
+
+type scoreFun func(candHost) float64
+
+var strategies map[bestFitScoreMethod]scoreFun
+
+func init() {
+	strategies = make(map[bestFitScoreMethod]scoreFun)
+
+	strategies[sumScoreMethod] = sumScore
+	strategies[sumSquareScoreMethod] = sumSquareScore
+	strategies[powerTenScoreMethod] = powerTenScore
+}
+
+type byScore []candHost
+
+func (a byScore) Len() int           { return len(a) }
+func (a byScore) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a byScore) Less(i, j int) bool { return a[i].score < a[j].score }
+
+func sortBestFit(lhs []candHost, scoreMethod bestFitScoreMethod) {
+	sf := strategies[scoreMethod]
+
+	for i, h := range lhs {
+		lhs[i].score = sf(h)
+	}
+
+	sort.Sort(byScore(lhs))
+}
+
+func sumScore(h candHost) float64 {
+	return h.mem + h.cores
+}
+
+func sumSquareScore(h candHost) float64 {
+	return h.mem*h.mem + h.cores*h.cores
+}
+
+func powerTenScore(h candHost) float64 {
+	return math.Pow(10.0, h.mem) + math.Pow(10.0, h.cores)
+}

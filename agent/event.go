@@ -33,9 +33,6 @@ func (eh *EventHandler) HandleEventJobOffered(ev event.Event) {
 		log.Infof("EventJobOffered(%s): not all criteria met, not bidding", jo.Job.Name)
 		return
 	}
-
-	log.Infof("EventJobOffered(%s): passed all criteria, submitting JobBid", jo.Job.Name)
-	eh.agent.Bid(jo.Job.Name)
 }
 
 func (eh *EventHandler) HandleEventJobScheduled(ev event.Event) {
