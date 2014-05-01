@@ -10,29 +10,24 @@ import (
 type EventBus struct {
 	listeners map[string]EventListener
 	Channel   chan *Event
-	stop      chan bool
 }
 
 func NewEventBus() *EventBus {
 	listeners := make(map[string]EventListener, 0)
-	return &EventBus{listeners, make(chan *Event), make(chan bool)}
+	return &EventBus{listeners, make(chan *Event)}
 }
 
-func (self *EventBus) Listen() {
+func (self *EventBus) Listen(stop chan bool) {
 	go func() {
 		for {
 			select {
-			case <-self.stop:
+			case <-stop:
 				return
 			case ev := <-self.Channel:
 				self.dispatch(ev)
 			}
 		}
 	}()
-}
-
-func (self *EventBus) Stop() {
-	close(self.stop)
 }
 
 func (self *EventBus) AddListener(name, bootID string, l interface{}) {

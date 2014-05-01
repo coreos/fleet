@@ -73,7 +73,7 @@ func (self *Server) Run() {
 	go self.engine.Run()
 
 	self.stop = make(chan bool)
-	go self.eventBus.Listen()
+	go self.eventBus.Listen(self.stop)
 	go self.eventStream.Stream(idx, self.eventBus.Channel, self.stop)
 }
 
@@ -82,8 +82,6 @@ func (self *Server) Stop() {
 
 	self.agent.Stop()
 	self.engine.Stop()
-
-	self.eventBus.Stop()
 }
 
 func (self *Server) Purge() {
