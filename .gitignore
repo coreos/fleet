@@ -1,4 +1,5 @@
 bin/
+coverage/
 gopath/
 *.swp
 fleet.conf

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -e
 #
 # Generate coverage HTML for a package
 # e.g. PKG=./unit ./cover
@@ -9,13 +9,19 @@ if [ -z "$PKG" ]; then
 	exit 255
 fi
 
+COVEROUT="coverage"
+
+if ! [ -d "$COVEROUT" ]; then
+	mkdir "$COVEROUT"
+fi
+
 # strip out slashes and dots
 COVERPKG=${PKG//\//}
 COVERPKG=${COVERPKG//./}
 
 # generate arg for "go test"
-export COVER="-coverprofile ${COVERPKG}.out"
+export COVER="-coverprofile ${COVEROUT}/${COVERPKG}.out"
 
 source ./test
 
-go tool cover -html=${COVERPKG}.out
+go tool cover -html=${COVEROUT}/${COVERPKG}.out
