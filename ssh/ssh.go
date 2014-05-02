@@ -37,7 +37,11 @@ func newSSHForwardingClient(client *gossh.Client, agentForwarding bool) (*SSHFor
 	return &SSHForwardingClient{agentForwarding, client}, nil
 }
 
-func makePtySession(client *SSHForwardingClient) (session *gossh.Session, finalize func(), err error) {
+// makeSession initializes a gossh.Session connected to the invoking process's stdout/stderr/stdout.
+// If the invoking session is a terminal, a TTY will be requested for the SSH session.
+// It returns a gossh.Session, a finalizing function used to clean up after the session terminates,
+// and any error encountered in setting up the session.
+func makeSession(client *SSHForwardingClient) (session *gossh.Session, finalize func(), err error) {
 	session, err = client.NewSession()
 	if err != nil {
 		return
@@ -46,6 +50,10 @@ func makePtySession(client *SSHForwardingClient) (session *gossh.Session, finali
 		return
 	}
 
+	session.Stdout = os.Stdout
+	session.Stderr = os.Stderr
+	session.Stdin = os.Stdin
+
 	modes := gossh.TerminalModes{
 		gossh.ECHO:          1,     // enable echoing
 		gossh.TTY_OP_ISPEED: 14400, // input speed = 14.4kbaud
@@ -53,27 +61,33 @@ func makePtySession(client *SSHForwardingClient) (session *gossh.Session, finali
 	}
 
 	fd := int(os.Stdin.Fd())
-	oldState, err := terminal.MakeRaw(fd)
-	if err != nil {
-		return
+	if terminal.IsTerminal(fd) {
+
+		var termWidth, termHeight int
+		var oldState *terminal.State
+
+		oldState, err = terminal.MakeRaw(fd)
+		if err != nil {
+			return
+		}
+
+		finalize = func() {
+			session.Close()
+			terminal.Restore(fd, oldState)
+		}
+
+		termWidth, termHeight, err = terminal.GetSize(fd)
+
+		if err != nil {
+			return
+		}
+		err = session.RequestPty("xterm-256color", termHeight, termWidth, modes)
+	} else {
+		finalize = func() {
+			session.Close()
+		}
 	}
 
-	finalize = func() {
-		session.Close()
-		terminal.Restore(fd, oldState)
-	}
-
-	termWidth, termHeight, err := terminal.GetSize(fd)
-
-	if err != nil {
-		return
-	}
-
-	session.Stdout = os.Stdout
-	session.Stderr = os.Stderr
-	session.Stdin = os.Stdin
-
-	err = session.RequestPty("xterm-256color", termHeight, termWidth, modes)
 	return
 }
 
@@ -81,7 +95,7 @@ func makePtySession(client *SSHForwardingClient) (session *gossh.Session, finali
 // connected to the controlling terminal. It returns any error encountered in
 // the SSH session, and the exit status of the remote command.
 func Execute(client *SSHForwardingClient, cmd string) (error, int) {
-	session, finalize, err := makePtySession(client)
+	session, finalize, err := makeSession(client)
 	if err != nil {
 		return err, -1
 	}
@@ -107,7 +121,7 @@ func Execute(client *SSHForwardingClient, cmd string) (error, int) {
 // Shell launches an interactive shell on the given client. It returns any
 // error encountered in setting up the SSH session.
 func Shell(client *SSHForwardingClient) error {
-	session, finalize, err := makePtySession(client)
+	session, finalize, err := makeSession(client)
 	if err != nil {
 		return err
 	}
