@@ -192,7 +192,7 @@ func (m *SystemdManager) daemonReload() error {
 func (m *SystemdManager) writeUnit(name string, contents string) error {
 	log.Infof("Writing systemd unit file %s", name)
 
-	path := path.Join(m.unitPath, name)
+	p := m.getLocalPath(name)
 	file, err := os.Create(path)
 	defer file.Close()
 
