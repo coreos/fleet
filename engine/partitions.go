@@ -5,7 +5,6 @@ import (
 	"sync"
 
 	"github.com/coreos/fleet/job"
-	"github.com/coreos/fleet/unit"
 )
 
 const (
@@ -185,20 +184,12 @@ func (eg *Engine) refreshCluster(force bool) {
 	eg.clust.refreshFrom(cu, force)
 }
 
-// requiresMachine returns whether specified job requires a specific machine.
-func (eg *Engine) requiresMachine(j *job.Job) ([]string, bool) {
-	requirements := j.Requirements()
-
-	machID, ok := requirements[unit.FleetXConditionMachineBootID]
-	return machID, ok && len(machID) > 0
-}
-
-// partitionCluster returns a slice of bootids from a subset of active machines
+// partitionCluster returns a slice of IDs from a subset of active machines
 // that should be considered for scheduling the specified job.
 // The returned slice is sorted by ascending lexicographical string value of machine boot id.
 func (eg *Engine) partitionCluster(j *job.Job) ([]string, error) {
-	if machID, ok := eg.requiresMachine(j); ok {
-		return machID, nil
+	if machID, ok := j.RequiredTarget(); ok {
+		return []string{machID}, nil
 	}
 
 	// TODO(uwedeportivo): for now punt on jobs with requirements and offer to all machines

@@ -389,9 +389,8 @@ func (a *Agent) AbleToRun(j *job.Job) bool {
 		return false
 	}
 
-	machIDs, ok := requirements[unit.FleetXConditionMachineBootID]
-	if ok && len(machIDs) > 0 && !a.machine.State().MatchID(machIDs[0]) {
-		log.Infof("Agent does not pass MachineBootID condition for Job(%s)", j.Name)
+	if tgt, ok := j.RequiredTarget(); ok && !a.machine.State().MatchID(tgt) {
+		log.Infof("Agent does not meet machine target requirement for Job(%s)", j.Name)
 		return false
 	}
 

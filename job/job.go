@@ -76,6 +76,22 @@ func (self *Job) Peers() []string {
 	return peers
 }
 
+// RequiredTarget determines whether or not this Job must be scheduled to
+// a specific machine. If such a requirement exists, the first value returned
+// represents the ID of such a machine, while the second value will be a bool
+// true. If no requirement exists, an empty string along with a bool false
+// will be returned.
+func (self *Job) RequiredTarget() (string, bool) {
+	requirements := self.Unit.Requirements()
+
+	bootIDs, ok := requirements[unit.FleetXConditionMachineBootID]
+	if ok && len(bootIDs) != 0 {
+		return bootIDs[0], true
+	}
+
+	return "", false
+}
+
 // Type attempts to determine the Type of systemd unit that this Job contains, based on the suffix of the job name
 func (self *Job) Type() (string, error) {
 	for _, ut := range unit.SupportedUnitTypes() {
