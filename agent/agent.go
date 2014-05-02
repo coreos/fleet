@@ -105,7 +105,6 @@ func (a *Agent) Run() {
 // index of the first successful response received from etcd.
 func (a *Agent) initialize() uint64 {
 	log.Infof("Initializing Agent")
-	a.machine.RefreshState()
 
 	var idx uint64
 	wait := time.Second

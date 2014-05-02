@@ -32,6 +32,7 @@ func New(cfg config.Config) (*Server, error) {
 
 func newAgentFromConfig(cfg config.Config) (*agent.Agent, error) {
 	mach := machine.New("", cfg.PublicIP, cfg.Metadata())
+	mach.RefreshState()
 
 	regClient := etcd.NewClient(cfg.EtcdServers)
 	regClient.SetConsistency(etcd.STRONG_CONSISTENCY)
@@ -56,6 +57,7 @@ func newAgentFromConfig(cfg config.Config) (*agent.Agent, error) {
 
 func newEngineFromConfig(cfg config.Config) *engine.Engine {
 	mach := machine.New("", cfg.PublicIP, cfg.Metadata())
+	mach.RefreshState()
 
 	regClient := etcd.NewClient(cfg.EtcdServers)
 	regClient.SetConsistency(etcd.STRONG_CONSISTENCY)
