@@ -31,13 +31,13 @@ type SystemdManager struct {
 	stop          chan bool
 }
 
-func NewSystemdManager(machine *machine.Machine) *SystemdManager {
+func NewSystemdManager(machine *machine.Machine) (*SystemdManager, error) {
 	systemd, err := dbus.New()
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
-	return &SystemdManager{systemd, machine, systemdRuntimePath, systemd.NewSubscriptionSet(), nil}
+	return &SystemdManager{systemd, machine, systemdRuntimePath, systemd.NewSubscriptionSet(), nil}, nil
 }
 
 func (m *SystemdManager) MarshalJSON() ([]byte, error) {
