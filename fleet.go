@@ -46,7 +46,6 @@ func main() {
 	cfgset := flag.NewFlagSet("fleet", flag.ExitOnError)
 	cfgset.Int("verbosity", 0, "Logging level")
 	cfgset.Var(&stringSlice{}, "etcd_servers", "List of etcd endpoints")
-	cfgset.String("boot_id", "", "Override default BootID of fleet machine")
 	cfgset.String("public_ip", "", "IP address that fleet machine should publish")
 	cfgset.String("metadata", "", "List of key-value metadata to assign to the fleet machine")
 	cfgset.String("agent_ttl", agent.DefaultTTL, "TTL in seconds of fleet machine state in etcd")
@@ -152,7 +151,6 @@ func getConfig(flagset *flag.FlagSet, userCfgFile string) (*config.Config, error
 	cfg := config.Config{
 		Verbosity:          (*flagset.Lookup("verbosity")).Value.(flag.Getter).Get().(int),
 		EtcdServers:        (*flagset.Lookup("etcd_servers")).Value.(flag.Getter).Get().(stringSlice),
-		BootID:             (*flagset.Lookup("boot_id")).Value.(flag.Getter).Get().(string),
 		PublicIP:           (*flagset.Lookup("public_ip")).Value.(flag.Getter).Get().(string),
 		RawMetadata:        (*flagset.Lookup("metadata")).Value.(flag.Getter).Get().(string),
 		AgentTTL:           (*flagset.Lookup("agent_ttl")).Value.(flag.Getter).Get().(string),

@@ -22,11 +22,3 @@
 # communicate with the Registry. The agent will attempt a heartbeat at half
 # of this value.
 # agent_ttl="30s"
-
-
-#####
-# Development Settings
-
-# Unique identifier of fleet instance. The value defaults
-# to contents of /proc/sys/kernel/random/boot_id
-# bootid=""
