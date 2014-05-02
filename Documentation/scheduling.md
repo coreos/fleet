@@ -20,6 +20,11 @@ The `X-ConditionMachineID` option of a unit file causes the system to schedule a
 The ID of each machine is currently published in the `MACHINE` column in the output of `fleetctl list-machines -l`.
 One must use the entire ID when setting `X-ConditionMachineID` - the shortened ID returned by `fleetctl list-machines` without the `-l` flag is not acceptable.
 
+fleet depends on its host to generate an identifier at `/etc/machine-id`, which is handled today by systemd.
+Read more about machine IDs in the [official systemd documentation][machine-id].
+
+[machine-id]: http://www.freedesktop.org/software/systemd/man/machine-id.html
+
 ##### Schedule unit to machine with specific metadata
 
 The `X-ConditionMachineMetadata` option of a unit file allows you to set conditional metadata required for a machine to be elegible.
