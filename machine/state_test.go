@@ -113,37 +113,37 @@ func TestStateMatchID(t *testing.T) {
 	}
 }
 
-func TestReadLocalBootIDMissing(t *testing.T) {
+func TestReadLocalMachineIDMissing(t *testing.T) {
 	dir, err := ioutil.TempDir(os.TempDir(), "fleet-")
 	if err != nil {
 		t.Fatalf("Failed creating tempdir: %v", err)
 	}
 	defer os.RemoveAll(dir)
 
-	if machID := readLocalBootID(dir); machID != "" {
+	if machID := readLocalMachineID(dir); machID != "" {
 		t.Fatalf("Received incorrect machID: %s", machID)
 	}
 }
 
-func TestReadLocalBootIDFound(t *testing.T) {
+func TestReadLocalMachineIDFound(t *testing.T) {
 	dir, err := ioutil.TempDir(os.TempDir(), "fleet-")
 	if err != nil {
 		t.Fatalf("Failed creating tempdir: %v", err)
 	}
 	defer os.RemoveAll(dir)
 
-	tmpBootIDPath := filepath.Join(dir, "/proc/sys/kernel/random/boot_id")
-	err = os.MkdirAll(filepath.Dir(tmpBootIDPath), os.FileMode(0755))
+	tmpMachineIDPath := filepath.Join(dir, "/etc/machine-id")
+	err = os.MkdirAll(filepath.Dir(tmpMachineIDPath), os.FileMode(0755))
 	if err != nil {
 		t.Fatalf("Failed setting up fake mach ID path: %v", err)
 	}
 
-	err = ioutil.WriteFile(tmpBootIDPath, []byte("pingpong"), os.FileMode(0644))
+	err = ioutil.WriteFile(tmpMachineIDPath, []byte("pingpong"), os.FileMode(0644))
 	if err != nil {
 		t.Fatalf("Failed writing fake mach ID file: %v", err)
 	}
 
-	if machID := readLocalBootID(dir); machID != "pingpong" {
+	if machID := readLocalMachineID(dir); machID != "pingpong" {
 		t.Fatalf("Received incorrect machID %q, expected 'pingpong'", machID)
 	}
 }

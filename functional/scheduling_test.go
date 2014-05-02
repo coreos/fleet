@@ -176,8 +176,8 @@ func TestScheduleConflicts(t *testing.T) {
 }
 
 // Ensure units can be scheduled directly to a given machine using the
-// X-ConditionMachineBootID unit option.
-func TestScheduleConditionMachineBootID(t *testing.T) {
+// X-ConditionMachineID unit option.
+func TestScheduleConditionMachineID(t *testing.T) {
 	cluster, err := platform.NewNspawnCluster("smoke")
 	if err != nil {
 		t.Fatal(err)
@@ -201,7 +201,7 @@ func TestScheduleConditionMachineBootID(t *testing.T) {
 ExecStart=/bin/bash -c "while true; do echo Hello, World!; sleep 1; done"
 
 [X-Fleet]
-X-ConditionMachineBootID=%s
+X-ConditionMachineID=%s
 `
 		unitFile, err := tempUnit(fmt.Sprintf(contents, machine))
 		if err != nil {

@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	bootIDPath = "/proc/sys/kernel/random/boot_id"
+	machineIDPath = "/etc/machine-id"
 	shortIDLen = 8
 )
 
@@ -27,7 +27,7 @@ type MachineState struct {
 // NewDynamicMachineState generates a MachineState object with
 // the values read from the local system
 func CurrentState() MachineState {
-	id := readLocalBootID("/")
+	id := readLocalMachineID("/")
 	publicIP := getLocalIP()
 	return MachineState{ID: id, PublicIP: publicIP, Metadata: make(map[string]string, 0)}
 }
@@ -45,11 +45,11 @@ func (s MachineState) MatchID(ID string) bool {
 
 // IsLocalMachineState checks whether machine state matches the state of local machine
 func IsLocalMachineState(ms *MachineState) bool {
-	return ms.ID == readLocalBootID("/")
+	return ms.ID == readLocalMachineID("/")
 }
 
-func readLocalBootID(root string) string {
-	fullPath := filepath.Join(root, bootIDPath)
+func readLocalMachineID(root string) string {
+	fullPath := filepath.Join(root, machineIDPath)
 	id, err := ioutil.ReadFile(fullPath)
 	if err != nil {
 		return ""

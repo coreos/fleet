@@ -84,6 +84,15 @@ func (self *Job) Peers() []string {
 func (self *Job) RequiredTarget() (string, bool) {
 	requirements := self.Unit.Requirements()
 
+	machIDs, ok := requirements[unit.FleetXConditionMachineID]
+	if ok && len(machIDs) != 0 {
+		return machIDs[0], true
+	}
+
+	// Fall back to the legacy option if it exists. This is unlikely
+	// to actually work as the user intends, but it's better to
+	// prevent a job from starting that has a legacy requirement
+	// than to ignore the requirement and let it start.
 	bootIDs, ok := requirements[unit.FleetXConditionMachineBootID]
 	if ok && len(bootIDs) != 0 {
 		return bootIDs[0], true

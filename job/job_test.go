@@ -160,7 +160,7 @@ func TestJobConditionMachineID(t *testing.T) {
 		// Simplest case
 		{
 			`[X-Fleet]
-X-ConditionMachineBootID=123
+X-ConditionMachineID=123
 `,
 			"123",
 			true,
@@ -170,7 +170,7 @@ X-ConditionMachineBootID=123
 		// TODO(bcwaldon): maybe the last one should win?
 		{
 			`[X-Fleet]
-X-ConditionMachineBootID="123" "456"
+X-ConditionMachineID="123" "456"
 `,
 			"123",
 			true,
@@ -181,6 +181,25 @@ X-ConditionMachineBootID="123" "456"
 			`[X-Fleet]`,
 			"",
 			false,
+		},
+
+		// Ensure we fall back to the legacy boot ID option
+		{
+			`[X-Fleet]
+X-ConditionMachineBootID=123
+`,
+			"123",
+			true,
+		},
+
+		// Fall back to legacy option only if non-boot ID is absent
+		{
+			`[X-Fleet]
+X-ConditionMachineBootID=123
+X-ConditionMachineID=456
+`,
+			"456",
+			true,
 		},
 	}
 

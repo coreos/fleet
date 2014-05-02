@@ -11,7 +11,9 @@ import (
 // Fleet specific unit file requirement keys.
 // "X-" prefix only appears in unit file and is dropped in code before the value is used.
 const (
-	// Require the unit be scheduled to a specific machine defined by given boot ID.
+	// Require the unit be scheduled to a specific machine identified by given ID.
+	FleetXConditionMachineID = "ConditionMachineID"
+	// Legacy form of FleetXConditionMachineID.
 	FleetXConditionMachineBootID = "ConditionMachineBootID"
 	// Limit eligible machines to the one that hosts a specific unit.
 	FleetXConditionMachineOf = "ConditionMachineOf"
