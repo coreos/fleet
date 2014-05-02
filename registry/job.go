@@ -100,7 +100,11 @@ func (r *Registry) getJobFromJSON(val string) *job.Job {
 			log.Warningf("No Unit found in Registry for Job(%s)", jm.Name)
 			return nil
 		}
-		log.V(2).Infof("Got Unit for Job(%) from registry", jm.Name)
+		if unit.Hash() != jm.UnitHash {
+			log.Errorf("Unit Hash %s does not match expected %s for Job(%s)!", unit.Hash(), jm.UnitHash, jm.Name)
+			return nil
+		}
+		log.V(2).Infof("Got Unit for Job(%s) from registry", jm.Name)
 	} else {
 		// Old-style Jobs had "Payloads" instead of Units, also stored separately in the Registry
 		log.V(2).Infof("Legacy Job(%s) has no PayloadHash - looking for associated Payload", jm.Name)

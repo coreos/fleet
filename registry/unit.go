@@ -26,9 +26,11 @@ func (r *Registry) storeOrGetUnit(u unit.Unit) (err error) {
 		return err
 	}
 
+	log.V(3).Infof("Storing Unit(%s) in Registry: %s", u.Hash(), json)
 	_, err = r.etcd.Create(key, json, 0)
 	// unit is already stored
 	if err != nil && err.(*etcd.EtcdError).ErrorCode == etcdErr.EcodeNodeExist {
+		log.V(2).Infof("Unit(%s) already exists in Registry", u.Hash())
 		// TODO(jonboulle): verify more here?
 		err = nil
 	}
