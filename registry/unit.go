@@ -83,31 +83,6 @@ type LegacyJobPayload struct {
 	Unit unit.Unit
 }
 
-func (ljp *LegacyJobPayload) MarshalJSON() ([]byte, error) {
-	ufm := unitFileModel{
-		Contents: getLegacyUnitContents(ljp.Unit),
-		Raw:      ljp.Unit.String(),
-	}
-	jpm := legacyJobPayloadModel{Name: ljp.Name, Unit: ufm}
-	return json.Marshal(jpm)
-}
-
-// getLegacyUnitContents serializes the contents of a unit file into an obsolete datastructure.
-// This datastructure is lossy and only used to perform signature verifications on old fleet Jobs.
-func getLegacyUnitContents(unit unit.Unit) map[string]map[string]string {
-	coerced := make(map[string]map[string]string, len(unit.Contents))
-	for section, options := range unit.Contents {
-		coerced[section] = make(map[string]string)
-		for key, values := range options {
-			if len(values) == 0 {
-				continue
-			}
-			coerced[section][key] = values[len(values)-1]
-		}
-	}
-	return coerced
-}
-
 func (ljp *LegacyJobPayload) UnmarshalJSON(data []byte) error {
 	var ljpm legacyJobPayloadModel
 	err := json.Unmarshal(data, &ljpm)
