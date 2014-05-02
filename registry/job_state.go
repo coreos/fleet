@@ -15,7 +15,7 @@ func (r *Registry) determineJobState(jobName string) *job.JobState {
 		return &state
 	}
 
-	if r.getPayloadState(jobName) == nil {
+	if r.getUnitState(jobName) == nil {
 		return &state
 	}
 

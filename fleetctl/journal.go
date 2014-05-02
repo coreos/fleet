@@ -40,7 +40,7 @@ func runJournal(args []string) (exit int) {
 	if j == nil {
 		fmt.Fprintf(os.Stderr, "Job %s does not exist.\n", jobName)
 		os.Exit(1)
-	} else if j.PayloadState == nil {
+	} else if j.UnitState == nil {
 		fmt.Fprintf(os.Stderr, "Job %s does not appear to be running.\n", jobName)
 		return 1
 	}
@@ -50,5 +50,5 @@ func runJournal(args []string) (exit int) {
 		command += " -f"
 	}
 
-	return runCommand(command, j.PayloadState.MachineState)
+	return runCommand(command, j.UnitState.MachineState)
 }

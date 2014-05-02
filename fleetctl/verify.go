@@ -3,8 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-
-	"github.com/coreos/fleet/sign"
 )
 
 var cmdVerifyUnit = &Command{
@@ -30,23 +28,12 @@ func runVerifyUnit(args []string) (exit int) {
 		return 1
 	}
 
-	sv, err := sign.NewSignatureVerifierFromSSHAgent()
+	err := verifyJob(j)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed creating SignatureVerifier: %v\n", err)
+		fmt.Fprintf(os.Stderr, "%v\n", err)
 		return 1
 	}
 
-	s := registryCtl.GetSignatureSetOfPayload(name)
-	ok, err := sv.VerifyPayload(&(j.Payload), s)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed checking payload %s: %v\n", j.Payload.Name, err)
-		return 1
-	}
-
-	if !ok {
-		fmt.Printf("Failed to verify job(%s).\n", j.Payload.Name)
-		return 1
-	}
-	fmt.Printf("Succeeded verifying job(%s).\n", j.Payload.Name)
+	fmt.Printf("Succeeded verifying unit signature for Job %s.\n", j.Name)
 	return
 }

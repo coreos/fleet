@@ -10,23 +10,23 @@ const (
 	signingPrefix = "/signing/"
 )
 
-func (r *Registry) CreateSignatureSet(s *sign.SignatureSet) error {
-	key := path.Join(keyPrefix, signingPrefix, s.Tag)
-	json, _ := marshal(s)
+// CreateSignatureSet stores the given SignatureSet in the repository
+func (r *Registry) CreateSignatureSet(ss *sign.SignatureSet) error {
+	key := signatureSetPath(ss.Tag)
+	json, _ := marshal(ss)
 	_, err := r.etcd.Create(key, json, 0)
-	if err != nil {
-		return err
-	}
 	return err
 }
 
+// DestroySignatureSet destroys the SignatureSet associated with the given tag
 func (r *Registry) DestroySignatureSet(tag string) {
-	key := path.Join(keyPrefix, signingPrefix, tag)
+	key := signatureSetPath(tag)
 	r.etcd.Delete(key, false)
 }
 
+// GetSignatureSet returns the SignatureSet associated with the given tag
 func (r *Registry) GetSignatureSet(tag string) *sign.SignatureSet {
-	key := path.Join(keyPrefix, signingPrefix, tag)
+	key := signatureSetPath(tag)
 	resp, err := r.etcd.Get(key, false, true)
 
 	// Assume the error was KeyNotFound and return an empty data structure
@@ -41,10 +41,16 @@ func (r *Registry) GetSignatureSet(tag string) *sign.SignatureSet {
 	return &sig
 }
 
-func (r *Registry) DestroySignatureSetOfPayload(name string) {
-	r.DestroySignatureSet(sign.TagForPayload(name))
+// GetSignatureSetOfJob retrieves the SignatureSet associated with the given
+// job, or nil if none can be found
+func (r *Registry) GetSignatureSetOfJob(name string) *sign.SignatureSet {
+	return r.GetSignatureSet(sign.TagForJob(name))
 }
 
-func (r *Registry) GetSignatureSetOfPayload(name string) *sign.SignatureSet {
-	return r.GetSignatureSet(sign.TagForPayload(name))
+func (r *Registry) destroySignatureSetOfJob(name string) {
+	r.DestroySignatureSet(sign.TagForJob(name))
+}
+
+func signatureSetPath(s string) string {
+	return path.Join(keyPrefix, signingPrefix, s)
 }

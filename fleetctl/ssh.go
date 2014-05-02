@@ -159,10 +159,10 @@ func findAddressInMachineList(lookup string) (string, bool) {
 
 func findAddressInRunningUnits(jobName string) (string, bool) {
 	j := registryCtl.GetJob(unitNameMangle(jobName))
-	if j == nil || j.PayloadState == nil {
+	if j == nil || j.UnitState == nil {
 		return "", false
 	}
-	return fmt.Sprintf("%s:22", j.PayloadState.MachineState.PublicIP), true
+	return fmt.Sprintf("%s:22", j.UnitState.MachineState.PublicIP), true
 }
 
 // runCommand will attempt to run a command on a given machine. It will attempt

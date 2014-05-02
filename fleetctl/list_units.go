@@ -5,6 +5,7 @@ import (
 	"sort"
 
 	"github.com/coreos/fleet/job"
+	"github.com/coreos/fleet/unit"
 )
 
 var cmdListUnits = &Command{
@@ -36,7 +37,7 @@ func runListUnits(args []string) (exit int) {
 
 	for _, name := range sortable {
 		j := jobs[name]
-		printPayloadState(name, j.Payload.Unit.Description(), j.State, j.PayloadState, sharedFlags.Full)
+		printUnitState(name, j.Unit.Description(), j.State, j.UnitState, sharedFlags.Full)
 	}
 
 	out.Flush()
@@ -57,7 +58,7 @@ func findAllUnits() (jobs map[string]job.Job, sortable sort.StringSlice) {
 	return jobs, sortable
 }
 
-func printPayloadState(name, description string, js *job.JobState, ps *job.PayloadState, full bool) {
+func printUnitState(name, description string, js *job.JobState, us *unit.UnitState, full bool) {
 	jobState := "-"
 	loadState := "-"
 	activeState := "-"
@@ -72,13 +73,13 @@ func printPayloadState(name, description string, js *job.JobState, ps *job.Paylo
 		jobState = string(*js)
 	}
 
-	if ps != nil {
-		loadState = ps.LoadState
-		activeState = ps.ActiveState
-		subState = ps.SubState
+	if us != nil {
+		loadState = us.LoadState
+		activeState = us.ActiveState
+		subState = us.SubState
 
-		if ps.MachineState != nil {
-			mach = machineFullLegend(*ps.MachineState, full)
+		if us.MachineState != nil {
+			mach = machineFullLegend(*us.MachineState, full)
 		}
 	}
 

@@ -4,13 +4,14 @@ import (
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/sign"
+	"github.com/coreos/fleet/unit"
 )
 
 type TestRegistry struct {
 	machines  []machine.MachineState
-	jobStates map[string]*job.PayloadState
+	jobStates map[string]*unit.UnitState
 	jobs      []job.Job
-	payloads  []job.JobPayload
+	units     []unit.Unit
 }
 
 func (t TestRegistry) GetActiveMachines() []machine.MachineState {
@@ -24,7 +25,7 @@ func (t TestRegistry) GetAllJobs() []job.Job {
 func (t TestRegistry) GetJob(name string) *job.Job {
 	for _, j := range t.jobs {
 		if j.Name == name {
-			j.PayloadState = t.jobStates[name]
+			j.UnitState = t.jobStates[name]
 			return &j
 		}
 	}
@@ -47,6 +48,10 @@ func (t TestRegistry) CreateSignatureSet(s *sign.SignatureSet) error {
 }
 
 func (t TestRegistry) GetSignatureSetOfPayload(name string) *sign.SignatureSet {
+	return nil
+}
+
+func (t TestRegistry) GetSignatureSetOfJob(name string) *sign.SignatureSet {
 	return nil
 }
 

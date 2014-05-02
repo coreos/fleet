@@ -136,6 +136,7 @@ func Shell(client *SSHForwardingClient) error {
 	return nil
 }
 
+// SSHAgentClient returns an Agent that talks to the local ssh-agent
 func SSHAgentClient() (gosshagent.Agent, error) {
 	sock := os.Getenv("SSH_AUTH_SOCK")
 	if sock == "" {

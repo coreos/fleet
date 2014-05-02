@@ -5,7 +5,7 @@ import (
 	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
 
 	"github.com/coreos/fleet/event"
-	"github.com/coreos/fleet/job"
+	"github.com/coreos/fleet/unit"
 )
 
 type EventStream struct {
@@ -41,9 +41,9 @@ func translateUnitStatusEvents(changes map[string]*dbus.UnitStatus) []event.Even
 	events := make([]event.Event, 0)
 	for key, status := range changes {
 		jobName := key
-		var state *job.PayloadState
+		var state *unit.UnitState
 		if status != nil {
-			state = job.NewPayloadState(status.LoadState, status.ActiveState, status.SubState, nil, nil)
+			state = unit.NewUnitState(status.LoadState, status.ActiveState, status.SubState, nil, nil)
 		}
 		ev := event.Event{"EventPayloadStateUpdated", state, jobName}
 		events = append(events, ev)

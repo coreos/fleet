@@ -14,6 +14,7 @@ import (
 	"github.com/coreos/fleet/registry"
 	"github.com/coreos/fleet/sign"
 	"github.com/coreos/fleet/systemd"
+	"github.com/coreos/fleet/unit"
 )
 
 const (
@@ -38,8 +39,8 @@ type Agent struct {
 	eBus     *event.EventBus
 	machine  *machine.Machine
 	ttl      time.Duration
-	// verifier is used to verify job payload. A nil one implies that
-	// all payloads are accepted.
+	// verifier is used to verify the contents of a job's Unit.
+	// A nil verifier implies that all Units are accepted.
 	verifier *sign.SignatureVerifier
 
 	state   *AgentState
@@ -234,12 +235,12 @@ func (a *Agent) LoadJob(j *job.Job) {
 	// We must explicitly refresh the payload state, as the dbus
 	// event listener does not send an event when we write a unit
 	// file to disk.
-	ps, err := a.systemd.GetPayloadState(j.Name)
+	us, err := a.systemd.GetUnitState(j.Name)
 	if err != nil {
-		log.Errorf("Failed fetching state of Payload(%s)", j.Name)
+		log.Errorf("Failed fetching state of Unit(%s)", j.Name)
 		return
 	}
-	a.ReportPayloadState(j.Name, ps)
+	a.ReportUnitState(j.Name, us)
 }
 
 func (a *Agent) StartJob(jobName string) {
@@ -268,7 +269,7 @@ func (a *Agent) UnloadJob(jobName string) {
 	// The dbus event systemd will not trigger an event telling
 	// us that the unit has been unloaded, so we must explicitly
 	// clear what is in the Registry.
-	a.ReportPayloadState(jobName, nil)
+	a.ReportUnitState(jobName, nil)
 
 	// Trigger rescheduling of all the peers of the job that was just unloaded
 	bootID := a.machine.State().BootID
@@ -282,14 +283,14 @@ func (a *Agent) UnloadJob(jobName string) {
 }
 
 // Persist the state of the given Job into the Registry
-func (a *Agent) ReportPayloadState(jobName string, ps *job.PayloadState) {
-	if ps == nil {
-		err := a.registry.RemovePayloadState(jobName)
+func (a *Agent) ReportUnitState(jobName string, us *unit.UnitState) {
+	if us == nil {
+		err := a.registry.RemoveUnitState(jobName)
 		if err != nil {
-			log.Errorf("Failed to remove PayloadState from Registry: %s", jobName, err.Error())
+			log.Errorf("Failed to remove UnitState from Registry: %s", jobName, err.Error())
 		}
 	} else {
-		a.registry.SavePayloadState(jobName, ps)
+		a.registry.SaveUnitState(jobName, us)
 	}
 }
 
@@ -331,19 +332,22 @@ func (a *Agent) FetchJob(jobName string) *job.Job {
 	return j
 }
 
-// Verify a Job through SignatureSet
+// VerifyJob attempts to verify the integrity of the given Job by checking the
+// signature against a SignatureSet stored in its repository.
 func (a *Agent) VerifyJob(j *job.Job) bool {
 	if a.verifier == nil {
 		return true
 	}
-
-	payload := j.Payload
-	s := a.registry.GetSignatureSetOfPayload(payload.Name)
-	ok, err := a.verifier.VerifyPayload(&payload, s)
-	if !ok || err != nil {
-		log.V(1).Infof("Payload(%s) doesn't fit its signature: %v", payload.Name, err)
+	ss := a.registry.GetSignatureSetOfJob(j.Name)
+	ok, err := a.verifier.VerifyJob(j, ss)
+	if err != nil {
+		log.V(1).Infof("Error verifying signature of Job(%s): %v", j.Name, err)
+		return false
+	} else if !ok {
+		log.V(1).Infof("Job(%s) does not match signature", j.Name)
 		return false
 	}
+
 	return true
 }
 
@@ -385,13 +389,13 @@ func (a *Agent) AbleToRun(j *job.Job) bool {
 		return false
 	}
 
-	bootID, ok := requirements[job.FleetXConditionMachineBootID]
+	bootID, ok := requirements[unit.FleetXConditionMachineBootID]
 	if ok && len(bootID) > 0 && !a.machine.State().MatchBootID(bootID[0]) {
 		log.Infof("Agent does not pass MachineBootID condition for Job(%s)", j.Name)
 		return false
 	}
 
-	peers := j.Payload.Peers()
+	peers := j.Peers()
 	if len(peers) > 0 {
 		log.V(1).Infof("Asserting required Peers %v of Job(%s) are scheduled locally", peers, j.Name)
 		for _, peer := range peers {
@@ -404,7 +408,7 @@ func (a *Agent) AbleToRun(j *job.Job) bool {
 		log.V(1).Infof("Job(%s) has no peers to worry about", j.Name)
 	}
 
-	if conflicted, conflictedJobName := a.HasConflict(j.Name, j.Payload.Conflicts()); conflicted {
+	if conflicted, conflictedJobName := a.HasConflict(j.Name, j.Unit.Conflicts()); conflicted {
 		log.Infof("Job(%s) has conflict with Job(%s)", j.Name, conflictedJobName)
 		return false
 	}

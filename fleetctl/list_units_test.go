@@ -7,16 +7,8 @@ import (
 	"github.com/coreos/fleet/unit"
 )
 
-func newTestRegistryForListUnits(payloads []job.JobPayload, jobs []job.Job) Registry {
-	jp := job.NewJobPayload("pong.service", *unit.NewSystemdUnitFile("Echo"))
-	j := []job.Job{*job.NewJob("pong.service", *jp)}
-	p := []job.JobPayload{*jp}
-
-	if payloads != nil {
-		for _, jp := range payloads {
-			p = append(p, jp)
-		}
-	}
+func newTestRegistryForListUnits(jobs []job.Job) Registry {
+	j := []job.Job{*job.NewJob("pong.service", *unit.NewUnit("Echo"))}
 
 	if jobs != nil {
 		for _, job := range jobs {
@@ -24,11 +16,11 @@ func newTestRegistryForListUnits(payloads []job.JobPayload, jobs []job.Job) Regi
 		}
 	}
 
-	return TestRegistry{jobs: j, payloads: p}
+	return TestRegistry{jobs: j}
 }
 
 func TestGetAllJobs(t *testing.T) {
-	registryCtl = newTestRegistryForListUnits(nil, nil)
+	registryCtl = newTestRegistryForListUnits(nil)
 
 	jobs, sortable := findAllUnits()
 	if len(jobs) != 1 {
@@ -44,9 +36,8 @@ func TestJobDescription(t *testing.T) {
 	contents := `[Unit]
 Description=PING
 `
-	jp := job.NewJobPayload("ping.service", *unit.NewSystemdUnitFile(contents))
-	j := []job.Job{*job.NewJob("ping.service", *jp)}
-	registryCtl = newTestRegistryForListUnits(nil, j)
+	j := []job.Job{*job.NewJob("ping.service", *unit.NewUnit(contents))}
+	registryCtl = newTestRegistryForListUnits(j)
 
 	jobs, _ := findAllUnits()
 	if len(jobs) != 2 {
@@ -54,7 +45,7 @@ Description=PING
 	}
 
 	ping := jobs["ping.service"]
-	desc := ping.Payload.Unit.Description()
+	desc := ping.Unit.Description()
 	if desc != "PING" {
 		t.Errorf("Expected to have `PING` as a description, but it was %s\n", desc)
 	}

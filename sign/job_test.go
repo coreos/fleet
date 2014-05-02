@@ -10,11 +10,13 @@ import (
 	"github.com/coreos/fleet/unit"
 )
 
-func TestSignJobPayload(t *testing.T) {
+func TestSignJob(t *testing.T) {
 	c, _ := initSign(t)
-	payload := job.NewJobPayload("echo.service", *unit.NewSystemdUnitFile("Echo"))
 
-	data, err := marshal(payload)
+	u := unit.NewUnit("Echo")
+	j := job.NewJob("echo.service", *u)
+
+	data, err := marshal(u)
 	if err != nil {
 		t.Fatal("marshal error:", err)
 	}
@@ -24,27 +26,29 @@ func TestSignJobPayload(t *testing.T) {
 		t.Fatal("sign error:", err)
 	}
 
-	s, err := c.SignPayload(payload)
+	s, err := c.SignJob(j)
 	if err != nil {
 		t.Fatal("sign payload error:", err)
 	}
-	if s.Tag != TagForPayload("echo.service") {
+	if s.Tag != TagForJob("echo.service") {
 		t.Fatal("sign tag error:", err)
 	}
 
-	if len(s.Signs) != 1 {
-		t.Fatal("expect 1 signature instead of", len(s.Signs))
+	if len(s.Signatures) != 1 {
+		t.Fatal("expect 1 signature instead of", len(s.Signatures))
 	}
-	if bytes.Compare(s.Signs[0].Blob, expectedSig.Blob) != 0 {
+	if bytes.Compare(s.Signatures[0].Blob, expectedSig.Blob) != 0 {
 		t.Fatal("wrong signature")
 	}
 }
 
-func TestVerifyJobPayload(t *testing.T) {
+func TestVerifyJob(t *testing.T) {
 	c, v := initSign(t)
-	payload := job.NewJobPayload("echo.service", *unit.NewSystemdUnitFile("Echo"))
 
-	data, err := marshal(payload)
+	u := unit.NewUnit("Echo")
+	j := job.NewJob("echo.service", *u)
+
+	data, err := marshal(u)
 	if err != nil {
 		t.Fatal("marshal error:", err)
 	}
@@ -55,24 +59,24 @@ func TestVerifyJobPayload(t *testing.T) {
 		t.Fatal("sign error:", err)
 	}
 
-	s := &SignatureSet{TagForPayload("echo.service"), []*gossh.Signature{signature}}
+	ss := &SignatureSet{TagForJob("echo.service"), []*gossh.Signature{signature}}
 
-	ok, err := v.VerifyPayload(payload, s)
+	ok, err := v.VerifyJob(j, ss)
 	if err != nil {
-		t.Fatal("verify payload error:", err)
+		t.Fatal("error verifying job:", err)
 	}
 	if !ok {
-		t.Fatal("fail to verify payload")
+		t.Fatal("job verification failed")
 	}
 
-	s.Tag = ""
-	ok, err = v.VerifyPayload(payload, s)
+	ss.Tag = ""
+	ok, err = v.VerifyJob(j, ss)
 	if err == nil || ok == true {
-		t.Fatal("should fail on payload verification")
+		t.Fatal("should fail on job verification")
 	}
 
-	ok, err = v.VerifyPayload(payload, nil)
+	ok, err = v.VerifyJob(j, nil)
 	if err == nil || ok == true {
-		t.Fatal("should fail on payload verification")
+		t.Fatal("should fail on job verification")
 	}
 }

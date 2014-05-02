@@ -104,7 +104,7 @@ func (self *EventHandler) HandleEventMachineRemoved(ev event.Event) {
 	for _, j := range jobs {
 		log.Infof("EventMachineRemoved(%s): unscheduling Job(%s)", machBootID, j.Name)
 		self.engine.registry.ClearJobTarget(j.Name, machBootID)
-		self.engine.RemovePayloadState(j.Name)
+		self.engine.RemoveUnitState(j.Name)
 	}
 
 	for _, j := range jobs {

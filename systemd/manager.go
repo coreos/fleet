@@ -15,6 +15,7 @@ import (
 	"github.com/coreos/fleet/event"
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/machine"
+	"github.com/coreos/fleet/unit"
 )
 
 const (
@@ -81,7 +82,7 @@ func (m *SystemdManager) Publish(bus *event.EventBus, stopchan chan bool) {
 // relevant dbus events, and only if necessary, instructs the systemd
 // daemon to reload
 func (m *SystemdManager) LoadJob(job *job.Job) {
-	m.writeUnit(job.Name, job.Payload.Unit.String())
+	m.writeUnit(job.Name, job.Unit.String())
 	m.subscriptions.Add(job.Name)
 
 	if m.unitRequiresDaemonReload(job.Name) {
@@ -106,15 +107,15 @@ func (m *SystemdManager) StopJob(jobName string) {
 	m.stopUnit(jobName)
 }
 
-// GetPayloadState generates a PayloadState object representing the
+// GetUnitState generates a UnitState object representing the
 // current state of a Job's unit
-func (m *SystemdManager) GetPayloadState(jobName string) (*job.PayloadState, error) {
+func (m *SystemdManager) GetUnitState(jobName string) (*unit.UnitState, error) {
 	loadState, activeState, subState, err := m.getUnitStates(jobName)
 	if err != nil {
 		return nil, err
 	}
 	ms := m.Machine.State()
-	return job.NewPayloadState(loadState, activeState, subState, nil, &ms), nil
+	return unit.NewUnitState(loadState, activeState, subState, nil, &ms), nil
 }
 
 func (m *SystemdManager) getUnitStates(name string) (string, string, string, error) {

@@ -155,12 +155,12 @@ func TestSign(t *testing.T) {
 		t.Error("expected tag %v instead of %v", tag, sig.Tag)
 	}
 
-	if len(sig.Signs) == 0 {
-		t.Error("expected signatures for data 'Good'")
+	if len(sig.Signatures) == 0 {
+		t.Fatal("Expected signatures for data 'Good'")
 	}
 
-	if bytes.Compare(sig.Signs[0].Blob, expectedSig.Blob) != 0 {
-		t.Error("wrong signature for data 'Good'")
+	if bytes.Compare(sig.Signatures[0].Blob, expectedSig.Blob) != 0 {
+		t.Fatal("wrong signature for data 'Good'")
 	}
 }
 
