@@ -377,7 +377,6 @@ func (a *Agent) AbleToRun(j *job.Job) bool {
 	requirements := j.Requirements()
 	if len(requirements) == 0 {
 		log.V(1).Infof("Job(%s) has no requirements", j.Name)
-		return true
 	}
 
 	log.Infof("Job(%s) has requirements: %s", j.Name, requirements)
