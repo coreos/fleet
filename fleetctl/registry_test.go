@@ -58,14 +58,14 @@ func (t TestRegistry) GetSignatureSetOfJob(name string) *sign.SignatureSet {
 func (t TestRegistry) GetJobTarget(name string) string {
 	js := t.jobStates[name]
 	if js != nil {
-		return js.MachineState.BootID
+		return js.MachineState.ID
 	}
 	return ""
 }
 
-func (t TestRegistry) GetMachineState(bootID string) *machine.MachineState {
+func (t TestRegistry) GetMachineState(machID string) *machine.MachineState {
 	for _, ms := range t.machines {
-		if ms.BootID == bootID {
+		if ms.ID == machID {
 			return &ms
 		}
 	}

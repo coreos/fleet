@@ -17,7 +17,7 @@ type Registry interface {
 	CreateSignatureSet(s *sign.SignatureSet) error
 	GetSignatureSetOfJob(name string) *sign.SignatureSet
 	GetJobTarget(name string) string
-	GetMachineState(bootID string) *machine.MachineState
+	GetMachineState(machID string) *machine.MachineState
 	GetDebugInfo() (string, error)
 }
 
@@ -65,8 +65,8 @@ func (m MainRegistry) GetJobTarget(name string) string {
 	return m.registry.GetJobTarget(name)
 }
 
-func (m MainRegistry) GetMachineState(bootID string) *machine.MachineState {
-	return m.registry.GetMachineState(bootID)
+func (m MainRegistry) GetMachineState(machID string) *machine.MachineState {
+	return m.registry.GetMachineState(machID)
 }
 
 func (m MainRegistry) GetDebugInfo() (string, error) {

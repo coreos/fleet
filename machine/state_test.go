@@ -12,8 +12,8 @@ func TestStackState(t *testing.T) {
 	bottom := MachineState{"595989bb-cbb7-49ce-8726-722d6e157b4e", "5.6.7.8", map[string]string{"foo": "bar"}, ""}
 	stacked := stackState(top, bottom)
 
-	if stacked.BootID != "c31e44e1-f858-436e-933e-59c642517860" {
-		t.Errorf("Unexpected BootID value %s", stacked.BootID)
+	if stacked.ID != "c31e44e1-f858-436e-933e-59c642517860" {
+		t.Errorf("Unexpected ID value %s", stacked.ID)
 	}
 
 	if stacked.PublicIP != "1.2.3.4" {
@@ -34,8 +34,8 @@ func TestStackStateEmptyTop(t *testing.T) {
 	bottom := MachineState{"595989bb-cbb7-49ce-8726-722d6e157b4e", "5.6.7.8", map[string]string{"foo": "bar"}, ""}
 	stacked := stackState(top, bottom)
 
-	if stacked.BootID != "595989bb-cbb7-49ce-8726-722d6e157b4e" {
-		t.Errorf("Unexpected BootID value %s", stacked.BootID)
+	if stacked.ID != "595989bb-cbb7-49ce-8726-722d6e157b4e" {
+		t.Errorf("Unexpected ID value %s", stacked.ID)
 	}
 
 	if stacked.PublicIP != "5.6.7.8" {
@@ -51,7 +51,7 @@ func TestStackStateEmptyTop(t *testing.T) {
 	}
 }
 
-var shortBootIDTests = []struct {
+var shortIDTests = []struct {
 	m MachineState
 	s string
 	l string
@@ -83,31 +83,31 @@ var shortBootIDTests = []struct {
 	},
 }
 
-func TestStateShortBootID(t *testing.T) {
-	for i, tt := range shortBootIDTests {
-		if g := tt.m.ShortBootID(); g != tt.s {
+func TestStateShortID(t *testing.T) {
+	for i, tt := range shortIDTests {
+		if g := tt.m.ShortID(); g != tt.s {
 			t.Errorf("#%d: got %q, want %q", i, g, tt.s)
 		}
 	}
 }
 
-func TestStateMatchBootID(t *testing.T) {
-	for i, tt := range shortBootIDTests {
+func TestStateMatchID(t *testing.T) {
+	for i, tt := range shortIDTests {
 		if tt.s != "" {
-			if ok := tt.m.MatchBootID(""); ok {
+			if ok := tt.m.MatchID(""); ok {
 				t.Errorf("#%d: expected %v", i, false)
 			}
 		}
 
-		if ok := tt.m.MatchBootID("foobar"); ok {
+		if ok := tt.m.MatchID("foobar"); ok {
 			t.Errorf("#%d: expected %v", i, false)
 		}
 
-		if ok := tt.m.MatchBootID(tt.l); !ok {
+		if ok := tt.m.MatchID(tt.l); !ok {
 			t.Errorf("#%d: expected %v", i, true)
 		}
 
-		if ok := tt.m.MatchBootID(tt.s); !ok {
+		if ok := tt.m.MatchID(tt.s); !ok {
 			t.Errorf("#%d: expected %v", i, true)
 		}
 	}
@@ -120,8 +120,8 @@ func TestReadLocalBootIDMissing(t *testing.T) {
 	}
 	defer os.RemoveAll(dir)
 
-	if bootID := readLocalBootID(dir); bootID != "" {
-		t.Fatalf("Received incorrect bootID: %s", bootID)
+	if machID := readLocalBootID(dir); machID != "" {
+		t.Fatalf("Received incorrect machID: %s", machID)
 	}
 }
 
@@ -135,15 +135,15 @@ func TestReadLocalBootIDFound(t *testing.T) {
 	tmpBootIDPath := filepath.Join(dir, "/proc/sys/kernel/random/boot_id")
 	err = os.MkdirAll(filepath.Dir(tmpBootIDPath), os.FileMode(0755))
 	if err != nil {
-		t.Fatalf("Failed setting up fake boot ID path: %v", err)
+		t.Fatalf("Failed setting up fake mach ID path: %v", err)
 	}
 
 	err = ioutil.WriteFile(tmpBootIDPath, []byte("pingpong"), os.FileMode(0644))
 	if err != nil {
-		t.Fatalf("Failed writing fake boot ID file: %v", err)
+		t.Fatalf("Failed writing fake mach ID file: %v", err)
 	}
 
-	if bootID := readLocalBootID(dir); bootID != "pingpong" {
-		t.Fatalf("Received incorrect bootID %q, expected 'pingpong'", bootID)
+	if machID := readLocalBootID(dir); machID != "pingpong" {
+		t.Fatalf("Received incorrect machID %q, expected 'pingpong'", machID)
 	}
 }

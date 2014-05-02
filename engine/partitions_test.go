@@ -20,7 +20,7 @@ func createMachines(num int) []machine.MachineState {
 	ms := make([]machine.MachineState, num)
 
 	for i := 0; i < num; i++ {
-		ms[i].BootID = machName(i)
+		ms[i].ID = machName(i)
 	}
 	return ms
 }
@@ -112,7 +112,7 @@ func TestClusterKeepsUpToDate(t *testing.T) {
 
 	ms := createMachines(len(expectedJobDistribution))
 	for _, mach := range ms {
-		clust.populateMachine(mach.BootID)
+		clust.populateMachine(mach.ID)
 	}
 
 	jc := 0

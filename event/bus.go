@@ -30,14 +30,14 @@ func (self *EventBus) Listen(stop chan bool) {
 	}()
 }
 
-func (self *EventBus) AddListener(name, bootID string, l interface{}) {
-	listener := EventListener{bootID, l}
-	key := fmt.Sprintf("%s-%s", name, bootID)
+func (self *EventBus) AddListener(name, machID string, l interface{}) {
+	listener := EventListener{machID, l}
+	key := fmt.Sprintf("%s-%s", name, machID)
 	self.listeners[key] = listener
 }
 
-func (self *EventBus) RemoveListener(name, bootID string) {
-	key := fmt.Sprintf("%s-%s", name, bootID)
+func (self *EventBus) RemoveListener(name, machID string) {
+	key := fmt.Sprintf("%s-%s", name, machID)
 	if _, ok := self.listeners[key]; ok {
 		delete(self.listeners, key)
 	}

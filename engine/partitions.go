@@ -45,7 +45,7 @@ func newCluster() *cluster {
 	}
 }
 
-func (clust *cluster) machineCreated(bootID string) {
+func (clust *cluster) machineCreated(machID string) {
 	clust.mutex.Lock()
 	defer clust.mutex.Unlock()
 
@@ -53,10 +53,10 @@ func (clust *cluster) machineCreated(bootID string) {
 		return
 	}
 
-	clust.populateMachine(bootID)
+	clust.populateMachine(machID)
 }
 
-func (clust *cluster) machineRemoved(bootID string) {
+func (clust *cluster) machineRemoved(machID string) {
 	clust.mutex.Lock()
 	defer clust.mutex.Unlock()
 
@@ -64,7 +64,7 @@ func (clust *cluster) machineRemoved(bootID string) {
 		return
 	}
 
-	clust.deleteMachine(bootID)
+	clust.deleteMachine(machID)
 }
 
 // jobScheduled handles the job scheduled event
@@ -112,29 +112,29 @@ func (clust *cluster) refreshFrom(cu *cluster, force bool) {
 	clust.upToDate = true
 }
 
-func (clust *cluster) populateJob(jobName string, machineBootID string) {
-	clust.jobsToMachines[jobName] = machineBootID
-	clust.machineJobCount[machineBootID] = clust.machineJobCount[machineBootID] + 1
+func (clust *cluster) populateJob(jobName string, machineID string) {
+	clust.jobsToMachines[jobName] = machineID
+	clust.machineJobCount[machineID] = clust.machineJobCount[machineID] + 1
 }
 
 func (clust *cluster) deleteJob(jobName string) {
-	machineBootID, ok := clust.jobsToMachines[jobName]
+	machineID, ok := clust.jobsToMachines[jobName]
 
 	// TODO(uwedeportivo): this might be a signal that a refresh is needed
 	if !ok {
 		return
 	}
 
-	clust.machineJobCount[machineBootID] = clust.machineJobCount[machineBootID] - 1
+	clust.machineJobCount[machineID] = clust.machineJobCount[machineID] - 1
 	delete(clust.jobsToMachines, jobName)
 }
 
-func (clust *cluster) populateMachine(bootID string) {
-	clust.machineJobCount[bootID] = 1
+func (clust *cluster) populateMachine(machID string) {
+	clust.machineJobCount[machID] = 1
 }
 
-func (clust *cluster) deleteMachine(bootID string) {
-	delete(clust.machineJobCount, bootID)
+func (clust *cluster) deleteMachine(machID string) {
+	delete(clust.machineJobCount, machID)
 }
 
 func (clust *cluster) kLeastLoaded(k int) []string {
@@ -171,7 +171,7 @@ func (eg *Engine) refreshCluster(force bool) {
 
 	ms := eg.registry.GetActiveMachines()
 	for _, m := range ms {
-		cu.populateMachine(m.BootID)
+		cu.populateMachine(m.ID)
 	}
 
 	jobs := eg.registry.GetAllJobs()
@@ -189,16 +189,16 @@ func (eg *Engine) refreshCluster(force bool) {
 func (eg *Engine) requiresMachine(j *job.Job) ([]string, bool) {
 	requirements := j.Requirements()
 
-	bootID, ok := requirements[unit.FleetXConditionMachineBootID]
-	return bootID, ok && len(bootID) > 0
+	machID, ok := requirements[unit.FleetXConditionMachineBootID]
+	return machID, ok && len(machID) > 0
 }
 
 // partitionCluster returns a slice of bootids from a subset of active machines
 // that should be considered for scheduling the specified job.
 // The returned slice is sorted by ascending lexicographical string value of machine boot id.
 func (eg *Engine) partitionCluster(j *job.Job) ([]string, error) {
-	if bootID, ok := eg.requiresMachine(j); ok {
-		return bootID, nil
+	if machID, ok := eg.requiresMachine(j); ok {
+		return machID, nil
 	}
 
 	// TODO(uwedeportivo): for now punt on jobs with requirements and offer to all machines
@@ -206,20 +206,20 @@ func (eg *Engine) partitionCluster(j *job.Job) ([]string, error) {
 	if len(j.Requirements()) > 0 {
 		machines := eg.registry.GetActiveMachines()
 
-		machineBootIDs := make([]string, len(machines))
+		machineIDs := make([]string, len(machines))
 		for i, mach := range machines {
-			machineBootIDs[i] = mach.BootID
+			machineIDs[i] = mach.ID
 		}
-		sort.Strings(machineBootIDs)
-		return machineBootIDs, nil
+		sort.Strings(machineIDs)
+		return machineIDs, nil
 	}
 
 	// this is usually a cheap no-op
 	eg.refreshCluster(false)
 
 	// as an initial heuristic, choose the k least loaded, with k = partitionSize
-	machineBootIDs := eg.clust.kLeastLoaded(partitionSize)
+	machineIDs := eg.clust.kLeastLoaded(partitionSize)
 
-	sort.Strings(machineBootIDs)
-	return machineBootIDs, nil
+	sort.Strings(machineIDs)
+	return machineIDs, nil
 }

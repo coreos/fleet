@@ -76,40 +76,40 @@ func (self *EventHandler) HandleCommandStopJob(ev event.Event) {
 func (self *EventHandler) HandleEventJobBidSubmitted(ev event.Event) {
 	jb := ev.Payload.(job.JobBid)
 
-	err := self.engine.ResolveJobOffer(jb.JobName, jb.MachineBootID)
+	err := self.engine.ResolveJobOffer(jb.JobName, jb.MachineID)
 	if err == nil {
-		log.Infof("EventJobBidSubmitted(%s): successfully scheduled Job to Machine(%s)", jb.JobName, jb.MachineBootID)
+		log.Infof("EventJobBidSubmitted(%s): successfully scheduled Job to Machine(%s)", jb.JobName, jb.MachineID)
 	} else {
-		log.Infof("EventJobBidSubmitted(%s): failed to schedule Job to Machine(%s)", jb.JobName, jb.MachineBootID)
+		log.Infof("EventJobBidSubmitted(%s): failed to schedule Job to Machine(%s)", jb.JobName, jb.MachineID)
 	}
 }
 
 func (self *EventHandler) HandleEventMachineCreated(ev event.Event) {
 	machineState := ev.Payload.(machine.MachineState)
-	log.V(1).Infof("EventMachineCreated(%s): updating cluster", machineState.BootID)
-	self.engine.clust.machineCreated(machineState.BootID)
+	log.V(1).Infof("EventMachineCreated(%s): updating cluster", machineState.ID)
+	self.engine.clust.machineCreated(machineState.ID)
 }
 
 func (self *EventHandler) HandleEventMachineRemoved(ev event.Event) {
-	machBootID := ev.Payload.(string)
-	mutex := self.engine.LockMachine(machBootID)
+	machID := ev.Payload.(string)
+	mutex := self.engine.LockMachine(machID)
 	if mutex == nil {
-		log.V(1).Infof("EventMachineRemoved(%s): failed to lock Machine, ignoring event", machBootID)
+		log.V(1).Infof("EventMachineRemoved(%s): failed to lock Machine, ignoring event", machID)
 		return
 	}
 	defer mutex.Unlock()
 
-	jobs := self.engine.GetJobsScheduledToMachine(machBootID)
+	jobs := self.engine.GetJobsScheduledToMachine(machID)
 
 	for _, j := range jobs {
-		log.Infof("EventMachineRemoved(%s): unscheduling Job(%s)", machBootID, j.Name)
-		self.engine.registry.ClearJobTarget(j.Name, machBootID)
+		log.Infof("EventMachineRemoved(%s): unscheduling Job(%s)", machID, j.Name)
+		self.engine.registry.ClearJobTarget(j.Name, machID)
 		self.engine.RemoveUnitState(j.Name)
 	}
 
 	for _, j := range jobs {
-		log.Infof("EventMachineRemoved(%s): re-publishing JobOffer(%s)", machBootID, j.Name)
+		log.Infof("EventMachineRemoved(%s): re-publishing JobOffer(%s)", machID, j.Name)
 		self.engine.OfferJob(j)
 	}
-	self.engine.clust.machineRemoved(machBootID)
+	self.engine.clust.machineRemoved(machID)
 }

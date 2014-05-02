@@ -32,7 +32,7 @@ func runListMachines(args []string) (exit int) {
 	}
 
 	for _, m := range registryCtl.GetActiveMachines() {
-		mach := machineBootIDLegend(m, sharedFlags.Full)
+		mach := machineIDLegend(m, sharedFlags.Full)
 
 		ip := m.PublicIP
 		if len(ip) == 0 {

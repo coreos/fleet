@@ -23,7 +23,7 @@ func New(machID, publicIP string, metadata map[string]string) *Machine {
 }
 
 func (m *Machine) String() string {
-	return m.State().BootID
+	return m.State().ID
 }
 
 // State returns a MachineState object representing the Machine's

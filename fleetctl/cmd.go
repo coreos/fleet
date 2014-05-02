@@ -266,16 +266,16 @@ func getTunnelFlag() string {
 	return tun
 }
 
-func machineBootIDLegend(ms machine.MachineState, full bool) string {
-	legend := ms.BootID
+func machineIDLegend(ms machine.MachineState, full bool) string {
+	legend := ms.ID
 	if !full {
-		legend = fmt.Sprintf("%s...", ms.ShortBootID())
+		legend = fmt.Sprintf("%s...", ms.ShortID())
 	}
 	return legend
 }
 
 func machineFullLegend(ms machine.MachineState, full bool) string {
-	legend := machineBootIDLegend(ms, full)
+	legend := machineIDLegend(ms, full)
 	if len(ms.PublicIP) > 0 {
 		legend = fmt.Sprintf("%s/%s", legend, ms.PublicIP)
 	}
