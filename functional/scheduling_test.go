@@ -114,7 +114,7 @@ func TestScheduleConditionMachineOf(t *testing.T) {
 
 // Start 5 services that conflict with one another. Assert that only
 // 3 of the 5 are started.
-func TestScheduleConflicts(t *testing.T) {
+func TestScheduleGlobalConflicts(t *testing.T) {
 	cluster, err := platform.NewNspawnCluster("smoke")
 	if err != nil {
 		t.Fatal(err)
@@ -172,6 +172,55 @@ func TestScheduleConflicts(t *testing.T) {
 
 	if len(machineSet) != 3 {
 		t.Errorf("3 active units not running on 3 unique machines")
+	}
+}
+
+func TestScheduleOneWayConflict(t *testing.T) {
+	cluster, err := platform.NewNspawnCluster("smoke")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cluster.Destroy()
+
+	// Start with a simple three-node cluster
+	if err := platform.CreateNClusterMembers(cluster, 1, platform.MachineConfig{}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := waitForNMachines(1); err != nil {
+		t.Fatal(err)
+	}
+
+	// Start a unit that conflicts with a yet-to-be-scheduled unit
+	name := "fixtures/units/conflicts-with-hello.service"
+	if _, _, err := fleetctl("start", name); err != nil {
+		t.Fatalf("Failed starting unit %s: %v", name, err)
+	}
+
+	// Start a unit that has not defined conflicts
+	name = "fixtures/units/hello.service"
+	if _, _, err := fleetctl("start", name); err == nil {
+		t.Fatalf("Unit %s unexpectedly started", name)
+	}
+
+	// Both units should show up, but only conflicts-with-hello.service
+	// should report ACTIVE
+	stdout, _, err := fleetctl("list-units", "--no-legend")
+	if err != nil {
+		t.Fatalf("Failed to run list-units: %v", err)
+	}
+	units := strings.Split(strings.TrimSpace(stdout), "\n")
+	if len(units) != 2 {
+		t.Fatalf("Did not find two units in cluster: \n%s", stdout)
+	}
+	states, err := waitForNActiveUnits(1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for unit, _ := range states {
+		if unit != "conflicts-with-hello.service" {
+			t.Errorf("Incorrect unit started", unit)
+		}
 	}
 }
 
