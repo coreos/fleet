@@ -153,10 +153,6 @@ func (m *SystemdManager) stopUnit(name string) {
 	} else {
 		log.Infof("Stopped systemd unit %s(%s)", name, stat)
 	}
-
-	// go-systemd does not yet have this implemented
-	//files := []string{name}
-	//Systemd.DisableUnitFiles(files, true, false)
 }
 
 func (m *SystemdManager) removeUnit(name string) {
