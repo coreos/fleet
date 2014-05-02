@@ -47,16 +47,16 @@ type Unit struct {
 	Contents map[string]map[string][]string
 
 	// Raw represents the entire contents of the unit file.
-	raw string
+	Raw string
 }
 
 func (self *Unit) String() string {
-	return self.raw
+	return self.Raw
 }
 
 // Hash returns the SHA1 hash of the raw contents of the Unit
 func (u *Unit) Hash() Hash {
-	return Hash(sha1.Sum([]byte(u.raw)))
+	return Hash(sha1.Sum([]byte(u.Raw)))
 }
 
 // Requirements returns all relevant options from the [X-Fleet] section of a unit file.
