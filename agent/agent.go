@@ -164,19 +164,13 @@ func (a *Agent) Purge() {
 	// Continue heartbeating the agent's machine state while attempting to
 	// stop all the locally-running jobs
 	purged := make(chan bool)
+	close(purged)
+
 	go a.Heartbeat(a.ttl, purged)
 
 	for _, jobName := range a.state.ScheduledJobs() {
 		log.Infof("Unloading Job(%s) from local machine", jobName)
 		a.UnloadJob(jobName)
-	}
-
-	// Jobs have been stopped, the heartbeat can stop
-	close(purged)
-
-	log.Info("Removing Agent from Registry")
-	if err := a.registry.RemoveMachineState(bootID); err != nil {
-		log.Errorf("Failed to remove Machine %s from Registry: %s", bootID, err.Error())
 	}
 }
 
