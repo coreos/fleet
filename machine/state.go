@@ -18,7 +18,7 @@ const (
 // MachineState represents a point-in-time snapshot of the
 // state of the local host.
 type MachineState struct {
-	ID       string `json:"BootId"`
+	ID       string
 	PublicIP string
 	Metadata map[string]string
 	Version  string
