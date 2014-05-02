@@ -8,8 +8,8 @@ type JobOffer struct {
 	Job Job
 
 	// MachineBootIDs represents a set of machines for which this offer is valid.
-	// If nil or len == 0 then all machines. Must be to be sorted.
-	// MachineBootIDs started life as MachineBootIds in the datastore.
+	// If nil or len == 0 then all machines. Must be sorted.
+	// MachineIDs started life as MachineBootIds in the datastore.
 	// It cannot be changed without a migration
 	MachineBootIDs []string `json:"MachineBootIds"`
 }
