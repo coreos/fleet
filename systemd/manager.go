@@ -19,7 +19,7 @@ import (
 )
 
 const (
-	defaultSystemdRuntimePath = "/run/systemd/system/"
+	systemdRuntimePath = "/run/systemd/system/"
 )
 
 type SystemdManager struct {
@@ -37,7 +37,7 @@ func NewSystemdManager(machine *machine.Machine) *SystemdManager {
 		panic(err)
 	}
 
-	return &SystemdManager{systemd, machine, defaultSystemdRuntimePath, systemd.NewSubscriptionSet(), nil}
+	return &SystemdManager{systemd, machine, systemdRuntimePath, systemd.NewSubscriptionSet(), nil}
 }
 
 func (m *SystemdManager) MarshalJSON() ([]byte, error) {
