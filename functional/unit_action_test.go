@@ -7,6 +7,40 @@ import (
 	"github.com/coreos/fleet/functional/platform"
 )
 
+// TestUnitRunnable is the simplest test possible, deplying a single-node
+// cluster and ensuring a unit can enter an 'active' state
+func TestUnitRunnable(t *testing.T) {
+	cluster, err := platform.NewNspawnCluster("smoke")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cluster.Destroy()
+
+	if err := platform.CreateNClusterMembers(cluster, 1, platform.MachineConfig{}); err != nil {
+		t.Fatal(err)
+	}
+	_, err = waitForNMachines(1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, _, err := fleetctl("start", "fixtures/units/hello.service"); err != nil {
+		t.Fatalf("Unable to start fleet unit: %v", err)
+	}
+	stdout, _, err := fleetctl("list-units", "--no-legend")
+	if err != nil {
+		t.Fatalf("Failed to run list-units: %v", err)
+	}
+	units := strings.Split(strings.TrimSpace(stdout), "\n")
+	if len(units) != 1 {
+		t.Fatalf("Did not find 1 unit in cluster: \n%s", stdout)
+	}
+	cols := strings.Split(units[0], "\t")
+	if cols[3] != "active" {
+		t.Fatalf("Unit did not enter active state")
+	}
+}
+
 func TestUnitSubmit(t *testing.T) {
 	cluster, err := platform.NewNspawnCluster("smoke")
 	if err != nil {
