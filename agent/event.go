@@ -138,7 +138,7 @@ func (eh *EventHandler) HandleEventUnitStateUpdated(ev event.Event) {
 	state := ev.Payload.(*unit.UnitState)
 
 	if state == nil {
-		log.Infof("EventPayloadStateUpdated(%s): received nil PayloadState object", jobName)
+		log.Infof("EventUnitStateUpdated(%s): received nil UnitState object", jobName)
 		state, _ = eh.agent.systemd.GetUnitState(jobName)
 	}
 
