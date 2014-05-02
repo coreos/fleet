@@ -391,7 +391,12 @@ func (a *Agent) AbleToRun(j *job.Job) bool {
 		return false
 	}
 
-	peers := j.Payload.Peers()
+	peers, err := j.Payload.Peers()
+	if err != nil {
+		log.Error(err)
+		return false
+	}
+
 	if len(peers) > 0 {
 		log.V(1).Infof("Asserting required Peers %v of Job(%s) are scheduled locally", peers, j.Name)
 		for _, peer := range peers {

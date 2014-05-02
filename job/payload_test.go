@@ -2,6 +2,7 @@ package job
 
 import (
 	"fmt"
+	"reflect"
 	"testing"
 
 	"github.com/coreos/fleet/unit"
@@ -39,15 +40,19 @@ func TestNewJobPayload(t *testing.T) {
 		t.Errorf("Payload has unexpected name '%s'", payload.Name)
 	}
 
-	if pt, _ := payload.Type(); pt != "service" {
-		t.Errorf("Payload has unexpected Type '%s'", pt)
+	_, err := payload.Type()
+	if err != nil {
+		t.Error(err)
 	}
 }
 
 func TestJobPayloadServiceDefaultPeers(t *testing.T) {
 	unitFile := unit.NewSystemdUnitFile("")
 	payload := NewJobPayload("echo.service", *unitFile)
-	peers := payload.Peers()
+	peers, err := payload.Peers()
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	if len(peers) != 0 {
 		t.Fatalf("Unexpected number of peers %d, expected 0", len(peers))
@@ -57,7 +62,10 @@ func TestJobPayloadServiceDefaultPeers(t *testing.T) {
 func TestJobPayloadSocketDefaultPeers(t *testing.T) {
 	unitFile := unit.NewSystemdUnitFile("")
 	payload := NewJobPayload("echo.socket", *unitFile)
-	peers := payload.Peers()
+	peers, err := payload.Peers()
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	if len(peers) != 1 {
 		t.Fatalf("Unexpected number of peers %d, expected 1", len(peers))
@@ -155,5 +163,42 @@ Description=Timmy
 	reqs := jp.Requirements()
 	if len(reqs) != 0 {
 		t.Fatalf("Incorrect number of requirements; got %d, expected 0", len(reqs))
+	}
+}
+
+var pathJobTestExamples = []struct {
+	content string
+	peers   []string
+}{
+	{"[Path]\n[X-Fleet]\nX-ConditionMachineOf=bar.service", []string{"bar.service"}},
+	{"[Path]\nUnit=bar.service", []string{"bar.service"}},
+	{"[Path]", []string{"foo.service"}},
+}
+
+func TestPeersForPathUnits(t *testing.T) {
+	for _, s := range pathJobTestExamples {
+		unitFile := unit.NewSystemdUnitFile(s.content)
+		jp := NewJobPayload("foo.path", *unitFile)
+		g, err := jp.Peers()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if !reflect.DeepEqual(g, s.peers) {
+			t.Errorf("Unexpected peers for %q.\n\tgot %q, want %q", s.content, g, s.peers)
+		}
+	}
+}
+
+func TestPeersForUnknowUnit(t *testing.T) {
+	contents := `
+[Unit]
+Description=Timmy
+`
+	unitFile := unit.NewSystemdUnitFile(contents)
+	jp := NewJobPayload("foo.foo", *unitFile)
+	_, err := jp.Peers()
+	if err == nil {
+		t.Fatal("Expected to return an error getting peers for unknown unit types")
 	}
 }
