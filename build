@@ -1,8 +1,11 @@
 #!/bin/bash -e
 
-if [ ! -h gopath/src/github.com/coreos/fleet ]; then
-	mkdir -p gopath/src/github.com/coreos/
-	ln -s ../../../.. gopath/src/github.com/coreos/fleet
+ORG_PATH="github.com/coreos"
+REPO_PATH="${ORG_PATH}/fleet"
+
+if [ ! -h gopath/src/${REPO_PATH} ]; then
+	mkdir -p gopath/src/${ORG_PATH}
+	ln -s ../../../.. gopath/src/${REPO_PATH} || exit 255
 fi
 
 export GOBIN=${PWD}/bin
@@ -11,11 +14,11 @@ export GOPATH=${PWD}/gopath
 eval $(go env)
 
 if [ ${GOOS} = "linux" ]; then
-	echo "Building fleet"
-	go install github.com/coreos/fleet
+	echo "Building fleet..."
+	go install ${REPO_PATH}
 else
-	echo "Skipping fleet build"
+	echo "Not on Linux - skipping fleet build"
 fi
 
-echo "Building fleetctl"
-go install github.com/coreos/fleet/fleetctl
+echo "Building fleetctl..."
+go install ${REPO_PATH}/fleetctl
