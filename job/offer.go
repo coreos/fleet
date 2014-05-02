@@ -9,9 +9,7 @@ type JobOffer struct {
 
 	// MachineIDs represents a set of machines for which this offer is valid.
 	// If nil or len == 0 then all machines. Must be sorted.
-	// MachineIDs started life as MachineBootIds in the datastore.
-	// It cannot be changed without a migration
-	MachineIDs []string `json:"MachineBootIds"`
+	MachineIDs []string
 }
 
 func NewOfferFromJob(j Job, machineIDs []string) *JobOffer {
