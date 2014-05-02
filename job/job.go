@@ -49,30 +49,12 @@ func (self *Job) Requirements() map[string][]string {
 }
 
 // Peers returns a list of Job names that must be scheduled to the same
-// machine as this Job. If no peers were explicitly defined for certain unit
-// types, a default list of peers will be returned. This behavior only applies
-// to the socket unit type. For example, the default peer of foo.socket would
-// be foo.service.
+// machine as this Job.
 func (self *Job) Peers() []string {
-	if peers, ok := self.Requirements()[unit.FleetXConditionMachineOf]; ok {
-		return peers
+	peers, ok := self.Requirements()[unit.FleetXConditionMachineOf]
+	if !ok {
+		return []string{}
 	}
-
-	peers := make([]string, 0)
-
-	jType, err := self.Type()
-	if err != nil {
-		return peers
-	}
-
-	if jType != "socket" {
-		return peers
-	}
-
-	baseName := strings.TrimSuffix(self.Name, fmt.Sprintf(".%s", jType))
-	serviceName := fmt.Sprintf("%s.%s", baseName, "service")
-	peers = append(peers, serviceName)
-
 	return peers
 }
 

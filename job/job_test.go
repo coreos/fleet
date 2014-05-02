@@ -44,8 +44,8 @@ func TestNewJobGoodTypes(t *testing.T) {
 	}
 }
 
-func TestJobServiceDefaultPeers(t *testing.T) {
-	j := NewJob("echo.service", *unit.NewUnit(""))
+func TestJobWithPeers(t *testing.T) {
+	j := NewJob("echo.service", *unit.NewUnit(``))
 	peers := j.Peers()
 
 	if len(peers) != 0 {
@@ -53,16 +53,23 @@ func TestJobServiceDefaultPeers(t *testing.T) {
 	}
 }
 
-func TestJobSocketDefaultPeers(t *testing.T) {
-	j := NewJob("echo.socket", *unit.NewUnit(""))
+func TestJobWithoutPeers(t *testing.T) {
+	contents := `[X-Fleet]
+X-ConditionMachineOf="foo.service" "bar.service"
+`
+	j := NewJob("echo.service", *unit.NewUnit(contents))
 	peers := j.Peers()
 
-	if len(peers) != 1 {
-		t.Fatalf("Unexpected number of peers %d, expected 1", len(peers))
+	if len(peers) != 2 {
+		t.Fatalf("Unexpected number of peers %d, expected 2", len(peers))
 	}
 
-	if peers[0] != "echo.service" {
-		t.Fatalf("Unexpected peers: %v", peers)
+	if peers[0] != "foo.service" {
+		t.Errorf("Expected first peer to be foo.service, got %s", peers[0])
+	}
+
+	if peers[1] != "bar.service" {
+		t.Errorf("Expected second peer to be bar.service, got %s", peers[1])
 	}
 }
 
