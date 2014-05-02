@@ -157,10 +157,7 @@ func (a *Agent) initialize() uint64 {
 func (a *Agent) Stop() {
 	log.Info("Stopping Agent")
 	close(a.stop)
-}
 
-// Purge removes the Agent's state from the Registry
-func (a *Agent) Purge() {
 	// Continue heartbeating the agent's machine state while attempting to
 	// stop all the locally-running jobs
 	purged := make(chan bool)
