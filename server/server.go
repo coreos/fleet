@@ -78,10 +78,6 @@ func (self *Server) Stop() {
 	self.engine.Stop()
 }
 
-func (self *Server) Purge() {
-	self.agent.Purge()
-}
-
 func (self *Server) MarshalJSON() ([]byte, error) {
 	return json.Marshal(struct{ Agent *agent.Agent }{Agent: self.agent})
 }

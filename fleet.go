@@ -86,7 +86,6 @@ func main() {
 	shutdown := func() {
 		log.Infof("Gracefully shutting down")
 		srv.Stop()
-		srv.Purge()
 		os.Exit(0)
 	}
 
