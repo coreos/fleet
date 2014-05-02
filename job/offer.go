@@ -32,10 +32,7 @@ func (jo *JobOffer) OfferedTo(machineID string) bool {
 
 type JobBid struct {
 	JobName string
-
-	// MachineID started life as MachineBootId in the datastore.
-	// It cannot be changed without a migration.
-	MachineID string `json:"MachineBootId"`
+	MachineID string
 }
 
 func NewBid(jobName string, machID string) *JobBid {
