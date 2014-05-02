@@ -157,3 +157,69 @@ Description=Timmy
 		t.Fatalf("Incorrect number of requirements; got %d, expected 0", len(reqs))
 	}
 }
+
+func TestJobConditionMachineID(t *testing.T) {
+	tests := []struct {
+		unit string
+		outS string
+		outB bool
+	}{
+		// Simplest case
+		{
+			`[X-Fleet]
+X-ConditionMachineID=123
+`,
+			"123",
+			true,
+		},
+
+		// First value wins
+		// TODO(bcwaldon): maybe the last one should win?
+		{
+			`[X-Fleet]
+X-ConditionMachineID="123" "456"
+`,
+			"123",
+			true,
+		},
+
+		// No value provided
+		{
+			`[X-Fleet]`,
+			"",
+			false,
+		},
+
+		// Ensure we fall back to the legacy boot ID option
+		{
+			`[X-Fleet]
+X-ConditionMachineBootID=123
+`,
+			"123",
+			true,
+		},
+
+		// Fall back to legacy option only if non-boot ID is absent
+		{
+			`[X-Fleet]
+X-ConditionMachineBootID=123
+X-ConditionMachineID=456
+`,
+			"456",
+			true,
+		},
+	}
+
+	for _, tt := range tests {
+		j := NewJob("echo.service", *unit.NewUnit(tt.unit))
+		outS, outB := j.RequiredTarget()
+
+		if outS != tt.outS {
+			t.Errorf("Expected target requirement %s, got %s", tt.outS, outS)
+		}
+
+		if outB != tt.outB {
+			t.Errorf("Expected target requirement ok-val %s, got %s", tt.outB, outB)
+		}
+	}
+}

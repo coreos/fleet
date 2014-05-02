@@ -48,8 +48,8 @@ func (r *Registry) GetAllJobs() []job.Job {
 }
 
 // GetJobTarget looks up where the given job is scheduled. If the job has
-// been scheduled, the boot ID the target machine is returned. Otherwise,
-// an empty string is returned.
+// been scheduled, the ID the target machine is returned. Otherwise, an
+// empty string is returned.
 func (r *Registry) GetJobTarget(jobName string) string {
 	// Figure out to which Machine this Job is scheduled
 	key := jobTargetAgentPath(jobName)
@@ -61,9 +61,9 @@ func (r *Registry) GetJobTarget(jobName string) string {
 	return resp.Node.Value
 }
 
-func (r *Registry) ClearJobTarget(jobName, bootID string) error {
+func (r *Registry) ClearJobTarget(jobName, machID string) error {
 	key := jobTargetAgentPath(jobName)
-	_, err := r.etcd.CompareAndDelete(key, bootID, 0)
+	_, err := r.etcd.CompareAndDelete(key, machID, 0)
 	return err
 }
 
@@ -233,9 +233,9 @@ func (es *EventStream) filterJobTargetStateChanges(resp *etcd.Response) *event.E
 	return &event.Event{cType, jobName, agent}
 }
 
-func (r *Registry) ScheduleJob(jobName string, machBootID string) error {
+func (r *Registry) ScheduleJob(jobName string, machID string) error {
 	key := jobTargetAgentPath(jobName)
-	_, err := r.etcd.Create(key, machBootID, 0)
+	_, err := r.etcd.Create(key, machID, 0)
 	return err
 }
 

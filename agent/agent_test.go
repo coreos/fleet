@@ -25,9 +25,9 @@ func newTestJobWithMachineMetadata(metadata string) *job.Job {
 	return job.NewJob("pong.service", *unit.NewUnit(contents))
 }
 
-func TestAbleToRunConditionMachineBootIDMatch(t *testing.T) {
+func TestAbleToRunConditionMachineIDMatch(t *testing.T) {
 	u := unit.NewUnit(`[X-Fleet]
-X-ConditionMachineBootID=XYZ
+X-ConditionMachineID=XYZ
 `)
 	job := job.NewJob("example.service", *u)
 
@@ -38,9 +38,9 @@ X-ConditionMachineBootID=XYZ
 	}
 }
 
-func TestAbleToRunConditionMachineBootIDMismatch(t *testing.T) {
+func TestAbleToRunConditionMachineIDMismatch(t *testing.T) {
 	u := unit.NewUnit(`[X-Fleet]
-X-ConditionMachineBootID=XYZ
+X-ConditionMachineID=XYZ
 `)
 	job := job.NewJob("example.service", *u)
 

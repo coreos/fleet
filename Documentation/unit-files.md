@@ -10,7 +10,7 @@ fleet will schedule any valid service or socket systemd unit to a machine in the
 
 | Option Name | Description |
 |---------------|-------------|
-| `X-ConditionMachineBootID` | Require the unit be scheduled to a specific machine defined by given boot ID. |
+| `X-ConditionMachineID` | Require the unit be scheduled to the machine identified by the given string. |
 | `X-ConditionMachineOf` | Limit eligible machines to the one that hosts a specific unit. |
 | `X-Conflicts` | Prevent a unit from being collocated with other units using glob-matching on the other unit names. |
 
@@ -26,5 +26,5 @@ Description=Some Monitoring Service
 ExecStart=/bin/monitorme
 
 [X-Fleet]
-X-ConditionMachineBootID=148a18ff-6e95-4cd8-92da-c9de9bb90d5a
+X-ConditionMachineID=148a18ff-6e95-4cd8-92da-c9de9bb90d5a
 ```

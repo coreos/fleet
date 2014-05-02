@@ -26,8 +26,8 @@ func New(reg *registry.Registry, eStream *registry.EventStream, mach *machine.Ma
 	e := &Engine{reg, eStream, eBus, mach, newCluster(), nil}
 
 	hdlr := NewEventHandler(e)
-	bootID := mach.State().BootID
-	eBus.AddListener("engine", bootID, hdlr)
+	machID := mach.State().ID
+	eBus.AddListener("engine", machID, hdlr)
 
 	return e
 }
@@ -44,12 +44,12 @@ func (self *Engine) Stop() {
 	close(self.stop)
 }
 
-func (self *Engine) GetJobsScheduledToMachine(machBootID string) []job.Job {
+func (self *Engine) GetJobsScheduledToMachine(machID string) []job.Job {
 	var jobs []job.Job
 
 	for _, j := range self.registry.GetAllJobs() {
 		tgt := self.registry.GetJobTarget(j.Name)
-		if tgt == "" || tgt != machBootID {
+		if tgt == "" || tgt != machID {
 			continue
 		}
 		jobs = append(jobs, j)
@@ -70,13 +70,13 @@ func (self *Engine) OfferJob(j job.Job) error {
 
 	log.V(1).Infof("Claimed Job", j.Name)
 
-	machineBootIDs, err := self.partitionCluster(&j)
+	machineIDs, err := self.partitionCluster(&j)
 	if err != nil {
 		log.Errorf("Failed partitioning cluster for Job(%s): %v", j.Name, err)
 		return err
 	}
 
-	offer := job.NewOfferFromJob(j, machineBootIDs)
+	offer := job.NewOfferFromJob(j, machineIDs)
 
 	self.registry.CreateJobOffer(offer)
 	log.Infof("Published JobOffer(%s)", offer.Job.Name)
@@ -84,7 +84,7 @@ func (self *Engine) OfferJob(j job.Job) error {
 	return nil
 }
 
-func (self *Engine) ResolveJobOffer(jobName string, machBootID string) error {
+func (self *Engine) ResolveJobOffer(jobName string, machID string) error {
 	log.V(1).Infof("Attempting to lock JobOffer(%s)", jobName)
 	mutex := self.lockJobOffer(jobName)
 
@@ -102,13 +102,13 @@ func (self *Engine) ResolveJobOffer(jobName string, machBootID string) error {
 		return err
 	}
 
-	err = self.registry.ScheduleJob(jobName, machBootID)
+	err = self.registry.ScheduleJob(jobName, machID)
 	if err != nil {
 		log.Errorf("Failed scheduling Job(%s): %v", jobName, err)
 		return err
 	}
 
-	log.Infof("Scheduled Job(%s) to Machine(%s)", jobName, machBootID)
+	log.Infof("Scheduled Job(%s) to Machine(%s)", jobName, machID)
 	return nil
 }
 
@@ -117,14 +117,14 @@ func (self *Engine) RemoveUnitState(jobName string) {
 }
 
 func (self *Engine) lockJobOffer(jobName string) *registry.TimedResourceMutex {
-	return self.registry.LockJobOffer(jobName, self.machine.State().BootID)
+	return self.registry.LockJobOffer(jobName, self.machine.State().ID)
 }
 
 func (self *Engine) lockJob(jobName string) *registry.TimedResourceMutex {
-	return self.registry.LockJob(jobName, self.machine.State().BootID)
+	return self.registry.LockJob(jobName, self.machine.State().ID)
 }
 
 // Pass-through to Registry.LockMachine
-func (self *Engine) LockMachine(machBootID string) *registry.TimedResourceMutex {
-	return self.registry.LockMachine(machBootID, self.machine.State().BootID)
+func (self *Engine) LockMachine(machID string) *registry.TimedResourceMutex {
+	return self.registry.LockMachine(machID, self.machine.State().ID)
 }

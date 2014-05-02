@@ -13,7 +13,6 @@ import (
 )
 
 type Config struct {
-	BootID             string
 	EtcdServers        []string
 	PublicIP           string
 	Verbosity          int

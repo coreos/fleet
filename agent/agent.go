@@ -64,8 +64,8 @@ func New(reg *registry.Registry, eStream *registry.EventStream, mach *machine.Ma
 	a := &Agent{reg, eStream, eBus, mach, ttldur, verifier, state, mgr, nil}
 
 	hdlr := NewEventHandler(a)
-	bootID := mach.State().BootID
-	eBus.AddListener("agent", bootID, hdlr)
+	machID := mach.State().ID
+	eBus.AddListener("agent", machID, hdlr)
 
 	return a, nil
 }
@@ -135,11 +135,11 @@ func (a *Agent) Purge() {
 	purged := make(chan bool)
 	go a.Heartbeat(a.ttl, purged)
 
-	bootID := a.machine.State().BootID
+	machID := a.machine.State().ID
 
 	for _, jobName := range a.state.ScheduledJobs() {
 		log.Infof("Unscheduling Job(%s) from local machine", jobName)
-		a.registry.ClearJobTarget(jobName, bootID)
+		a.registry.ClearJobTarget(jobName, machID)
 		log.Infof("Unloading Job(%s) from local machine", jobName)
 		a.UnloadJob(jobName)
 	}
@@ -148,8 +148,8 @@ func (a *Agent) Purge() {
 	close(purged)
 
 	log.Info("Removing Agent from Registry")
-	if err := a.registry.RemoveMachineState(bootID); err != nil {
-		log.Errorf("Failed to remove Machine %s from Registry: %s", bootID, err.Error())
+	if err := a.registry.RemoveMachineState(machID); err != nil {
+		log.Errorf("Failed to remove Machine %s from Registry: %s", machID, err.Error())
 	}
 }
 
@@ -206,10 +206,10 @@ func (a *Agent) Heartbeat(ttl time.Duration, stop chan bool) {
 
 func (a *Agent) HeartbeatJobs(ttl time.Duration, stop chan bool) {
 	heartbeat := func() {
-		bootID := a.Machine().State().BootID
+		machID := a.Machine().State().ID
 		launched := a.state.LaunchedJobs()
 		for _, j := range launched {
-			go a.registry.JobHeartbeat(j, bootID, ttl)
+			go a.registry.JobHeartbeat(j, machID, ttl)
 		}
 	}
 
@@ -246,8 +246,8 @@ func (a *Agent) LoadJob(j *job.Job) {
 func (a *Agent) StartJob(jobName string) {
 	a.state.SetTargetState(jobName, job.JobStateLaunched)
 
-	bootID := a.Machine().State().BootID
-	a.registry.JobHeartbeat(jobName, bootID, a.ttl)
+	machID := a.Machine().State().ID
+	a.registry.JobHeartbeat(jobName, machID, a.ttl)
 
 	a.systemd.StartJob(jobName)
 }
@@ -272,10 +272,10 @@ func (a *Agent) UnloadJob(jobName string) {
 	a.ReportUnitState(jobName, nil)
 
 	// Trigger rescheduling of all the peers of the job that was just unloaded
-	bootID := a.machine.State().BootID
+	machID := a.machine.State().ID
 	for _, peer := range reversePeers {
 		log.Infof("Unloading Peer(%s) of Job(%s)", peer, jobName)
-		err := a.registry.ClearJobTarget(peer, bootID)
+		err := a.registry.ClearJobTarget(peer, machID)
 		if err != nil {
 			log.Errorf("Failed unloading Peer(%s) of Job(%s): %v", peer, jobName, err)
 		}
@@ -315,7 +315,7 @@ func (a *Agent) BidForPossibleJobs() {
 func (a *Agent) Bid(jobName string) {
 	log.Infof("Submitting JobBid for Job(%s)", jobName)
 
-	jb := job.NewBid(jobName, a.machine.State().BootID)
+	jb := job.NewBid(jobName, a.machine.State().ID)
 	a.registry.SubmitJobBid(jb)
 
 	a.state.TrackBid(jb.JobName)
@@ -388,9 +388,8 @@ func (a *Agent) AbleToRun(j *job.Job) bool {
 		return false
 	}
 
-	bootID, ok := requirements[unit.FleetXConditionMachineBootID]
-	if ok && len(bootID) > 0 && !a.machine.State().MatchBootID(bootID[0]) {
-		log.Infof("Agent does not pass MachineBootID condition for Job(%s)", j.Name)
+	if tgt, ok := j.RequiredTarget(); ok && !a.machine.State().MatchID(tgt) {
+		log.Infof("Agent does not meet machine target requirement for Job(%s)", j.Name)
 		return false
 	}
 
@@ -459,7 +458,7 @@ func (a *Agent) peerScheduledHere(jobName, peerName string) bool {
 	log.V(1).Infof("Looking for target of Peer(%s)", peerName)
 
 	//FIXME: ideally the machine would use its own knowledge rather than calling GetJobTarget
-	if tgt := a.registry.GetJobTarget(peerName); tgt == "" || tgt != a.machine.State().BootID {
+	if tgt := a.registry.GetJobTarget(peerName); tgt == "" || tgt != a.machine.State().ID {
 		log.V(1).Infof("Peer(%s) of Job(%s) not scheduled here", peerName, jobName)
 		return false
 	}

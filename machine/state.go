@@ -11,15 +11,14 @@ import (
 )
 
 const (
-	bootIDPath     = "/proc/sys/kernel/random/boot_id"
-	shortBootIDLen = 8
+	machineIDPath = "/etc/machine-id"
+	shortIDLen = 8
 )
 
 // MachineState represents a point-in-time snapshot of the
 // state of the local host.
 type MachineState struct {
-	// BootID started life as BootId in the datastore. It cannot be changed without a migration.
-	BootID   string `json:"BootId"`
+	ID       string
 	PublicIP string
 	Metadata map[string]string
 	Version  string
@@ -28,29 +27,29 @@ type MachineState struct {
 // NewDynamicMachineState generates a MachineState object with
 // the values read from the local system
 func CurrentState() MachineState {
-	bootID := readLocalBootID("/")
+	id := readLocalMachineID("/")
 	publicIP := getLocalIP()
-	return MachineState{BootID: bootID, PublicIP: publicIP, Metadata: make(map[string]string, 0)}
+	return MachineState{ID: id, PublicIP: publicIP, Metadata: make(map[string]string, 0)}
 }
 
-func (s MachineState) ShortBootID() string {
-	if len(s.BootID) <= shortBootIDLen {
-		return s.BootID
+func (s MachineState) ShortID() string {
+	if len(s.ID) <= shortIDLen {
+		return s.ID
 	}
-	return s.BootID[0:shortBootIDLen]
+	return s.ID[0:shortIDLen]
 }
 
-func (s MachineState) MatchBootID(bootID string) bool {
-	return s.BootID == bootID || s.ShortBootID() == bootID
+func (s MachineState) MatchID(ID string) bool {
+	return s.ID == ID || s.ShortID() == ID
 }
 
 // IsLocalMachineState checks whether machine state matches the state of local machine
 func IsLocalMachineState(ms *MachineState) bool {
-	return ms.BootID == readLocalBootID("/")
+	return ms.ID == readLocalMachineID("/")
 }
 
-func readLocalBootID(root string) string {
-	fullPath := filepath.Join(root, bootIDPath)
+func readLocalMachineID(root string) string {
+	fullPath := filepath.Join(root, machineIDPath)
 	id, err := ioutil.ReadFile(fullPath)
 	if err != nil {
 		return ""
@@ -116,8 +115,8 @@ func stackState(top, bottom MachineState) MachineState {
 		state.PublicIP = top.PublicIP
 	}
 
-	if top.BootID != "" {
-		state.BootID = top.BootID
+	if top.ID != "" {
+		state.ID = top.ID
 	}
 
 	//FIXME: This will *always* overwrite the bottom's metadata,

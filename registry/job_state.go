@@ -30,9 +30,9 @@ func (r *Registry) determineJobState(jobName string) *job.JobState {
 	return &state
 }
 
-func (r *Registry) JobHeartbeat(jobName, agentBootID string, ttl time.Duration) error {
+func (r *Registry) JobHeartbeat(jobName, agentMachID string, ttl time.Duration) error {
 	key := jobHeartbeatPath(jobName)
-	_, err := r.etcd.Set(key, agentBootID, uint64(ttl.Seconds()))
+	_, err := r.etcd.Set(key, agentMachID, uint64(ttl.Seconds()))
 	return err
 }
 

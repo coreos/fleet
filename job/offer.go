@@ -7,39 +7,34 @@ import (
 type JobOffer struct {
 	Job Job
 
-	// MachineBootIDs represents a set of machines for which this offer is valid.
-	// If nil or len == 0 then all machines. Must be to be sorted.
-	// MachineBootIDs started life as MachineBootIds in the datastore.
-	// It cannot be changed without a migration
-	MachineBootIDs []string `json:"MachineBootIds"`
+	// MachineIDs represents a set of machines for which this offer is valid.
+	// If nil or len == 0 then all machines. Must be sorted.
+	MachineIDs []string
 }
 
-func NewOfferFromJob(j Job, machineBootIDs []string) *JobOffer {
+func NewOfferFromJob(j Job, machineIDs []string) *JobOffer {
 	return &JobOffer{
 		Job:            j,
-		MachineBootIDs: machineBootIDs,
+		MachineIDs: machineIDs,
 	}
 }
 
 // OfferedTo returns true if job is being offered to specified machine.
-func (jo *JobOffer) OfferedTo(machineBootID string) bool {
+func (jo *JobOffer) OfferedTo(machineID string) bool {
 	// for backward compatibility: if not populated, assume all machines are considered
-	if len(jo.MachineBootIDs) == 0 {
+	if len(jo.MachineIDs) == 0 {
 		return true
 	}
 
-	k := sort.SearchStrings(jo.MachineBootIDs, machineBootID)
-	return k < len(jo.MachineBootIDs) && jo.MachineBootIDs[k] == machineBootID
+	k := sort.SearchStrings(jo.MachineIDs, machineID)
+	return k < len(jo.MachineIDs) && jo.MachineIDs[k] == machineID
 }
 
 type JobBid struct {
 	JobName string
-
-	// MachineBootID started life as MachineBootId in the datastore.
-	// It cannot be changed without a migration.
-	MachineBootID string `json:"MachineBootId"`
+	MachineID string
 }
 
-func NewBid(jobName string, machBootID string) *JobBid {
-	return &JobBid{jobName, machBootID}
+func NewBid(jobName string, machID string) *JobBid {
+	return &JobBid{jobName, machID}
 }

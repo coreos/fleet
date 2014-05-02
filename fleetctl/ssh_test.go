@@ -35,7 +35,7 @@ func TestSshUnknownMachine(t *testing.T) {
 
 	_, ok := findAddressInMachineList("asdf")
 	if ok {
-		t.Error("Expected to not find any machine with the boot id `asdf`")
+		t.Error("Expected to not find any machine with the machine ID `asdf`")
 	}
 }
 
@@ -79,7 +79,7 @@ func TestGlobalLookupByUnknownArgument(t *testing.T) {
 	}
 }
 
-func TestGlobalLookupByBootID(t *testing.T) {
+func TestGlobalLookupByMachineID(t *testing.T) {
 	registryCtl = newTestRegistryForSsh()
 
 	ip, err := globalMachineLookup([]string{"c31e44e1-f858-436e-933e-59c642517860"})
