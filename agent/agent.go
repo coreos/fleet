@@ -100,9 +100,11 @@ func (a *Agent) Run() {
 	go a.HeartbeatJobs(a.ttl, a.stop)
 }
 
-// initialize pushes the local machine state to the Registry
-// repeatedly until it succeeds. It returns the modification
-// index of the first successful response received from etcd.
+// initialize prepares the Agent for normal operation by doing three things:
+// 1. Announce presence to the Registry, tracking the etcd index of the operation
+// 2. Discover any jobs that are scheduled locally and load/start them
+// 3. Cache all unresolved job offers and bid for any that can be run locally
+// The returned value is the etcd index at which the agent's presence was announced.
 func (a *Agent) initialize() uint64 {
 	log.Infof("Initializing Agent")
 	a.machine.RefreshState()
@@ -118,6 +120,36 @@ func (a *Agent) initialize() uint64 {
 		log.V(1).Infof("Failed heartbeat, retrying in %v", wait)
 		time.Sleep(wait)
 	}
+
+	for _, j := range a.registry.GetAllJobs() {
+		tm := a.registry.GetJobTarget(j.Name)
+		if tm == "" || tm != a.machine.State().ID {
+			continue
+		}
+
+		ts := a.registry.GetJobTargetState(j.Name)
+		if ts != nil && *ts != job.JobStateLoaded && *ts != job.JobStateLaunched {
+			continue
+		}
+
+		a.state.TrackJob(&j)
+		a.LoadJob(&j)
+
+		if *ts != job.JobStateLaunched {
+			continue
+		}
+
+		a.StartJob(j.Name)
+	}
+
+	for _, jo := range a.UnresolvedJobOffers() {
+		// Everything we check against could change over time, so we track
+		// all offers starting here for future bidding even if we are
+		// currently unable to bid
+		a.state.TrackOffer(jo)
+	}
+
+	a.BidForPossibleJobs()
 
 	return idx
 }
