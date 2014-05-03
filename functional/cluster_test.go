@@ -68,7 +68,7 @@ func TestDynamicClusterNewMemberUnitMigration(t *testing.T) {
 
 	// Ensure no other units migrated due to this churn
 	if newMach == states["conflict.0.service"].Machine || newMach == states["conflict.2.service"].Machine {
-		t.Errorf("Unit %s landed on occupied machine")
+		t.Errorf("Unit %s landed on occupied machine", unit)
 	}
 
 	if states["conflict.0.service"].Machine != newStates["conflict.0.service"].Machine || states["conflict.2.service"].Machine != newStates["conflict.2.service"].Machine {

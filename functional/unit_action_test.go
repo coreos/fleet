@@ -136,7 +136,7 @@ func TestUnitRestart(t *testing.T) {
 		t.Fatal(err)
 	}
 	if len(units) != 0 {
-		t.Fatal("Zero units should be running, found %v", units)
+		t.Fatalf("Zero units should be running, found %v", units)
 	}
 
 	if _, _, err := fleetctl("start", "hello.service"); err != nil {

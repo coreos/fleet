@@ -219,7 +219,7 @@ X-ConditionMachineID=456
 		}
 
 		if outB != tt.outB {
-			t.Errorf("Expected target requirement ok-val %s, got %s", tt.outB, outB)
+			t.Errorf("Expected target requirement ok-val %t, got %t", tt.outB, outB)
 		}
 	}
 }

@@ -152,7 +152,7 @@ func TestSign(t *testing.T) {
 	}
 
 	if sig.Tag != tag {
-		t.Error("expected tag %v instead of %v", tag, sig.Tag)
+		t.Errorf("expected tag %v instead of %v", tag, sig.Tag)
 	}
 
 	if len(sig.Signatures) == 0 {

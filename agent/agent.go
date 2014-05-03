@@ -319,7 +319,7 @@ func (a *Agent) ReportUnitState(jobName string, us *unit.UnitState) {
 	if us == nil {
 		err := a.registry.RemoveUnitState(jobName)
 		if err != nil {
-			log.Errorf("Failed to remove UnitState from Registry: %s", jobName, err.Error())
+			log.Errorf("Failed to remove UnitState for job %s from Registry: %s", jobName, err.Error())
 		}
 	} else {
 		a.registry.SaveUnitState(jobName, us)
