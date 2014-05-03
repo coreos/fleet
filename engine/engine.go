@@ -68,7 +68,7 @@ func (self *Engine) OfferJob(j job.Job) error {
 	}
 	defer mutex.Unlock()
 
-	log.V(1).Infof("Claimed Job", j.Name)
+	log.V(1).Infof("Claimed Job(%s)", j.Name)
 
 	machineIDs, err := self.partitionCluster(&j)
 	if err != nil {
