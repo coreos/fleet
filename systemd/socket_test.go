@@ -31,7 +31,7 @@ ListenSequentialPacket=/var/run/mysqld.sock
 		}
 
 		if sockets[i].Port != expect.Port {
-			t.Errorf("Socket type '%s' does not match expected '%s'", sockets[i].Port, expect.Port)
+			t.Errorf("Socket port '%d' does not match expected '%d'", sockets[i].Port, expect.Port)
 		}
 	}
 }

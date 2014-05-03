@@ -59,7 +59,7 @@ func (self *EventHandler) HandleEventJobUnscheduled(ev event.Event) {
 
 	j := self.engine.registry.GetJob(jobName)
 	if j == nil {
-		log.Errorf("EventJobUnscheduled(%s): unable to re-offer Job(%s), as it could not be found in the Registry", jobName)
+		log.Errorf("EventJobUnscheduled(%s): unable to re-offer Job, as it could not be found in the Registry", jobName)
 		return
 	}
 

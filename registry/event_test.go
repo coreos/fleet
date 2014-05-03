@@ -25,7 +25,7 @@ func TestPipe(t *testing.T) {
 
 	ev := <-eventchan
 	if ev.Type != "TranslateTest" {
-		t.Fatalf("Expected ev.Type 'TranslateTest' but got '%s', ev.Type")
+		t.Fatalf("Expected ev.Type 'TranslateTest' but got '%s'", ev.Type)
 	}
 
 	if ev.Payload.(string) != "TestAction" {

@@ -154,7 +154,7 @@ X-ConditionMachineMetadata=region=us-west-1`, true},
 		job := newTestJobWithMachineMetadata(e.C)
 		g := agent.AbleToRun(job)
 		if g != e.A {
-			t.Errorf("Unexpected output %d, content: %q\n\tgot %q, want %q\n", i, e.C, g, e.A)
+			t.Errorf("Unexpected output %d, content: %q\n\tgot %t, want %t\n", i, e.C, g, e.A)
 		}
 	}
 }

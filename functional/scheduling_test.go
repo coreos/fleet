@@ -219,7 +219,7 @@ func TestScheduleOneWayConflict(t *testing.T) {
 
 	for unit, _ := range states {
 		if unit != "conflicts-with-hello.service" {
-			t.Errorf("Incorrect unit started", unit)
+			t.Error("Incorrect unit started:", unit)
 		}
 	}
 }
