@@ -20,7 +20,7 @@ const (
 )
 
 func (r *Registry) storeOrGetUnit(u unit.Unit) (err error) {
-	key := hashedUnitPath(u.Hash())
+	key := r.hashedUnitPath(u.Hash())
 	json, err := marshal(u)
 	if err != nil {
 		return err
@@ -39,7 +39,7 @@ func (r *Registry) storeOrGetUnit(u unit.Unit) (err error) {
 
 // getUnitFromLegacyPayload tries to extract a Unit from a legacy JobPayload of the given name
 func (r *Registry) getUnitFromLegacyPayload(name string) (*unit.Unit, error) {
-	key := path.Join(keyPrefix, payloadPrefix, name)
+	key := path.Join(r.keyPrefix, payloadPrefix, name)
 	resp, err := r.etcd.Get(key, true, true)
 
 	if err != nil {
@@ -59,7 +59,7 @@ func (r *Registry) getUnitFromLegacyPayload(name string) (*unit.Unit, error) {
 
 // getUnitByHash retrieves from the Registry the Unit associated with the given Hash
 func (r *Registry) getUnitByHash(hash unit.Hash) *unit.Unit {
-	key := hashedUnitPath(hash)
+	key := r.hashedUnitPath(hash)
 	resp, err := r.etcd.Get(key, false, true)
 	if err != nil {
 		return nil
@@ -72,8 +72,8 @@ func (r *Registry) getUnitByHash(hash unit.Hash) *unit.Unit {
 	return &u
 }
 
-func hashedUnitPath(hash unit.Hash) string {
-	return path.Join(keyPrefix, unitPrefix, hash.String())
+func (r *Registry) hashedUnitPath(hash unit.Hash) string {
+	return path.Join(r.keyPrefix, unitPrefix, hash.String())
 }
 
 // LegacyJobPayload deals with the legacy concept of a "JobPayload" (deprecated by Units).

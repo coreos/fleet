@@ -10,17 +10,41 @@ import (
 	"os"
 	"os/exec"
 	"path"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/coreos/fleet/third_party/github.com/coreos/go-systemd/dbus"
+
+	"github.com/coreos/fleet/functional/util"
 )
 
 type nspawnCluster struct {
 	name    string
 	members map[string]string
+}
+
+func (nc *nspawnCluster) keyspace() string {
+	// TODO(jonboulle): generate this dynamically with atomic in order keys?
+	return fmt.Sprintf("/fleet_functional/%s", nc.name)
+}
+
+func (nc *nspawnCluster) Fleetctl(args ...string) (string, string, error) {
+	args = append([]string{"--etcd-key-prefix=" + nc.keyspace()}, args...)
+	return util.RunFleetctl(args...)
+}
+
+func (nc *nspawnCluster) FleetctlWithInput(input string, args ...string) (string, string, error) {
+	args = append([]string{"--etcd-key-prefix=" + nc.keyspace()}, args...)
+	return util.RunFleetctlWithInput(input, args...)
+}
+
+func (nc *nspawnCluster) WaitForNMachines(count int) ([]string, error) {
+	return util.WaitForNMachines(nc.Fleetctl, count)
+}
+
+func (nc *nspawnCluster) WaitForNActiveUnits(count int) (map[string]util.UnitState, error) {
+	return util.WaitForNActiveUnits(nc.Fleetctl, count)
 }
 
 func (nc *nspawnCluster) prepCluster() (err error) {
@@ -88,11 +112,12 @@ func (nc *nspawnCluster) prepFleet(dir, ip, sshKeySrc, fleetBinSrc string, cfg M
 
 	cfgTmpl := `verbosity=2
 etcd_servers=["http://172.17.0.1:4001"]	
+etcd_key_prefix=%s
 public_ip=%s
 verify_units=%s
 authorized_keys_file=%s
 `
-	cfgContents := fmt.Sprintf(cfgTmpl, ip, strconv.FormatBool(cfg.VerifyUnits), relSSHKeyDst)
+	cfgContents := fmt.Sprintf(cfgTmpl, nc.keyspace(), ip, strconv.FormatBool(cfg.VerifyUnits), relSSHKeyDst)
 	cfgPath := path.Join(dir, "opt", "fleet", "fleet.conf")
 	if err := ioutil.WriteFile(cfgPath, []byte(cfgContents), 0644); err != nil {
 		return err
@@ -234,7 +259,7 @@ func (nc *nspawnCluster) Destroy() error {
 	// TODO(bcwaldon): This returns 4 on success, but we can't easily
 	// ignore just that return code. Ignore the returned error
 	// altogether until this is fixed.
-	run("etcdctl rm --recursive /_coreos.com/fleet")
+	run("etcdctl rm --recursive " + nc.keyspace())
 
 	return nil
 }
@@ -301,7 +326,7 @@ func (nc *nspawnCluster) systemd(unitName, exec string) error {
 func (nc *nspawnCluster) machinePID(name string) (int, error) {
 	for i := 0; i < 5; i++ {
 		mach := fmt.Sprintf("%s%s", nc.name, name)
-		stdout, _, err := run(fmt.Sprintf("machinectl status %s", mach))
+		stdout, _, err := run(fmt.Sprintf("machinectl show -p Leader %s", mach))
 		if err != nil {
 			if i != 4 {
 				time.Sleep(time.Second)
@@ -310,12 +335,8 @@ func (nc *nspawnCluster) machinePID(name string) (int, error) {
 			return -1, fmt.Errorf("Failed detecting machine %s status: %v", mach, err)
 		}
 
-		re := regexp.MustCompile("Leader:\\s(.*\\d)")
-		pid := re.FindStringSubmatch(stdout)[1]
-		if pid == "" {
-			return -1, fmt.Errorf("Could not cast result '%s' to int", pid)
-		}
-		return strconv.Atoi(pid)
+		out := strings.SplitN(strings.TrimSpace(stdout), "=", 2)
+		return strconv.Atoi(out[1])
 	}
 	return -1, fmt.Errorf("Unable to detect machine PID")
 }

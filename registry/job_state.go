@@ -31,13 +31,13 @@ func (r *Registry) determineJobState(jobName string) *job.JobState {
 }
 
 func (r *Registry) JobHeartbeat(jobName, agentMachID string, ttl time.Duration) error {
-	key := jobHeartbeatPath(jobName)
+	key := r.jobHeartbeatPath(jobName)
 	_, err := r.etcd.Set(key, agentMachID, uint64(ttl.Seconds()))
 	return err
 }
 
 func (r *Registry) CheckJobPulse(jobName string) (string, bool) {
-	key := jobHeartbeatPath(jobName)
+	key := r.jobHeartbeatPath(jobName)
 	resp, err := r.etcd.Get(key, false, false)
 	if err != nil {
 		return "", false
@@ -47,10 +47,10 @@ func (r *Registry) CheckJobPulse(jobName string) (string, bool) {
 }
 
 func (r *Registry) ClearJobHeartbeat(jobName string) {
-	key := jobHeartbeatPath(jobName)
+	key := r.jobHeartbeatPath(jobName)
 	r.etcd.Delete(key, false)
 }
 
-func jobHeartbeatPath(jobName string) string {
-	return path.Join(keyPrefix, jobPrefix, jobName, "job-state")
+func (r *Registry) jobHeartbeatPath(jobName string) string {
+	return path.Join(r.keyPrefix, jobPrefix, jobName, "job-state")
 }

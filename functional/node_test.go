@@ -19,15 +19,15 @@ func TestNodeShutdown(t *testing.T) {
 	if err := cluster.CreateMember("1", platform.MachineConfig{}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err = waitForNMachines(1); err != nil {
+	if _, err = cluster.WaitForNMachines(1); err != nil {
 		t.Fatal(err)
 	}
 
 	// Start a unit and ensure it comes up quickly
-	if _, _, err := fleetctl("start", "fixtures/units/hello.service"); err != nil {
+	if _, _, err := cluster.Fleetctl("start", "fixtures/units/hello.service"); err != nil {
 		t.Errorf("Failed starting unit: %v", err)
 	}
-	_, err = waitForNActiveUnits(1)
+	_, err = cluster.WaitForNActiveUnits(1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -39,12 +39,12 @@ func TestNodeShutdown(t *testing.T) {
 
 	// The member should immediately remove itself from the published
 	// list of cluster members
-	if _, err = waitForNMachines(0); err != nil {
+	if _, err = cluster.WaitForNMachines(0); err != nil {
 		t.Fatal(err)
 	}
 
 	// State for the members units should be purged from the Registry
-	if _, err = waitForNActiveUnits(0); err != nil {
+	if _, err = cluster.WaitForNActiveUnits(0); err != nil {
 		t.Fatal(err)
 	}
 

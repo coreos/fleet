@@ -2,6 +2,8 @@ package platform
 
 import (
 	"strconv"
+
+	"github.com/coreos/fleet/functional/util"
 )
 
 type Cluster interface {
@@ -10,6 +12,12 @@ type Cluster interface {
 	Members() []string
 	MemberCommand(string, ...string) (string, error)
 	Destroy() error
+
+	// client operations
+	Fleetctl(args ...string) (string, string, error)
+	FleetctlWithInput(input string, args ...string) (string, string, error)
+	WaitForNActiveUnits(count int) (map[string]util.UnitState, error)
+	WaitForNMachines(count int) ([]string, error)
 }
 
 // MachineConfig defines the parameters that should

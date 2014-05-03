@@ -19,15 +19,15 @@ func TestUnitRunnable(t *testing.T) {
 	if err := platform.CreateNClusterMembers(cluster, 1, platform.MachineConfig{}); err != nil {
 		t.Fatal(err)
 	}
-	_, err = waitForNMachines(1)
+	_, err = cluster.WaitForNMachines(1)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if _, _, err := fleetctl("start", "fixtures/units/hello.service"); err != nil {
+	if _, _, err := cluster.Fleetctl("start", "fixtures/units/hello.service"); err != nil {
 		t.Fatalf("Unable to start fleet unit: %v", err)
 	}
-	stdout, _, err := fleetctl("list-units", "--no-legend")
+	stdout, _, err := cluster.Fleetctl("list-units", "--no-legend")
 	if err != nil {
 		t.Fatalf("Failed to run list-units: %v", err)
 	}
@@ -51,16 +51,16 @@ func TestUnitSubmit(t *testing.T) {
 	if err := platform.CreateNClusterMembers(cluster, 1, platform.MachineConfig{}); err != nil {
 		t.Fatal(err)
 	}
-	_, err = waitForNMachines(1)
+	_, err = cluster.WaitForNMachines(1)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// submit a unit and assert it shows up
-	if _, _, err := fleetctl("submit", "fixtures/units/hello.service"); err != nil {
+	if _, _, err := cluster.Fleetctl("submit", "fixtures/units/hello.service"); err != nil {
 		t.Fatalf("Unable to submit fleet unit: %v", err)
 	}
-	stdout, _, err := fleetctl("list-units", "--no-legend")
+	stdout, _, err := cluster.Fleetctl("list-units", "--no-legend")
 	if err != nil {
 		t.Fatalf("Failed to run list-units: %v", err)
 	}
@@ -70,15 +70,15 @@ func TestUnitSubmit(t *testing.T) {
 	}
 
 	// submitting the same unit should fail
-	if _, _, err = fleetctl("submit", "fixtures/units/hello.service"); err == nil {
+	if _, _, err = cluster.Fleetctl("submit", "fixtures/units/hello.service"); err == nil {
 		t.Fatalf("Expected failure when double-submitting unit, got success.")
 	}
 
 	// destroy the unit and ensure it disappears from the unit list
-	if _, _, err := fleetctl("destroy", "fixtures/units/hello.service"); err != nil {
+	if _, _, err := cluster.Fleetctl("destroy", "fixtures/units/hello.service"); err != nil {
 		t.Fatalf("Failed to destroy unit: %v", err)
 	}
-	stdout, _, err = fleetctl("list-units", "--no-legend")
+	stdout, _, err = cluster.Fleetctl("list-units", "--no-legend")
 	if err != nil {
 		t.Fatalf("Failed to run list-units: %v", err)
 	}
@@ -87,10 +87,10 @@ func TestUnitSubmit(t *testing.T) {
 	}
 
 	// submitting the unit after destruction should succeed
-	if _, _, err := fleetctl("submit", "fixtures/units/hello.service"); err != nil {
+	if _, _, err := cluster.Fleetctl("submit", "fixtures/units/hello.service"); err != nil {
 		t.Fatalf("Unable to submit fleet unit: %v", err)
 	}
-	stdout, _, err = fleetctl("list-units", "--no-legend")
+	stdout, _, err = cluster.Fleetctl("list-units", "--no-legend")
 	if err != nil {
 		t.Fatalf("Failed to run list-units: %v", err)
 	}
@@ -110,16 +110,16 @@ func TestUnitRestart(t *testing.T) {
 	if err := platform.CreateNClusterMembers(cluster, 1, platform.MachineConfig{}); err != nil {
 		t.Fatal(err)
 	}
-	_, err = waitForNMachines(1)
+	_, err = cluster.WaitForNMachines(1)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if _, _, err := fleetctl("start", "fixtures/units/hello.service"); err != nil {
+	if _, _, err := cluster.Fleetctl("start", "fixtures/units/hello.service"); err != nil {
 		t.Fatalf("Unable to start fleet unit: %v", err)
 	}
 
-	units, err := waitForNActiveUnits(1)
+	units, err := cluster.WaitForNActiveUnits(1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -128,10 +128,10 @@ func TestUnitRestart(t *testing.T) {
 		t.Fatalf("Expected hello.service to be sole active unit, got %v", units)
 	}
 
-	if _, _, err := fleetctl("stop", "hello.service"); err != nil {
+	if _, _, err := cluster.Fleetctl("stop", "hello.service"); err != nil {
 		t.Fatal(err)
 	}
-	units, err = waitForNActiveUnits(0)
+	units, err = cluster.WaitForNActiveUnits(0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -139,10 +139,10 @@ func TestUnitRestart(t *testing.T) {
 		t.Fatalf("Zero units should be running, found %v", units)
 	}
 
-	if _, _, err := fleetctl("start", "hello.service"); err != nil {
+	if _, _, err := cluster.Fleetctl("start", "hello.service"); err != nil {
 		t.Fatalf("Unable to start fleet unit: %v", err)
 	}
-	units, err = waitForNActiveUnits(1)
+	units, err = cluster.WaitForNActiveUnits(1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -163,16 +163,16 @@ func TestUnitSSHActions(t *testing.T) {
 	if err := platform.CreateNClusterMembers(cluster, 1, platform.MachineConfig{}); err != nil {
 		t.Fatal(err)
 	}
-	_, err = waitForNMachines(1)
+	_, err = cluster.WaitForNMachines(1)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if _, _, err := fleetctl("start", "--no-block", "fixtures/units/hello.service"); err != nil {
+	if _, _, err := cluster.Fleetctl("start", "--no-block", "fixtures/units/hello.service"); err != nil {
 		t.Fatalf("Unable to start fleet unit: %v", err)
 	}
 
-	units, err := waitForNActiveUnits(1)
+	units, err := cluster.WaitForNActiveUnits(1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -182,7 +182,7 @@ func TestUnitSSHActions(t *testing.T) {
 		t.Fatalf("Expected hello.service to be sole active unit, got %v", units)
 	}
 
-	stdout, _, err := fleetctl("--strict-host-key-checking=false", "ssh", "hello.service", "echo", "foo")
+	stdout, _, err := cluster.Fleetctl("--strict-host-key-checking=false", "ssh", "hello.service", "echo", "foo")
 	if err != nil {
 		t.Errorf("Failure occurred while calling fleetctl ssh: %v", err)
 	}
@@ -191,7 +191,7 @@ func TestUnitSSHActions(t *testing.T) {
 		t.Errorf("Could not find expected string in command output:\n%s", stdout)
 	}
 
-	stdout, _, err = fleetctl("--strict-host-key-checking=false", "status", "hello.service")
+	stdout, _, err = cluster.Fleetctl("--strict-host-key-checking=false", "status", "hello.service")
 	if err != nil {
 		t.Errorf("Failure occurred while calling fleetctl status: %v", err)
 	}
@@ -200,7 +200,7 @@ func TestUnitSSHActions(t *testing.T) {
 		t.Errorf("Could not find expected string in status output:\n%s", stdout)
 	}
 
-	stdout, _, err = fleetctl("--strict-host-key-checking=false", "journal", "hello.service")
+	stdout, _, err = cluster.Fleetctl("--strict-host-key-checking=false", "journal", "hello.service")
 	if err != nil {
 		t.Errorf("Failure occurred while calling fleetctl journal: %v", err)
 	}

@@ -8,20 +8,19 @@ import (
 	"github.com/coreos/fleet/third_party/github.com/coreos/go-etcd/etcd"
 )
 
-const (
-	keyPrefix = "/_coreos.com/fleet/"
-)
+const DefaultKeyPrefix = "/_coreos.com/fleet/"
 
 type Registry struct {
-	etcd *etcd.Client
+	etcd      *etcd.Client
+	keyPrefix string
 }
 
-func New(client *etcd.Client) (registry *Registry) {
-	return &Registry{client}
+func New(client *etcd.Client, keyPrefix string) (registry *Registry) {
+	return &Registry{client, keyPrefix}
 }
 
 func (r *Registry) GetDebugInfo() (string, error) {
-	resp, err := r.etcd.RawGet(keyPrefix, true, true)
+	resp, err := r.etcd.RawGet(r.keyPrefix, true, true)
 	if err != nil {
 		return "", err
 	}

@@ -49,6 +49,7 @@ var (
 		Verbosity             int
 		Version               bool
 		Endpoint              string
+		EtcdKeyPrefix         string
 		KnownHostsFile        string
 		StrictHostKeyChecking bool
 		Tunnel                string
@@ -68,7 +69,8 @@ func init() {
 	globalFlagset.BoolVar(&globalFlags.Debug, "debug", false, "Print out more debug information to stderr. Equivalent to --verbosity=1")
 	globalFlagset.BoolVar(&globalFlags.Version, "version", false, "Print the version and exit")
 	globalFlagset.IntVar(&globalFlags.Verbosity, "verbosity", 0, "Log at a specified level of verbosity to stderr.")
-	globalFlagset.StringVar(&globalFlags.Endpoint, "endpoint", "http://127.0.0.1:4001", "Fleet Engine API endpoint (etcd)")
+	globalFlagset.StringVar(&globalFlags.Endpoint, "endpoint", "http://127.0.0.1:4001", "etcd endpoint for fleet")
+	globalFlagset.StringVar(&globalFlags.EtcdKeyPrefix, "etcd-key-prefix", registry.DefaultKeyPrefix, "Keyspace for fleet data in etcd (development use only!)")
 	globalFlagset.StringVar(&globalFlags.KnownHostsFile, "known-hosts-file", ssh.DefaultKnownHostsFile, "File used to store remote machine fingerprints. Ignored if strict host key checking is disabled.")
 	globalFlagset.BoolVar(&globalFlags.StrictHostKeyChecking, "strict-host-key-checking", true, "Verify host keys presented by remote machines before initiating SSH connections.")
 	globalFlagset.StringVar(&globalFlags.Tunnel, "tunnel", "", "Establish an SSH tunnel through the provided address for communication with fleet and etcd.")
@@ -231,7 +233,7 @@ func getRegistry() *registry.Registry {
 		client.SetTransport(&tr)
 	}
 
-	return registry.New(client)
+	return registry.New(client, globalFlags.EtcdKeyPrefix)
 }
 
 // getChecker creates and returns a HostKeyChecker, or nil if any error is encountered
