@@ -56,9 +56,12 @@ func New(reg *registry.Registry, eStream *registry.EventStream, mach *machine.Ma
 		return nil, err
 	}
 
-	state := NewState()
-	mgr := systemd.NewSystemdManager(mach)
+	mgr, err := systemd.NewSystemdManager(mach)
+	if err != nil {
+		return nil, err
+	}
 
+	state := NewState()
 	eBus := event.NewEventBus()
 
 	a := &Agent{reg, eStream, eBus, mach, ttldur, verifier, state, mgr, nil}

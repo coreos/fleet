@@ -7,7 +7,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
-	"syscall"
 
 	"github.com/coreos/fleet/third_party/github.com/coreos/go-systemd/dbus"
 	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
@@ -19,25 +18,29 @@ import (
 )
 
 const (
-	defaultSystemdRuntimePath = "/run/systemd/system/"
+	systemdRuntimePath = "/run/systemd/system/"
+	fleetUnitPath = "/run/fleet/units/"
 )
 
 type SystemdManager struct {
 	Systemd  *dbus.Conn
 	Machine  *machine.Machine
-	unitPath string
 
 	subscriptions *dbus.SubscriptionSet
 	stop          chan bool
 }
 
-func NewSystemdManager(machine *machine.Machine) *SystemdManager {
+func NewSystemdManager(machine *machine.Machine) (*SystemdManager, error) {
 	systemd, err := dbus.New()
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
-	return &SystemdManager{systemd, machine, defaultSystemdRuntimePath, systemd.NewSubscriptionSet(), nil}
+	if err := os.MkdirAll(fleetUnitPath, os.FileMode(0755)); err != nil {
+		return nil, err
+	}
+
+	return &SystemdManager{systemd, machine, systemd.NewSubscriptionSet(), nil}, nil
 }
 
 func (m *SystemdManager) MarshalJSON() ([]byte, error) {
@@ -132,14 +135,6 @@ func (m *SystemdManager) getUnitStates(name string) (string, string, string, err
 }
 
 func (m *SystemdManager) startUnit(name string) {
-	files := []string{name}
-	if _, _, err := m.Systemd.EnableUnitFiles(files, true, false); err != nil {
-		log.Errorf("Failed to enable systemd unit %s: %v", name, err)
-		return
-	} else {
-		log.Infof("Enabled systemd unit %s", name)
-	}
-
 	if stat, err := m.Systemd.StartUnit(name, "replace"); err != nil {
 		log.Errorf("Failed to start systemd unit %s: %v", name, err)
 	} else {
@@ -153,20 +148,10 @@ func (m *SystemdManager) stopUnit(name string) {
 	} else {
 		log.Infof("Stopped systemd unit %s(%s)", name, stat)
 	}
-
-	// go-systemd does not yet have this implemented
-	//files := []string{name}
-	//Systemd.DisableUnitFiles(files, true, false)
-}
-
-func (m *SystemdManager) removeUnit(name string) {
-	file := m.getLocalPath(name)
-	log.Infof("Removing systemd unit file %s", file)
-	syscall.Unlink(file)
 }
 
 func (m *SystemdManager) readUnit(name string) (string, error) {
-	path := m.getLocalPath(name)
+	path := getUnitFilePath(name)
 	contents, err := ioutil.ReadFile(path)
 	if err == nil {
 		return string(contents), nil
@@ -190,20 +175,27 @@ func (m *SystemdManager) daemonReload() error {
 }
 
 func (m *SystemdManager) writeUnit(name string, contents string) error {
-	log.Infof("Writing systemd unit file %s", name)
+	log.Infof("Writing systemd unit %s", name)
 
-	path := path.Join(m.unitPath, name)
-	file, err := os.Create(path)
-	defer file.Close()
-
+	ufPath := getUnitFilePath(name)
+	err := ioutil.WriteFile(ufPath, []byte(contents), os.FileMode(0644))
 	if err != nil {
 		return err
 	}
 
-	file.Write([]byte(contents))
-	return nil
+	_, _, err = m.Systemd.EnableUnitFiles([]string{ufPath}, true, false)
+	return err
 }
 
-func (m *SystemdManager) getLocalPath(name string) string {
-	return path.Join(m.unitPath, name)
+func (m *SystemdManager) removeUnit(name string) {
+	log.Infof("Removing systemd unit %s", name)
+
+	m.Systemd.DisableUnitFiles([]string{name}, true)
+
+	ufPath := getUnitFilePath(name)
+	os.Remove(ufPath)
+}
+
+func getUnitFilePath(name string) string {
+	return path.Join(fleetUnitPath, name)
 }
