@@ -32,7 +32,7 @@ There are four key pieces to the event system in fleet: the EventBus, EventStrea
 
 The Event is a simple data object. It has a name, a payload, and an optional context. The name is a canonical representation of what happened, the payload is the relevant data that has changed, and the context represents in what namespace the event happened (i.e. a specific machine, job, etc).
 
-The Engine and Agent each have EventListeners which understand how to manipulate their respective components in response to Events.
+The Engine and Agent each have EventHandlers which understand how to manipulate their respective components in response to Events.
 
 There are two EventStreams in fleet. The first watches etcd for changes, while the second subscribes to D-Bus events.
 
