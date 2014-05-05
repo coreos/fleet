@@ -105,3 +105,39 @@ func (j *Job) Type() (string, error) {
 
 	return "", errors.New(fmt.Sprintf("Unrecognized systemd unit %s", j.Name))
 }
+
+// RequiredTargetMetadata return all machine-related metadata from a Job's requirements
+func (j *Job) RequiredTargetMetadata() map[string][]string {
+	metadata := make(map[string][]string)
+	for key, values := range j.Unit.Requirements() {
+		// Deprecated syntax added to the metadata via the old `--require` flag.
+		if strings.HasPrefix(key, unit.FleetFlagMachineMetadata) {
+			if len(values) == 0 {
+				continue
+			}
+
+			metadata[key[15:]] = values
+		} else if key == unit.FleetXConditionMachineMetadata {
+			for _, valuePair := range values {
+				s := strings.Split(valuePair, "=")
+
+				if len(s) != 2 {
+					continue
+				}
+
+				if len(s[0]) == 0 || len(s[1]) == 0 {
+					continue
+				}
+
+				var mValues []string
+				if mv, ok := metadata[s[0]]; ok {
+					mValues = mv
+				}
+
+				metadata[s[0]] = append(mValues, s[1])
+			}
+		}
+	}
+
+	return metadata
+}

@@ -19,6 +19,10 @@ const (
 	FleetXConditionMachineOf = "ConditionMachineOf"
 	// Prevent a unit from being collocated with other units using glob-matching on the other unit names.
 	FleetXConflicts = "Conflicts"
+	// Machine metadata key in the unit file, without the X- prefix
+	FleetXConditionMachineMetadata = "ConditionMachineMetadata"
+	// Machine metadata key for the deprecated `require` flag
+	FleetFlagMachineMetadata = "MachineMetadata"
 )
 
 func SupportedUnitTypes() []string {
