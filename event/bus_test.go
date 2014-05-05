@@ -20,7 +20,7 @@ func TestEventBus(t *testing.T) {
 	evchan := make(chan Event)
 
 	bus := NewEventBus()
-	bus.AddListener("test", "X", &TestListener{evchan})
+	bus.AddListener("test",&TestListener{evchan})
 	bus.Listen(stopchan)
 
 	ev := Event{"EventTypeOne", "payload", "Y"}
@@ -46,7 +46,7 @@ func TestEventBusNoDispatch(t *testing.T) {
 	evchan := make(chan Event)
 
 	bus := NewEventBus()
-	bus.AddListener("test", "X", &TestListener{evchan})
+	bus.AddListener("test", &TestListener{evchan})
 	bus.Listen(stopchan)
 
 	go func() {

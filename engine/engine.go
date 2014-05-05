@@ -26,8 +26,7 @@ func New(reg *registry.Registry, eStream *registry.EventStream, mach *machine.Ma
 	e := &Engine{reg, eStream, eBus, mach, newCluster(), nil}
 
 	hdlr := NewEventHandler(e)
-	machID := mach.State().ID
-	eBus.AddListener("engine", machID, hdlr)
+	eBus.AddListener("engine", hdlr)
 
 	return e
 }

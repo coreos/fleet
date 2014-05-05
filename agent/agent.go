@@ -67,8 +67,7 @@ func New(reg *registry.Registry, eStream *registry.EventStream, mach *machine.Ma
 	a := &Agent{reg, eStream, eBus, mach, ttldur, verifier, state, mgr, nil}
 
 	hdlr := NewEventHandler(a)
-	machID := mach.State().ID
-	eBus.AddListener("agent", machID, hdlr)
+	eBus.AddListener("agent", hdlr)
 
 	return a, nil
 }
