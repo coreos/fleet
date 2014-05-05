@@ -471,7 +471,15 @@ func checkJobState(jobName string, js job.JobState, maxAttempts int, out io.Writ
 			continue
 		}
 
-		fmt.Fprintf(out, "Job %s %s\n", jobName, *(j.State))
+		msg := fmt.Sprintf("Job %s %s", jobName, *(j.State))
+
+		if tgt := registryCtl.GetJobTarget(jobName); tgt != "" {
+			if ms := registryCtl.GetMachineState(tgt); ms != nil {
+				msg = fmt.Sprintf("%s on %s", msg, machineFullLegend(*ms, false))
+			}
+		}
+
+		fmt.Fprintln(out, msg)
 		return
 	}
 
