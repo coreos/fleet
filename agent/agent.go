@@ -441,7 +441,7 @@ func (a *Agent) AbleToRun(j *job.Job) bool {
 		log.V(1).Infof("Job(%s) has no peers to worry about", j.Name)
 	}
 
-	if conflicted, conflictedJobName := a.HasConflict(j.Name, j.Unit.Conflicts()); conflicted {
+	if conflicted, conflictedJobName := a.HasConflict(j.Name, j.Conflicts()); conflicted {
 		log.Infof("Job(%s) has conflict with Job(%s)", j.Name, conflictedJobName)
 		return false
 	}

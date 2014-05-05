@@ -84,15 +84,6 @@ func (u *Unit) Requirements() map[string][]string {
 	return requirements
 }
 
-func (u *Unit) Conflicts() []string {
-	conflicts, ok := u.Requirements()[FleetXConflicts]
-	if ok {
-		return conflicts
-	} else {
-		return make([]string, 0)
-	}
-}
-
 // UnitState encodes the current state of a unit loaded into systemd
 type UnitState struct {
 	LoadState    string                `json:"loadState"`

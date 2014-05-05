@@ -75,7 +75,7 @@ func (self *AgentState) MarshalJSON() ([]byte, error) {
 // TrackJob extracts and stores information about the given job for later reference
 func (self *AgentState) TrackJob(j *job.Job) {
 	self.trackJobPeers(j.Name, j.Peers())
-	self.trackJobConflicts(j.Name, j.Unit.Conflicts())
+	self.trackJobConflicts(j.Name, j.Conflicts())
 }
 
 // PurgeJob removes all state tracked on behalf of a given job

@@ -3,8 +3,9 @@ package job
 import (
 	"errors"
 	"fmt"
-	"github.com/coreos/fleet/unit"
 	"strings"
+
+	"github.com/coreos/fleet/unit"
 )
 
 type JobState string
@@ -46,6 +47,17 @@ func NewJob(name string, unit unit.Unit) *Job {
 
 func (self *Job) Requirements() map[string][]string {
 	return self.Unit.Requirements()
+}
+
+// Conflicts returns a list of Job names that cannot be scheduled to the same
+// machine as this Job.
+func (self *Job) Conflicts() []string {
+	conflicts, ok := self.Requirements()[unit.FleetXConflicts]
+	if ok {
+		return conflicts
+	} else {
+		return make([]string, 0)
+	}
 }
 
 // Peers returns a list of Job names that must be scheduled to the same
