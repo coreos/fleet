@@ -91,6 +91,10 @@ func (r *Registry) getJobFromJSON(val string) *job.Job {
 		return nil
 	}
 
+	return r.getJobFromModel(jm)
+}
+
+func (r *Registry) getJobFromModel(jm jobModel) *job.Job {
 	var err error
 	var unit *unit.Unit
 
@@ -127,7 +131,7 @@ func (r *Registry) getJobFromJSON(val string) *job.Job {
 	return j
 }
 
-// jobModel is used for deserializing jobs stored in the Registry
+// jobModel is used for serializing and deserializing Jobs stored in the Registry
 type jobModel struct {
 	Name     string
 	UnitHash unit.Hash
@@ -157,7 +161,15 @@ func (r *Registry) CreateJob(j *job.Job) (err error) {
 	}
 
 	key := path.Join(r.keyPrefix, jobPrefix, j.Name, "object")
-	json, _ := marshal(j)
+
+	jm := jobModel{
+		Name:     j.Name,
+		UnitHash: j.UnitHash,
+	}
+	json, err := marshal(jm)
+	if err != nil {
+		return
+	}
 
 	_, err = r.etcd.Create(key, json, 0)
 	if err != nil && err.(*etcd.EtcdError).ErrorCode == etcdErr.EcodeNodeExist {

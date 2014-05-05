@@ -137,7 +137,7 @@ func (a *Agent) initialize() uint64 {
 		a.StartJob(j.Name)
 	}
 
-	for _, jo := range a.UnresolvedJobOffers() {
+	for _, jo := range a.registry.UnresolvedJobOffers() {
 		// Everything we check against could change over time, so we track
 		// all offers starting here for future bidding even if we are
 		// currently unable to bid
@@ -455,10 +455,6 @@ func (a *Agent) peerScheduledHere(jobName, peerName string) bool {
 
 	log.V(1).Infof("Peer(%s) of Job(%s) scheduled here", peerName, jobName)
 	return true
-}
-
-func (a *Agent) UnresolvedJobOffers() []job.JobOffer {
-	return a.registry.UnresolvedJobOffers()
 }
 
 // HasConflict determines whether there are any known conflicts with the given argument
