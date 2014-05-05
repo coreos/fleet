@@ -8,23 +8,6 @@ import (
 	"github.com/coreos/fleet/machine"
 )
 
-// Fleet specific unit file requirement keys.
-// "X-" prefix only appears in unit file and is dropped in code before the value is used.
-const (
-	// Require the unit be scheduled to a specific machine identified by given ID.
-	FleetXConditionMachineID = "ConditionMachineID"
-	// Legacy form of FleetXConditionMachineID.
-	FleetXConditionMachineBootID = "ConditionMachineBootID"
-	// Limit eligible machines to the one that hosts a specific unit.
-	FleetXConditionMachineOf = "ConditionMachineOf"
-	// Prevent a unit from being collocated with other units using glob-matching on the other unit names.
-	FleetXConflicts = "Conflicts"
-	// Machine metadata key in the unit file, without the X- prefix
-	FleetXConditionMachineMetadata = "ConditionMachineMetadata"
-	// Machine metadata key for the deprecated `require` flag
-	FleetFlagMachineMetadata = "MachineMetadata"
-)
-
 func SupportedUnitTypes() []string {
 	return []string{"service", "socket"}
 }
