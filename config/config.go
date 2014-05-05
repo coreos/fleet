@@ -22,10 +22,10 @@ type Config struct {
 	AuthorizedKeysFile string
 }
 
-func (self *Config) Metadata() map[string]string {
+func (c *Config) Metadata() map[string]string {
 	meta := make(map[string]string, 0)
 
-	for _, pair := range strings.Split(self.RawMetadata, ",") {
+	for _, pair := range strings.Split(c.RawMetadata, ",") {
 		parts := strings.SplitN(pair, "=", 2)
 		if len(parts) != 2 {
 			continue

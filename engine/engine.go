@@ -31,23 +31,23 @@ func New(reg *registry.Registry, eStream *registry.EventStream, mach *machine.Ma
 	return e
 }
 
-func (self *Engine) Run() {
-	self.stop = make(chan bool)
+func (e *Engine) Run() {
+	e.stop = make(chan bool)
 
-	go self.eBus.Listen(self.stop)
-	go self.eStream.Stream(0, self.eBus.Channel, self.stop)
+	go e.eBus.Listen(e.stop)
+	go e.eStream.Stream(0, e.eBus.Channel, e.stop)
 }
 
-func (self *Engine) Stop() {
+func (e *Engine) Stop() {
 	log.Info("Stopping Engine")
-	close(self.stop)
+	close(e.stop)
 }
 
-func (self *Engine) GetJobsScheduledToMachine(machID string) []job.Job {
+func (e *Engine) GetJobsScheduledToMachine(machID string) []job.Job {
 	var jobs []job.Job
 
-	for _, j := range self.registry.GetAllJobs() {
-		tgt := self.registry.GetJobTarget(j.Name)
+	for _, j := range e.registry.GetAllJobs() {
+		tgt := e.registry.GetJobTarget(j.Name)
 		if tgt == "" || tgt != machID {
 			continue
 		}
@@ -57,10 +57,10 @@ func (self *Engine) GetJobsScheduledToMachine(machID string) []job.Job {
 	return jobs
 }
 
-func (self *Engine) OfferJob(j job.Job) error {
+func (e *Engine) OfferJob(j job.Job) error {
 	log.V(1).Infof("Attempting to lock Job(%s)", j.Name)
 
-	mutex := self.lockJob(j.Name)
+	mutex := e.lockJob(j.Name)
 	if mutex == nil {
 		log.V(1).Infof("Could not lock Job(%s)", j.Name)
 		return errors.New("Could not lock Job")
@@ -69,7 +69,7 @@ func (self *Engine) OfferJob(j job.Job) error {
 
 	log.V(1).Infof("Claimed Job(%s)", j.Name)
 
-	machineIDs, err := self.partitionCluster(&j)
+	machineIDs, err := e.partitionCluster(&j)
 	if err != nil {
 		log.Errorf("Failed partitioning cluster for Job(%s): %v", j.Name, err)
 		return err
@@ -77,15 +77,15 @@ func (self *Engine) OfferJob(j job.Job) error {
 
 	offer := job.NewOfferFromJob(j, machineIDs)
 
-	self.registry.CreateJobOffer(offer)
+	e.registry.CreateJobOffer(offer)
 	log.Infof("Published JobOffer(%s)", offer.Job.Name)
 
 	return nil
 }
 
-func (self *Engine) ResolveJobOffer(jobName string, machID string) error {
+func (e *Engine) ResolveJobOffer(jobName string, machID string) error {
 	log.V(1).Infof("Attempting to lock JobOffer(%s)", jobName)
-	mutex := self.lockJobOffer(jobName)
+	mutex := e.lockJobOffer(jobName)
 
 	if mutex == nil {
 		log.V(1).Infof("Could not lock JobOffer(%s)", jobName)
@@ -95,13 +95,13 @@ func (self *Engine) ResolveJobOffer(jobName string, machID string) error {
 
 	log.V(1).Infof("Claimed JobOffer(%s)", jobName)
 
-	err := self.registry.ResolveJobOffer(jobName)
+	err := e.registry.ResolveJobOffer(jobName)
 	if err != nil {
 		log.Errorf("Failed resolving JobOffer(%s): %v", jobName, err)
 		return err
 	}
 
-	err = self.registry.ScheduleJob(jobName, machID)
+	err = e.registry.ScheduleJob(jobName, machID)
 	if err != nil {
 		log.Errorf("Failed scheduling Job(%s): %v", jobName, err)
 		return err
@@ -111,19 +111,19 @@ func (self *Engine) ResolveJobOffer(jobName string, machID string) error {
 	return nil
 }
 
-func (self *Engine) RemoveUnitState(jobName string) {
-	self.registry.RemoveUnitState(jobName)
+func (e *Engine) RemoveUnitState(jobName string) {
+	e.registry.RemoveUnitState(jobName)
 }
 
-func (self *Engine) lockJobOffer(jobName string) *registry.TimedResourceMutex {
-	return self.registry.LockJobOffer(jobName, self.machine.State().ID)
+func (e *Engine) lockJobOffer(jobName string) *registry.TimedResourceMutex {
+	return e.registry.LockJobOffer(jobName, e.machine.State().ID)
 }
 
-func (self *Engine) lockJob(jobName string) *registry.TimedResourceMutex {
-	return self.registry.LockJob(jobName, self.machine.State().ID)
+func (e *Engine) lockJob(jobName string) *registry.TimedResourceMutex {
+	return e.registry.LockJob(jobName, e.machine.State().ID)
 }
 
 // Pass-through to Registry.LockMachine
-func (self *Engine) LockMachine(machID string) *registry.TimedResourceMutex {
-	return self.registry.LockMachine(machID, self.machine.State().ID)
+func (e *Engine) LockMachine(machID string) *registry.TimedResourceMutex {
+	return e.registry.LockMachine(machID, e.machine.State().ID)
 }

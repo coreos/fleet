@@ -17,32 +17,32 @@ func NewEventBus() *EventBus {
 	return &EventBus{listeners, make(chan *Event)}
 }
 
-func (self *EventBus) Listen(stop chan bool) {
+func (eb *EventBus) Listen(stop chan bool) {
 	go func() {
 		for {
 			select {
 			case <-stop:
 				return
-			case ev := <-self.Channel:
-				self.dispatch(ev)
+			case ev := <-eb.Channel:
+				eb.dispatch(ev)
 			}
 		}
 	}()
 }
 
-func (self *EventBus) AddListener(name string, l interface{}) {
-	self.listeners[name] = l
+func (eb *EventBus) AddListener(name string, l interface{}) {
+	eb.listeners[name] = l
 }
 
-func (self *EventBus) RemoveListener(name string) {
-	delete(self.listeners, name)
+func (eb *EventBus) RemoveListener(name string) {
+	delete(eb.listeners, name)
 }
 
 // Distribute an Event to all listeners registered to Event.Type
-func (self *EventBus) dispatch(ev *Event) {
+func (eb *EventBus) dispatch(ev *Event) {
 	log.V(1).Infof("Dispatching %s to listeners", ev.Type)
 	handlerFuncName := fmt.Sprintf("Handle%s", ev.Type)
-	for name, listener := range self.listeners {
+	for name, listener := range eb.listeners {
 		log.V(1).Infof("Looking for event handler func %s on listener %s", handlerFuncName, name)
 		handlerFunc := reflect.ValueOf(listener).MethodByName(handlerFuncName)
 		if handlerFunc.IsValid() {

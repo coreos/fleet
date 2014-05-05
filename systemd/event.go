@@ -16,10 +16,10 @@ func NewEventStream() *EventStream {
 	return &EventStream{make(chan bool)}
 }
 
-func (self *EventStream) Stream(unitchan <-chan map[string]*dbus.UnitStatus, eventchan chan *event.Event) {
+func (es *EventStream) Stream(unitchan <-chan map[string]*dbus.UnitStatus, eventchan chan *event.Event) {
 	for true {
 		select {
-		case <-self.close:
+		case <-es.close:
 			return
 		case units := <-unitchan:
 			log.V(1).Infof("Received event from dbus")
@@ -33,8 +33,8 @@ func (self *EventStream) Stream(unitchan <-chan map[string]*dbus.UnitStatus, eve
 	}
 }
 
-func (self *EventStream) Close() {
-	close(self.close)
+func (es *EventStream) Close() {
+	close(es.close)
 }
 
 func translateUnitStatusEvents(changes map[string]*dbus.UnitStatus) []event.Event {
