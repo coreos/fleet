@@ -17,29 +17,29 @@ func TestSignedRequests(t *testing.T) {
 	if err := cluster.CreateMember("1", cfg); err != nil {
 		t.Fatal(err)
 	}
-	_, err = waitForNMachines(1)
+	_, err = cluster.WaitForNMachines(1)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	_, _, err = fleetctl("submit", "--sign=false", "fixtures/units/hello.service")
+	_, _, err = cluster.Fleetctl("submit", "--sign=false", "fixtures/units/hello.service")
 	if err != nil {
 		t.Fatalf("Failed submitting hello.service: %v", err)
 	}
 
 	// The start command should succeed, but the unit should not actually get scheduled
 	// and started on an agent since it is not signed.
-	_, _, err = fleetctl("load", "--no-block", "fixtures/units/hello.service")
+	_, _, err = cluster.Fleetctl("load", "--no-block", "fixtures/units/hello.service")
 	if err != nil {
 		t.Fatalf("Failed calling load on hello.service: %v", err)
 	}
 
-	_, _, err = fleetctl("start", "--no-block", "--sign=true", "fixtures/units/goodbye.service")
+	_, _, err = cluster.Fleetctl("start", "--no-block", "--sign=true", "fixtures/units/goodbye.service")
 	if err != nil {
 		t.Fatalf("Failed starting goodbye.service: %v", err)
 	}
 
-	units, err := waitForNActiveUnits(1)
+	units, err := cluster.WaitForNActiveUnits(1)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -16,7 +16,7 @@ const (
 )
 
 func (r *Registry) CreateJobOffer(jo *job.JobOffer) {
-	key := path.Join(keyPrefix, offerPrefix, jo.Job.Name, "object")
+	key := path.Join(r.keyPrefix, offerPrefix, jo.Job.Name, "object")
 	json, err := marshal(jo)
 	if err != nil {
 		log.Errorf(err.Error())
@@ -28,7 +28,7 @@ func (r *Registry) CreateJobOffer(jo *job.JobOffer) {
 func (r *Registry) UnresolvedJobOffers() []job.JobOffer {
 	var offers []job.JobOffer
 
-	key := path.Join(keyPrefix, offerPrefix)
+	key := path.Join(r.keyPrefix, offerPrefix)
 	resp, err := r.etcd.Get(key, true, true)
 
 	if err != nil {
@@ -59,7 +59,7 @@ func (r *Registry) UnresolvedJobOffers() []job.JobOffer {
 }
 
 func (r *Registry) LockJobOffer(jobName, context string) *TimedResourceMutex {
-	key := path.Join(keyPrefix, offerPrefix, jobName)
+	key := path.Join(r.keyPrefix, offerPrefix, jobName)
 	_, err := r.etcd.Get(key, false, true)
 	if err != nil {
 		return nil
@@ -69,18 +69,18 @@ func (r *Registry) LockJobOffer(jobName, context string) *TimedResourceMutex {
 }
 
 func (r *Registry) ResolveJobOffer(jobName string) error {
-	key := path.Join(keyPrefix, offerPrefix, jobName, "object")
+	key := path.Join(r.keyPrefix, offerPrefix, jobName, "object")
 	if _, err := r.etcd.Delete(key, false); err != nil {
 		return err
 	}
 
-	key = path.Join(keyPrefix, offerPrefix, jobName)
+	key = path.Join(r.keyPrefix, offerPrefix, jobName)
 	r.etcd.Delete(key, true)
 	return nil
 }
 
 func (r *Registry) SubmitJobBid(jb *job.JobBid) {
-	key := path.Join(keyPrefix, offerPrefix, jb.JobName, "bids", jb.MachineID)
+	key := path.Join(r.keyPrefix, offerPrefix, jb.JobName, "bids", jb.MachineID)
 	//TODO: Use a TTL
 	r.etcd.Set(key, "", 0)
 }

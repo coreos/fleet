@@ -20,12 +20,12 @@ func TestDynamicClusterNewMemberUnitMigration(t *testing.T) {
 	if err := platform.CreateNClusterMembers(cluster, 4, platform.MachineConfig{}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err = waitForNMachines(4); err != nil {
+	if _, err = cluster.WaitForNMachines(4); err != nil {
 		t.Fatal(err)
 	}
 
 	// Start 3 conflicting units on the 4-node cluster
-	if _, _, err := fleetctl("start",
+	if _, _, err := cluster.Fleetctl("start",
 		"fixtures/units/conflict.0.service",
 		"fixtures/units/conflict.1.service",
 		"fixtures/units/conflict.2.service",
@@ -35,7 +35,7 @@ func TestDynamicClusterNewMemberUnitMigration(t *testing.T) {
 
 	// All 3 services should be visible immediately, and all of them should
 	// become ACTIVE shortly thereafter
-	stdout, _, err := fleetctl("list-units", "--no-legend")
+	stdout, _, err := cluster.Fleetctl("list-units", "--no-legend")
 	if err != nil {
 		t.Fatalf("Failed to run list-units: %v", err)
 	}
@@ -43,7 +43,7 @@ func TestDynamicClusterNewMemberUnitMigration(t *testing.T) {
 	if len(units) != 3 {
 		t.Fatalf("Did not find 3 units in cluster: \n%s", stdout)
 	}
-	states, err := waitForNActiveUnits(3)
+	states, err := cluster.WaitForNActiveUnits(3)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -51,13 +51,13 @@ func TestDynamicClusterNewMemberUnitMigration(t *testing.T) {
 	// Kill one of the machines and make sure the unit migrates somewhere else
 	unit := "conflict.1.service"
 	oldMach := states[unit].Machine
-	if _, _, err = fleetctl("--strict-host-key-checking=false", "ssh", oldMach, "sudo", "systemctl", "stop", "fleet"); err != nil {
+	if _, _, err = cluster.Fleetctl("--strict-host-key-checking=false", "ssh", oldMach, "sudo", "systemctl", "stop", "fleet"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err = waitForNMachines(3); err != nil {
+	if _, err = cluster.WaitForNMachines(3); err != nil {
 		t.Fatal(err)
 	}
-	newStates, err := waitForNActiveUnits(3)
+	newStates, err := cluster.WaitForNActiveUnits(3)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -88,11 +88,11 @@ func TestDynamicClusterMemberReboot(t *testing.T) {
 	if err := platform.CreateNClusterMembers(cluster, 3, platform.MachineConfig{}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err = waitForNMachines(3); err != nil {
+	if _, err = cluster.WaitForNMachines(3); err != nil {
 		t.Fatal(err)
 	}
 
-	if _, _, err := fleetctl("start",
+	if _, _, err := cluster.Fleetctl("start",
 		"fixtures/units/conflict.0.service",
 		"fixtures/units/conflict.1.service",
 		"fixtures/units/conflict.2.service",
@@ -102,7 +102,7 @@ func TestDynamicClusterMemberReboot(t *testing.T) {
 
 	// All 3 services should be visible immediately, and all of them should
 	// become ACTIVE shortly thereafter
-	stdout, _, err := fleetctl("list-units", "--no-legend")
+	stdout, _, err := cluster.Fleetctl("list-units", "--no-legend")
 	if err != nil {
 		t.Fatalf("Failed to run list-units: %v", err)
 	}
@@ -110,7 +110,7 @@ func TestDynamicClusterMemberReboot(t *testing.T) {
 	if len(units) != 3 {
 		t.Fatalf("Did not find 3 units in cluster: \n%s", stdout)
 	}
-	oldStates, err := waitForNActiveUnits(3)
+	oldStates, err := cluster.WaitForNActiveUnits(3)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -123,19 +123,19 @@ func TestDynamicClusterMemberReboot(t *testing.T) {
 	if err = cluster.DestroyMember(member); err != nil {
 		t.Fatal(err)
 	}
-	if _, err = waitForNMachines(2); err != nil {
+	if _, err = cluster.WaitForNMachines(2); err != nil {
 		t.Fatal(err)
 	}
-	if _, err = waitForNActiveUnits(2); err != nil {
+	if _, err = cluster.WaitForNActiveUnits(2); err != nil {
 		t.Fatal(err)
 	}
 	if err = cluster.CreateMember(member, platform.MachineConfig{}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err = waitForNMachines(3); err != nil {
+	if _, err = cluster.WaitForNMachines(3); err != nil {
 		t.Fatal(err)
 	}
-	newStates, err := waitForNActiveUnits(3)
+	newStates, err := cluster.WaitForNActiveUnits(3)
 	if err != nil {
 		t.Fatal(err)
 	}

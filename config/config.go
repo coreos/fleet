@@ -14,6 +14,7 @@ import (
 
 type Config struct {
 	EtcdServers        []string
+	EtcdKeyPrefix      string
 	PublicIP           string
 	Verbosity          int
 	RawMetadata        string

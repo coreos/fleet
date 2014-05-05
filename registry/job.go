@@ -22,7 +22,7 @@ const (
 func (r *Registry) GetAllJobs() []job.Job {
 	var jobs []job.Job
 
-	key := path.Join(keyPrefix, jobPrefix)
+	key := path.Join(r.keyPrefix, jobPrefix)
 	resp, err := r.etcd.Get(key, true, true)
 
 	if err != nil {
@@ -52,7 +52,7 @@ func (r *Registry) GetAllJobs() []job.Job {
 // empty string is returned.
 func (r *Registry) GetJobTarget(jobName string) string {
 	// Figure out to which Machine this Job is scheduled
-	key := jobTargetAgentPath(jobName)
+	key := r.jobTargetAgentPath(jobName)
 	resp, err := r.etcd.Get(key, false, true)
 	if err != nil {
 		return ""
@@ -62,7 +62,7 @@ func (r *Registry) GetJobTarget(jobName string) string {
 }
 
 func (r *Registry) ClearJobTarget(jobName, machID string) error {
-	key := jobTargetAgentPath(jobName)
+	key := r.jobTargetAgentPath(jobName)
 	_, err := r.etcd.CompareAndDelete(key, machID, 0)
 	return err
 }
@@ -70,7 +70,7 @@ func (r *Registry) ClearJobTarget(jobName, machID string) error {
 // GetJob looks for a Job of the given name in the Registry. It returns a fully
 // hydrated Job on success, or nil on any kind of failure.
 func (r *Registry) GetJob(jobName string) (j *job.Job) {
-	key := path.Join(keyPrefix, jobPrefix, jobName, "object")
+	key := path.Join(r.keyPrefix, jobPrefix, jobName, "object")
 	resp, err := r.etcd.Get(key, false, true)
 
 	// Assume the error was KeyNotFound and return an empty data structure
@@ -137,7 +137,7 @@ type jobModel struct {
 // associated Payload and SignatureSet. It does not yet remove underlying
 // Units from the repository.
 func (r *Registry) DestroyJob(jobName string) {
-	key := path.Join(keyPrefix, jobPrefix, jobName)
+	key := path.Join(r.keyPrefix, jobPrefix, jobName)
 	r.etcd.Delete(key, true)
 	// TODO(jonboulle): add unit reference counting and actually destroying Units
 	r.destroyLegacyPayload(jobName)
@@ -146,7 +146,7 @@ func (r *Registry) DestroyJob(jobName string) {
 
 // destroyLegacyPayload removes an old-style Payload from the registry
 func (r *Registry) destroyLegacyPayload(payloadName string) {
-	key := path.Join(keyPrefix, payloadPrefix, payloadName)
+	key := path.Join(r.keyPrefix, payloadPrefix, payloadName)
 	r.etcd.Delete(key, false)
 }
 
@@ -156,7 +156,7 @@ func (r *Registry) CreateJob(j *job.Job) (err error) {
 		return err
 	}
 
-	key := path.Join(keyPrefix, jobPrefix, j.Name, "object")
+	key := path.Join(r.keyPrefix, jobPrefix, j.Name, "object")
 	json, _ := marshal(j)
 
 	_, err = r.etcd.Create(key, json, 0)
@@ -168,7 +168,7 @@ func (r *Registry) CreateJob(j *job.Job) (err error) {
 }
 
 func (r *Registry) GetJobTargetState(jobName string) *job.JobState {
-	key := jobTargetStatePath(jobName)
+	key := r.jobTargetStatePath(jobName)
 	resp, err := r.etcd.Get(key, false, false)
 	if err != nil {
 		if err.(*etcd.EtcdError).ErrorCode != etcdErr.EcodeNodeExist {
@@ -181,7 +181,7 @@ func (r *Registry) GetJobTargetState(jobName string) *job.JobState {
 }
 
 func (r *Registry) SetJobTargetState(jobName string, state job.JobState) error {
-	key := jobTargetStatePath(jobName)
+	key := r.jobTargetStatePath(jobName)
 	_, err := r.etcd.Set(key, string(state), 0)
 	return err
 }
@@ -235,7 +235,7 @@ func (es *EventStream) filterJobTargetStateChanges(resp *etcd.Response) *event.E
 }
 
 func (r *Registry) ScheduleJob(jobName string, machID string) error {
-	key := jobTargetAgentPath(jobName)
+	key := r.jobTargetAgentPath(jobName)
 	_, err := r.etcd.Create(key, machID, 0)
 	return err
 }
@@ -293,10 +293,10 @@ func filterEventJobDestroyed(resp *etcd.Response) *event.Event {
 	return &event.Event{"EventJobDestroyed", jobName, nil}
 }
 
-func jobTargetAgentPath(jobName string) string {
-	return path.Join(keyPrefix, jobPrefix, jobName, "target")
+func (r *Registry) jobTargetAgentPath(jobName string) string {
+	return path.Join(r.keyPrefix, jobPrefix, jobName, "target")
 }
 
-func jobTargetStatePath(jobName string) string {
-	return path.Join(keyPrefix, jobPrefix, jobName, "target-state")
+func (r *Registry) jobTargetStatePath(jobName string) string {
+	return path.Join(r.keyPrefix, jobPrefix, jobName, "target-state")
 }

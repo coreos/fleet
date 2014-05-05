@@ -22,7 +22,7 @@ func (r *Registry) lockResource(class, id, context string) *TimedResourceMutex {
 	mutexName := fmt.Sprintf("%s-%s", class, id)
 	log.V(1).Infof("Attempting to acquire mutex on %s", mutexName)
 
-	key := path.Join(keyPrefix, mutexPrefix, mutexName)
+	key := path.Join(r.keyPrefix, mutexPrefix, mutexName)
 	resp, err := r.etcd.Create(key, context, uint64(ResourceMutexTTL))
 
 	if err != nil {

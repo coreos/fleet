@@ -20,7 +20,7 @@ func TestKnownHostsVerification(t *testing.T) {
 	if err := cluster.CreateMember("1", platform.MachineConfig{}); err != nil {
 		t.Fatal(err)
 	}
-	machines, err := waitForNMachines(1)
+	machines, err := cluster.WaitForNMachines(1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -35,21 +35,21 @@ func TestKnownHostsVerification(t *testing.T) {
 
 	khFile := tmp.Name()
 
-	if _, _, err := fleetctlWithInput("yes", "--strict-host-key-checking=true", fmt.Sprintf("--known-hosts-file=%s", khFile), "ssh", machine, "uptime"); err != nil {
+	if _, _, err := cluster.FleetctlWithInput("yes", "--strict-host-key-checking=true", fmt.Sprintf("--known-hosts-file=%s", khFile), "ssh", machine, "uptime"); err != nil {
 		t.Errorf("Unable to SSH into fleet machine: %v", err)
 	}
 
 	// Recreation of the cluster simulates a change in the server's host key
 	cluster.DestroyMember("1")
 	cluster.CreateMember("1", platform.MachineConfig{})
-	machines, err = waitForNMachines(1)
+	machines, err = cluster.WaitForNMachines(1)
 	if err != nil {
 		t.Fatal(err)
 	}
 	machine = machines[0]
 
 	// SSH'ing to the cluster member should now fail with a host key mismatch
-	if _, _, err := fleetctl("--strict-host-key-checking=true", fmt.Sprintf("--known-hosts-file=%s", khFile), "ssh", machine, "uptime"); err == nil {
+	if _, _, err := cluster.Fleetctl("--strict-host-key-checking=true", fmt.Sprintf("--known-hosts-file=%s", khFile), "ssh", machine, "uptime"); err == nil {
 		t.Errorf("Expected error while SSH'ing to fleet machine")
 	}
 
@@ -59,7 +59,7 @@ func TestKnownHostsVerification(t *testing.T) {
 	}
 
 	// And SSH should work again
-	if _, _, err := fleetctlWithInput("yes", "--strict-host-key-checking=true", fmt.Sprintf("--known-hosts-file=%s", khFile), "ssh", machine, "uptime"); err != nil {
+	if _, _, err := cluster.FleetctlWithInput("yes", "--strict-host-key-checking=true", fmt.Sprintf("--known-hosts-file=%s", khFile), "ssh", machine, "uptime"); err != nil {
 		t.Errorf("Unable to SSH into fleet machine: %v", err)
 	}
 

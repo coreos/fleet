@@ -12,7 +12,7 @@ const (
 
 // CreateSignatureSet stores the given SignatureSet in the repository
 func (r *Registry) CreateSignatureSet(ss *sign.SignatureSet) error {
-	key := signatureSetPath(ss.Tag)
+	key := r.signatureSetPath(ss.Tag)
 	json, _ := marshal(ss)
 	_, err := r.etcd.Create(key, json, 0)
 	return err
@@ -20,13 +20,13 @@ func (r *Registry) CreateSignatureSet(ss *sign.SignatureSet) error {
 
 // DestroySignatureSet destroys the SignatureSet associated with the given tag
 func (r *Registry) DestroySignatureSet(tag string) {
-	key := signatureSetPath(tag)
+	key := r.signatureSetPath(tag)
 	r.etcd.Delete(key, false)
 }
 
 // GetSignatureSet returns the SignatureSet associated with the given tag
 func (r *Registry) GetSignatureSet(tag string) *sign.SignatureSet {
-	key := signatureSetPath(tag)
+	key := r.signatureSetPath(tag)
 	resp, err := r.etcd.Get(key, false, true)
 
 	// Assume the error was KeyNotFound and return an empty data structure
@@ -51,6 +51,6 @@ func (r *Registry) destroySignatureSetOfJob(name string) {
 	r.DestroySignatureSet(sign.TagForJob(name))
 }
 
-func signatureSetPath(s string) string {
-	return path.Join(keyPrefix, signingPrefix, s)
+func (r *Registry) signatureSetPath(s string) string {
+	return path.Join(r.keyPrefix, signingPrefix, s)
 }

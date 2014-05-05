@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/coreos/fleet/functional/platform"
+	"github.com/coreos/fleet/functional/util"
 )
 
 // Start three pairs of services, asserting each pair land on the same
@@ -23,14 +24,14 @@ func TestScheduleConditionMachineOf(t *testing.T) {
 	if err := platform.CreateNClusterMembers(cluster, 3, platform.MachineConfig{}); err != nil {
 		t.Fatal(err)
 	}
-	machines, err := waitForNMachines(3)
+	machines, err := cluster.WaitForNMachines(3)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Ensure we can SSH into each machine using fleetctl
 	for _, machine := range machines {
-		if _, _, err := fleetctl("--strict-host-key-checking=false", "ssh", machine, "uptime"); err != nil {
+		if _, _, err := cluster.Fleetctl("--strict-host-key-checking=false", "ssh", machine, "uptime"); err != nil {
 			t.Errorf("Unable to SSH into fleet machine: %v", err)
 		}
 	}
@@ -39,7 +40,7 @@ func TestScheduleConditionMachineOf(t *testing.T) {
 	for i := 0; i < 3; i++ {
 		ping := fmt.Sprintf("fixtures/units/ping.%d.service", i)
 		pong := fmt.Sprintf("fixtures/units/pong.%d.service", i)
-		_, _, err := fleetctl("start", "--no-block", ping, pong)
+		_, _, err := cluster.Fleetctl("start", "--no-block", ping, pong)
 		if err != nil {
 			t.Errorf("Failed starting units: %v", err)
 		}
@@ -47,7 +48,7 @@ func TestScheduleConditionMachineOf(t *testing.T) {
 
 	// All 6 services should be visible immediately and become ACTIVE
 	// shortly thereafter
-	stdout, _, err := fleetctl("list-units", "--no-legend")
+	stdout, _, err := cluster.Fleetctl("list-units", "--no-legend")
 	if err != nil {
 		t.Fatalf("Failed to run list-units: %v", err)
 	}
@@ -55,7 +56,7 @@ func TestScheduleConditionMachineOf(t *testing.T) {
 	if len(units) != 6 {
 		t.Fatalf("Did not find six units in cluster: \n%s", stdout)
 	}
-	states, err := waitForNActiveUnits(6)
+	states, err := cluster.WaitForNActiveUnits(6)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -90,13 +91,13 @@ func TestScheduleConditionMachineOf(t *testing.T) {
 
 	// Ensure a pair of units migrate together when their host goes down
 	mach := states["ping.1.service"].Machine
-	if _, _, err = fleetctl("--strict-host-key-checking=false", "ssh", mach, "sudo", "systemctl", "stop", "fleet"); err != nil {
+	if _, _, err = cluster.Fleetctl("--strict-host-key-checking=false", "ssh", mach, "sudo", "systemctl", "stop", "fleet"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := waitForNMachines(2); err != nil {
+	if _, err := cluster.WaitForNMachines(2); err != nil {
 		t.Fatal(err)
 	}
-	states, err = waitForNActiveUnits(6)
+	states, err = cluster.WaitForNActiveUnits(6)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -125,21 +126,21 @@ func TestScheduleGlobalConflicts(t *testing.T) {
 	if err := platform.CreateNClusterMembers(cluster, 3, platform.MachineConfig{}); err != nil {
 		t.Fatal(err)
 	}
-	machines, err := waitForNMachines(3)
+	machines, err := cluster.WaitForNMachines(3)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Ensure we can SSH into each machine using fleetctl
 	for _, machine := range machines {
-		if _, _, err := fleetctl("--strict-host-key-checking=false", "ssh", machine, "uptime"); err != nil {
+		if _, _, err := cluster.Fleetctl("--strict-host-key-checking=false", "ssh", machine, "uptime"); err != nil {
 			t.Errorf("Unable to SSH into fleet machine: %v", err)
 		}
 	}
 
 	for i := 0; i < 5; i++ {
 		unit := fmt.Sprintf("fixtures/units/conflict.%d.service", i)
-		_, _, err := fleetctl("start", "--no-block", unit)
+		_, _, err := cluster.Fleetctl("start", "--no-block", unit)
 		if err != nil {
 			t.Errorf("Failed starting unit %s: %v", unit, err)
 		}
@@ -147,7 +148,7 @@ func TestScheduleGlobalConflicts(t *testing.T) {
 
 	// All 5 services should be visible immediately and 3 should become
 	// ACTIVE shortly thereafter
-	stdout, _, err := fleetctl("list-units", "--no-legend")
+	stdout, _, err := cluster.Fleetctl("list-units", "--no-legend")
 	if err != nil {
 		t.Fatalf("Failed to run list-units: %v", err)
 	}
@@ -155,7 +156,7 @@ func TestScheduleGlobalConflicts(t *testing.T) {
 	if len(units) != 5 {
 		t.Fatalf("Did not find five units in cluster: \n%s", stdout)
 	}
-	states, err := waitForNActiveUnits(3)
+	states, err := cluster.WaitForNActiveUnits(3)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -186,25 +187,25 @@ func TestScheduleOneWayConflict(t *testing.T) {
 	if err := platform.CreateNClusterMembers(cluster, 1, platform.MachineConfig{}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := waitForNMachines(1); err != nil {
+	if _, err := cluster.WaitForNMachines(1); err != nil {
 		t.Fatal(err)
 	}
 
 	// Start a unit that conflicts with a yet-to-be-scheduled unit
 	name := "fixtures/units/conflicts-with-hello.service"
-	if _, _, err := fleetctl("start", name); err != nil {
+	if _, _, err := cluster.Fleetctl("start", name); err != nil {
 		t.Fatalf("Failed starting unit %s: %v", name, err)
 	}
 
 	// Start a unit that has not defined conflicts
 	name = "fixtures/units/hello.service"
-	if _, _, err := fleetctl("start", name); err == nil {
+	if _, _, err := cluster.Fleetctl("start", name); err == nil {
 		t.Fatalf("Unit %s unexpectedly started", name)
 	}
 
 	// Both units should show up, but only conflicts-with-hello.service
 	// should report ACTIVE
-	stdout, _, err := fleetctl("list-units", "--no-legend")
+	stdout, _, err := cluster.Fleetctl("list-units", "--no-legend")
 	if err != nil {
 		t.Fatalf("Failed to run list-units: %v", err)
 	}
@@ -212,7 +213,7 @@ func TestScheduleOneWayConflict(t *testing.T) {
 	if len(units) != 2 {
 		t.Fatalf("Did not find two units in cluster: \n%s", stdout)
 	}
-	states, err := waitForNActiveUnits(1)
+	states, err := cluster.WaitForNActiveUnits(1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -237,7 +238,7 @@ func TestScheduleConditionMachineID(t *testing.T) {
 	if err := platform.CreateNClusterMembers(cluster, 3, platform.MachineConfig{}); err != nil {
 		t.Fatal(err)
 	}
-	machines, err := waitForNMachines(3)
+	machines, err := cluster.WaitForNMachines(3)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -252,13 +253,13 @@ ExecStart=/bin/bash -c "while true; do echo Hello, World!; sleep 1; done"
 [X-Fleet]
 X-ConditionMachineID=%s
 `
-		unitFile, err := tempUnit(fmt.Sprintf(contents, machine))
+		unitFile, err := util.TempUnit(fmt.Sprintf(contents, machine))
 		if err != nil {
 			t.Fatalf("Failed creating temporary unit: %v", err)
 		}
 		defer os.Remove(unitFile)
 
-		_, _, err = fleetctl("start", unitFile)
+		_, _, err = cluster.Fleetctl("start", unitFile)
 		if err != nil {
 			t.Fatalf("Failed starting unit file %s: %v", unitFile, err)
 		}
@@ -268,7 +269,7 @@ X-ConditionMachineID=%s
 	}
 
 	// Block until our three units have been started
-	states, err := waitForNActiveUnits(3)
+	states, err := cluster.WaitForNActiveUnits(3)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -35,7 +35,7 @@ func newAgentFromConfig(cfg config.Config) (*agent.Agent, error) {
 
 	regClient := etcd.NewClient(cfg.EtcdServers)
 	regClient.SetConsistency(etcd.STRONG_CONSISTENCY)
-	reg := registry.New(regClient)
+	reg := registry.New(regClient, cfg.EtcdKeyPrefix)
 
 	eClient := etcd.NewClient(cfg.EtcdServers)
 	eClient.SetConsistency(etcd.STRONG_CONSISTENCY)
@@ -59,7 +59,7 @@ func newEngineFromConfig(cfg config.Config) *engine.Engine {
 
 	regClient := etcd.NewClient(cfg.EtcdServers)
 	regClient.SetConsistency(etcd.STRONG_CONSISTENCY)
-	reg := registry.New(regClient)
+	reg := registry.New(regClient, cfg.EtcdKeyPrefix)
 
 	eClient := etcd.NewClient(cfg.EtcdServers)
 	eClient.SetConsistency(etcd.STRONG_CONSISTENCY)
