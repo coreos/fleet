@@ -52,8 +52,8 @@ type Unit struct {
 	Raw string
 }
 
-func (self *Unit) String() string {
-	return self.Raw
+func (u *Unit) String() string {
+	return u.Raw
 }
 
 // Hash returns the SHA1 hash of the raw contents of the Unit

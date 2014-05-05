@@ -68,20 +68,20 @@ func newEngineFromConfig(cfg config.Config) *engine.Engine {
 	return engine.New(reg, eStream, mach)
 }
 
-func (self *Server) Run() {
-	self.agent.Run()
-	self.engine.Run()
+func (s *Server) Run() {
+	s.agent.Run()
+	s.engine.Run()
 }
 
-func (self *Server) Stop() {
-	self.agent.Stop()
-	self.engine.Stop()
+func (s *Server) Stop() {
+	s.agent.Stop()
+	s.engine.Stop()
 }
 
-func (self *Server) Purge() {
-	self.agent.Purge()
+func (s *Server) Purge() {
+	s.agent.Purge()
 }
 
-func (self *Server) MarshalJSON() ([]byte, error) {
-	return json.Marshal(struct{ Agent *agent.Agent }{Agent: self.agent})
+func (s *Server) MarshalJSON() ([]byte, error) {
+	return json.Marshal(struct{ Agent *agent.Agent }{Agent: s.agent})
 }

@@ -45,14 +45,14 @@ func NewJob(name string, unit unit.Unit) *Job {
 	}
 }
 
-func (self *Job) Requirements() map[string][]string {
-	return self.Unit.Requirements()
+func (j *Job) Requirements() map[string][]string {
+	return j.Unit.Requirements()
 }
 
 // Conflicts returns a list of Job names that cannot be scheduled to the same
 // machine as this Job.
-func (self *Job) Conflicts() []string {
-	conflicts, ok := self.Requirements()[unit.FleetXConflicts]
+func (j *Job) Conflicts() []string {
+	conflicts, ok := j.Requirements()[unit.FleetXConflicts]
 	if ok {
 		return conflicts
 	} else {
@@ -62,8 +62,8 @@ func (self *Job) Conflicts() []string {
 
 // Peers returns a list of Job names that must be scheduled to the same
 // machine as this Job.
-func (self *Job) Peers() []string {
-	peers, ok := self.Requirements()[unit.FleetXConditionMachineOf]
+func (j *Job) Peers() []string {
+	peers, ok := j.Requirements()[unit.FleetXConditionMachineOf]
 	if !ok {
 		return []string{}
 	}
@@ -75,8 +75,8 @@ func (self *Job) Peers() []string {
 // represents the ID of such a machine, while the second value will be a bool
 // true. If no requirement exists, an empty string along with a bool false
 // will be returned.
-func (self *Job) RequiredTarget() (string, bool) {
-	requirements := self.Unit.Requirements()
+func (j *Job) RequiredTarget() (string, bool) {
+	requirements := j.Unit.Requirements()
 
 	machIDs, ok := requirements[unit.FleetXConditionMachineID]
 	if ok && len(machIDs) != 0 {
@@ -96,12 +96,12 @@ func (self *Job) RequiredTarget() (string, bool) {
 }
 
 // Type attempts to determine the Type of systemd unit that this Job contains, based on the suffix of the job name
-func (self *Job) Type() (string, error) {
+func (j *Job) Type() (string, error) {
 	for _, ut := range unit.SupportedUnitTypes() {
-		if strings.HasSuffix(self.Name, fmt.Sprintf(".%s", ut)) {
+		if strings.HasSuffix(j.Name, fmt.Sprintf(".%s", ut)) {
 			return ut, nil
 		}
 	}
 
-	return "", errors.New(fmt.Sprintf("Unrecognized systemd unit %s", self.Name))
+	return "", errors.New(fmt.Sprintf("Unrecognized systemd unit %s", j.Name))
 }

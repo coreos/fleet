@@ -8,8 +8,8 @@ import (
 
 // Description returns the first Description option found in the [Unit] section.
 // If the option is not defined, an empty string is returned.
-func (self *Unit) Description() string {
-	if values := self.Contents["Unit"]["Description"]; len(values) > 0 {
+func (u *Unit) Description() string {
+	if values := u.Contents["Unit"]["Description"]; len(values) > 0 {
 		return values[0]
 	}
 	return ""
