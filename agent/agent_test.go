@@ -130,6 +130,42 @@ X-Conflicts=*.[1-9].service
 	}
 }
 
+func TestHasConflictIgnoresUnscheduledJobs(t *testing.T) {
+	state := NewState()
+
+	u := unit.NewUnit(`[X-Fleet]
+X-Conflicts=other.service
+`)
+	j := job.NewJob("example.service", *u)
+	state.TrackJob(j)
+	state.SetTargetState(j.Name, job.JobStateInactive)
+
+	agent := Agent{state: state}
+
+	matched, name := agent.HasConflict("other.service", []string{})
+	if matched {
+		t.Errorf("Expected no conflict, but got conflict with %s", name)
+	}
+}
+
+func TestHasConflictIgnoresBids(t *testing.T) {
+	state := NewState()
+
+	u := unit.NewUnit(`[X-Fleet]
+X-Conflicts=other.service
+`)
+	j := job.NewJob("example.service", *u)
+	state.TrackJob(j)
+	state.TrackBid(j.Name)
+
+	agent := Agent{state: state}
+
+	matched, name := agent.HasConflict("other.service", []string{})
+	if matched {
+		t.Errorf("Expected no conflict, but got conflict with %s", name)
+	}
+}
+
 func TestAbleToRunWithConditionMachineMetadata(t *testing.T) {
 	metadataAbleToRunExamples := []struct {
 		C string
