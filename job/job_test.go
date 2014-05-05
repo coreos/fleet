@@ -81,7 +81,7 @@ Description=Testing
 X-Conflicts=*bar*
 `
 	j := NewJob("echo.service", *unit.NewUnit(contents))
-	conflicts := j.Unit.Conflicts()
+	conflicts := j.Conflicts()
 
 	if len(conflicts) != 1 {
 		t.Errorf("Expected 1 conflict, received %v", conflicts)
@@ -94,7 +94,7 @@ X-Conflicts=*bar*
 
 func TestJobConflictsNotProvided(t *testing.T) {
 	j := NewJob("echo.socket", *unit.NewUnit(""))
-	conflicts := j.Unit.Conflicts()
+	conflicts := j.Conflicts()
 
 	if len(conflicts) > 0 {
 		t.Fatalf("Expected no conflicts, received %v", conflicts)
