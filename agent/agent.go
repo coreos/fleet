@@ -110,7 +110,6 @@ func (a *Agent) Run() {
 // The returned value is the etcd index at which the agent's presence was announced.
 func (a *Agent) initialize() uint64 {
 	log.Infof("Initializing Agent")
-	a.machine.RefreshState()
 
 	var idx uint64
 	wait := time.Second
