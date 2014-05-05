@@ -91,6 +91,7 @@ func (r *Registry) getJobFromJSON(val string) *job.Job {
 		return nil
 	}
 
+	var err error
 	var unit *unit.Unit
 
 	// New-style Jobs should have a populated UnitHash, and the contents of the Unit are stored separately in the Registry
@@ -108,7 +109,7 @@ func (r *Registry) getJobFromJSON(val string) *job.Job {
 	} else {
 		// Old-style Jobs had "Payloads" instead of Units, also stored separately in the Registry
 		log.V(2).Infof("Legacy Job(%s) has no PayloadHash - looking for associated Payload", jm.Name)
-		unit, err := r.getUnitFromLegacyPayload(jm.Name)
+		unit, err = r.getUnitFromLegacyPayload(jm.Name)
 		if err != nil {
 			log.Errorf("Error retrieving legacy payload for Job(%s)", jm.Name)
 			return nil
