@@ -42,13 +42,13 @@ func NewState() *AgentState {
 	}
 }
 
-func (self *AgentState) lock() {
+func (self *AgentState) Lock() {
 	log.V(1).Infof("Attempting to lock AgentState")
 	self.mutex.Lock()
 	log.V(1).Infof("AgentState locked")
 }
 
-func (self *AgentState) unlock() {
+func (self *AgentState) Unlock() {
 	log.V(1).Infof("Attempting to unlock AgentState")
 	self.mutex.Unlock()
 	log.V(1).Infof("AgentState unlocked")
@@ -74,18 +74,12 @@ func (self *AgentState) MarshalJSON() ([]byte, error) {
 
 // TrackJob extracts and stores information about the given job for later reference
 func (self *AgentState) TrackJob(j *job.Job) {
-	self.lock()
-	defer self.unlock()
-
 	self.trackJobPeers(j.Name, j.Peers())
 	self.trackJobConflicts(j.Name, j.Unit.Conflicts())
 }
 
 // PurgeJob removes all state tracked on behalf of a given job
 func (self *AgentState) PurgeJob(jobName string) {
-	self.lock()
-	defer self.unlock()
-
 	self.dropTargetState(jobName)
 	self.dropPeersJob(jobName)
 	self.dropJobConflicts(jobName)
@@ -113,9 +107,6 @@ func (self *AgentState) trackJobPeers(jobName string, peers []string) {
 
 // Retrieve all Jobs that share a given Peer
 func (self *AgentState) GetJobsByPeer(peerName string) []string {
-	self.lock()
-	defer self.unlock()
-
 	peers, ok := self.peers[peerName]
 	if ok {
 		return peers
@@ -149,18 +140,12 @@ func (self *AgentState) dropPeersJob(jobName string) {
 }
 
 func (self *AgentState) TrackOffer(offer job.JobOffer) {
-	self.lock()
-	defer self.unlock()
-
 	self.offers[offer.Job.Name] = offer
 }
 
 // GetOffersWithoutBids returns all tracked JobOffers that have
 // no corresponding JobBid tracked in the same AgentState object.
 func (self *AgentState) GetOffersWithoutBids() []job.JobOffer {
-	self.lock()
-	defer self.unlock()
-
 	offers := make([]job.JobOffer, 0)
 	for _, offer := range self.offers {
 		if !self.bids[offer.Job.Name] {
@@ -171,24 +156,15 @@ func (self *AgentState) GetOffersWithoutBids() []job.JobOffer {
 }
 
 func (self *AgentState) PurgeOffer(name string) {
-	self.lock()
-	defer self.unlock()
-
 	delete(self.offers, name)
 	delete(self.bids, name)
 }
 
 func (self *AgentState) TrackBid(name string) {
-	self.lock()
-	defer self.unlock()
-
 	self.bids[name] = true
 }
 
 func (self *AgentState) HasBid(name string) bool {
-	self.lock()
-	defer self.unlock()
-
 	return self.bids[name]
 }
 
@@ -201,9 +177,6 @@ func globMatches(pattern, target string) bool {
 }
 
 func (self *AgentState) SetTargetState(jobName string, state job.JobState) {
-	self.lock()
-	defer self.unlock()
-
 	self.targetStates[jobName] = state
 }
 
@@ -212,9 +185,6 @@ func (self *AgentState) dropTargetState(jobName string) {
 }
 
 func (self *AgentState) LaunchedJobs() []string {
-	self.lock()
-	defer self.unlock()
-
 	jobs := make([]string, 0)
 	for j, ts := range self.targetStates {
 		if ts == job.JobStateLaunched {
@@ -225,9 +195,6 @@ func (self *AgentState) LaunchedJobs() []string {
 }
 
 func (self *AgentState) ScheduledJobs() []string {
-	self.lock()
-	defer self.unlock()
-
 	jobs := make([]string, 0)
 	for j, ts := range self.targetStates {
 		if ts == job.JobStateLoaded || ts == job.JobStateLaunched {
@@ -238,9 +205,6 @@ func (self *AgentState) ScheduledJobs() []string {
 }
 
 func (self *AgentState) ScheduledHere(jobName string) bool {
-	self.lock()
-	defer self.unlock()
-
 	ts := self.targetStates[jobName]
 	return ts == job.JobStateLoaded || ts == job.JobStateLaunched
 }

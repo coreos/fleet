@@ -508,9 +508,9 @@ func (a *Agent) UnresolvedJobOffers() []job.JobOffer {
 
 // HasConflict determines whether there are any known conflicts with the given argument
 func (a *Agent) HasConflict(potentialJobName string, potentialConflicts []string) (bool, string) {
-	// Iterate through each Job that is scheduled here or has already been bid upon, asserting two things
+	// Iterate through each Job that is scheduled here, asserting two things
 	for existingJobName, existingConflicts := range a.state.Conflicts {
-		if !a.state.HasBid(existingJobName) && !a.state.ScheduledHere(existingJobName) {
+		if !a.state.ScheduledHere(existingJobName) {
 			continue
 		}
 
