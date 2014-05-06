@@ -27,17 +27,14 @@ func TestUnitRunnable(t *testing.T) {
 	if _, _, err := cluster.Fleetctl("start", "fixtures/units/hello.service"); err != nil {
 		t.Fatalf("Unable to start fleet unit: %v", err)
 	}
-	stdout, _, err := cluster.Fleetctl("list-units", "--no-legend")
+
+	units, err := cluster.WaitForNActiveUnits(1)
 	if err != nil {
-		t.Fatalf("Failed to run list-units: %v", err)
+		t.Fatal(err)
 	}
-	units := strings.Split(strings.TrimSpace(stdout), "\n")
-	if len(units) != 1 {
-		t.Fatalf("Did not find 1 unit in cluster: \n%s", stdout)
-	}
-	cols := strings.Split(units[0], "\t")
-	if cols[3] != "active" {
-		t.Fatalf("Unit did not enter active state")
+	_, found := units["hello.service"]
+	if len(units) != 1 || !found {
+		t.Fatalf("Expected hello.service to be sole active unit, got %v", units)
 	}
 }
 
