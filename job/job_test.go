@@ -30,6 +30,8 @@ func TestNewJobGoodTypes(t *testing.T) {
 	cases := []string{
 		"service",
 		"socket",
+		"timer",
+		"path",
 	}
 
 	test := func(ut string) {

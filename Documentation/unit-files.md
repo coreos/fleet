@@ -1,10 +1,11 @@
 # Unit Files
 
-fleet will schedule any valid service or socket systemd unit to a machine in the cluster, taking into account a few special properties in the `[X-Fleet]` section. If you're new to using systemd unit files, check out the [Getting Started with systemd guide](https://coreos.com/docs/launching-containers/launching/getting-started-with-systemd).
+fleet will schedule any valid service, socket, path or timer systemd unit to a machine in the cluster, taking into account a few special properties in the `[X-Fleet]` section. If you're new to using systemd unit files, check out the [Getting Started with systemd guide](https://coreos.com/docs/launching-containers/launching/getting-started-with-systemd).
 
 ## Unit Requirements
 
-* Only service and socket unit types are supported, and file names must have '.service' and '.socket' file extensions, respectively.
+* Only service, socket, path and timer unit types are supported.
+* Each unit file must have a file extension corresponding to its respective unit type.
 
 ## fleet-specific Options
 
