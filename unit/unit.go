@@ -3,7 +3,6 @@ package unit
 import (
 	"crypto/sha1"
 	"fmt"
-	"strings"
 
 	"github.com/coreos/fleet/machine"
 )
@@ -46,29 +45,6 @@ func (u *Unit) String() string {
 // Hash returns the SHA1 hash of the raw contents of the Unit
 func (u *Unit) Hash() Hash {
 	return Hash(sha1.Sum([]byte(u.Raw)))
-}
-
-// Requirements returns all relevant options from the [X-Fleet] section of a unit file.
-// Relevant options are identified with a `X-` prefix in the unit.
-// This prefix is stripped from relevant options before being returned.
-func (u *Unit) Requirements() map[string][]string {
-	requirements := make(map[string][]string)
-	for key, value := range u.Contents["X-Fleet"] {
-		if !strings.HasPrefix(key, "X-") {
-			continue
-		}
-
-		// Strip off leading X-
-		key = key[2:]
-
-		if _, ok := requirements[key]; !ok {
-			requirements[key] = make([]string, 0)
-		}
-
-		requirements[key] = value
-	}
-
-	return requirements
 }
 
 // UnitState encodes the current state of a unit loaded into systemd

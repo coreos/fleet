@@ -62,8 +62,27 @@ func NewJob(name string, unit unit.Unit) *Job {
 	}
 }
 
+// Requirements returns all relevant options from the [X-Fleet] section of a unit file.
+// Relevant options are identified with a `X-` prefix in the unit.
+// This prefix is stripped from relevant options before being returned.
 func (j *Job) Requirements() map[string][]string {
-	return j.Unit.Requirements()
+	requirements := make(map[string][]string)
+	for key, value := range j.Unit.Contents["X-Fleet"] {
+		if !strings.HasPrefix(key, "X-") {
+			continue
+		}
+
+		// Strip off leading X-
+		key = key[2:]
+
+		if _, ok := requirements[key]; !ok {
+			requirements[key] = make([]string, 0)
+		}
+
+		requirements[key] = value
+	}
+
+	return requirements
 }
 
 // Conflicts returns a list of Job names that cannot be scheduled to the same
@@ -93,7 +112,7 @@ func (j *Job) Peers() []string {
 // true. If no requirement exists, an empty string along with a bool false
 // will be returned.
 func (j *Job) RequiredTarget() (string, bool) {
-	requirements := j.Unit.Requirements()
+	requirements := j.Requirements()
 
 	machIDs, ok := requirements[fleetXConditionMachineID]
 	if ok && len(machIDs) != 0 {
@@ -126,7 +145,7 @@ func (j *Job) Type() (string, error) {
 // RequiredTargetMetadata return all machine-related metadata from a Job's requirements
 func (j *Job) RequiredTargetMetadata() map[string][]string {
 	metadata := make(map[string][]string)
-	for key, values := range j.Unit.Requirements() {
+	for key, values := range j.Requirements() {
 		// Deprecated syntax added to the metadata via the old `--require` flag.
 		if strings.HasPrefix(key, fleetFlagMachineMetadata) {
 			if len(values) == 0 {
