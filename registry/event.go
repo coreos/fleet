@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	etcdErr "github.com/coreos/fleet/third_party/github.com/coreos/etcd/error"
 	"github.com/coreos/fleet/third_party/github.com/coreos/go-etcd/etcd"
 	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
 
@@ -67,9 +68,26 @@ func watch(client *etcd.Client, idx uint64, etcdchan chan *etcd.Response, key st
 			if err == nil {
 				idx = resp.Node.ModifiedIndex + 1
 				etcdchan <- resp
-			} else {
-				log.Errorf("etcd watcher returned error: key=%s, err=\"%s\"", key, err.Error())
+				continue
+			}
 
+			log.Errorf("etcd watcher returned error: key=%s, err=\"%s\"", key, err.Error())
+
+			etcdError, ok := err.(*etcd.EtcdError)
+			if !ok {
+				// Let's not slam the etcd server in the event that we know
+				// an unexpected error occurred.
+				time.Sleep(time.Second)
+				continue
+			}
+
+			switch etcdError.ErrorCode {
+			case etcdErr.EcodeEventIndexCleared:
+				// This is racy, but adding one to the last known index
+				// will help get this watcher back into the range of
+				// etcd's internal event history
+				idx = idx + 1
+			default:
 				// Let's not slam the etcd server in the event that we know
 				// an unexpected error occurred.
 				time.Sleep(time.Second)
