@@ -41,7 +41,7 @@ var (
 	commands []*Command
 
 	// global Registry used by commands
-	registryCtl Registry
+	registryCtl registry.Registry
 
 	// flags used by all commands
 	globalFlags = struct {
@@ -172,7 +172,7 @@ func main() {
 
 	// TODO(jonboulle): increase cleverness of registry initialization
 	if cmd.Name != "help" && cmd.Name != "version" {
-		registryCtl = NewRegistry(getRegistry())
+		registryCtl = getRegistry()
 	}
 
 	os.Exit(cmd.Run(cmd.Flags.Args()))
@@ -202,7 +202,7 @@ func getFlagsFromEnv(prefix string, fs *flag.FlagSet) {
 }
 
 // getRegistry initializes a connection to the Registry
-func getRegistry() *registry.Registry {
+func getRegistry() registry.Registry {
 	tun := getTunnelFlag()
 
 	machines := []string{globalFlags.Endpoint}

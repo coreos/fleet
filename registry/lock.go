@@ -18,7 +18,7 @@ const (
 // lockResource will attempt to lock a mutex on a resource defined by the
 // provided class and id. The context will be persisted to the Registry to
 // track by whom the mutex is currently locked.
-func (r *Registry) lockResource(class, id, context string) *TimedResourceMutex {
+func (r *EtcdRegistry) lockResource(class, id, context string) *TimedResourceMutex {
 	mutexName := fmt.Sprintf("%s-%s", class, id)
 	log.V(1).Infof("Attempting to acquire mutex on %s", mutexName)
 
