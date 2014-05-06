@@ -78,13 +78,13 @@ At this point, it is simple enough to hand the two unit files over to fleet:
 ```
 $ fleetctl submit subgun-presence.*.service subgun-http.*.service
 $ fleetctl list-units
-UNIT						LOAD	ACTIVE	SUB	DESC	MACHINE
-subgun-presence.1.service	-		-		-	-		-
-subgun-presence.2.service	-		-		-	-		-
-subgun-presence.3.service	-		-		-	-		-
-subgun.1.service			-		-		-	-		-
-subgun.2.service			-		-		-	-		-
-subgun.3.service			-		-		-	-		-
+UNIT						STATE	LOAD	ACTIVE	SUB	DESC	MACHINE
+subgun-presence.1.service	-		-		-		-	-		-
+subgun-presence.2.service	-		-		-		-	-		-
+subgun-presence.3.service	-		-		-		-	-		-
+subgun.1.service			-		-		-		-	-		-
+subgun.2.service			-		-		-		-	-		-
+subgun.3.service			-		-		-		-	-		-
 ```
 
 And now they can be started:
@@ -92,13 +92,13 @@ And now they can be started:
 ```
 $ fleetctl start subgun-presence.*.service subgun-http.*.service
 $ fleetctl list-units
-UNIT						LOAD	ACTIVE	SUB		DESC	MACHINE
-subgun-presence.1.service	loaded	active	running	-		148a18ff...
-subgun-presence.2.service	loaded	active	running	-		3caa7b7d...
-subgun-presence.3.service	loaded	active	running	-		491586a6...
-subgun.1.service			loaded	active	running	-		148a18ff...
-subgun.2.service			loaded	active	running	-		3caa7b7d...
-subgun.3.service			loaded	active	running	-		491586a6...
+UNIT						STATE		LOAD	ACTIVE	SUB		DESC	MACHINE
+subgun-presence.1.service	inactive	loaded	active	running	-		148a18ff...
+subgun-presence.2.service	inactive	loaded	active	running	-		3caa7b7d...
+subgun-presence.3.service	inactive	loaded	active	running	-		491586a6...
+subgun.1.service			inactive	loaded	active	running	-		148a18ff...
+subgun.2.service			inactive	loaded	active	running	-		3caa7b7d...
+subgun.3.service			inactive	loaded	active	running	-		491586a6...
 ```
 
 At this point, our application is deployed!
