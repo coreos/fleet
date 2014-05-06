@@ -8,7 +8,7 @@ import (
 )
 
 func SupportedUnitTypes() []string {
-	return []string{"service", "socket"}
+	return []string{"service", "socket", "timer", "path"}
 }
 
 // SHA1 sum

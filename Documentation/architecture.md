@@ -42,7 +42,7 @@ There are two EventStreams in fleet. The first watches etcd for changes, while t
 
 #### Jobs and Units
 
-A Unit represents a single systemd service or socket. Once a Unit is pushed to the cluster, it is immutable. A Unit must be destroyed and re-submitted for any modifications to be made.
+A Unit represents a single systemd unit file. Once a Unit is pushed to the cluster, it is immutable. A Unit must be destroyed and re-submitted for any modifications to be made.
 
 The Unit may define a set of requirements that must be fulfilled by a given host in order for that host to run the Unit. These requirements can include resources, host metadata, locality relative to other Units, etc.
 
