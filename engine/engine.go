@@ -77,10 +77,12 @@ func (e *Engine) OfferJob(j job.Job) error {
 
 	offer := job.NewOfferFromJob(j, machineIDs)
 
-	e.registry.CreateJobOffer(offer)
-	log.Infof("Published JobOffer(%s)", offer.Job.Name)
+	err = e.registry.CreateJobOffer(offer)
+	if err == nil {
+		log.Infof("Published JobOffer(%s)", offer.Job.Name)
+	}
 
-	return nil
+	return err
 }
 
 func (e *Engine) ResolveJobOffer(jobName string, machID string) error {

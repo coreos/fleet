@@ -24,7 +24,7 @@ func (es *EventStream) Stream(idx uint64, eventchan chan *event.Event, stop chan
 	watchMap := map[string][]func(*etcd.Response) *event.Event{
 		path.Join(es.registry.keyPrefix, jobPrefix):     []func(*etcd.Response) *event.Event{filterEventJobDestroyed, filterEventJobScheduled, filterEventJobUnscheduled, es.filterJobTargetStateChanges},
 		path.Join(es.registry.keyPrefix, machinePrefix): []func(*etcd.Response) *event.Event{filterEventMachineCreated, filterEventMachineRemoved},
-		path.Join(es.registry.keyPrefix, offerPrefix):   []func(*etcd.Response) *event.Event{filterEventJobOffered, filterEventJobBidSubmitted},
+		path.Join(es.registry.keyPrefix, offerPrefix):   []func(*etcd.Response) *event.Event{es.filterEventJobOffered, filterEventJobBidSubmitted},
 	}
 
 	for key, funcs := range watchMap {
