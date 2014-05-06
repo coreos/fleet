@@ -43,6 +43,30 @@ X-ConditionMachineMetadata=baz=qux
 	}
 }
 
+func TestDeserializeEscapedMultilines(t *testing.T) {
+	contents := `
+[Service]
+ExecStart=echo \
+  "pi\
+  ng"
+ExecStop=\
+# comment should be ignored
+echo "po\
+ng"
+`
+	expected := map[string]map[string][]string{
+		"Service": map[string][]string{
+			"ExecStart": []string{`echo    "pi   ng"`},
+			"ExecStop":  []string{`echo "po ng"`},
+		},
+	}
+	unitFile := NewUnit(contents)
+
+	if !reflect.DeepEqual(expected, unitFile.Contents) {
+		t.Fatalf("Map func did not produce expected output.\nActual=%v\nExpected=%v", unitFile.Contents, expected)
+	}
+}
+
 func TestSerializeDeserialize(t *testing.T) {
 	contents := `
 [Unit]
