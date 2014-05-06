@@ -41,14 +41,10 @@ func deserializeUnitFile(raw string) map[string]map[string][]string {
 	var section string
 	var prev string
 	for _, line := range strings.Split(raw, "\n") {
-		// Ignore commented-out lines
-		if strings.HasPrefix(line, "#") || strings.HasPrefix(line, ";") {
-			continue
-		}
 
 		// Join lines ending in backslash
 		if strings.HasSuffix(line, "\\") {
-			// replace trailing slash with space
+			// Replace trailing slash with space
 			prev = prev + line[:len(line)-1] + " "
 			continue
 		}
@@ -57,6 +53,9 @@ func deserializeUnitFile(raw string) map[string]map[string][]string {
 		if prev != "" {
 			line = prev + line
 			prev = ""
+		} else if strings.HasPrefix(line, "#") || strings.HasPrefix(line, ";") {
+			// Ignore commented-out lines that are not part of a continuation
+			continue
 		}
 
 		line = strings.TrimSpace(line)

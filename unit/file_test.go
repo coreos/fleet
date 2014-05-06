@@ -50,14 +50,21 @@ ExecStart=echo \
   "pi\
   ng"
 ExecStop=\
-# comment should be ignored
 echo "po\
 ng"
+# comments within continuation should not be ignored
+ExecStopPre=echo\
+#pang
+ExecStopPost=echo\
+#peng\
+pung
 `
 	expected := map[string]map[string][]string{
 		"Service": map[string][]string{
-			"ExecStart": []string{`echo    "pi   ng"`},
-			"ExecStop":  []string{`echo "po ng"`},
+			"ExecStart":    []string{`echo    "pi   ng"`},
+			"ExecStop":     []string{`echo "po ng"`},
+			"ExecStopPre":  []string{`echo #pang`},
+			"ExecStopPost": []string{`echo #peng pung`},
 		},
 	}
 	unitFile := NewUnit(contents)
