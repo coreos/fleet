@@ -52,10 +52,9 @@ type UnitState struct {
 	LoadState    string                `json:"loadState"`
 	ActiveState  string                `json:"activeState"`
 	SubState     string                `json:"subState"`
-	Sockets      []string              `json:"sockets"`
 	MachineState *machine.MachineState `json:"machineState"`
 }
 
-func NewUnitState(loadState, activeState, subState string, sockets []string, ms *machine.MachineState) *UnitState {
-	return &UnitState{loadState, activeState, subState, sockets, ms}
+func NewUnitState(loadState, activeState, subState string, ms *machine.MachineState) *UnitState {
+	return &UnitState{loadState, activeState, subState, ms}
 }

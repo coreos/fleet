@@ -22,9 +22,9 @@ func newTestRegistryForSsh() Registry {
 	}
 
 	states := map[string]*unit.UnitState{
-		"j1.service":    unit.NewUnitState("loaded", "active", "listening", []string{}, &machines[0]),
-		"j2.service":    unit.NewUnitState("loaded", "inactive", "dead", []string{}, &machines[1]),
-		"hello.service": unit.NewUnitState("loaded", "inactive", "dead", []string{}, &machines[2]),
+		"j1.service":    unit.NewUnitState("loaded", "active", "listening", &machines[0]),
+		"j2.service":    unit.NewUnitState("loaded", "inactive", "dead", &machines[1]),
+		"hello.service": unit.NewUnitState("loaded", "inactive", "dead", &machines[2]),
 	}
 
 	return TestRegistry{machines: machines, jobStates: states, jobs: jobs}
