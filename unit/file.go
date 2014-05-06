@@ -39,9 +39,22 @@ func NewUnitFromLegacyContents(contents map[string]map[string]string) *Unit {
 func deserializeUnitFile(raw string) map[string]map[string][]string {
 	sections := make(map[string]map[string][]string)
 	var section string
+	var prev string
 	for _, line := range strings.Split(raw, "\n") {
-		// Ignore commented-out lines
-		if strings.HasPrefix(line, "#") || strings.HasPrefix(line, ";") {
+
+		// Join lines ending in backslash
+		if strings.HasSuffix(line, "\\") {
+			// Replace trailing slash with space
+			prev = prev + line[:len(line)-1] + " "
+			continue
+		}
+
+		// Concatenate any previous conjoined lines
+		if prev != "" {
+			line = prev + line
+			prev = ""
+		} else if strings.HasPrefix(line, "#") || strings.HasPrefix(line, ";") {
+			// Ignore commented-out lines that are not part of a continuation
 			continue
 		}
 
