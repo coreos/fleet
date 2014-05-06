@@ -61,11 +61,3 @@ Default: false
 File containing public SSH keys that should be used to verify payload signatures.
 
 Default: "~/.ssh/authorized_keys""
-
-## Development Options
-
-#### boot_id
-
-Unique identifier of fleet instance.
-
-Default: contents of file /proc/sys/kernel/random/boot_id
