@@ -19,11 +19,11 @@ const (
 )
 
 // GetAllJobs lists all Jobs known by the Registry
-func (r *EtcdRegistry) GetAllJobs() []job.Job {
+func (r *FleetRegistry) GetAllJobs() []job.Job {
 	var jobs []job.Job
 
 	key := path.Join(r.keyPrefix, jobPrefix)
-	resp, err := r.etcd.Get(key, true, true)
+	resp, err := r.storage.Get(key, true, true)
 
 	if err != nil {
 		return jobs
@@ -50,10 +50,10 @@ func (r *EtcdRegistry) GetAllJobs() []job.Job {
 // GetJobTarget looks up where the given job is scheduled. If the job has
 // been scheduled, the ID the target machine is returned. Otherwise, an
 // empty string is returned.
-func (r *EtcdRegistry) GetJobTarget(jobName string) string {
+func (r *FleetRegistry) GetJobTarget(jobName string) string {
 	// Figure out to which Machine this Job is scheduled
 	key := r.jobTargetAgentPath(jobName)
-	resp, err := r.etcd.Get(key, false, true)
+	resp, err := r.storage.Get(key, false, true)
 	if err != nil {
 		return ""
 	}
@@ -61,17 +61,17 @@ func (r *EtcdRegistry) GetJobTarget(jobName string) string {
 	return resp.Node.Value
 }
 
-func (r *EtcdRegistry) ClearJobTarget(jobName, machID string) error {
+func (r *FleetRegistry) ClearJobTarget(jobName, machID string) error {
 	key := r.jobTargetAgentPath(jobName)
-	_, err := r.etcd.CompareAndDelete(key, machID, 0)
+	_, err := r.storage.CompareAndDelete(key, machID, 0)
 	return err
 }
 
 // GetJob looks for a Job of the given name in the Registry. It returns a fully
 // hydrated Job on success, or nil on any kind of failure.
-func (r *EtcdRegistry) GetJob(jobName string) (j *job.Job) {
+func (r *FleetRegistry) GetJob(jobName string) (j *job.Job) {
 	key := path.Join(r.keyPrefix, jobPrefix, jobName, "object")
-	resp, err := r.etcd.Get(key, false, true)
+	resp, err := r.storage.Get(key, false, true)
 
 	// Assume the error was KeyNotFound and return an empty data structure
 	if err != nil {
@@ -85,7 +85,7 @@ func (r *EtcdRegistry) GetJob(jobName string) (j *job.Job) {
 	return
 }
 
-func (r *EtcdRegistry) getJobFromJSON(val string) *job.Job {
+func (r *FleetRegistry) getJobFromJSON(val string) *job.Job {
 	var jm jobModel
 	if err := unmarshal(val, &jm); err != nil {
 		return nil
@@ -94,7 +94,7 @@ func (r *EtcdRegistry) getJobFromJSON(val string) *job.Job {
 	return r.getJobFromModel(jm)
 }
 
-func (r *EtcdRegistry) getJobFromModel(jm jobModel) *job.Job {
+func (r *FleetRegistry) getJobFromModel(jm jobModel) *job.Job {
 	var err error
 	var unit *unit.Unit
 
@@ -145,22 +145,22 @@ type jobModel struct {
 // DestroyJob removes a Job object from the repository, along with any legacy
 // associated Payload and SignatureSet. It does not yet remove underlying
 // Units from the repository.
-func (r *EtcdRegistry) DestroyJob(jobName string) {
+func (r *FleetRegistry) DestroyJob(jobName string) {
 	key := path.Join(r.keyPrefix, jobPrefix, jobName)
-	r.etcd.Delete(key, true)
+	r.storage.Delete(key, true)
 	// TODO(jonboulle): add unit reference counting and actually destroying Units
 	r.destroyLegacyPayload(jobName)
 	r.destroySignatureSetOfJob(jobName)
 }
 
 // destroyLegacyPayload removes an old-style Payload from the registry
-func (r *EtcdRegistry) destroyLegacyPayload(payloadName string) {
+func (r *FleetRegistry) destroyLegacyPayload(payloadName string) {
 	key := path.Join(r.keyPrefix, payloadPrefix, payloadName)
-	r.etcd.Delete(key, false)
+	r.storage.Delete(key, false)
 }
 
 // CreateJob attempts to store a Job and its associated Unit in the registry
-func (r *EtcdRegistry) CreateJob(j *job.Job) (err error) {
+func (r *FleetRegistry) CreateJob(j *job.Job) (err error) {
 	if err := r.storeOrGetUnit(j.Unit); err != nil {
 		return err
 	}
@@ -176,7 +176,7 @@ func (r *EtcdRegistry) CreateJob(j *job.Job) (err error) {
 		return
 	}
 
-	_, err = r.etcd.Create(key, json, 0)
+	_, err = r.storage.Create(key, json, 0)
 	if err != nil && err.(*etcd.EtcdError).ErrorCode == etcdErr.EcodeNodeExist {
 		err = errors.New("job already exists")
 	}
@@ -184,9 +184,9 @@ func (r *EtcdRegistry) CreateJob(j *job.Job) (err error) {
 	return
 }
 
-func (r *EtcdRegistry) GetJobTargetState(jobName string) *job.JobState {
+func (r *FleetRegistry) GetJobTargetState(jobName string) *job.JobState {
 	key := r.jobTargetStatePath(jobName)
-	resp, err := r.etcd.Get(key, false, false)
+	resp, err := r.storage.Get(key, false, false)
 	if err != nil {
 		if err.(*etcd.EtcdError).ErrorCode != etcdErr.EcodeNodeExist {
 			log.Errorf("Unable to determine target-state of Job(%s): %v", jobName, err)
@@ -197,9 +197,9 @@ func (r *EtcdRegistry) GetJobTargetState(jobName string) *job.JobState {
 	return job.ParseJobState(resp.Node.Value)
 }
 
-func (r *EtcdRegistry) SetJobTargetState(jobName string, state job.JobState) error {
+func (r *FleetRegistry) SetJobTargetState(jobName string, state job.JobState) error {
 	key := r.jobTargetStatePath(jobName)
-	_, err := r.etcd.Set(key, string(state), 0)
+	_, err := r.storage.Set(key, string(state), 0)
 	return err
 }
 
@@ -252,13 +252,13 @@ func (es *EventStream) filterJobTargetStateChanges(resp *etcd.Response) *event.E
 	return &event.Event{cType, jobName, agent}
 }
 
-func (r *EtcdRegistry) ScheduleJob(jobName string, machID string) error {
+func (r *FleetRegistry) ScheduleJob(jobName string, machID string) error {
 	key := r.jobTargetAgentPath(jobName)
-	_, err := r.etcd.Create(key, machID, 0)
+	_, err := r.storage.Create(key, machID, 0)
 	return err
 }
 
-func (r *EtcdRegistry) LockJob(jobName, context string) *TimedResourceMutex {
+func (r *FleetRegistry) LockJob(jobName, context string) *TimedResourceMutex {
 	return r.lockResource("job", jobName, context)
 }
 
@@ -328,10 +328,10 @@ func filterEventJobDestroyed(resp *etcd.Response) *event.Event {
 	return &event.Event{"EventJobDestroyed", jobName, nil}
 }
 
-func (r *EtcdRegistry) jobTargetAgentPath(jobName string) string {
+func (r *FleetRegistry) jobTargetAgentPath(jobName string) string {
 	return path.Join(r.keyPrefix, jobPrefix, jobName, "target")
 }
 
-func (r *EtcdRegistry) jobTargetStatePath(jobName string) string {
+func (r *FleetRegistry) jobTargetStatePath(jobName string) string {
 	return path.Join(r.keyPrefix, jobPrefix, jobName, "target-state")
 }

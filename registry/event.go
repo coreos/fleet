@@ -14,16 +14,20 @@ import (
 
 type EventStream struct {
 	etcd     *etcd.Client
-	registry *EtcdRegistry
+	registry *FleetRegistry
 }
 
 func NewEventStream(client *etcd.Client, registry Registry) (*EventStream, error) {
-	reg, ok := registry.(*EtcdRegistry)
-	if !ok {
-		return nil, errors.New("EventStream currently only works with EtcdRegistry")
-	}
+	reg, ok := registry.(*FleetRegistry)
+	if ok {
+		etcd, ok := reg.storage.(*etcd.Client)
+		if ok {
+			return &EventStream{etcd, reg}, nil
+		}
 
-	return &EventStream{client, reg}, nil
+	}
+	return nil, errors.New("EventStream currently only works with an etcd-backed FleetRegistry")
+
 }
 
 func (es *EventStream) Stream(idx uint64, eventchan chan *event.Event, stop chan bool) {

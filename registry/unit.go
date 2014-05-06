@@ -19,7 +19,7 @@ const (
 	payloadPrefix = "/payload/"
 )
 
-func (r *EtcdRegistry) storeOrGetUnit(u unit.Unit) (err error) {
+func (r *FleetRegistry) storeOrGetUnit(u unit.Unit) (err error) {
 	key := r.hashedUnitPath(u.Hash())
 	json, err := marshal(u)
 	if err != nil {
@@ -27,20 +27,24 @@ func (r *EtcdRegistry) storeOrGetUnit(u unit.Unit) (err error) {
 	}
 
 	log.V(3).Infof("Storing Unit(%s) in Registry: %s", u.Hash(), json)
-	_, err = r.etcd.Create(key, json, 0)
+	_, err = r.storage.Create(key, json, 0)
 	// unit is already stored
-	if err != nil && err.(*etcd.EtcdError).ErrorCode == etcdErr.EcodeNodeExist {
-		log.V(2).Infof("Unit(%s) already exists in Registry", u.Hash())
-		// TODO(jonboulle): verify more here?
-		err = nil
+	if err != nil {
+		if ee, ok := err.(*etcd.EtcdError); ok {
+			if ee.ErrorCode == etcdErr.EcodeNodeExist {
+				log.V(2).Infof("Unit(%s) already exists in Registry", u.Hash())
+			}
+			// TODO(jonboulle): verify more here?
+			err = nil
+		}
 	}
 	return
 }
 
 // getUnitFromLegacyPayload tries to extract a Unit from a legacy JobPayload of the given name
-func (r *EtcdRegistry) getUnitFromLegacyPayload(name string) (*unit.Unit, error) {
+func (r *FleetRegistry) getUnitFromLegacyPayload(name string) (*unit.Unit, error) {
 	key := path.Join(r.keyPrefix, payloadPrefix, name)
-	resp, err := r.etcd.Get(key, true, true)
+	resp, err := r.storage.Get(key, true, true)
 
 	if err != nil {
 		return nil, err
@@ -58,9 +62,9 @@ func (r *EtcdRegistry) getUnitFromLegacyPayload(name string) (*unit.Unit, error)
 }
 
 // getUnitByHash retrieves from the Registry the Unit associated with the given Hash
-func (r *EtcdRegistry) getUnitByHash(hash unit.Hash) *unit.Unit {
+func (r *FleetRegistry) getUnitByHash(hash unit.Hash) *unit.Unit {
 	key := r.hashedUnitPath(hash)
-	resp, err := r.etcd.Get(key, false, true)
+	resp, err := r.storage.Get(key, false, true)
 	if err != nil {
 		return nil
 	}
@@ -72,7 +76,7 @@ func (r *EtcdRegistry) getUnitByHash(hash unit.Hash) *unit.Unit {
 	return &u
 }
 
-func (r *EtcdRegistry) hashedUnitPath(hash unit.Hash) string {
+func (r *FleetRegistry) hashedUnitPath(hash unit.Hash) string {
 	return path.Join(r.keyPrefix, unitPrefix, hash.String())
 }
 

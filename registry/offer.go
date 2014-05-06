@@ -22,7 +22,7 @@ type jobOfferModel struct {
 }
 
 // CreateJobOffer attempts to store a JobOffer and a reference to its associated Job in the repository
-func (r *EtcdRegistry) CreateJobOffer(jo *job.JobOffer) error {
+func (r *FleetRegistry) CreateJobOffer(jo *job.JobOffer) error {
 	jom := jobOfferModel{
 		Job: jobModel{
 			Name:     jo.Job.Name,
@@ -38,12 +38,12 @@ func (r *EtcdRegistry) CreateJobOffer(jo *job.JobOffer) error {
 	}
 
 	key := path.Join(r.keyPrefix, offerPrefix, jo.Job.Name, "object")
-	_, err = r.etcd.Set(key, json, 0)
+	_, err = r.storage.Set(key, json, 0)
 	return err
 }
 
 // getJobOfferFromJSON hydrates a JobOffer from a JSON-encoded jobOfferModel
-func (r *EtcdRegistry) getJobOfferFromJSON(val string) *job.JobOffer {
+func (r *FleetRegistry) getJobOfferFromJSON(val string) *job.JobOffer {
 	var jom jobOfferModel
 	if err := unmarshal(val, &jom); err != nil {
 		return nil
@@ -63,11 +63,11 @@ func (r *EtcdRegistry) getJobOfferFromJSON(val string) *job.JobOffer {
 }
 
 // UnresolvedJobOffers returns a list of hydrated JobOffers from the Registry
-func (r *EtcdRegistry) UnresolvedJobOffers() []job.JobOffer {
+func (r *FleetRegistry) UnresolvedJobOffers() []job.JobOffer {
 	var offers []job.JobOffer
 
 	key := path.Join(r.keyPrefix, offerPrefix)
-	resp, err := r.etcd.Get(key, true, true)
+	resp, err := r.storage.Get(key, true, true)
 
 	if err != nil {
 		return offers
@@ -75,7 +75,7 @@ func (r *EtcdRegistry) UnresolvedJobOffers() []job.JobOffer {
 
 	for _, node := range resp.Node.Nodes {
 		key := path.Join(node.Key, "object")
-		resp, err := r.etcd.Get(key, true, true)
+		resp, err := r.storage.Get(key, true, true)
 
 		// The object was probably handled between when we attempted to
 		// start resolving offers and when we actually tried to get it
@@ -94,9 +94,9 @@ func (r *EtcdRegistry) UnresolvedJobOffers() []job.JobOffer {
 	return offers
 }
 
-func (r *EtcdRegistry) LockJobOffer(jobName, context string) *TimedResourceMutex {
+func (r *FleetRegistry) LockJobOffer(jobName, context string) *TimedResourceMutex {
 	key := path.Join(r.keyPrefix, offerPrefix, jobName)
-	_, err := r.etcd.Get(key, false, true)
+	_, err := r.storage.Get(key, false, true)
 	if err != nil {
 		return nil
 	}
@@ -104,21 +104,21 @@ func (r *EtcdRegistry) LockJobOffer(jobName, context string) *TimedResourceMutex
 	return r.lockResource("offer", jobName, context)
 }
 
-func (r *EtcdRegistry) ResolveJobOffer(jobName string) error {
+func (r *FleetRegistry) ResolveJobOffer(jobName string) error {
 	key := path.Join(r.keyPrefix, offerPrefix, jobName, "object")
-	if _, err := r.etcd.Delete(key, false); err != nil {
+	if _, err := r.storage.Delete(key, false); err != nil {
 		return err
 	}
 
 	key = path.Join(r.keyPrefix, offerPrefix, jobName)
-	r.etcd.Delete(key, true)
+	r.storage.Delete(key, true)
 	return nil
 }
 
-func (r *EtcdRegistry) SubmitJobBid(jb *job.JobBid) {
+func (r *FleetRegistry) SubmitJobBid(jb *job.JobBid) {
 	key := path.Join(r.keyPrefix, offerPrefix, jb.JobName, "bids", jb.MachineID)
 	//TODO: Use a TTL
-	r.etcd.Set(key, "", 0)
+	r.storage.Set(key, "", 0)
 }
 
 func (es *EventStream) filterEventJobOffered(resp *etcd.Response) *event.Event {

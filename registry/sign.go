@@ -11,23 +11,23 @@ const (
 )
 
 // CreateSignatureSet stores the given SignatureSet in the repository
-func (r *EtcdRegistry) CreateSignatureSet(ss *sign.SignatureSet) error {
+func (r *FleetRegistry) CreateSignatureSet(ss *sign.SignatureSet) error {
 	key := r.signatureSetPath(ss.Tag)
 	json, _ := marshal(ss)
-	_, err := r.etcd.Create(key, json, 0)
+	_, err := r.storage.Create(key, json, 0)
 	return err
 }
 
 // DestroySignatureSet destroys the SignatureSet associated with the given tag
-func (r *EtcdRegistry) DestroySignatureSet(tag string) {
+func (r *FleetRegistry) DestroySignatureSet(tag string) {
 	key := r.signatureSetPath(tag)
-	r.etcd.Delete(key, false)
+	r.storage.Delete(key, false)
 }
 
 // GetSignatureSet returns the SignatureSet associated with the given tag
-func (r *EtcdRegistry) GetSignatureSet(tag string) *sign.SignatureSet {
+func (r *FleetRegistry) GetSignatureSet(tag string) *sign.SignatureSet {
 	key := r.signatureSetPath(tag)
-	resp, err := r.etcd.Get(key, false, true)
+	resp, err := r.storage.Get(key, false, true)
 
 	// Assume the error was KeyNotFound and return an empty data structure
 	if err != nil {
@@ -43,14 +43,14 @@ func (r *EtcdRegistry) GetSignatureSet(tag string) *sign.SignatureSet {
 
 // GetSignatureSetOfJob retrieves the SignatureSet associated with the given
 // job, or nil if none can be found
-func (r *EtcdRegistry) GetSignatureSetOfJob(name string) *sign.SignatureSet {
+func (r *FleetRegistry) GetSignatureSetOfJob(name string) *sign.SignatureSet {
 	return r.GetSignatureSet(sign.TagForJob(name))
 }
 
-func (r *EtcdRegistry) destroySignatureSetOfJob(name string) {
+func (r *FleetRegistry) destroySignatureSetOfJob(name string) {
 	r.DestroySignatureSet(sign.TagForJob(name))
 }
 
-func (r *EtcdRegistry) signatureSetPath(s string) string {
+func (r *FleetRegistry) signatureSetPath(s string) string {
 	return path.Join(r.keyPrefix, signingPrefix, s)
 }
