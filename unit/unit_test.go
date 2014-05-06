@@ -13,6 +13,7 @@ const (
 	// 0beec7b5ea3f0fdbc95d0dd47f3c5bc275da8a33 -
 	testData      = "foo"
 	testShaString = "0beec7b5ea3f0fdbc95d0dd47f3c5bc275da8a33"
+	testShaShort  = "0beec7b"
 )
 
 func TestUnitHash(t *testing.T) {
@@ -20,6 +21,10 @@ func TestUnitHash(t *testing.T) {
 	h := u.Hash()
 	if h.String() != testShaString {
 		t.Fatalf("Unit Hash (%s) does not match expected (%s)", h.String(), testShaString)
+	}
+
+	if h.Short() != testShaShort {
+		t.Fatalf("Unit Hash short (%s) does not match expected (%s)", h.Short(), testShaShort)
 	}
 
 	eh := &Hash{}

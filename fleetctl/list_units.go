@@ -77,6 +77,12 @@ Or, choose the columns to display:
 			}
 			return machineFullLegend(*us.MachineState, full)
 		},
+		"hash": func(j *job.Job, full bool) string {
+			if !full {
+				return j.UnitHash.Short()
+			}
+			return j.UnitHash.String()
+		},
 	}
 )
 
