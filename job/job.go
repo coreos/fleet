@@ -16,6 +16,23 @@ const (
 	JobStateLaunched = JobState("launched")
 )
 
+// fleet-specific unit file requirement keys.
+// "X-" prefix only appears in unit file and is dropped in code before the value is used.
+const (
+	// Require the unit be scheduled to a specific machine identified by given ID.
+	fleetXConditionMachineID = "ConditionMachineID"
+	// Legacy form of FleetXConditionMachineID.
+	fleetXConditionMachineBootID = "ConditionMachineBootID"
+	// Limit eligible machines to the one that hosts a specific unit.
+	fleetXConditionMachineOf = "ConditionMachineOf"
+	// Prevent a unit from being collocated with other units using glob-matching on the other unit names.
+	fleetXConflicts = "Conflicts"
+	// Machine metadata key in the unit file, without the X- prefix
+	fleetXConditionMachineMetadata = "ConditionMachineMetadata"
+	// Machine metadata key for the deprecated `require` flag
+	fleetFlagMachineMetadata = "MachineMetadata"
+)
+
 func ParseJobState(s string) *JobState {
 	js := JobState(s)
 	if js != JobStateInactive && js != JobStateLoaded && js != JobStateLaunched {
@@ -45,14 +62,33 @@ func NewJob(name string, unit unit.Unit) *Job {
 	}
 }
 
+// Requirements returns all relevant options from the [X-Fleet] section of a unit file.
+// Relevant options are identified with a `X-` prefix in the unit.
+// This prefix is stripped from relevant options before being returned.
 func (j *Job) Requirements() map[string][]string {
-	return j.Unit.Requirements()
+	requirements := make(map[string][]string)
+	for key, value := range j.Unit.Contents["X-Fleet"] {
+		if !strings.HasPrefix(key, "X-") {
+			continue
+		}
+
+		// Strip off leading X-
+		key = key[2:]
+
+		if _, ok := requirements[key]; !ok {
+			requirements[key] = make([]string, 0)
+		}
+
+		requirements[key] = value
+	}
+
+	return requirements
 }
 
 // Conflicts returns a list of Job names that cannot be scheduled to the same
 // machine as this Job.
 func (j *Job) Conflicts() []string {
-	conflicts, ok := j.Requirements()[unit.FleetXConflicts]
+	conflicts, ok := j.Requirements()[fleetXConflicts]
 	if ok {
 		return conflicts
 	} else {
@@ -63,7 +99,7 @@ func (j *Job) Conflicts() []string {
 // Peers returns a list of Job names that must be scheduled to the same
 // machine as this Job.
 func (j *Job) Peers() []string {
-	peers, ok := j.Requirements()[unit.FleetXConditionMachineOf]
+	peers, ok := j.Requirements()[fleetXConditionMachineOf]
 	if !ok {
 		return []string{}
 	}
@@ -76,9 +112,9 @@ func (j *Job) Peers() []string {
 // true. If no requirement exists, an empty string along with a bool false
 // will be returned.
 func (j *Job) RequiredTarget() (string, bool) {
-	requirements := j.Unit.Requirements()
+	requirements := j.Requirements()
 
-	machIDs, ok := requirements[unit.FleetXConditionMachineID]
+	machIDs, ok := requirements[fleetXConditionMachineID]
 	if ok && len(machIDs) != 0 {
 		return machIDs[0], true
 	}
@@ -87,7 +123,7 @@ func (j *Job) RequiredTarget() (string, bool) {
 	// to actually work as the user intends, but it's better to
 	// prevent a job from starting that has a legacy requirement
 	// than to ignore the requirement and let it start.
-	bootIDs, ok := requirements[unit.FleetXConditionMachineBootID]
+	bootIDs, ok := requirements[fleetXConditionMachineBootID]
 	if ok && len(bootIDs) != 0 {
 		return bootIDs[0], true
 	}
@@ -104,4 +140,40 @@ func (j *Job) Type() (string, error) {
 	}
 
 	return "", errors.New(fmt.Sprintf("Unrecognized systemd unit %s", j.Name))
+}
+
+// RequiredTargetMetadata return all machine-related metadata from a Job's requirements
+func (j *Job) RequiredTargetMetadata() map[string][]string {
+	metadata := make(map[string][]string)
+	for key, values := range j.Requirements() {
+		// Deprecated syntax added to the metadata via the old `--require` flag.
+		if strings.HasPrefix(key, fleetFlagMachineMetadata) {
+			if len(values) == 0 {
+				continue
+			}
+
+			metadata[key[15:]] = values
+		} else if key == fleetXConditionMachineMetadata {
+			for _, valuePair := range values {
+				s := strings.Split(valuePair, "=")
+
+				if len(s) != 2 {
+					continue
+				}
+
+				if len(s[0]) == 0 || len(s[1]) == 0 {
+					continue
+				}
+
+				var mValues []string
+				if mv, ok := metadata[s[0]]; ok {
+					mValues = mv
+				}
+
+				metadata[s[0]] = append(mValues, s[1])
+			}
+		}
+	}
+
+	return metadata
 }
