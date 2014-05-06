@@ -118,7 +118,7 @@ func (m *SystemdManager) GetUnitState(jobName string) (*unit.UnitState, error) {
 		return nil, err
 	}
 	ms := m.Machine.State()
-	return unit.NewUnitState(loadState, activeState, subState, nil, &ms), nil
+	return unit.NewUnitState(loadState, activeState, subState, &ms), nil
 }
 
 func (m *SystemdManager) getUnitStates(name string) (string, string, string, error) {
