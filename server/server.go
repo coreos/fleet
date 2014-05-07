@@ -25,7 +25,10 @@ func New(cfg config.Config) (*Server, error) {
 		return nil, err
 	}
 
-	e := newEngineFromConfig(cfg)
+	e, err := newEngineFromConfig(cfg)
+	if err != nil {
+		return nil, err
+	}
 
 	return &Server{a, e}, nil
 }
@@ -39,7 +42,10 @@ func newAgentFromConfig(cfg config.Config) (*agent.Agent, error) {
 
 	eClient := etcd.NewClient(cfg.EtcdServers)
 	eClient.SetConsistency(etcd.STRONG_CONSISTENCY)
-	eStream := registry.NewEventStream(eClient, reg)
+	eStream, err := registry.NewEventStream(eClient, reg)
+	if err != nil {
+		return nil, err
+	}
 
 	var verifier *sign.SignatureVerifier
 	if cfg.VerifyUnits {
@@ -54,7 +60,7 @@ func newAgentFromConfig(cfg config.Config) (*agent.Agent, error) {
 	return agent.New(reg, eStream, mach, cfg.AgentTTL, verifier)
 }
 
-func newEngineFromConfig(cfg config.Config) *engine.Engine {
+func newEngineFromConfig(cfg config.Config) (*engine.Engine, error) {
 	mach := machine.New("", cfg.PublicIP, cfg.Metadata())
 
 	regClient := etcd.NewClient(cfg.EtcdServers)
@@ -63,9 +69,12 @@ func newEngineFromConfig(cfg config.Config) *engine.Engine {
 
 	eClient := etcd.NewClient(cfg.EtcdServers)
 	eClient.SetConsistency(etcd.STRONG_CONSISTENCY)
-	eStream := registry.NewEventStream(eClient, reg)
+	eStream, err := registry.NewEventStream(eClient, reg)
+	if err != nil {
+		return nil, err
+	}
 
-	return engine.New(reg, eStream, mach)
+	return engine.New(reg, eStream, mach), nil
 }
 
 func (s *Server) Run() {

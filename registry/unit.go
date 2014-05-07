@@ -19,7 +19,7 @@ const (
 	payloadPrefix = "/payload/"
 )
 
-func (r *Registry) storeOrGetUnit(u unit.Unit) (err error) {
+func (r *EtcdRegistry) storeOrGetUnit(u unit.Unit) (err error) {
 	key := r.hashedUnitPath(u.Hash())
 	json, err := marshal(u)
 	if err != nil {
@@ -38,7 +38,7 @@ func (r *Registry) storeOrGetUnit(u unit.Unit) (err error) {
 }
 
 // getUnitFromLegacyPayload tries to extract a Unit from a legacy JobPayload of the given name
-func (r *Registry) getUnitFromLegacyPayload(name string) (*unit.Unit, error) {
+func (r *EtcdRegistry) getUnitFromLegacyPayload(name string) (*unit.Unit, error) {
 	key := path.Join(r.keyPrefix, payloadPrefix, name)
 	resp, err := r.etcd.Get(key, true, true)
 
@@ -58,7 +58,7 @@ func (r *Registry) getUnitFromLegacyPayload(name string) (*unit.Unit, error) {
 }
 
 // getUnitByHash retrieves from the Registry the Unit associated with the given Hash
-func (r *Registry) getUnitByHash(hash unit.Hash) *unit.Unit {
+func (r *EtcdRegistry) getUnitByHash(hash unit.Hash) *unit.Unit {
 	key := r.hashedUnitPath(hash)
 	resp, err := r.etcd.Get(key, false, true)
 	if err != nil {
@@ -72,7 +72,7 @@ func (r *Registry) getUnitByHash(hash unit.Hash) *unit.Unit {
 	return &u
 }
 
-func (r *Registry) hashedUnitPath(hash unit.Hash) string {
+func (r *EtcdRegistry) hashedUnitPath(hash unit.Hash) string {
 	return path.Join(r.keyPrefix, unitPrefix, hash.String())
 }
 

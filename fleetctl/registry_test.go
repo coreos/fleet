@@ -1,8 +1,11 @@
 package main
 
 import (
+	"time"
+
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/machine"
+	"github.com/coreos/fleet/registry"
 	"github.com/coreos/fleet/sign"
 	"github.com/coreos/fleet/unit"
 )
@@ -32,8 +35,12 @@ func (t TestRegistry) GetJob(name string) *job.Job {
 	return nil
 }
 
-func (m TestRegistry) SetJobTargetState(name string, target job.JobState) error {
+func (t TestRegistry) SetJobTargetState(name string, target job.JobState) error {
 	return nil
+}
+
+func (t TestRegistry) CheckJobPulse(jobName string) (string, bool) {
+	return "", false
 }
 
 func (t TestRegistry) CreateJob(j *job.Job) error {
@@ -44,14 +51,6 @@ func (t TestRegistry) DestroyJob(name string) {
 }
 
 func (t TestRegistry) CreateSignatureSet(s *sign.SignatureSet) error {
-	return nil
-}
-
-func (t TestRegistry) GetSignatureSetOfPayload(name string) *sign.SignatureSet {
-	return nil
-}
-
-func (t TestRegistry) GetSignatureSetOfJob(name string) *sign.SignatureSet {
 	return nil
 }
 
@@ -74,4 +73,80 @@ func (t TestRegistry) GetMachineState(machID string) *machine.MachineState {
 
 func (t TestRegistry) GetDebugInfo() (string, error) {
 	return "", nil
+}
+
+func (t TestRegistry) ClearJobHeartbeat(jobName string) {
+	return
+}
+
+func (t TestRegistry) ClearJobTarget(jobName, machID string) error {
+	return nil
+}
+
+func (t TestRegistry) CreateJobOffer(jo *job.JobOffer) error {
+	return nil
+}
+
+func (t TestRegistry) DestroySignatureSet(tag string) {
+	return
+}
+
+func (t TestRegistry) GetJobTargetState(jobName string) *job.JobState {
+	return nil
+}
+
+func (t TestRegistry) GetSignatureSet(tag string) *sign.SignatureSet {
+	return nil
+}
+
+func (t TestRegistry) GetSignatureSetOfJob(name string) *sign.SignatureSet {
+	return nil
+}
+
+func (t TestRegistry) JobHeartbeat(jobName, agentMachID string, ttl time.Duration) error {
+	return nil
+}
+
+func (t TestRegistry) LockJob(jobName, context string) *registry.TimedResourceMutex {
+	return nil
+}
+
+func (t TestRegistry) LockJobOffer(jobName, context string) *registry.TimedResourceMutex {
+	return nil
+}
+
+func (t TestRegistry) LockMachine(machID, context string) *registry.TimedResourceMutex {
+	return nil
+}
+
+func (t TestRegistry) RemoveMachineState(machID string) error {
+	return nil
+}
+
+func (t TestRegistry) RemoveUnitState(jobName string) error {
+	return nil
+}
+
+func (t TestRegistry) ResolveJobOffer(jobName string) error {
+	return nil
+}
+
+func (t TestRegistry) SaveUnitState(jobName string, unitState *unit.UnitState) {
+	return
+}
+
+func (t TestRegistry) ScheduleJob(jobName string, machID string) error {
+	return nil
+}
+
+func (t TestRegistry) SetMachineState(ms machine.MachineState, ttl time.Duration) (uint64, error) {
+	return 0, nil
+}
+
+func (t TestRegistry) SubmitJobBid(jb *job.JobBid) {
+	return
+}
+
+func (t TestRegistry) UnresolvedJobOffers() []job.JobOffer {
+	return nil
 }

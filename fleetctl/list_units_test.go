@@ -4,10 +4,11 @@ import (
 	"testing"
 
 	"github.com/coreos/fleet/job"
+	"github.com/coreos/fleet/registry"
 	"github.com/coreos/fleet/unit"
 )
 
-func newTestRegistryForListUnits(jobs []job.Job) Registry {
+func newTestRegistryForListUnits(jobs []job.Job) registry.Registry {
 	j := []job.Job{*job.NewJob("pong.service", *unit.NewUnit("Echo"))}
 
 	if jobs != nil {

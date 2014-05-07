@@ -12,7 +12,7 @@ import (
 )
 
 type Engine struct {
-	registry *registry.Registry
+	registry registry.Registry
 	eStream  *registry.EventStream
 	eBus     *event.EventBus
 	machine  *machine.Machine
@@ -21,7 +21,7 @@ type Engine struct {
 	stop  chan bool
 }
 
-func New(reg *registry.Registry, eStream *registry.EventStream, mach *machine.Machine) *Engine {
+func New(reg registry.Registry, eStream *registry.EventStream, mach *machine.Machine) *Engine {
 	eBus := event.NewEventBus()
 	e := &Engine{reg, eStream, eBus, mach, newCluster(), nil}
 

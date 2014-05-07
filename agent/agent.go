@@ -27,7 +27,7 @@ const (
 // The Agent owns all of the coordination between the Registry, the local
 // Machine, and the local SystemdManager.
 type Agent struct {
-	registry *registry.Registry
+	registry registry.Registry
 	eStream  *registry.EventStream
 	eBus     *event.EventBus
 	machine  *machine.Machine
@@ -43,7 +43,7 @@ type Agent struct {
 	stop chan bool
 }
 
-func New(reg *registry.Registry, eStream *registry.EventStream, mach *machine.Machine, ttl string, verifier *sign.SignatureVerifier) (*Agent, error) {
+func New(reg registry.Registry, eStream *registry.EventStream, mach *machine.Machine, ttl string, verifier *sign.SignatureVerifier) (*Agent, error) {
 	ttldur, err := time.ParseDuration(ttl)
 	if err != nil {
 		return nil, err
@@ -440,8 +440,6 @@ func (a *Agent) AbleToRun(j *job.Job) bool {
 
 	return true
 }
-
-
 
 // Determine if all necessary peers of a Job are scheduled to this Agent
 func (a *Agent) peerScheduledHere(jobName, peerName string) bool {

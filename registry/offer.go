@@ -22,7 +22,7 @@ type jobOfferModel struct {
 }
 
 // CreateJobOffer attempts to store a JobOffer and a reference to its associated Job in the repository
-func (r *Registry) CreateJobOffer(jo *job.JobOffer) error {
+func (r *EtcdRegistry) CreateJobOffer(jo *job.JobOffer) error {
 	jom := jobOfferModel{
 		Job: jobModel{
 			Name:     jo.Job.Name,
@@ -43,7 +43,7 @@ func (r *Registry) CreateJobOffer(jo *job.JobOffer) error {
 }
 
 // getJobOfferFromJSON hydrates a JobOffer from a JSON-encoded jobOfferModel
-func (r *Registry) getJobOfferFromJSON(val string) *job.JobOffer {
+func (r *EtcdRegistry) getJobOfferFromJSON(val string) *job.JobOffer {
 	var jom jobOfferModel
 	if err := unmarshal(val, &jom); err != nil {
 		return nil
@@ -63,7 +63,7 @@ func (r *Registry) getJobOfferFromJSON(val string) *job.JobOffer {
 }
 
 // UnresolvedJobOffers returns a list of hydrated JobOffers from the Registry
-func (r *Registry) UnresolvedJobOffers() []job.JobOffer {
+func (r *EtcdRegistry) UnresolvedJobOffers() []job.JobOffer {
 	var offers []job.JobOffer
 
 	key := path.Join(r.keyPrefix, offerPrefix)
@@ -94,7 +94,7 @@ func (r *Registry) UnresolvedJobOffers() []job.JobOffer {
 	return offers
 }
 
-func (r *Registry) LockJobOffer(jobName, context string) *TimedResourceMutex {
+func (r *EtcdRegistry) LockJobOffer(jobName, context string) *TimedResourceMutex {
 	key := path.Join(r.keyPrefix, offerPrefix, jobName)
 	_, err := r.etcd.Get(key, false, true)
 	if err != nil {
@@ -104,7 +104,7 @@ func (r *Registry) LockJobOffer(jobName, context string) *TimedResourceMutex {
 	return r.lockResource("offer", jobName, context)
 }
 
-func (r *Registry) ResolveJobOffer(jobName string) error {
+func (r *EtcdRegistry) ResolveJobOffer(jobName string) error {
 	key := path.Join(r.keyPrefix, offerPrefix, jobName, "object")
 	if _, err := r.etcd.Delete(key, false); err != nil {
 		return err
@@ -115,7 +115,7 @@ func (r *Registry) ResolveJobOffer(jobName string) error {
 	return nil
 }
 
-func (r *Registry) SubmitJobBid(jb *job.JobBid) {
+func (r *EtcdRegistry) SubmitJobBid(jb *job.JobBid) {
 	key := path.Join(r.keyPrefix, offerPrefix, jb.JobName, "bids", jb.MachineID)
 	//TODO: Use a TTL
 	r.etcd.Set(key, "", 0)

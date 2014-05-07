@@ -1,6 +1,7 @@
 package registry
 
 import (
+	"errors"
 	"strings"
 	"time"
 
@@ -13,11 +14,16 @@ import (
 
 type EventStream struct {
 	etcd     *etcd.Client
-	registry *Registry
+	registry *EtcdRegistry
 }
 
-func NewEventStream(client *etcd.Client, registry *Registry) *EventStream {
-	return &EventStream{client, registry}
+func NewEventStream(client *etcd.Client, registry Registry) (*EventStream, error) {
+	reg, ok := registry.(*EtcdRegistry)
+	if !ok {
+		return nil, errors.New("EventStream currently only works with EtcdRegistry")
+	}
+
+	return &EventStream{client, reg}, nil
 }
 
 func (es *EventStream) Stream(idx uint64, eventchan chan *event.Event, stop chan bool) {
