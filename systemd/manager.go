@@ -183,7 +183,7 @@ func (m *SystemdManager) writeUnit(name string, contents string) error {
 		return err
 	}
 
-	_, _, err = m.Systemd.EnableUnitFiles([]string{ufPath}, true, false)
+	_, err = m.Systemd.LinkUnitFiles([]string{ufPath}, true, true)
 	return err
 }
 
