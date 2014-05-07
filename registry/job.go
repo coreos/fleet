@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	jobPrefix = "/job/"
+	jobPrefix = "job"
 )
 
 // GetAllJobs lists all Jobs known by the Registry
@@ -208,7 +208,8 @@ func (es *EventStream) filterJobTargetStateChanges(resp *etcd.Response) *event.E
 		return nil
 	}
 
-	jobName := path.Base(strings.TrimSuffix(dir, "/"))
+	dir = strings.TrimSuffix(dir, "/")
+	jobName := path.Base(dir)
 
 	ts := job.ParseJobState(resp.Node.Value)
 	if ts == nil {
@@ -266,7 +267,15 @@ func filterEventJobScheduled(resp *etcd.Response) *event.Event {
 		return nil
 	}
 
-	jobName := path.Base(strings.TrimSuffix(dir, "/"))
+	dir = strings.TrimSuffix(dir, "/")
+	dir, jobName := path.Split(dir)
+
+	dir = strings.TrimSuffix(dir, "/")
+	dir, prefixName := path.Split(dir)
+
+	if prefixName != jobPrefix {
+		return nil
+	}
 
 	return &event.Event{"EventJobScheduled", jobName, resp.Node.Value}
 }
@@ -281,11 +290,20 @@ func filterEventJobUnscheduled(resp *etcd.Response) *event.Event {
 		return nil
 	}
 
+	dir = strings.TrimSuffix(dir, "/")
+	dir, jobName := path.Split(dir)
+
+	dir = strings.TrimSuffix(dir, "/")
+	dir, prefixName := path.Split(dir)
+
+	if prefixName != jobPrefix {
+		return nil
+	}
+
 	if resp.PrevNode == nil {
 		return nil
 	}
 
-	jobName := path.Base(strings.TrimSuffix(dir, "/"))
 	return &event.Event{"EventJobUnscheduled", jobName, resp.PrevNode.Value}
 }
 
@@ -298,7 +316,7 @@ func filterEventJobDestroyed(resp *etcd.Response) *event.Event {
 	dir = strings.TrimSuffix(dir, "/")
 	dir, prefixName := path.Split(dir)
 
-	if prefixName != "job" {
+	if prefixName != jobPrefix {
 		return nil
 	}
 
