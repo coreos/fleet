@@ -257,14 +257,18 @@ func (a *Agent) HeartbeatJobs(ttl time.Duration, stop chan bool) {
 func (a *Agent) LoadJob(j *job.Job) {
 	log.Infof("Loading Job(%s)", j.Name)
 	a.state.SetTargetState(j.Name, job.JobStateLoaded)
-	a.systemd.LoadJob(j)
+	err := a.systemd.LoadJob(j)
+	if err != nil {
+		log.Errorf("Failed loading Job(%s) in systemd: %v", j.Name, err)
+		return
+	}
 
 	// We must explicitly refresh the payload state, as the dbus
 	// event listener does not send an event when we write a unit
 	// file to disk.
 	us, err := a.systemd.GetUnitState(j.Name)
 	if err != nil {
-		log.Errorf("Failed fetching state of Unit(%s)", j.Name)
+		log.Errorf("Failed fetching state of Unit(%s): %v", j.Name, err)
 		return
 	}
 	a.ReportUnitState(j.Name, us)

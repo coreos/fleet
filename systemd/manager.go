@@ -84,13 +84,19 @@ func (m *SystemdManager) Publish(bus *event.EventBus, stopchan chan bool) {
 // LoadJob writes the unit of the given Job to disk, subscribes to
 // relevant dbus events, and only if necessary, instructs the systemd
 // daemon to reload
-func (m *SystemdManager) LoadJob(job *job.Job) {
-	m.writeUnit(job.Name, job.Unit.String())
+func (m *SystemdManager) LoadJob(job *job.Job) error {
+	err := m.writeUnit(job.Name, job.Unit.String())
+	if err != nil {
+		return err
+	}
+
 	m.subscriptions.Add(job.Name)
 
-	if m.unitRequiresDaemonReload(job.Name) {
-		m.daemonReload()
+	if !m.unitRequiresDaemonReload(job.Name) {
+		return nil
 	}
+
+	return m.daemonReload()
 }
 
 // UnloadJob removes the unit associated with the indicated Job from
