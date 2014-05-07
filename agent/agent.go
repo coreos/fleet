@@ -264,7 +264,7 @@ func (a *Agent) LoadJob(j *job.Job) {
 	// file to disk.
 	us, err := a.systemd.GetUnitState(j.Name)
 	if err != nil {
-		log.Errorf("Failed fetching state of Unit(%s)", j.Name)
+		log.Errorf("Failed fetching state of Unit(%s): %v", j.Name, err)
 		return
 	}
 	a.ReportUnitState(j.Name, us)
