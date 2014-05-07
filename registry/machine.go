@@ -2,6 +2,7 @@ package registry
 
 import (
 	"path"
+	"strings"
 	"time"
 
 	"github.com/coreos/fleet/third_party/github.com/coreos/go-etcd/etcd"
@@ -11,7 +12,7 @@ import (
 )
 
 const (
-	machinePrefix = "/machines/"
+	machinePrefix = "machines"
 )
 
 // Describe all active Machines
@@ -90,7 +91,16 @@ func (r *Registry) LockMachine(machID, context string) *TimedResourceMutex {
 }
 
 func filterEventMachineCreated(resp *etcd.Response) *event.Event {
-	if base := path.Base(resp.Node.Key); base != "object" {
+	dir, baseName := path.Split(resp.Node.Key)
+	if baseName != "object" {
+		return nil
+	}
+
+	dir = strings.TrimSuffix(dir, "/")
+	dir = path.Dir(dir)
+	prefixName := path.Base(dir)
+
+	if prefixName != machinePrefix {
 		return nil
 	}
 
@@ -104,7 +114,16 @@ func filterEventMachineCreated(resp *etcd.Response) *event.Event {
 }
 
 func filterEventMachineRemoved(resp *etcd.Response) *event.Event {
-	if base := path.Base(resp.Node.Key); base != "object" {
+	dir, baseName := path.Split(resp.Node.Key)
+	if baseName != "object" {
+		return nil
+	}
+
+	dir = strings.TrimSuffix(dir, "/")
+	dir = path.Dir(dir)
+	prefixName := path.Base(dir)
+
+	if prefixName != machinePrefix {
 		return nil
 	}
 
