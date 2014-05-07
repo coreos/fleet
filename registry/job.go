@@ -121,6 +121,11 @@ func (r *Registry) getJobFromModel(jm jobModel) *job.Job {
 			log.Warningf("No Payload found in Registry for Job(%s)", jm.Name)
 			return nil
 		}
+
+		log.Infof("Migrating legacy Payload(%s)", jm.Name)
+		if err := r.storeOrGetUnit(*unit); err != nil {
+			log.Warningf("Unable to migrate legacy Payload: %v", err)
+		}
 	}
 
 	j := job.NewJob(jm.Name, *unit)
