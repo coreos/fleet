@@ -11,30 +11,56 @@ import (
 func TestPipe(t *testing.T) {
 	etcdchan := make(chan *etcd.Response)
 
-	translate := func(resp *etcd.Response) *event.Event {
-		return &event.Event{"TranslateTest", resp.Action, nil}
+	translate1 := func(resp *etcd.Response) *event.Event {
+		return &event.Event{"TranslateTest1", resp.Action, nil}
 	}
+
+	translate2 := func(resp *etcd.Response) *event.Event {
+		return &event.Event{"TranslateTest2", resp.Action, "foo"}
+	}
+
+	filters := []func(resp *etcd.Response) *event.Event{translate1, translate2}
 
 	eventchan := make(chan *event.Event)
 	stopchan := make(chan bool)
 
-	go pipe(etcdchan, translate, eventchan, stopchan)
+	go pipe(etcdchan, filters, eventchan, stopchan)
 
 	resp := etcd.Response{Action: "TestAction", Node: &etcd.Node{Key: "/", ModifiedIndex: 0}}
 	etcdchan <- &resp
 
-	ev := <-eventchan
-	if ev.Type != "TranslateTest" {
-		t.Fatalf("Expected ev.Type 'TranslateTest' but got '%s'", ev.Type)
-	}
-
-	if ev.Payload.(string) != "TestAction" {
-		t.Fatalf("Expected ev.Payload 'TestAction, but got something else")
-	}
-
-	if ev.Context != nil {
-		t.Fatalf("Expected ev.Context nil, but got non-nil")
-	}
+	ev1 := <-eventchan
+	ev2 := <-eventchan
 
 	close(stopchan)
+
+	if ev1.Type != "TranslateTest1" {
+		t.Fatalf("Expected ev1.Type \"TranslateTest1\" but got %q", ev1.Type)
+	}
+
+	if ev1.Payload.(string) != "TestAction" {
+		t.Fatalf("Expected ev1.Payload \"TestAction\", but got something else")
+	}
+
+	if ev1.Context != nil {
+		t.Fatalf("Expected ev1.Context be nil")
+	}
+
+	if ev2.Type != "TranslateTest2" {
+		t.Fatalf("Expected ev2.Type \"TranslateTest2\" but got %q", ev2.Type)
+	}
+
+	payload := ev2.Payload.(string)
+	if payload != "TestAction" {
+		t.Fatalf("Expected ev2.Payload \"TestAction\", but got %q", payload)
+	}
+
+	if ev2.Context == nil {
+		t.Fatalf("Expected ev2.Context to be non-nil")
+	}
+
+	ctx := ev2.Context.(string)
+	if ctx != "foo" {
+		t.Fatalf("Expected ev2.Context value \"foo\", got %q", ctx)
+	}
 }
