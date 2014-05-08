@@ -63,13 +63,13 @@ func TestHostKeyCheckerInteraction(t *testing.T) {
 	}
 
 	// Accept to add new host key
-	checker.SetTrustHost(trustHostAlways)
+	checker.trustHost = trustHostAlways
 	if err := checker.Check("localhost", tcpAddr, key); err != nil {
 		t.Fatalf("checker should succeed to put %v, %v in known_hosts", addr, tcpAddr.String())
 	}
 
 	// Use authorized key that have been added
-	checker.SetTrustHost(trustHostNever)
+	checker.trustHost = trustHostNever
 	if err := checker.Check("localhost", tcpAddr, key); err != nil {
 		t.Fatalf("checker should succeed to put %v, %v in known_hosts", addr, tcpAddr.String())
 	}

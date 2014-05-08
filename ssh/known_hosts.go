@@ -40,11 +40,9 @@ Host key verification failed.
 )
 
 var (
-	ErrUnparsableKey   = errors.New("unparsable key bytes")
-	ErrUnsetTrustFunc  = errors.New("unset trustHost function")
-	ErrUntrustHost     = errors.New("unauthorized host")
-	ErrUnmatchKey      = errors.New("host key mismatch")
-	ErrUnfoundHostAddr = errors.New("cannot find host address")
+	ErrUnsetTrustFunc = errors.New("unset trustHost function")
+	ErrUntrustHost    = errors.New("unauthorized host")
+	ErrUnmatchKey     = errors.New("host key mismatch")
 )
 
 // HostKeyChecker implements the gossh.HostKeyChecker interface
@@ -56,7 +54,7 @@ type HostKeyChecker struct {
 	errLog *log.Logger
 }
 
-// NewHostKeyChecker returns new HostKeyChecker
+// NewHostKeyChecker returns a new HostKeyChecker
 // m manages existing host keys, trustHost tells whether or not to trust
 // new host, errWriter indicates the place to write error msg
 func NewHostKeyChecker(m HostKeyManager, trustHost func(addr, algo, fingerprint string) bool, errWriter io.Writer) *HostKeyChecker {
@@ -65,11 +63,6 @@ func NewHostKeyChecker(m HostKeyManager, trustHost func(addr, algo, fingerprint 
 	}
 
 	return &HostKeyChecker{m, trustHost, log.New(errWriter, "", 0)}
-}
-
-// SetTrustHost sets trustHost field
-func (kc *HostKeyChecker) SetTrustHost(trustHost func(addr, algo, fingerprint string) bool) {
-	kc.trustHost = trustHost
 }
 
 // matchHost tries to match the given host name against a comma-separated
@@ -158,6 +151,9 @@ func match(s, p string) bool {
 // unexpected changes. The key argument is in SSH wire format. It can be parsed
 // using ssh.ParsePublicKey. The address before DNS resolution is passed in the
 // addr argument, so the key can also be checked against the hostname.
+// It returns any error encountered while checking the public key. A nil return
+// value indicates that the key was either successfully verified (against an
+// existing known_hosts entry), or accepted by the user as a new key.
 func (kc *HostKeyChecker) Check(addr string, remote net.Addr, key gossh.PublicKey) error {
 	remoteAddr, err := kc.addrToHostPort(remote.String())
 	if err != nil {
@@ -193,7 +189,8 @@ func (kc *HostKeyChecker) Check(addr string, remote net.Addr, key gossh.PublicKe
 		return ErrUnmatchKey
 	}
 
-	// If we get this far, we haven't matched on any of the hostname patterns
+	// If we get this far, we haven't matched on any of the hostname patterns,
+	// so it's considered a new key
 
 	if kc.trustHost == nil {
 		return ErrUnsetTrustFunc
@@ -244,7 +241,7 @@ func (kc *HostKeyChecker) addrToHostPort(a string) (string, error) {
 	return net.JoinHostPort(host, p), nil
 }
 
-// HostKeyManager gives the interface to manage host keys
+// HostKeyManager defines an interface for managing "known hosts" keys
 type HostKeyManager interface {
 	String() string
 	// GetHostKeys returns a map from host patterns to a list of PublicKeys
@@ -253,13 +250,13 @@ type HostKeyManager interface {
 	PutHostKey(addr string, hostKey gossh.PublicKey) error
 }
 
-// HostKeyFile is an implementation of HostKeyManager interface
-// Host keys are saved and loaded from file
+// HostKeyFile is an implementation of HostKeyManager that saves and loads
+// "known hosts" keys from a file
 type HostKeyFile struct {
 	path string
 }
 
-// NewHostKeyFile returns new HostKeyFile using file path
+// NewHostKeyFile returns a new HostKeyFile using the given file path
 func NewHostKeyFile(path string) *HostKeyFile {
 	return &HostKeyFile{pkg.ParseFilepath(path)}
 }
@@ -344,20 +341,6 @@ func (f *HostKeyFile) PutHostKey(addr string, hostKey gossh.PublicKey) error {
 	return nil
 }
 
-func parseHostLine(line []byte) (string, gossh.PublicKey, error) {
-	end := bytes.IndexByte(line, ' ')
-	if end <= 0 {
-		return "", nil, ErrUnfoundHostAddr
-	}
-	addr := string(line[:end])
-	keyByte := line[end+1:]
-	key, _, _, _, err := gossh.ParseAuthorizedKey(keyByte)
-	if err != nil {
-		return "", nil, err
-	}
-	return addr, key, nil
-}
-
 func renderHostLine(addr string, key gossh.PublicKey) []byte {
 	keyByte := gossh.MarshalAuthorizedKey(key)
 	// allocate line space in advance
@@ -371,22 +354,20 @@ func renderHostLine(addr string, key gossh.PublicKey) []byte {
 	return w.Bytes()
 }
 
+// algoString returns a short-name representation of an algorithm type
 func algoString(algo string) string {
 	switch algo {
 	case gossh.KeyAlgoRSA:
 		return "RSA"
 	case gossh.KeyAlgoDSA:
 		return "DSA"
-	case gossh.KeyAlgoECDSA256:
-		return "ECDSA256"
-	case gossh.KeyAlgoECDSA384:
-		return "ECDSA384"
-	case gossh.KeyAlgoECDSA521:
-		return "ECDSA521"
+	case gossh.KeyAlgoECDSA256, gossh.KeyAlgoECDSA384, gossh.KeyAlgoECDSA521:
+		return "ECDSA"
 	}
 	return algo
 }
 
+// md5String returns a formatted string representing the given md5Sum in hex
 func md5String(md5Sum [16]byte) string {
 	md5Str := fmt.Sprintf("% x", md5Sum)
 	md5Str = strings.Replace(md5Str, " ", ":", -1)
