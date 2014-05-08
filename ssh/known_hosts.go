@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"net"
 	"os"
 	"path"
@@ -15,6 +14,7 @@ import (
 	"strings"
 
 	gossh "github.com/coreos/fleet/third_party/code.google.com/p/gosshnew/ssh"
+	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
 
 	"github.com/coreos/fleet/pkg"
 )
@@ -289,14 +289,14 @@ func (f *HostKeyFile) GetHostKeys() (map[string][]gossh.PublicKey, error) {
 
 		// Skip markers.
 		if bytes.HasPrefix(line, []byte("@")) {
-			log.Printf("Marker functionality not implemented - skipping line %d", n)
+			log.V(2).Infof("Marker functionality not implemented - skipping line %d", n)
 			continue
 		}
 
 		// Find the end of the host name(s) portion.
 		end := bytes.IndexAny(line, "\t ")
 		if end <= 0 {
-			log.Printf("Bad format (insufficient fields) - skipping line %d", n)
+			log.V(2).Infof("Bad format (insufficient fields) - skipping line %d", n)
 			continue
 		}
 		hosts := string(line[:end])
@@ -304,13 +304,13 @@ func (f *HostKeyFile) GetHostKeys() (map[string][]gossh.PublicKey, error) {
 
 		// Check for hashed host names.
 		if strings.HasPrefix(hosts, sshHashDelim) {
-			log.Printf("Hashed hosts not implemented - skipping line %d", n)
+			log.V(2).Infof("Hashed hosts not implemented - skipping line %d", n)
 			continue
 		}
 
 		key, _, _, _, err := gossh.ParseAuthorizedKey(keyBytes)
 		if err != nil {
-			log.Printf("Error parsing key, skipping line %d: %v", n, err)
+			log.V(2).Infof("Error parsing key, skipping line %d: %v", n, err)
 			continue
 		}
 
