@@ -22,8 +22,8 @@ import (
 const (
 	DefaultKnownHostsFile = "~/.fleetctl/known_hosts"
 
-	sshDefaultPort = 22  /* ssh.h */
-	sshHashDelim   = "|" /* hostfile.h */
+	sshDefaultPort = 22  // ssh.h
+	sshHashDelim   = "|" // hostfile.h
 
 	warningRemoteHostChanged = `@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 @    WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED!     @
@@ -47,8 +47,8 @@ var (
 	ErrUnfoundHostAddr = errors.New("cannot find host address")
 )
 
-// HostKeyChecker implements gossh.HostKeyChecker interface
-// It is used for validation during the cryptographic handshake
+// HostKeyChecker implements the gossh.HostKeyChecker interface
+// It is used for key validation during the cryptographic handshake
 type HostKeyChecker struct {
 	m         HostKeyManager
 	trustHost func(addr, algo, fingerprint string) bool
@@ -81,18 +81,18 @@ func matchHost(host, pattern string) bool {
 	subpatterns := strings.Split(pattern, ",")
 	found := false
 	for _, s := range subpatterns {
-		/* If the host name matches a negated pattern, it is not
-		accepted even if it matches other patterns on that line. */
+		// If the host name matches a negated pattern, it is not
+		// accepted even if it matches other patterns on that line.
 		if strings.HasPrefix(s, "!") && match(host, s[1:]) {
 			return false
 		}
-		/* Otherwise, check for a normal match */
+		// Otherwise, check for a normal match
 		if match(host, s) {
 			found = true
 		}
 	}
-	/* Return success if we found a positive match.  If there was a negative
-	   match, we have already returned false and never get here. */
+	// Return success if we found a positive match.  If there was a negative
+	// match, we have already returned false and never get here.
 	return found
 }
 
@@ -103,57 +103,54 @@ func match(s, p string) bool {
 	var i, j int
 	for i < len(p) {
 		if p[i] == '*' {
-			/* Skip the asterisk. */
+			// Skip the asterisk.
 			i++
 
-			/* If at end of pattern, accept immediately. */
+			// If at end of pattern, accept immediately.
 			if i == len(p) {
 				return true
 			}
 
-			/* If next character in pattern is known, optimize. */
+			// If next character in pattern is known, optimize.
 			if p[i] != '?' && p[i] != '*' {
-				/* Look for instances of the next character in
-				   pattern, and try to match starting from those. */
+				// Look for instances of the next character in
+				// pattern, and try to match starting from those.
 				for ; j < len(s); j++ {
 					if s[j] == p[i] && match(s[j:], p[i:]) {
 						return true
 					}
 				}
-				/* Failed */
+				// Failed.
 				return false
 			}
 
-			/*
-			 * Move ahead one character at a time and try to
-			 * match at each position.
-			 */
+			// Move ahead one character at a time and try to
+			// match at each position.
 			for ; j < len(s); j++ {
 				if match(s[j:], p[i:]) {
 					return true
 				}
 			}
-			/* Failed. */
+			// Failed.
 			return false
 		}
-		/*
-		 * There must be at least one more character in the string.
-		 * If we are at the end, fail.
-		 */
+
+		// There must be at least one more character in the string.
+		// If we are at the end, fail.
 		if j == len(s) {
 			return false
 		}
 
-		/* Check if the next character of the string is acceptable. */
+		// Check if the next character of the string is acceptable.
 		if p[i] != '?' && p[i] != s[j] {
 			return false
 		}
 
-		/* Move to the next character, both in string and in pattern. */
+		// Move to the next character, both in string and in pattern.
 		i++
 		j++
 	}
-	/* If at end of pattern, accept if also at end of string. */
+	// If at end of pattern, accept if also at end of string.
 	return j == len(s)
 }
 
@@ -182,7 +179,7 @@ func (kc *HostKeyChecker) Check(addr string, remote net.Addr, key gossh.PublicKe
 			continue
 		}
 		for _, hostKey := range keys {
-			/* Any matching key is considered a success, irrespective of previous */
+			// Any matching key is considered a success, irrespective of previous
 			if hostKey.Type() == key.Type() && bytes.Compare(hostKey.Marshal(), key.Marshal()) == 0 {
 				return nil
 			} else {
@@ -196,7 +193,7 @@ func (kc *HostKeyChecker) Check(addr string, remote net.Addr, key gossh.PublicKe
 		return ErrUnmatchKey
 	}
 
-	/* If we get this far, we haven't matched on any of the hostname patterns */
+	// If we get this far, we haven't matched on any of the hostname patterns
 
 	if kc.trustHost == nil {
 		return ErrUnsetTrustFunc
@@ -285,21 +282,21 @@ func (f *HostKeyFile) GetHostKeys() (map[string][]gossh.PublicKey, error) {
 		n++
 		line := s.Bytes()
 
-		/* Skip any leading whitespace. */
+		// Skip any leading whitespace.
 		line = bytes.TrimLeft(line, "\t ")
 
-		/* Skip comments and empty lines. */
+		// Skip comments and empty lines.
 		if bytes.HasPrefix(line, []byte("#")) || len(line) == 0 {
 			continue
 		}
 
-		/* Skip markers. */
+		// Skip markers.
 		if bytes.HasPrefix(line, []byte("@")) {
 			log.Printf("Marker functionality not implemented - skipping line %d", n)
 			continue
 		}
 
-		/* Find the end of the host name(s) portion. */
+		// Find the end of the host name(s) portion.
 		end := bytes.IndexAny(line, "\t ")
 		if end <= 0 {
 			log.Printf("Bad format (insufficient fields) - skipping line %d", n)
@@ -308,7 +305,7 @@ func (f *HostKeyFile) GetHostKeys() (map[string][]gossh.PublicKey, error) {
 		hosts := string(line[:end])
 		keyBytes := line[end+1:]
 
-		/* Check for hashed host names. */
+		// Check for hashed host names.
 		if strings.HasPrefix(hosts, sshHashDelim) {
 			log.Printf("Hashed hosts not implemented - skipping line %d", n)
 			continue
@@ -320,7 +317,7 @@ func (f *HostKeyFile) GetHostKeys() (map[string][]gossh.PublicKey, error) {
 			continue
 		}
 
-		/* It is permissible to have several lines for the same host name(s) */
+		// It is permissible to have several lines for the same host name(s)
 		hostKeys[hosts] = append(hostKeys[hosts], key)
 	}
 
