@@ -1,7 +1,6 @@
 package job
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/coreos/fleet/unit"
@@ -12,37 +11,6 @@ func TestNewJob(t *testing.T) {
 
 	if j1.Name != "pong.service" {
 		t.Error("job.Job.Name != 'pong.service'")
-	}
-
-	if jt, _ := j1.Type(); jt != "service" {
-		t.Errorf("Job has unexpected Type '%s'", jt)
-	}
-}
-
-func TestNewJobBadType(t *testing.T) {
-	if _, err := NewJob("foo.unknown", *unit.NewUnit("echo")).Type(); err == nil {
-		t.Errorf("Expected non-nil error, got %v", err)
-	}
-
-}
-
-func TestNewJobGoodTypes(t *testing.T) {
-	cases := []string{
-		"service",
-		"socket",
-		"timer",
-		"path",
-	}
-
-	test := func(ut string) {
-		name := fmt.Sprintf("foo.%s", ut)
-		if _, err := NewJob(name, *unit.NewUnit("echo")).Type(); err != nil {
-			t.Errorf("Expected nil error, got %v", err)
-		}
-	}
-
-	for _, c := range cases {
-		test(c)
 	}
 }
 

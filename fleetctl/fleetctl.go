@@ -30,7 +30,6 @@ import (
 const (
 	cliName        = "fleetctl"
 	cliDescription = "fleetctl is a command-line interface to fleet, the cluster-wide CoreOS init system."
-	serviceSuffix  = ".service"
 )
 
 var (
@@ -493,11 +492,9 @@ func checkJobState(jobName string, js job.JobState, maxAttempts int, out io.Writ
 func unitNameMangle(baseName string) string {
 	name := path.Base(baseName)
 
-	for _, t := range unit.SupportedUnitTypes() {
-		if strings.HasSuffix(name, "."+t) {
-			return name
-		}
+	if !unit.RecognizedUnitType(name) {
+		return unit.DefaultUnitType(name)
 	}
 
-	return name + serviceSuffix
+	return name
 }
