@@ -8,8 +8,8 @@ import (
 )
 
 func TestStackState(t *testing.T) {
-	top := MachineState{"c31e44e1-f858-436e-933e-59c642517860", "1.2.3.4", map[string]string{"ping": "pong"}, "1"}
-	bottom := MachineState{"595989bb-cbb7-49ce-8726-722d6e157b4e", "5.6.7.8", map[string]string{"foo": "bar"}, ""}
+	top := MachineState{"c31e44e1-f858-436e-933e-59c642517860", "1.2.3.4", map[string]string{"ping": "pong"}, "1", nil}
+	bottom := MachineState{"595989bb-cbb7-49ce-8726-722d6e157b4e", "5.6.7.8", map[string]string{"foo": "bar"}, "", nil}
 	stacked := stackState(top, bottom)
 
 	if stacked.ID != "c31e44e1-f858-436e-933e-59c642517860" {
@@ -31,7 +31,7 @@ func TestStackState(t *testing.T) {
 
 func TestStackStateEmptyTop(t *testing.T) {
 	top := MachineState{}
-	bottom := MachineState{"595989bb-cbb7-49ce-8726-722d6e157b4e", "5.6.7.8", map[string]string{"foo": "bar"}, ""}
+	bottom := MachineState{"595989bb-cbb7-49ce-8726-722d6e157b4e", "5.6.7.8", map[string]string{"foo": "bar"}, "", nil}
 	stacked := stackState(top, bottom)
 
 	if stacked.ID != "595989bb-cbb7-49ce-8726-722d6e157b4e" {
@@ -67,6 +67,7 @@ var shortIDTests = []struct {
 			"5.6.7.8",
 			map[string]string{"foo": "bar"},
 			"",
+			nil,
 		},
 		s: "595989bb",
 		l: "595989bb-cbb7-49ce-8726-722d6e157b4e",
@@ -77,6 +78,7 @@ var shortIDTests = []struct {
 			"5.6.7.8",
 			map[string]string{"foo": "bar"},
 			"",
+			nil,
 		},
 		s: "5959",
 		l: "5959",

@@ -12,7 +12,7 @@ import (
 
 const (
 	machineIDPath = "/etc/machine-id"
-	shortIDLen = 8
+	shortIDLen    = 8
 )
 
 // MachineState represents a point-in-time snapshot of the
@@ -22,6 +22,7 @@ type MachineState struct {
 	PublicIP string
 	Metadata map[string]string
 	Version  string
+	Spec     *MachineSpec
 }
 
 // NewDynamicMachineState generates a MachineState object with
@@ -29,7 +30,12 @@ type MachineState struct {
 func CurrentState() MachineState {
 	id := readLocalMachineID("/")
 	publicIP := getLocalIP()
-	return MachineState{ID: id, PublicIP: publicIP, Metadata: make(map[string]string, 0)}
+	spec, err := readLocalSpec()
+	if err != nil {
+		log.Errorf("failed to read local machine spec: %v", err)
+		spec = nil
+	}
+	return MachineState{ID: id, PublicIP: publicIP, Metadata: make(map[string]string, 0), Spec: spec}
 }
 
 func (s MachineState) ShortID() string {
@@ -117,6 +123,10 @@ func stackState(top, bottom MachineState) MachineState {
 
 	if top.ID != "" {
 		state.ID = top.ID
+	}
+
+	if top.Spec != nil {
+		state.Spec = top.Spec
 	}
 
 	//FIXME: This will *always* overwrite the bottom's metadata,
