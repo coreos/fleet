@@ -1,8 +1,6 @@
 package job
 
 import (
-	"errors"
-	"fmt"
 	"strings"
 
 	"github.com/coreos/fleet/unit"
@@ -129,17 +127,6 @@ func (j *Job) RequiredTarget() (string, bool) {
 	}
 
 	return "", false
-}
-
-// Type attempts to determine the Type of systemd unit that this Job contains, based on the suffix of the job name
-func (j *Job) Type() (string, error) {
-	for _, ut := range unit.SupportedUnitTypes() {
-		if strings.HasSuffix(j.Name, fmt.Sprintf(".%s", ut)) {
-			return ut, nil
-		}
-	}
-
-	return "", errors.New(fmt.Sprintf("Unrecognized systemd unit %s", j.Name))
 }
 
 // RequiredTargetMetadata return all machine-related metadata from a Job's requirements
