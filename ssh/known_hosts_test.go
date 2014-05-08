@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"net"
 	"os"
+	"strconv"
 	"testing"
 
 	gossh "github.com/coreos/fleet/third_party/code.google.com/p/gosshnew/ssh"
@@ -182,5 +183,60 @@ func TestMD5String(t *testing.T) {
 	sum := [16]byte{0, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff}
 	if md5String(sum) != "00:11:22:33:44:55:66:77:88:99:aa:bb:cc:dd:ee:ff" {
 		t.Fatal("wrong md5 string conversion")
+	}
+}
+
+func TestAddrToHostPort(t *testing.T) {
+	keyFile := NewHostKeyFile(hostFile)
+	checker := NewHostKeyChecker(keyFile, nil, ioutil.Discard)
+
+	badAddrs := []string{
+		"12:12:12",
+		"foobar:baz",
+		"[12:323",
+		"[127.0.0.1:]",
+		// raw IPv6 addresses should fail
+		"2001:0db8:85a3:0000:0000:8a2e:0370:7334",
+		"2001:db8:85a3:0:0:8a2e:370:7334",
+		"2001:db8:85a3::8a2e:370:7334",
+		"::1",
+		"::",
+		// IPv6 addresses without ports should fail
+		"[2001:db8:85a3::8a2e:370:7334]",
+		"[::1]",
+	}
+
+	for _, a := range badAddrs {
+		_, err := checker.addrToHostPort(a)
+		if err == nil {
+			t.Errorf("addr %v did not fail hostport conversion!", a)
+		}
+	}
+
+	goodAddrs := []struct {
+		in  string
+		out string
+	}{
+		{"foo.com", "foo.com"},
+		{"127.0.0.1", "127.0.0.1"},
+		{"127.0.0.1:" + strconv.Itoa(sshDefaultPort), "127.0.0.1"},
+		{"127.0.0.1:0", "127.0.0.1"},
+		{"127.0.0.1:12345", "127.0.0.1:12345"},
+		// escaped IPv6 addresses with ports should succeed
+		{"[2001:0db8:85a3:0000:0000:8a2e:0370:7334]:22", "[2001:0db8:85a3:0000:0000:8a2e:0370:7334]"},
+		{"[2001:db8:85a3:0:0:8a2e:370:7334]:12345", "[2001:db8:85a3:0:0:8a2e:370:7334]:12345"},
+		{"[2001:db8:85a3::8a2e:370:7334]:12345", "[2001:db8:85a3::8a2e:370:7334]:12345"},
+		{"[::1]:22", "[::1]"},
+	}
+
+	for _, a := range goodAddrs {
+		got, err := checker.addrToHostPort(a.in)
+		if err != nil {
+			t.Errorf("addr %s failed hostport conversation: %v", a.in, err)
+			continue
+		}
+		if got != a.out {
+			t.Errorf("bad hostport conversion for %s: got %s, want %s", a.in, got, a.out)
+		}
 	}
 }

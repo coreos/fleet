@@ -11,6 +11,7 @@ import (
 	"net"
 	"os"
 	"path"
+	"strconv"
 	"strings"
 
 	gossh "github.com/coreos/fleet/third_party/code.google.com/p/gosshnew/ssh"
@@ -20,6 +21,7 @@ import (
 
 const (
 	DefaultKnownHostsFile = "~/.fleetctl/known_hosts"
+	sshDefaultPort        = 22
 
 	warningRemoteHostChanged = `@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 @    WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED!     @
@@ -67,7 +69,11 @@ func (kc *HostKeyChecker) SetTrustHost(trustHost func(addr, algo, fingerprint st
 // passed in the addr argument, so the key can also be checked
 // against the hostname.
 func (kc *HostKeyChecker) Check(addr string, remote net.Addr, key gossh.PublicKey) error {
-	remoteAddr := remote.String()
+	remoteAddr, err := kc.addrToHostPort(remote.String())
+	if err != nil {
+		return err
+	}
+
 	algoStr := algoString(key.Type())
 	keyFingerprintStr := md5String(md5.Sum(key.Marshal()))
 
@@ -112,6 +118,38 @@ Host key verification failed.%c`,
 		return ErrUnmatchKey
 	}
 	return nil
+}
+
+// addrToHostPort takes the given address and parses it into a string suitable
+// for use in the 'hostnames' field in a known_hosts file.  For more details,
+// see the `SSH_KNOWN_HOSTS FILE FORMAT` section of `man 8 sshd`
+func (kc *HostKeyChecker) addrToHostPort(a string) (string, error) {
+	if !strings.Contains(a, ":") {
+		// No port, so return unadulterated
+		return a, nil
+	}
+	host, p, err := net.SplitHostPort(a)
+	if err != nil {
+		kc.errLog.Printf("Unable to parse addr %s: %v", a, err)
+		return "", err
+	}
+
+	port, err := strconv.Atoi(p)
+	if err != nil {
+		kc.errLog.Printf("Error parsing port %s: %v", p, err)
+		return "", err
+	}
+
+	// see `put_host_port` in openssh/misc.c
+	if port == 0 || port == sshDefaultPort {
+		// IPv6 addresses must be enclosed in square brackets
+		if strings.Contains(host, ":") {
+			host = "[" + host + "]"
+		}
+		return host, nil
+	}
+
+	return net.JoinHostPort(host, p), nil
 }
 
 // HostKeyManager gives the interface to manage host keys
