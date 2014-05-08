@@ -21,12 +21,22 @@ import (
 
 const (
 	DefaultKnownHostsFile = "~/.fleetctl/known_hosts"
-	sshDefaultPort        = 22
+
+	sshDefaultPort = 22  /* ssh.h */
+	sshHashDelim   = "|" /* hostfile.h */
 
 	warningRemoteHostChanged = `@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 @    WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED!     @
 @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-IT IS POSSIBLE THAT SOMEONE IS DOING SOMETHING NASTY!`
+IT IS POSSIBLE THAT SOMEONE IS DOING SOMETHING NASTY!
+Someone could be eavesdropping on you right now (man-in-the-middle attack)!
+It is also possible that a host key has just been changed.
+The fingerprint for the %v key sent by the remote host is
+%v.
+Please contact your system administrator.
+Add correct host key in %v to get rid of this message.
+Host key verification failed.
+`
 )
 
 var (
@@ -34,7 +44,7 @@ var (
 	ErrUnsetTrustFunc  = errors.New("unset trustHost function")
 	ErrUntrustHost     = errors.New("unauthorized host")
 	ErrUnmatchKey      = errors.New("host key mismatch")
-	ErrUnfoundHostAddr = errors.New("cannot find out host address")
+	ErrUnfoundHostAddr = errors.New("cannot find host address")
 )
 
 // HostKeyChecker implements gossh.HostKeyChecker interface
@@ -62,12 +72,95 @@ func (kc *HostKeyChecker) SetTrustHost(trustHost func(addr, algo, fingerprint st
 	kc.trustHost = trustHost
 }
 
-// Check is called during the handshake to check server's
-// public key for unexpected changes. The hostKey argument is
-// in SSH wire format. It can be parsed using
-// ssh.ParsePublicKey. The address before DNS resolution is
-// passed in the addr argument, so the key can also be checked
-// against the hostname.
+// matchHost tries to match the given host name against a comma-separated
+// sequence of subpatterns s (each possibly preceded by ! to indicate negation).
+// It returns a boolean indicating whether or not a positive match was made.
+// Any matched negations take precedence over any other possible matches in the
+// pattern.
+func matchHost(host, pattern string) bool {
+	subpatterns := strings.Split(pattern, ",")
+	found := false
+	for _, s := range subpatterns {
+		/* If the host name matches a negated pattern, it is not
+		accepted even if it matches other patterns on that line. */
+		if strings.HasPrefix(s, "!") && match(host, s[1:]) {
+			return false
+		}
+		/* Otherwise, check for a normal match */
+		if match(host, s) {
+			found = true
+		}
+	}
+	/* Return success if we found a positive match.  If there was a negative
+	   match, we have already returned false and never get here. */
+	return found
+}
+
+// match compares the input string s to the pattern p, which may contain
+// single and multi-character wildcards (? and * respectively). It returns a
+// boolean indicating whether the string matches the pattern.
+func match(s, p string) bool {
+	var i, j int
+	for i < len(p) {
+		if p[i] == '*' {
+			/* Skip the asterisk. */
+			i++
+
+			/* If at end of pattern, accept immediately. */
+			if i == len(p) {
+				return true
+			}
+
+			/* If next character in pattern is known, optimize. */
+			if p[i] != '?' && p[i] != '*' {
+				/* Look for instances of the next character in
+				   pattern, and try to match starting from those. */
+				for ; j < len(s); j++ {
+					if s[j] == p[i] && match(s[j:], p[i:]) {
+						return true
+					}
+				}
+				/* Failed */
+				return false
+			}
+
+			/*
+			 * Move ahead one character at a time and try to
+			 * match at each position.
+			 */
+			for ; j < len(s); j++ {
+				if match(s[j:], p[i:]) {
+					return true
+				}
+			}
+			/* Failed. */
+			return false
+		}
+		/*
+		 * There must be at least one more character in the string.
+		 * If we are at the end, fail.
+		 */
+		if j == len(s) {
+			return false
+		}
+
+		/* Check if the next character of the string is acceptable. */
+		if p[i] != '?' && p[i] != s[j] {
+			return false
+		}
+
+		/* Move to the next character, both in string and in pattern. */
+		i++
+		j++
+	}
+	/* If at end of pattern, accept if also at end of string. */
+	return j == len(s)
+}
+
+// Check is called during the handshake to check the server's public key for
+// unexpected changes. The key argument is in SSH wire format. It can be parsed
+// using ssh.ParsePublicKey. The address before DNS resolution is passed in the
+// addr argument, so the key can also be checked against the hostname.
 func (kc *HostKeyChecker) Check(addr string, remote net.Addr, key gossh.PublicKey) error {
 	remoteAddr, err := kc.addrToHostPort(remote.String())
 	if err != nil {
@@ -77,46 +170,48 @@ func (kc *HostKeyChecker) Check(addr string, remote net.Addr, key gossh.PublicKe
 	algoStr := algoString(key.Type())
 	keyFingerprintStr := md5String(md5.Sum(key.Marshal()))
 
-	// get existing host keys
 	hostKeys, err := kc.m.GetHostKeys()
 	_, ok := err.(*os.PathError)
 	if err != nil && !ok {
-		kc.errLog.Println("Warning: read host file with", err)
+		kc.errLog.Println("Failed to read known_hosts file %v: %v", kc.m.String(), err)
 	}
 
-	// check existing host keys
-	hostKey, ok := hostKeys[remoteAddr]
-	if !ok {
-		if kc.trustHost == nil {
-			return ErrUnsetTrustFunc
+	mismatched := false
+	for pattern, keys := range hostKeys {
+		if !matchHost(remoteAddr, pattern) {
+			continue
 		}
-		if !kc.trustHost(remoteAddr, algoStr, keyFingerprintStr) {
-			kc.errLog.Println("Host key verification failed.")
-			return ErrUntrustHost
+		for _, hostKey := range keys {
+			/* Any matching key is considered a success, irrespective of previous */
+			if hostKey.Type() == key.Type() && bytes.Compare(hostKey.Marshal(), key.Marshal()) == 0 {
+				return nil
+			} else {
+				mismatched = true
+			}
 		}
+	}
 
-		if err := kc.m.PutHostKey(remoteAddr, key); err != nil {
-			kc.errLog.Printf("Failed to add the host to the list of known hosts (%v).\n", kc.m)
-			return nil
-		}
+	if mismatched {
+		kc.errLog.Printf(warningRemoteHostChanged, algoStr, keyFingerprintStr, kc.m.String())
+		return ErrUnmatchKey
+	}
 
-		kc.errLog.Printf("Warning: Permanently added '%v' (%v) to the list of known hosts.\n", remoteAddr, algoStr)
+	/* If we get this far, we haven't matched on any of the hostname patterns */
+
+	if kc.trustHost == nil {
+		return ErrUnsetTrustFunc
+	}
+	if !kc.trustHost(remoteAddr, algoStr, keyFingerprintStr) {
+		kc.errLog.Println("Host key verification failed.")
+		return ErrUntrustHost
+	}
+
+	if err := kc.m.PutHostKey(remoteAddr, key); err != nil {
+		kc.errLog.Printf("Failed to add the host to the list of known hosts (%v).\n", kc.m)
 		return nil
 	}
 
-	if hostKey.Type() != key.Type() || bytes.Compare(hostKey.Marshal(), key.Marshal()) != 0 {
-		kc.errLog.Printf(`%s
-Someone could be eavesdropping on you right now (man-in-the-middle attack)!
-It is also possible that a host key has just been changed.
-The fingerprint for the %v key sent by the remote host is
-%v.
-Please contact your system administrator.
-Add correct host key in %v to get rid of this message.
-Host key verification failed.%c`,
-			warningRemoteHostChanged, algoStr, keyFingerprintStr, kc.m.String(), '\n')
-
-		return ErrUnmatchKey
-	}
+	kc.errLog.Printf("Warning: Permanently added '%v' (%v) to the list of known hosts.\n", remoteAddr, algoStr)
 	return nil
 }
 
@@ -155,8 +250,8 @@ func (kc *HostKeyChecker) addrToHostPort(a string) (string, error) {
 // HostKeyManager gives the interface to manage host keys
 type HostKeyManager interface {
 	String() string
-	// get all host keys
-	GetHostKeys() (map[string]gossh.PublicKey, error)
+	// GetHostKeys returns a map from host patterns to a list of PublicKeys
+	GetHostKeys() (map[string][]gossh.PublicKey, error)
 	// put new host key under management
 	PutHostKey(addr string, hostKey gossh.PublicKey) error
 }
@@ -176,22 +271,57 @@ func (f *HostKeyFile) String() string {
 	return f.path
 }
 
-func (f *HostKeyFile) GetHostKeys() (map[string]gossh.PublicKey, error) {
+func (f *HostKeyFile) GetHostKeys() (map[string][]gossh.PublicKey, error) {
 	in, err := os.Open(f.path)
 	if err != nil {
 		return nil, err
 	}
 	defer in.Close()
 
-	hostKeys := make(map[string]gossh.PublicKey)
+	hostKeys := make(map[string][]gossh.PublicKey)
+	n := 0
 	s := bufio.NewScanner(in)
-	lineNo := 0
 	for s.Scan() {
-		lineNo++
-		addr, hostKey, err := parseHostLine(s.Bytes())
-		if err == nil {
-			hostKeys[addr] = hostKey
+		n++
+		line := s.Bytes()
+
+		/* Skip any leading whitespace. */
+		line = bytes.TrimLeft(line, "\t ")
+
+		/* Skip comments and empty lines. */
+		if bytes.HasPrefix(line, []byte("#")) || len(line) == 0 {
+			continue
 		}
+
+		/* Skip markers. */
+		if bytes.HasPrefix(line, []byte("@")) {
+			log.Printf("Marker functionality not implemented - skipping line %d", n)
+			continue
+		}
+
+		/* Find the end of the host name(s) portion. */
+		end := bytes.IndexAny(line, "\t ")
+		if end <= 0 {
+			log.Printf("Bad format (insufficient fields) - skipping line %d", n)
+			continue
+		}
+		hosts := string(line[:end])
+		keyBytes := line[end+1:]
+
+		/* Check for hashed host names. */
+		if strings.HasPrefix(hosts, sshHashDelim) {
+			log.Printf("Hashed hosts not implemented - skipping line %d", n)
+			continue
+		}
+
+		key, _, _, _, err := gossh.ParseAuthorizedKey(keyBytes)
+		if err != nil {
+			log.Printf("Error parsing key, skipping line %d: %v", n, err)
+			continue
+		}
+
+		/* It is permissible to have several lines for the same host name(s) */
+		hostKeys[hosts] = append(hostKeys[hosts], key)
 	}
 
 	return hostKeys, nil
