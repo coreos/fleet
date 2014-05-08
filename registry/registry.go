@@ -10,19 +10,19 @@ import (
 
 const DefaultKeyPrefix = "/_coreos.com/fleet/"
 
-// EtcdRegistry fulfils the Registry interface and uses etcd as a backend
-type EtcdRegistry struct {
-	etcd      *etcd.Client
+// FleetRegistry is the standard Registry implementation used by fleet
+type FleetRegistry struct {
+	storage   Storage
 	keyPrefix string
 }
 
-// New creates a new EtcdRegistry with the given parameters
+// New creates an etcd-backed FleetRegistry with the given parameters
 func New(client *etcd.Client, keyPrefix string) (registry Registry) {
-	return &EtcdRegistry{client, keyPrefix}
+	return &FleetRegistry{client, keyPrefix}
 }
 
-func (r *EtcdRegistry) GetDebugInfo() (string, error) {
-	resp, err := r.etcd.RawGet(r.keyPrefix, true, true)
+func (r *FleetRegistry) GetDebugInfo() (string, error) {
+	resp, err := r.storage.RawGet(r.keyPrefix, true, true)
 	if err != nil {
 		return "", err
 	}

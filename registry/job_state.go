@@ -7,7 +7,7 @@ import (
 	"github.com/coreos/fleet/job"
 )
 
-func (r *EtcdRegistry) determineJobState(jobName string) *job.JobState {
+func (r *FleetRegistry) determineJobState(jobName string) *job.JobState {
 	state := job.JobStateInactive
 
 	tgt := r.GetJobTarget(jobName)
@@ -30,15 +30,15 @@ func (r *EtcdRegistry) determineJobState(jobName string) *job.JobState {
 	return &state
 }
 
-func (r *EtcdRegistry) JobHeartbeat(jobName, agentMachID string, ttl time.Duration) error {
+func (r *FleetRegistry) JobHeartbeat(jobName, agentMachID string, ttl time.Duration) error {
 	key := r.jobHeartbeatPath(jobName)
-	_, err := r.etcd.Set(key, agentMachID, uint64(ttl.Seconds()))
+	_, err := r.storage.Set(key, agentMachID, uint64(ttl.Seconds()))
 	return err
 }
 
-func (r *EtcdRegistry) CheckJobPulse(jobName string) (string, bool) {
+func (r *FleetRegistry) CheckJobPulse(jobName string) (string, bool) {
 	key := r.jobHeartbeatPath(jobName)
-	resp, err := r.etcd.Get(key, false, false)
+	resp, err := r.storage.Get(key, false, false)
 	if err != nil {
 		return "", false
 	}
@@ -46,11 +46,11 @@ func (r *EtcdRegistry) CheckJobPulse(jobName string) (string, bool) {
 	return resp.Node.Value, true
 }
 
-func (r *EtcdRegistry) ClearJobHeartbeat(jobName string) {
+func (r *FleetRegistry) ClearJobHeartbeat(jobName string) {
 	key := r.jobHeartbeatPath(jobName)
-	r.etcd.Delete(key, false)
+	r.storage.Delete(key, false)
 }
 
-func (r *EtcdRegistry) jobHeartbeatPath(jobName string) string {
+func (r *FleetRegistry) jobHeartbeatPath(jobName string) string {
 	return path.Join(r.keyPrefix, jobPrefix, jobName, "job-state")
 }

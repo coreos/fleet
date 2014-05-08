@@ -3,6 +3,10 @@ package registry
 import (
 	"time"
 
+	// TODO(jonboulle): using etcd.Response is a leaky abstraction; we
+	// should create a new type to encapsulate this
+	"github.com/coreos/fleet/third_party/github.com/coreos/go-etcd/etcd"
+
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/sign"
@@ -40,4 +44,14 @@ type Registry interface {
 	SetMachineState(ms machine.MachineState, ttl time.Duration) (uint64, error)
 	SubmitJobBid(jb *job.JobBid)
 	UnresolvedJobOffers() []job.JobOffer
+}
+
+type Storage interface {
+	CompareAndDelete(key string, prevValue string, prevIndex uint64) (*etcd.Response, error)
+	Create(key string, value string, ttl uint64) (*etcd.Response, error)
+	Delete(key string, recursive bool) (*etcd.Response, error)
+	Get(key string, sort, recursive bool) (*etcd.Response, error)
+	RawGet(key string, sort, recursive bool) (*etcd.RawResponse, error)
+	Set(key string, value string, ttl uint64) (*etcd.Response, error)
+	Update(key string, value string, ttl uint64) (*etcd.Response, error)
 }
