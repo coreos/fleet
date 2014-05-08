@@ -43,24 +43,10 @@ func (e *Engine) Stop() {
 	close(e.stop)
 }
 
-func (e *Engine) GetJobsScheduledToMachine(machID string) []job.Job {
-	var jobs []job.Job
-
-	for _, j := range e.registry.GetAllJobs() {
-		tgt := e.registry.GetJobTarget(j.Name)
-		if tgt == "" || tgt != machID {
-			continue
-		}
-		jobs = append(jobs, j)
-	}
-
-	return jobs
-}
-
 func (e *Engine) OfferJob(j job.Job) error {
 	log.V(1).Infof("Attempting to lock Job(%s)", j.Name)
 
-	mutex := e.lockJob(j.Name)
+	mutex := e.registry.LockJob(j.Name, e.machine.State().ID)
 	if mutex == nil {
 		log.V(1).Infof("Could not lock Job(%s)", j.Name)
 		return errors.New("Could not lock Job")
@@ -87,7 +73,7 @@ func (e *Engine) OfferJob(j job.Job) error {
 
 func (e *Engine) ResolveJobOffer(jobName string, machID string) error {
 	log.V(1).Infof("Attempting to lock JobOffer(%s)", jobName)
-	mutex := e.lockJobOffer(jobName)
+	mutex := e.registry.LockJobOffer(jobName, e.machine.State().ID)
 
 	if mutex == nil {
 		log.V(1).Infof("Could not lock JobOffer(%s)", jobName)
@@ -111,21 +97,4 @@ func (e *Engine) ResolveJobOffer(jobName string, machID string) error {
 
 	log.Infof("Scheduled Job(%s) to Machine(%s)", jobName, machID)
 	return nil
-}
-
-func (e *Engine) RemoveUnitState(jobName string) {
-	e.registry.RemoveUnitState(jobName)
-}
-
-func (e *Engine) lockJobOffer(jobName string) *registry.TimedResourceMutex {
-	return e.registry.LockJobOffer(jobName, e.machine.State().ID)
-}
-
-func (e *Engine) lockJob(jobName string) *registry.TimedResourceMutex {
-	return e.registry.LockJob(jobName, e.machine.State().ID)
-}
-
-// Pass-through to Registry.LockMachine
-func (e *Engine) LockMachine(machID string) *registry.TimedResourceMutex {
-	return e.registry.LockMachine(machID, e.machine.State().ID)
 }

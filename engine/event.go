@@ -6,6 +6,7 @@ import (
 	"github.com/coreos/fleet/event"
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/machine"
+	"github.com/coreos/fleet/registry"
 )
 
 type EventHandler struct {
@@ -92,19 +93,19 @@ func (eh *EventHandler) HandleEventMachineCreated(ev event.Event) {
 
 func (eh *EventHandler) HandleEventMachineRemoved(ev event.Event) {
 	machID := ev.Payload.(string)
-	mutex := eh.engine.LockMachine(machID)
+	mutex := eh.engine.registry.LockMachine(machID, eh.engine.machine.State().ID)
 	if mutex == nil {
 		log.V(1).Infof("EventMachineRemoved(%s): failed to lock Machine, ignoring event", machID)
 		return
 	}
 	defer mutex.Unlock()
 
-	jobs := eh.engine.GetJobsScheduledToMachine(machID)
+	jobs := getJobsScheduledToMachine(eh.engine.registry, machID)
 
 	for _, j := range jobs {
 		log.Infof("EventMachineRemoved(%s): unscheduling Job(%s)", machID, j.Name)
 		eh.engine.registry.ClearJobTarget(j.Name, machID)
-		eh.engine.RemoveUnitState(j.Name)
+		eh.engine.registry.RemoveUnitState(j.Name)
 	}
 
 	for _, j := range jobs {
@@ -112,4 +113,18 @@ func (eh *EventHandler) HandleEventMachineRemoved(ev event.Event) {
 		eh.engine.OfferJob(j)
 	}
 	eh.engine.clust.machineRemoved(machID)
+}
+
+func getJobsScheduledToMachine(r registry.Registry, machID string) []job.Job {
+	var jobs []job.Job
+
+	for _, j := range r.GetAllJobs() {
+		tgt := r.GetJobTarget(j.Name)
+		if tgt == "" || tgt != machID {
+			continue
+		}
+		jobs = append(jobs, j)
+	}
+
+	return jobs
 }
