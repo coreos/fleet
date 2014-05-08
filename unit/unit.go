@@ -3,12 +3,28 @@ package unit
 import (
 	"crypto/sha1"
 	"fmt"
+	"strings"
 
 	"github.com/coreos/fleet/machine"
 )
 
-func SupportedUnitTypes() []string {
-	return []string{"service", "socket", "timer", "path"}
+// RecognizedUnitType determines whether or not the given unit name represents
+// a recognized unit type.
+func RecognizedUnitType(name string) bool {
+	types := []string{"service", "socket", "timer", "path"}
+	for _, t := range types {
+		suffix := fmt.Sprintf(".%s", t)
+		if strings.HasSuffix(name, suffix) {
+			return true
+		}
+	}
+	return false
+}
+
+// DefaultUnitType appends the default unit type to a given unit name, ignoring
+// any file extensions that already exist.
+func DefaultUnitType(name string) string {
+	return fmt.Sprintf("%s.service", name)
 }
 
 // SHA1 sum

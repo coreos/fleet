@@ -24,10 +24,44 @@ func TestUnitHash(t *testing.T) {
 	}
 }
 
-func TestSupportedUnitTypes(t *testing.T) {
-	ut := SupportedUnitTypes()
-	if len(ut) < 1 {
-		t.Fatalf("SupportedUnitTypes should return non-empty []string, got %v", ut)
+func TestRecognizedUnitTypes(t *testing.T) {
+	tts := []struct{
+		name string
+		ok   bool
+	}{
+		{"foo.service", true},
+		{"foo.socket", true},
+		{"foo.path", true},
+		{"foo.timer", true},
+		{"foo.mount", false},
+		{"foo.automount", false},
+		{"foo.device", false},
+		{"foo.unknown", false},
+	}
+
+	for _, tt := range tts {
+		ok := RecognizedUnitType(tt.name)
+		if ok != tt.ok {
+			t.Errorf("Case failed: name=%s expect=%b result=%b", tt.name, tt.ok, ok)
+		}
+	}
+}
+
+func TestDefaultUnitType(t *testing.T) {
+	tts := []struct{
+		name string
+		out  string
+	}{
+		{"foo", "foo.service"},
+		{"foo.service", "foo.service.service"},
+		{"foo.link", "foo.link.service"},
+	}
+
+	for _, tt := range tts {
+		out := DefaultUnitType(tt.name)
+		if out != tt.out {
+			t.Errorf("Case failed: name=%s expect=%s result=%s", tt.name, tt.out, out)
+		}
 	}
 }
 
