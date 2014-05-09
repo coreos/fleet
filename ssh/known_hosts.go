@@ -41,7 +41,7 @@ Host key verification failed.
 Are you sure you want to continue connecting (yes/no)? `
 )
 
-// askToTrustHost prompts the user to trust
+// askToTrustHost prompts the user to trust a new key fingerprint while connecting to a host
 func askToTrustHost(addr, algo, fingerprint string) bool {
 	var ans string
 
