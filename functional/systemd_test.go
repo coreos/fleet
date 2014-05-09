@@ -63,6 +63,30 @@ ExecStart=/usr/bin/sleep 3000
 		t.Errorf("Failed determining unit state: %v", err)
 	}
 
+	mgr.Start(name)
+
+	us, err = mgr.GetUnitState(name)
+	if err == nil {
+		expect := unit.UnitState{"loaded", "active", "running", nil}
+		if !reflect.DeepEqual(expect, *us) {
+			t.Errorf("Expected UnitState %v, got %v", expect, *us)
+		}
+	} else {
+		t.Errorf("Failed determining unit state: %v", err)
+	}
+
+	mgr.Stop(name)
+
+	us, err = mgr.GetUnitState(name)
+	if err == nil {
+		expect := unit.UnitState{"loaded", "inactive", "dead", nil}
+		if !reflect.DeepEqual(expect, *us) {
+			t.Errorf("Expected UnitState %v, got %v", expect, *us)
+		}
+	} else {
+		t.Errorf("Failed determining unit state: %v", err)
+	}
+
 	mgr.Unload(name)
 
 	units, err = mgr.Units()
