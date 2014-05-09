@@ -1,6 +1,7 @@
 package ssh
 
 import (
+	"bytes"
 	"io/ioutil"
 	"net"
 	"os"
@@ -31,9 +32,9 @@ func trustHostNever(addr, algo, fingerprint string) bool {
 // TestHostKeyChecker tests to check existing key
 func TestHostKeyChecker(t *testing.T) {
 	keyFile := NewHostKeyFile(hostFile)
-	checker := NewHostKeyChecker(keyFile, nil, ioutil.Discard)
+	checker := NewHostKeyChecker(keyFile)
 
-	addr, key, _ := parseHostLine([]byte(hostLine))
+	addr, key, _ := parseKnownHostsLine([]byte(hostLine))
 	tcpAddr, _ := net.ResolveTCPAddr("tcp", addr)
 
 	if err := checker.Check("localhost", tcpAddr, key); err != nil {
@@ -52,12 +53,13 @@ func TestHostKeyCheckerInteraction(t *testing.T) {
 	defer os.Remove(hostFileBackup)
 
 	keyFile := NewHostKeyFile(hostFileBackup)
-	checker := NewHostKeyChecker(keyFile, trustHostNever, ioutil.Discard)
+	checker := NewHostKeyChecker(keyFile)
 
-	addr, key, _ := parseHostLine([]byte(hostLine))
+	addr, key, _ := parseKnownHostsLine([]byte(hostLine))
 	tcpAddr, _ := net.ResolveTCPAddr("tcp", addr)
 
 	// Refuse to add new host key
+	checker.trustHost = trustHostNever
 	if err := checker.Check("localhost", tcpAddr, key); err != ErrUntrustHost {
 		t.Fatalf("checker should fail to put %v, %v in known_hosts", addr, tcpAddr.String())
 	}
@@ -77,7 +79,7 @@ func TestHostKeyCheckerInteraction(t *testing.T) {
 
 // TestHostLine tests how to parse and render host line
 func TestHostLine(t *testing.T) {
-	addr, key, _ := parseHostLine([]byte(hostLine))
+	addr, key, _ := parseKnownHostsLine([]byte(hostLine))
 	if addr != addrInHostLine {
 		t.Fatalf("addr is %v instead of %v", addr, addrInHostLine)
 	}
@@ -92,7 +94,6 @@ func TestHostLine(t *testing.T) {
 }
 
 // TestHostKeyFile tests to read and write from HostKeyFile
-/*
 func TestHostKeyFile(t *testing.T) {
 	os.Remove(hostFileBackup)
 	defer os.Remove(hostFileBackup)
@@ -106,8 +107,10 @@ func TestHostKeyFile(t *testing.T) {
 	}
 
 	for i, v := range hostKeys {
-		if err = out.PutHostKey(i, v); err != nil {
-			t.Fatal("append error:", err)
+		for _, k := range v {
+			if err = out.PutHostKey(i, k); err != nil {
+				t.Fatal("append error:", err)
+			}
 		}
 	}
 
@@ -128,7 +131,6 @@ func TestHostKeyFile(t *testing.T) {
 		}
 	}
 }
-*/
 
 // TestHostKeyFile tests to read and write from wrong HostKeyFile
 func TestWrongHostKeyFile(t *testing.T) {
@@ -160,24 +162,24 @@ func TestBadHostKeyFile(t *testing.T) {
 
 // TestAlgorithmString tests the string representation of key algorithm
 func TestAlgorithmString(t *testing.T) {
-	if algoString(gossh.KeyAlgoRSA) != "RSA" {
-		t.Fatal("wrong printout for RSA")
+	tests := []struct {
+		in  string
+		out string
+	}{
+		{gossh.KeyAlgoRSA, "RSA"},
+		{gossh.KeyAlgoDSA, "DSA"},
+		{gossh.KeyAlgoECDSA256, "ECDSA"},
+		{gossh.KeyAlgoECDSA384, "ECDSA"},
+		{gossh.KeyAlgoECDSA521, "ECDSA"},
+		{"UNKNOWN", "UNKNOWN"},
 	}
-	if algoString(gossh.KeyAlgoDSA) != "DSA" {
-		t.Fatal("wrong printout for DSA")
+	for _, test := range tests {
+		out := algoString(test.in)
+		if out != test.out {
+			t.Errorf("bad algo string for %s: got %s, want %s", test.in, out, test.out)
+		}
 	}
-	if algoString(gossh.KeyAlgoECDSA256) != "ECDSA256" {
-		t.Fatal("wrong printout for ECDSA256")
-	}
-	if algoString(gossh.KeyAlgoECDSA384) != "ECDSA384" {
-		t.Fatal("wrong printout for ECDSA384")
-	}
-	if algoString(gossh.KeyAlgoECDSA521) != "ECDSA521" {
-		t.Fatal("wrong printout for ECDSA521")
-	}
-	if algoString("UNKNOWN") != "UNKNOWN" {
-		t.Fatal("wrong printout for UNKNOWN")
-	}
+
 }
 
 func TestMD5String(t *testing.T) {
@@ -189,7 +191,7 @@ func TestMD5String(t *testing.T) {
 
 func TestAddrToHostPort(t *testing.T) {
 	keyFile := NewHostKeyFile(hostFile)
-	checker := NewHostKeyChecker(keyFile, nil, ioutil.Discard)
+	checker := NewHostKeyChecker(keyFile)
 
 	badAddrs := []string{
 		"12:12:12",
@@ -220,9 +222,11 @@ func TestAddrToHostPort(t *testing.T) {
 	}{
 		{"foo.com", "foo.com"},
 		{"127.0.0.1", "127.0.0.1"},
-		{"127.0.0.1:" + strconv.Itoa(sshDefaultPort), "127.0.0.1"},
 		{"127.0.0.1:0", "127.0.0.1"},
-		{"127.0.0.1:12345", "127.0.0.1:12345"},
+		{"127.0.0.1:" + strconv.Itoa(sshDefaultPort), "127.0.0.1"},
+		{"127.0.0.1:12345", "[127.0.0.1]:12345"},
+		{"foo.com:" + strconv.Itoa(sshDefaultPort), "foo.com"},
+		{"foo.com:2222", "[foo.com]:2222"},
 		// escaped IPv6 addresses with ports should succeed
 		{"[2001:0db8:85a3:0000:0000:8a2e:0370:7334]:22", "[2001:0db8:85a3:0000:0000:8a2e:0370:7334]"},
 		{"[2001:db8:85a3:0:0:8a2e:370:7334]:12345", "[2001:db8:85a3:0:0:8a2e:370:7334]:12345"},

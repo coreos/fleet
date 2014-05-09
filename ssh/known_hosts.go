@@ -6,8 +6,6 @@ import (
 	"crypto/md5"
 	"errors"
 	"fmt"
-	"io"
-	"log"
 	"net"
 	"os"
 	"path"
@@ -15,7 +13,7 @@ import (
 	"strings"
 
 	gossh "github.com/coreos/fleet/third_party/code.google.com/p/gosshnew/ssh"
-	glog "github.com/coreos/fleet/third_party/github.com/golang/glog"
+	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
 
 	"github.com/coreos/fleet/pkg"
 )
@@ -38,12 +36,29 @@ Please contact your system administrator.
 Add correct host key in %v to get rid of this message.
 Host key verification failed.
 `
+	promptToTrustHost = `The authenticity of host '%v' can't be established.
+%v key fingerprint is %v.
+Are you sure you want to continue connecting (yes/no)? `
 )
 
+// askToTrustHost prompts the user to trust
+func askToTrustHost(addr, algo, fingerprint string) bool {
+	var ans string
+
+	fmt.Fprintf(os.Stderr, promptToTrustHost, addr, algo, fingerprint)
+	fmt.Scanf("%s\n", &ans)
+
+	ans = strings.ToLower(ans)
+	if ans != "yes" && ans != "y" {
+		return false
+	}
+
+	return true
+}
+
 var (
-	ErrUnsetTrustFunc = errors.New("unset trustHost function")
-	ErrUntrustHost    = errors.New("unauthorized host")
-	ErrUnmatchKey     = errors.New("host key mismatch")
+	ErrUntrustHost = errors.New("unauthorized host")
+	ErrUnmatchKey  = errors.New("host key mismatch")
 )
 
 // HostKeyChecker implements the gossh.HostKeyChecker interface
@@ -51,19 +66,11 @@ var (
 type HostKeyChecker struct {
 	m         HostKeyManager
 	trustHost func(addr, algo, fingerprint string) bool
-	// errLog is used to print out error/warning message
-	errLog *log.Logger
 }
 
 // NewHostKeyChecker returns a new HostKeyChecker
-// m manages existing host keys, trustHost tells whether or not to trust
-// new host, errWriter indicates the place to write error msg
-func NewHostKeyChecker(m HostKeyManager, trustHost func(addr, algo, fingerprint string) bool, errWriter io.Writer) *HostKeyChecker {
-	if errWriter == nil {
-		errWriter = os.Stderr
-	}
-
-	return &HostKeyChecker{m, trustHost, log.New(errWriter, "", 0)}
+func NewHostKeyChecker(m HostKeyManager) *HostKeyChecker {
+	return &HostKeyChecker{m, askToTrustHost}
 }
 
 // Check is called during the handshake to check the server's public key for
@@ -85,7 +92,7 @@ func (kc *HostKeyChecker) Check(addr string, remote net.Addr, key gossh.PublicKe
 	hostKeys, err := kc.m.GetHostKeys()
 	_, ok := err.(*os.PathError)
 	if err != nil && !ok {
-		kc.errLog.Println("Failed to read known_hosts file %v: %v", kc.m.String(), err)
+		log.Errorf("Failed to read known_hosts file %v: %v", kc.m.String(), err)
 	}
 
 	mismatched := false
@@ -94,37 +101,35 @@ func (kc *HostKeyChecker) Check(addr string, remote net.Addr, key gossh.PublicKe
 			continue
 		}
 		for _, hostKey := range keys {
-			// Any matching key is considered a success, irrespective of previous
+			// Any matching key is considered a success, irrespective of previous failures
 			if hostKey.Type() == key.Type() && bytes.Compare(hostKey.Marshal(), key.Marshal()) == 0 {
 				return nil
 			} else {
+				// TODO(jonboulle): could be super friendly like the OpenSSH client
+				// and note exactly which key failed (file + line number)
 				mismatched = true
 			}
 		}
 	}
 
 	if mismatched {
-		kc.errLog.Printf(warningRemoteHostChanged, algoStr, keyFingerprintStr, kc.m.String())
+		fmt.Fprintf(os.Stderr, warningRemoteHostChanged, algoStr, keyFingerprintStr, kc.m.String())
 		return ErrUnmatchKey
 	}
 
 	// If we get this far, we haven't matched on any of the hostname patterns,
-	// so it's considered a new key
-
-	if kc.trustHost == nil {
-		return ErrUnsetTrustFunc
-	}
+	// so it's considered a new key. Prompt the user to trust it.
 	if !kc.trustHost(remoteAddr, algoStr, keyFingerprintStr) {
-		kc.errLog.Println("Host key verification failed.")
+		fmt.Fprintln(os.Stderr, "Host key verification failed.")
 		return ErrUntrustHost
 	}
 
 	if err := kc.m.PutHostKey(remoteAddr, key); err != nil {
-		kc.errLog.Printf("Failed to add the host to the list of known hosts (%v).\n", kc.m)
+		fmt.Fprintf(os.Stderr, "Failed to add the host to the list of known hosts (%v).\n", kc.m)
 		return nil
 	}
 
-	kc.errLog.Printf("Warning: Permanently added '%v' (%v) to the list of known hosts.\n", remoteAddr, algoStr)
+	fmt.Fprintf(os.Stderr, "Warning: Permanently added '%v' (%v) to the list of known hosts.\n", remoteAddr, algoStr)
 	return nil
 }
 
@@ -138,26 +143,27 @@ func (kc *HostKeyChecker) addrToHostPort(a string) (string, error) {
 	}
 	host, p, err := net.SplitHostPort(a)
 	if err != nil {
-		kc.errLog.Printf("Unable to parse addr %s: %v", a, err)
+		log.V(1).Infof("Unable to parse addr %s: %v", a, err)
 		return "", err
 	}
 
 	port, err := strconv.Atoi(p)
 	if err != nil {
-		kc.errLog.Printf("Error parsing port %s: %v", p, err)
+		log.V(1).Infof("Error parsing port %s: %v", p, err)
 		return "", err
 	}
 
-	// see `put_host_port` in openssh/misc.c
+	// Default port should be omitted from the entry.
+	// (see `put_host_port` in openssh/misc.c)
 	if port == 0 || port == sshDefaultPort {
 		// IPv6 addresses must be enclosed in square brackets
 		if strings.Contains(host, ":") {
-			host = "[" + host + "]"
+			host = fmt.Sprintf("[%s]", host)
 		}
 		return host, nil
 	}
 
-	return net.JoinHostPort(host, p), nil
+	return fmt.Sprintf("[%s]:%d", host, port), nil
 }
 
 // HostKeyManager defines an interface for managing "known hosts" keys
@@ -198,38 +204,15 @@ func (f *HostKeyFile) GetHostKeys() (map[string][]gossh.PublicKey, error) {
 		n++
 		line := s.Bytes()
 
-		// Skip any leading whitespace.
-		line = bytes.TrimLeft(line, "\t ")
+		hosts, key, err := parseKnownHostsLine(line)
 
-		// Skip comments and empty lines.
-		if bytes.HasPrefix(line, []byte("#")) || len(line) == 0 {
-			continue
-		}
-
-		// Skip markers.
-		if bytes.HasPrefix(line, []byte("@")) {
-			glog.V(2).Infof("Marker functionality not implemented - skipping line %d", n)
-			continue
-		}
-
-		// Find the end of the host name(s) portion.
-		end := bytes.IndexAny(line, "\t ")
-		if end <= 0 {
-			glog.V(2).Infof("Bad format (insufficient fields) - skipping line %d", n)
-			continue
-		}
-		hosts := string(line[:end])
-		keyBytes := line[end+1:]
-
-		// Check for hashed host names.
-		if strings.HasPrefix(hosts, sshHashDelim) {
-			glog.V(2).Infof("Hashed hosts not implemented - skipping line %d", n)
-			continue
-		}
-
-		key, _, _, _, err := gossh.ParseAuthorizedKey(keyBytes)
 		if err != nil {
-			glog.V(2).Infof("Error parsing key, skipping line %d: %v", n, err)
+			log.Warningf("%v:%d - %v\n", f.path, n, err)
+			continue
+		}
+
+		if hosts == "" {
+			// Comment/empty line
 			continue
 		}
 
@@ -238,6 +221,46 @@ func (f *HostKeyFile) GetHostKeys() (map[string][]gossh.PublicKey, error) {
 	}
 
 	return hostKeys, nil
+}
+
+// parseKnownHostsLine parses a line from a known hosts file.  It returns a
+// string containing the hosts section of the line, a gossh.PublicKey parsed
+// from the line, and any error encountered during the parsing.
+func parseKnownHostsLine(line []byte) (string, gossh.PublicKey, error) {
+
+	// Skip any leading whitespace.
+	line = bytes.TrimLeft(line, "\t ")
+
+	// Skip comments and empty lines.
+	if bytes.HasPrefix(line, []byte("#")) || len(line) == 0 {
+		return "", nil, nil
+	}
+
+	// Skip markers.
+	if bytes.HasPrefix(line, []byte("@")) {
+		return "", nil, errors.New("marker functionality not implemented")
+	}
+
+	// Find the end of the host name(s) portion.
+	end := bytes.IndexAny(line, "\t ")
+	if end <= 0 {
+		return "", nil, errors.New("bad format (insufficient fields)")
+	}
+	hosts := string(line[:end])
+	keyBytes := line[end+1:]
+
+	// Check for hashed host names.
+	if strings.HasPrefix(hosts, sshHashDelim) {
+		return "", nil, errors.New("hashed hosts not implemented")
+	}
+
+	// Finally, actually try to extract the key.
+	key, _, _, _, err := gossh.ParseAuthorizedKey(keyBytes)
+	if err != nil {
+		return "", nil, errors.New(fmt.Sprintf("error parsing key: %v", err))
+	}
+
+	return hosts, key, nil
 }
 
 func (f *HostKeyFile) PutHostKey(addr string, hostKey gossh.PublicKey) error {
