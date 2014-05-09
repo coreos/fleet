@@ -36,11 +36,33 @@ func (e *Engine) Run() {
 
 	go e.eBus.Listen(e.stop)
 	go e.eStream.Stream(0, e.eBus.Channel, e.stop)
+
+	e.checkForWork()
 }
 
 func (e *Engine) Stop() {
 	log.Info("Stopping Engine")
 	close(e.stop)
+}
+
+func (e *Engine) checkForWork() {
+	log.Infof("Polling etcd for actionable Jobs")
+
+	for _, j := range e.registry.GetAllJobs() {
+		ts := e.registry.GetJobTargetState(j.Name)
+		if ts == nil || j.State == nil || *ts == *j.State {
+			continue
+		}
+
+		if *j.State == job.JobStateInactive {
+			log.Infof("Offering Job(%s)", j.Name)
+			e.OfferJob(j)
+		} else if *ts == job.JobStateInactive {
+			log.Infof("Unscheduling Job(%s)", j.Name)
+			target := e.registry.GetJobTarget(j.Name)
+			e.registry.ClearJobTarget(j.Name, target)
+		}
+	}
 }
 
 func (e *Engine) OfferJob(j job.Job) error {
