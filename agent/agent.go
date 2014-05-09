@@ -49,7 +49,7 @@ func New(reg registry.Registry, eStream *registry.EventStream, mach *machine.Mac
 		return nil, err
 	}
 
-	mgr, err := systemd.NewSystemdManager(mach)
+	mgr, err := systemd.NewSystemdManager(mach, systemd.DefaultUnitsDirectory)
 	if err != nil {
 		return nil, err
 	}
