@@ -4,6 +4,7 @@ import (
 	"path"
 	"strings"
 
+	etcdErr "github.com/coreos/fleet/third_party/github.com/coreos/etcd/error"
 	"github.com/coreos/fleet/third_party/github.com/coreos/go-etcd/etcd"
 	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
 
@@ -60,6 +61,28 @@ func (r *EtcdRegistry) getJobOfferFromJSON(val string) *job.JobOffer {
 	}
 
 	return &jo
+}
+
+// Bids returns a list of JobBids that have been submitted for the given JobOffer
+func (r *EtcdRegistry) Bids(jo *job.JobOffer) ([]job.JobBid, error) {
+	var bids []job.JobBid
+
+	key := path.Join(r.keyPrefix, offerPrefix, jo.Job.Name, "bids")
+	resp, err := r.etcd.Get(key, false, true)
+	if err != nil {
+		if err.(*etcd.EtcdError).ErrorCode == etcdErr.EcodeKeyNotFound {
+			return bids, nil
+		}
+		return nil, err
+	}
+
+	for _, node := range resp.Node.Nodes {
+		machID := path.Base(node.Key)
+		jb := job.NewBid(jo.Job.Name, machID)
+		bids = append(bids, *jb)
+	}
+
+	return bids, nil
 }
 
 // UnresolvedJobOffers returns a list of hydrated JobOffers from the Registry

@@ -150,3 +150,7 @@ func (t TestRegistry) SubmitJobBid(jb *job.JobBid) {
 func (t TestRegistry) UnresolvedJobOffers() []job.JobOffer {
 	return nil
 }
+
+func (t TestRegistry) Bids(jo *job.JobOffer) ([]job.JobBid, error) {
+	return nil, nil
+}

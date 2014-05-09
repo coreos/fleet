@@ -10,6 +10,7 @@ import (
 )
 
 type Registry interface {
+	Bids(jb *job.JobOffer) ([]job.JobBid, error)
 	CheckJobPulse(jobName string) (string, bool)
 	ClearJobHeartbeat(jobName string)
 	ClearJobTarget(jobName, machID string) error

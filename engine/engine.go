@@ -36,11 +36,52 @@ func (e *Engine) Run() {
 
 	go e.eBus.Listen(e.stop)
 	go e.eStream.Stream(0, e.eBus.Channel, e.stop)
+
+	e.checkForWork()
 }
 
 func (e *Engine) Stop() {
 	log.Info("Stopping Engine")
 	close(e.stop)
+}
+
+func (e *Engine) checkForWork() {
+	log.Infof("Polling etcd for actionable Jobs")
+
+	for _, jo := range e.registry.UnresolvedJobOffers() {
+		bids, err := e.registry.Bids(&jo)
+		if err != nil {
+			log.Errorf("Failed determining open JobBids for JobOffer(%s): %v", jo.Job.Name, err)
+			continue
+		}
+		if len(bids) == 0 {
+			log.V(1).Infof("No bids found for open JobOffer(%s), ignoring", jo.Job.Name)
+			continue
+		}
+
+		log.Infof("Resolving JobOffer(%s), scheduling to Machine(%s)", bids[0].JobName, bids[0].MachineID)
+		if e.ResolveJobOffer(bids[0].JobName, bids[0].MachineID); err != nil {
+			log.Infof("Failed scheduling Job(%s) to Machine(%s)", bids[0].JobName, bids[0].MachineID)
+		} else {
+			log.Infof("Scheduled Job(%s) to Machine(%s)", bids[0].JobName, bids[0].MachineID)
+		}
+	}
+
+	for _, j := range e.registry.GetAllJobs() {
+		ts := e.registry.GetJobTargetState(j.Name)
+		if ts == nil || j.State == nil || *ts == *j.State {
+			continue
+		}
+
+		if *j.State == job.JobStateInactive {
+			log.Infof("Offering Job(%s)", j.Name)
+			e.OfferJob(j)
+		} else if *ts == job.JobStateInactive {
+			log.Infof("Unscheduling Job(%s)", j.Name)
+			target := e.registry.GetJobTarget(j.Name)
+			e.registry.ClearJobTarget(j.Name, target)
+		}
+	}
 }
 
 func (e *Engine) OfferJob(j job.Job) error {
