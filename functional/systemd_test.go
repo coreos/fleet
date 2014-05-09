@@ -1,7 +1,9 @@
 package functional
 
 import (
+	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"os"
 	"reflect"
 	"testing"
@@ -32,10 +34,11 @@ func TestSystemdUnitFlow(t *testing.T) {
 		t.Fatalf("Expected no units to be returned, got %v", units)
 	}
 
+	name := fmt.Sprintf("fleet-unit-%d.service", rand.Int63())
 	uf := unit.NewUnit(`[Service]
 ExecStart=/usr/bin/sleep 3000
 `)
-	j := job.NewJob("hello.service", *uf)
+	j := job.NewJob(name, *uf)
 
 	if err := mgr.Load(j.Name, j.Unit); err != nil {
 		t.Fatalf("Failed loading job: %v", err)
@@ -46,11 +49,11 @@ ExecStart=/usr/bin/sleep 3000
 		t.Fatalf("Failed calling Units(): %v", err)
 	}
 
-	if !reflect.DeepEqual([]string{"hello.service"}, units){
+	if !reflect.DeepEqual([]string{name}, units){
 		t.Fatalf("Expected [hello.service], got %v", units)
 	}
 
-	mgr.Unload("hello.service")
+	mgr.Unload(name)
 
 	units, err = mgr.Units()
 	if err != nil {
