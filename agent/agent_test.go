@@ -13,7 +13,8 @@ func newTestMachine(region string) *machine.Machine {
 	metadata := map[string]string{
 		"region": region,
 	}
-	return machine.New("", "", metadata)
+	state := machine.MachineState{Metadata: metadata}
+	return machine.New(state)
 }
 
 func newTestJobWithMachineMetadata(metadata string) *job.Job {
@@ -31,7 +32,7 @@ X-ConditionMachineID=XYZ
 `)
 	job := job.NewJob("example.service", *u)
 
-	mach := machine.New("XYZ", "", make(map[string]string, 0))
+	mach := machine.New(machine.MachineState{ID: "XYZ"})
 	agent := Agent{machine: mach, state: NewState()}
 	if !agent.AbleToRun(job) {
 		t.Fatalf("Agent should be able to run job")
@@ -44,7 +45,7 @@ X-ConditionMachineID=XYZ
 `)
 	job := job.NewJob("example.service", *u)
 
-	mach := machine.New("123", "", make(map[string]string, 0))
+	mach := machine.New(machine.MachineState{ID: "123"})
 	agent := Agent{machine: mach, state: NewState()}
 	if agent.AbleToRun(job) {
 		t.Fatalf("Agent should not be able to run job")

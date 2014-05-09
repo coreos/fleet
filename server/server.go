@@ -13,6 +13,7 @@ import (
 	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/registry"
 	"github.com/coreos/fleet/sign"
+	"github.com/coreos/fleet/version"
 )
 
 type Server struct {
@@ -21,10 +22,9 @@ type Server struct {
 }
 
 func New(cfg config.Config) (*Server, error) {
-	mach := machine.New("", cfg.PublicIP, cfg.Metadata())
-	mach.RefreshState()
-	if mach.State().ID == "" {
-		return nil, errors.New("unable to determine local machine ID")
+	mach, err := newMachineFromConfig(cfg)
+	if err != nil {
+		return nil, err
 	}
 
 	a, err := newAgentFromConfig(mach, cfg)
@@ -38,6 +38,23 @@ func New(cfg config.Config) (*Server, error) {
 	}
 
 	return &Server{a, e}, nil
+}
+
+func newMachineFromConfig(cfg config.Config) (*machine.Machine, error) {
+	state := machine.MachineState{
+		PublicIP: cfg.PublicIP,
+		Metadata: cfg.Metadata(),
+		Version: version.Version,
+	}
+
+	mach := machine.New(state)
+	mach.RefreshState()
+
+	if mach.State().ID == "" {
+		return nil, errors.New("unable to determine local machine ID")
+	}
+
+	return mach, nil
 }
 
 func newAgentFromConfig(mach *machine.Machine, cfg config.Config) (*agent.Agent, error) {
