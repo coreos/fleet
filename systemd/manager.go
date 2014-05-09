@@ -18,29 +18,29 @@ import (
 )
 
 const (
-	systemdRuntimePath = "/run/systemd/system/"
-	fleetUnitPath = "/run/fleet/units/"
+	DefaultUnitsDirectory = "/run/fleet/units/"
 )
 
 type SystemdManager struct {
-	Systemd  *dbus.Conn
+	systemd  *dbus.Conn
 	Machine  *machine.Machine
+	UnitsDir string
 
 	subscriptions *dbus.SubscriptionSet
 	stop          chan bool
 }
 
-func NewSystemdManager(machine *machine.Machine) (*SystemdManager, error) {
+func NewSystemdManager(machine *machine.Machine, uDir string) (*SystemdManager, error) {
 	systemd, err := dbus.New()
 	if err != nil {
 		return nil, err
 	}
 
-	if err := os.MkdirAll(fleetUnitPath, os.FileMode(0755)); err != nil {
+	if err := os.MkdirAll(uDir, os.FileMode(0755)); err != nil {
 		return nil, err
 	}
 
-	return &SystemdManager{systemd, machine, systemd.NewSubscriptionSet(), nil}, nil
+	return &SystemdManager{systemd, machine, uDir, systemd.NewSubscriptionSet(), nil}, nil
 }
 
 func (m *SystemdManager) MarshalJSON() ([]byte, error) {
@@ -55,7 +55,7 @@ func (m *SystemdManager) MarshalJSON() ([]byte, error) {
 // Publish is a long-running function that streams dbus events through
 // a translation layer and on to the EventBus
 func (m *SystemdManager) Publish(bus *event.EventBus, stopchan chan bool) {
-	m.Systemd.Subscribe()
+	m.systemd.Subscribe()
 
 	changechan, errchan := m.subscriptions.Subscribe()
 
@@ -78,7 +78,7 @@ func (m *SystemdManager) Publish(bus *event.EventBus, stopchan chan bool) {
 	}
 
 	stream.Close()
-	m.Systemd.Unsubscribe()
+	m.systemd.Unsubscribe()
 }
 
 // LoadJob writes the unit of the given Job to disk, subscribes to
@@ -128,7 +128,7 @@ func (m *SystemdManager) GetUnitState(jobName string) (*unit.UnitState, error) {
 }
 
 func (m *SystemdManager) getUnitStates(name string) (string, string, string, error) {
-	info, err := m.Systemd.GetUnitProperties(name)
+	info, err := m.systemd.GetUnitProperties(name)
 
 	if err != nil {
 		return "", "", "", err
@@ -141,7 +141,7 @@ func (m *SystemdManager) getUnitStates(name string) (string, string, string, err
 }
 
 func (m *SystemdManager) startUnit(name string) {
-	if stat, err := m.Systemd.StartUnit(name, "replace"); err != nil {
+	if stat, err := m.systemd.StartUnit(name, "replace"); err != nil {
 		log.Errorf("Failed to start systemd unit %s: %v", name, err)
 	} else {
 		log.Infof("Started systemd unit %s(%s)", name, stat)
@@ -149,7 +149,7 @@ func (m *SystemdManager) startUnit(name string) {
 }
 
 func (m *SystemdManager) stopUnit(name string) {
-	if stat, err := m.Systemd.StopUnit(name, "replace"); err != nil {
+	if stat, err := m.systemd.StopUnit(name, "replace"); err != nil {
 		log.Errorf("Failed to stop systemd unit %s: %v", name, err)
 	} else {
 		log.Infof("Stopped systemd unit %s(%s)", name, stat)
@@ -157,7 +157,7 @@ func (m *SystemdManager) stopUnit(name string) {
 }
 
 func (m *SystemdManager) readUnit(name string) (string, error) {
-	path := getUnitFilePath(name)
+	path := m.getUnitFilePath(name)
 	contents, err := ioutil.ReadFile(path)
 	if err == nil {
 		return string(contents), nil
@@ -167,7 +167,7 @@ func (m *SystemdManager) readUnit(name string) (string, error) {
 }
 
 func (m *SystemdManager) unitRequiresDaemonReload(name string) bool {
-	prop, err := m.Systemd.GetUnitProperty(name, "NeedDaemonReload")
+	prop, err := m.systemd.GetUnitProperty(name, "NeedDaemonReload")
 	if prop == nil || err != nil {
 		return false
 	}
@@ -177,31 +177,50 @@ func (m *SystemdManager) unitRequiresDaemonReload(name string) bool {
 
 func (m *SystemdManager) daemonReload() error {
 	log.Infof("Instructing systemd to reload units")
-	return m.Systemd.Reload()
+	return m.systemd.Reload()
+}
+
+// Units enumerates all files recognized as valid systemd units in
+// this manager's units directory.
+func (m *SystemdManager) Units() (units []string, err error) {
+	fis, err := ioutil.ReadDir(m.UnitsDir)
+	if err != nil {
+		return
+	}
+
+	for _, fi := range fis {
+		name := fi.Name()
+		if !unit.RecognizedUnitType(name) {
+			log.Warningf("Found unrecognized file in %s, ignoring", path.Join(m.UnitsDir, name))
+			continue
+		}
+		units = append(units, name)
+	}
+	return
 }
 
 func (m *SystemdManager) writeUnit(name string, contents string) error {
 	log.Infof("Writing systemd unit %s", name)
 
-	ufPath := getUnitFilePath(name)
+	ufPath := m.getUnitFilePath(name)
 	err := ioutil.WriteFile(ufPath, []byte(contents), os.FileMode(0644))
 	if err != nil {
 		return err
 	}
 
-	_, err = m.Systemd.LinkUnitFiles([]string{ufPath}, true, true)
+	_, err = m.systemd.LinkUnitFiles([]string{ufPath}, true, true)
 	return err
 }
 
 func (m *SystemdManager) removeUnit(name string) {
 	log.Infof("Removing systemd unit %s", name)
 
-	m.Systemd.DisableUnitFiles([]string{name}, true)
+	m.systemd.DisableUnitFiles([]string{name}, true)
 
-	ufPath := getUnitFilePath(name)
+	ufPath := m.getUnitFilePath(name)
 	os.Remove(ufPath)
 }
 
-func getUnitFilePath(name string) string {
-	return path.Join(fleetUnitPath, name)
+func (m *SystemdManager) getUnitFilePath(name string) string {
+	return path.Join(m.UnitsDir, name)
 }

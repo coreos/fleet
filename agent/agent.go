@@ -49,7 +49,7 @@ func New(reg registry.Registry, eStream *registry.EventStream, mach *machine.Mac
 		return nil, err
 	}
 
-	mgr, err := systemd.NewSystemdManager(mach)
+	mgr, err := systemd.NewSystemdManager(mach, systemd.DefaultUnitsDirectory)
 	if err != nil {
 		return nil, err
 	}
@@ -116,7 +116,8 @@ func (a *Agent) initialize() uint64 {
 	}
 
 	machID := a.machine.State().ID
-
+	loaded := map[string]job.Job{}
+	launched := map[string]job.Job{}
 	for _, j := range a.registry.GetAllJobs() {
 		tm := a.registry.GetJobTarget(j.Name)
 		if tm == "" || tm != machID {
@@ -134,10 +135,33 @@ func (a *Agent) initialize() uint64 {
 			continue
 		}
 
+		loaded[j.Name] = j
+
+		if *ts != job.JobStateLaunched {
+			continue
+		}
+
+		launched[j.Name] = j
+	}
+
+	units, err := a.systemd.Units()
+	if err != nil {
+		log.Warningf("Failed determining what units are already loaded: %v", err)
+	}
+
+	for _, name := range units {
+		if _, ok := loaded[name]; !ok {
+			log.Infof("Unit(%s) should not be loaded here, unloading", name)
+			a.systemd.StopJob(name)
+			a.systemd.UnloadJob(name)
+		}
+	}
+
+	for _, j := range loaded {
 		a.state.TrackJob(&j)
 		a.LoadJob(&j)
 
-		if *ts != job.JobStateLaunched {
+		if _, ok := launched[j.Name]; !ok {
 			continue
 		}
 
