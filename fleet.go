@@ -63,7 +63,7 @@ func main() {
 	log.V(1).Infof("Creating Server")
 	srv, err := server.New(*cfg)
 	if err != nil {
-		log.Fatalf(err.Error())
+		log.Fatalf("Failed creating Server: %v", err.Error())
 	}
 	srv.Run()
 

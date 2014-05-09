@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/json"
+	"errors"
 
 	"github.com/coreos/fleet/third_party/github.com/coreos/go-etcd/etcd"
 	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
@@ -20,12 +21,18 @@ type Server struct {
 }
 
 func New(cfg config.Config) (*Server, error) {
-	a, err := newAgentFromConfig(cfg)
+	mach := machine.New("", cfg.PublicIP, cfg.Metadata())
+	mach.RefreshState()
+	if mach.State().ID == "" {
+		return nil, errors.New("unable to determine local machine ID")
+	}
+
+	a, err := newAgentFromConfig(mach, cfg)
 	if err != nil {
 		return nil, err
 	}
 
-	e, err := newEngineFromConfig(cfg)
+	e, err := newEngineFromConfig(mach, cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -33,9 +40,7 @@ func New(cfg config.Config) (*Server, error) {
 	return &Server{a, e}, nil
 }
 
-func newAgentFromConfig(cfg config.Config) (*agent.Agent, error) {
-	mach := machine.New("", cfg.PublicIP, cfg.Metadata())
-
+func newAgentFromConfig(mach *machine.Machine, cfg config.Config) (*agent.Agent, error) {
 	regClient := etcd.NewClient(cfg.EtcdServers)
 	regClient.SetConsistency(etcd.STRONG_CONSISTENCY)
 	reg := registry.New(regClient, cfg.EtcdKeyPrefix)
@@ -60,9 +65,7 @@ func newAgentFromConfig(cfg config.Config) (*agent.Agent, error) {
 	return agent.New(reg, eStream, mach, cfg.AgentTTL, verifier)
 }
 
-func newEngineFromConfig(cfg config.Config) (*engine.Engine, error) {
-	mach := machine.New("", cfg.PublicIP, cfg.Metadata())
-
+func newEngineFromConfig(mach *machine.Machine, cfg config.Config) (*engine.Engine, error) {
 	regClient := etcd.NewClient(cfg.EtcdServers)
 	regClient.SetConsistency(etcd.STRONG_CONSISTENCY)
 	reg := registry.New(regClient, cfg.EtcdKeyPrefix)
