@@ -180,6 +180,23 @@ func (m *SystemdManager) daemonReload() error {
 	return m.Systemd.Reload()
 }
 
+func (m *SystemdManager) Units() (units []string, err error) {
+	fis, err := ioutil.ReadDir(fleetUnitPath)
+	if err != nil {
+		return
+	}
+
+	for _, fi := range fis {
+		name := fi.Name()
+		if !unit.RecognizedUnitType(name) {
+			log.Warningf("Found unrecognized file in %s, ignoring", path.Join(fleetUnitPath, name))
+			continue
+		}
+		units = append(units, name)
+	}
+	return
+}
+
 func (m *SystemdManager) writeUnit(name string, contents string) error {
 	log.Infof("Writing systemd unit %s", name)
 
