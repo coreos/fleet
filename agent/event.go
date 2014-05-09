@@ -162,9 +162,5 @@ func (eh *EventHandler) HandleEventUnitStateUpdated(ev event.Event) {
 
 	log.Infof("EventUnitStateUpdated(%s): pushing state (loadState=%s, activeState=%s, subState=%s) to Registry", jobName, state.LoadState, state.ActiveState, state.SubState)
 
-	// FIXME: This should probably be set in the underlying event-generation code
-	ms := eh.agent.Machine().State()
-	state.MachineState = &ms
-
 	eh.agent.ReportUnitState(jobName, state)
 }

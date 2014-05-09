@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/coreos/fleet/job"
-	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/systemd"
 	"github.com/coreos/fleet/unit"
 )
@@ -19,8 +18,7 @@ func TestSystemdUnitFlow(t *testing.T) {
 	}
 	defer os.RemoveAll(uDir)
 
-	mach := machine.New(machine.MachineState{ID: "XXX"})
-	mgr, err := systemd.NewSystemdManager(mach, uDir)
+	mgr, err := systemd.NewSystemdManager(uDir)
 	if err != nil {
 		t.Fatalf("Failed initializing SystemdManager: %v", err)
 	}
