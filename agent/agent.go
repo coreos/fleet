@@ -97,7 +97,7 @@ func (a *Agent) Run() {
 
 // initialize prepares the Agent for normal operation by doing three things:
 // 1. Announce presence to the Registry, tracking the etcd index of the operation
-// 2. Discover any jobs that are scheduled locally and load/start them
+// 2. Discover any jobs that are scheduled locally, loading/starting them if they can run locally
 // 3. Cache all unresolved job offers and bid for any that can be run locally
 // The returned value is the etcd index at which the agent's presence was announced.
 func (a *Agent) initialize() uint64 {
@@ -115,14 +115,22 @@ func (a *Agent) initialize() uint64 {
 		time.Sleep(wait)
 	}
 
+	machID := a.machine.State().ID
+
 	for _, j := range a.registry.GetAllJobs() {
 		tm := a.registry.GetJobTarget(j.Name)
-		if tm == "" || tm != a.machine.State().ID {
+		if tm == "" || tm != machID {
+			continue
+		}
+
+		if !a.AbleToRun(&j) {
+			log.Infof("Unable to run Job(%s), unscheduling", j.Name)
+			a.registry.ClearJobTarget(j.Name, machID)
 			continue
 		}
 
 		ts := a.registry.GetJobTargetState(j.Name)
-		if ts != nil && *ts != job.JobStateLoaded && *ts != job.JobStateLaunched {
+		if ts == nil || *ts == job.JobStateInactive {
 			continue
 		}
 
