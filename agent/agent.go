@@ -141,6 +141,7 @@ func (a *Agent) initialize() uint64 {
 		// all offers starting here for future bidding even if we are
 		// currently unable to bid
 		a.state.TrackOffer(jo)
+		a.state.TrackJob(&jo.Job)
 	}
 
 	a.BidForPossibleJobs()
