@@ -44,8 +44,8 @@ func TestSshFindMachine(t *testing.T) {
 	registryCtl = newTestRegistryForSsh()
 
 	ip, _ := findAddressInMachineList("c31e44e1-f858-436e-933e-59c642517860")
-	if ip != "1.2.3.4:22" {
-		t.Errorf("Expected to return the host 1.2.3.4:22, but it was %s", ip)
+	if ip != "1.2.3.4" {
+		t.Errorf("Expected to return the host 1.2.3.4, but it was %s", ip)
 	}
 }
 
@@ -62,8 +62,8 @@ func TestSshFindMachineByJobName(t *testing.T) {
 	registryCtl = newTestRegistryForSsh()
 
 	ip, _ := findAddressInRunningUnits("j1")
-	if ip != "1.2.3.4:22" {
-		t.Errorf("Expected to return the host 1.2.3.4:22, but it was %s", ip)
+	if ip != "1.2.3.4" {
+		t.Errorf("Expected to return the host 1.2.3.4, but it was %s", ip)
 	}
 }
 
@@ -88,8 +88,8 @@ func TestGlobalLookupByMachineID(t *testing.T) {
 		t.Fatal("Expected to not find any error")
 	}
 
-	if ip != "1.2.3.4:22" {
-		t.Errorf("Expected to return the host 1.2.3.4:22, but it was %s", ip)
+	if ip != "1.2.3.4" {
+		t.Errorf("Expected to return the host 1.2.3.4, but it was %s", ip)
 	}
 }
 
@@ -101,8 +101,8 @@ func TestGlobalLookupByJobName(t *testing.T) {
 		t.Fatal("Expected to not find any error")
 	}
 
-	if ip != "1.2.3.4:22" {
-		t.Errorf("Expected to return the host 1.2.3.4:22, but it was %s", ip)
+	if ip != "1.2.3.4" {
+		t.Errorf("Expected to return the host 1.2.3.4, but it was %s", ip)
 	}
 }
 

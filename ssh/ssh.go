@@ -4,6 +4,8 @@ import (
 	"errors"
 	"net"
 	"os"
+	"strconv"
+	"strings"
 	"time"
 
 	gossh "github.com/coreos/fleet/third_party/code.google.com/p/gosshnew/ssh"
@@ -176,11 +178,20 @@ func sshClientConfig(user string, checker *HostKeyChecker) (*gossh.ClientConfig,
 	return &cfg, nil
 }
 
+func maybeAddDefaultPort(addr string) string {
+	if strings.Contains(addr, ":") {
+		return addr
+	}
+	return net.JoinHostPort(addr, strconv.Itoa(sshDefaultPort))
+}
+
 func NewSSHClient(user, addr string, checker *HostKeyChecker, agentForwarding bool) (*SSHForwardingClient, error) {
 	clientConfig, err := sshClientConfig(user, checker)
 	if err != nil {
 		return nil, err
 	}
+
+	addr = maybeAddDefaultPort(addr)
 
 	var client *gossh.Client
 	dialFunc := func(echan chan error) {
@@ -201,6 +212,9 @@ func NewTunnelledSSHClient(user, tunaddr, tgtaddr string, checker *HostKeyChecke
 	if err != nil {
 		return nil, err
 	}
+
+	tunaddr = maybeAddDefaultPort(tunaddr)
+	tgtaddr = maybeAddDefaultPort(tgtaddr)
 
 	var tunnelClient *gossh.Client
 	dialFunc := func(echan chan error) {

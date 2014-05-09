@@ -70,4 +70,6 @@ See [CONTRIBUTING](CONTRIBUTING.md) for details on submitting patches and contac
 
 ### License
 
-fleet is under the Apache 2.0 license. See the [LICENSE](LICENSE) file for details.
+fleet is released under the Apache 2.0 license. See the [LICENSE](LICENSE) file for details.
+
+Specific components of fleet use code derivative from software distributed under other licenses; in those cases the appropriate licenses are stipulated alongside the code.

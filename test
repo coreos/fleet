@@ -2,9 +2,11 @@
 #
 # Run all fleet tests (not including functional)
 #   ./test
+#   ./test -v
 #
 # Run tests for one package
-#  PKG=./unit ./test
+#   PKG=./unit ./test
+#   PKG=ssh ./test
 #
 
 # Invoke ./cover for HTML output
@@ -28,7 +30,7 @@ fi
 
 echo "Running tests..."
 go test -i ${TESTPKGS}
-go test ${COVER} -v ${TESTPKGS}
+go test ${COVER} $@ ${TESTPKGS}
 
 echo "Checking gofmt..."
 fmtRes=$(gofmt -l $GOFMTPATH)

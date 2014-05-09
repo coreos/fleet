@@ -242,7 +242,7 @@ func getChecker() *ssh.HostKeyChecker {
 	}
 
 	keyFile := ssh.NewHostKeyFile(globalFlags.KnownHostsFile)
-	return ssh.NewHostKeyChecker(keyFile, askToTrustHost, nil)
+	return ssh.NewHostKeyChecker(keyFile)
 }
 
 // getUnitFromFile attempts to load a Job from a given filename
@@ -281,20 +281,6 @@ func machineFullLegend(ms machine.MachineState, full bool) string {
 		legend = fmt.Sprintf("%s/%s", legend, ms.PublicIP)
 	}
 	return legend
-}
-
-func askToTrustHost(addr, algo, fingerprint string) bool {
-	var ans string
-
-	fmt.Fprintf(os.Stderr, "The authenticity of host '%v' can't be established.\n%v key fingerprint is %v.\nAre you sure you want to continue connecting (yes/no)? ", addr, algo, fingerprint)
-	fmt.Scanf("%s\n", &ans)
-
-	ans = strings.ToLower(ans)
-	if ans != "yes" && ans != "y" {
-		return false
-	}
-
-	return true
 }
 
 func findJobs(args []string) (jobs []job.Job, err error) {

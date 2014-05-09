@@ -153,8 +153,7 @@ func findAddressInMachineList(lookup string) (string, bool) {
 	if match == nil {
 		return "", false
 	}
-
-	return fmt.Sprintf("%s:22", match.PublicIP), true
+	return match.PublicIP, true
 }
 
 func findAddressInRunningUnits(jobName string) (string, bool) {
@@ -162,7 +161,7 @@ func findAddressInRunningUnits(jobName string) (string, bool) {
 	if j == nil || j.UnitState == nil {
 		return "", false
 	}
-	return fmt.Sprintf("%s:22", j.UnitState.MachineState.PublicIP), true
+	return j.UnitState.MachineState.PublicIP, true
 }
 
 // runCommand will attempt to run a command on a given machine. It will attempt
@@ -206,9 +205,7 @@ func runLocalCommand(cmd string) (error, int) {
 
 // runRemoteCommand runs the given command over SSH on the given IP, and returns
 // any error encountered and the exit status of the command
-func runRemoteCommand(cmd string, ip string) (err error, exit int) {
-	addr := fmt.Sprintf("%s:22", ip)
-
+func runRemoteCommand(cmd string, addr string) (err error, exit int) {
 	var sshClient *ssh.SSHForwardingClient
 	if tun := getTunnelFlag(); tun != "" {
 		sshClient, err = ssh.NewTunnelledSSHClient("core", tun, addr, getChecker(), false)
