@@ -152,8 +152,8 @@ func (a *Agent) initialize() uint64 {
 	for _, name := range units {
 		if _, ok := loaded[name]; !ok {
 			log.Infof("Unit(%s) should not be loaded here, unloading", name)
-			a.systemd.StopJob(name)
-			a.systemd.UnloadJob(name)
+			a.systemd.Stop(name)
+			a.systemd.Unload(name)
 		}
 	}
 
@@ -289,7 +289,7 @@ func (a *Agent) HeartbeatJobs(ttl time.Duration, stop chan bool) {
 func (a *Agent) LoadJob(j *job.Job) {
 	log.Infof("Loading Job(%s)", j.Name)
 	a.state.SetTargetState(j.Name, job.JobStateLoaded)
-	err := a.systemd.LoadJob(j)
+	err := a.systemd.Load(j.Name, j.Unit)
 	if err != nil {
 		log.Errorf("Failed loading Job(%s) in systemd: %v", j.Name, err)
 		return
@@ -312,13 +312,13 @@ func (a *Agent) StartJob(jobName string) {
 	machID := a.Machine().State().ID
 	a.registry.JobHeartbeat(jobName, machID, a.ttl)
 
-	a.systemd.StartJob(jobName)
+	a.systemd.Start(jobName)
 }
 
 func (a *Agent) StopJob(jobName string) {
 	a.state.SetTargetState(jobName, job.JobStateLoaded)
 	a.registry.ClearJobHeartbeat(jobName)
-	a.systemd.StopJob(jobName)
+	a.systemd.Stop(jobName)
 }
 
 func (a *Agent) UnloadJob(jobName string) {
@@ -327,7 +327,7 @@ func (a *Agent) UnloadJob(jobName string) {
 	reversePeers := a.state.GetJobsByPeer(jobName)
 
 	a.state.PurgeJob(jobName)
-	a.systemd.UnloadJob(jobName)
+	a.systemd.Unload(jobName)
 
 	// The dbus event systemd will not trigger an event telling
 	// us that the unit has been unloaded, so we must explicitly

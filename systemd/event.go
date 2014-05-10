@@ -39,13 +39,12 @@ func (es *EventStream) Close() {
 
 func translateUnitStatusEvents(changes map[string]*dbus.UnitStatus) []event.Event {
 	events := make([]event.Event, 0)
-	for key, status := range changes {
-		jobName := key
+	for name, status := range changes {
 		var state *unit.UnitState
 		if status != nil {
 			state = unit.NewUnitState(status.LoadState, status.ActiveState, status.SubState, nil)
 		}
-		ev := event.Event{"EventUnitStateUpdated", state, jobName}
+		ev := event.Event{"EventUnitStateUpdated", state, name}
 		events = append(events, ev)
 	}
 	return events
