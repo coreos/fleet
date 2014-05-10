@@ -12,7 +12,6 @@ import (
 	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
 
 	"github.com/coreos/fleet/event"
-	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/unit"
 )
@@ -81,45 +80,44 @@ func (m *SystemdManager) Publish(bus *event.EventBus, stopchan chan bool) {
 	m.systemd.Unsubscribe()
 }
 
-// LoadJob writes the unit of the given Job to disk, subscribes to
-// relevant dbus events, and only if necessary, instructs the systemd
-// daemon to reload
-func (m *SystemdManager) LoadJob(job *job.Job) error {
-	err := m.writeUnit(job.Name, job.Unit.String())
+// Load writes the given Unit to disk, subscribing to relevant dbus
+// events, and, if necessary, instructing the systemd daemon to reload.
+func (m *SystemdManager) Load(name string, u unit.Unit) error {
+	err := m.writeUnit(name, u.String())
 	if err != nil {
 		return err
 	}
 
-	m.subscriptions.Add(job.Name)
+	m.subscriptions.Add(name)
 
-	if !m.unitRequiresDaemonReload(job.Name) {
+	if !m.unitRequiresDaemonReload(name) {
 		return nil
 	}
 
 	return m.daemonReload()
 }
 
-// UnloadJob removes the unit associated with the indicated Job from
-// the filesystem, unsubscribing from relevant dbus events
-func (m *SystemdManager) UnloadJob(jobName string) {
-	m.subscriptions.Remove(jobName)
-	m.removeUnit(jobName)
+// Unload removes the indicated unit from the filesystem, unsubscribing
+// from relevant dbus events.
+func (m *SystemdManager) Unload(name string) {
+	m.subscriptions.Remove(name)
+	m.removeUnit(name)
 }
 
-// StartJob starts the unit created for the indicated Job
-func (m *SystemdManager) StartJob(jobName string) {
-	m.startUnit(jobName)
+// Start starts the unit identified by the given name
+func (m *SystemdManager) Start(name string) {
+	m.startUnit(name)
 }
 
-// StopJob stops the unit created for the indicated Job
-func (m *SystemdManager) StopJob(jobName string) {
-	m.stopUnit(jobName)
+// Stop stops the unit identified by the given name
+func (m *SystemdManager) Stop(name string) {
+	m.stopUnit(name)
 }
 
 // GetUnitState generates a UnitState object representing the
-// current state of a Job's unit
-func (m *SystemdManager) GetUnitState(jobName string) (*unit.UnitState, error) {
-	loadState, activeState, subState, err := m.getUnitStates(jobName)
+// current state of a Unit
+func (m *SystemdManager) GetUnitState(name string) (*unit.UnitState, error) {
+	loadState, activeState, subState, err := m.getUnitStates(name)
 	if err != nil {
 		return nil, err
 	}
