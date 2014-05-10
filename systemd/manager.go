@@ -12,7 +12,6 @@ import (
 	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
 
 	"github.com/coreos/fleet/event"
-	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/unit"
 )
 
@@ -22,14 +21,13 @@ const (
 
 type SystemdManager struct {
 	systemd  *dbus.Conn
-	Machine  *machine.Machine
 	UnitsDir string
 
 	subscriptions *dbus.SubscriptionSet
 	stop          chan bool
 }
 
-func NewSystemdManager(machine *machine.Machine, uDir string) (*SystemdManager, error) {
+func NewSystemdManager(uDir string) (*SystemdManager, error) {
 	systemd, err := dbus.New()
 	if err != nil {
 		return nil, err
@@ -39,7 +37,7 @@ func NewSystemdManager(machine *machine.Machine, uDir string) (*SystemdManager, 
 		return nil, err
 	}
 
-	return &SystemdManager{systemd, machine, uDir, systemd.NewSubscriptionSet(), nil}, nil
+	return &SystemdManager{systemd, uDir, systemd.NewSubscriptionSet(), nil}, nil
 }
 
 func (m *SystemdManager) MarshalJSON() ([]byte, error) {
@@ -121,8 +119,7 @@ func (m *SystemdManager) GetUnitState(name string) (*unit.UnitState, error) {
 	if err != nil {
 		return nil, err
 	}
-	ms := m.Machine.State()
-	return unit.NewUnitState(loadState, activeState, subState, &ms), nil
+	return unit.NewUnitState(loadState, activeState, subState, nil), nil
 }
 
 func (m *SystemdManager) getUnitStates(name string) (string, string, string, error) {

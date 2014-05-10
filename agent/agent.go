@@ -49,7 +49,7 @@ func New(reg registry.Registry, eStream *registry.EventStream, mach *machine.Mac
 		return nil, err
 	}
 
-	mgr, err := systemd.NewSystemdManager(mach, systemd.DefaultUnitsDirectory)
+	mgr, err := systemd.NewSystemdManager(systemd.DefaultUnitsDirectory)
 	if err != nil {
 		return nil, err
 	}
@@ -345,7 +345,8 @@ func (a *Agent) UnloadJob(jobName string) {
 	}
 }
 
-// Persist the state of the given Job into the Registry
+// ReportUnitState attaches the current state of the Agent's Machine to the given
+// unit.UnitState object, then persists that state in the Registry
 func (a *Agent) ReportUnitState(jobName string, us *unit.UnitState) {
 	if us == nil {
 		err := a.registry.RemoveUnitState(jobName)
@@ -353,6 +354,8 @@ func (a *Agent) ReportUnitState(jobName string, us *unit.UnitState) {
 			log.Errorf("Failed to remove UnitState for job %s from Registry: %s", jobName, err.Error())
 		}
 	} else {
+		ms := a.Machine().State()
+		us.MachineState = &ms
 		a.registry.SaveUnitState(jobName, us)
 	}
 }
