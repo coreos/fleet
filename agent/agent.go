@@ -84,10 +84,9 @@ func (a *Agent) MarshalJSON() ([]byte, error) {
 }
 
 // Trigger all async processes the Agent intends to run
-func (a *Agent) Run() {
+func (a *Agent) Run(idx uint64) {
 	a.stop = make(chan bool)
 
-	idx := a.initialize()
 	go a.eBus.Listen(a.stop)
 	go a.eStream.Stream(idx, a.eBus.Channel, a.stop)
 
@@ -97,12 +96,12 @@ func (a *Agent) Run() {
 	go a.HeartbeatJobs(a.ttl, a.stop)
 }
 
-// initialize prepares the Agent for normal operation by doing three things:
+// Initialize prepares the Agent for normal operation by doing three things:
 // 1. Announce presence to the Registry, tracking the etcd index of the operation
 // 2. Discover any jobs that are scheduled locally, loading/starting them if they can run locally
 // 3. Cache all unresolved job offers and bid for any that can be run locally
 // The returned value is the etcd index at which the agent's presence was announced.
-func (a *Agent) initialize() uint64 {
+func (a *Agent) Initialize() uint64 {
 	log.Infof("Initializing Agent")
 
 	var idx uint64

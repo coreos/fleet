@@ -112,7 +112,8 @@ func newEngineFromConfig(mach *machine.Machine, cfg config.Config) (*engine.Engi
 }
 
 func (s *Server) Run() {
-	s.agent.Run()
+	idx := s.agent.Initialize()
+	s.agent.Run(idx)
 
 	s.stop = make(chan bool)
 
