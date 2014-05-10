@@ -24,6 +24,7 @@ type Cluster interface {
 // be considered when creating a new cluster member.
 type MachineConfig struct {
 	VerifyUnits bool
+	Metadata    map[string]string
 }
 
 func CreateNClusterMembers(cl Cluster, count int, cfg MachineConfig) error {

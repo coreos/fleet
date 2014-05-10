@@ -12,6 +12,7 @@ import (
 	"path"
 	"strconv"
 	"strings"
+	"text/template"
 	"time"
 
 	"github.com/coreos/fleet/third_party/github.com/coreos/go-systemd/dbus"
@@ -111,15 +112,28 @@ func (nc *nspawnCluster) prepFleet(dir, ip, sshKeySrc, fleetBinSrc string, cfg M
 	}
 
 	cfgTmpl := `verbosity=2
-etcd_servers=["http://172.17.0.1:4001"]	
-etcd_key_prefix=%s
-public_ip=%s
-verify_units=%s
-authorized_keys_file=%s
+etcd_servers=["http://172.17.0.1:4001"]
+public_ip={{.PublicIP}}
+verify_units={{.VerifyUnits}}
+authorized_keys_file={{.KeysFile}}
+{{range $key, $value := .Metadata}}
+{{$key}}={{$value}}
+{{end}}
 `
-	cfgContents := fmt.Sprintf(cfgTmpl, nc.keyspace(), ip, strconv.FormatBool(cfg.VerifyUnits), relSSHKeyDst)
-	cfgPath := path.Join(dir, "opt", "fleet", "fleet.conf")
-	if err := ioutil.WriteFile(cfgPath, []byte(cfgContents), 0644); err != nil {
+	var data = struct {
+		PublicIP, KeysFile string
+		VerifyUnits        bool
+		Metadata           map[string]string
+	}{ip, relSSHKeyDst, cfg.VerifyUnits, cfg.Metadata}
+
+	cfgFile, err := os.Create(path.Join(dir, "opt", "fleet", "fleet.conf"))
+	if err != nil {
+		return err
+	}
+
+	t := template.Must(template.New("cfg").Parse(cfgTmpl))
+	err = t.Execute(cfgFile, data)
+	if err != nil {
 		return err
 	}
 
