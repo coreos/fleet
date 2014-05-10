@@ -38,6 +38,7 @@ type Agent struct {
 
 	state   *AgentState
 	systemd *systemd.SystemdManager
+	sEvents *systemd.EventStream
 
 	// channel used to shutdown any open connections/channels the Agent holds
 	stop chan bool
@@ -53,11 +54,12 @@ func New(reg registry.Registry, eStream *registry.EventStream, mach *machine.Mac
 	if err != nil {
 		return nil, err
 	}
+	sEvents := systemd.NewEventStream(mgr)
 
 	state := NewState()
 	eBus := event.NewEventBus()
 
-	a := &Agent{reg, eStream, eBus, mach, ttldur, verifier, state, mgr, nil}
+	a := &Agent{reg, eStream, eBus, mach, ttldur, verifier, state, mgr, sEvents, nil}
 
 	hdlr := NewEventHandler(a)
 	eBus.AddListener("agent", hdlr)
@@ -89,7 +91,7 @@ func (a *Agent) Run() {
 	go a.eBus.Listen(a.stop)
 	go a.eStream.Stream(idx, a.eBus.Channel, a.stop)
 
-	go a.systemd.Publish(a.eBus, a.stop)
+	go a.sEvents.Stream(a.eBus.Channel, a.stop)
 
 	go a.Heartbeat(a.ttl, a.stop)
 	go a.HeartbeatJobs(a.ttl, a.stop)

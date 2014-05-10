@@ -9,21 +9,28 @@ import (
 )
 
 type EventStream struct {
+	mgr   *SystemdManager
 	close chan bool
 }
 
-func NewEventStream() *EventStream {
-	return &EventStream{make(chan bool)}
+func NewEventStream(mgr *SystemdManager) *EventStream {
+	return &EventStream{mgr, nil}
 }
 
-func (es *EventStream) Stream(unitchan <-chan map[string]*dbus.UnitStatus, eventchan chan *event.Event) {
+func (es *EventStream) Stream(eventchan chan *event.Event, stop chan bool) {
+
+	es.mgr.systemd.Subscribe()
+	changechan, errchan := es.mgr.subscriptions.Subscribe()
+
 	for true {
 		select {
-		case <-es.close:
-			return
-		case units := <-unitchan:
+		case <-stop:
+			break
+		case err := <-errchan:
+			log.Errorf("Received error from dbus: err=%v", err)
+		case changes := <-changechan:
 			log.V(1).Infof("Received event from dbus")
-			events := translateUnitStatusEvents(units)
+			events := translateUnitStatusEvents(changes)
 			for i, _ := range events {
 				ev := events[i]
 				log.V(1).Infof("Translated dbus event to event(Type=%s)", ev.Type)
@@ -31,10 +38,8 @@ func (es *EventStream) Stream(unitchan <-chan map[string]*dbus.UnitStatus, event
 			}
 		}
 	}
-}
 
-func (es *EventStream) Close() {
-	close(es.close)
+	es.mgr.systemd.Unsubscribe()
 }
 
 func translateUnitStatusEvents(changes map[string]*dbus.UnitStatus) []event.Event {
