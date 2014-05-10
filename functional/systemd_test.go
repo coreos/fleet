@@ -39,7 +39,7 @@ ExecStart=/usr/bin/sleep 3000
 `)
 	j := job.NewJob("hello.service", *uf)
 
-	if err := mgr.LoadJob(j); err != nil {
+	if err := mgr.Load(j.Name, j.Unit); err != nil {
 		t.Fatalf("Failed loading job: %v", err)
 	}
 
@@ -52,7 +52,7 @@ ExecStart=/usr/bin/sleep 3000
 		t.Fatalf("Expected [hello.service], got %v", units)
 	}
 
-	mgr.UnloadJob("hello.service")
+	mgr.Unload("hello.service")
 
 	units, err = mgr.Units()
 	if err != nil {
