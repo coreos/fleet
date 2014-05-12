@@ -43,8 +43,9 @@ func (r *EtcdRegistry) GetSignatureSet(tag string) *sign.SignatureSet {
 
 // GetSignatureSetOfJob retrieves the SignatureSet associated with the given
 // job, or nil if none can be found
-func (r *EtcdRegistry) GetSignatureSetOfJob(name string) *sign.SignatureSet {
-	return r.GetSignatureSet(sign.TagForJob(name))
+func (r *EtcdRegistry) GetSignatureSetOfJob(name string) (*sign.SignatureSet, error) {
+	// TODO(jonboulle): handle errors
+	return r.GetSignatureSet(sign.TagForJob(name)), nil
 }
 
 func (r *EtcdRegistry) destroySignatureSetOfJob(name string) {

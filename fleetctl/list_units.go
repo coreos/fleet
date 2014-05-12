@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"sort"
 
 	"github.com/coreos/fleet/job"
@@ -29,11 +30,16 @@ func init() {
 }
 
 func runListUnits(args []string) (exit int) {
+	jobs, sortable, err := findAllUnits()
+
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error retrieving list of units from repository: %v\n", err)
+		return -1
+	}
+
 	if !sharedFlags.NoLegend {
 		fmt.Fprintln(out, "UNIT\tSTATE\tLOAD\tACTIVE\tSUB\tDESC\tMACHINE")
 	}
-
-	jobs, sortable := findAllUnits()
 
 	for _, name := range sortable {
 		j := jobs[name]
@@ -44,18 +50,23 @@ func runListUnits(args []string) (exit int) {
 	return
 }
 
-func findAllUnits() (jobs map[string]job.Job, sortable sort.StringSlice) {
+func findAllUnits() (jobs map[string]job.Job, sortable sort.StringSlice, err error) {
 	jobs = make(map[string]job.Job, 0)
 	sortable = make(sort.StringSlice, 0)
 
-	for _, j := range registryCtl.GetAllJobs() {
+	jj, err := registryCtl.GetAllJobs()
+	if err != nil {
+		return
+	}
+
+	for _, j := range jj {
 		jobs[j.Name] = j
 		sortable = append(sortable, j.Name)
 	}
 
 	sortable.Sort()
 
-	return jobs, sortable
+	return
 }
 
 func printUnitState(name, description string, js *job.JobState, us *unit.UnitState, full bool) {

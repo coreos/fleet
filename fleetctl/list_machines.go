@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"strings"
 )
 
@@ -31,7 +32,12 @@ func runListMachines(args []string) (exit int) {
 		fmt.Fprintln(out, "MACHINE\tIP\tMETADATA")
 	}
 
-	for _, m := range registryCtl.GetActiveMachines() {
+	machines, err := registryCtl.GetActiveMachines()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error retrieving list of active machines: %v\n", err)
+		return 1
+	}
+	for _, m := range machines {
 		mach := machineIDLegend(m, sharedFlags.Full)
 
 		ip := m.PublicIP

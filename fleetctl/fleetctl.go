@@ -287,7 +287,7 @@ func findJobs(args []string) (jobs []job.Job, err error) {
 	jobs = make([]job.Job, len(args))
 	for i, v := range args {
 		name := unitNameMangle(v)
-		j := registryCtl.GetJob(name)
+		j, _ := registryCtl.GetJob(name)
 		if j == nil {
 			return nil, fmt.Errorf("Could not find Job(%s)", name)
 		}
@@ -340,7 +340,8 @@ func verifyJob(j *job.Job) error {
 		return fmt.Errorf("Failed creating SignatureVerifier: %v", err)
 	}
 
-	ss := registryCtl.GetSignatureSetOfJob(j.Name)
+	// TODO(jonboulle): handle error
+	ss, _ := registryCtl.GetSignatureSetOfJob(j.Name)
 	verified, err := sv.VerifyJob(j, ss)
 	if err != nil {
 		return fmt.Errorf("Failed attempting to verify Job(%s): %v", j.Name, err)
@@ -355,7 +356,8 @@ func verifyJob(j *job.Job) error {
 func lazyCreateJobs(args []string, signAndVerify bool) error {
 	for _, arg := range args {
 		jobName := unitNameMangle(arg)
-		if j := registryCtl.GetJob(jobName); j != nil {
+		// TODO(jonboulle): handle errors more gracefully
+		if j, _ := registryCtl.GetJob(jobName); j != nil {
 			log.V(1).Infof("Found Job(%s) in Registry, no need to recreate it", jobName)
 			if signAndVerify {
 				if err := verifyJob(j); err != nil {
@@ -388,7 +390,7 @@ func lazyLoadJobs(args []string) ([]string, error) {
 	triggered := make([]string, 0)
 	for _, v := range args {
 		name := unitNameMangle(v)
-		j := registryCtl.GetJob(name)
+		j, _ := registryCtl.GetJob(name)
 		if j == nil || j.State == nil {
 			return nil, fmt.Errorf("Unable to determine state of job %s", name)
 		} else if *(j.State) == job.JobStateLoaded || *(j.State) == job.JobStateLaunched {
@@ -408,7 +410,8 @@ func lazyStartJobs(args []string) ([]string, error) {
 	triggered := make([]string, 0)
 	for _, v := range args {
 		name := unitNameMangle(v)
-		j := registryCtl.GetJob(name)
+		// TODO(jonboulle): handle errors more gracefully
+		j, _ := registryCtl.GetJob(name)
 		if j == nil {
 			return nil, fmt.Errorf("Unable to find job %q", name)
 		} else if j.State == nil {
@@ -452,7 +455,7 @@ func checkJobState(jobName string, js job.JobState, maxAttempts int, out io.Writ
 	defer wg.Done()
 
 	for attempts := 0; attempts < maxAttempts; attempts++ {
-		j := registryCtl.GetJob(jobName)
+		j, _ := registryCtl.GetJob(jobName)
 		if j == nil || j.State == nil || *(j.State) != js {
 			time.Sleep(100 * time.Millisecond)
 			continue
@@ -460,8 +463,8 @@ func checkJobState(jobName string, js job.JobState, maxAttempts int, out io.Writ
 
 		msg := fmt.Sprintf("Job %s %s", jobName, *(j.State))
 
-		if tgt := registryCtl.GetJobTarget(jobName); tgt != "" {
-			if ms := registryCtl.GetMachineState(tgt); ms != nil {
+		if tgt, _ := registryCtl.GetJobTarget(jobName); tgt != "" {
+			if ms, _ := registryCtl.GetMachineState(tgt); ms != nil {
 				msg = fmt.Sprintf("%s on %s", msg, machineFullLegend(*ms, false))
 			}
 		}

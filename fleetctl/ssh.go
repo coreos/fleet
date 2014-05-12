@@ -136,7 +136,8 @@ func globalMachineLookup(args []string) (string, error) {
 }
 
 func findAddressInMachineList(lookup string) (string, bool) {
-	states := registryCtl.GetActiveMachines()
+	// TODO(jonboulle): handle error
+	states, _ := registryCtl.GetActiveMachines()
 	var match *machine.MachineState
 
 	for i, _ := range states {
@@ -157,7 +158,8 @@ func findAddressInMachineList(lookup string) (string, bool) {
 }
 
 func findAddressInRunningUnits(jobName string) (string, bool) {
-	j := registryCtl.GetJob(unitNameMangle(jobName))
+	// TODO(jonboulle): handle error
+	j, _ := registryCtl.GetJob(unitNameMangle(jobName))
 	if j == nil || j.UnitState == nil {
 		return "", false
 	}

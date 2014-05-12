@@ -38,7 +38,11 @@ func runStatusUnits(args []string) (exit int) {
 }
 
 func printUnitStatus(jobName string) int {
-	j := registryCtl.GetJob(jobName)
+	j, err := registryCtl.GetJob(jobName)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error retrieving Job %s: %v", jobName, err)
+		return 1
+	}
 	if j == nil {
 		fmt.Fprintf(os.Stderr, "Job %s does not exist.\n", jobName)
 		os.Exit(1)

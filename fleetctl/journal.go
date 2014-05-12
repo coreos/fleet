@@ -36,7 +36,11 @@ func runJournal(args []string) (exit int) {
 	}
 	jobName := unitNameMangle(args[0])
 
-	j := registryCtl.GetJob(jobName)
+	j, err := registryCtl.GetJob(jobName)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error retrieving Job %s: %v", jobName, err)
+		return 1
+	}
 	if j == nil {
 		fmt.Fprintf(os.Stderr, "Job %s does not exist.\n", jobName)
 		os.Exit(1)

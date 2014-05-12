@@ -118,8 +118,9 @@ func (a *Agent) initialize() uint64 {
 	machID := a.machine.State().ID
 	loaded := map[string]job.Job{}
 	launched := map[string]job.Job{}
-	for _, j := range a.registry.GetAllJobs() {
-		tm := a.registry.GetJobTarget(j.Name)
+	jobs, _ := a.registry.GetAllJobs()
+	for _, j := range jobs {
+		tm, _ := a.registry.GetJobTarget(j.Name)
 		if tm == "" || tm != machID {
 			continue
 		}
@@ -130,7 +131,7 @@ func (a *Agent) initialize() uint64 {
 			continue
 		}
 
-		ts := a.registry.GetJobTargetState(j.Name)
+		ts, _ := a.registry.GetJobTargetState(j.Name)
 		if ts == nil || *ts == job.JobStateInactive {
 			continue
 		}
@@ -390,7 +391,7 @@ func (a *Agent) Bid(jobName string) {
 // Pull a Job and its payload from the Registry
 func (a *Agent) FetchJob(jobName string) *job.Job {
 	log.V(1).Infof("Fetching Job(%s) from Registry", jobName)
-	j := a.registry.GetJob(jobName)
+	j, _ := a.registry.GetJob(jobName)
 	if j == nil {
 		log.V(1).Infof("Job not found in Registry")
 		return nil
@@ -404,7 +405,7 @@ func (a *Agent) VerifyJob(j *job.Job) bool {
 	if a.verifier == nil {
 		return true
 	}
-	ss := a.registry.GetSignatureSetOfJob(j.Name)
+	ss, _ := a.registry.GetSignatureSetOfJob(j.Name)
 	ok, err := a.verifier.VerifyJob(j, ss)
 	if err != nil {
 		log.V(1).Infof("Error verifying signature of Job(%s): %v", j.Name, err)
@@ -485,7 +486,7 @@ func (a *Agent) peerScheduledHere(jobName, peerName string) bool {
 	log.V(1).Infof("Looking for target of Peer(%s)", peerName)
 
 	//FIXME: ideally the machine would use its own knowledge rather than calling GetJobTarget
-	if tgt := a.registry.GetJobTarget(peerName); tgt == "" || tgt != a.machine.State().ID {
+	if tgt, _ := a.registry.GetJobTarget(peerName); tgt == "" || tgt != a.machine.State().ID {
 		log.V(1).Infof("Peer(%s) of Job(%s) not scheduled here", peerName, jobName)
 		return false
 	}
