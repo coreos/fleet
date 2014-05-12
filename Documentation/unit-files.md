@@ -29,3 +29,5 @@ ExecStart=/bin/monitorme
 [X-Fleet]
 X-ConditionMachineID=148a18ff-6e95-4cd8-92da-c9de9bb90d5a
 ```
+
+Note that [Systemd Specifiers](http://www.freedesktop.org/software/systemd/man/systemd.unit.html#Specifiers) are not yet available within `[X-Fleet]` sections. See [the issue](https://github.com/coreos/fleet/issues/303) for more information. 
