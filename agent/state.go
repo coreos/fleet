@@ -8,6 +8,7 @@ import (
 	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
 
 	"github.com/coreos/fleet/job"
+	"github.com/coreos/fleet/resource"
 )
 
 type AgentState struct {
@@ -30,6 +31,11 @@ type AgentState struct {
 
 	// expected states of jobs scheduled to this agent
 	targetStates map[string]job.JobState
+
+	// resources by job
+	// TODO(uwedeportivo): this is temporary until we derive this from systemd
+	// systemd will give us useful info even for jobs that didn't declare required resources
+	resources map[string]resource.ResourceTuple
 }
 
 func NewState() *AgentState {
@@ -39,6 +45,7 @@ func NewState() *AgentState {
 		peers:        make(map[string][]string),
 		Conflicts:    make(map[string][]string, 0),
 		targetStates: make(map[string]job.JobState),
+		resources:    make(map[string]resource.ResourceTuple),
 	}
 }
 
@@ -76,6 +83,7 @@ func (as *AgentState) MarshalJSON() ([]byte, error) {
 func (as *AgentState) TrackJob(j *job.Job) {
 	as.trackJobPeers(j.Name, j.Peers())
 	as.trackJobConflicts(j.Name, j.Conflicts())
+	as.trackJobResources(j.Name, j.Resources())
 }
 
 // PurgeJob removes all state tracked on behalf of a given job
@@ -83,6 +91,7 @@ func (as *AgentState) PurgeJob(jobName string) {
 	as.dropTargetState(jobName)
 	as.dropPeersJob(jobName)
 	as.dropJobConflicts(jobName)
+	as.dropJobResources(jobName)
 }
 
 func (as *AgentState) trackJobConflicts(jobName string, conflicts []string) {
@@ -103,6 +112,14 @@ func (as *AgentState) trackJobPeers(jobName string, peers []string) {
 		}
 		as.peers[peer] = append(as.peers[peer], jobName)
 	}
+}
+
+func (as *AgentState) trackJobResources(jobName string, res resource.ResourceTuple) {
+	as.resources[jobName] = res
+}
+
+func (as *AgentState) dropJobResources(jobName string) {
+	delete(as.resources, jobName)
 }
 
 // Retrieve all Jobs that share a given Peer

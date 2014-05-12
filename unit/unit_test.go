@@ -2,7 +2,10 @@ package unit
 
 import "testing"
 import "reflect"
-import "github.com/coreos/fleet/machine"
+import (
+	"github.com/coreos/fleet/machine"
+	"github.com/coreos/fleet/resource"
+)
 
 const (
 	// $ echo -n "foo" | sha1sum
@@ -25,7 +28,7 @@ func TestUnitHash(t *testing.T) {
 }
 
 func TestRecognizedUnitTypes(t *testing.T) {
-	tts := []struct{
+	tts := []struct {
 		name string
 		ok   bool
 	}{
@@ -54,7 +57,7 @@ func TestRecognizedUnitTypes(t *testing.T) {
 }
 
 func TestDefaultUnitType(t *testing.T) {
-	tts := []struct{
+	tts := []struct {
 		name string
 		out  string
 	}{
@@ -72,7 +75,7 @@ func TestDefaultUnitType(t *testing.T) {
 }
 
 func TestNewUnitState(t *testing.T) {
-	ms := &machine.MachineState{"id", "ip", nil, "version"}
+	ms := &machine.MachineState{"id", "ip", nil, "version", resource.ResourceTuple{}}
 	want := &UnitState{
 		LoadState:    "ls",
 		ActiveState:  "as",
