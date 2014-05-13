@@ -24,8 +24,10 @@ func (r *EtcdRegistry) GetAllJobs() ([]job.Job, error) {
 
 	key := path.Join(r.keyPrefix, jobPrefix)
 	resp, err := r.etcd.Get(key, true, true)
-
 	if err != nil {
+		if e, ok := err.(*etcd.EtcdError); ok && e.ErrorCode == etcdErr.EcodeKeyNotFound {
+			err = nil
+		}
 		return jobs, err
 	}
 
