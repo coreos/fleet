@@ -19,14 +19,14 @@ const (
 )
 
 // GetAllJobs lists all Jobs known by the Registry
-func (r *EtcdRegistry) GetAllJobs() []job.Job {
+func (r *EtcdRegistry) GetAllJobs() ([]job.Job, error) {
 	var jobs []job.Job
 
 	key := path.Join(r.keyPrefix, jobPrefix)
 	resp, err := r.etcd.Get(key, true, true)
 
 	if err != nil {
-		return jobs
+		return jobs, err
 	}
 
 	for _, dir := range resp.Node.Nodes {
@@ -44,21 +44,21 @@ func (r *EtcdRegistry) GetAllJobs() []job.Job {
 		}
 	}
 
-	return jobs
+	return jobs, nil
 }
 
 // GetJobTarget looks up where the given job is scheduled. If the job has
 // been scheduled, the ID the target machine is returned. Otherwise, an
 // empty string is returned.
-func (r *EtcdRegistry) GetJobTarget(jobName string) string {
+func (r *EtcdRegistry) GetJobTarget(jobName string) (string, error) {
 	// Figure out to which Machine this Job is scheduled
 	key := r.jobTargetAgentPath(jobName)
 	resp, err := r.etcd.Get(key, false, true)
 	if err != nil {
-		return ""
+		return "", err
 	}
 
-	return resp.Node.Value
+	return resp.Node.Value, nil
 }
 
 func (r *EtcdRegistry) ClearJobTarget(jobName, machID string) error {
@@ -69,13 +69,13 @@ func (r *EtcdRegistry) ClearJobTarget(jobName, machID string) error {
 
 // GetJob looks for a Job of the given name in the Registry. It returns a fully
 // hydrated Job on success, or nil on any kind of failure.
-func (r *EtcdRegistry) GetJob(jobName string) (j *job.Job) {
+func (r *EtcdRegistry) GetJob(jobName string) (j *job.Job, err error) {
 	key := path.Join(r.keyPrefix, jobPrefix, jobName, "object")
 	resp, err := r.etcd.Get(key, false, true)
 
 	// Assume the error was KeyNotFound and return an empty data structure
 	if err != nil {
-		return nil
+		return
 	}
 
 	j = r.getJobFromJSON(resp.Node.Value)
@@ -145,12 +145,14 @@ type jobModel struct {
 // DestroyJob removes a Job object from the repository, along with any legacy
 // associated Payload and SignatureSet. It does not yet remove underlying
 // Units from the repository.
-func (r *EtcdRegistry) DestroyJob(jobName string) {
+func (r *EtcdRegistry) DestroyJob(jobName string) error {
 	key := path.Join(r.keyPrefix, jobPrefix, jobName)
 	r.etcd.Delete(key, true)
 	// TODO(jonboulle): add unit reference counting and actually destroying Units
 	r.destroyLegacyPayload(jobName)
 	r.destroySignatureSetOfJob(jobName)
+	// TODO(jonboulle): handle errors
+	return nil
 }
 
 // destroyLegacyPayload removes an old-style Payload from the registry
@@ -184,17 +186,17 @@ func (r *EtcdRegistry) CreateJob(j *job.Job) (err error) {
 	return
 }
 
-func (r *EtcdRegistry) GetJobTargetState(jobName string) *job.JobState {
+func (r *EtcdRegistry) GetJobTargetState(jobName string) (*job.JobState, error) {
 	key := r.jobTargetStatePath(jobName)
 	resp, err := r.etcd.Get(key, false, false)
 	if err != nil {
 		if err.(*etcd.EtcdError).ErrorCode != etcdErr.EcodeNodeExist {
 			log.Errorf("Unable to determine target-state of Job(%s): %v", jobName, err)
 		}
-		return nil
+		return nil, err
 	}
 
-	return job.ParseJobState(resp.Node.Value)
+	return job.ParseJobState(resp.Node.Value), nil
 }
 
 func (r *EtcdRegistry) SetJobTargetState(jobName string, state job.JobState) error {
@@ -248,7 +250,7 @@ func (es *EventStream) filterJobTargetStateChanges(resp *etcd.Response) *event.E
 		return nil
 	}
 
-	agent := es.registry.GetJobTarget(jobName)
+	agent, _ := es.registry.GetJobTarget(jobName)
 	return &event.Event{cType, jobName, agent}
 }
 

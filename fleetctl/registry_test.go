@@ -17,22 +17,22 @@ type TestRegistry struct {
 	units     []unit.Unit
 }
 
-func (t TestRegistry) GetActiveMachines() []machine.MachineState {
-	return t.machines
+func (t TestRegistry) GetActiveMachines() ([]machine.MachineState, error) {
+	return t.machines, nil
 }
 
-func (t TestRegistry) GetAllJobs() []job.Job {
-	return t.jobs
+func (t TestRegistry) GetAllJobs() ([]job.Job, error) {
+	return t.jobs, nil
 }
 
-func (t TestRegistry) GetJob(name string) *job.Job {
+func (t TestRegistry) GetJob(name string) (*job.Job, error) {
 	for _, j := range t.jobs {
 		if j.Name == name {
 			j.UnitState = t.jobStates[name]
-			return &j
+			return &j, nil
 		}
 	}
-	return nil
+	return nil, nil
 }
 
 func (t TestRegistry) SetJobTargetState(name string, target job.JobState) error {
@@ -47,28 +47,29 @@ func (t TestRegistry) CreateJob(j *job.Job) error {
 	return nil
 }
 
-func (t TestRegistry) DestroyJob(name string) {
+func (t TestRegistry) DestroyJob(name string) error {
+	return nil
 }
 
 func (t TestRegistry) CreateSignatureSet(s *sign.SignatureSet) error {
 	return nil
 }
 
-func (t TestRegistry) GetJobTarget(name string) string {
+func (t TestRegistry) GetJobTarget(name string) (string, error) {
 	js := t.jobStates[name]
 	if js != nil {
-		return js.MachineState.ID
+		return js.MachineState.ID, nil
 	}
-	return ""
+	return "", nil
 }
 
-func (t TestRegistry) GetMachineState(machID string) *machine.MachineState {
+func (t TestRegistry) GetMachineState(machID string) (*machine.MachineState, error) {
 	for _, ms := range t.machines {
 		if ms.ID == machID {
-			return &ms
+			return &ms, nil
 		}
 	}
-	return nil
+	return nil, nil
 }
 
 func (t TestRegistry) GetDebugInfo() (string, error) {
@@ -91,16 +92,16 @@ func (t TestRegistry) DestroySignatureSet(tag string) {
 	return
 }
 
-func (t TestRegistry) GetJobTargetState(jobName string) *job.JobState {
-	return nil
+func (t TestRegistry) GetJobTargetState(jobName string) (*job.JobState, error) {
+	return nil, nil
 }
 
 func (t TestRegistry) GetSignatureSet(tag string) *sign.SignatureSet {
 	return nil
 }
 
-func (t TestRegistry) GetSignatureSetOfJob(name string) *sign.SignatureSet {
-	return nil
+func (t TestRegistry) GetSignatureSetOfJob(name string) (*sign.SignatureSet, error) {
+	return nil, nil
 }
 
 func (t TestRegistry) JobHeartbeat(jobName, agentMachID string, ttl time.Duration) error {

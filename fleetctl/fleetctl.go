@@ -287,8 +287,10 @@ func findJobs(args []string) (jobs []job.Job, err error) {
 	jobs = make([]job.Job, len(args))
 	for i, v := range args {
 		name := unitNameMangle(v)
-		j := registryCtl.GetJob(name)
-		if j == nil {
+		j, err := registryCtl.GetJob(name)
+		if err != nil {
+			return nil, fmt.Errorf("Error retrieving Job(%s) from Registry: %v", name, err)
+		} else if j == nil {
 			return nil, fmt.Errorf("Could not find Job(%s)", name)
 		}
 
@@ -340,7 +342,10 @@ func verifyJob(j *job.Job) error {
 		return fmt.Errorf("Failed creating SignatureVerifier: %v", err)
 	}
 
-	ss := registryCtl.GetSignatureSetOfJob(j.Name)
+	ss, err := registryCtl.GetSignatureSetOfJob(j.Name)
+	if err != nil {
+		return fmt.Errorf("Failed attempting to retrieve SignatureSet of Job(%s): %v", j.Name, err)
+	}
 	verified, err := sv.VerifyJob(j, ss)
 	if err != nil {
 		return fmt.Errorf("Failed attempting to verify Job(%s): %v", j.Name, err)
@@ -355,7 +360,12 @@ func verifyJob(j *job.Job) error {
 func lazyCreateJobs(args []string, signAndVerify bool) error {
 	for _, arg := range args {
 		jobName := unitNameMangle(arg)
-		if j := registryCtl.GetJob(jobName); j != nil {
+		j, err := registryCtl.GetJob(jobName)
+		if err != nil {
+			log.V(1).Infof("Error retrieving Job(%s) from Registry: %v", jobName, err)
+			continue
+		}
+		if j != nil {
 			log.V(1).Infof("Found Job(%s) in Registry, no need to recreate it", jobName)
 			if signAndVerify {
 				if err := verifyJob(j); err != nil {
@@ -370,7 +380,7 @@ func lazyCreateJobs(args []string, signAndVerify bool) error {
 			return fmt.Errorf("Failed getting Unit(%s) from file: %v", jobName, err)
 		}
 
-		j, err := createJob(jobName, unit)
+		j, err = createJob(jobName, unit)
 		if err != nil {
 			return err
 		}
@@ -388,8 +398,10 @@ func lazyLoadJobs(args []string) ([]string, error) {
 	triggered := make([]string, 0)
 	for _, v := range args {
 		name := unitNameMangle(v)
-		j := registryCtl.GetJob(name)
-		if j == nil || j.State == nil {
+		j, err := registryCtl.GetJob(name)
+		if err != nil {
+			return nil, fmt.Errorf("Error retrieving Job(%s) from Registry: %v", name, err)
+		} else if j == nil || j.State == nil {
 			return nil, fmt.Errorf("Unable to determine state of job %s", name)
 		} else if *(j.State) == job.JobStateLoaded || *(j.State) == job.JobStateLaunched {
 			log.V(1).Infof("Job(%s) already %s, skipping.", j.Name, *(j.State))
@@ -408,11 +420,13 @@ func lazyStartJobs(args []string) ([]string, error) {
 	triggered := make([]string, 0)
 	for _, v := range args {
 		name := unitNameMangle(v)
-		j := registryCtl.GetJob(name)
-		if j == nil {
-			return nil, fmt.Errorf("Unable to find job %q", name)
+		j, err := registryCtl.GetJob(name)
+		if err != nil {
+			return nil, fmt.Errorf("Error retrieving Job(%s) from Registry: %v", name, err)
+		} else if j == nil {
+			return nil, fmt.Errorf("Unable to find Job(%s)", name)
 		} else if j.State == nil {
-			return nil, fmt.Errorf("Unable to determine current state of job")
+			return nil, fmt.Errorf("Unable to determine current state of Job")
 		} else if *(j.State) == job.JobStateLaunched {
 			log.V(1).Infof("Job(%s) already %s, skipping.", j.Name, *(j.State))
 			continue
@@ -452,7 +466,11 @@ func checkJobState(jobName string, js job.JobState, maxAttempts int, out io.Writ
 	defer wg.Done()
 
 	for attempts := 0; attempts < maxAttempts; attempts++ {
-		j := registryCtl.GetJob(jobName)
+		j, err := registryCtl.GetJob(jobName)
+		if err != nil {
+			log.Warningf("Error retrieving Job(%s) from Registry: %v", jobName, err)
+			continue
+		}
 		if j == nil || j.State == nil || *(j.State) != js {
 			time.Sleep(100 * time.Millisecond)
 			continue
@@ -460,8 +478,11 @@ func checkJobState(jobName string, js job.JobState, maxAttempts int, out io.Writ
 
 		msg := fmt.Sprintf("Job %s %s", jobName, *(j.State))
 
-		if tgt := registryCtl.GetJobTarget(jobName); tgt != "" {
-			if ms := registryCtl.GetMachineState(tgt); ms != nil {
+		tgt, err := registryCtl.GetJobTarget(jobName)
+		if err != nil {
+			log.Warningf("Error retrieving target information for Job(%s) from Registry: %v", jobName, err)
+		} else if tgt != "" {
+			if ms, _ := registryCtl.GetMachineState(tgt); ms != nil {
 				msg = fmt.Sprintf("%s on %s", msg, machineFullLegend(*ms, false))
 			}
 		}

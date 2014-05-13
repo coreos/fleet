@@ -23,7 +23,10 @@ func newTestRegistryForListUnits(jobs []job.Job) registry.Registry {
 func TestGetAllJobs(t *testing.T) {
 	registryCtl = newTestRegistryForListUnits(nil)
 
-	jobs, sortable := findAllUnits()
+	jobs, sortable, err := findAllUnits()
+	if err != nil {
+		t.Fatalf("Unexpected error getting all units: %v\n", err)
+	}
 	if len(jobs) != 1 {
 		t.Fatalf("Expected to find one unit: %v\n", jobs)
 	}
@@ -40,7 +43,7 @@ Description=PING
 	j := []job.Job{*job.NewJob("ping.service", *unit.NewUnit(contents))}
 	registryCtl = newTestRegistryForListUnits(j)
 
-	jobs, _ := findAllUnits()
+	jobs, _, _ := findAllUnits()
 	if len(jobs) != 2 {
 		t.Errorf("Expected to find two units: %v\n", jobs)
 	}

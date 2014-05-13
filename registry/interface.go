@@ -17,16 +17,16 @@ type Registry interface {
 	CreateJob(j *job.Job) (err error)
 	CreateJobOffer(jo *job.JobOffer) error
 	CreateSignatureSet(ss *sign.SignatureSet) error
-	DestroyJob(jobName string)
+	DestroyJob(jobName string) error
 	DestroySignatureSet(tag string)
-	GetActiveMachines() []machine.MachineState
-	GetAllJobs() []job.Job
+	GetActiveMachines() ([]machine.MachineState, error)
+	GetAllJobs() ([]job.Job, error)
 	GetDebugInfo() (string, error)
-	GetJob(jobName string) (j *job.Job)
-	GetJobTarget(jobName string) string
-	GetJobTargetState(jobName string) *job.JobState
-	GetMachineState(machID string) *machine.MachineState
-	GetSignatureSetOfJob(name string) *sign.SignatureSet
+	GetJob(jobName string) (j *job.Job, err error)
+	GetJobTarget(jobName string) (string, error)
+	GetJobTargetState(jobName string) (*job.JobState, error)
+	GetMachineState(machID string) (*machine.MachineState, error)
+	GetSignatureSetOfJob(name string) (*sign.SignatureSet, error)
 	GetSignatureSet(tag string) *sign.SignatureSet
 	JobHeartbeat(jobName, agentMachID string, ttl time.Duration) error
 	LockJob(jobName, context string) *TimedResourceMutex

@@ -20,7 +20,7 @@ func NewEventHandler(engine *Engine) *EventHandler {
 func (eh *EventHandler) HandleCommandLoadJob(ev event.Event) {
 	jobName := ev.Payload.(string)
 
-	j := eh.engine.registry.GetJob(jobName)
+	j, _ := eh.engine.registry.GetJob(jobName)
 	if j == nil {
 		log.Infof("CommandLoadJob(%s): asked to offer job that could not be found")
 		return
@@ -53,12 +53,12 @@ func (eh *EventHandler) HandleEventJobScheduled(ev event.Event) {
 func (eh *EventHandler) HandleEventJobUnscheduled(ev event.Event) {
 	jobName := ev.Payload.(string)
 
-	ts := eh.engine.registry.GetJobTargetState(jobName)
+	ts, _ := eh.engine.registry.GetJobTargetState(jobName)
 	if ts == nil || *ts == job.JobStateInactive {
 		return
 	}
 
-	j := eh.engine.registry.GetJob(jobName)
+	j, _ := eh.engine.registry.GetJob(jobName)
 	if j == nil {
 		log.Errorf("EventJobUnscheduled(%s): unable to re-offer Job, as it could not be found in the Registry", jobName)
 		return
@@ -118,8 +118,9 @@ func (eh *EventHandler) HandleEventMachineRemoved(ev event.Event) {
 func getJobsScheduledToMachine(r registry.Registry, machID string) []job.Job {
 	var jobs []job.Job
 
-	for _, j := range r.GetAllJobs() {
-		tgt := r.GetJobTarget(j.Name)
+	jj, _ := r.GetAllJobs()
+	for _, j := range jj {
+		tgt, _ := r.GetJobTarget(j.Name)
 		if tgt == "" || tgt != machID {
 			continue
 		}

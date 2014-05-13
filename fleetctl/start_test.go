@@ -12,7 +12,7 @@ type BlockedTestRegistry struct {
 	TestRegistry
 }
 
-func (b BlockedTestRegistry) GetJobTarget(name string) string {
+func (b BlockedTestRegistry) GetJobTarget(name string) (string, error) {
 	if name == "hello.service" {
 		time.Sleep(500 * time.Millisecond)
 	}
@@ -20,7 +20,7 @@ func (b BlockedTestRegistry) GetJobTarget(name string) string {
 	if name == "echo.service" {
 		if b.EchoAttempts != 0 {
 			b.EchoAttempts--
-			return ""
+			return "", nil
 		}
 	}
 

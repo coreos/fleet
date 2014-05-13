@@ -16,44 +16,42 @@ const (
 )
 
 // Describe all active Machines
-func (r *EtcdRegistry) GetActiveMachines() []machine.MachineState {
+func (r *EtcdRegistry) GetActiveMachines() (machines []machine.MachineState, err error) {
 	key := path.Join(r.keyPrefix, machinePrefix)
 	resp, err := r.etcd.Get(key, false, true)
 
-	var machines []machine.MachineState
-
 	// Assume the error was KeyNotFound and return an empty data structure
 	if err != nil {
-		return machines
+		return
 	}
 
 	for _, kv := range resp.Node.Nodes {
 		_, machID := path.Split(kv.Key)
-		mach := r.GetMachineState(machID)
+		mach, _ := r.GetMachineState(machID)
 		if mach != nil {
 			machines = append(machines, *mach)
 		}
 	}
 
-	return machines
+	return
 }
 
 // Get Machine object from etcd
-func (r *EtcdRegistry) GetMachineState(machID string) *machine.MachineState {
+func (r *EtcdRegistry) GetMachineState(machID string) (*machine.MachineState, error) {
 	key := path.Join(r.keyPrefix, machinePrefix, machID, "object")
 	resp, err := r.etcd.Get(key, false, true)
 
 	// Assume the error was KeyNotFound and return an empty data structure
 	if err != nil {
-		return nil
+		return nil, err
 	}
 
 	var mach machine.MachineState
 	if err := unmarshal(resp.Node.Value, &mach); err != nil {
-		return nil
+		return nil, err
 	}
 
-	return &mach
+	return &mach, nil
 }
 
 // Push Machine object to etcd
