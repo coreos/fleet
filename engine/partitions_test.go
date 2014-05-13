@@ -118,7 +118,7 @@ func TestClusterKeepsUpToDate(t *testing.T) {
 	jc := 0
 	for mi, nj := range expectedJobDistribution {
 		for i := 0; i < nj; i++ {
-			clust.jobScheduled(jobName(jc), &ms[mi])
+			clust.jobScheduled(jobName(jc), ms[mi].ID)
 			jc++
 		}
 	}
