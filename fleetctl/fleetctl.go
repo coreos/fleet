@@ -287,8 +287,10 @@ func findJobs(args []string) (jobs []job.Job, err error) {
 	jobs = make([]job.Job, len(args))
 	for i, v := range args {
 		name := unitNameMangle(v)
-		j, _ := registryCtl.GetJob(name)
-		if j == nil {
+		j, err := registryCtl.GetJob(name)
+		if err != nil {
+			return nil, fmt.Errorf("Error retrieving Job(%s) from Registry: %v", name, err)
+		} else if j == nil {
 			return nil, fmt.Errorf("Could not find Job(%s)", name)
 		}
 
@@ -396,8 +398,10 @@ func lazyLoadJobs(args []string) ([]string, error) {
 	triggered := make([]string, 0)
 	for _, v := range args {
 		name := unitNameMangle(v)
-		j, _ := registryCtl.GetJob(name)
-		if j == nil || j.State == nil {
+		j, err := registryCtl.GetJob(name)
+		if err != nil {
+			return nil, fmt.Errorf("Error retrieving Job(%s) from Registry: %v", name, err)
+		} else if j == nil || j.State == nil {
 			return nil, fmt.Errorf("Unable to determine state of job %s", name)
 		} else if *(j.State) == job.JobStateLoaded || *(j.State) == job.JobStateLaunched {
 			log.V(1).Infof("Job(%s) already %s, skipping.", j.Name, *(j.State))
@@ -462,7 +466,11 @@ func checkJobState(jobName string, js job.JobState, maxAttempts int, out io.Writ
 	defer wg.Done()
 
 	for attempts := 0; attempts < maxAttempts; attempts++ {
-		j, _ := registryCtl.GetJob(jobName)
+		j, err := registryCtl.GetJob(jobName)
+		if err != nil {
+			log.Warningf("Error retrieving Job(%s) from Registry: %v", jobName, err)
+			continue
+		}
 		if j == nil || j.State == nil || *(j.State) != js {
 			time.Sleep(100 * time.Millisecond)
 			continue
@@ -470,7 +478,10 @@ func checkJobState(jobName string, js job.JobState, maxAttempts int, out io.Writ
 
 		msg := fmt.Sprintf("Job %s %s", jobName, *(j.State))
 
-		if tgt, _ := registryCtl.GetJobTarget(jobName); tgt != "" {
+		tgt, err := registryCtl.GetJobTarget(jobName)
+		if err != nil {
+			log.Warningf("Error retrieving target information for Job(%s) from Registry: %v", jobName, err)
+		} else if tgt != "" {
 			if ms, _ := registryCtl.GetMachineState(tgt); ms != nil {
 				msg = fmt.Sprintf("%s on %s", msg, machineFullLegend(*ms, false))
 			}
