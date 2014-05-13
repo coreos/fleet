@@ -34,7 +34,7 @@ func runListUnits(args []string) (exit int) {
 
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error retrieving list of units from repository: %v\n", err)
-		return -1
+		return 1
 	}
 
 	if !sharedFlags.NoLegend {
