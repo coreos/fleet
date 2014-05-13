@@ -1,8 +1,9 @@
 package unit
 
-import "testing"
-import "reflect"
 import (
+	"reflect"
+	"testing"
+
 	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/resource"
 )
