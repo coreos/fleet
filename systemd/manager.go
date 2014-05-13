@@ -57,11 +57,6 @@ func (m *SystemdManager) Load(name string, u unit.Unit) error {
 	}
 
 	m.subscriptions.Add(name)
-
-	if !m.unitRequiresDaemonReload(name) {
-		return nil
-	}
-
 	return m.daemonReload()
 }
 
@@ -70,6 +65,7 @@ func (m *SystemdManager) Load(name string, u unit.Unit) error {
 func (m *SystemdManager) Unload(name string) {
 	m.subscriptions.Remove(name)
 	m.removeUnit(name)
+	m.daemonReload()
 }
 
 // Start starts the unit identified by the given name
