@@ -3,6 +3,8 @@ package main
 import (
 	"time"
 
+	"github.com/coreos/fleet/third_party/github.com/coreos/go-semver/semver"
+
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/registry"
@@ -15,6 +17,7 @@ type TestRegistry struct {
 	jobStates map[string]*unit.UnitState
 	jobs      []job.Job
 	units     []unit.Unit
+	version   *semver.Version
 }
 
 func (t TestRegistry) GetActiveMachines() ([]machine.MachineState, error) {
@@ -154,4 +157,8 @@ func (t TestRegistry) UnresolvedJobOffers() []job.JobOffer {
 
 func (t TestRegistry) Bids(jo *job.JobOffer) ([]job.JobBid, error) {
 	return nil, nil
+}
+
+func (t TestRegistry) GetLatestVersion() (*semver.Version, error) {
+	return t.version, nil
 }

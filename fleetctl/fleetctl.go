@@ -25,11 +25,19 @@ import (
 	"github.com/coreos/fleet/sign"
 	"github.com/coreos/fleet/ssh"
 	"github.com/coreos/fleet/unit"
+	"github.com/coreos/fleet/version"
 )
 
 const (
 	cliName        = "fleetctl"
 	cliDescription = "fleetctl is a command-line interface to fleet, the cluster-wide CoreOS init system."
+
+	oldVersionWarning = `####################################################################
+WARNING: fleetctl (%s) is older than the latest registered
+version of fleet found in the cluster (%s). You are strongly
+recommended to upgrade fleetctl to prevent incompatibility issues.
+####################################################################
+`
 )
 
 var (
@@ -121,6 +129,21 @@ func getFlags(flagset *flag.FlagSet) (flags []*flag.Flag) {
 	return
 }
 
+// checkVersion makes a best-effort attempt to verify that fleetctl is at least as new as the
+// latest fleet version found registered in the cluster. If any errors are encountered or fleetctl
+// is >= the latest version found, it returns true. If it is < the latest found version, it returns
+// false and a scary warning to the user.
+func checkVersion() (string, bool) {
+	fv := version.SemVersion
+	lv, err := registryCtl.GetLatestVersion()
+	if err != nil {
+		log.Errorf("Error attempting to check latest fleet version in Registry: %v", err)
+	} else if lv != nil && fv.LessThan(*lv) {
+		return fmt.Sprintf(oldVersionWarning, fv.String(), lv.String()), false
+	}
+	return "", true
+}
+
 func main() {
 	// parse global arguments
 	globalFlagset.Parse(os.Args[1:])
@@ -172,6 +195,10 @@ func main() {
 	// TODO(jonboulle): increase cleverness of registry initialization
 	if cmd.Name != "help" && cmd.Name != "version" {
 		registryCtl = getRegistry()
+		msg, ok := checkVersion()
+		if !ok {
+			fmt.Fprint(os.Stderr, msg)
+		}
 	}
 
 	os.Exit(cmd.Run(cmd.Flags.Args()))
