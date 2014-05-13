@@ -154,7 +154,7 @@ func (c *Client) SendRequest(rr *RawRequest) (*RawResponse, error) {
 		go func() {
 			select {
 			case <-rr.Cancel:
-				cancelled <-true
+				cancelled <- true
 				logger.Debug("send.request is cancelled")
 			case <-cancelRoutine:
 				return
@@ -222,18 +222,44 @@ func (c *Client) SendRequest(rr *RawRequest) (*RawResponse, error) {
 			return nil, err
 		}
 
-		resp, err = c.httpClient.Do(req)
-		// If the request was cancelled, return ErrRequestCancelled directly
-		select {
-		case <-cancelled:
-			return nil, ErrRequestCancelled
-		default:
-		}
-
 		reqs = append(reqs, *req)
 
-		// network error, change a machine!
-		if err != nil {
+		respchan := make(chan *http.Response, 1)
+		errchan := make(chan error, 1)
+		responded := make(chan bool)
+
+		go func() {
+			resp, err := c.httpClient.Do(req)
+			close(responded)
+			if resp != nil {
+				respchan <- resp
+			} else if err != nil {
+				errchan <- err
+			} else {
+				errchan <- errors.New("http client responded with nil response and nil error")
+			}
+		}()
+
+		if rr.Cancel == nil {
+			go func() {
+				select {
+				case <-time.After(c.config.ResponseTimeout):
+					reqLock.Lock()
+					c.httpClient.Transport.(*http.Transport).CancelRequest(req)
+					reqLock.Unlock()
+					errchan <- errors.New("Timed out waiting for response")
+				case <-responded:
+					return
+				}
+			}()
+		}
+
+		// If the request was cancelled, return ErrRequestCancelled directly
+		select {
+		case resp = <-respchan:
+		case <-cancelled:
+			return nil, ErrRequestCancelled
+		case err = <-errchan:
 			logger.Debug("network error:", err.Error())
 			resps = append(resps, http.Response{})
 			if checkErr := checkRetry(c.cluster, reqs, resps, err); checkErr != nil {

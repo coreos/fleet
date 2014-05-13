@@ -71,7 +71,7 @@ func watch(client *etcd.Client, idx uint64, etcdchan chan *etcd.Response, key st
 			return
 		default:
 			log.V(1).Infof("Creating etcd watcher: key=%s, index=%d, machines=%s", key, idx, strings.Join(client.GetCluster(), ","))
-			resp, err := client.Watch(key, idx, true, nil, nil)
+			resp, err := client.Watch(key, idx, true, nil, stop)
 
 			if err == nil {
 				idx = resp.Node.ModifiedIndex + 1

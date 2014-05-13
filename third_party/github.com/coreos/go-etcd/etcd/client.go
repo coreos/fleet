@@ -33,7 +33,13 @@ type Config struct {
 	KeyFile     string        `json:"keyFile"`
 	CaCertFile  []string      `json:"caCertFiles"`
 	DialTimeout time.Duration `json:"timeout"`
-	Consistency string        `json: "consistency"`
+
+	// ResponseTimeout is the maximum allowable time per HTTP request.
+	// This value encompasses the DialTimeout. This is ignored if a
+	// stop channel is provided when making any calls to the Client.
+	ResponseTimeout time.Duration `json:"responseTimeout"`
+
+	Consistency string `json: "consistency"`
 }
 
 type Client struct {
@@ -62,8 +68,9 @@ type Client struct {
 // with the given machine list.
 func NewClient(machines []string) *Client {
 	config := Config{
-		// default timeout is one second
-		DialTimeout: time.Second,
+		DialTimeout:     time.Second,
+		ResponseTimeout: 2 * time.Second,
+
 		// default consistency level is STRONG
 		Consistency: STRONG_CONSISTENCY,
 	}
@@ -88,7 +95,9 @@ func NewTLSClient(machines []string, cert, key, caCert string) (*Client, error) 
 
 	config := Config{
 		// default timeout is one second
-		DialTimeout: time.Second,
+		DialTimeout:     time.Second,
+		ResponseTimeout: 2 * time.Second,
+
 		// default consistency level is STRONG
 		Consistency: STRONG_CONSISTENCY,
 		CertFile:    cert,
