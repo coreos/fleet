@@ -4,8 +4,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/coreos/fleet/resource"
 	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
+
+	"github.com/coreos/fleet/resource"
 	"github.com/coreos/fleet/unit"
 )
 

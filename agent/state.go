@@ -34,7 +34,7 @@ type AgentState struct {
 
 	// resources by job
 	// TODO(uwedeportivo): this is temporary until we derive this from systemd
-	// systemd will give us useful info even for jobs that didn't declare required resources
+	// systemd will give us useful info even for jobs that didn't declare resource reservations
 	resources map[string]resource.ResourceTuple
 }
 
