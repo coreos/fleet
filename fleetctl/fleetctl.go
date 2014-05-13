@@ -340,8 +340,10 @@ func verifyJob(j *job.Job) error {
 		return fmt.Errorf("Failed creating SignatureVerifier: %v", err)
 	}
 
-	// TODO(jonboulle): handle error
-	ss, _ := registryCtl.GetSignatureSetOfJob(j.Name)
+	ss, err := registryCtl.GetSignatureSetOfJob(j.Name)
+	if err != nil {
+		return fmt.Errorf("Failed attempting to retrieve SignatureSet of Job(%s): %v", j.Name, err)
+	}
 	verified, err := sv.VerifyJob(j, ss)
 	if err != nil {
 		return fmt.Errorf("Failed attempting to verify Job(%s): %v", j.Name, err)
@@ -356,8 +358,12 @@ func verifyJob(j *job.Job) error {
 func lazyCreateJobs(args []string, signAndVerify bool) error {
 	for _, arg := range args {
 		jobName := unitNameMangle(arg)
-		// TODO(jonboulle): handle errors more gracefully
-		if j, _ := registryCtl.GetJob(jobName); j != nil {
+		j, err := registryCtl.GetJob(jobName)
+		if err != nil {
+			log.V(1).Infof("Error retrieving Job(%s) from Registry: %v", jobName, err)
+			continue
+		}
+		if j != nil {
 			log.V(1).Infof("Found Job(%s) in Registry, no need to recreate it", jobName)
 			if signAndVerify {
 				if err := verifyJob(j); err != nil {
@@ -372,7 +378,7 @@ func lazyCreateJobs(args []string, signAndVerify bool) error {
 			return fmt.Errorf("Failed getting Unit(%s) from file: %v", jobName, err)
 		}
 
-		j, err := createJob(jobName, unit)
+		j, err = createJob(jobName, unit)
 		if err != nil {
 			return err
 		}
@@ -410,12 +416,13 @@ func lazyStartJobs(args []string) ([]string, error) {
 	triggered := make([]string, 0)
 	for _, v := range args {
 		name := unitNameMangle(v)
-		// TODO(jonboulle): handle errors more gracefully
-		j, _ := registryCtl.GetJob(name)
-		if j == nil {
-			return nil, fmt.Errorf("Unable to find job %q", name)
+		j, err := registryCtl.GetJob(name)
+		if err != nil {
+			return nil, fmt.Errorf("Error retrieving Job(%s) from Registry: %v", name, err)
+		} else if j == nil {
+			return nil, fmt.Errorf("Unable to find Job(%s)", name)
 		} else if j.State == nil {
-			return nil, fmt.Errorf("Unable to determine current state of job")
+			return nil, fmt.Errorf("Unable to determine current state of Job")
 		} else if *(j.State) == job.JobStateLaunched {
 			log.V(1).Infof("Job(%s) already %s, skipping.", j.Name, *(j.State))
 			continue

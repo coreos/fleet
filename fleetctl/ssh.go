@@ -8,6 +8,8 @@ import (
 	"strings"
 	"syscall"
 
+	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
+
 	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/pkg"
 	"github.com/coreos/fleet/ssh"
@@ -136,8 +138,12 @@ func globalMachineLookup(args []string) (string, error) {
 }
 
 func findAddressInMachineList(lookup string) (string, bool) {
-	// TODO(jonboulle): handle error
-	states, _ := registryCtl.GetActiveMachines()
+	states, err := registryCtl.GetActiveMachines()
+	if err != nil {
+		log.V(1).Infof("Unable to retrieve list of active machines from the Registry: %v", err)
+		return "", false
+	}
+
 	var match *machine.MachineState
 
 	for i, _ := range states {
@@ -158,8 +164,11 @@ func findAddressInMachineList(lookup string) (string, bool) {
 }
 
 func findAddressInRunningUnits(jobName string) (string, bool) {
-	// TODO(jonboulle): handle error
-	j, _ := registryCtl.GetJob(unitNameMangle(jobName))
+	name := unitNameMangle(jobName)
+	j, err := registryCtl.GetJob(name)
+	if err != nil {
+		log.V(1).Infof("Unable to retrieve Job(%s) from Repository: %v", name, err)
+	}
 	if j == nil || j.UnitState == nil {
 		return "", false
 	}
