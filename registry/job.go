@@ -74,9 +74,10 @@ func (r *EtcdRegistry) ClearJobTarget(jobName, machID string) error {
 func (r *EtcdRegistry) GetJob(jobName string) (j *job.Job, err error) {
 	key := path.Join(r.keyPrefix, jobPrefix, jobName, "object")
 	resp, err := r.etcd.Get(key, false, true)
-
-	// Assume the error was KeyNotFound and return an empty data structure
 	if err != nil {
+		if e, ok := err.(*etcd.EtcdError); ok && e.ErrorCode == etcdErr.EcodeKeyNotFound {
+			err = nil
+		}
 		return
 	}
 
