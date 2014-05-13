@@ -7,7 +7,6 @@ import (
 
 	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
 
-	"github.com/coreos/fleet/event"
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/registry"
@@ -28,8 +27,6 @@ const (
 // Machine, and the local SystemdManager.
 type Agent struct {
 	registry registry.Registry
-	eStream  *registry.EventStream
-	eBus     *event.EventBus
 	machine  *machine.Machine
 	ttl      time.Duration
 	// verifier is used to verify the contents of a job's Unit.
@@ -38,30 +35,15 @@ type Agent struct {
 
 	state   *AgentState
 	systemd *systemd.SystemdManager
-
-	// channel used to shutdown any open connections/channels the Agent holds
-	stop chan bool
 }
 
-func New(reg registry.Registry, eStream *registry.EventStream, mach *machine.Machine, ttl string, verifier *sign.SignatureVerifier) (*Agent, error) {
+func New(mgr *systemd.SystemdManager, reg registry.Registry, mach *machine.Machine, ttl string, verifier *sign.SignatureVerifier) (*Agent, error) {
 	ttldur, err := time.ParseDuration(ttl)
 	if err != nil {
 		return nil, err
 	}
 
-	mgr, err := systemd.NewSystemdManager(systemd.DefaultUnitsDirectory)
-	if err != nil {
-		return nil, err
-	}
-
-	state := NewState()
-	eBus := event.NewEventBus()
-
-	a := &Agent{reg, eStream, eBus, mach, ttldur, verifier, state, mgr, nil}
-
-	hdlr := NewEventHandler(a)
-	eBus.AddListener("agent", hdlr)
-
+	a := &Agent{reg, mach, ttldur, verifier, NewState(), mgr}
 	return a, nil
 }
 
@@ -81,26 +63,20 @@ func (a *Agent) MarshalJSON() ([]byte, error) {
 	return json.Marshal(data)
 }
 
-// Trigger all async processes the Agent intends to run
-func (a *Agent) Run() {
-	a.stop = make(chan bool)
-
-	idx := a.initialize()
-	go a.eBus.Listen(a.stop)
-	go a.eStream.Stream(idx, a.eBus.Channel, a.stop)
-
-	go a.systemd.Publish(a.eBus, a.stop)
-
-	go a.Heartbeat(a.ttl, a.stop)
-	go a.HeartbeatJobs(a.ttl, a.stop)
+// Heartbeat updates the Registry periodically with this Agent's
+// presence information as well as an acknowledgement of the jobs
+// it is expected to be running.
+func (a *Agent) Heartbeat(stop chan bool) {
+	go a.heartbeatAgent(a.ttl, stop)
+	go a.heartbeatJobs(a.ttl, stop)
 }
 
-// initialize prepares the Agent for normal operation by doing three things:
+// Initialize prepares the Agent for normal operation by doing three things:
 // 1. Announce presence to the Registry, tracking the etcd index of the operation
 // 2. Discover any jobs that are scheduled locally, loading/starting them if they can run locally
 // 3. Cache all unresolved job offers and bid for any that can be run locally
 // The returned value is the etcd index at which the agent's presence was announced.
-func (a *Agent) initialize() uint64 {
+func (a *Agent) Initialize() uint64 {
 	log.Infof("Initializing Agent")
 
 	var idx uint64
@@ -181,18 +157,12 @@ func (a *Agent) initialize() uint64 {
 	return idx
 }
 
-// Stop all async processes the Agent is running
-func (a *Agent) Stop() {
-	log.Info("Stopping Agent")
-	close(a.stop)
-}
-
 // Purge removes the Agent's state from the Registry
 func (a *Agent) Purge() {
 	// Continue heartbeating the agent's machine state while attempting to
 	// stop all the locally-running jobs
 	purged := make(chan bool)
-	go a.Heartbeat(a.ttl, purged)
+	go a.heartbeatAgent(a.ttl, purged)
 
 	machID := a.machine.State().ID
 
@@ -212,12 +182,12 @@ func (a *Agent) Purge() {
 	}
 }
 
-// Periodically report to the Registry at an interval equal to
-// half of the provided ttl. Stop reporting when the provided
-// channel is closed. Failed attempts to report state to the
-// Registry are retried twice before moving on to the next
-// reporting interval.
-func (a *Agent) Heartbeat(ttl time.Duration, stop chan bool) {
+// heartbeatAgent periodically reports to the Registry at an
+// interval equal to half of the provided ttl. heartbeatAgent
+// stops reporting when the provided channel is closed. Failed
+// attempts to report state to the Registry are retried twice
+// before moving on to the next reporting interval.
+func (a *Agent) heartbeatAgent(ttl time.Duration, stop chan bool) {
 	attempt := func(attempts int, f func() error) (err error) {
 		if attempts < 1 {
 			return fmt.Errorf("attempts argument must be 1 or greater, got %d", attempts)
@@ -263,7 +233,7 @@ func (a *Agent) Heartbeat(ttl time.Duration, stop chan bool) {
 	}
 }
 
-func (a *Agent) HeartbeatJobs(ttl time.Duration, stop chan bool) {
+func (a *Agent) heartbeatJobs(ttl time.Duration, stop chan bool) {
 	heartbeat := func() {
 		machID := a.Machine().State().ID
 		launched := a.state.LaunchedJobs()

@@ -11,7 +11,6 @@ import (
 	"github.com/coreos/fleet/third_party/github.com/coreos/go-systemd/dbus"
 	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
 
-	"github.com/coreos/fleet/event"
 	"github.com/coreos/fleet/unit"
 )
 
@@ -24,7 +23,6 @@ type SystemdManager struct {
 	UnitsDir string
 
 	subscriptions *dbus.SubscriptionSet
-	stop          chan bool
 }
 
 func NewSystemdManager(uDir string) (*SystemdManager, error) {
@@ -37,7 +35,8 @@ func NewSystemdManager(uDir string) (*SystemdManager, error) {
 		return nil, err
 	}
 
-	return &SystemdManager{systemd, uDir, systemd.NewSubscriptionSet(), nil}, nil
+	mgr := SystemdManager{systemd, uDir, systemd.NewSubscriptionSet()}
+	return &mgr, nil
 }
 
 func (m *SystemdManager) MarshalJSON() ([]byte, error) {
@@ -47,35 +46,6 @@ func (m *SystemdManager) MarshalJSON() ([]byte, error) {
 		DBUSSubscriptions: m.subscriptions.Values(),
 	}
 	return json.Marshal(data)
-}
-
-// Publish is a long-running function that streams dbus events through
-// a translation layer and on to the EventBus
-func (m *SystemdManager) Publish(bus *event.EventBus, stopchan chan bool) {
-	m.systemd.Subscribe()
-
-	changechan, errchan := m.subscriptions.Subscribe()
-
-	stream := NewEventStream()
-	stream.Stream(changechan, bus.Channel)
-
-	for true {
-		select {
-		case <-stopchan:
-			break
-		case err := <-errchan:
-			var errString string
-			if err != nil {
-				errString = err.Error()
-			} else {
-				errString = "N/A"
-			}
-			log.Errorf("Received error from dbus: err=%s", errString)
-		}
-	}
-
-	stream.Close()
-	m.systemd.Unsubscribe()
 }
 
 // Load writes the given Unit to disk, subscribing to relevant dbus

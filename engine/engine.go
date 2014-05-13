@@ -5,7 +5,6 @@ import (
 
 	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
 
-	"github.com/coreos/fleet/event"
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/registry"
@@ -13,39 +12,18 @@ import (
 
 type Engine struct {
 	registry registry.Registry
-	eStream  *registry.EventStream
-	eBus     *event.EventBus
 	machine  *machine.Machine
 	// keeps a picture of the load in the cluster for more intelligent scheduling
 	clust *cluster
-	stop  chan bool
 }
 
-func New(reg registry.Registry, eStream *registry.EventStream, mach *machine.Machine) *Engine {
-	eBus := event.NewEventBus()
-	e := &Engine{reg, eStream, eBus, mach, newCluster(), nil}
-
-	hdlr := NewEventHandler(e)
-	eBus.AddListener("engine", hdlr)
-
-	return e
+func New(reg registry.Registry, mach *machine.Machine) *Engine {
+	return &Engine{reg, mach, newCluster()}
 }
 
-func (e *Engine) Run() {
-	e.stop = make(chan bool)
-
-	go e.eBus.Listen(e.stop)
-	go e.eStream.Stream(0, e.eBus.Channel, e.stop)
-
-	e.checkForWork()
-}
-
-func (e *Engine) Stop() {
-	log.Info("Stopping Engine")
-	close(e.stop)
-}
-
-func (e *Engine) checkForWork() {
+// CheckForWork attempts to rectify the current state of all Jobs in the cluster
+// with their target states wherever discrepancies are identified.
+func (e *Engine) CheckForWork() {
 	log.Infof("Polling etcd for actionable Jobs")
 
 	for _, jo := range e.registry.UnresolvedJobOffers() {
