@@ -36,6 +36,12 @@ func TestRecognizedUnitTypes(t *testing.T) {
 		{"foo.mount", true},
 		{"foo.automount", true},
 		{"foo.device", true},
+		{"foo.swap", false},
+		{"foo.target", false},
+		{"foo.snapshot", false},
+		{"foo.network", false},
+		{"foo.netdev", false},
+		{"foo.link", false},
 		{"foo.unknown", false},
 	}
 
