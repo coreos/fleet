@@ -20,8 +20,10 @@ func (r *EtcdRegistry) GetActiveMachines() (machines []machine.MachineState, err
 	key := path.Join(r.keyPrefix, machinePrefix)
 	resp, err := r.etcd.Get(key, false, true)
 
-	// Assume the error was KeyNotFound and return an empty data structure
 	if err != nil {
+		if isKeyNotFound(err) {
+			err = nil
+		}
 		return
 	}
 
@@ -41,8 +43,10 @@ func (r *EtcdRegistry) GetMachineState(machID string) (*machine.MachineState, er
 	key := path.Join(r.keyPrefix, machinePrefix, machID, "object")
 	resp, err := r.etcd.Get(key, false, true)
 
-	// Assume the error was KeyNotFound and return an empty data structure
 	if err != nil {
+		if isKeyNotFound(err) {
+			err = nil
+		}
 		return nil, err
 	}
 
