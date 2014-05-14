@@ -33,16 +33,22 @@ func TestRecognizedUnitTypes(t *testing.T) {
 		{"foo.socket", true},
 		{"foo.path", true},
 		{"foo.timer", true},
-		{"foo.mount", false},
-		{"foo.automount", false},
-		{"foo.device", false},
+		{"foo.mount", true},
+		{"foo.automount", true},
+		{"foo.device", true},
+		{"foo.swap", false},
+		{"foo.target", false},
+		{"foo.snapshot", false},
+		{"foo.network", false},
+		{"foo.netdev", false},
+		{"foo.link", false},
 		{"foo.unknown", false},
 	}
 
 	for _, tt := range tts {
 		ok := RecognizedUnitType(tt.name)
 		if ok != tt.ok {
-			t.Errorf("Case failed: name=%s expect=%b result=%b", tt.name, tt.ok, ok)
+			t.Errorf("Case failed: name=%s expect=%t result=%t", tt.name, tt.ok, ok)
 		}
 	}
 }
