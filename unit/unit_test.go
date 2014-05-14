@@ -42,7 +42,7 @@ func TestRecognizedUnitTypes(t *testing.T) {
 	for _, tt := range tts {
 		ok := RecognizedUnitType(tt.name)
 		if ok != tt.ok {
-			t.Errorf("Case failed: name=%s expect=%b result=%b", tt.name, tt.ok, ok)
+			t.Errorf("Case failed: name=%s expect=%t result=%t", tt.name, tt.ok, ok)
 		}
 	}
 }
