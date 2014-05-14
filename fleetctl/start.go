@@ -8,10 +8,6 @@ import (
 )
 
 var (
-	flagRequire       string
-	flagBlockAttempts int
-	flagNoBlock       bool
-
 	cmdStartUnit = &Command{
 		Name:    "start",
 		Summary: "Instruct systemd to start one or more units in the cluster, first submitting and loading if necessary.",
