@@ -123,32 +123,33 @@ func (eh *EventHandler) HandleCommandStopJob(ev event.Event) {
 }
 
 func (eh *EventHandler) HandleEventJobUnscheduled(ev event.Event) {
-	jobName := ev.Payload.(string)
-	target := ev.Context.(string)
-
-	if target != eh.agent.Machine().State().ID {
-		log.Infof("EventJobUnscheduled(%s): not scheduled here, ignoring ", jobName)
-		return
-	}
-
-	eh.agent.state.Lock()
-	defer eh.agent.state.Unlock()
-
-	log.Infof("EventJobUnscheduled(%s): unloading job", jobName)
-	eh.agent.UnloadJob(jobName)
-
-	log.Infof("EventJobUnscheduled(%s): checking outstanding job offers", jobName)
-	eh.agent.BidForPossibleJobs()
+	eh.unloadJobEvent(ev)
 }
 
 func (eh *EventHandler) HandleEventJobDestroyed(ev event.Event) {
+	eh.unloadJobEvent(ev)
+}
+
+// unloadJobEvent handles an event by unloading the job to which it
+// refers. The event's payload must be a string representing the
+// name of a Job. If the Job is not scheduled locally, it will be
+// ignored.
+func (eh *EventHandler) unloadJobEvent(ev event.Event) {
 	jobName := ev.Payload.(string)
 
 	eh.agent.state.Lock()
 	defer eh.agent.state.Unlock()
 
-	log.Infof("EventJobDestroyed(%s): unloading corresponding unit", jobName)
+	if !eh.agent.state.ScheduledHere(jobName) {
+		log.V(1).Infof("%s(%s): job not scheduled here, ignoring", ev.Type, jobName)
+		return
+	}
+
+	log.Infof("%s(%s): unloading corresponding unit", ev.Type, jobName)
 	eh.agent.UnloadJob(jobName)
+
+	log.Infof("%s(%s): checking outstanding job offers", ev.Type, jobName)
+	eh.agent.BidForPossibleJobs()
 }
 
 func (eh *EventHandler) HandleEventUnitStateUpdated(ev event.Event) {

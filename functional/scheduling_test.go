@@ -223,6 +223,30 @@ func TestScheduleOneWayConflict(t *testing.T) {
 			t.Error("Incorrect unit started:", unit)
 		}
 	}
+
+	// Destroying the conflicting unit should allow the other to start
+	name = "conflicts-with-hello.service"
+	if _, _, err := cluster.Fleetctl("destroy", name); err != nil {
+		t.Fatalf("Failed destroying %s", name)
+	}
+	stdout, _, err = cluster.Fleetctl("list-units", "--no-legend")
+	if err != nil {
+		t.Fatalf("Failed to run list-units: %v", err)
+	}
+	units = strings.Split(strings.TrimSpace(stdout), "\n")
+	if len(units) != 1 {
+		t.Fatalf("Did not find one unit in cluster: \n%s", stdout)
+	}
+	states, err = cluster.WaitForNActiveUnits(1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for unit, _ := range states {
+		if unit != "hello.service" {
+			t.Error("Incorrect unit started:", unit)
+		}
+	}
+
 }
 
 // Ensure units can be scheduled directly to a given machine using the
