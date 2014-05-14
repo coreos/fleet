@@ -39,7 +39,7 @@ CMD /bin/elb-presence
 
 ## Service Files
 
-With the docker images available over the public internet, systemd can simply run the containers. The following templates are rendered with all configuration information and can be run multiple times by incrementing the integer in the filename and within the unit:
+With the docker images available over the public internet, systemd can simply run the containers. The following templates are rendered with all configuration information and can be run multiple times by incrementing the integer in the filename and within the unit. You can find these unit files in the [unit-examples](https://github.com/coreos/unit-examples/tree/master/blog-fleet-intro) repository. To save time, clone the repo on the machine from which you are controlling fleet.
 
 **subgun-http.1.service**
 
