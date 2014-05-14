@@ -290,6 +290,15 @@ func (a *Agent) StopJob(jobName string) {
 	a.state.SetTargetState(jobName, job.JobStateLoaded)
 	a.registry.ClearJobHeartbeat(jobName)
 	a.systemd.Stop(jobName)
+
+	// We must explicitly refresh the payload state, as the dbus
+	// event listener sends a nil event when a unit deactivates.
+	us, err := a.systemd.GetUnitState(jobName)
+	if err != nil {
+		log.Errorf("Failed fetching state of Unit(%s): %v", jobName, err)
+		return
+	}
+	a.ReportUnitState(jobName, us)
 }
 
 func (a *Agent) UnloadJob(jobName string) {
@@ -300,7 +309,7 @@ func (a *Agent) UnloadJob(jobName string) {
 	a.state.PurgeJob(jobName)
 	a.systemd.Unload(jobName)
 
-	// The dbus event systemd will not trigger an event telling
+	// The dbus event generator will not trigger an event telling
 	// us that the unit has been unloaded, so we must explicitly
 	// clear what is in the Registry.
 	a.ReportUnitState(jobName, nil)
