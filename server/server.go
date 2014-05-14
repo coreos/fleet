@@ -49,7 +49,6 @@ func New(cfg config.Config) (*Server, error) {
 		return nil, err
 	}
 
-
 	sStream := systemd.NewEventStream(mgr)
 
 	rStream, err := newRegistryEventStreamFromConfig(cfg)
