@@ -11,7 +11,7 @@ import (
 // RecognizedUnitType determines whether or not the given unit name represents
 // a recognized unit type.
 func RecognizedUnitType(name string) bool {
-	types := []string{"service", "socket", "timer", "path"}
+	types := []string{"service", "socket", "timer", "path", "device", "mount", "automount"}
 	for _, t := range types {
 		suffix := fmt.Sprintf(".%s", t)
 		if strings.HasSuffix(name, suffix) {

@@ -33,9 +33,9 @@ func TestRecognizedUnitTypes(t *testing.T) {
 		{"foo.socket", true},
 		{"foo.path", true},
 		{"foo.timer", true},
-		{"foo.mount", false},
-		{"foo.automount", false},
-		{"foo.device", false},
+		{"foo.mount", true},
+		{"foo.automount", true},
+		{"foo.device", true},
 		{"foo.unknown", false},
 	}
 
