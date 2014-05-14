@@ -156,8 +156,8 @@ func (eh *EventHandler) HandleEventUnitStateUpdated(ev event.Event) {
 	state := ev.Payload.(*unit.UnitState)
 
 	if state == nil {
-		log.Infof("EventUnitStateUpdated(%s): received nil UnitState object", jobName)
-		state, _ = eh.agent.systemd.GetUnitState(jobName)
+		log.V(1).Infof("EventUnitStateUpdated(%s): received nil UnitState object, ignoring", jobName)
+		return
 	}
 
 	log.Infof("EventUnitStateUpdated(%s): pushing state (loadState=%s, activeState=%s, subState=%s) to Registry", jobName, state.LoadState, state.ActiveState, state.SubState)
