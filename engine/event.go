@@ -103,9 +103,14 @@ func (eh *EventHandler) HandleEventMachineRemoved(ev event.Event) {
 	jobs := getJobsScheduledToMachine(eh.engine.registry, machID)
 
 	for _, j := range jobs {
+		log.Infof("EventMachineRemoved(%s): clearing UnitState(%s)", machID, j.Name)
+		err := eh.engine.registry.RemoveUnitState(j.Name)
+		if err != nil {
+			log.Errorf("Failed removing UnitState(%s) from Registry: %v", j.Name, err)
+		}
+
 		log.Infof("EventMachineRemoved(%s): unscheduling Job(%s)", machID, j.Name)
 		eh.engine.registry.ClearJobTarget(j.Name, machID)
-		eh.engine.registry.RemoveUnitState(j.Name)
 	}
 
 	for _, j := range jobs {
