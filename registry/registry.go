@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	etcdErr "github.com/coreos/fleet/third_party/github.com/coreos/etcd/error"
 	"github.com/coreos/fleet/third_party/github.com/coreos/go-etcd/etcd"
 )
 
@@ -45,4 +46,9 @@ func unmarshal(val string, obj interface{}) error {
 	} else {
 		return errors.New(fmt.Sprintf("Unable to JSON-deserialize object: %s", err))
 	}
+}
+
+func isKeyNotFound(err error) bool {
+	e, ok := err.(*etcd.EtcdError)
+	return ok && e.ErrorCode == etcdErr.EcodeKeyNotFound
 }

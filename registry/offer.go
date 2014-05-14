@@ -4,7 +4,6 @@ import (
 	"path"
 	"strings"
 
-	etcdErr "github.com/coreos/fleet/third_party/github.com/coreos/etcd/error"
 	"github.com/coreos/fleet/third_party/github.com/coreos/go-etcd/etcd"
 	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
 
@@ -70,7 +69,7 @@ func (r *EtcdRegistry) Bids(jo *job.JobOffer) ([]job.JobBid, error) {
 	key := path.Join(r.keyPrefix, offerPrefix, jo.Job.Name, "bids")
 	resp, err := r.etcd.Get(key, false, true)
 	if err != nil {
-		if err.(*etcd.EtcdError).ErrorCode == etcdErr.EcodeKeyNotFound {
+		if isKeyNotFound(err) {
 			return bids, nil
 		}
 		return nil, err
@@ -130,7 +129,9 @@ func (r *EtcdRegistry) LockJobOffer(jobName, context string) *TimedResourceMutex
 func (r *EtcdRegistry) ResolveJobOffer(jobName string) error {
 	key := path.Join(r.keyPrefix, offerPrefix, jobName, "object")
 	if _, err := r.etcd.Delete(key, false); err != nil {
-		return err
+		if !isKeyNotFound(err) {
+			return err
+		}
 	}
 
 	key = path.Join(r.keyPrefix, offerPrefix, jobName)

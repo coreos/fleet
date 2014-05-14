@@ -25,7 +25,7 @@ func (r *EtcdRegistry) GetAllJobs() ([]job.Job, error) {
 	key := path.Join(r.keyPrefix, jobPrefix)
 	resp, err := r.etcd.Get(key, true, true)
 	if err != nil {
-		if e, ok := err.(*etcd.EtcdError); ok && e.ErrorCode == etcdErr.EcodeKeyNotFound {
+		if isKeyNotFound(err) {
 			err = nil
 		}
 		return jobs, err
@@ -66,6 +66,9 @@ func (r *EtcdRegistry) GetJobTarget(jobName string) (string, error) {
 func (r *EtcdRegistry) ClearJobTarget(jobName, machID string) error {
 	key := r.jobTargetAgentPath(jobName)
 	_, err := r.etcd.CompareAndDelete(key, machID, 0)
+	if isKeyNotFound(err) {
+		err = nil
+	}
 	return err
 }
 
@@ -75,7 +78,7 @@ func (r *EtcdRegistry) GetJob(jobName string) (j *job.Job, err error) {
 	key := path.Join(r.keyPrefix, jobPrefix, jobName, "object")
 	resp, err := r.etcd.Get(key, false, true)
 	if err != nil {
-		if e, ok := err.(*etcd.EtcdError); ok && e.ErrorCode == etcdErr.EcodeKeyNotFound {
+		if isKeyNotFound(err) {
 			err = nil
 		}
 		return
