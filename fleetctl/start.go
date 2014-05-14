@@ -30,7 +30,7 @@ Machine metadata is located in the fleet configuration file.`,
 
 func init() {
 	cmdStartUnit.Flags.BoolVar(&sharedFlags.Sign, "sign", false, "Sign unit file signatures using local SSH identities.")
-	cmdStartUnit.Flags.IntVar(&sharedFlags.BlockAttempts, "block-attempts", 10, "Wait until the jobs are launched, performing up to N attempts before giving up.")
+	cmdStartUnit.Flags.IntVar(&sharedFlags.BlockAttempts, "block-attempts", 0, "Wait until the jobs are launched, performing up to N attempts before giving up. A value of 0 indicates no limit.")
 	cmdStartUnit.Flags.BoolVar(&sharedFlags.NoBlock, "no-block", false, "Do not wait until the jobs have been launched before exiting.")
 }
 

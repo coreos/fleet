@@ -29,7 +29,7 @@ Stop an entire directory of units with glob matching:
 }
 
 func init() {
-	cmdStopUnit.Flags.IntVar(&sharedFlags.BlockAttempts, "block-attempts", 10, "Wait until the jobs are stopped, performing up to N attempts before giving up.")
+	cmdStopUnit.Flags.IntVar(&sharedFlags.BlockAttempts, "block-attempts", 0, "Wait until the jobs are stopped, performing up to N attempts before giving up. A value of 0 indicates no limit.")
 	cmdStopUnit.Flags.BoolVar(&sharedFlags.NoBlock, "no-block", false, "Do not wait until the jobs have stopped before exiting.")
 }
 

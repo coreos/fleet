@@ -193,15 +193,13 @@ func TestScheduleOneWayConflict(t *testing.T) {
 
 	// Start a unit that conflicts with a yet-to-be-scheduled unit
 	name := "fixtures/units/conflicts-with-hello.service"
-	if _, _, err := cluster.Fleetctl("start", name); err != nil {
+	if _, _, err := cluster.Fleetctl("start", "--no-block", name); err != nil {
 		t.Fatalf("Failed starting unit %s: %v", name, err)
 	}
 
 	// Start a unit that has not defined conflicts
 	name = "fixtures/units/hello.service"
-	if _, _, err := cluster.Fleetctl("start", name); err == nil {
-		t.Fatalf("Unit %s unexpectedly started", name)
-	}
+	cluster.Fleetctl("start", "--no-block", name)
 
 	// Both units should show up, but only conflicts-with-hello.service
 	// should report ACTIVE
