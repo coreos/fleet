@@ -49,7 +49,7 @@ ExecStart=/usr/bin/sleep 3000
 		t.Fatalf("Failed calling Units(): %v", err)
 	}
 
-	if !reflect.DeepEqual([]string{name}, units){
+	if !reflect.DeepEqual([]string{name}, units) {
 		t.Fatalf("Expected [hello.service], got %v", units)
 	}
 

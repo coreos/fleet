@@ -34,5 +34,9 @@ go test ${COVER} $@ ${TESTPKGS}
 
 echo "Checking gofmt..."
 fmtRes=$(gofmt -l $GOFMTPATH)
+if [ -n "${fmtRes}" ]; then
+	echo -e "gofmt checking failed:\n${fmtRes}"
+	exit 255
+fi
 
 echo "Success"
