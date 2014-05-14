@@ -82,6 +82,9 @@ func (r *EtcdRegistry) SetMachineState(ms machine.MachineState, ttl time.Duratio
 func (r *EtcdRegistry) RemoveMachineState(machID string) error {
 	key := path.Join(r.keyPrefix, machinePrefix, machID, "object")
 	_, err := r.etcd.Delete(key, false)
+	if isKeyNotFound(err) {
+		err = nil
+	}
 	return err
 }
 

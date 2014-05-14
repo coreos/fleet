@@ -42,7 +42,7 @@ func (r *EtcdRegistry) getUnitFromLegacyPayload(name string) (*unit.Unit, error)
 	key := path.Join(r.keyPrefix, payloadPrefix, name)
 	resp, err := r.etcd.Get(key, true, true)
 	if err != nil {
-		if e, ok := err.(*etcd.EtcdError); ok && e.ErrorCode == etcdErr.EcodeKeyNotFound {
+		if isKeyNotFound(err) {
 			err = nil
 		}
 		return nil, err
@@ -64,7 +64,7 @@ func (r *EtcdRegistry) getUnitByHash(hash unit.Hash) *unit.Unit {
 	key := r.hashedUnitPath(hash)
 	resp, err := r.etcd.Get(key, false, true)
 	if err != nil {
-		if e, ok := err.(*etcd.EtcdError); ok && e.ErrorCode == etcdErr.EcodeKeyNotFound {
+		if isKeyNotFound(err) {
 			err = nil
 		}
 		return nil

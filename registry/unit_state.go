@@ -2,7 +2,6 @@ package registry
 
 import (
 	"path"
-
 	"github.com/coreos/fleet/unit"
 )
 
@@ -38,5 +37,8 @@ func (r *EtcdRegistry) SaveUnitState(jobName string, unitState *unit.UnitState) 
 func (r *EtcdRegistry) RemoveUnitState(jobName string) error {
 	key := path.Join(r.keyPrefix, statePrefix, jobName)
 	_, err := r.etcd.Delete(key, false)
+	if isKeyNotFound(err) {
+		err = nil
+	}
 	return err
 }
