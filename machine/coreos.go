@@ -5,6 +5,7 @@ import (
 	"net"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/coreos/fleet/third_party/github.com/dotcloud/docker/pkg/netlink"
@@ -22,6 +23,8 @@ func NewCoreOSMachine(static MachineState) *CoreOSMachine {
 }
 
 type CoreOSMachine struct {
+	sync.RWMutex
+
 	staticState  MachineState
 	dynamicState *MachineState
 }
@@ -33,6 +36,9 @@ func (m *CoreOSMachine) String() string {
 // State returns a MachineState object representing the CoreOSMachine's
 // static state overlaid on its dynamic state at the time of execution.
 func (m *CoreOSMachine) State() (state MachineState) {
+	m.RLock()
+	defer m.RUnlock()
+
 	if m.dynamicState == nil {
 		state = MachineState(m.staticState)
 	} else {
@@ -44,6 +50,9 @@ func (m *CoreOSMachine) State() (state MachineState) {
 
 // Refresh updates the current state of the CoreOSMachine.
 func (m *CoreOSMachine) Refresh() {
+	m.RLock()
+	defer m.RUnlock()
+
 	ms := currentState()
 	m.dynamicState = &ms
 }
