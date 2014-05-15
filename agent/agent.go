@@ -130,7 +130,7 @@ func (a *Agent) Initialize() uint64 {
 
 	for _, j := range loaded {
 		a.state.TrackJob(&j)
-		a.LoadJob(&j)
+		a.loadJob(&j)
 
 		if _, ok := launched[j.Name]; !ok {
 			continue
@@ -250,7 +250,9 @@ func (a *Agent) heartbeatJobs(ttl time.Duration, stop chan bool) {
 	}
 }
 
-func (a *Agent) LoadJob(j *job.Job) {
+// loadJob hands the given Job to systemd without acquiring the
+// state mutex. The caller is responsible for acquiring it.
+func (a *Agent) loadJob(j *job.Job) {
 	log.Infof("Loading Job(%s)", j.Name)
 	a.state.SetTargetState(j.Name, job.JobStateLoaded)
 	err := a.um.Load(j.Name, j.Unit)
@@ -573,7 +575,7 @@ func (a *Agent) JobScheduled(jobName, target string) {
 		return
 	}
 
-	a.LoadJob(j)
+	a.loadJob(j)
 
 	log.Infof("Bidding for all possible peers of Job(%s)", j.Name)
 	a.BidForPossiblePeers(j.Name)
