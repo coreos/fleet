@@ -573,11 +573,6 @@ func (a *Agent) JobScheduledLocally(jobName string) {
 		return
 	}
 
-	if !a.VerifyJob(j) {
-		log.Errorf("Failed to verify Job(%s)", j.Name)
-		return
-	}
-
 	if !a.AbleToRun(j) {
 		log.Infof("Unable to run locally-scheduled Job(%s), unscheduling", jobName)
 		a.registry.ClearJobTarget(jobName, a.Machine.State().ID)
