@@ -77,19 +77,8 @@ func (eh *EventHandler) HandleEventJobDestroyed(ev event.Event) {
 func (eh *EventHandler) unloadJobEvent(ev event.Event) {
 	jobName := ev.Payload.(string)
 
-	eh.agent.state.Lock()
-	defer eh.agent.state.Unlock()
-
-	if !eh.agent.state.ScheduledHere(jobName) {
-		log.V(1).Infof("%s(%s): job not scheduled here, ignoring", ev.Type, jobName)
-		return
-	}
-
-	log.Infof("%s(%s): unloading corresponding unit", ev.Type, jobName)
-	eh.agent.UnloadJob(jobName)
-
-	log.Infof("%s(%s): checking outstanding job offers", ev.Type, jobName)
-	eh.agent.BidForPossibleJobs()
+	log.Infof("%s(%s): Job(%s) unscheduled, deciding what to do", ev.Type, jobName, jobName)
+	eh.agent.JobUnscheduled(jobName)
 }
 
 func (eh *EventHandler) HandleEventUnitStateUpdated(ev event.Event) {

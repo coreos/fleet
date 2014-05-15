@@ -589,3 +589,23 @@ func (a *Agent) JobScheduled(jobName, target string) {
 	log.Infof("Job(%s) loaded, now starting it", j.Name)
 	a.startJobUnlocked(j.Name)
 }
+
+// JobUnscheduled attempts to unload the indicated job only
+// if it were scheduled here in the first place, otherwise
+// the event is ignored. If unloading is necessary, all jobs
+// that can be run locally will also be bid upon.
+func (a *Agent) JobUnscheduled(jobName string) {
+	a.state.Lock()
+	defer a.state.Unlock()
+
+	if !a.state.ScheduledHere(jobName) {
+		log.V(1).Infof("Job(%s) not scheduled here, ignoring", jobName)
+		return
+	}
+
+	log.Infof("Unloading Job(%s)", jobName)
+	a.UnloadJob(jobName)
+
+	log.Infof("Checking outstanding JobOffers")
+	a.BidForPossibleJobs()
+}
