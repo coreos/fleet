@@ -45,11 +45,9 @@ func (m *Machine) RefreshState() *MachineState {
 	return &state
 }
 
-// HasMetadata determine if a Machine fulfills the given requirements
-// based on its current state.
-func (m *Machine) HasMetadata(metadata map[string][]string) bool {
-	state := m.State()
-
+// HasMetadata determine if the Metadata of a given MachineState
+// matches the indicated values.
+func HasMetadata(state *MachineState, metadata map[string][]string) bool {
 	for key, values := range metadata {
 		local, ok := state.Metadata[key]
 		if !ok {

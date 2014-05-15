@@ -429,7 +429,8 @@ func (a *Agent) AbleToRun(j *job.Job) bool {
 
 	metadata := j.RequiredTargetMetadata()
 	log.V(1).Infof("Job(%s) requires machine metadata: %v", j.Name, metadata)
-	if !a.machine.HasMetadata(metadata) {
+	ms := a.machine.State()
+	if !machine.HasMetadata(&ms, metadata) {
 		log.Infof("Unable to run Job(%s), local Machine metadata insufficient", j.Name)
 		return false
 	}
