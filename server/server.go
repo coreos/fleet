@@ -42,7 +42,7 @@ func New(cfg config.Config) (*Server, error) {
 		return nil, err
 	}
 
-	mgr, err := systemd.NewSystemdManager(systemd.DefaultUnitsDirectory)
+	mgr, err := systemd.NewSystemdUnitManager(systemd.DefaultUnitsDirectory)
 	if err != nil {
 		return nil, err
 	}
@@ -103,7 +103,7 @@ func newMachineFromConfig(cfg config.Config) (*machine.CoreOSMachine, error) {
 	return mach, nil
 }
 
-func newAgentFromConfig(mach machine.Machine, cfg config.Config, mgr *systemd.SystemdManager) (*agent.Agent, error) {
+func newAgentFromConfig(mach machine.Machine, cfg config.Config, mgr *systemd.SystemdUnitManager) (*agent.Agent, error) {
 	regClient := newEtcdClientFromConfig(cfg)
 	reg := registry.New(regClient, cfg.EtcdKeyPrefix)
 

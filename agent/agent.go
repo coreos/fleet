@@ -24,7 +24,7 @@ const (
 )
 
 // The Agent owns all of the coordination between the Registry, the local
-// Machine, and the local SystemdManager.
+// Machine, and the local SystemdUnitManager.
 type Agent struct {
 	registry registry.Registry
 	machine  machine.Machine
@@ -34,10 +34,10 @@ type Agent struct {
 	verifier *sign.SignatureVerifier
 
 	state   *AgentState
-	systemd *systemd.SystemdManager
+	systemd *systemd.SystemdUnitManager
 }
 
-func New(mgr *systemd.SystemdManager, reg registry.Registry, mach machine.Machine, ttl string, verifier *sign.SignatureVerifier) (*Agent, error) {
+func New(mgr *systemd.SystemdUnitManager, reg registry.Registry, mach machine.Machine, ttl string, verifier *sign.SignatureVerifier) (*Agent, error) {
 	ttldur, err := time.ParseDuration(ttl)
 	if err != nil {
 		return nil, err
@@ -54,7 +54,7 @@ func (a *Agent) Machine() machine.Machine {
 
 func (a *Agent) MarshalJSON() ([]byte, error) {
 	data := struct {
-		Systemd *systemd.SystemdManager
+		Systemd *systemd.SystemdUnitManager
 		State   *AgentState
 	}{
 		Systemd: a.systemd,

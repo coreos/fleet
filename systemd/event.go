@@ -9,11 +9,11 @@ import (
 )
 
 type EventStream struct {
-	mgr   *SystemdManager
+	mgr   *SystemdUnitManager
 	close chan bool
 }
 
-func NewEventStream(mgr *SystemdManager) *EventStream {
+func NewEventStream(mgr *SystemdUnitManager) *EventStream {
 	return &EventStream{mgr, nil}
 }
 
