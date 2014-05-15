@@ -12,12 +12,12 @@ import (
 
 type Engine struct {
 	registry registry.Registry
-	machine  *machine.Machine
+	machine  machine.Machine
 	// keeps a picture of the load in the cluster for more intelligent scheduling
 	clust *cluster
 }
 
-func New(reg registry.Registry, mach *machine.Machine) *Engine {
+func New(reg registry.Registry, mach machine.Machine) *Engine {
 	return &Engine{reg, mach, newCluster()}
 }
 

@@ -27,7 +27,7 @@ const (
 // Machine, and the local SystemdManager.
 type Agent struct {
 	registry registry.Registry
-	machine  *machine.Machine
+	machine  machine.Machine
 	ttl      time.Duration
 	// verifier is used to verify the contents of a job's Unit.
 	// A nil verifier implies that all Units are accepted.
@@ -37,7 +37,7 @@ type Agent struct {
 	systemd *systemd.SystemdManager
 }
 
-func New(mgr *systemd.SystemdManager, reg registry.Registry, mach *machine.Machine, ttl string, verifier *sign.SignatureVerifier) (*Agent, error) {
+func New(mgr *systemd.SystemdManager, reg registry.Registry, mach machine.Machine, ttl string, verifier *sign.SignatureVerifier) (*Agent, error) {
 	ttldur, err := time.ParseDuration(ttl)
 	if err != nil {
 		return nil, err
@@ -48,7 +48,7 @@ func New(mgr *systemd.SystemdManager, reg registry.Registry, mach *machine.Machi
 }
 
 // Access Agent's machine field
-func (a *Agent) Machine() *machine.Machine {
+func (a *Agent) Machine() machine.Machine {
 	return a.machine
 }
 
@@ -222,11 +222,10 @@ func (a *Agent) heartbeatAgent(ttl time.Duration, stop chan bool) {
 	for {
 		select {
 		case <-stop:
-			log.V(1).Info("MachineHeartbeat exiting due to stop signal")
+			log.V(1).Info("Heartbeat exiting due to stop signal")
 			return
 		case <-ticker:
-			log.V(1).Info("MachineHeartbeat tick")
-			a.machine.RefreshState()
+			log.V(1).Info("Heartbeat tick")
 			if err := attempt(3, heartbeat); err != nil {
 				log.Errorf("Failed heartbeat after 3 attempts: %v", err)
 			}
@@ -429,7 +428,8 @@ func (a *Agent) AbleToRun(j *job.Job) bool {
 
 	metadata := j.RequiredTargetMetadata()
 	log.V(1).Infof("Job(%s) requires machine metadata: %v", j.Name, metadata)
-	if !a.machine.HasMetadata(metadata) {
+	ms := a.machine.State()
+	if !machine.HasMetadata(&ms, metadata) {
 		log.Infof("Unable to run Job(%s), local Machine metadata insufficient", j.Name)
 		return false
 	}
