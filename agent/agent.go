@@ -375,7 +375,7 @@ func (a *Agent) MaybeBid(jo job.JobOffer) {
 	}
 
 	log.Infof("EventJobOffered(%s): passed all criteria, submitting JobBid", jo.Job.Name)
-	a.Bid(jo.Job.Name)
+	a.bid(jo.Job.Name)
 }
 
 // Submit all possible bids for unresolved offers
@@ -388,7 +388,7 @@ func (a *Agent) BidForPossibleJobs() {
 		log.V(1).Infof("Checking ability to run Job(%s)", offer.Job.Name)
 		if a.AbleToRun(&offer.Job) {
 			log.V(1).Infof("Able to run Job(%s), submitting bid", offer.Job.Name)
-			a.Bid(offer.Job.Name)
+			a.bid(offer.Job.Name)
 		} else {
 			log.V(1).Infof("Still unable to run Job(%s)", offer.Job.Name)
 		}
@@ -396,7 +396,7 @@ func (a *Agent) BidForPossibleJobs() {
 }
 
 // Submit a bid for the given Job
-func (a *Agent) Bid(jobName string) {
+func (a *Agent) bid(jobName string) {
 	log.Infof("Submitting JobBid for Job(%s)", jobName)
 
 	jb := job.NewBid(jobName, a.Machine.State().ID)
@@ -444,7 +444,7 @@ func (a *Agent) BidForPossiblePeers(jobName string) {
 
 		peerJob := a.FetchJob(peer)
 		if peerJob != nil && a.AbleToRun(peerJob) {
-			a.Bid(peer)
+			a.bid(peer)
 		} else {
 			log.V(1).Infof("Unable to bid for Peer(%s) of Job(%s)", peer, jobName)
 		}
