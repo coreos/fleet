@@ -93,7 +93,8 @@ func (eh *EventHandler) HandleEventJobScheduled(ev event.Event) {
 	}
 
 	log.Infof("EventJobScheduled(%s): Starting Job", j.Name)
-	eh.agent.StartJob(j.Name)
+	eh.agent.state.SetTargetState(jobName, job.JobStateLaunched)
+	go eh.agent.StartJob(j.Name)
 }
 
 func (eh *EventHandler) HandleCommandStartJob(ev event.Event) {
@@ -106,7 +107,8 @@ func (eh *EventHandler) HandleCommandStartJob(ev event.Event) {
 
 	jobName := ev.Payload.(string)
 	log.Infof("CommandStartJob(%s): starting corresponding unit", jobName)
-	eh.agent.StartJob(jobName)
+	eh.agent.state.SetTargetState(jobName, job.JobStateLaunched)
+	go eh.agent.StartJob(jobName)
 }
 
 func (eh *EventHandler) HandleCommandStopJob(ev event.Event) {
@@ -119,7 +121,8 @@ func (eh *EventHandler) HandleCommandStopJob(ev event.Event) {
 
 	jobName := ev.Payload.(string)
 	log.Infof("CommandStopJob(%s): stopping corresponding unit", jobName)
-	eh.agent.StopJob(jobName)
+	eh.agent.state.SetTargetState(jobName, job.JobStateLoaded)
+	go eh.agent.StopJob(jobName)
 }
 
 func (eh *EventHandler) HandleEventJobUnscheduled(ev event.Event) {
@@ -145,8 +148,12 @@ func (eh *EventHandler) unloadJobEvent(ev event.Event) {
 		return
 	}
 
-	log.Infof("%s(%s): unloading corresponding unit", ev.Type, jobName)
-	eh.agent.UnloadJob(jobName)
+	log.Infof("%s(%s): unscheduling any local peers of Job", ev.Type, jobName)
+	eh.agent.UnscheduleLocalPeersOfJob(jobName)
+
+	log.Infof("%s(%s): triggering unload of corresponding unit", ev.Type, jobName)
+	eh.agent.state.PurgeJob(jobName)
+	go eh.agent.UnloadJob(jobName)
 
 	log.Infof("%s(%s): checking outstanding job offers", ev.Type, jobName)
 	eh.agent.BidForPossibleJobs()
