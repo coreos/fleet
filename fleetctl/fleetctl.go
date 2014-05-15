@@ -442,10 +442,11 @@ func lazyStartJobs(args []string) ([]string, error) {
 
 // waitForJobStates polls each of the indicated jobs until each of their
 // states is equal to that which the caller indicates, or until the
-// polling operation times out. waitForJobStates will retry up to N
-// times before timing out. Returned is an error channel used to
-// communicate when timeouts occur. The returned error channel will be
-// closed after all polling operation is complete.
+// polling operation times out. waitForJobStates will retry forever, or
+// up to maxAttempts times before timing out if maxAttempts is greater
+// than zero. Returned is an error channel used to communicate when
+// timeouts occur. The returned error channel will be closed after all
+// polling operation is complete.
 func waitForJobStates(jobs []string, js job.JobState, maxAttempts int, out io.Writer) chan error {
 	errchan := make(chan error)
 	var wg sync.WaitGroup
@@ -465,33 +466,49 @@ func waitForJobStates(jobs []string, js job.JobState, maxAttempts int, out io.Wr
 func checkJobState(jobName string, js job.JobState, maxAttempts int, out io.Writer, wg *sync.WaitGroup, errchan chan error) {
 	defer wg.Done()
 
-	for attempts := 0; attempts < maxAttempts; attempts++ {
-		j, err := registryCtl.GetJob(jobName)
-		if err != nil {
-			log.Warningf("Error retrieving Job(%s) from Registry: %v", jobName, err)
-			continue
-		}
-		if j == nil || j.State == nil || *(j.State) != js {
-			time.Sleep(100 * time.Millisecond)
-			continue
-		}
+	sleep := 100 * time.Millisecond
 
-		msg := fmt.Sprintf("Job %s %s", jobName, *(j.State))
-
-		tgt, err := registryCtl.GetJobTarget(jobName)
-		if err != nil {
-			log.Warningf("Error retrieving target information for Job(%s) from Registry: %v", jobName, err)
-		} else if tgt != "" {
-			if ms, _ := registryCtl.GetMachineState(tgt); ms != nil {
-				msg = fmt.Sprintf("%s on %s", msg, machineFullLegend(*ms, false))
+	if maxAttempts < 1 {
+		for {
+			if assertJobState(jobName, js) {
+				return
 			}
+			time.Sleep(sleep)
 		}
+	} else {
+		for attempt := 0; attempt < maxAttempts; attempt++ {
+			if assertJobState(jobName, js) {
+				return
+			}
+			time.Sleep(sleep)
+		}
+		errchan <- fmt.Errorf("Timed out waiting for job %s to report state %s", jobName, js)
+	}
+}
 
-		fmt.Fprintln(out, msg)
-		return
+func assertJobState(name string, js job.JobState) bool {
+	j, err := registryCtl.GetJob(name)
+	if err != nil {
+		log.Warningf("Error retrieving Job(%s) from Registry: %v", name, err)
+		return false
+	}
+	if j == nil || j.State == nil || *(j.State) != js {
+		return false
 	}
 
-	errchan <- fmt.Errorf("Timed out waiting for job %s to report state %s", jobName, js)
+	msg := fmt.Sprintf("Job %s %s", name, *(j.State))
+
+	tgt, err := registryCtl.GetJobTarget(name)
+	if err != nil {
+		log.Warningf("Error retrieving target information for Job(%s) from Registry: %v", name, err)
+	} else if tgt != "" {
+		if ms, _ := registryCtl.GetMachineState(tgt); ms != nil {
+			msg = fmt.Sprintf("%s on %s", msg, machineFullLegend(*ms, false))
+		}
+	}
+
+	fmt.Fprintln(out, msg)
+	return true
 }
 
 // unitNameMangle tries to turn a string that might not be a unit name into a

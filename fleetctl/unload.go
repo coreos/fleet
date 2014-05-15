@@ -19,7 +19,7 @@ var (
 )
 
 func init() {
-	cmdUnloadUnit.Flags.IntVar(&sharedFlags.BlockAttempts, "block-attempts", 10, "Wait until the jobs are inactive, performing up to N attempts before giving up.")
+	cmdUnloadUnit.Flags.IntVar(&sharedFlags.BlockAttempts, "block-attempts", 0, "Wait until the jobs are inactive, performing up to N attempts before giving up. A value of 0 indicates no limit.")
 	cmdUnloadUnit.Flags.BoolVar(&sharedFlags.NoBlock, "no-block", false, "Do not wait until the jobs have become inactive before exiting.")
 }
 
