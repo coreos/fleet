@@ -50,15 +50,15 @@ func (eh *EventHandler) HandleCommandStartJob(ev event.Event) {
 }
 
 func (eh *EventHandler) HandleCommandStopJob(ev event.Event) {
-	if ev.Context.(string) != eh.agent.Machine().State().ID {
+	jobName := ev.Payload.(string)
+	target := ev.Context.(string)
+
+	if target != eh.agent.Machine().State().ID {
+		log.V(1).Infof("CommandStopJob(%s): scheduled elsewhere, ignoring", jobName)
 		return
 	}
 
-	eh.agent.state.Lock()
-	defer eh.agent.state.Unlock()
-
-	jobName := ev.Payload.(string)
-	log.Infof("CommandStopJob(%s): stopping corresponding unit", jobName)
+	log.Infof("CommandStopJob(%s): instructing Agent to stop Job", jobName)
 	eh.agent.StopJob(jobName)
 }
 

@@ -294,7 +294,16 @@ func (a *Agent) startJobUnlocked(jobName string) {
 	a.um.Start(jobName)
 }
 
+// StopJob stops the indicated Job after first acquiring the state mutex
 func (a *Agent) StopJob(jobName string) {
+	a.state.Lock()
+	defer a.state.Unlock()
+	a.stopJobUnlocked(jobName)
+}
+
+// stopJobUnlocked stops the indicated Job without acquiring the state
+// mutex. The caller is responsible for acquiring it.
+func (a *Agent) stopJobUnlocked(jobName string) {
 	a.state.SetTargetState(jobName, job.JobStateLoaded)
 	a.registry.ClearJobHeartbeat(jobName)
 	a.um.Stop(jobName)
@@ -310,7 +319,7 @@ func (a *Agent) StopJob(jobName string) {
 }
 
 func (a *Agent) UnloadJob(jobName string) {
-	a.StopJob(jobName)
+	a.stopJobUnlocked(jobName)
 
 	reversePeers := a.state.GetJobsByPeer(jobName)
 
