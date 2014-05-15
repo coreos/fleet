@@ -78,14 +78,14 @@ func newRegistryEventStreamFromConfig(cfg config.Config) (*registry.EventStream,
 	return registry.NewEventStream(eClient, reg)
 }
 
-func newMachineFromConfig(cfg config.Config) (*machine.Machine, error) {
+func newMachineFromConfig(cfg config.Config) (machine.Machine, error) {
 	state := machine.MachineState{
 		PublicIP: cfg.PublicIP,
 		Metadata: cfg.Metadata(),
 		Version:  version.Version,
 	}
 
-	mach := machine.New(state)
+	mach := machine.NewCoreOSMachine(state)
 	mach.RefreshState()
 
 	if mach.State().ID == "" {
@@ -95,7 +95,7 @@ func newMachineFromConfig(cfg config.Config) (*machine.Machine, error) {
 	return mach, nil
 }
 
-func newAgentFromConfig(mach *machine.Machine, cfg config.Config, mgr *systemd.SystemdManager) (*agent.Agent, error) {
+func newAgentFromConfig(mach machine.Machine, cfg config.Config, mgr *systemd.SystemdManager) (*agent.Agent, error) {
 	regClient := newEtcdClientFromConfig(cfg)
 	reg := registry.New(regClient, cfg.EtcdKeyPrefix)
 
@@ -112,7 +112,7 @@ func newAgentFromConfig(mach *machine.Machine, cfg config.Config, mgr *systemd.S
 	return agent.New(mgr, reg, mach, cfg.AgentTTL, verifier)
 }
 
-func newEngineFromConfig(mach *machine.Machine, cfg config.Config) (*engine.Engine, error) {
+func newEngineFromConfig(mach machine.Machine, cfg config.Config) (*engine.Engine, error) {
 	regClient := newEtcdClientFromConfig(cfg)
 	reg := registry.New(regClient, cfg.EtcdKeyPrefix)
 	return engine.New(reg, mach), nil

@@ -27,7 +27,7 @@ const (
 // Machine, and the local SystemdManager.
 type Agent struct {
 	registry registry.Registry
-	machine  *machine.Machine
+	machine  machine.Machine
 	ttl      time.Duration
 	// verifier is used to verify the contents of a job's Unit.
 	// A nil verifier implies that all Units are accepted.
@@ -37,7 +37,7 @@ type Agent struct {
 	systemd *systemd.SystemdManager
 }
 
-func New(mgr *systemd.SystemdManager, reg registry.Registry, mach *machine.Machine, ttl string, verifier *sign.SignatureVerifier) (*Agent, error) {
+func New(mgr *systemd.SystemdManager, reg registry.Registry, mach machine.Machine, ttl string, verifier *sign.SignatureVerifier) (*Agent, error) {
 	ttldur, err := time.ParseDuration(ttl)
 	if err != nil {
 		return nil, err
@@ -48,7 +48,7 @@ func New(mgr *systemd.SystemdManager, reg registry.Registry, mach *machine.Machi
 }
 
 // Access Agent's machine field
-func (a *Agent) Machine() *machine.Machine {
+func (a *Agent) Machine() machine.Machine {
 	return a.machine
 }
 
