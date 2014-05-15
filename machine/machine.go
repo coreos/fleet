@@ -38,11 +38,10 @@ func (m *Machine) State() (state MachineState) {
 
 // RefreshState generates a new MachineState object based on the
 // current state of the underlying host, storing it internally for
-// future reference before returning it.
-func (m *Machine) RefreshState() *MachineState {
+// future reference.
+func (m *Machine) RefreshState() {
 	state := CurrentState()
 	m.dynamicState = &state
-	return &state
 }
 
 // HasMetadata determine if the Metadata of a given MachineState
