@@ -141,7 +141,7 @@ func (a *Agent) Initialize() uint64 {
 			continue
 		}
 
-		a.StartJob(j.Name)
+		a.startJobUnlocked(j.Name)
 	}
 
 	for _, jo := range a.registry.UnresolvedJobOffers() {
@@ -275,7 +275,17 @@ func (a *Agent) LoadJob(j *job.Job) {
 	a.ReportUnitState(j.Name, us)
 }
 
+// StartJob starts the indicated Job after first acquiring the state mutex
 func (a *Agent) StartJob(jobName string) {
+	a.state.Lock()
+	defer a.state.Unlock()
+
+	a.startJobUnlocked(jobName)
+}
+
+// startJobUnlocked starts the indicated Job without acquiring the state
+// mutex. The caller is responsible for acquiring it.
+func (a *Agent) startJobUnlocked(jobName string) {
 	a.state.SetTargetState(jobName, job.JobStateLaunched)
 
 	machID := a.Machine().State().ID
@@ -519,4 +529,54 @@ func (a *Agent) HasConflict(potentialJobName string, potentialConflicts []string
 	}
 
 	return false, ""
+}
+
+func (a *Agent) JobScheduled(jobName, target string) {
+	a.state.Lock()
+	defer a.state.Unlock()
+
+	log.V(1).Infof("Dropping outstanding offers and bids", jobName)
+	a.state.PurgeOffer(jobName)
+
+	if target != a.Machine().State().ID {
+		log.Infof("Job(%s) not scheduled to this Agent, purging related data from cache", jobName)
+		a.state.PurgeJob(jobName)
+
+		log.Infof("Checking outstanding job offers")
+		a.BidForPossibleJobs()
+		return
+	}
+
+	log.Infof("Job(%s) scheduled to this Agent, preparing to load", jobName)
+
+	j := a.FetchJob(jobName)
+	if j == nil {
+		log.Errorf("Failed to fetch Job(%s)", jobName)
+		return
+	}
+
+	if !a.VerifyJob(j) {
+		log.Errorf("Failed to verify Job(%s)", j.Name)
+		return
+	}
+
+	if !a.AbleToRun(j) {
+		log.Infof("Unable to run locally-scheduled Job(%s), unscheduling", jobName)
+		a.registry.ClearJobTarget(jobName, target)
+		a.state.PurgeJob(jobName)
+		return
+	}
+
+	a.LoadJob(j)
+
+	log.Infof("Bidding for all possible peers of Job(%s)", j.Name)
+	a.BidForPossiblePeers(j.Name)
+
+	ts, _ := a.registry.GetJobTargetState(j.Name)
+	if ts == nil || *ts != job.JobStateLaunched {
+		return
+	}
+
+	log.Infof("Job(%s) loaded, now starting it", j.Name)
+	a.startJobUnlocked(j.Name)
 }

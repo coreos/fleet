@@ -32,66 +32,20 @@ func (eh *EventHandler) HandleEventJobScheduled(ev event.Event) {
 	jobName := ev.Payload.(string)
 	target := ev.Context.(string)
 
-	eh.agent.state.Lock()
-	defer eh.agent.state.Unlock()
-
-	log.V(1).Infof("EventJobScheduled(%s): Dropping outstanding offers and bids", jobName)
-	eh.agent.state.PurgeOffer(jobName)
-
-	if target != eh.agent.Machine().State().ID {
-		log.Infof("EventJobScheduled(%s): Job not scheduled to this Agent, purging related data from cache", jobName)
-		eh.agent.state.PurgeJob(jobName)
-
-		log.Infof("EventJobScheduled(%s): Checking outstanding job offers", jobName)
-		eh.agent.BidForPossibleJobs()
-		return
-	}
-
-	log.Infof("EventJobScheduled(%s): Job scheduled to this Agent", jobName)
-
-	j := eh.agent.FetchJob(jobName)
-	if j == nil {
-		log.Errorf("EventJobScheduled(%s): Failed to fetch Job", jobName)
-		return
-	}
-
-	if !eh.agent.VerifyJob(j) {
-		log.Errorf("EventJobScheduled(%s): Failed to verify Job", j.Name)
-		return
-	}
-
-	if !eh.agent.AbleToRun(j) {
-		log.Infof("EventJobScheduled(%s): Unable to run scheduled Job, unscheduling.", jobName)
-		eh.agent.registry.ClearJobTarget(jobName, target)
-		eh.agent.state.PurgeJob(jobName)
-		return
-	}
-
-	log.Infof("EventJobScheduled(%s): Loading Job", j.Name)
-	eh.agent.LoadJob(j)
-
-	log.Infof("EventJobScheduled(%s): Bidding for all possible peers of Job", j.Name)
-	eh.agent.BidForPossiblePeers(j.Name)
-
-	ts, _ := eh.agent.registry.GetJobTargetState(j.Name)
-	if ts == nil || *ts != job.JobStateLaunched {
-		return
-	}
-
-	log.Infof("EventJobScheduled(%s): Starting Job", j.Name)
-	eh.agent.StartJob(j.Name)
+	log.Infof("EventJobScheduled(%s): Job(%s) scheduled to Machine(%s), deciding what to do", jobName, jobName, target)
+	eh.agent.JobScheduled(jobName, target)
 }
 
 func (eh *EventHandler) HandleCommandStartJob(ev event.Event) {
-	if ev.Context.(string) != eh.agent.Machine().State().ID {
+	jobName := ev.Payload.(string)
+	target := ev.Context.(string)
+
+	if target != eh.agent.Machine().State().ID {
+		log.V(1).Infof("CommandStartJob(%s): scheduled elsewhere, ignoring", jobName)
 		return
 	}
 
-	eh.agent.state.Lock()
-	defer eh.agent.state.Unlock()
-
-	jobName := ev.Payload.(string)
-	log.Infof("CommandStartJob(%s): starting corresponding unit", jobName)
+	log.Infof("CommandStartJob(%s): instructing Agent to start Job", jobName)
 	eh.agent.StartJob(jobName)
 }
 
