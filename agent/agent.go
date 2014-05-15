@@ -147,7 +147,7 @@ func (a *Agent) Initialize() uint64 {
 		a.state.TrackJob(&jo.Job)
 	}
 
-	a.BidForPossibleJobs()
+	a.bidForPossibleJobs()
 
 	return idx
 }
@@ -378,8 +378,9 @@ func (a *Agent) MaybeBid(jo job.JobOffer) {
 	a.bid(jo.Job.Name)
 }
 
-// Submit all possible bids for unresolved offers
-func (a *Agent) BidForPossibleJobs() {
+// bidForPossibleJobs submits bids for all unresolved offers whose Jobs
+// can be run locally
+func (a *Agent) bidForPossibleJobs() {
 	offers := a.state.GetOffersWithoutBids()
 
 	log.V(1).Infof("Checking %d unbade offers", len(offers))
@@ -552,7 +553,7 @@ func (a *Agent) JobScheduledElsewhere(jobName string) {
 	a.state.PurgeJob(jobName)
 
 	log.Infof("Checking outstanding job offers")
-	a.BidForPossibleJobs()
+	a.bidForPossibleJobs()
 }
 
 // JobScheduledLocally clears all state related to the indicated
@@ -615,5 +616,5 @@ func (a *Agent) JobUnscheduled(jobName string) {
 	a.unloadJob(jobName)
 
 	log.Infof("Checking outstanding JobOffers")
-	a.BidForPossibleJobs()
+	a.bidForPossibleJobs()
 }
