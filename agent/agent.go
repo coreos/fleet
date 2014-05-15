@@ -406,8 +406,8 @@ func (a *Agent) bid(jobName string) {
 	a.state.TrackBid(jb.JobName)
 }
 
-// Pull a Job and its payload from the Registry
-func (a *Agent) FetchJob(jobName string) *job.Job {
+// fetchJob attempts to retrieve a Job from the Registry
+func (a *Agent) fetchJob(jobName string) *job.Job {
 	log.V(1).Infof("Fetching Job(%s) from Registry", jobName)
 	j, _ := a.registry.GetJob(jobName)
 	if j == nil {
@@ -443,7 +443,7 @@ func (a *Agent) BidForPossiblePeers(jobName string) {
 	for _, peer := range peers {
 		log.V(1).Infof("Found unresolved offer for Peer(%s) of Job(%s)", peer, jobName)
 
-		peerJob := a.FetchJob(peer)
+		peerJob := a.fetchJob(peer)
 		if peerJob != nil && a.AbleToRun(peerJob) {
 			a.bid(peer)
 		} else {
@@ -567,7 +567,7 @@ func (a *Agent) JobScheduledLocally(jobName string) {
 	log.Infof("Dropping offer and bid for Job(%s) from cache", jobName)
 	a.state.PurgeOffer(jobName)
 
-	j := a.FetchJob(jobName)
+	j := a.fetchJob(jobName)
 	if j == nil {
 		log.Errorf("Failed to fetch Job(%s)", jobName)
 		return
