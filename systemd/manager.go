@@ -18,14 +18,14 @@ const (
 	DefaultUnitsDirectory = "/run/fleet/units/"
 )
 
-type SystemdManager struct {
+type SystemdUnitManager struct {
 	systemd  *dbus.Conn
 	UnitsDir string
 
 	subscriptions *dbus.SubscriptionSet
 }
 
-func NewSystemdManager(uDir string) (*SystemdManager, error) {
+func NewSystemdUnitManager(uDir string) (*SystemdUnitManager, error) {
 	systemd, err := dbus.New()
 	if err != nil {
 		return nil, err
@@ -35,11 +35,11 @@ func NewSystemdManager(uDir string) (*SystemdManager, error) {
 		return nil, err
 	}
 
-	mgr := SystemdManager{systemd, uDir, systemd.NewSubscriptionSet()}
+	mgr := SystemdUnitManager{systemd, uDir, systemd.NewSubscriptionSet()}
 	return &mgr, nil
 }
 
-func (m *SystemdManager) MarshalJSON() ([]byte, error) {
+func (m *SystemdUnitManager) MarshalJSON() ([]byte, error) {
 	data := struct {
 		DBUSSubscriptions []string
 	}{
@@ -50,7 +50,7 @@ func (m *SystemdManager) MarshalJSON() ([]byte, error) {
 
 // Load writes the given Unit to disk, subscribing to relevant dbus
 // events, and, if necessary, instructing the systemd daemon to reload.
-func (m *SystemdManager) Load(name string, u unit.Unit) error {
+func (m *SystemdUnitManager) Load(name string, u unit.Unit) error {
 	err := m.writeUnit(name, u.String())
 	if err != nil {
 		return err
@@ -62,25 +62,25 @@ func (m *SystemdManager) Load(name string, u unit.Unit) error {
 
 // Unload removes the indicated unit from the filesystem, unsubscribing
 // from relevant dbus events.
-func (m *SystemdManager) Unload(name string) {
+func (m *SystemdUnitManager) Unload(name string) {
 	m.subscriptions.Remove(name)
 	m.removeUnit(name)
 	m.daemonReload()
 }
 
 // Start starts the unit identified by the given name
-func (m *SystemdManager) Start(name string) {
+func (m *SystemdUnitManager) Start(name string) {
 	m.startUnit(name)
 }
 
 // Stop stops the unit identified by the given name
-func (m *SystemdManager) Stop(name string) {
+func (m *SystemdUnitManager) Stop(name string) {
 	m.stopUnit(name)
 }
 
 // GetUnitState generates a UnitState object representing the
 // current state of a Unit
-func (m *SystemdManager) GetUnitState(name string) (*unit.UnitState, error) {
+func (m *SystemdUnitManager) GetUnitState(name string) (*unit.UnitState, error) {
 	loadState, activeState, subState, err := m.getUnitStates(name)
 	if err != nil {
 		return nil, err
@@ -88,7 +88,7 @@ func (m *SystemdManager) GetUnitState(name string) (*unit.UnitState, error) {
 	return unit.NewUnitState(loadState, activeState, subState, nil), nil
 }
 
-func (m *SystemdManager) getUnitStates(name string) (string, string, string, error) {
+func (m *SystemdUnitManager) getUnitStates(name string) (string, string, string, error) {
 	info, err := m.systemd.GetUnitProperties(name)
 
 	if err != nil {
@@ -101,7 +101,7 @@ func (m *SystemdManager) getUnitStates(name string) (string, string, string, err
 	}
 }
 
-func (m *SystemdManager) startUnit(name string) {
+func (m *SystemdUnitManager) startUnit(name string) {
 	if stat, err := m.systemd.StartUnit(name, "replace"); err != nil {
 		log.Errorf("Failed to start systemd unit %s: %v", name, err)
 	} else {
@@ -109,7 +109,7 @@ func (m *SystemdManager) startUnit(name string) {
 	}
 }
 
-func (m *SystemdManager) stopUnit(name string) {
+func (m *SystemdUnitManager) stopUnit(name string) {
 	if stat, err := m.systemd.StopUnit(name, "replace"); err != nil {
 		log.Errorf("Failed to stop systemd unit %s: %v", name, err)
 	} else {
@@ -117,7 +117,7 @@ func (m *SystemdManager) stopUnit(name string) {
 	}
 }
 
-func (m *SystemdManager) readUnit(name string) (string, error) {
+func (m *SystemdUnitManager) readUnit(name string) (string, error) {
 	path := m.getUnitFilePath(name)
 	contents, err := ioutil.ReadFile(path)
 	if err == nil {
@@ -127,7 +127,7 @@ func (m *SystemdManager) readUnit(name string) (string, error) {
 	}
 }
 
-func (m *SystemdManager) unitRequiresDaemonReload(name string) bool {
+func (m *SystemdUnitManager) unitRequiresDaemonReload(name string) bool {
 	prop, err := m.systemd.GetUnitProperty(name, "NeedDaemonReload")
 	if prop == nil || err != nil {
 		return false
@@ -136,14 +136,14 @@ func (m *SystemdManager) unitRequiresDaemonReload(name string) bool {
 	return prop.Value.Value().(bool)
 }
 
-func (m *SystemdManager) daemonReload() error {
+func (m *SystemdUnitManager) daemonReload() error {
 	log.Infof("Instructing systemd to reload units")
 	return m.systemd.Reload()
 }
 
 // Units enumerates all files recognized as valid systemd units in
 // this manager's units directory.
-func (m *SystemdManager) Units() (units []string, err error) {
+func (m *SystemdUnitManager) Units() (units []string, err error) {
 	fis, err := ioutil.ReadDir(m.UnitsDir)
 	if err != nil {
 		return
@@ -160,7 +160,7 @@ func (m *SystemdManager) Units() (units []string, err error) {
 	return
 }
 
-func (m *SystemdManager) writeUnit(name string, contents string) error {
+func (m *SystemdUnitManager) writeUnit(name string, contents string) error {
 	log.Infof("Writing systemd unit %s", name)
 
 	ufPath := m.getUnitFilePath(name)
@@ -173,7 +173,7 @@ func (m *SystemdManager) writeUnit(name string, contents string) error {
 	return err
 }
 
-func (m *SystemdManager) removeUnit(name string) {
+func (m *SystemdUnitManager) removeUnit(name string) {
 	log.Infof("Removing systemd unit %s", name)
 
 	m.systemd.DisableUnitFiles([]string{name}, true)
@@ -182,6 +182,6 @@ func (m *SystemdManager) removeUnit(name string) {
 	os.Remove(ufPath)
 }
 
-func (m *SystemdManager) getUnitFilePath(name string) string {
+func (m *SystemdUnitManager) getUnitFilePath(name string) string {
 	return path.Join(m.UnitsDir, name)
 }

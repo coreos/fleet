@@ -16,6 +16,7 @@ import (
 	"github.com/coreos/fleet/registry"
 	"github.com/coreos/fleet/sign"
 	"github.com/coreos/fleet/systemd"
+	"github.com/coreos/fleet/unit"
 	"github.com/coreos/fleet/version"
 )
 
@@ -42,7 +43,7 @@ func New(cfg config.Config) (*Server, error) {
 		return nil, err
 	}
 
-	mgr, err := systemd.NewSystemdManager(systemd.DefaultUnitsDirectory)
+	mgr, err := systemd.NewSystemdUnitManager(systemd.DefaultUnitsDirectory)
 	if err != nil {
 		return nil, err
 	}
@@ -103,7 +104,7 @@ func newMachineFromConfig(cfg config.Config) (*machine.CoreOSMachine, error) {
 	return mach, nil
 }
 
-func newAgentFromConfig(mach machine.Machine, cfg config.Config, mgr *systemd.SystemdManager) (*agent.Agent, error) {
+func newAgentFromConfig(mach machine.Machine, cfg config.Config, mgr unit.UnitManager) (*agent.Agent, error) {
 	regClient := newEtcdClientFromConfig(cfg)
 	reg := registry.New(regClient, cfg.EtcdKeyPrefix)
 

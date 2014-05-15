@@ -11,7 +11,6 @@ import (
 	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/registry"
 	"github.com/coreos/fleet/sign"
-	"github.com/coreos/fleet/systemd"
 	"github.com/coreos/fleet/unit"
 )
 
@@ -24,26 +23,26 @@ const (
 )
 
 // The Agent owns all of the coordination between the Registry, the local
-// Machine, and the local SystemdManager.
+// Machine, and the local UnitManager.
 type Agent struct {
 	registry registry.Registry
+	um       unit.UnitManager
 	machine  machine.Machine
 	ttl      time.Duration
 	// verifier is used to verify the contents of a job's Unit.
 	// A nil verifier implies that all Units are accepted.
 	verifier *sign.SignatureVerifier
 
-	state   *AgentState
-	systemd *systemd.SystemdManager
+	state *AgentState
 }
 
-func New(mgr *systemd.SystemdManager, reg registry.Registry, mach machine.Machine, ttl string, verifier *sign.SignatureVerifier) (*Agent, error) {
+func New(mgr unit.UnitManager, reg registry.Registry, mach machine.Machine, ttl string, verifier *sign.SignatureVerifier) (*Agent, error) {
 	ttldur, err := time.ParseDuration(ttl)
 	if err != nil {
 		return nil, err
 	}
 
-	a := &Agent{reg, mach, ttldur, verifier, NewState(), mgr}
+	a := &Agent{reg, mgr, mach, ttldur, verifier, NewState()}
 	return a, nil
 }
 
@@ -54,11 +53,11 @@ func (a *Agent) Machine() machine.Machine {
 
 func (a *Agent) MarshalJSON() ([]byte, error) {
 	data := struct {
-		Systemd *systemd.SystemdManager
-		State   *AgentState
+		UnitManager unit.UnitManager
+		State       *AgentState
 	}{
-		Systemd: a.systemd,
-		State:   a.state,
+		UnitManager: a.um,
+		State:       a.state,
 	}
 	return json.Marshal(data)
 }
@@ -121,7 +120,7 @@ func (a *Agent) Initialize() uint64 {
 		launched[j.Name] = j
 	}
 
-	units, err := a.systemd.Units()
+	units, err := a.um.Units()
 	if err != nil {
 		log.Warningf("Failed determining what units are already loaded: %v", err)
 	}
@@ -129,8 +128,8 @@ func (a *Agent) Initialize() uint64 {
 	for _, name := range units {
 		if _, ok := loaded[name]; !ok {
 			log.Infof("Unit(%s) should not be loaded here, unloading", name)
-			a.systemd.Stop(name)
-			a.systemd.Unload(name)
+			a.um.Stop(name)
+			a.um.Unload(name)
 		}
 	}
 
@@ -259,16 +258,16 @@ func (a *Agent) heartbeatJobs(ttl time.Duration, stop chan bool) {
 func (a *Agent) LoadJob(j *job.Job) {
 	log.Infof("Loading Job(%s)", j.Name)
 	a.state.SetTargetState(j.Name, job.JobStateLoaded)
-	err := a.systemd.Load(j.Name, j.Unit)
+	err := a.um.Load(j.Name, j.Unit)
 	if err != nil {
-		log.Errorf("Failed loading Job(%s) in systemd: %v", j.Name, err)
+		log.Errorf("Failed loading Job(%s): %v", j.Name, err)
 		return
 	}
 
 	// We must explicitly refresh the payload state, as the dbus
 	// event listener does not send an event when we write a unit
 	// file to disk.
-	us, err := a.systemd.GetUnitState(j.Name)
+	us, err := a.um.GetUnitState(j.Name)
 	if err != nil {
 		log.Errorf("Failed fetching state of Unit(%s): %v", j.Name, err)
 		return
@@ -282,17 +281,17 @@ func (a *Agent) StartJob(jobName string) {
 	machID := a.Machine().State().ID
 	a.registry.JobHeartbeat(jobName, machID, a.ttl)
 
-	a.systemd.Start(jobName)
+	a.um.Start(jobName)
 }
 
 func (a *Agent) StopJob(jobName string) {
 	a.state.SetTargetState(jobName, job.JobStateLoaded)
 	a.registry.ClearJobHeartbeat(jobName)
-	a.systemd.Stop(jobName)
+	a.um.Stop(jobName)
 
 	// We must explicitly refresh the payload state, as the dbus
 	// event listener sends a nil event when a unit deactivates.
-	us, err := a.systemd.GetUnitState(jobName)
+	us, err := a.um.GetUnitState(jobName)
 	if err != nil {
 		log.Errorf("Failed fetching state of Unit(%s): %v", jobName, err)
 		return
@@ -306,7 +305,7 @@ func (a *Agent) UnloadJob(jobName string) {
 	reversePeers := a.state.GetJobsByPeer(jobName)
 
 	a.state.PurgeJob(jobName)
-	a.systemd.Unload(jobName)
+	a.um.Unload(jobName)
 
 	// The dbus event generator will not trigger an event telling
 	// us that the unit has been unloaded, so we must explicitly
