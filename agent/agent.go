@@ -539,23 +539,32 @@ func (a *Agent) HasConflict(potentialJobName string, potentialConflicts []string
 	return false, ""
 }
 
-func (a *Agent) JobScheduled(jobName, target string) {
+// JobScheduledElsewhere clears all state related to the indicated
+// job before bidding for all oustanding jobs that can be run locally.
+func (a *Agent) JobScheduledElsewhere(jobName string) {
 	a.state.Lock()
 	defer a.state.Unlock()
 
-	log.V(1).Infof("Dropping outstanding offers and bids", jobName)
+	log.Infof("Dropping offer and bid for Job(%s) from cache", jobName)
 	a.state.PurgeOffer(jobName)
 
-	if target != a.Machine.State().ID {
-		log.Infof("Job(%s) not scheduled to this Agent, purging related data from cache", jobName)
-		a.state.PurgeJob(jobName)
+	log.Infof("Purging Job(%s) data from cache", jobName)
+	a.state.PurgeJob(jobName)
 
-		log.Infof("Checking outstanding job offers")
-		a.BidForPossibleJobs()
-		return
-	}
+	log.Infof("Checking outstanding job offers")
+	a.BidForPossibleJobs()
+}
 
-	log.Infof("Job(%s) scheduled to this Agent, preparing to load", jobName)
+// JobScheduledLocally clears all state related to the indicated
+// job's offers/bids before attempting to load and possibly start
+// the job. The ability to run the job will be revalidated before
+// loading, and unscheduled if such validation fails.
+func (a *Agent) JobScheduledLocally(jobName string) {
+	a.state.Lock()
+	defer a.state.Unlock()
+
+	log.Infof("Dropping offer and bid for Job(%s) from cache", jobName)
+	a.state.PurgeOffer(jobName)
 
 	j := a.FetchJob(jobName)
 	if j == nil {
@@ -570,7 +579,7 @@ func (a *Agent) JobScheduled(jobName, target string) {
 
 	if !a.AbleToRun(j) {
 		log.Infof("Unable to run locally-scheduled Job(%s), unscheduling", jobName)
-		a.registry.ClearJobTarget(jobName, target)
+		a.registry.ClearJobTarget(jobName, a.Machine.State().ID)
 		a.state.PurgeJob(jobName)
 		return
 	}

@@ -32,8 +32,13 @@ func (eh *EventHandler) HandleEventJobScheduled(ev event.Event) {
 	jobName := ev.Payload.(string)
 	target := ev.Context.(string)
 
-	log.Infof("EventJobScheduled(%s): Job(%s) scheduled to Machine(%s), deciding what to do", jobName, jobName, target)
-	eh.agent.JobScheduled(jobName, target)
+	if target != eh.agent.Machine.State().ID {
+		log.Infof("EventJobScheduled(%s): Job scheduled to other Machine(%s), informing Agent", jobName, target)
+		eh.agent.JobScheduledElsewhere(jobName)
+	} else {
+		log.Infof("EventJobScheduled(%s): Job scheduled here, informing Agent", jobName)
+		eh.agent.JobScheduledLocally(jobName)
+	}
 }
 
 func (eh *EventHandler) HandleCommandStartJob(ev event.Event) {
