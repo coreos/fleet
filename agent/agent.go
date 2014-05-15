@@ -168,10 +168,10 @@ func (a *Agent) Purge() {
 	machID := a.machine.State().ID
 
 	for _, jobName := range a.state.ScheduledJobs() {
-		log.Infof("Unscheduling Job(%s) from local machine", jobName)
-		a.registry.ClearJobTarget(jobName, machID)
 		log.Infof("Unloading Job(%s) from local machine", jobName)
 		a.UnloadJob(jobName)
+		log.Infof("Unscheduling Job(%s) from local machine", jobName)
+		a.registry.ClearJobTarget(jobName, machID)
 	}
 
 	// Jobs have been stopped, the heartbeat can stop
