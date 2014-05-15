@@ -417,9 +417,9 @@ func (a *Agent) fetchJob(jobName string) *job.Job {
 	return j
 }
 
-// VerifyJob attempts to verify the integrity of the given Job by checking the
+// verifyJob attempts to verify the integrity of the given Job by checking the
 // signature against a SignatureSet stored in its repository.
-func (a *Agent) VerifyJob(j *job.Job) bool {
+func (a *Agent) verifyJob(j *job.Job) bool {
 	if a.verifier == nil {
 		return true
 	}
@@ -454,7 +454,7 @@ func (a *Agent) BidForPossiblePeers(jobName string) {
 
 // Determine if the Agent can run the provided Job
 func (a *Agent) AbleToRun(j *job.Job) bool {
-	if !a.VerifyJob(j) {
+	if !a.verifyJob(j) {
 		log.V(1).Infof("Failed to verify Job(%s)", j.Name)
 		return false
 	}
