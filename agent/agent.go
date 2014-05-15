@@ -142,6 +142,7 @@ func (a *Agent) Initialize() uint64 {
 			continue
 		}
 
+		a.state.SetTargetState(j.Name, job.JobStateLaunched)
 		a.StartJob(j.Name)
 	}
 
@@ -169,6 +170,7 @@ func (a *Agent) Purge() {
 
 	for _, jobName := range a.state.ScheduledJobs() {
 		log.Infof("Unloading Job(%s) from local machine", jobName)
+		a.state.PurgeJob(jobName)
 		a.UnloadJob(jobName)
 		log.Infof("Unscheduling Job(%s) from local machine", jobName)
 		a.registry.ClearJobTarget(jobName, machID)
@@ -277,18 +279,21 @@ func (a *Agent) LoadJob(j *job.Job) {
 	a.ReportUnitState(j.Name, us)
 }
 
+// StartJob instructs systemd to start the unit corresponding to the
+// given Job name. This operation can take a long time, as it blocks
+// on the unit actually reporting having started.
 func (a *Agent) StartJob(jobName string) {
-	a.state.SetTargetState(jobName, job.JobStateLaunched)
-
 	machID := a.Machine().State().ID
 	a.registry.JobHeartbeat(jobName, machID, a.ttl)
-
 	a.systemd.Start(jobName)
 }
 
+// StopJob instructs systemd to stop the unit corresponding to the
+// given Job name. This operation can take a long time, as it blocks
+// on the unit actually reporting having stopped.
 func (a *Agent) StopJob(jobName string) {
-	a.state.SetTargetState(jobName, job.JobStateLoaded)
 	a.registry.ClearJobHeartbeat(jobName)
+
 	a.systemd.Stop(jobName)
 
 	// We must explicitly refresh the payload state, as the dbus
@@ -303,19 +308,18 @@ func (a *Agent) StopJob(jobName string) {
 
 func (a *Agent) UnloadJob(jobName string) {
 	a.StopJob(jobName)
-
-	reversePeers := a.state.GetJobsByPeer(jobName)
-
-	a.state.PurgeJob(jobName)
 	a.systemd.Unload(jobName)
 
 	// The dbus event generator will not trigger an event telling
 	// us that the unit has been unloaded, so we must explicitly
 	// clear what is in the Registry.
 	a.ReportUnitState(jobName, nil)
+}
 
+func (a *Agent) UnscheduleLocalPeersOfJob(jobName string) {
 	// Trigger rescheduling of all the peers of the job that was just unloaded
 	machID := a.machine.State().ID
+	reversePeers := a.state.GetJobsByPeer(jobName)
 	for _, peer := range reversePeers {
 		log.Infof("Unloading Peer(%s) of Job(%s)", peer, jobName)
 		err := a.registry.ClearJobTarget(peer, machID)
