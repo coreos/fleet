@@ -95,7 +95,7 @@ func (a *Agent) Initialize() uint64 {
 			continue
 		}
 
-		if !a.AbleToRun(&j) {
+		if !a.ableToRun(&j) {
 			log.Infof("Unable to run Job(%s), unscheduling", j.Name)
 			a.registry.ClearJobTarget(j.Name, machID)
 			continue
@@ -369,7 +369,7 @@ func (a *Agent) MaybeBid(jo job.JobOffer) {
 	a.state.TrackOffer(jo)
 	a.state.TrackJob(&jo.Job)
 
-	if !a.AbleToRun(&jo.Job) {
+	if !a.ableToRun(&jo.Job) {
 		log.Infof("EventJobOffered(%s): not all criteria met, not bidding", jo.Job.Name)
 		return
 	}
@@ -387,7 +387,7 @@ func (a *Agent) bidForPossibleJobs() {
 	for i, _ := range offers {
 		offer := offers[i]
 		log.V(1).Infof("Checking ability to run Job(%s)", offer.Job.Name)
-		if a.AbleToRun(&offer.Job) {
+		if a.ableToRun(&offer.Job) {
 			log.V(1).Infof("Able to run Job(%s), submitting bid", offer.Job.Name)
 			a.bid(offer.Job.Name)
 		} else {
@@ -445,7 +445,7 @@ func (a *Agent) bidForPossiblePeers(jobName string) {
 		log.V(1).Infof("Found unresolved offer for Peer(%s) of Job(%s)", peer, jobName)
 
 		peerJob := a.fetchJob(peer)
-		if peerJob != nil && a.AbleToRun(peerJob) {
+		if peerJob != nil && a.ableToRun(peerJob) {
 			a.bid(peer)
 		} else {
 			log.V(1).Infof("Unable to bid for Peer(%s) of Job(%s)", peer, jobName)
@@ -454,7 +454,7 @@ func (a *Agent) bidForPossiblePeers(jobName string) {
 }
 
 // Determine if the Agent can run the provided Job
-func (a *Agent) AbleToRun(j *job.Job) bool {
+func (a *Agent) ableToRun(j *job.Job) bool {
 	if !a.verifyJob(j) {
 		log.V(1).Infof("Failed to verify Job(%s)", j.Name)
 		return false
@@ -574,7 +574,7 @@ func (a *Agent) JobScheduledLocally(jobName string) {
 		return
 	}
 
-	if !a.AbleToRun(j) {
+	if !a.ableToRun(j) {
 		log.Infof("Unable to run locally-scheduled Job(%s), unscheduling", jobName)
 		a.registry.ClearJobTarget(jobName, a.Machine.State().ID)
 		a.state.PurgeJob(jobName)
