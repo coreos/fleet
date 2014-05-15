@@ -436,8 +436,9 @@ func (a *Agent) verifyJob(j *job.Job) bool {
 	return true
 }
 
-// Submit all possible bids for known peers of the provided job
-func (a *Agent) BidForPossiblePeers(jobName string) {
+// bidForPossiblePeers submits bids for all known peers of the provided job that can
+// be run locally
+func (a *Agent) bidForPossiblePeers(jobName string) {
 	peers := a.state.GetJobsByPeer(jobName)
 
 	for _, peer := range peers {
@@ -583,7 +584,7 @@ func (a *Agent) JobScheduledLocally(jobName string) {
 	a.loadJob(j)
 
 	log.Infof("Bidding for all possible peers of Job(%s)", j.Name)
-	a.BidForPossiblePeers(j.Name)
+	a.bidForPossiblePeers(j.Name)
 
 	ts, _ := a.registry.GetJobTargetState(j.Name)
 	if ts == nil || *ts != job.JobStateLaunched {
