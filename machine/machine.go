@@ -6,7 +6,6 @@ import (
 
 type Machine interface {
 	State() MachineState
-	RefreshState()
 }
 
 // HasMetadata determine if the Metadata of a given MachineState

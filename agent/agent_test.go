@@ -17,8 +17,6 @@ func (fm *fakeMachine) State() machine.MachineState {
 	return fm.ms
 }
 
-func (fm *fakeMachine) RefreshState() {}
-
 func newFakeMachine(region string) machine.Machine {
 	metadata := map[string]string{
 		"region": region,

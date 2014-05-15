@@ -5,6 +5,7 @@ import (
 	"net"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/coreos/fleet/third_party/github.com/dotcloud/docker/pkg/netlink"
 	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
@@ -41,17 +42,31 @@ func (m *CoreOSMachine) State() (state MachineState) {
 	return
 }
 
-// RefreshState generates a new MachineState object based on the
-// current state of the underlying host, storing it internally for
-// future reference.
-func (m *CoreOSMachine) RefreshState() {
-	state := CurrentState()
-	m.dynamicState = &state
+// Refresh updates the current state of the CoreOSMachine.
+func (m *CoreOSMachine) Refresh() {
+	ms := currentState()
+	m.dynamicState = &ms
 }
 
-// NewDynamicMachineState generates a MachineState object with
-// the values read from the local system
-func CurrentState() MachineState {
+// PeriodicRefresh updates the current state of the CoreOSMachine at the
+// interval indicated. Operation ceases when the provided channel is closed.
+func (m *CoreOSMachine) PeriodicRefresh(interval time.Duration, stop chan bool) {
+	ticker := time.NewTicker(interval)
+	for {
+		select {
+		case <-stop:
+			log.V(1).Infof("Halting CoreOSMachine.PeriodicRefresh")
+			ticker.Stop()
+			return
+		case <-ticker.C:
+			m.Refresh()
+		}
+	}
+}
+
+// currentState generates a MachineState object with the values read from
+// the local system
+func currentState() MachineState {
 	id := readLocalMachineID("/")
 	publicIP := getLocalIP()
 	return MachineState{ID: id, PublicIP: publicIP, Metadata: make(map[string]string, 0)}

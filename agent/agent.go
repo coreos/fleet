@@ -222,11 +222,10 @@ func (a *Agent) heartbeatAgent(ttl time.Duration, stop chan bool) {
 	for {
 		select {
 		case <-stop:
-			log.V(1).Info("MachineHeartbeat exiting due to stop signal")
+			log.V(1).Info("Heartbeat exiting due to stop signal")
 			return
 		case <-ticker:
-			log.V(1).Info("MachineHeartbeat tick")
-			a.machine.RefreshState()
+			log.V(1).Info("Heartbeat tick")
 			if err := attempt(3, heartbeat); err != nil {
 				log.Errorf("Failed heartbeat after 3 attempts: %v", err)
 			}

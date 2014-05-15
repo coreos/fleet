@@ -3,6 +3,7 @@ package server
 import (
 	"encoding/json"
 	"errors"
+	"time"
 
 	"github.com/coreos/fleet/third_party/github.com/coreos/go-etcd/etcd"
 	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
@@ -18,12 +19,19 @@ import (
 	"github.com/coreos/fleet/version"
 )
 
+const (
+	// machineStateRefreshInterval is the amount of time the server will
+	// wait before each attempt to refresh the local machine state
+	machineStateRefreshInterval = time.Minute
+)
+
 type Server struct {
 	agent   *agent.Agent
 	engine  *engine.Engine
 	rStream *registry.EventStream
 	sStream *systemd.EventStream
 	eBus    *event.EventBus
+	mach    *machine.CoreOSMachine
 
 	stop chan bool
 }
@@ -63,7 +71,7 @@ func New(cfg config.Config) (*Server, error) {
 	eBus.AddListener("engine", eHandler)
 	eBus.AddListener("agent", aHandler)
 
-	return &Server{a, e, rStream, sStream, eBus, nil}, nil
+	return &Server{a, e, rStream, sStream, eBus, mach, nil}, nil
 }
 
 func newEtcdClientFromConfig(cfg config.Config) *etcd.Client {
@@ -78,7 +86,7 @@ func newRegistryEventStreamFromConfig(cfg config.Config) (*registry.EventStream,
 	return registry.NewEventStream(eClient, reg)
 }
 
-func newMachineFromConfig(cfg config.Config) (machine.Machine, error) {
+func newMachineFromConfig(cfg config.Config) (*machine.CoreOSMachine, error) {
 	state := machine.MachineState{
 		PublicIP: cfg.PublicIP,
 		Metadata: cfg.Metadata(),
@@ -86,7 +94,7 @@ func newMachineFromConfig(cfg config.Config) (machine.Machine, error) {
 	}
 
 	mach := machine.NewCoreOSMachine(state)
-	mach.RefreshState()
+	mach.Refresh()
 
 	if mach.State().ID == "" {
 		return nil, errors.New("unable to determine local machine ID")
@@ -122,6 +130,7 @@ func (s *Server) Run() {
 	idx := s.agent.Initialize()
 
 	s.stop = make(chan bool)
+	go s.mach.PeriodicRefresh(machineStateRefreshInterval, s.stop)
 	go s.eBus.Listen(s.stop)
 	go s.rStream.Stream(idx, s.eBus.Channel, s.stop)
 	go s.sStream.Stream(s.eBus.Channel, s.stop)
