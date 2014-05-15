@@ -41,7 +41,7 @@ X-ConditionMachineID=XYZ
 	job := job.NewJob("example.service", *u)
 
 	mach := &fakeMachine{machine.MachineState{ID: "XYZ"}}
-	agent := Agent{machine: mach, state: NewState()}
+	agent := Agent{Machine: mach, state: NewState()}
 	if !agent.AbleToRun(job) {
 		t.Fatalf("Agent should be able to run job")
 	}
@@ -54,7 +54,7 @@ X-ConditionMachineID=XYZ
 	job := job.NewJob("example.service", *u)
 
 	mach := &fakeMachine{machine.MachineState{ID: "123"}}
-	agent := Agent{machine: mach, state: NewState()}
+	agent := Agent{Machine: mach, state: NewState()}
 	if agent.AbleToRun(job) {
 		t.Fatalf("Agent should not be able to run job")
 	}
@@ -193,7 +193,7 @@ X-ConditionMachineMetadata=region=us-west-1`, true},
 		{`X-ConditionMachineMetadata=region=`, true},
 	}
 
-	agent := &Agent{machine: newFakeMachine("us-west-1"), state: NewState()}
+	agent := &Agent{Machine: newFakeMachine("us-west-1"), state: NewState()}
 
 	for i, e := range metadataAbleToRunExamples {
 		job := newTestJobWithMachineMetadata(e.C)

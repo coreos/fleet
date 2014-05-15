@@ -27,7 +27,7 @@ const (
 type Agent struct {
 	registry registry.Registry
 	um       unit.UnitManager
-	machine  machine.Machine
+	Machine  machine.Machine
 	ttl      time.Duration
 	// verifier is used to verify the contents of a job's Unit.
 	// A nil verifier implies that all Units are accepted.
@@ -44,11 +44,6 @@ func New(mgr unit.UnitManager, reg registry.Registry, mach machine.Machine, ttl 
 
 	a := &Agent{reg, mgr, mach, ttldur, verifier, NewState()}
 	return a, nil
-}
-
-// Access Agent's machine field
-func (a *Agent) Machine() machine.Machine {
-	return a.machine
 }
 
 func (a *Agent) MarshalJSON() ([]byte, error) {
@@ -82,7 +77,7 @@ func (a *Agent) Initialize() uint64 {
 	wait := time.Second
 	for {
 		var err error
-		if idx, err = a.registry.SetMachineState(a.machine.State(), a.ttl); err == nil {
+		if idx, err = a.registry.SetMachineState(a.Machine.State(), a.ttl); err == nil {
 			log.V(1).Infof("Heartbeat succeeded")
 			break
 		}
@@ -90,7 +85,7 @@ func (a *Agent) Initialize() uint64 {
 		time.Sleep(wait)
 	}
 
-	machID := a.machine.State().ID
+	machID := a.Machine.State().ID
 	loaded := map[string]job.Job{}
 	launched := map[string]job.Job{}
 	jobs, _ := a.registry.GetAllJobs()
@@ -164,7 +159,7 @@ func (a *Agent) Purge() {
 	purged := make(chan bool)
 	go a.heartbeatAgent(a.ttl, purged)
 
-	machID := a.machine.State().ID
+	machID := a.Machine.State().ID
 
 	for _, jobName := range a.state.ScheduledJobs() {
 		log.Infof("Unloading Job(%s) from local machine", jobName)
@@ -212,7 +207,7 @@ func (a *Agent) heartbeatAgent(ttl time.Duration, stop chan bool) {
 	}
 
 	heartbeat := func() error {
-		_, err := a.registry.SetMachineState(a.machine.State(), ttl)
+		_, err := a.registry.SetMachineState(a.Machine.State(), ttl)
 		return err
 	}
 
@@ -234,7 +229,7 @@ func (a *Agent) heartbeatAgent(ttl time.Duration, stop chan bool) {
 
 func (a *Agent) heartbeatJobs(ttl time.Duration, stop chan bool) {
 	heartbeat := func() {
-		machID := a.Machine().State().ID
+		machID := a.Machine.State().ID
 		launched := a.state.LaunchedJobs()
 		for _, j := range launched {
 			go a.registry.JobHeartbeat(j, machID, ttl)
@@ -288,7 +283,7 @@ func (a *Agent) StartJob(jobName string) {
 func (a *Agent) startJobUnlocked(jobName string) {
 	a.state.SetTargetState(jobName, job.JobStateLaunched)
 
-	machID := a.Machine().State().ID
+	machID := a.Machine.State().ID
 	a.registry.JobHeartbeat(jobName, machID, a.ttl)
 
 	a.um.Start(jobName)
@@ -334,7 +329,7 @@ func (a *Agent) unloadJob(jobName string) {
 	a.ReportUnitState(jobName, nil)
 
 	// Trigger rescheduling of all the peers of the job that was just unloaded
-	machID := a.machine.State().ID
+	machID := a.Machine.State().ID
 	for _, peer := range reversePeers {
 		log.Infof("Unloading Peer(%s) of Job(%s)", peer, jobName)
 		err := a.registry.ClearJobTarget(peer, machID)
@@ -354,7 +349,7 @@ func (a *Agent) ReportUnitState(jobName string, us *unit.UnitState) {
 			log.Errorf("Failed to remove UnitState for job %s from Registry: %s", jobName, err.Error())
 		}
 	} else {
-		ms := a.Machine().State()
+		ms := a.Machine.State()
 		us.MachineState = &ms
 		log.V(1).Infof("Job(%s): pushing UnitState (loadState=%s, activeState=%s, subState=%s) to Registry", jobName, us.LoadState, us.ActiveState, us.SubState)
 		a.registry.SaveUnitState(jobName, us)
@@ -402,7 +397,7 @@ func (a *Agent) BidForPossibleJobs() {
 func (a *Agent) Bid(jobName string) {
 	log.Infof("Submitting JobBid for Job(%s)", jobName)
 
-	jb := job.NewBid(jobName, a.machine.State().ID)
+	jb := job.NewBid(jobName, a.Machine.State().ID)
 	a.registry.SubmitJobBid(jb)
 
 	a.state.TrackBid(jb.JobName)
@@ -470,13 +465,13 @@ func (a *Agent) AbleToRun(j *job.Job) bool {
 
 	metadata := j.RequiredTargetMetadata()
 	log.V(1).Infof("Job(%s) requires machine metadata: %v", j.Name, metadata)
-	ms := a.machine.State()
+	ms := a.Machine.State()
 	if !machine.HasMetadata(&ms, metadata) {
 		log.Infof("Unable to run Job(%s), local Machine metadata insufficient", j.Name)
 		return false
 	}
 
-	if tgt, ok := j.RequiredTarget(); ok && !a.machine.State().MatchID(tgt) {
+	if tgt, ok := j.RequiredTarget(); ok && !a.Machine.State().MatchID(tgt) {
 		log.Infof("Agent does not meet machine target requirement for Job(%s)", j.Name)
 		return false
 	}
@@ -507,7 +502,7 @@ func (a *Agent) peerScheduledHere(jobName, peerName string) bool {
 	log.V(1).Infof("Looking for target of Peer(%s)", peerName)
 
 	//FIXME: ideally the machine would use its own knowledge rather than calling GetJobTarget
-	if tgt, _ := a.registry.GetJobTarget(peerName); tgt == "" || tgt != a.machine.State().ID {
+	if tgt, _ := a.registry.GetJobTarget(peerName); tgt == "" || tgt != a.Machine.State().ID {
 		log.V(1).Infof("Peer(%s) of Job(%s) not scheduled here", peerName, jobName)
 		return false
 	}
@@ -549,7 +544,7 @@ func (a *Agent) JobScheduled(jobName, target string) {
 	log.V(1).Infof("Dropping outstanding offers and bids", jobName)
 	a.state.PurgeOffer(jobName)
 
-	if target != a.Machine().State().ID {
+	if target != a.Machine.State().ID {
 		log.Infof("Job(%s) not scheduled to this Agent, purging related data from cache", jobName)
 		a.state.PurgeJob(jobName)
 

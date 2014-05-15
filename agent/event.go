@@ -19,7 +19,7 @@ func NewEventHandler(agent *Agent) *EventHandler {
 func (eh *EventHandler) HandleEventJobOffered(ev event.Event) {
 	jo := ev.Payload.(job.JobOffer)
 
-	if !jo.OfferedTo(eh.agent.Machine().State().ID) {
+	if !jo.OfferedTo(eh.agent.Machine.State().ID) {
 		log.V(1).Infof("EventJobOffered(%s): not offered to this machine, ignoring", jo.Job.Name)
 		return
 	}
@@ -40,7 +40,7 @@ func (eh *EventHandler) HandleCommandStartJob(ev event.Event) {
 	jobName := ev.Payload.(string)
 	target := ev.Context.(string)
 
-	if target != eh.agent.Machine().State().ID {
+	if target != eh.agent.Machine.State().ID {
 		log.V(1).Infof("CommandStartJob(%s): scheduled elsewhere, ignoring", jobName)
 		return
 	}
@@ -53,7 +53,7 @@ func (eh *EventHandler) HandleCommandStopJob(ev event.Event) {
 	jobName := ev.Payload.(string)
 	target := ev.Context.(string)
 
-	if target != eh.agent.Machine().State().ID {
+	if target != eh.agent.Machine.State().ID {
 		log.V(1).Infof("CommandStopJob(%s): scheduled elsewhere, ignoring", jobName)
 		return
 	}
