@@ -168,7 +168,7 @@ func (a *Agent) Purge() {
 
 	for _, jobName := range a.state.ScheduledJobs() {
 		log.Infof("Unloading Job(%s) from local machine", jobName)
-		a.UnloadJob(jobName)
+		a.unloadJob(jobName)
 		log.Infof("Unscheduling Job(%s) from local machine", jobName)
 		a.registry.ClearJobTarget(jobName, machID)
 	}
@@ -318,7 +318,9 @@ func (a *Agent) stopJobUnlocked(jobName string) {
 	a.ReportUnitState(jobName, us)
 }
 
-func (a *Agent) UnloadJob(jobName string) {
+// unloadJob stops and expunges the indicated Job without acquiring the
+// state mutex. The caller is responsible for acquiring it.
+func (a *Agent) unloadJob(jobName string) {
 	a.stopJobUnlocked(jobName)
 
 	reversePeers := a.state.GetJobsByPeer(jobName)
@@ -604,7 +606,7 @@ func (a *Agent) JobUnscheduled(jobName string) {
 	}
 
 	log.Infof("Unloading Job(%s)", jobName)
-	a.UnloadJob(jobName)
+	a.unloadJob(jobName)
 
 	log.Infof("Checking outstanding JobOffers")
 	a.BidForPossibleJobs()
