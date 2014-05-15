@@ -340,6 +340,26 @@ func (a *Agent) ReportUnitState(jobName string, us *unit.UnitState) {
 	}
 }
 
+// MaybeBid determines bids for the given JobOffer only if it the Agent
+// determines that it is able to run the JobOffer's Job
+func (a *Agent) MaybeBid(jo job.JobOffer) {
+	a.state.Lock()
+	defer a.state.Unlock()
+
+	// Everything we check against could change over time, so we track all
+	// offers starting here for future bidding even if we can't bid now
+	a.state.TrackOffer(jo)
+	a.state.TrackJob(&jo.Job)
+
+	if !a.AbleToRun(&jo.Job) {
+		log.Infof("EventJobOffered(%s): not all criteria met, not bidding", jo.Job.Name)
+		return
+	}
+
+	log.Infof("EventJobOffered(%s): passed all criteria, submitting JobBid", jo.Job.Name)
+	a.Bid(jo.Job.Name)
+}
+
 // Submit all possible bids for unresolved offers
 func (a *Agent) BidForPossibleJobs() {
 	offers := a.state.GetOffersWithoutBids()

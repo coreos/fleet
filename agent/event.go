@@ -18,28 +18,14 @@ func NewEventHandler(agent *Agent) *EventHandler {
 
 func (eh *EventHandler) HandleEventJobOffered(ev event.Event) {
 	jo := ev.Payload.(job.JobOffer)
-	log.Infof("EventJobOffered(%s): verifying ability to run Job", jo.Job.Name)
 
 	if !jo.OfferedTo(eh.agent.Machine().State().ID) {
-		log.Infof("EventJobOffered(%s): not offered to this machine", jo.Job.Name)
+		log.V(1).Infof("EventJobOffered(%s): not offered to this machine, ignoring", jo.Job.Name)
 		return
 	}
 
-	eh.agent.state.Lock()
-	defer eh.agent.state.Unlock()
-
-	// Everything we check against could change over time, so we track all
-	// offers starting here for future bidding even if we can't bid now
-	eh.agent.state.TrackOffer(jo)
-	eh.agent.state.TrackJob(&jo.Job)
-
-	if !eh.agent.AbleToRun(&jo.Job) {
-		log.Infof("EventJobOffered(%s): not all criteria met, not bidding", jo.Job.Name)
-		return
-	}
-
-	log.Infof("EventJobOffered(%s): passed all criteria, submitting JobBid", jo.Job.Name)
-	eh.agent.Bid(jo.Job.Name)
+	log.Infof("EventJobOffered(%s): deciding whether to bid or not", jo.Job.Name)
+	eh.agent.MaybeBid(jo)
 }
 
 func (eh *EventHandler) HandleEventJobScheduled(ev event.Event) {
