@@ -14,7 +14,7 @@ COVER=${COVER:-"-cover"}
 
 source ./build
 
-declare -a TESTPKGS=(agent config engine event fleetctl job machine pkg registry sign ssh unit)
+declare -a TESTPKGS=(agent config engine event fleetctl job machine pkg registry sign ssh unit integration)
 
 if [ -z "$PKG" ]; then
 	GOFMTPATH="$TESTPKGS engine functional server fleet.go"
