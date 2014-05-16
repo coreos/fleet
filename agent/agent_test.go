@@ -17,14 +17,6 @@ func (fm *fakeMachine) State() machine.MachineState {
 	return fm.ms
 }
 
-func newFakeMachine(region string) machine.Machine {
-	metadata := map[string]string{
-		"region": region,
-	}
-	state := machine.MachineState{Metadata: metadata}
-	return &fakeMachine{state}
-}
-
 func newTestJobWithMachineMetadata(metadata string) *job.Job {
 	contents := fmt.Sprintf(`
 [X-Fleet]
@@ -193,7 +185,11 @@ X-ConditionMachineMetadata=region=us-west-1`, true},
 		{`X-ConditionMachineMetadata=region=`, true},
 	}
 
-	agent := &Agent{Machine: newFakeMachine("us-west-1"), state: NewState()}
+	metadata := map[string]string{
+		"region": "us-west-1",
+	}
+	ms := machine.MachineState{Metadata: metadata}
+	agent := &Agent{Machine: &fakeMachine{ms}, state: NewState()}
 
 	for i, e := range metadataAbleToRunExamples {
 		job := newTestJobWithMachineMetadata(e.C)
