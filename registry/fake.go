@@ -10,7 +10,11 @@ import (
 )
 
 func NewFakeRegistry(machines []machine.MachineState, jobStates map[string]*unit.UnitState, jobs []job.Job, units []unit.Unit, v *semver.Version) *FakeRegistry {
-	return &FakeRegistry{machines: machines, jobStates: jobStates, jobs: jobs, units: units, version: v}
+	jMap := make(map[string]job.Job, len(jobs))
+	for _, j := range jobs {
+		jMap[j.Name] = j
+	}
+	return &FakeRegistry{machines: machines, jobStates: jobStates, jobs: jMap, units: units, version: v}
 }
 
 type FakeRegistry struct {
@@ -21,7 +25,7 @@ type FakeRegistry struct {
 
 	machines  []machine.MachineState
 	jobStates map[string]*unit.UnitState
-	jobs      []job.Job
+	jobs      map[string]job.Job
 	units     []unit.Unit
 	version   *semver.Version
 }
@@ -31,17 +35,21 @@ func (f *FakeRegistry) GetActiveMachines() ([]machine.MachineState, error) {
 }
 
 func (f *FakeRegistry) GetAllJobs() ([]job.Job, error) {
-	return f.jobs, nil
+	jobs := make([]job.Job, 0, len(f.jobs))
+	for _, j := range f.jobs {
+		jobs = append(jobs, j)
+	}
+	return jobs, nil
 }
 
 func (f *FakeRegistry) GetJob(name string) (*job.Job, error) {
-	for _, j := range f.jobs {
-		if j.Name == name {
-			j.UnitState = f.jobStates[name]
-			return &j, nil
-		}
+	j, ok := f.jobs[name]
+	if !ok {
+		return nil, nil
 	}
-	return nil, nil
+
+	j.UnitState = f.jobStates[name]
+	return &j, nil
 }
 
 func (f *FakeRegistry) GetJobTarget(name string) (string, error) {
