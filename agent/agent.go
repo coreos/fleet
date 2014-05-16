@@ -164,9 +164,12 @@ func (a *Agent) Purge() {
 	purged := make(chan bool)
 	go a.heartbeatAgent(a.ttl, purged)
 
-	machID := a.Machine.State().ID
+	a.state.Lock()
+	scheduled := a.state.ScheduledJobs()
+	a.state.Unlock()
 
-	for _, jobName := range a.state.ScheduledJobs() {
+	machID := a.Machine.State().ID
+	for _, jobName := range scheduled {
 		log.Infof("Unloading Job(%s) from local machine", jobName)
 		a.unloadJob(jobName)
 		log.Infof("Unscheduling Job(%s) from local machine", jobName)
