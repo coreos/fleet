@@ -10,7 +10,7 @@ import (
 	"github.com/coreos/fleet/unit"
 )
 
-func newTestRegistryForSsh() registry.Registry {
+func newFakeRegistryForSsh() registry.Registry {
 	machines := []machine.MachineState{
 		{"c31e44e1-f858-436e-933e-59c642517860", "1.2.3.4", map[string]string{"ping": "pong"}, "", resource.ResourceTuple{}},
 		{"595989bb-cbb7-49ce-8726-722d6e157b4e", "5.6.7.8", map[string]string{"foo": "bar"}, "", resource.ResourceTuple{}},
@@ -29,11 +29,11 @@ func newTestRegistryForSsh() registry.Registry {
 		"hello.service": unit.NewUnitState("loaded", "inactive", "dead", &machines[2]),
 	}
 
-	return registry.NewTestRegistry(machines, states, jobs, nil)
+	return registry.NewFakeRegistry(machines, states, jobs, nil)
 }
 
 func TestSshUnknownMachine(t *testing.T) {
-	registryCtl = newTestRegistryForSsh()
+	registryCtl = newFakeRegistryForSsh()
 
 	_, ok := findAddressInMachineList("asdf")
 	if ok {
@@ -42,7 +42,7 @@ func TestSshUnknownMachine(t *testing.T) {
 }
 
 func TestSshFindMachine(t *testing.T) {
-	registryCtl = newTestRegistryForSsh()
+	registryCtl = newFakeRegistryForSsh()
 
 	ip, _ := findAddressInMachineList("c31e44e1-f858-436e-933e-59c642517860")
 	if ip != "1.2.3.4" {
@@ -51,7 +51,7 @@ func TestSshFindMachine(t *testing.T) {
 }
 
 func TestSshFindMachineByUnknownJobName(t *testing.T) {
-	registryCtl = newTestRegistryForSsh()
+	registryCtl = newFakeRegistryForSsh()
 
 	_, ok := findAddressInRunningUnits("asdf")
 	if ok {
@@ -60,7 +60,7 @@ func TestSshFindMachineByUnknownJobName(t *testing.T) {
 }
 
 func TestSshFindMachineByJobName(t *testing.T) {
-	registryCtl = newTestRegistryForSsh()
+	registryCtl = newFakeRegistryForSsh()
 
 	ip, _ := findAddressInRunningUnits("j1")
 	if ip != "1.2.3.4" {
@@ -69,7 +69,7 @@ func TestSshFindMachineByJobName(t *testing.T) {
 }
 
 func TestGlobalLookupByUnknownArgument(t *testing.T) {
-	registryCtl = newTestRegistryForSsh()
+	registryCtl = newFakeRegistryForSsh()
 
 	ip, err := globalMachineLookup([]string{"asdf"})
 	if err != nil {
@@ -82,7 +82,7 @@ func TestGlobalLookupByUnknownArgument(t *testing.T) {
 }
 
 func TestGlobalLookupByMachineID(t *testing.T) {
-	registryCtl = newTestRegistryForSsh()
+	registryCtl = newFakeRegistryForSsh()
 
 	ip, err := globalMachineLookup([]string{"c31e44e1-f858-436e-933e-59c642517860"})
 	if err != nil {
@@ -95,7 +95,7 @@ func TestGlobalLookupByMachineID(t *testing.T) {
 }
 
 func TestGlobalLookupByJobName(t *testing.T) {
-	registryCtl = newTestRegistryForSsh()
+	registryCtl = newFakeRegistryForSsh()
 
 	ip, err := globalMachineLookup([]string{"j1"})
 	if err != nil {
@@ -108,7 +108,7 @@ func TestGlobalLookupByJobName(t *testing.T) {
 }
 
 func TestGlobalLookupWithAmbiguousArgument(t *testing.T) {
-	registryCtl = newTestRegistryForSsh()
+	registryCtl = newFakeRegistryForSsh()
 
 	_, err := globalMachineLookup([]string{"hello.service"})
 	if err == nil {

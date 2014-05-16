@@ -11,11 +11,11 @@ import (
 	"github.com/coreos/fleet/unit"
 )
 
-func NewTestRegistry(machines []machine.MachineState, jobStates map[string]*unit.UnitState, jobs []job.Job, units []unit.Unit) *TestRegistry {
-	return &TestRegistry{machines, jobStates, jobs, units}
+func NewFakeRegistry(machines []machine.MachineState, jobStates map[string]*unit.UnitState, jobs []job.Job, units []unit.Unit) *FakeRegistry {
+	return &FakeRegistry{machines, jobStates, jobs, units}
 }
 
-type TestRegistry struct {
+type FakeRegistry struct {
 	machines  []machine.MachineState
 	jobStates map[string]*unit.UnitState
 	jobs      []job.Job
@@ -23,15 +23,15 @@ type TestRegistry struct {
 	version   *semver.Version
 }
 
-func (t *TestRegistry) GetActiveMachines() ([]machine.MachineState, error) {
+func (t *FakeRegistry) GetActiveMachines() ([]machine.MachineState, error) {
 	return t.machines, nil
 }
 
-func (t *TestRegistry) GetAllJobs() ([]job.Job, error) {
+func (t *FakeRegistry) GetAllJobs() ([]job.Job, error) {
 	return t.jobs, nil
 }
 
-func (t *TestRegistry) GetJob(name string) (*job.Job, error) {
+func (t *FakeRegistry) GetJob(name string) (*job.Job, error) {
 	for _, j := range t.jobs {
 		if j.Name == name {
 			j.UnitState = t.jobStates[name]
@@ -41,27 +41,27 @@ func (t *TestRegistry) GetJob(name string) (*job.Job, error) {
 	return nil, nil
 }
 
-func (t *TestRegistry) SetJobTargetState(name string, target job.JobState) error {
+func (t *FakeRegistry) SetJobTargetState(name string, target job.JobState) error {
 	panic("Not implemented")
 }
 
-func (t *TestRegistry) CheckJobPulse(jobName string) (string, bool) {
+func (t *FakeRegistry) CheckJobPulse(jobName string) (string, bool) {
 	panic("Not implemented")
 }
 
-func (t *TestRegistry) CreateJob(j *job.Job) error {
+func (t *FakeRegistry) CreateJob(j *job.Job) error {
 	panic("Not implemented")
 }
 
-func (t *TestRegistry) DestroyJob(name string) error {
+func (t *FakeRegistry) DestroyJob(name string) error {
 	panic("Not implemented")
 }
 
-func (t *TestRegistry) CreateSignatureSet(s *sign.SignatureSet) error {
+func (t *FakeRegistry) CreateSignatureSet(s *sign.SignatureSet) error {
 	panic("Not implemented")
 }
 
-func (t *TestRegistry) GetJobTarget(name string) (string, error) {
+func (t *FakeRegistry) GetJobTarget(name string) (string, error) {
 	js := t.jobStates[name]
 	if js != nil {
 		return js.MachineState.ID, nil
@@ -69,7 +69,7 @@ func (t *TestRegistry) GetJobTarget(name string) (string, error) {
 	return "", nil
 }
 
-func (t *TestRegistry) GetMachineState(machID string) (*machine.MachineState, error) {
+func (t *FakeRegistry) GetMachineState(machID string) (*machine.MachineState, error) {
 	for _, ms := range t.machines {
 		if ms.ID == machID {
 			return &ms, nil
@@ -78,90 +78,90 @@ func (t *TestRegistry) GetMachineState(machID string) (*machine.MachineState, er
 	return nil, nil
 }
 
-func (t *TestRegistry) GetDebugInfo() (string, error) {
+func (t *FakeRegistry) GetDebugInfo() (string, error) {
 	return "", nil
 }
 
-func (t *TestRegistry) ClearJobHeartbeat(jobName string) {
+func (t *FakeRegistry) ClearJobHeartbeat(jobName string) {
 	panic("Not implemented")
 }
 
-func (t *TestRegistry) ClearJobTarget(jobName, machID string) error {
+func (t *FakeRegistry) ClearJobTarget(jobName, machID string) error {
 	panic("Not implemented")
 }
 
-func (t *TestRegistry) CreateJobOffer(jo *job.JobOffer) error {
+func (t *FakeRegistry) CreateJobOffer(jo *job.JobOffer) error {
 	panic("Not implemented")
 }
 
-func (t *TestRegistry) DestroySignatureSet(tag string) {
+func (t *FakeRegistry) DestroySignatureSet(tag string) {
 	panic("Not implemented")
 }
 
-func (t *TestRegistry) GetJobTargetState(jobName string) (*job.JobState, error) {
+func (t *FakeRegistry) GetJobTargetState(jobName string) (*job.JobState, error) {
 	panic("Not implemented")
 }
 
-func (t *TestRegistry) GetSignatureSet(tag string) *sign.SignatureSet {
+func (t *FakeRegistry) GetSignatureSet(tag string) *sign.SignatureSet {
 	panic("Not implemented")
 }
 
-func (t *TestRegistry) GetSignatureSetOfJob(name string) (*sign.SignatureSet, error) {
+func (t *FakeRegistry) GetSignatureSetOfJob(name string) (*sign.SignatureSet, error) {
 	panic("Not implemented")
 }
 
-func (t *TestRegistry) JobHeartbeat(jobName, agentMachID string, ttl time.Duration) error {
+func (t *FakeRegistry) JobHeartbeat(jobName, agentMachID string, ttl time.Duration) error {
 	panic("Not implemented")
 }
 
-func (t *TestRegistry) LockJob(jobName, context string) *TimedResourceMutex {
+func (t *FakeRegistry) LockJob(jobName, context string) *TimedResourceMutex {
 	panic("Not implemented")
 }
 
-func (t *TestRegistry) LockJobOffer(jobName, context string) *TimedResourceMutex {
+func (t *FakeRegistry) LockJobOffer(jobName, context string) *TimedResourceMutex {
 	panic("Not implemented")
 }
 
-func (t *TestRegistry) LockMachine(machID, context string) *TimedResourceMutex {
+func (t *FakeRegistry) LockMachine(machID, context string) *TimedResourceMutex {
 	panic("Not implemented")
 }
 
-func (t *TestRegistry) RemoveMachineState(machID string) error {
+func (t *FakeRegistry) RemoveMachineState(machID string) error {
 	panic("Not implemented")
 }
 
-func (t *TestRegistry) RemoveUnitState(jobName string) error {
+func (t *FakeRegistry) RemoveUnitState(jobName string) error {
 	panic("Not implemented")
 }
 
-func (t *TestRegistry) ResolveJobOffer(jobName string) error {
+func (t *FakeRegistry) ResolveJobOffer(jobName string) error {
 	panic("Not implemented")
 }
 
-func (t *TestRegistry) SaveUnitState(jobName string, unitState *unit.UnitState) {
+func (t *FakeRegistry) SaveUnitState(jobName string, unitState *unit.UnitState) {
 	panic("Not implemented")
 }
 
-func (t *TestRegistry) ScheduleJob(jobName string, machID string) error {
+func (t *FakeRegistry) ScheduleJob(jobName string, machID string) error {
 	panic("Not implemented")
 }
 
-func (t *TestRegistry) SetMachineState(ms machine.MachineState, ttl time.Duration) (uint64, error) {
+func (t *FakeRegistry) SetMachineState(ms machine.MachineState, ttl time.Duration) (uint64, error) {
 	panic("Not implemented")
 }
 
-func (t *TestRegistry) SubmitJobBid(jb *job.JobBid) {
+func (t *FakeRegistry) SubmitJobBid(jb *job.JobBid) {
 	panic("Not implemented")
 }
 
-func (t *TestRegistry) UnresolvedJobOffers() []job.JobOffer {
+func (t *FakeRegistry) UnresolvedJobOffers() []job.JobOffer {
 	panic("Not implemented")
 }
 
-func (t *TestRegistry) Bids(jo *job.JobOffer) ([]job.JobBid, error) {
+func (t *FakeRegistry) Bids(jo *job.JobOffer) ([]job.JobBid, error) {
 	panic("Not implemented")
 }
 
-func (t TestRegistry) GetLatestVersion() (*semver.Version, error) {
+func (t *FakeRegistry) GetLatestVersion() (*semver.Version, error) {
 	return t.version, nil
 }
