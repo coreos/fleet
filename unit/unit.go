@@ -78,3 +78,33 @@ type UnitState struct {
 func NewUnitState(loadState, activeState, subState string, ms *machine.MachineState) *UnitState {
 	return &UnitState{loadState, activeState, subState, ms}
 }
+
+// InstanceUnit represents a Unit that has been instantiated from a template unit
+type InstanceUnit struct {
+	FullName string // Original name of the template unit (e.g. foo@bar.service)
+	Template string // Name of the canonical template unit (e.g. foo@.service)
+	Prefix   string // Prefix of the template unit (e.g. foo)
+	Instance string // Instance name (e.g. bar)
+}
+
+// UnitNameToInstance determines whether the given unit name appears to be an instance
+// of a template unit. If so, it returns a non-nil *InstanceUnit; otherwise, nil.
+func UnitNameToInstance(name string) *InstanceUnit {
+	// Everything past the first @ and before the last . is the instance
+	s := strings.LastIndex(name, ".")
+	if s == -1 {
+		return nil
+	}
+	suffix := name[s:]
+	prefix := name[:s]
+	if !strings.Contains(prefix, "@") {
+		return nil
+	}
+	a := strings.Index(prefix, "@")
+	return &InstanceUnit{
+		FullName: name,
+		Template: fmt.Sprintf("%s@%s", prefix[:a], suffix),
+		Prefix:   prefix[:a],
+		Instance: prefix[a+1:],
+	}
+}
