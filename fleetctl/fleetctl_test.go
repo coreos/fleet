@@ -9,21 +9,21 @@ import (
 	"github.com/coreos/fleet/third_party/github.com/coreos/go-semver/semver"
 )
 
-func newTestRegistryForCheckVersion(v string) registry.Registry {
+func newFakeRegistryForCheckVersion(v string) registry.Registry {
 	version, err := semver.NewVersion(v)
 	if err != nil {
 		panic(err)
 	}
-	return registry.NewTestRegistry(nil, nil, nil, nil, version)
+	return registry.NewFakeRegistry(nil, nil, nil, nil, version)
 }
 
 func TestCheckVersion(t *testing.T) {
-	registryCtl = newTestRegistryForCheckVersion(version.Version)
+	registryCtl = newFakeRegistryForCheckVersion(version.Version)
 	_, ok := checkVersion()
 	if !ok {
 		t.Errorf("checkVersion failed but should have succeeded")
 	}
-	registryCtl = newTestRegistryForCheckVersion("0.4.0")
+	registryCtl = newFakeRegistryForCheckVersion("0.4.0")
 	msg, ok := checkVersion()
 	if ok || msg == "" {
 		t.Errorf("checkVersion succeeded but should have failed")

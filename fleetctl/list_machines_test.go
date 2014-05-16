@@ -13,7 +13,7 @@ func newTestRegistryForListMachines() registry.Registry {
 		machine.MachineState{ID: "abcdef"},
 		machine.MachineState{ID: "ghijkl"},
 	}
-	return registry.NewTestRegistry(m, nil, nil, nil, nil)
+	return registry.NewFakeRegistry(m, nil, nil, nil, nil)
 }
 
 func TestGetAllMachines(t *testing.T) {
