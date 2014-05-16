@@ -1,6 +1,7 @@
 package registry
 
 import (
+	"errors"
 	"time"
 
 	"github.com/coreos/fleet/third_party/github.com/coreos/go-semver/semver"
@@ -58,11 +59,18 @@ func (t *FakeRegistry) CheckJobPulse(jobName string) (string, bool) {
 }
 
 func (t *FakeRegistry) CreateJob(j *job.Job) error {
-	panic("Not implemented")
+	_, ok := t.jobs[j.Name]
+	if ok {
+		return errors.New("Job already exists")
+	}
+
+	t.jobs[j.Name] = *j
+	return nil
 }
 
 func (t *FakeRegistry) DestroyJob(name string) error {
-	panic("Not implemented")
+	delete(t.jobs, name)
+	return nil
 }
 
 func (t *FakeRegistry) CreateSignatureSet(s *sign.SignatureSet) error {
