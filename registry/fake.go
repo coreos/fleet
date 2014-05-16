@@ -1,8 +1,8 @@
 package registry
 
 import (
-	"sync"
 	"errors"
+	"sync"
 
 	"github.com/coreos/fleet/third_party/github.com/coreos/go-semver/semver"
 
@@ -13,12 +13,13 @@ import (
 
 func NewFakeRegistry() *FakeRegistry {
 	return &FakeRegistry{
-		machines:  []machine.MachineState{},
-		jobStates: map[string]*unit.UnitState{},
-		jobs:      map[string]job.Job{},
-		units:     []unit.Unit{},
-		version:   nil,
-		bids:      map[string][]job.JobBid{},
+		machines:     []machine.MachineState{},
+		jobStates:    map[string]*unit.UnitState{},
+		jobs:         map[string]job.Job{},
+		units:        []unit.Unit{},
+		version:      nil,
+		bids:         map[string][]job.JobBid{},
+		targetStates: map[string]job.JobState{},
 	}
 }
 
@@ -29,12 +30,13 @@ type FakeRegistry struct {
 	Registry
 	sync.RWMutex
 
-	machines  []machine.MachineState
-	jobStates map[string]*unit.UnitState
-	jobs      map[string]job.Job
-	units     []unit.Unit
-	version   *semver.Version
-	bids      map[string][]job.JobBid
+	machines     []machine.MachineState
+	jobStates    map[string]*unit.UnitState
+	jobs         map[string]job.Job
+	units        []unit.Unit
+	version      *semver.Version
+	bids         map[string][]job.JobBid
+	targetStates map[string]job.JobState
 }
 
 func (f *FakeRegistry) SetMachines(machines []machine.MachineState) {
@@ -166,6 +168,25 @@ func (f *FakeRegistry) SubmitJobBid(jb *job.JobBid) {
 		f.bids[jb.JobName] = []job.JobBid{}
 	}
 	f.bids[jb.JobName] = append(f.bids[jb.JobName], *jb)
+}
+
+func (f *FakeRegistry) SetJobTargetState(name string, target job.JobState) error {
+	f.Lock()
+	defer f.Unlock()
+
+	f.targetStates[name] = target
+	return nil
+}
+
+func (f *FakeRegistry) GetJobTargetState(jobName string) (*job.JobState, error) {
+	f.RLock()
+	defer f.RUnlock()
+
+	ts, ok := f.targetStates[jobName]
+	if !ok {
+		return nil, nil
+	}
+	return &ts, nil
 }
 
 func (f *FakeRegistry) SaveUnitState(jobName string, unitState *unit.UnitState) {
