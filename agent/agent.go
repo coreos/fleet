@@ -85,6 +85,11 @@ func (a *Agent) Initialize() uint64 {
 		time.Sleep(wait)
 	}
 
+	// Lock the state early so we can decide what the Agent needs to do
+	// without the risk of conflicting with any of its other moving parts
+	a.state.Lock()
+	defer a.state.Unlock()
+
 	machID := a.Machine.State().ID
 	loaded := map[string]job.Job{}
 	launched := map[string]job.Job{}
