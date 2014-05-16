@@ -18,6 +18,7 @@ func NewFakeRegistry() *FakeRegistry {
 		jobs:      map[string]job.Job{},
 		units:     []unit.Unit{},
 		version:   nil,
+		bids:      map[string][]job.JobBid{},
 	}
 }
 
@@ -33,6 +34,7 @@ type FakeRegistry struct {
 	jobs      map[string]job.Job
 	units     []unit.Unit
 	version   *semver.Version
+	bids      map[string][]job.JobBid
 }
 
 func (f *FakeRegistry) SetMachines(machines []machine.MachineState) {
@@ -146,6 +148,24 @@ func (f *FakeRegistry) GetMachineState(machID string) (*machine.MachineState, er
 		}
 	}
 	return nil, nil
+}
+
+func (f *FakeRegistry) Bids(jo *job.JobOffer) ([]job.JobBid, error) {
+	f.RLock()
+	defer f.RUnlock()
+
+	return f.bids[jo.Job.Name], nil
+}
+
+func (f *FakeRegistry) SubmitJobBid(jb *job.JobBid) {
+	f.Lock()
+	defer f.Unlock()
+
+	_, ok := f.bids[jb.JobName]
+	if !ok {
+		f.bids[jb.JobName] = []job.JobBid{}
+	}
+	f.bids[jb.JobName] = append(f.bids[jb.JobName], *jb)
 }
 
 func (f *FakeRegistry) GetLatestVersion() (*semver.Version, error) {
