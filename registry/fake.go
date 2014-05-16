@@ -193,7 +193,7 @@ func (t *FakeRegistry) ResolveJobOffer(jobName string) error {
 }
 
 func (t *FakeRegistry) SaveUnitState(jobName string, unitState *unit.UnitState) {
-	panic("Not implemented")
+	t.jobStates[jobName] = unitState
 }
 
 func (t *FakeRegistry) ScheduleJob(jobName string, machID string) error {
