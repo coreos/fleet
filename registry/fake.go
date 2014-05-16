@@ -14,21 +14,23 @@ import (
 
 func NewFakeRegistry() *FakeRegistry {
 	return &FakeRegistry{
-		machines:  []machine.MachineState{},
-		jobStates: map[string]*unit.UnitState{},
-		jobs:      map[string]job.Job{},
-		units:     []unit.Unit{},
-		bids:      map[string][]job.JobBid{},
+		machines:     []machine.MachineState{},
+		jobStates:    map[string]*unit.UnitState{},
+		jobs:         map[string]job.Job{},
+		units:        []unit.Unit{},
+		bids:         map[string][]job.JobBid{},
+		targetStates: map[string]job.JobState{},
 	}
 }
 
 type FakeRegistry struct {
-	machines  []machine.MachineState
-	jobStates map[string]*unit.UnitState
-	jobs      map[string]job.Job
-	units     []unit.Unit
-	version   *semver.Version
-	bids      map[string][]job.JobBid
+	machines     []machine.MachineState
+	jobStates    map[string]*unit.UnitState
+	jobs         map[string]job.Job
+	units        []unit.Unit
+	version      *semver.Version
+	bids         map[string][]job.JobBid
+	targetStates map[string]job.JobState
 }
 
 func (t *FakeRegistry) SetMachines(machines []machine.MachineState) {
@@ -77,7 +79,8 @@ func (t *FakeRegistry) GetJob(name string) (*job.Job, error) {
 }
 
 func (t *FakeRegistry) SetJobTargetState(name string, target job.JobState) error {
-	panic("Not implemented")
+	t.targetStates[name] = target
+	return nil
 }
 
 func (t *FakeRegistry) CheckJobPulse(jobName string) (string, bool) {
@@ -153,7 +156,11 @@ func (t *FakeRegistry) DestroySignatureSet(tag string) {
 }
 
 func (t *FakeRegistry) GetJobTargetState(jobName string) (*job.JobState, error) {
-	panic("Not implemented")
+	ts, ok := t.targetStates[jobName]
+	if !ok {
+		return nil, nil
+	}
+	return &ts, nil
 }
 
 func (t *FakeRegistry) GetSignatureSet(tag string) *sign.SignatureSet {
