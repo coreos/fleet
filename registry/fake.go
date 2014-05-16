@@ -168,6 +168,13 @@ func (f *FakeRegistry) SubmitJobBid(jb *job.JobBid) {
 	f.bids[jb.JobName] = append(f.bids[jb.JobName], *jb)
 }
 
+func (f *FakeRegistry) SaveUnitState(jobName string, unitState *unit.UnitState) {
+	f.Lock()
+	defer f.Unlock()
+
+	f.jobStates[jobName] = unitState
+}
+
 func (f *FakeRegistry) GetLatestVersion() (*semver.Version, error) {
 	f.RLock()
 	defer f.RUnlock()
