@@ -3,6 +3,8 @@ package registry
 import (
 	"time"
 
+	"github.com/coreos/fleet/third_party/github.com/coreos/go-semver/semver"
+
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/sign"
@@ -10,6 +12,7 @@ import (
 )
 
 type Registry interface {
+	GetLatestVersion() (*semver.Version, error)
 	Bids(jb *job.JobOffer) ([]job.JobBid, error)
 	CheckJobPulse(jobName string) (string, bool)
 	ClearJobHeartbeat(jobName string)
