@@ -9,7 +9,7 @@ import (
 )
 
 func TestFakeRegistryJobLifecycle(t *testing.T) {
-	reg := NewFakeRegistry(nil, nil, nil, nil)
+	reg := NewFakeRegistry()
 
 	jobs, err := reg.GetAllJobs()
 	if err != nil {

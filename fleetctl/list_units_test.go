@@ -19,7 +19,10 @@ func newFakeRegistryForListUnits(jobs []job.Job) registry.Registry {
 		}
 	}
 
-	return registry.NewFakeRegistry(nil, nil, j, nil)
+	freg := registry.NewFakeRegistry()
+	freg.SetJobs(j)
+
+	return freg
 }
 
 func TestGetAllJobs(t *testing.T) {

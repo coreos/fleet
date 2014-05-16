@@ -29,7 +29,12 @@ func newFakeRegistryForSsh() registry.Registry {
 		"hello.service": unit.NewUnitState("loaded", "inactive", "dead", &machines[2]),
 	}
 
-	return registry.NewFakeRegistry(machines, states, jobs, nil)
+	freg := registry.NewFakeRegistry()
+	freg.SetMachines(machines)
+	freg.SetUnitStates(states)
+	freg.SetJobs(jobs)
+
+	return freg
 }
 
 func TestSshUnknownMachine(t *testing.T) {
