@@ -2,13 +2,11 @@ package registry
 
 import (
 	"errors"
-	"time"
 
 	"github.com/coreos/fleet/third_party/github.com/coreos/go-semver/semver"
 
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/machine"
-	"github.com/coreos/fleet/sign"
 	"github.com/coreos/fleet/unit"
 )
 
@@ -24,6 +22,8 @@ func NewFakeRegistry() *FakeRegistry {
 }
 
 type FakeRegistry struct {
+	Registry
+
 	machines     []machine.MachineState
 	jobStates    map[string]*unit.UnitState
 	jobs         map[string]job.Job
@@ -83,10 +83,6 @@ func (t *FakeRegistry) SetJobTargetState(name string, target job.JobState) error
 	return nil
 }
 
-func (t *FakeRegistry) CheckJobPulse(jobName string) (string, bool) {
-	panic("Not implemented")
-}
-
 func (t *FakeRegistry) CreateJob(j *job.Job) error {
 	_, ok := t.jobs[j.Name]
 	if ok {
@@ -100,10 +96,6 @@ func (t *FakeRegistry) CreateJob(j *job.Job) error {
 func (t *FakeRegistry) DestroyJob(name string) error {
 	delete(t.jobs, name)
 	return nil
-}
-
-func (t *FakeRegistry) CreateSignatureSet(s *sign.SignatureSet) error {
-	panic("Not implemented")
 }
 
 func (t *FakeRegistry) GetJobTarget(name string) (string, error) {
@@ -139,22 +131,6 @@ func (t *FakeRegistry) SubmitJobBid(jb *job.JobBid) {
 	t.bids[jb.JobName] = append(t.bids[jb.JobName], *jb)
 }
 
-func (t *FakeRegistry) ClearJobHeartbeat(jobName string) {
-	panic("Not implemented")
-}
-
-func (t *FakeRegistry) ClearJobTarget(jobName, machID string) error {
-	panic("Not implemented")
-}
-
-func (t *FakeRegistry) CreateJobOffer(jo *job.JobOffer) error {
-	panic("Not implemented")
-}
-
-func (t *FakeRegistry) DestroySignatureSet(tag string) {
-	panic("Not implemented")
-}
-
 func (t *FakeRegistry) GetJobTargetState(jobName string) (*job.JobState, error) {
 	ts, ok := t.targetStates[jobName]
 	if !ok {
@@ -163,60 +139,8 @@ func (t *FakeRegistry) GetJobTargetState(jobName string) (*job.JobState, error) 
 	return &ts, nil
 }
 
-func (t *FakeRegistry) GetSignatureSet(tag string) *sign.SignatureSet {
-	panic("Not implemented")
-}
-
-func (t *FakeRegistry) GetSignatureSetOfJob(name string) (*sign.SignatureSet, error) {
-	panic("Not implemented")
-}
-
-func (t *FakeRegistry) JobHeartbeat(jobName, agentMachID string, ttl time.Duration) error {
-	panic("Not implemented")
-}
-
-func (t *FakeRegistry) LockJob(jobName, context string) *TimedResourceMutex {
-	panic("Not implemented")
-}
-
-func (t *FakeRegistry) LockJobOffer(jobName, context string) *TimedResourceMutex {
-	panic("Not implemented")
-}
-
-func (t *FakeRegistry) LockMachine(machID, context string) *TimedResourceMutex {
-	panic("Not implemented")
-}
-
-func (t *FakeRegistry) RemoveMachineState(machID string) error {
-	panic("Not implemented")
-}
-
-func (t *FakeRegistry) RemoveUnitState(jobName string) error {
-	panic("Not implemented")
-}
-
-func (t *FakeRegistry) ResolveJobOffer(jobName string) error {
-	panic("Not implemented")
-}
-
 func (t *FakeRegistry) SaveUnitState(jobName string, unitState *unit.UnitState) {
 	t.jobStates[jobName] = unitState
-}
-
-func (t *FakeRegistry) ScheduleJob(jobName string, machID string) error {
-	panic("Not implemented")
-}
-
-func (t *FakeRegistry) SetMachineState(ms machine.MachineState, ttl time.Duration) (uint64, error) {
-	panic("Not implemented")
-}
-
-func (t *FakeRegistry) UnresolvedJobOffers() []job.JobOffer {
-	panic("Not implemented")
-}
-
-func (t *FakeRegistry) Bids(jo *job.JobOffer) ([]job.JobBid, error) {
-	panic("Not implemented")
 }
 
 func (t *FakeRegistry) GetLatestVersion() (*semver.Version, error) {
