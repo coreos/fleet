@@ -18,6 +18,7 @@ func NewFakeRegistry() *FakeRegistry {
 		jobStates: map[string]*unit.UnitState{},
 		jobs:      map[string]job.Job{},
 		units:     []unit.Unit{},
+		bids:      map[string][]job.JobBid{},
 	}
 }
 
@@ -27,6 +28,7 @@ type FakeRegistry struct {
 	jobs      map[string]job.Job
 	units     []unit.Unit
 	version   *semver.Version
+	bids      map[string][]job.JobBid
 }
 
 func (t *FakeRegistry) SetMachines(machines []machine.MachineState) {
@@ -122,6 +124,18 @@ func (t *FakeRegistry) GetDebugInfo() (string, error) {
 	return "", nil
 }
 
+func (t *FakeRegistry) Bids(jo *job.JobOffer) ([]job.JobBid, error) {
+	return t.bids[jo.Job.Name], nil
+}
+
+func (t *FakeRegistry) SubmitJobBid(jb *job.JobBid) {
+	_, ok := t.bids[jb.JobName]
+	if !ok {
+		t.bids[jb.JobName] = []job.JobBid{}
+	}
+	t.bids[jb.JobName] = append(t.bids[jb.JobName], *jb)
+}
+
 func (t *FakeRegistry) ClearJobHeartbeat(jobName string) {
 	panic("Not implemented")
 }
@@ -187,10 +201,6 @@ func (t *FakeRegistry) ScheduleJob(jobName string, machID string) error {
 }
 
 func (t *FakeRegistry) SetMachineState(ms machine.MachineState, ttl time.Duration) (uint64, error) {
-	panic("Not implemented")
-}
-
-func (t *FakeRegistry) SubmitJobBid(jb *job.JobBid) {
 	panic("Not implemented")
 }
 
