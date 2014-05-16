@@ -5,12 +5,13 @@ import (
 
 	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/resource"
+	"github.com/coreos/fleet/registry"
 	"github.com/coreos/fleet/unit"
 )
 
 type BlockedTestRegistry struct {
 	EchoAttempts int
-	TestRegistry
+	registry.TestRegistry
 }
 
 func (b BlockedTestRegistry) GetJobTarget(name string) (string, error) {
@@ -41,5 +42,6 @@ func setupRegistryForStart(echoAttempts int) {
 	states := map[string]*unit.UnitState{"pong.service": js, "hello.service": js2, "echo.service": js3, "private.service": js4}
 	machines := []machine.MachineState{m1, m2, m3}
 
-	registryCtl = BlockedTestRegistry{echoAttempts, TestRegistry{jobStates: states, machines: machines}}
+	tr := registry.NewTestRegistry(machines, states, nil, nil, nil)
+	registryCtl = BlockedTestRegistry{echoAttempts, *tr}
 }

@@ -19,7 +19,7 @@ func newTestRegistryForListUnits(jobs []job.Job) registry.Registry {
 		}
 	}
 
-	return TestRegistry{jobs: j}
+	return registry.NewTestRegistry(nil, nil, j, nil, nil)
 }
 
 func TestGetAllJobs(t *testing.T) {

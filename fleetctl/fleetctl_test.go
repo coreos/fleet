@@ -14,7 +14,7 @@ func newTestRegistryForCheckVersion(v string) registry.Registry {
 	if err != nil {
 		panic(err)
 	}
-	return &TestRegistry{version: version}
+	return registry.NewTestRegistry(nil, nil, nil, nil, version)
 }
 
 func TestCheckVersion(t *testing.T) {

@@ -1,4 +1,4 @@
-package main
+package registry
 
 import (
 	"time"
@@ -7,10 +7,13 @@ import (
 
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/machine"
-	"github.com/coreos/fleet/registry"
 	"github.com/coreos/fleet/sign"
 	"github.com/coreos/fleet/unit"
 )
+
+func NewTestRegistry(machines []machine.MachineState, jobStates map[string]*unit.UnitState, jobs []job.Job, units []unit.Unit, v *semver.Version) *TestRegistry {
+	return &TestRegistry{machines, jobStates, jobs, units, v}
+}
 
 type TestRegistry struct {
 	machines  []machine.MachineState
@@ -111,15 +114,15 @@ func (t TestRegistry) JobHeartbeat(jobName, agentMachID string, ttl time.Duratio
 	return nil
 }
 
-func (t TestRegistry) LockJob(jobName, context string) *registry.TimedResourceMutex {
+func (t TestRegistry) LockJob(jobName, context string) *TimedResourceMutex {
 	return nil
 }
 
-func (t TestRegistry) LockJobOffer(jobName, context string) *registry.TimedResourceMutex {
+func (t TestRegistry) LockJobOffer(jobName, context string) *TimedResourceMutex {
 	return nil
 }
 
-func (t TestRegistry) LockMachine(machID, context string) *registry.TimedResourceMutex {
+func (t TestRegistry) LockMachine(machID, context string) *TimedResourceMutex {
 	return nil
 }
 
