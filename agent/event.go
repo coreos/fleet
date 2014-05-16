@@ -161,7 +161,6 @@ func (eh *EventHandler) HandleEventUnitStateUpdated(ev event.Event) {
 		return
 	}
 
-	log.Infof("EventUnitStateUpdated(%s): pushing state (loadState=%s, activeState=%s, subState=%s) to Registry", jobName, state.LoadState, state.ActiveState, state.SubState)
-
+	log.Infof("EventUnitStateUpdated(%s): reporting state to Registry")
 	eh.agent.ReportUnitState(jobName, state)
 }
