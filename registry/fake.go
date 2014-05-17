@@ -1,6 +1,7 @@
 package registry
 
 import (
+	"sync"
 
 	"github.com/coreos/fleet/third_party/github.com/coreos/go-semver/semver"
 
@@ -24,6 +25,7 @@ type FakeRegistry struct {
 	// by the TestRegistry. Any calls to these unimplemented methods will
 	// result in a panic.
 	Registry
+	sync.RWMutex
 
 	machines  []machine.MachineState
 	jobStates map[string]*unit.UnitState
@@ -33,10 +35,16 @@ type FakeRegistry struct {
 }
 
 func (f *FakeRegistry) SetMachines(machines []machine.MachineState) {
+	f.Lock()
+	defer f.Unlock()
+
 	f.machines = machines
 }
 
 func (f *FakeRegistry) SetJobs(jobs []job.Job) {
+	f.Lock()
+	defer f.Unlock()
+
 	f.jobs = make(map[string]job.Job, len(jobs))
 	for _, j := range jobs {
 		f.jobs[j.Name] = j
@@ -44,22 +52,37 @@ func (f *FakeRegistry) SetJobs(jobs []job.Job) {
 }
 
 func (f *FakeRegistry) SetUnitStates(jobStates map[string]*unit.UnitState) {
+	f.Lock()
+	defer f.Unlock()
+
 	f.jobStates = jobStates
 }
 
 func (f *FakeRegistry) SetUnits(units []unit.Unit) {
+	f.Lock()
+	defer f.Unlock()
+
 	f.units = units
 }
 
 func (f *FakeRegistry) SetLatestVersion(v semver.Version) {
+	f.Lock()
+	defer f.Unlock()
+
 	f.version = &v
 }
 
 func (f *FakeRegistry) GetActiveMachines() ([]machine.MachineState, error) {
+	f.RLock()
+	defer f.RUnlock()
+
 	return f.machines, nil
 }
 
 func (f *FakeRegistry) GetAllJobs() ([]job.Job, error) {
+	f.RLock()
+	defer f.RUnlock()
+
 	jobs := make([]job.Job, 0, len(f.jobs))
 	for _, j := range f.jobs {
 		jobs = append(jobs, j)
@@ -68,6 +91,9 @@ func (f *FakeRegistry) GetAllJobs() ([]job.Job, error) {
 }
 
 func (f *FakeRegistry) GetJob(name string) (*job.Job, error) {
+	f.RLock()
+	defer f.RUnlock()
+
 	j, ok := f.jobs[name]
 	if !ok {
 		return nil, nil
@@ -78,6 +104,9 @@ func (f *FakeRegistry) GetJob(name string) (*job.Job, error) {
 }
 
 func (f *FakeRegistry) GetJobTarget(name string) (string, error) {
+	f.RLock()
+	defer f.RUnlock()
+
 	js := f.jobStates[name]
 	if js != nil {
 		return js.MachineState.ID, nil
@@ -86,6 +115,9 @@ func (f *FakeRegistry) GetJobTarget(name string) (string, error) {
 }
 
 func (f *FakeRegistry) GetMachineState(machID string) (*machine.MachineState, error) {
+	f.RLock()
+	defer f.RUnlock()
+
 	for _, ms := range f.machines {
 		if ms.ID == machID {
 			return &ms, nil
@@ -95,5 +127,8 @@ func (f *FakeRegistry) GetMachineState(machID string) (*machine.MachineState, er
 }
 
 func (f *FakeRegistry) GetLatestVersion() (*semver.Version, error) {
+	f.RLock()
+	defer f.RUnlock()
+
 	return f.version, nil
 }
