@@ -18,107 +18,52 @@ func NewEventHandler(agent *Agent) *EventHandler {
 
 func (eh *EventHandler) HandleEventJobOffered(ev event.Event) {
 	jo := ev.Payload.(job.JobOffer)
-	log.Infof("EventJobOffered(%s): verifying ability to run Job", jo.Job.Name)
 
-	if !jo.OfferedTo(eh.agent.Machine().State().ID) {
-		log.Infof("EventJobOffered(%s): not offered to this machine", jo.Job.Name)
+	if !jo.OfferedTo(eh.agent.Machine.State().ID) {
+		log.V(1).Infof("EventJobOffered(%s): not offered to this machine, ignoring", jo.Job.Name)
 		return
 	}
 
-	eh.agent.state.Lock()
-	defer eh.agent.state.Unlock()
-
-	// Everything we check against could change over time, so we track all
-	// offers starting here for future bidding even if we can't bid now
-	eh.agent.state.TrackOffer(jo)
-	eh.agent.state.TrackJob(&jo.Job)
-
-	if !eh.agent.AbleToRun(&jo.Job) {
-		log.Infof("EventJobOffered(%s): not all criteria met, not bidding", jo.Job.Name)
-		return
-	}
-
-	log.Infof("EventJobOffered(%s): passed all criteria, submitting JobBid", jo.Job.Name)
-	eh.agent.Bid(jo.Job.Name)
+	log.Infof("EventJobOffered(%s): deciding whether to bid or not", jo.Job.Name)
+	eh.agent.MaybeBid(jo)
 }
 
 func (eh *EventHandler) HandleEventJobScheduled(ev event.Event) {
 	jobName := ev.Payload.(string)
 	target := ev.Context.(string)
 
-	eh.agent.state.Lock()
-	defer eh.agent.state.Unlock()
-
-	log.V(1).Infof("EventJobScheduled(%s): Dropping outstanding offers and bids", jobName)
-	eh.agent.state.PurgeOffer(jobName)
-
-	if target != eh.agent.Machine().State().ID {
-		log.Infof("EventJobScheduled(%s): Job not scheduled to this Agent, purging related data from cache", jobName)
-		eh.agent.state.PurgeJob(jobName)
-
-		log.Infof("EventJobScheduled(%s): Checking outstanding job offers", jobName)
-		eh.agent.BidForPossibleJobs()
-		return
+	if target != eh.agent.Machine.State().ID {
+		log.Infof("EventJobScheduled(%s): Job scheduled to other Machine(%s), informing Agent", jobName, target)
+		eh.agent.JobScheduledElsewhere(jobName)
+	} else {
+		log.Infof("EventJobScheduled(%s): Job scheduled here, informing Agent", jobName)
+		eh.agent.JobScheduledLocally(jobName)
 	}
-
-	log.Infof("EventJobScheduled(%s): Job scheduled to this Agent", jobName)
-
-	j := eh.agent.FetchJob(jobName)
-	if j == nil {
-		log.Errorf("EventJobScheduled(%s): Failed to fetch Job", jobName)
-		return
-	}
-
-	if !eh.agent.VerifyJob(j) {
-		log.Errorf("EventJobScheduled(%s): Failed to verify Job", j.Name)
-		return
-	}
-
-	if !eh.agent.AbleToRun(j) {
-		log.Infof("EventJobScheduled(%s): Unable to run scheduled Job, unscheduling.", jobName)
-		eh.agent.registry.ClearJobTarget(jobName, target)
-		eh.agent.state.PurgeJob(jobName)
-		return
-	}
-
-	log.Infof("EventJobScheduled(%s): Loading Job", j.Name)
-	eh.agent.LoadJob(j)
-
-	log.Infof("EventJobScheduled(%s): Bidding for all possible peers of Job", j.Name)
-	eh.agent.BidForPossiblePeers(j.Name)
-
-	ts, _ := eh.agent.registry.GetJobTargetState(j.Name)
-	if ts == nil || *ts != job.JobStateLaunched {
-		return
-	}
-
-	log.Infof("EventJobScheduled(%s): Starting Job", j.Name)
-	eh.agent.StartJob(j.Name)
 }
 
 func (eh *EventHandler) HandleCommandStartJob(ev event.Event) {
-	if ev.Context.(string) != eh.agent.Machine().State().ID {
+	jobName := ev.Payload.(string)
+	target := ev.Context.(string)
+
+	if target != eh.agent.Machine.State().ID {
+		log.V(1).Infof("CommandStartJob(%s): scheduled elsewhere, ignoring", jobName)
 		return
 	}
 
-	eh.agent.state.Lock()
-	defer eh.agent.state.Unlock()
-
-	jobName := ev.Payload.(string)
-	log.Infof("CommandStartJob(%s): starting corresponding unit", jobName)
+	log.Infof("CommandStartJob(%s): instructing Agent to start Job", jobName)
 	eh.agent.StartJob(jobName)
 }
 
 func (eh *EventHandler) HandleCommandStopJob(ev event.Event) {
-	if ev.Context.(string) != eh.agent.Machine().State().ID {
+	jobName := ev.Payload.(string)
+	target := ev.Context.(string)
+
+	if target != eh.agent.Machine.State().ID {
+		log.V(1).Infof("CommandStopJob(%s): scheduled elsewhere, ignoring", jobName)
 		return
 	}
 
-	eh.agent.state.Lock()
-	defer eh.agent.state.Unlock()
-
-	jobName := ev.Payload.(string)
-	log.Infof("CommandStopJob(%s): stopping corresponding unit", jobName)
+	log.Infof("CommandStopJob(%s): instructing Agent to stop Job", jobName)
 	eh.agent.StopJob(jobName)
 }
 
@@ -137,19 +82,8 @@ func (eh *EventHandler) HandleEventJobDestroyed(ev event.Event) {
 func (eh *EventHandler) unloadJobEvent(ev event.Event) {
 	jobName := ev.Payload.(string)
 
-	eh.agent.state.Lock()
-	defer eh.agent.state.Unlock()
-
-	if !eh.agent.state.ScheduledHere(jobName) {
-		log.V(1).Infof("%s(%s): job not scheduled here, ignoring", ev.Type, jobName)
-		return
-	}
-
-	log.Infof("%s(%s): unloading corresponding unit", ev.Type, jobName)
-	eh.agent.UnloadJob(jobName)
-
-	log.Infof("%s(%s): checking outstanding job offers", ev.Type, jobName)
-	eh.agent.BidForPossibleJobs()
+	log.Infof("%s(%s): Job(%s) unscheduled, deciding what to do", ev.Type, jobName, jobName)
+	eh.agent.JobUnscheduled(jobName)
 }
 
 func (eh *EventHandler) HandleEventUnitStateUpdated(ev event.Event) {

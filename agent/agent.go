@@ -27,7 +27,7 @@ const (
 type Agent struct {
 	registry registry.Registry
 	um       unit.UnitManager
-	machine  machine.Machine
+	Machine  machine.Machine
 	ttl      time.Duration
 	// verifier is used to verify the contents of a job's Unit.
 	// A nil verifier implies that all Units are accepted.
@@ -44,11 +44,6 @@ func New(mgr unit.UnitManager, reg registry.Registry, mach machine.Machine, ttl 
 
 	a := &Agent{reg, mgr, mach, ttldur, verifier, NewState()}
 	return a, nil
-}
-
-// Access Agent's machine field
-func (a *Agent) Machine() machine.Machine {
-	return a.machine
 }
 
 func (a *Agent) MarshalJSON() ([]byte, error) {
@@ -82,7 +77,7 @@ func (a *Agent) Initialize() uint64 {
 	wait := time.Second
 	for {
 		var err error
-		if idx, err = a.registry.SetMachineState(a.machine.State(), a.ttl); err == nil {
+		if idx, err = a.registry.SetMachineState(a.Machine.State(), a.ttl); err == nil {
 			log.V(1).Infof("Heartbeat succeeded")
 			break
 		}
@@ -90,7 +85,12 @@ func (a *Agent) Initialize() uint64 {
 		time.Sleep(wait)
 	}
 
-	machID := a.machine.State().ID
+	// Lock the state early so we can decide what the Agent needs to do
+	// without the risk of conflicting with any of its other moving parts
+	a.state.Lock()
+	defer a.state.Unlock()
+
+	machID := a.Machine.State().ID
 	loaded := map[string]job.Job{}
 	launched := map[string]job.Job{}
 	jobs, _ := a.registry.GetAllJobs()
@@ -100,7 +100,7 @@ func (a *Agent) Initialize() uint64 {
 			continue
 		}
 
-		if !a.AbleToRun(&j) {
+		if !a.ableToRun(&j) {
 			log.Infof("Unable to run Job(%s), unscheduling", j.Name)
 			a.registry.ClearJobTarget(j.Name, machID)
 			continue
@@ -135,13 +135,13 @@ func (a *Agent) Initialize() uint64 {
 
 	for _, j := range loaded {
 		a.state.TrackJob(&j)
-		a.LoadJob(&j)
+		a.loadJob(&j)
 
 		if _, ok := launched[j.Name]; !ok {
 			continue
 		}
 
-		a.StartJob(j.Name)
+		a.startJobUnlocked(j.Name)
 	}
 
 	for _, jo := range a.registry.UnresolvedJobOffers() {
@@ -152,7 +152,7 @@ func (a *Agent) Initialize() uint64 {
 		a.state.TrackJob(&jo.Job)
 	}
 
-	a.BidForPossibleJobs()
+	a.bidForPossibleJobs()
 
 	return idx
 }
@@ -164,11 +164,14 @@ func (a *Agent) Purge() {
 	purged := make(chan bool)
 	go a.heartbeatAgent(a.ttl, purged)
 
-	machID := a.machine.State().ID
+	a.state.Lock()
+	scheduled := a.state.ScheduledJobs()
+	a.state.Unlock()
 
-	for _, jobName := range a.state.ScheduledJobs() {
+	machID := a.Machine.State().ID
+	for _, jobName := range scheduled {
 		log.Infof("Unloading Job(%s) from local machine", jobName)
-		a.UnloadJob(jobName)
+		a.unloadJob(jobName)
 		log.Infof("Unscheduling Job(%s) from local machine", jobName)
 		a.registry.ClearJobTarget(jobName, machID)
 	}
@@ -212,7 +215,7 @@ func (a *Agent) heartbeatAgent(ttl time.Duration, stop chan bool) {
 	}
 
 	heartbeat := func() error {
-		_, err := a.registry.SetMachineState(a.machine.State(), ttl)
+		_, err := a.registry.SetMachineState(a.Machine.State(), ttl)
 		return err
 	}
 
@@ -234,7 +237,7 @@ func (a *Agent) heartbeatAgent(ttl time.Duration, stop chan bool) {
 
 func (a *Agent) heartbeatJobs(ttl time.Duration, stop chan bool) {
 	heartbeat := func() {
-		machID := a.Machine().State().ID
+		machID := a.Machine.State().ID
 		launched := a.state.LaunchedJobs()
 		for _, j := range launched {
 			go a.registry.JobHeartbeat(j, machID, ttl)
@@ -255,7 +258,9 @@ func (a *Agent) heartbeatJobs(ttl time.Duration, stop chan bool) {
 	}
 }
 
-func (a *Agent) LoadJob(j *job.Job) {
+// loadJob hands the given Job to systemd without acquiring the
+// state mutex. The caller is responsible for acquiring it.
+func (a *Agent) loadJob(j *job.Job) {
 	log.Infof("Loading Job(%s)", j.Name)
 	a.state.SetTargetState(j.Name, job.JobStateLoaded)
 	err := a.um.Load(j.Name, j.Unit)
@@ -275,16 +280,35 @@ func (a *Agent) LoadJob(j *job.Job) {
 	a.ReportUnitState(j.Name, us)
 }
 
+// StartJob starts the indicated Job after first acquiring the state mutex
 func (a *Agent) StartJob(jobName string) {
+	a.state.Lock()
+	defer a.state.Unlock()
+
+	a.startJobUnlocked(jobName)
+}
+
+// startJobUnlocked starts the indicated Job without acquiring the state
+// mutex. The caller is responsible for acquiring it.
+func (a *Agent) startJobUnlocked(jobName string) {
 	a.state.SetTargetState(jobName, job.JobStateLaunched)
 
-	machID := a.Machine().State().ID
+	machID := a.Machine.State().ID
 	a.registry.JobHeartbeat(jobName, machID, a.ttl)
 
 	a.um.Start(jobName)
 }
 
+// StopJob stops the indicated Job after first acquiring the state mutex
 func (a *Agent) StopJob(jobName string) {
+	a.state.Lock()
+	defer a.state.Unlock()
+	a.stopJobUnlocked(jobName)
+}
+
+// stopJobUnlocked stops the indicated Job without acquiring the state
+// mutex. The caller is responsible for acquiring it.
+func (a *Agent) stopJobUnlocked(jobName string) {
 	a.state.SetTargetState(jobName, job.JobStateLoaded)
 	a.registry.ClearJobHeartbeat(jobName)
 	a.um.Stop(jobName)
@@ -299,8 +323,10 @@ func (a *Agent) StopJob(jobName string) {
 	a.ReportUnitState(jobName, us)
 }
 
-func (a *Agent) UnloadJob(jobName string) {
-	a.StopJob(jobName)
+// unloadJob stops and expunges the indicated Job without acquiring the
+// state mutex. The caller is responsible for acquiring it.
+func (a *Agent) unloadJob(jobName string) {
+	a.stopJobUnlocked(jobName)
 
 	reversePeers := a.state.GetJobsByPeer(jobName)
 
@@ -313,7 +339,7 @@ func (a *Agent) UnloadJob(jobName string) {
 	a.ReportUnitState(jobName, nil)
 
 	// Trigger rescheduling of all the peers of the job that was just unloaded
-	machID := a.machine.State().ID
+	machID := a.Machine.State().ID
 	for _, peer := range reversePeers {
 		log.Infof("Unloading Peer(%s) of Job(%s)", peer, jobName)
 		err := a.registry.ClearJobTarget(peer, machID)
@@ -333,24 +359,45 @@ func (a *Agent) ReportUnitState(jobName string, us *unit.UnitState) {
 			log.Errorf("Failed to remove UnitState for job %s from Registry: %s", jobName, err.Error())
 		}
 	} else {
-		ms := a.Machine().State()
+		ms := a.Machine.State()
 		us.MachineState = &ms
 		log.V(1).Infof("Job(%s): pushing UnitState (loadState=%s, activeState=%s, subState=%s) to Registry", jobName, us.LoadState, us.ActiveState, us.SubState)
 		a.registry.SaveUnitState(jobName, us)
 	}
 }
 
-// Submit all possible bids for unresolved offers
-func (a *Agent) BidForPossibleJobs() {
+// MaybeBid determines bids for the given JobOffer only if it the Agent
+// determines that it is able to run the JobOffer's Job
+func (a *Agent) MaybeBid(jo job.JobOffer) {
+	a.state.Lock()
+	defer a.state.Unlock()
+
+	// Everything we check against could change over time, so we track all
+	// offers starting here for future bidding even if we can't bid now
+	a.state.TrackOffer(jo)
+	a.state.TrackJob(&jo.Job)
+
+	if !a.ableToRun(&jo.Job) {
+		log.Infof("EventJobOffered(%s): not all criteria met, not bidding", jo.Job.Name)
+		return
+	}
+
+	log.Infof("EventJobOffered(%s): passed all criteria, submitting JobBid", jo.Job.Name)
+	a.bid(jo.Job.Name)
+}
+
+// bidForPossibleJobs submits bids for all unresolved offers whose Jobs
+// can be run locally
+func (a *Agent) bidForPossibleJobs() {
 	offers := a.state.GetOffersWithoutBids()
 
 	log.V(1).Infof("Checking %d unbade offers", len(offers))
 	for i, _ := range offers {
 		offer := offers[i]
 		log.V(1).Infof("Checking ability to run Job(%s)", offer.Job.Name)
-		if a.AbleToRun(&offer.Job) {
+		if a.ableToRun(&offer.Job) {
 			log.V(1).Infof("Able to run Job(%s), submitting bid", offer.Job.Name)
-			a.Bid(offer.Job.Name)
+			a.bid(offer.Job.Name)
 		} else {
 			log.V(1).Infof("Still unable to run Job(%s)", offer.Job.Name)
 		}
@@ -358,17 +405,17 @@ func (a *Agent) BidForPossibleJobs() {
 }
 
 // Submit a bid for the given Job
-func (a *Agent) Bid(jobName string) {
+func (a *Agent) bid(jobName string) {
 	log.Infof("Submitting JobBid for Job(%s)", jobName)
 
-	jb := job.NewBid(jobName, a.machine.State().ID)
+	jb := job.NewBid(jobName, a.Machine.State().ID)
 	a.registry.SubmitJobBid(jb)
 
 	a.state.TrackBid(jb.JobName)
 }
 
-// Pull a Job and its payload from the Registry
-func (a *Agent) FetchJob(jobName string) *job.Job {
+// fetchJob attempts to retrieve a Job from the Registry
+func (a *Agent) fetchJob(jobName string) *job.Job {
 	log.V(1).Infof("Fetching Job(%s) from Registry", jobName)
 	j, _ := a.registry.GetJob(jobName)
 	if j == nil {
@@ -378,9 +425,9 @@ func (a *Agent) FetchJob(jobName string) *job.Job {
 	return j
 }
 
-// VerifyJob attempts to verify the integrity of the given Job by checking the
+// verifyJob attempts to verify the integrity of the given Job by checking the
 // signature against a SignatureSet stored in its repository.
-func (a *Agent) VerifyJob(j *job.Job) bool {
+func (a *Agent) verifyJob(j *job.Job) bool {
 	if a.verifier == nil {
 		return true
 	}
@@ -397,16 +444,17 @@ func (a *Agent) VerifyJob(j *job.Job) bool {
 	return true
 }
 
-// Submit all possible bids for known peers of the provided job
-func (a *Agent) BidForPossiblePeers(jobName string) {
+// bidForPossiblePeers submits bids for all known peers of the provided job that can
+// be run locally
+func (a *Agent) bidForPossiblePeers(jobName string) {
 	peers := a.state.GetJobsByPeer(jobName)
 
 	for _, peer := range peers {
 		log.V(1).Infof("Found unresolved offer for Peer(%s) of Job(%s)", peer, jobName)
 
-		peerJob := a.FetchJob(peer)
-		if peerJob != nil && a.AbleToRun(peerJob) {
-			a.Bid(peer)
+		peerJob := a.fetchJob(peer)
+		if peerJob != nil && a.ableToRun(peerJob) {
+			a.bid(peer)
 		} else {
 			log.V(1).Infof("Unable to bid for Peer(%s) of Job(%s)", peer, jobName)
 		}
@@ -414,8 +462,8 @@ func (a *Agent) BidForPossiblePeers(jobName string) {
 }
 
 // Determine if the Agent can run the provided Job
-func (a *Agent) AbleToRun(j *job.Job) bool {
-	if !a.VerifyJob(j) {
+func (a *Agent) ableToRun(j *job.Job) bool {
+	if !a.verifyJob(j) {
 		log.V(1).Infof("Failed to verify Job(%s)", j.Name)
 		return false
 	}
@@ -429,13 +477,13 @@ func (a *Agent) AbleToRun(j *job.Job) bool {
 
 	metadata := j.RequiredTargetMetadata()
 	log.V(1).Infof("Job(%s) requires machine metadata: %v", j.Name, metadata)
-	ms := a.machine.State()
+	ms := a.Machine.State()
 	if !machine.HasMetadata(&ms, metadata) {
 		log.Infof("Unable to run Job(%s), local Machine metadata insufficient", j.Name)
 		return false
 	}
 
-	if tgt, ok := j.RequiredTarget(); ok && !a.machine.State().MatchID(tgt) {
+	if tgt, ok := j.RequiredTarget(); ok && !a.Machine.State().MatchID(tgt) {
 		log.Infof("Agent does not meet machine target requirement for Job(%s)", j.Name)
 		return false
 	}
@@ -466,7 +514,7 @@ func (a *Agent) peerScheduledHere(jobName, peerName string) bool {
 	log.V(1).Infof("Looking for target of Peer(%s)", peerName)
 
 	//FIXME: ideally the machine would use its own knowledge rather than calling GetJobTarget
-	if tgt, _ := a.registry.GetJobTarget(peerName); tgt == "" || tgt != a.machine.State().ID {
+	if tgt, _ := a.registry.GetJobTarget(peerName); tgt == "" || tgt != a.Machine.State().ID {
 		log.V(1).Infof("Peer(%s) of Job(%s) not scheduled here", peerName, jobName)
 		return false
 	}
@@ -499,4 +547,78 @@ func (a *Agent) HasConflict(potentialJobName string, potentialConflicts []string
 	}
 
 	return false, ""
+}
+
+// JobScheduledElsewhere clears all state related to the indicated
+// job before bidding for all oustanding jobs that can be run locally.
+func (a *Agent) JobScheduledElsewhere(jobName string) {
+	a.state.Lock()
+	defer a.state.Unlock()
+
+	log.Infof("Dropping offer and bid for Job(%s) from cache", jobName)
+	a.state.PurgeOffer(jobName)
+
+	log.Infof("Purging Job(%s) data from cache", jobName)
+	a.state.PurgeJob(jobName)
+
+	log.Infof("Checking outstanding job offers")
+	a.bidForPossibleJobs()
+}
+
+// JobScheduledLocally clears all state related to the indicated
+// job's offers/bids before attempting to load and possibly start
+// the job. The ability to run the job will be revalidated before
+// loading, and unscheduled if such validation fails.
+func (a *Agent) JobScheduledLocally(jobName string) {
+	a.state.Lock()
+	defer a.state.Unlock()
+
+	log.Infof("Dropping offer and bid for Job(%s) from cache", jobName)
+	a.state.PurgeOffer(jobName)
+
+	j := a.fetchJob(jobName)
+	if j == nil {
+		log.Errorf("Failed to fetch Job(%s)", jobName)
+		return
+	}
+
+	if !a.ableToRun(j) {
+		log.Infof("Unable to run locally-scheduled Job(%s), unscheduling", jobName)
+		a.registry.ClearJobTarget(jobName, a.Machine.State().ID)
+		a.state.PurgeJob(jobName)
+		return
+	}
+
+	a.loadJob(j)
+
+	log.Infof("Bidding for all possible peers of Job(%s)", j.Name)
+	a.bidForPossiblePeers(j.Name)
+
+	ts, _ := a.registry.GetJobTargetState(j.Name)
+	if ts == nil || *ts != job.JobStateLaunched {
+		return
+	}
+
+	log.Infof("Job(%s) loaded, now starting it", j.Name)
+	a.startJobUnlocked(j.Name)
+}
+
+// JobUnscheduled attempts to unload the indicated job only
+// if it were scheduled here in the first place, otherwise
+// the event is ignored. If unloading is necessary, all jobs
+// that can be run locally will also be bid upon.
+func (a *Agent) JobUnscheduled(jobName string) {
+	a.state.Lock()
+	defer a.state.Unlock()
+
+	if !a.state.ScheduledHere(jobName) {
+		log.V(1).Infof("Job(%s) not scheduled here, ignoring", jobName)
+		return
+	}
+
+	log.Infof("Unloading Job(%s)", jobName)
+	a.unloadJob(jobName)
+
+	log.Infof("Checking outstanding JobOffers")
+	a.bidForPossibleJobs()
 }
