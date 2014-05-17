@@ -2,7 +2,6 @@ package event
 
 import (
 	"testing"
-	"time"
 )
 
 type TestListener struct {
@@ -10,25 +9,19 @@ type TestListener struct {
 }
 
 func (l *TestListener) HandleEventTypeOne(ev Event) {
-	l.evchan <- ev
+	go func() { l.evchan <- ev }()
 }
 
 func TestEventBus(t *testing.T) {
-	stopchan := make(chan bool)
-	defer close(stopchan)
-
 	evchan := make(chan Event)
 
 	bus := NewEventBus()
 	bus.AddListener("test", &TestListener{evchan})
-	bus.Listen(stopchan)
 
 	ev := Event{"EventTypeOne", "payload", "Y"}
-	bus.Channel <- &ev
+	bus.Dispatch(&ev)
 
 	select {
-	case <-time.After(time.Second):
-		t.Fatalf("Failed to dispatch event within a second")
 	case recv := <-evchan:
 		if recv.Payload.(string) != "payload" {
 			t.Error("event payload is incorrect")
@@ -36,25 +29,25 @@ func TestEventBus(t *testing.T) {
 		if recv.Context.(string) != "Y" {
 			t.Error("event context is incorrect")
 		}
+	default:
+		t.Fatalf("Failed to dispatch event")
 	}
 }
 
 func TestEventBusNoDispatch(t *testing.T) {
-	stopchan := make(chan bool)
-	defer close(stopchan)
-
 	evchan := make(chan Event)
 
 	bus := NewEventBus()
 	bus.AddListener("test", &TestListener{evchan})
-	bus.Listen(stopchan)
 
 	go func() {
 		ev := Event{"EventTypeTwo", "payload", "Y"}
-		bus.Channel <- &ev
+		bus.Dispatch(&ev)
+	}()
 
-		ev = Event{"EventTypeOne", "payload", "Y"}
-		bus.Channel <- &ev
+	go func() {
+		ev := Event{"EventTypeOne", "payload", "Y"}
+		bus.Dispatch(&ev)
 	}()
 
 	recv := <-evchan
