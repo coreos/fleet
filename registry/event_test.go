@@ -24,7 +24,11 @@ func TestPipe(t *testing.T) {
 	eventchan := make(chan *event.Event)
 	stopchan := make(chan bool)
 
-	go pipe(etcdchan, filters, eventchan, stopchan)
+	send := func(ev *event.Event) {
+		eventchan <- ev
+	}
+
+	go pipe(etcdchan, filters, send, stopchan)
 
 	resp := etcd.Response{Action: "TestAction", Node: &etcd.Node{Key: "/", ModifiedIndex: 0}}
 	etcdchan <- &resp
