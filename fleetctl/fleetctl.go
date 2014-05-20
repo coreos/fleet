@@ -69,6 +69,7 @@ var (
 		NoLegend      bool
 		NoBlock       bool
 		BlockAttempts int
+		Fields        string
 	}{}
 )
 

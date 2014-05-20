@@ -4,7 +4,9 @@ import (
 	"testing"
 
 	"github.com/coreos/fleet/job"
+	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/registry"
+	"github.com/coreos/fleet/resource"
 	"github.com/coreos/fleet/unit"
 )
 
@@ -53,4 +55,48 @@ Description=PING
 	if desc != "PING" {
 		t.Errorf("Expected to have `PING` as a description, but it was %s\n", desc)
 	}
+}
+
+func assertEqual(t *testing.T, name string, want, got interface{}) {
+	if want != got {
+		t.Errorf("expected %q to be %q, got %q", name, want, got)
+	}
+}
+
+func TestFieldsToStrings(t *testing.T) {
+	j := job.NewJob("test", *unit.NewUnit(""))
+	for _, tt := range []string{"state", "load", "active", "sub", "desc", "machine"} {
+		f := fieldsToOutput[tt](j, false)
+		assertEqual(t, tt, "-", f)
+	}
+
+	f := fieldsToOutput["unit"](j, false)
+	assertEqual(t, "unit", "test", f)
+
+	j.Unit = *unit.NewUnit(`[Unit]
+Description=some description
+`)
+	d := fieldsToOutput["desc"](j, false)
+	assertEqual(t, "desc", "some description", d)
+
+	for _, state := range []job.JobState{job.JobStateLoaded, job.JobStateInactive, job.JobStateLaunched} {
+		j.State = &state
+		f := fieldsToOutput["state"](j, false)
+		assertEqual(t, "state", string(state), f)
+	}
+
+	j.UnitState = unit.NewUnitState("foo", "bar", "baz", nil)
+	for k, want := range map[string]string{
+		"load":    "foo",
+		"active":  "bar",
+		"sub":     "baz",
+		"machine": "-",
+	} {
+		got := fieldsToOutput[k](j, false)
+		assertEqual(t, k, want, got)
+	}
+
+	j.UnitState.MachineState = &machine.MachineState{"some-id", "1.2.3.4", nil, "", resource.ResourceTuple{}}
+	ms := fieldsToOutput["machine"](j, true)
+	assertEqual(t, "machine", "some-id/1.2.3.4", ms)
 }
