@@ -62,3 +62,18 @@ Follower units will reschedule themselves around the cluster to ensure their `X-
 The value of the `X-Conflicts` option is a [glob pattern](http://golang.org/pkg/path/#Match) defining which other units next to which a given unit must not be scheduled.
 
 If a unit is scheduled to the system without an `X-Conflicts` option, other units' conflicts still take effect and prevent the new unit from being scheduled to machines where conflicts exist.
+
+##### Dynamic requirements
+
+fleet supports several systemd specifiers to allow requirements to be dynamically determined based on a Job's name. This means that the same unit can be used for multiple Jobs and the requirements are dynamically substituted when the Job is scheduled.
+
+For example, a Job by the name `foo.service`, whose unit contains the following snippet:
+
+```
+[X-Fleet]
+X-ConditionMachineOf=%p.socket
+```
+
+would result in an effective `X-ConditionMachineOf` of `foo.socket`. Using the same unit snippet with a Job called `bar.service`, on the other hand, would result in an effective `X-ConditionMachineOf` of `bar.socket`.
+
+For more information on the available specifiers, see the [unit file configuration](Documentation/unit-files.md#systemd-specifiers) documentation.

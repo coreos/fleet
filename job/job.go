@@ -89,9 +89,11 @@ func (j *Job) IsBatch() bool {
 // Requirements returns all relevant options from the [X-Fleet] section of a unit file.
 // Relevant options are identified with a `X-` prefix in the unit.
 // This prefix is stripped from relevant options before being returned.
+// Furthermore, specifier substitution (using unitPrintf) is performed on all requirements.
 func (j *Job) Requirements() map[string][]string {
+	uni := unit.NewUnitNameInfo(j.Name)
 	requirements := make(map[string][]string)
-	for key, value := range j.Unit.Contents["X-Fleet"] {
+	for key, values := range j.Unit.Contents["X-Fleet"] {
 		if !strings.HasPrefix(key, "X-") {
 			continue
 		}
@@ -103,7 +105,13 @@ func (j *Job) Requirements() map[string][]string {
 			requirements[key] = make([]string, 0)
 		}
 
-		requirements[key] = value
+		if uni != nil {
+			for i, v := range values {
+				values[i] = unitPrintf(v, *uni)
+			}
+		}
+
+		requirements[key] = values
 	}
 
 	return requirements
@@ -209,4 +217,19 @@ func (j *Job) RequiredTargetMetadata() map[string][]string {
 	}
 
 	return metadata
+}
+
+// unitPrintf is analogous to systemd's `unit_name_printf`. It will take the
+// given string and replace the following specifiers with the values from the
+// provided UnitNameInfo:
+// 	%n: the full name of the unit               (foo@bar.waldo)
+// 	%N: the name of the unit without the suffix (foo@bar)
+// 	%p: the prefix                              (foo)
+// 	%i: the instance                            (bar)
+func unitPrintf(s string, nu unit.UnitNameInfo) (out string) {
+	out = strings.Replace(s, "%n", nu.FullName, -1)
+	out = strings.Replace(out, "%N", nu.Name, -1)
+	out = strings.Replace(out, "%p", nu.Prefix, -1)
+	out = strings.Replace(out, "%i", nu.Instance, -1)
+	return
 }
