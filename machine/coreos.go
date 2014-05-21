@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/coreos/fleet/resource"
 	"github.com/coreos/fleet/third_party/github.com/dotcloud/docker/pkg/netlink"
 	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
 )
@@ -78,7 +79,11 @@ func (m *CoreOSMachine) PeriodicRefresh(interval time.Duration, stop chan bool) 
 func currentState() MachineState {
 	id := readLocalMachineID("/")
 	publicIP := getLocalIP()
-	return MachineState{ID: id, PublicIP: publicIP, Metadata: make(map[string]string, 0)}
+	totalResources, err := readLocalResources()
+	if err != nil {
+		totalResources = resource.ResourceTuple{}
+	}
+	return MachineState{ID: id, PublicIP: publicIP, Metadata: make(map[string]string, 0), TotalResources: totalResources}
 }
 
 // IsLocalMachineState checks whether machine state matches the state of local machine

@@ -1,8 +1,12 @@
 package unit
 
-import "testing"
-import "reflect"
-import "github.com/coreos/fleet/machine"
+import (
+	"reflect"
+	"testing"
+
+	"github.com/coreos/fleet/machine"
+	"github.com/coreos/fleet/resource"
+)
 
 const (
 	// $ echo -n "foo" | sha1sum
@@ -72,7 +76,7 @@ func TestDefaultUnitType(t *testing.T) {
 }
 
 func TestNewUnitState(t *testing.T) {
-	ms := &machine.MachineState{"id", "ip", nil, "version"}
+	ms := &machine.MachineState{"id", "ip", nil, "version", resource.ResourceTuple{}}
 	want := &UnitState{
 		LoadState:    "ls",
 		ActiveState:  "as",

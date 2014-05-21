@@ -1,5 +1,7 @@
 package machine
 
+import "github.com/coreos/fleet/resource"
+
 const (
 	shortIDLen = 8
 )
@@ -7,10 +9,11 @@ const (
 // MachineState represents a point-in-time snapshot of the
 // state of the local host.
 type MachineState struct {
-	ID       string
-	PublicIP string
-	Metadata map[string]string
-	Version  string
+	ID             string
+	PublicIP       string
+	Metadata       map[string]string
+	Version        string
+	TotalResources resource.ResourceTuple
 }
 
 func (s MachineState) ShortID() string {
@@ -33,6 +36,18 @@ func stackState(top, bottom MachineState) MachineState {
 
 	if top.ID != "" {
 		state.ID = top.ID
+	}
+
+	if top.TotalResources.Cores > 0 {
+		state.TotalResources.Cores = top.TotalResources.Cores
+	}
+
+	if top.TotalResources.Memory > 0 {
+		state.TotalResources.Memory = top.TotalResources.Memory
+	}
+
+	if top.TotalResources.Disk > 0 {
+		state.TotalResources.Disk = top.TotalResources.Disk
 	}
 
 	//FIXME: This will *always* overwrite the bottom's metadata,
