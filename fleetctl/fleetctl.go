@@ -385,9 +385,25 @@ func verifyJob(j *job.Job) error {
 	return nil
 }
 
+// lazyCreateJobs iterates over a set of Job names and, for each, attempts to
+// ensure that a Job by that name exists in the Registry, by checking a number
+// of conditions and acting on the first one that succeeds, in order of:
+//  1. a Job by that name already existing in the Registry
+//  2. a unit file by that name existing on disk
+//  3. a corresponding unit template (if applicable) existing in the Registry
+//  4. a corresponding unit template (if applicable) existing on disk
+// Any error encountered during these steps is returned immediately (i.e.
+// subsequent Jobs are not acted on). An error is also returned if none of the
+// above conditions match a given Job.
+// If signAndVerify is true, the Job will be signed (if it is created), or have
+// its signature verified if it already exists in the Registry.
 func lazyCreateJobs(args []string, signAndVerify bool) error {
 	for _, arg := range args {
+		// TODO(jonboulle): this loop is getting too unwieldy; factor it out
+
 		jobName := unitNameMangle(arg)
+
+		// First, check if there already exists a Job by the given name in the Registry
 		j, err := registryCtl.GetJob(jobName)
 		if err != nil {
 			return fmt.Errorf("error retrieving Job(%s) from Registry: %v", jobName, err)
@@ -402,16 +418,55 @@ func lazyCreateJobs(args []string, signAndVerify bool) error {
 			continue
 		}
 
-		unit, err := getUnitFromFile(arg)
-		if err != nil {
-			return fmt.Errorf("failed getting Unit(%s) from file: %v", jobName, err)
+		// Failing that, assume the name references a local unit file on disk, and attempt to load that, if it exists
+		if _, err := os.Stat(arg); !os.IsNotExist(err) {
+			unit, err := getUnitFromFile(arg)
+			if err != nil {
+				return fmt.Errorf("failed getting Unit(%s) from file: %v", jobName, err)
+			}
+			j, err = createJob(jobName, unit)
+			if err != nil {
+				return err
+			}
+			if signAndVerify {
+				if err := signJob(j); err != nil {
+					return err
+				}
+			}
+			continue
 		}
 
-		j, err = createJob(jobName, unit)
+		// Otherwise (if the unit file does not exist), check if the name appears to be an instance unit,
+		// and if so, check for a corresponding template unit in the registry or on disk
+		uni := unit.NewUnitNameInfo(jobName)
+		if uni == nil {
+			return fmt.Errorf("error extracting information from unit name %s", jobName)
+		} else if !uni.IsInstance() {
+			return fmt.Errorf("unable to find Unit(%s) in Registry or on filesystem", jobName)
+		}
+		tmpl, err := registryCtl.GetJob(uni.Template)
+		if err != nil {
+			return fmt.Errorf("error retrieving template Job(%s) from Registry: %v", uni.Template, err)
+		}
+		var u *unit.Unit
+		if tmpl == nil {
+			if _, err := os.Stat(uni.Template); os.IsNotExist(err) {
+				return fmt.Errorf("unable to find template for Unit(%s) in Registry or on disk", jobName)
+			}
+			u, err = getUnitFromFile(uni.Template)
+			if err != nil {
+				return fmt.Errorf("failed getting template Unit(%s) from file: %v", uni.Template, err)
+			}
+		} else {
+			u = &tmpl.Unit
+		}
+
+		// If we found a template Unit or Job, create a near-identical Job in
+		// the Registry - same Unit as the template, but different name
+		j, err = createJob(jobName, u)
 		if err != nil {
 			return err
 		}
-
 		if signAndVerify {
 			if err := signJob(j); err != nil {
 				return err

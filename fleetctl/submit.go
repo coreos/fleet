@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"path"
 )
 
 var cmdSubmitUnit = &Command{
@@ -29,28 +28,9 @@ func init() {
 }
 
 func runSubmitUnits(args []string) (exit int) {
-	for _, arg := range args {
-		jobName := path.Base(arg)
-		unit, err := getUnitFromFile(arg)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed getting Unit(%s) from file: %v\n", jobName, err)
-			return 1
-		}
-
-		j, err := createJob(jobName, unit)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "%v\n", err)
-			return 1
-		}
-
-		if sharedFlags.Sign {
-			err := signJob(j)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "%v\n", err)
-				return 1
-			}
-		}
+	if err := lazyCreateJobs(args, sharedFlags.Sign); err != nil {
+		fmt.Fprintf(os.Stderr, "%v\n", err)
+		exit = 1
 	}
-
 	return
 }
