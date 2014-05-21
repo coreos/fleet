@@ -2,7 +2,6 @@ package registry
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 
 	etcdErr "github.com/coreos/fleet/third_party/github.com/coreos/etcd/error"
@@ -34,18 +33,16 @@ func marshal(obj interface{}) (string, error) {
 	encoded, err := json.Marshal(obj)
 	if err == nil {
 		return string(encoded), nil
-	} else {
-		return "", errors.New(fmt.Sprintf("Unable to JSON-serialize object: %s", err))
 	}
+	return "", fmt.Errorf("unable to JSON-serialize object: %s", err)
 }
 
 func unmarshal(val string, obj interface{}) error {
 	err := json.Unmarshal([]byte(val), &obj)
 	if err == nil {
 		return nil
-	} else {
-		return errors.New(fmt.Sprintf("Unable to JSON-deserialize object: %s", err))
 	}
+	return fmt.Errorf("unable to JSON-deserialize object: %s", err)
 }
 
 func isKeyNotFound(err error) bool {

@@ -136,7 +136,7 @@ ExecStart=/opt/fleet/fleet -config /opt/fleet/fleet.conf
 
 func (nc *nspawnCluster) Members() []string {
 	names := make([]string, 0)
-	for member, _ := range nc.members {
+	for member := range nc.members {
 		names = append(names, member)
 	}
 	return names
@@ -166,7 +166,7 @@ ip:
 		}
 		return ip, nil
 	}
-	return "", errors.New("Unable to find unused IP address")
+	return "", errors.New("unable to find unused IP address")
 }
 
 func (nc *nspawnCluster) CreateMember(name string, cfg MachineConfig) (err error) {
@@ -246,7 +246,7 @@ func (nc *nspawnCluster) CreateMember(name string, cfg MachineConfig) (err error
 }
 
 func (nc *nspawnCluster) Destroy() error {
-	for name, _ := range nc.members {
+	for name := range nc.members {
 		log.Printf("Destroying nspawn machine %s", name)
 		nc.DestroyMember(name)
 	}
@@ -332,13 +332,13 @@ func (nc *nspawnCluster) machinePID(name string) (int, error) {
 				time.Sleep(time.Second)
 				continue
 			}
-			return -1, fmt.Errorf("Failed detecting machine %s status: %v", mach, err)
+			return -1, fmt.Errorf("failed detecting machine %s status: %v", mach, err)
 		}
 
 		out := strings.SplitN(strings.TrimSpace(stdout), "=", 2)
 		return strconv.Atoi(out[1])
 	}
-	return -1, fmt.Errorf("Unable to detect machine PID")
+	return -1, fmt.Errorf("unable to detect machine PID")
 }
 
 func (nc *nspawnCluster) nsenter(name string, cmd string) error {

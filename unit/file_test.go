@@ -24,15 +24,15 @@ X-ConditionMachineMetadata=baz=qux
 `
 
 	expected := map[string]map[string][]string{
-		"Unit": map[string][]string{
-			"Description": []string{"Foo"},
+		"Unit": {
+			"Description": {"Foo"},
 		},
-		"Service": map[string][]string{
-			"ExecStart": []string{`echo "ping";`},
-			"ExecStop":  []string{`echo "pong"`, "echo post"},
+		"Service": {
+			"ExecStart": {`echo "ping";`},
+			"ExecStop":  {`echo "pong"`, "echo post"},
 		},
-		"Fleet": map[string][]string{
-			"X-ConditionMachineMetadata": []string{"foo=bar", "baz=qux"},
+		"Fleet": {
+			"X-ConditionMachineMetadata": {"foo=bar", "baz=qux"},
 		},
 	}
 
@@ -60,11 +60,11 @@ ExecStopPost=echo\
 pung
 `
 	expected := map[string]map[string][]string{
-		"Service": map[string][]string{
-			"ExecStart":    []string{`echo    "pi   ng"`},
-			"ExecStop":     []string{`echo "po ng"`},
-			"ExecStopPre":  []string{`echo #pang`},
-			"ExecStopPost": []string{`echo #peng pung`},
+		"Service": {
+			"ExecStart":    {`echo    "pi   ng"`},
+			"ExecStop":     {`echo "po ng"`},
+			"ExecStopPre":  {`echo #pang`},
+			"ExecStopPost": {`echo #peng pung`},
 		},
 	}
 	unitFile := NewUnit(contents)
@@ -127,22 +127,22 @@ ExecStop=echo "pong";
 
 func TestNewSystemdUnitFileFromLegacyContents(t *testing.T) {
 	legacy := map[string]map[string]string{
-		"Unit": map[string]string{
+		"Unit": {
 			"Description": "foobar",
 		},
-		"Service": map[string]string{
+		"Service": {
 			"Type":      "oneshot",
 			"ExecStart": "/usr/bin/echo bar",
 		},
 	}
 
 	expected := map[string]map[string][]string{
-		"Unit": map[string][]string{
-			"Description": []string{"foobar"},
+		"Unit": {
+			"Description": {"foobar"},
 		},
-		"Service": map[string][]string{
-			"Type":      []string{"oneshot"},
-			"ExecStart": []string{"/usr/bin/echo bar"},
+		"Service": {
+			"Type":      {"oneshot"},
+			"ExecStart": {"/usr/bin/echo bar"},
 		},
 	}
 
@@ -155,13 +155,13 @@ func TestNewSystemdUnitFileFromLegacyContents(t *testing.T) {
 
 func TestDeserializeLine(t *testing.T) {
 	deserializeLineExamples := map[string][]string{
-		`key=foo=bar`:             []string{`foo=bar`},
-		`key="foo=bar"`:           []string{`foo=bar`},
-		`key="foo=bar" "baz=qux"`: []string{`foo=bar`, `baz=qux`},
-		`key="foo=bar baz"`:       []string{`foo=bar baz`},
-		`key="foo=bar" baz`:       []string{`"foo=bar" baz`},
-		`key=baz "foo=bar"`:       []string{`baz "foo=bar"`},
-		`key="foo=bar baz=qux"`:   []string{`foo=bar baz=qux`},
+		`key=foo=bar`:             {`foo=bar`},
+		`key="foo=bar"`:           {`foo=bar`},
+		`key="foo=bar" "baz=qux"`: {`foo=bar`, `baz=qux`},
+		`key="foo=bar baz"`:       {`foo=bar baz`},
+		`key="foo=bar" baz`:       {`"foo=bar" baz`},
+		`key=baz "foo=bar"`:       {`baz "foo=bar"`},
+		`key="foo=bar baz=qux"`:   {`foo=bar baz=qux`},
 	}
 
 	for q, w := range deserializeLineExamples {

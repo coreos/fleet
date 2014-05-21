@@ -169,7 +169,7 @@ func getConfig(flagset *flag.FlagSet, userCfgFile string) (*config.Config, error
 func listenForSignals(sigmap map[os.Signal]func()) {
 	sigchan := make(chan os.Signal, 1)
 
-	for k, _ := range sigmap {
+	for k := range sigmap {
 		signal.Notify(sigchan, k)
 	}
 

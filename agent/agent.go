@@ -392,7 +392,7 @@ func (a *Agent) bidForPossibleJobs() {
 	offers := a.state.GetOffersWithoutBids()
 
 	log.V(1).Infof("Checking %d unbade offers", len(offers))
-	for i, _ := range offers {
+	for i := range offers {
 		offer := offers[i]
 		log.V(1).Infof("Checking ability to run Job(%s)", offer.Job.Name)
 		if a.ableToRun(&offer.Job) {

@@ -257,7 +257,7 @@ func timeoutSSHDial(dial func(chan error)) error {
 
 	select {
 	case <-time.After(time.Duration(time.Second * 10)):
-		return errors.New("Timed out while initiating SSH connection")
+		return errors.New("timed out while initiating SSH connection")
 	case err = <-echan:
 		return err
 	}
