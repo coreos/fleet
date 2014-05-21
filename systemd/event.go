@@ -20,26 +20,25 @@ func NewEventStream(mgr *SystemdUnitManager) *EventStream {
 func (es *EventStream) Stream(eventchan chan *event.Event, stop chan bool) {
 
 	es.mgr.systemd.Subscribe()
+	defer es.mgr.systemd.Unsubscribe()
 	changechan, errchan := es.mgr.subscriptions.Subscribe()
 
-	for true {
+	for {
 		select {
 		case <-stop:
-			break
+			return
 		case err := <-errchan:
 			log.Errorf("Received error from dbus: err=%v", err)
 		case changes := <-changechan:
 			log.V(1).Infof("Received event from dbus")
 			events := translateUnitStatusEvents(changes)
-			for i, _ := range events {
+			for i := range events {
 				ev := events[i]
 				log.V(1).Infof("Translated dbus event to event(Type=%s)", ev.Type)
 				eventchan <- &ev
 			}
 		}
 	}
-
-	es.mgr.systemd.Unsubscribe()
 }
 
 func translateUnitStatusEvents(changes map[string]*dbus.UnitStatus) []event.Event {

@@ -2,6 +2,7 @@ package registry
 
 import (
 	"path"
+
 	"github.com/coreos/fleet/unit"
 )
 
