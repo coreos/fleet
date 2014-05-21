@@ -14,7 +14,7 @@ type JobOffer struct {
 
 func NewOfferFromJob(j Job, machineIDs []string) *JobOffer {
 	return &JobOffer{
-		Job:            j,
+		Job:        j,
 		MachineIDs: machineIDs,
 	}
 }
@@ -31,7 +31,7 @@ func (jo *JobOffer) OfferedTo(machineID string) bool {
 }
 
 type JobBid struct {
-	JobName string
+	JobName   string
 	MachineID string
 }
 

@@ -25,7 +25,7 @@ func TestUnitHash(t *testing.T) {
 }
 
 func TestRecognizedUnitTypes(t *testing.T) {
-	tts := []struct{
+	tts := []struct {
 		name string
 		ok   bool
 	}{
@@ -54,7 +54,7 @@ func TestRecognizedUnitTypes(t *testing.T) {
 }
 
 func TestDefaultUnitType(t *testing.T) {
-	tts := []struct{
+	tts := []struct {
 		name string
 		out  string
 	}{
