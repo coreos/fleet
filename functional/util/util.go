@@ -75,7 +75,7 @@ loop:
 	for {
 		select {
 		case <-alarm:
-			return machines, fmt.Errorf("Failed to find %d machines within %v", count, timeout)
+			return machines, fmt.Errorf("failed to find %d machines within %v", count, timeout)
 		case <-ticker:
 			stdout, _, err := fleetctl("list-machines", "--no-legend", "--full")
 			stdout = strings.TrimSpace(stdout)
@@ -119,7 +119,7 @@ loop:
 	for {
 		select {
 		case <-alarm:
-			return nil, fmt.Errorf("Failed to find %d active units within %v (last found: %d)", count, timeout, nactive)
+			return nil, fmt.Errorf("failed to find %d active units within %v (last found: %d)", count, timeout, nactive)
 		case <-ticker:
 			stdout, _, err := fleetctl("list-units", "--no-legend", "--full")
 			stdout = strings.TrimSpace(stdout)

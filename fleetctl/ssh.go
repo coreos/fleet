@@ -117,7 +117,7 @@ func runSSH(args []string) (exit int) {
 
 func globalMachineLookup(args []string) (string, error) {
 	if len(args) == 0 {
-		return "", errors.New("Provide one machine or unit.")
+		return "", errors.New("one machine or unit must be provided")
 	}
 
 	lookup := args[0]
@@ -127,7 +127,7 @@ func globalMachineLookup(args []string) (string, error) {
 
 	switch {
 	case machineOk && unitOk:
-		return "", fmt.Errorf("Ambiguous argument, both machine and unit found for `%s`.\nPlease use flag `-m` or `-u` to refine the search.", lookup)
+		return "", fmt.Errorf("ambiguous argument, both machine and unit found for `%s`.\nPlease use flag `-m` or `-u` to refine the search", lookup)
 	case machineOk:
 		return machineAddr, nil
 	case unitOk:
@@ -146,7 +146,7 @@ func findAddressInMachineList(lookup string) (string, bool) {
 
 	var match *machine.MachineState
 
-	for i, _ := range states {
+	for i := range states {
 		machState := states[i]
 		if !strings.HasPrefix(machState.ID, lookup) {
 			continue

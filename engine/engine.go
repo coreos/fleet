@@ -69,7 +69,7 @@ func (e *Engine) OfferJob(j job.Job) error {
 	mutex := e.registry.LockJob(j.Name, e.machine.State().ID)
 	if mutex == nil {
 		log.V(1).Infof("Could not lock Job(%s)", j.Name)
-		return errors.New("Could not lock Job")
+		return errors.New("could not lock Job")
 	}
 	defer mutex.Unlock()
 
@@ -77,7 +77,7 @@ func (e *Engine) OfferJob(j job.Job) error {
 
 	machineIDs, err := e.partitionCluster(&j)
 	if err != nil {
-		log.Errorf("Failed partitioning cluster for Job(%s): %v", j.Name, err)
+		log.Errorf("failed partitioning cluster for Job(%s): %v", j.Name, err)
 		return err
 	}
 
@@ -97,7 +97,7 @@ func (e *Engine) ResolveJobOffer(jobName string, machID string) error {
 
 	if mutex == nil {
 		log.V(1).Infof("Could not lock JobOffer(%s)", jobName)
-		return errors.New("Could not lock JobOffer")
+		return errors.New("could not lock JobOffer")
 	}
 	defer mutex.Unlock()
 

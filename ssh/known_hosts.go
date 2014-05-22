@@ -104,11 +104,10 @@ func (kc *HostKeyChecker) Check(addr string, remote net.Addr, key gossh.PublicKe
 			// Any matching key is considered a success, irrespective of previous failures
 			if hostKey.Type() == key.Type() && bytes.Compare(hostKey.Marshal(), key.Marshal()) == 0 {
 				return nil
-			} else {
-				// TODO(jonboulle): could be super friendly like the OpenSSH client
-				// and note exactly which key failed (file + line number)
-				mismatched = true
 			}
+			// TODO(jonboulle): could be super friendly like the OpenSSH client
+			// and note exactly which key failed (file + line number)
+			mismatched = true
 		}
 	}
 
@@ -257,7 +256,7 @@ func parseKnownHostsLine(line []byte) (string, gossh.PublicKey, error) {
 	// Finally, actually try to extract the key.
 	key, _, _, _, err := gossh.ParseAuthorizedKey(keyBytes)
 	if err != nil {
-		return "", nil, errors.New(fmt.Sprintf("error parsing key: %v", err))
+		return "", nil, fmt.Errorf("error parsing key: %v", err)
 	}
 
 	return hosts, key, nil

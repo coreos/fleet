@@ -127,9 +127,8 @@ func (as *AgentState) GetJobsByPeer(peerName string) []string {
 	peers, ok := as.peers[peerName]
 	if ok {
 		return peers
-	} else {
-		return make([]string, 0)
 	}
+	return make([]string, 0)
 }
 
 // Remove all references to a given Job from all Peer indexes

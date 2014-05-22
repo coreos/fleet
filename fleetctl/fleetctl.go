@@ -42,7 +42,7 @@ recommended to upgrade fleetctl to prevent incompatibility issues.
 
 var (
 	out           *tabwriter.Writer
-	globalFlagset *flag.FlagSet = flag.NewFlagSet("fleetctl", flag.ExitOnError)
+	globalFlagset = flag.NewFlagSet("fleetctl", flag.ExitOnError)
 
 	// set of top-level commands
 	commands []*Command
@@ -137,7 +137,7 @@ func checkVersion() (string, bool) {
 	fv := version.SemVersion
 	lv, err := registryCtl.GetLatestVersion()
 	if err != nil {
-		log.Errorf("Error attempting to check latest fleet version in Registry: %v", err)
+		log.Errorf("error attempting to check latest fleet version in Registry: %v", err)
 	} else if lv != nil && fv.LessThan(*lv) {
 		return fmt.Sprintf(oldVersionWarning, fv.String(), lv.String()), false
 	}
@@ -316,9 +316,9 @@ func findJobs(args []string) (jobs []job.Job, err error) {
 		name := unitNameMangle(v)
 		j, err := registryCtl.GetJob(name)
 		if err != nil {
-			return nil, fmt.Errorf("Error retrieving Job(%s) from Registry: %v", name, err)
+			return nil, fmt.Errorf("error retrieving Job(%s) from Registry: %v", name, err)
 		} else if j == nil {
-			return nil, fmt.Errorf("Could not find Job(%s)", name)
+			return nil, fmt.Errorf("could not find Job(%s)", name)
 		}
 
 		jobs[i] = *j
@@ -331,7 +331,7 @@ func createJob(jobName string, unit *unit.Unit) (*job.Job, error) {
 	j := job.NewJob(jobName, *unit)
 
 	if err := registryCtl.CreateJob(j); err != nil {
-		return nil, fmt.Errorf("Failed creating job %s: %v", j.Name, err)
+		return nil, fmt.Errorf("failed creating job %s: %v", j.Name, err)
 	}
 
 	log.V(1).Infof("Created Job(%s) in Registry", j.Name)
@@ -344,17 +344,17 @@ func createJob(jobName string, unit *unit.Unit) (*job.Job, error) {
 func signJob(j *job.Job) error {
 	sc, err := sign.NewSignatureCreatorFromSSHAgent()
 	if err != nil {
-		return fmt.Errorf("Failed creating SignatureCreator: %v", err)
+		return fmt.Errorf("failed creating SignatureCreator: %v", err)
 	}
 
 	ss, err := sc.SignJob(j)
 	if err != nil {
-		return fmt.Errorf("Failed signing Job(%s): %v", j.Name, err)
+		return fmt.Errorf("failed signing Job(%s): %v", j.Name, err)
 	}
 
 	err = registryCtl.CreateSignatureSet(ss)
 	if err != nil {
-		return fmt.Errorf("Failed storing Job signature in registry: %v", err)
+		return fmt.Errorf("failed storing Job signature in registry: %v", err)
 	}
 
 	log.V(1).Infof("Signed Job(%s)", j.Name)
@@ -366,18 +366,18 @@ func signJob(j *job.Job) error {
 func verifyJob(j *job.Job) error {
 	sv, err := sign.NewSignatureVerifierFromSSHAgent()
 	if err != nil {
-		return fmt.Errorf("Failed creating SignatureVerifier: %v", err)
+		return fmt.Errorf("failed creating SignatureVerifier: %v", err)
 	}
 
 	ss, err := registryCtl.GetSignatureSetOfJob(j.Name)
 	if err != nil {
-		return fmt.Errorf("Failed attempting to retrieve SignatureSet of Job(%s): %v", j.Name, err)
+		return fmt.Errorf("failed attempting to retrieve SignatureSet of Job(%s): %v", j.Name, err)
 	}
 	verified, err := sv.VerifyJob(j, ss)
 	if err != nil {
-		return fmt.Errorf("Failed attempting to verify Job(%s): %v", j.Name, err)
+		return fmt.Errorf("failed attempting to verify Job(%s): %v", j.Name, err)
 	} else if !verified {
-		return fmt.Errorf("Unable to verify Job(%s)", j.Name)
+		return fmt.Errorf("unable to verify Job(%s)", j.Name)
 	}
 
 	log.V(1).Infof("Verified signature of Job(%s)", j.Name)
@@ -404,7 +404,7 @@ func lazyCreateJobs(args []string, signAndVerify bool) error {
 
 		unit, err := getUnitFromFile(arg)
 		if err != nil {
-			return fmt.Errorf("Failed getting Unit(%s) from file: %v", jobName, err)
+			return fmt.Errorf("failed getting Unit(%s) from file: %v", jobName, err)
 		}
 
 		j, err = createJob(jobName, unit)
@@ -427,9 +427,9 @@ func lazyLoadJobs(args []string) ([]string, error) {
 		name := unitNameMangle(v)
 		j, err := registryCtl.GetJob(name)
 		if err != nil {
-			return nil, fmt.Errorf("Error retrieving Job(%s) from Registry: %v", name, err)
+			return nil, fmt.Errorf("error retrieving Job(%s) from Registry: %v", name, err)
 		} else if j == nil || j.State == nil {
-			return nil, fmt.Errorf("Unable to determine state of job %s", name)
+			return nil, fmt.Errorf("unable to determine state of job %s", name)
 		} else if *(j.State) == job.JobStateLoaded || *(j.State) == job.JobStateLaunched {
 			log.V(1).Infof("Job(%s) already %s, skipping.", j.Name, *(j.State))
 			continue
@@ -449,11 +449,11 @@ func lazyStartJobs(args []string) ([]string, error) {
 		name := unitNameMangle(v)
 		j, err := registryCtl.GetJob(name)
 		if err != nil {
-			return nil, fmt.Errorf("Error retrieving Job(%s) from Registry: %v", name, err)
+			return nil, fmt.Errorf("error retrieving Job(%s) from Registry: %v", name, err)
 		} else if j == nil {
-			return nil, fmt.Errorf("Unable to find Job(%s)", name)
+			return nil, fmt.Errorf("unable to find Job(%s)", name)
 		} else if j.State == nil {
-			return nil, fmt.Errorf("Unable to determine current state of Job")
+			return nil, fmt.Errorf("unable to determine current state of Job")
 		} else if *(j.State) == job.JobStateLaunched {
 			log.V(1).Infof("Job(%s) already %s, skipping.", j.Name, *(j.State))
 			continue
@@ -509,7 +509,7 @@ func checkJobState(jobName string, js job.JobState, maxAttempts int, out io.Writ
 			}
 			time.Sleep(sleep)
 		}
-		errchan <- fmt.Errorf("Timed out waiting for job %s to report state %s", jobName, js)
+		errchan <- fmt.Errorf("timed out waiting for job %s to report state %s", jobName, js)
 	}
 }
 

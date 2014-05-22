@@ -2,7 +2,6 @@ package systemd
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -93,12 +92,11 @@ func (m *SystemdUnitManager) getUnitStates(name string) (string, string, string,
 
 	if err != nil {
 		return "", "", "", err
-	} else {
-		loadState := info["LoadState"].(string)
-		activeState := info["ActiveState"].(string)
-		subState := info["SubState"].(string)
-		return loadState, activeState, subState, nil
 	}
+	loadState := info["LoadState"].(string)
+	activeState := info["ActiveState"].(string)
+	subState := info["SubState"].(string)
+	return loadState, activeState, subState, nil
 }
 
 func (m *SystemdUnitManager) startUnit(name string) {
@@ -122,9 +120,8 @@ func (m *SystemdUnitManager) readUnit(name string) (string, error) {
 	contents, err := ioutil.ReadFile(path)
 	if err == nil {
 		return string(contents), nil
-	} else {
-		return "", errors.New(fmt.Sprintf("No unit file at local path %s", path))
 	}
+	return "", fmt.Errorf("no unit file at local path %s", path)
 }
 
 func (m *SystemdUnitManager) unitRequiresDaemonReload(name string) bool {

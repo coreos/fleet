@@ -2,7 +2,6 @@ package registry
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"path"
 
@@ -50,10 +49,10 @@ func (r *EtcdRegistry) getUnitFromLegacyPayload(name string) (*unit.Unit, error)
 
 	var ljp LegacyJobPayload
 	if err := unmarshal(resp.Node.Value, &ljp); err != nil {
-		return nil, errors.New(fmt.Sprintf("Error unmarshaling LegacyJobPayload(%s): %v", name, err))
+		return nil, fmt.Errorf("error unmarshaling LegacyJobPayload(%s): %v", name, err)
 	}
 	if ljp.Name != name {
-		return nil, errors.New(fmt.Sprintf("Payload name in Registry (%s) does not match expected name (%s)", ljp.Name, name))
+		return nil, fmt.Errorf("payload name in Registry (%s) does not match expected name (%s)", ljp.Name, name)
 	}
 	// After the unmarshaling, the LegacyPayload should contain a fully hydrated Unit
 	return &ljp.Unit, nil
@@ -71,7 +70,7 @@ func (r *EtcdRegistry) getUnitByHash(hash unit.Hash) *unit.Unit {
 	}
 	var u unit.Unit
 	if err := unmarshal(resp.Node.Value, &u); err != nil {
-		log.Errorf("Error unmarshaling Unit(%s): %v", hash, err)
+		log.Errorf("error unmarshaling Unit(%s): %v", hash, err)
 		return nil
 	}
 	return &u
@@ -92,7 +91,7 @@ func (ljp *LegacyJobPayload) UnmarshalJSON(data []byte) error {
 	var ljpm legacyJobPayloadModel
 	err := json.Unmarshal(data, &ljpm)
 	if err != nil {
-		return errors.New(fmt.Sprintf("Unable to JSON-deserialize object: %s", err))
+		return fmt.Errorf("unable to JSON-deserialize object: %s", err)
 	}
 
 	if len(ljpm.Unit.Raw) > 0 {

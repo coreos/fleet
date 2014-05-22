@@ -99,9 +99,8 @@ func (j *Job) Conflicts() []string {
 	conflicts, ok := j.Requirements()[fleetXConflicts]
 	if ok {
 		return conflicts
-	} else {
-		return make([]string, 0)
 	}
+	return make([]string, 0)
 }
 
 // Peers returns a list of Job names that must be scheduled to the same

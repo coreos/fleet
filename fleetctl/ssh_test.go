@@ -12,9 +12,9 @@ import (
 
 func newTestRegistryForSsh() registry.Registry {
 	machines := []machine.MachineState{
-		machine.MachineState{"c31e44e1-f858-436e-933e-59c642517860", "1.2.3.4", map[string]string{"ping": "pong"}, "", resource.ResourceTuple{}},
-		machine.MachineState{"595989bb-cbb7-49ce-8726-722d6e157b4e", "5.6.7.8", map[string]string{"foo": "bar"}, "", resource.ResourceTuple{}},
-		machine.MachineState{"hello.service", "8.7.6.5", map[string]string{"foo": "bar"}, "", resource.ResourceTuple{}},
+		{"c31e44e1-f858-436e-933e-59c642517860", "1.2.3.4", map[string]string{"ping": "pong"}, "", resource.ResourceTuple{}},
+		{"595989bb-cbb7-49ce-8726-722d6e157b4e", "5.6.7.8", map[string]string{"foo": "bar"}, "", resource.ResourceTuple{}},
+		{"hello.service", "8.7.6.5", map[string]string{"foo": "bar"}, "", resource.ResourceTuple{}},
 	}
 
 	jobs := []job.Job{

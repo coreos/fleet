@@ -47,7 +47,7 @@ type TimedResourceMutex struct {
 func (t *TimedResourceMutex) Unlock() error {
 	_, err := t.etcd.CompareAndDelete(t.node.Key, "", t.node.CreatedIndex)
 	if err != nil {
-		err = fmt.Errorf("Received error while unlocking mutex: %v", err)
+		err = fmt.Errorf("received error while unlocking mutex: %v", err)
 		log.Error(err)
 		return err
 	}

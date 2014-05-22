@@ -169,7 +169,6 @@ func marshal(obj interface{}) ([]byte, error) {
 	encoded, err := json.Marshal(obj)
 	if err == nil {
 		return encoded, nil
-	} else {
-		return nil, errors.New(fmt.Sprintf("Unable to JSON-serialize object: %s", err))
 	}
+	return nil, fmt.Errorf("unable to JSON-serialize object: %s", err)
 }

@@ -11,7 +11,7 @@ func TestHasMetadataSimpleMatch(t *testing.T) {
 	ms := &MachineState{Metadata: metadata}
 
 	match := map[string][]string{
-		"region": []string{"us-east-1"},
+		"region": {"us-east-1"},
 	}
 	if !HasMetadata(ms, match) {
 		t.Errorf("Machine reported it did not have expected state")
@@ -25,7 +25,7 @@ func TestHasMetadataMultiMatch(t *testing.T) {
 	ms := &MachineState{Metadata: metadata}
 
 	match := map[string][]string{
-		"groups": []string{"ping", "pong"},
+		"groups": {"ping", "pong"},
 	}
 	if !HasMetadata(ms, match) {
 		t.Errorf("Machine reported it did not have expected state")
@@ -39,7 +39,7 @@ func TestHasMetadataSingleMatchFail(t *testing.T) {
 	ms := &MachineState{Metadata: metadata}
 
 	match := map[string][]string{
-		"groups": []string{"pong"},
+		"groups": {"pong"},
 	}
 	if HasMetadata(ms, match) {
 		t.Errorf("Machine reported a successful match for metadata which it does not have")
@@ -54,8 +54,8 @@ func TestHasMetadataPartialMatchFail(t *testing.T) {
 	ms := &MachineState{Metadata: metadata}
 
 	match := map[string][]string{
-		"region": []string{"us-east-1"},
-		"groups": []string{"pong"},
+		"region": {"us-east-1"},
+		"groups": {"pong"},
 	}
 	if HasMetadata(ms, match) {
 		t.Errorf("Machine reported a successful match for metadata which it does not have")
