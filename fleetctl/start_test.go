@@ -43,5 +43,5 @@ func setupRegistryForStart(echoAttempts int) {
 	machines := []machine.MachineState{m1, m2, m3}
 
 	tr := registry.NewTestRegistry(machines, states, nil, nil, nil)
-	registryCtl = BlockedTestRegistry{echoAttempts, *tr}
+	registryCtl = &BlockedTestRegistry{echoAttempts, *tr}
 }

@@ -26,15 +26,15 @@ type TestRegistry struct {
 	version   *semver.Version
 }
 
-func (t TestRegistry) GetActiveMachines() ([]machine.MachineState, error) {
+func (t *TestRegistry) GetActiveMachines() ([]machine.MachineState, error) {
 	return t.machines, nil
 }
 
-func (t TestRegistry) GetAllJobs() ([]job.Job, error) {
+func (t *TestRegistry) GetAllJobs() ([]job.Job, error) {
 	return t.jobs, nil
 }
 
-func (t TestRegistry) GetJob(name string) (*job.Job, error) {
+func (t *TestRegistry) GetJob(name string) (*job.Job, error) {
 	for _, j := range t.jobs {
 		if j.Name == name {
 			j.UnitState = t.jobStates[name]
@@ -44,7 +44,7 @@ func (t TestRegistry) GetJob(name string) (*job.Job, error) {
 	return nil, nil
 }
 
-func (t TestRegistry) GetJobTarget(name string) (string, error) {
+func (t *TestRegistry) GetJobTarget(name string) (string, error) {
 	js := t.jobStates[name]
 	if js != nil {
 		return js.MachineState.ID, nil
@@ -52,7 +52,7 @@ func (t TestRegistry) GetJobTarget(name string) (string, error) {
 	return "", nil
 }
 
-func (t TestRegistry) GetMachineState(machID string) (*machine.MachineState, error) {
+func (t *TestRegistry) GetMachineState(machID string) (*machine.MachineState, error) {
 	for _, ms := range t.machines {
 		if ms.ID == machID {
 			return &ms, nil
@@ -61,6 +61,6 @@ func (t TestRegistry) GetMachineState(machID string) (*machine.MachineState, err
 	return nil, nil
 }
 
-func (t TestRegistry) GetLatestVersion() (*semver.Version, error) {
+func (t *TestRegistry) GetLatestVersion() (*semver.Version, error) {
 	return t.version, nil
 }
