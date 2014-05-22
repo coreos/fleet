@@ -3,7 +3,10 @@ package main
 import (
 	"fmt"
 	"os"
+	"sort"
 	"strings"
+
+	"github.com/coreos/fleet/machine"
 )
 
 var cmdListMachines = &Command{
@@ -32,25 +35,27 @@ func runListMachines(args []string) (exit int) {
 		fmt.Fprintln(out, "MACHINE\tIP\tMETADATA")
 	}
 
-	machines, err := registryCtl.GetActiveMachines()
+	machines, sortable, err := findAllMachines()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error retrieving list of active machines: %v\n", err)
 		return 1
 	}
-	for _, m := range machines {
-		mach := machineIDLegend(m, sharedFlags.Full)
+	for _, m := range sortable {
+		mach := machines[m]
 
-		ip := m.PublicIP
+		ml := machineIDLegend(mach, sharedFlags.Full)
+
+		ip := mach.PublicIP
 		if len(ip) == 0 {
 			ip = "-"
 		}
 
 		metadata := "-"
-		if len(m.Metadata) != 0 {
-			metadata = formatMetadata(m.Metadata)
+		if len(mach.Metadata) != 0 {
+			metadata = formatMetadata(mach.Metadata)
 		}
 
-		fmt.Fprintf(out, "%s\t%s\t%s\n", mach, ip, metadata)
+		fmt.Fprintf(out, "%s\t%s\t%s\n", ml, ip, metadata)
 	}
 
 	out.Flush()
@@ -65,4 +70,24 @@ func formatMetadata(metadata map[string]string) string {
 		idx++
 	}
 	return strings.Join(pairs, ", ")
+}
+
+// findAllMachines returns a map describing all the machines in the Registry, and a
+// sort.StringSlice indicating their sorted order (based on their respective
+// machine IDs). It returns any error encountered in communicating with the Registry.
+func findAllMachines() (machines map[string]machine.MachineState, sortable sort.StringSlice, err error) {
+	machines = make(map[string]machine.MachineState, 0)
+	mm, err := registryCtl.GetActiveMachines()
+	if err != nil {
+		return
+	}
+
+	for _, m := range mm {
+		machines[m.ID] = m
+		sortable = append(sortable, m.ID)
+	}
+
+	sortable.Sort()
+
+	return
 }
