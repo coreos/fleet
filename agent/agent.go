@@ -296,7 +296,7 @@ func (a *Agent) startJobUnlocked(jobName string) {
 	machID := a.Machine.State().ID
 	a.registry.JobHeartbeat(jobName, machID, a.ttl)
 
-	a.um.Start(jobName)
+	go a.um.Start(jobName)
 }
 
 // StopJob stops the indicated Job after first acquiring the state mutex
@@ -311,32 +311,36 @@ func (a *Agent) StopJob(jobName string) {
 func (a *Agent) stopJobUnlocked(jobName string) {
 	a.state.SetTargetState(jobName, job.JobStateLoaded)
 	a.registry.ClearJobHeartbeat(jobName)
-	a.um.Stop(jobName)
 
-	// We must explicitly refresh the payload state, as the dbus
-	// event listener sends a nil event when a unit deactivates.
-	us, err := a.um.GetUnitState(jobName)
-	if err != nil {
-		log.Errorf("Failed fetching state of Unit(%s): %v", jobName, err)
-		return
-	}
-	a.ReportUnitState(jobName, us)
+	go func() {
+		a.um.Stop(jobName)
+
+		// We must explicitly refresh the payload state, as the dbus
+		// event listener sends a nil event when a unit deactivates.
+		us, err := a.um.GetUnitState(jobName)
+		if err != nil {
+			log.Errorf("Failed fetching state of Unit(%s): %v", jobName, err)
+			return
+		}
+		a.ReportUnitState(jobName, us)
+	}()
 }
 
 // unloadJob stops and expunges the indicated Job without acquiring the
 // state mutex. The caller is responsible for acquiring it.
 func (a *Agent) unloadJob(jobName string) {
-	a.stopJobUnlocked(jobName)
+	go func() {
+		a.um.Stop(jobName)
+		a.um.Unload(jobName)
+	}()
 
+	a.registry.ClearJobHeartbeat(jobName)
+	a.registry.RemoveUnitState(jobName)
+
+	// Grab the peers of the Job before we destroy the state
 	reversePeers := a.state.GetJobsByPeer(jobName)
 
 	a.state.PurgeJob(jobName)
-	a.um.Unload(jobName)
-
-	// The dbus event generator will not trigger an event telling
-	// us that the unit has been unloaded, so we must explicitly
-	// clear what is in the Registry.
-	a.ReportUnitState(jobName, nil)
 
 	// Trigger rescheduling of all the peers of the job that was just unloaded
 	machID := a.Machine.State().ID
