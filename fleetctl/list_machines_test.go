@@ -13,7 +13,11 @@ func newTestRegistryForListMachines() registry.Registry {
 		machine.MachineState{ID: "abcdef"},
 		machine.MachineState{ID: "ghijkl"},
 	}
-	return TestRegistry{machines: m}
+
+	reg := registry.NewFakeRegistry()
+	reg.SetMachines(m)
+
+	return reg
 }
 
 func TestGetAllMachines(t *testing.T) {
