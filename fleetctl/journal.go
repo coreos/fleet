@@ -43,7 +43,7 @@ func runJournal(args []string) (exit int) {
 	}
 	if j == nil {
 		fmt.Fprintf(os.Stderr, "Job %s does not exist.\n", jobName)
-		os.Exit(1)
+		return 1
 	} else if j.UnitState == nil {
 		fmt.Fprintf(os.Stderr, "Job %s does not appear to be running.\n", jobName)
 		return 1
