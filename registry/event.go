@@ -26,7 +26,7 @@ func NewEventStream(client *etcd.Client, registry Registry) (*EventStream, error
 	return &EventStream{client, reg}, nil
 }
 
-func (es *EventStream) Stream(idx uint64, eventchan chan *event.Event, stop chan bool) {
+func (es *EventStream) Stream(idx uint64, sendFunc func(*event.Event), stop chan bool) {
 	filters := []func(*etcd.Response) *event.Event{
 		filterEventJobDestroyed,
 		filterEventJobScheduled,
@@ -40,10 +40,10 @@ func (es *EventStream) Stream(idx uint64, eventchan chan *event.Event, stop chan
 
 	etcdchan := make(chan *etcd.Response)
 	go watch(es.etcd, idx, etcdchan, es.registry.keyPrefix, stop)
-	go pipe(etcdchan, filters, eventchan, stop)
+	go pipe(etcdchan, filters, sendFunc, stop)
 }
 
-func pipe(etcdchan chan *etcd.Response, filters []func(resp *etcd.Response) *event.Event, eventchan chan *event.Event, stop chan bool) {
+func pipe(etcdchan chan *etcd.Response, filters []func(resp *etcd.Response) *event.Event, sendFunc func(*event.Event), stop chan bool) {
 	for true {
 		select {
 		case <-stop:
@@ -57,7 +57,7 @@ func pipe(etcdchan chan *etcd.Response, filters []func(resp *etcd.Response) *eve
 				}
 
 				log.V(1).Infof("Translated response(ModifiedIndex=%d) to event(Type=%s)", resp.Node.ModifiedIndex, ev.Type)
-				eventchan <- ev
+				sendFunc(ev)
 			}
 		}
 	}

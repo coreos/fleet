@@ -5,15 +5,16 @@ import (
 
 	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/resource"
+	"github.com/coreos/fleet/registry"
 	"github.com/coreos/fleet/unit"
 )
 
-type BlockedTestRegistry struct {
+type BlockedFakeRegistry struct {
 	EchoAttempts int
-	TestRegistry
+	registry.FakeRegistry
 }
 
-func (b BlockedTestRegistry) GetJobTarget(name string) (string, error) {
+func (b BlockedFakeRegistry) GetJobTarget(name string) (string, error) {
 	if name == "hello.service" {
 		time.Sleep(500 * time.Millisecond)
 	}
@@ -25,7 +26,7 @@ func (b BlockedTestRegistry) GetJobTarget(name string) (string, error) {
 		}
 	}
 
-	return b.TestRegistry.GetJobTarget(name)
+	return b.FakeRegistry.GetJobTarget(name)
 }
 
 func setupRegistryForStart(echoAttempts int) {
@@ -41,5 +42,9 @@ func setupRegistryForStart(echoAttempts int) {
 	states := map[string]*unit.UnitState{"pong.service": js, "hello.service": js2, "echo.service": js3, "private.service": js4}
 	machines := []machine.MachineState{m1, m2, m3}
 
-	registryCtl = BlockedTestRegistry{echoAttempts, TestRegistry{jobStates: states, machines: machines}}
+	tr := registry.NewFakeRegistry()
+	tr.SetMachines(machines)
+	tr.SetUnitStates(states)
+
+	registryCtl = &BlockedFakeRegistry{echoAttempts, *tr}
 }

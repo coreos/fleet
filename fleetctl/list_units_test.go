@@ -10,7 +10,7 @@ import (
 	"github.com/coreos/fleet/unit"
 )
 
-func newTestRegistryForListUnits(jobs []job.Job) registry.Registry {
+func newFakeRegistryForListUnits(jobs []job.Job) registry.Registry {
 	j := []job.Job{*job.NewJob("pong.service", *unit.NewUnit("Echo"))}
 
 	if jobs != nil {
@@ -19,11 +19,14 @@ func newTestRegistryForListUnits(jobs []job.Job) registry.Registry {
 		}
 	}
 
-	return TestRegistry{jobs: j}
+	freg := registry.NewFakeRegistry()
+	freg.SetJobs(j)
+
+	return freg
 }
 
 func TestGetAllJobs(t *testing.T) {
-	registryCtl = newTestRegistryForListUnits(nil)
+	registryCtl = newFakeRegistryForListUnits(nil)
 
 	jobs, sortable, err := findAllUnits()
 	if err != nil {
@@ -43,7 +46,7 @@ func TestJobDescription(t *testing.T) {
 Description=PING
 `
 	j := []job.Job{*job.NewJob("ping.service", *unit.NewUnit(contents))}
-	registryCtl = newTestRegistryForListUnits(j)
+	registryCtl = newFakeRegistryForListUnits(j)
 
 	jobs, _, _ := findAllUnits()
 	if len(jobs) != 2 {
