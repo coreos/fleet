@@ -50,10 +50,11 @@ func runListUnits(args []string) (exit int) {
 	return
 }
 
+// findAllUnits returns a map describing all the Jobs in the Registry, and a
+// sort.StringSlice containing their names in sorted order.
+// It returns any error encountered in communicating with the Registry.
 func findAllUnits() (jobs map[string]job.Job, sortable sort.StringSlice, err error) {
 	jobs = make(map[string]job.Job, 0)
-	sortable = make(sort.StringSlice, 0)
-
 	jj, err := registryCtl.GetAllJobs()
 	if err != nil {
 		return
