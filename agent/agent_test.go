@@ -9,22 +9,6 @@ import (
 	"github.com/coreos/fleet/unit"
 )
 
-type fakeMachine struct {
-	ms machine.MachineState
-}
-
-func (fm *fakeMachine) State() machine.MachineState {
-	return fm.ms
-}
-
-func newFakeMachine(region string) machine.Machine {
-	metadata := map[string]string{
-		"region": region,
-	}
-	state := machine.MachineState{Metadata: metadata}
-	return &fakeMachine{state}
-}
-
 func newTestJobWithMachineMetadata(metadata string) *job.Job {
 	contents := fmt.Sprintf(`
 [X-Fleet]
@@ -40,7 +24,7 @@ X-ConditionMachineID=XYZ
 `)
 	job := job.NewJob("example.service", *u)
 
-	mach := &fakeMachine{machine.MachineState{ID: "XYZ"}}
+	mach := &machine.FakeMachine{machine.MachineState{ID: "XYZ"}}
 	agent := Agent{Machine: mach, state: NewState()}
 	if !agent.ableToRun(job) {
 		t.Fatalf("Agent should be able to run job")
@@ -53,7 +37,7 @@ X-ConditionMachineID=XYZ
 `)
 	job := job.NewJob("example.service", *u)
 
-	mach := &fakeMachine{machine.MachineState{ID: "123"}}
+	mach := &machine.FakeMachine{machine.MachineState{ID: "123"}}
 	agent := Agent{Machine: mach, state: NewState()}
 	if agent.ableToRun(job) {
 		t.Fatalf("Agent should not be able to run job")
@@ -193,7 +177,11 @@ X-ConditionMachineMetadata=region=us-west-1`, true},
 		{`X-ConditionMachineMetadata=region=`, true},
 	}
 
-	agent := &Agent{Machine: newFakeMachine("us-west-1"), state: NewState()}
+	metadata := map[string]string{
+		"region": "us-west-1",
+	}
+	ms := machine.MachineState{Metadata: metadata}
+	agent := &Agent{Machine: &machine.FakeMachine{ms}, state: NewState()}
 
 	for i, e := range metadataAbleToRunExamples {
 		job := newTestJobWithMachineMetadata(e.C)
