@@ -73,9 +73,8 @@ func TestFieldsToStrings(t *testing.T) {
 	f := fieldsToOutput["unit"](j, false)
 	assertEqual(t, "unit", "test", f)
 
-	j.Unit = *unit.NewUnit(`[Unit]
-Description=some description
-`)
+	j = job.NewJob("test", *unit.NewUnit(`[Unit]
+Description=some description`))
 	d := fieldsToOutput["desc"](j, false)
 	assertEqual(t, "desc", "some description", d)
 
@@ -99,4 +98,10 @@ Description=some description
 	j.UnitState.MachineState = &machine.MachineState{"some-id", "1.2.3.4", nil, "", resource.ResourceTuple{}}
 	ms := fieldsToOutput["machine"](j, true)
 	assertEqual(t, "machine", "some-id/1.2.3.4", ms)
+
+	uh := "f035b2f14edc4d23572e5f3d3d4cb4f78d0e53c3"
+	fuh := fieldsToOutput["hash"](j, true)
+	suh := fieldsToOutput["hash"](j, false)
+	assertEqual(t, "hash", uh, fuh)
+	assertEqual(t, "hash", uh[:7], suh)
 }
