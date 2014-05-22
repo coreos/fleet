@@ -1,21 +1,24 @@
 package registry
 
 import (
-	"time"
 
 	"github.com/coreos/fleet/third_party/github.com/coreos/go-semver/semver"
 
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/machine"
-	"github.com/coreos/fleet/sign"
 	"github.com/coreos/fleet/unit"
 )
 
 func NewTestRegistry(machines []machine.MachineState, jobStates map[string]*unit.UnitState, jobs []job.Job, units []unit.Unit, v *semver.Version) *TestRegistry {
-	return &TestRegistry{machines, jobStates, jobs, units, v}
+	return &TestRegistry{machines: machines, jobStates: jobStates, jobs: jobs, units: units, version: v}
 }
 
 type TestRegistry struct {
+	// Not all methods of required by the Registry interface are implemented
+	// by the TestRegistry. Any calls to these unimplemented methods will
+	// result in a panic.
+	Registry
+
 	machines  []machine.MachineState
 	jobStates map[string]*unit.UnitState
 	jobs      []job.Job
@@ -41,26 +44,6 @@ func (t TestRegistry) GetJob(name string) (*job.Job, error) {
 	return nil, nil
 }
 
-func (t TestRegistry) SetJobTargetState(name string, target job.JobState) error {
-	return nil
-}
-
-func (t TestRegistry) CheckJobPulse(jobName string) (string, bool) {
-	return "", false
-}
-
-func (t TestRegistry) CreateJob(j *job.Job) error {
-	return nil
-}
-
-func (t TestRegistry) DestroyJob(name string) error {
-	return nil
-}
-
-func (t TestRegistry) CreateSignatureSet(s *sign.SignatureSet) error {
-	return nil
-}
-
 func (t TestRegistry) GetJobTarget(name string) (string, error) {
 	js := t.jobStates[name]
 	if js != nil {
@@ -75,90 +58,6 @@ func (t TestRegistry) GetMachineState(machID string) (*machine.MachineState, err
 			return &ms, nil
 		}
 	}
-	return nil, nil
-}
-
-func (t TestRegistry) GetDebugInfo() (string, error) {
-	return "", nil
-}
-
-func (t TestRegistry) ClearJobHeartbeat(jobName string) {
-	return
-}
-
-func (t TestRegistry) ClearJobTarget(jobName, machID string) error {
-	return nil
-}
-
-func (t TestRegistry) CreateJobOffer(jo *job.JobOffer) error {
-	return nil
-}
-
-func (t TestRegistry) DestroySignatureSet(tag string) {
-	return
-}
-
-func (t TestRegistry) GetJobTargetState(jobName string) (*job.JobState, error) {
-	return nil, nil
-}
-
-func (t TestRegistry) GetSignatureSet(tag string) *sign.SignatureSet {
-	return nil
-}
-
-func (t TestRegistry) GetSignatureSetOfJob(name string) (*sign.SignatureSet, error) {
-	return nil, nil
-}
-
-func (t TestRegistry) JobHeartbeat(jobName, agentMachID string, ttl time.Duration) error {
-	return nil
-}
-
-func (t TestRegistry) LockJob(jobName, context string) *TimedResourceMutex {
-	return nil
-}
-
-func (t TestRegistry) LockJobOffer(jobName, context string) *TimedResourceMutex {
-	return nil
-}
-
-func (t TestRegistry) LockMachine(machID, context string) *TimedResourceMutex {
-	return nil
-}
-
-func (t TestRegistry) RemoveMachineState(machID string) error {
-	return nil
-}
-
-func (t TestRegistry) RemoveUnitState(jobName string) error {
-	return nil
-}
-
-func (t TestRegistry) ResolveJobOffer(jobName string) error {
-	return nil
-}
-
-func (t TestRegistry) SaveUnitState(jobName string, unitState *unit.UnitState) {
-	return
-}
-
-func (t TestRegistry) ScheduleJob(jobName string, machID string) error {
-	return nil
-}
-
-func (t TestRegistry) SetMachineState(ms machine.MachineState, ttl time.Duration) (uint64, error) {
-	return 0, nil
-}
-
-func (t TestRegistry) SubmitJobBid(jb *job.JobBid) {
-	return
-}
-
-func (t TestRegistry) UnresolvedJobOffers() []job.JobOffer {
-	return nil
-}
-
-func (t TestRegistry) Bids(jo *job.JobOffer) ([]job.JobBid, error) {
 	return nil, nil
 }
 
