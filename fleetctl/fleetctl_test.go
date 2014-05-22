@@ -10,11 +10,15 @@ import (
 )
 
 func newFakeRegistryForCheckVersion(v string) registry.Registry {
-	version, err := semver.NewVersion(v)
+	sv, err := semver.NewVersion(v)
 	if err != nil {
 		panic(err)
 	}
-	return registry.NewFakeRegistry(nil, nil, nil, nil, version)
+
+	reg := registry.NewFakeRegistry()
+	reg.SetLatestVersion(*sv)
+
+	return reg
 }
 
 func TestCheckVersion(t *testing.T) {

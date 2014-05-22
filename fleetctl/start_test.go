@@ -42,6 +42,9 @@ func setupRegistryForStart(echoAttempts int) {
 	states := map[string]*unit.UnitState{"pong.service": js, "hello.service": js2, "echo.service": js3, "private.service": js4}
 	machines := []machine.MachineState{m1, m2, m3}
 
-	tr := registry.NewFakeRegistry(machines, states, nil, nil, nil)
-	registryCtl = &BlockedFakeRegistry{echoAttempts, *tr}
+	reg := registry.NewFakeRegistry()
+	reg.SetMachines(machines)
+	reg.SetUnitStates(states)
+
+	registryCtl = &BlockedFakeRegistry{echoAttempts, *reg}
 }

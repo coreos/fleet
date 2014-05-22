@@ -9,12 +9,14 @@ import (
 	"github.com/coreos/fleet/unit"
 )
 
-func NewFakeRegistry(machines []machine.MachineState, jobStates map[string]*unit.UnitState, jobs []job.Job, units []unit.Unit, v *semver.Version) *FakeRegistry {
-	jMap := make(map[string]job.Job, len(jobs))
-	for _, j := range jobs {
-		jMap[j.Name] = j
+func NewFakeRegistry() *FakeRegistry {
+	return &FakeRegistry{
+		machines:  []machine.MachineState{},
+		jobStates: map[string]*unit.UnitState{},
+		jobs:      map[string]job.Job{},
+		units:     []unit.Unit{},
+		version:   nil,
 	}
-	return &FakeRegistry{machines: machines, jobStates: jobStates, jobs: jMap, units: units, version: v}
 }
 
 type FakeRegistry struct {
@@ -28,6 +30,29 @@ type FakeRegistry struct {
 	jobs      map[string]job.Job
 	units     []unit.Unit
 	version   *semver.Version
+}
+
+func (f *FakeRegistry) SetMachines(machines []machine.MachineState) {
+	f.machines = machines
+}
+
+func (f *FakeRegistry) SetJobs(jobs []job.Job) {
+	f.jobs = make(map[string]job.Job, len(jobs))
+	for _, j := range jobs {
+		f.jobs[j.Name] = j
+	}
+}
+
+func (f *FakeRegistry) SetUnitStates(jobStates map[string]*unit.UnitState) {
+	f.jobStates = jobStates
+}
+
+func (f *FakeRegistry) SetUnits(units []unit.Unit) {
+	f.units = units
+}
+
+func (f *FakeRegistry) SetLatestVersion(v semver.Version) {
+	f.version = &v
 }
 
 func (f *FakeRegistry) GetActiveMachines() ([]machine.MachineState, error) {
