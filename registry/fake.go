@@ -2,6 +2,7 @@ package registry
 
 import (
 	"sync"
+	"errors"
 
 	"github.com/coreos/fleet/third_party/github.com/coreos/go-semver/semver"
 
@@ -101,6 +102,27 @@ func (f *FakeRegistry) GetJob(name string) (*job.Job, error) {
 
 	j.UnitState = f.jobStates[name]
 	return &j, nil
+}
+
+func (f *FakeRegistry) CreateJob(j *job.Job) error {
+	f.Lock()
+	defer f.Unlock()
+
+	_, ok := f.jobs[j.Name]
+	if ok {
+		return errors.New("Job already exists")
+	}
+
+	f.jobs[j.Name] = *j
+	return nil
+}
+
+func (f *FakeRegistry) DestroyJob(name string) error {
+	f.Lock()
+	defer f.Unlock()
+
+	delete(f.jobs, name)
+	return nil
 }
 
 func (f *FakeRegistry) GetJobTarget(name string) (string, error) {
