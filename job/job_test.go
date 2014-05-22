@@ -218,3 +218,32 @@ X-ConditionMachineID=456
 		}
 	}
 }
+
+func TestBatchJob(t *testing.T) {
+	ej := NewJob("foo.service", *unit.NewUnit(""))
+	if ej.IsBatch() {
+		t.Error("IsBatch() on job without Service section returned true unexpectedly")
+	}
+
+	j := NewJob("bar.service", *unit.NewUnit(`
+[Service]
+ExecStart=/bin/false`))
+	if j.IsBatch() {
+		t.Error("IsBatch() on Service job with no Type returned true unexpectedly")
+	}
+
+	sj := NewJob("bar.service", *unit.NewUnit(`
+[Service]
+Type=simple`))
+	if sj.IsBatch() {
+		t.Error("IsBatch() on simple job returned true unexpectedly")
+	}
+
+	bj := NewJob("bar.service", *unit.NewUnit(`
+[Service]
+Type=oneshot`))
+	if !bj.IsBatch() {
+		t.Error("IsBatch() on oneshot job returned false unexpectedly")
+	}
+
+}
