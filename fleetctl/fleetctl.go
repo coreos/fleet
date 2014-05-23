@@ -70,6 +70,7 @@ var (
 		NoBlock       bool
 		BlockAttempts int
 		Fields        string
+		Json          bool
 	}{}
 )
 

@@ -5,6 +5,7 @@ import (
 	"os"
 	"sort"
 	"strings"
+	"encoding/json"
 
 	"github.com/coreos/fleet/machine"
 )
@@ -12,7 +13,7 @@ import (
 var cmdListMachines = &Command{
 	Name:    "list-machines",
 	Summary: "Enumerate the current hosts in the cluster",
-	Usage:   "[-l|--full] [--no-legend]",
+	Usage:   "[-l|--full] [--no-legend] [--json]",
 	Description: `Lists all active machines within the cluster. Previously active machines will
 not appear in this list.
 
@@ -20,6 +21,9 @@ For easily parsable output, you can remove the column headers:
 	fleetctl list-machines --no-legend
 
 Output the list without truncation:
+	fleetctl list-machines --full
+
+Output in json:
 	fleetctl list-machines --full`,
 	Run: runListMachines,
 }
@@ -28,34 +32,40 @@ func init() {
 	cmdListMachines.Flags.BoolVar(&sharedFlags.Full, "full", false, "Do not ellipsize fields on output")
 	cmdListMachines.Flags.BoolVar(&sharedFlags.Full, "l", false, "Shorthand for --full")
 	cmdListMachines.Flags.BoolVar(&sharedFlags.NoLegend, "no-legend", false, "Do not print a legend (column headers)")
+	cmdListMachines.Flags.BoolVar(&sharedFlags.Json, "json", false, "Output JSON")
 }
 
 func runListMachines(args []string) (exit int) {
-	if !sharedFlags.NoLegend {
-		fmt.Fprintln(out, "MACHINE\tIP\tMETADATA")
-	}
-
 	machines, sortable, err := findAllMachines()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error retrieving list of active machines: %v\n", err)
 		return 1
 	}
-	for _, m := range sortable {
-		mach := machines[m]
 
-		ml := machineIDLegend(mach, sharedFlags.Full)
-
-		ip := mach.PublicIP
-		if len(ip) == 0 {
-			ip = "-"
+	if sharedFlags.Json {
+		mach, _ := json.Marshal(machines)
+		fmt.Printf("%s\n", mach)
+	} else {
+		if !sharedFlags.NoLegend {
+			fmt.Fprintln(out, "MACHINE\tIP\tMETADATA")
 		}
+		for _, m := range sortable {
+			mach := machines[m]
 
-		metadata := "-"
-		if len(mach.Metadata) != 0 {
-			metadata = formatMetadata(mach.Metadata)
+			ml := machineIDLegend(mach, sharedFlags.Full)
+
+			ip := mach.PublicIP
+			if len(ip) == 0 {
+				ip = "-"
+			}
+
+			metadata := "-"
+			if len(mach.Metadata) != 0 {
+				metadata = formatMetadata(mach.Metadata)
+			}
+
+			fmt.Fprintf(out, "%s\t%s\t%s\n", ml, ip, metadata)
 		}
-
-		fmt.Fprintf(out, "%s\t%s\t%s\n", ml, ip, metadata)
 	}
 
 	out.Flush()
