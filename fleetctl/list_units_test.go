@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/coreos/fleet/job"
@@ -106,5 +107,5 @@ Description=some description`))
 	fuh := fieldsToOutput["hash"](j, true)
 	suh := fieldsToOutput["hash"](j, false)
 	assertEqual(t, "hash", uh, fuh)
-	assertEqual(t, "hash", uh[:7], suh)
+	assertEqual(t, "hash", fmt.Sprintf("%s...", uh[:8]), suh)
 }

@@ -34,10 +34,6 @@ func (h Hash) String() string {
 	return fmt.Sprintf("%x", h[:])
 }
 
-func (h Hash) Short() string {
-	return fmt.Sprintf("%.7s", h)
-}
-
 func (h *Hash) Empty() bool {
 	return *h == Hash{}
 }
