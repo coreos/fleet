@@ -79,7 +79,7 @@ Or, choose the columns to display:
 		},
 		"hash": func(j *job.Job, full bool) string {
 			if !full {
-				return j.UnitHash.Short()
+				return fmt.Sprintf("%.8s...", j.UnitHash.String())
 			}
 			return j.UnitHash.String()
 		},
