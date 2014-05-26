@@ -66,24 +66,24 @@ func assertEqual(t *testing.T, name string, want, got interface{}) {
 	}
 }
 
-func TestFieldsToStrings(t *testing.T) {
+func TestListUnitsFieldsToStrings(t *testing.T) {
 	j := job.NewJob("test", *unit.NewUnit(""))
 	for _, tt := range []string{"state", "load", "active", "sub", "desc", "machine"} {
-		f := fieldsToOutput[tt](j, false)
+		f := listUnitsFields[tt](j, false)
 		assertEqual(t, tt, "-", f)
 	}
 
-	f := fieldsToOutput["unit"](j, false)
+	f := listUnitsFields["unit"](j, false)
 	assertEqual(t, "unit", "test", f)
 
 	j = job.NewJob("test", *unit.NewUnit(`[Unit]
 Description=some description`))
-	d := fieldsToOutput["desc"](j, false)
+	d := listUnitsFields["desc"](j, false)
 	assertEqual(t, "desc", "some description", d)
 
 	for _, state := range []job.JobState{job.JobStateLoaded, job.JobStateInactive, job.JobStateLaunched} {
 		j.State = &state
-		f := fieldsToOutput["state"](j, false)
+		f := listUnitsFields["state"](j, false)
 		assertEqual(t, "state", string(state), f)
 	}
 
@@ -94,17 +94,17 @@ Description=some description`))
 		"sub":     "baz",
 		"machine": "-",
 	} {
-		got := fieldsToOutput[k](j, false)
+		got := listUnitsFields[k](j, false)
 		assertEqual(t, k, want, got)
 	}
 
 	j.UnitState.MachineState = &machine.MachineState{"some-id", "1.2.3.4", nil, "", resource.ResourceTuple{}}
-	ms := fieldsToOutput["machine"](j, true)
+	ms := listUnitsFields["machine"](j, true)
 	assertEqual(t, "machine", "some-id/1.2.3.4", ms)
 
 	uh := "f035b2f14edc4d23572e5f3d3d4cb4f78d0e53c3"
-	fuh := fieldsToOutput["hash"](j, true)
-	suh := fieldsToOutput["hash"](j, false)
+	fuh := listUnitsFields["hash"](j, true)
+	suh := listUnitsFields["hash"](j, false)
 	assertEqual(t, "hash", uh, fuh)
 	assertEqual(t, "hash", uh[:7], suh)
 }

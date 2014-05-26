@@ -14,7 +14,8 @@ const (
 )
 
 var (
-	cmdListUnits = &Command{
+	listUnitsFieldsFlag string
+	cmdListUnits        = &Command{
 		Name:    "list-units",
 		Summary: "Enumerate units loaded in the cluster",
 		Usage:   "[--no-legend] [-l|--full]",
@@ -31,7 +32,7 @@ Or, choose the columns to display:
 		Run: runListUnits,
 	}
 
-	fieldsToOutput = map[string]jobToField{
+	listUnitsFields = map[string]jobToField{
 		"unit": func(j *job.Job, full bool) string {
 			return j.Name
 		},
@@ -92,19 +93,19 @@ func init() {
 	cmdListUnits.Flags.BoolVar(&sharedFlags.Full, "full", false, "Do not ellipsize fields on output")
 	cmdListUnits.Flags.BoolVar(&sharedFlags.Full, "l", false, "Shorthand for --full")
 	cmdListUnits.Flags.BoolVar(&sharedFlags.NoLegend, "no-legend", false, "Do not print a legend (column headers)")
-	cmdListUnits.Flags.StringVar(&sharedFlags.Fields, "fields", defaultListUnitsFields, fmt.Sprintf("Columns to print for each Unit. Valid fields are %q", strings.Join(mapKeys(fieldsToOutput), ",")))
+	cmdListUnits.Flags.StringVar(&listUnitsFieldsFlag, "fields", defaultListUnitsFields, fmt.Sprintf("Columns to print for each Unit. Valid fields are %q", strings.Join(jobToFieldKeys(listUnitsFields), ",")))
 }
 
 func runListUnits(args []string) (exit int) {
 
-	if sharedFlags.Fields == "" {
+	if listUnitsFieldsFlag == "" {
 		fmt.Fprintf(os.Stderr, "Must define output format\n")
 		return 1
 	}
 
-	cols := strings.Split(sharedFlags.Fields, ",")
+	cols := strings.Split(listUnitsFieldsFlag, ",")
 	for _, s := range cols {
-		if _, ok := fieldsToOutput[s]; !ok {
+		if _, ok := listUnitsFields[s]; !ok {
 			fmt.Fprintf(os.Stderr, "Invalid key in output format: %q\n", s)
 			return 1
 		}
@@ -125,7 +126,7 @@ func runListUnits(args []string) (exit int) {
 		var f []string
 		j := jobs[name]
 		for _, c := range cols {
-			f = append(f, fieldsToOutput[c](&j, sharedFlags.Full))
+			f = append(f, listUnitsFields[c](&j, sharedFlags.Full))
 		}
 		fmt.Fprintln(out, strings.Join(f, "\t"))
 	}
@@ -154,7 +155,7 @@ func findAllUnits() (jobs map[string]job.Job, sortable sort.StringSlice, err err
 	return
 }
 
-func mapKeys(m map[string]jobToField) (keys []string) {
+func jobToFieldKeys(m map[string]jobToField) (keys []string) {
 	for k, _ := range m {
 		keys = append(keys, k)
 	}
