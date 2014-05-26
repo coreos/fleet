@@ -27,7 +27,7 @@ func TestCheckVersion(t *testing.T) {
 	if !ok {
 		t.Errorf("checkVersion failed but should have succeeded")
 	}
-	registryCtl = newFakeRegistryForCheckVersion("0.4.0")
+	registryCtl = newFakeRegistryForCheckVersion("9.0.0")
 	msg, ok := checkVersion()
 	if ok || msg == "" {
 		t.Errorf("checkVersion succeeded but should have failed")
