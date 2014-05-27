@@ -17,7 +17,7 @@ func NewEventStream(mgr *SystemdUnitManager) *EventStream {
 	return &EventStream{mgr, nil}
 }
 
-func (es *EventStream) Stream(eventchan chan *event.Event, stop chan bool) {
+func (es *EventStream) Stream(sendFunc func(*event.Event), stop chan bool) {
 
 	es.mgr.systemd.Subscribe()
 	defer es.mgr.systemd.Unsubscribe()
@@ -35,7 +35,7 @@ func (es *EventStream) Stream(eventchan chan *event.Event, stop chan bool) {
 			for i := range events {
 				ev := events[i]
 				log.V(1).Infof("Translated dbus event to event(Type=%s)", ev.Type)
-				eventchan <- &ev
+				sendFunc(&ev)
 			}
 		}
 	}
