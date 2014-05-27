@@ -56,13 +56,6 @@ func (a *Agent) MarshalJSON() ([]byte, error) {
 	return json.Marshal(data)
 }
 
-// Heartbeat updates the Registry periodically with this Agent's
-// presence information as well as an acknowledgement of the jobs
-// it is expected to be running.
-func (a *Agent) Heartbeat(stop chan bool) {
-	go a.heartbeatJobs(a.ttl, stop)
-}
-
 // Initialize prepares the Agent for normal operation by doing three things:
 // 1. Announce presence to the Registry, tracking the etcd index of the operation
 // 2. Discover any jobs that are scheduled locally, loading/starting them if they can run locally
@@ -167,29 +160,6 @@ func (a *Agent) Purge() {
 		a.unloadJob(jobName)
 		log.Infof("Unscheduling Job(%s) from local machine", jobName)
 		a.registry.ClearJobTarget(jobName, machID)
-	}
-}
-
-func (a *Agent) heartbeatJobs(ttl time.Duration, stop chan bool) {
-	heartbeat := func() {
-		machID := a.Machine.State().ID
-		launched := a.state.LaunchedJobs()
-		for _, j := range launched {
-			go a.registry.JobHeartbeat(j, machID, ttl)
-		}
-	}
-
-	interval := ttl / refreshInterval
-	ticker := time.Tick(interval)
-	for {
-		select {
-		case <-stop:
-			log.V(1).Info("HeartbeatJobs exiting due to stop signal")
-			return
-		case <-ticker:
-			log.V(1).Info("HeartbeatJobs tick")
-			heartbeat()
-		}
 	}
 }
 

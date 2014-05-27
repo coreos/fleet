@@ -35,7 +35,8 @@ type Server struct {
 	sStream *systemd.EventStream
 	eBus    *event.EventBus
 	mach    *machine.CoreOSMachine
-	heart   *heartbeat.Heart
+	mHeart  *heartbeat.Heart
+	aHeart  *heartbeat.Heart
 
 	stop chan bool
 }
@@ -46,7 +47,7 @@ func New(cfg config.Config) (*Server, error) {
 		return nil, err
 	}
 
-	heart, err := newHeartFromConfig(cfg, mach)
+	mHeart, err := newMachineHeartFromConfig(cfg, mach)
 	if err != nil {
 		return nil, err
 	}
@@ -59,6 +60,11 @@ func New(cfg config.Config) (*Server, error) {
 	}
 
 	a, err := newAgentFromConfig(mach, cfg, mgr)
+	if err != nil {
+		return nil, err
+	}
+
+	aHeart, err := newAgentHeartFromConfig(cfg, mach, a)
 	if err != nil {
 		return nil, err
 	}
@@ -82,7 +88,7 @@ func New(cfg config.Config) (*Server, error) {
 	eBus.AddListener("engine", eHandler)
 	eBus.AddListener("agent", aHandler)
 
-	return &Server{reg, a, e, rStream, sStream, eBus, mach, heart, nil}, nil
+	return &Server{reg, a, e, rStream, sStream, eBus, mach, mHeart, aHeart, nil}, nil
 }
 
 func newEtcdClientFromConfig(cfg config.Config) *etcd.Client {
@@ -119,7 +125,7 @@ func newMachineFromConfig(cfg config.Config) (*machine.CoreOSMachine, error) {
 	return mach, nil
 }
 
-func newHeartFromConfig(cfg config.Config, mach machine.Machine) (*heartbeat.Heart, error) {
+func newMachineHeartFromConfig(cfg config.Config, mach machine.Machine) (*heartbeat.Heart, error) {
 	ttl, err := time.ParseDuration(cfg.AgentTTL)
 	if err != nil {
 		return nil, err
@@ -131,6 +137,21 @@ func newHeartFromConfig(cfg config.Config, mach machine.Machine) (*heartbeat.Hea
 	reg := registry.New(eClient, cfg.EtcdKeyPrefix)
 
 	fn := heartbeat.MachineHeartbeatFunc(reg, mach, ttl)
+	return heartbeat.NewHeart(fn, ival), nil
+}
+
+func newAgentHeartFromConfig(cfg config.Config, mach machine.Machine, a *agent.Agent) (*heartbeat.Heart, error) {
+	ttl, err := time.ParseDuration(cfg.AgentTTL)
+	if err != nil {
+		return nil, err
+	}
+
+	ival := ttl / 2
+
+	eClient := newEtcdClientFromConfig(cfg)
+	reg := registry.New(eClient, cfg.EtcdKeyPrefix)
+
+	fn := agent.AgentHeartbeatFunc(reg, mach, a, ttl)
 	return heartbeat.NewHeart(fn, ival), nil
 }
 
@@ -167,11 +188,12 @@ func (s *Server) Run() {
 	s.stop = make(chan bool)
 
 	go s.mach.PeriodicRefresh(machineStateRefreshInterval, s.stop)
-	go s.heart.Start(s.stop)
+
+	go s.mHeart.Start(s.stop)
+	go s.aHeart.Start(s.stop)
 
 	go s.rStream.Stream(idx, asyncDispatch, s.stop)
 	go s.sStream.Stream(asyncDispatch, s.stop)
-	go s.agent.Heartbeat(s.stop)
 
 	s.engine.CheckForWork()
 }
@@ -184,7 +206,7 @@ func (s *Server) Purge() {
 	// Continue heartbeating the machine state so the rest of the
 	// cluster will allow the Agent to purge its own state.
 	stop := make(chan bool)
-	go s.heart.Start(stop)
+	go s.mHeart.Start(stop)
 
 	s.agent.Purge()
 
