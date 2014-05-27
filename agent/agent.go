@@ -370,8 +370,8 @@ func (a *Agent) ReportUnitState(jobName string, us *unit.UnitState) {
 	}
 }
 
-// MaybeBid determines bids for the given JobOffer only if it the Agent
-// determines that it is able to run the JobOffer's Job
+// MaybeBid bids for the given JobOffer only if the Agent determines that it is able
+// to run the JobOffer's Job
 func (a *Agent) MaybeBid(jo job.JobOffer) {
 	a.state.Lock()
 	defer a.state.Unlock()
