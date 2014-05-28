@@ -429,9 +429,9 @@ func (a *Agent) fetchJob(jobName string) *job.Job {
 	return j
 }
 
-// verifyJob attempts to verify the integrity of the given Job by checking the
+// verifyJobSignature attempts to verify the integrity of the given Job by checking the
 // signature against a SignatureSet stored in its repository.
-func (a *Agent) verifyJob(j *job.Job) bool {
+func (a *Agent) verifyJobSignature(j *job.Job) bool {
 	if a.verifier == nil {
 		return true
 	}
@@ -465,48 +465,53 @@ func (a *Agent) bidForPossiblePeers(jobName string) {
 	}
 }
 
-// Determine if the Agent can run the provided Job
+// ableToRun determines if the Agent can run the provided Job, and returns a boolean indicating
+// whether this is the case. There are five criteria for an Agent to be eligible to run a Job:
+//   - Job must pass signature verification
+//   - agent must have all of the Job's required metadata (if any)
+//   - agent must meet the Job's machine target requirement (if any)
+//   - agent must have all required Peers of the Job scheduled locally (if any)
+//   - Job must not conflict with any other Jobs scheduled to the agent
 func (a *Agent) ableToRun(j *job.Job) bool {
-	if !a.verifyJob(j) {
+	if !a.verifyJobSignature(j) {
 		log.V(1).Infof("Failed to verify Job(%s)", j.Name)
 		return false
 	}
 
-	requirements := j.Requirements()
-	if len(requirements) == 0 {
-		log.V(1).Infof("Job(%s) has no requirements", j.Name)
-	}
-
-	log.Infof("Job(%s) has requirements: %s", j.Name, requirements)
+	log.Infof("Job(%s) has requirements: %s", j.Name, j.Requirements())
 
 	metadata := j.RequiredTargetMetadata()
-	log.V(1).Infof("Job(%s) requires machine metadata: %v", j.Name, metadata)
-	ms := a.Machine.State()
-	if !machine.HasMetadata(&ms, metadata) {
-		log.Infof("Unable to run Job(%s), local Machine metadata insufficient", j.Name)
-		return false
+	if len(metadata) == 0 {
+		log.V(1).Infof("Job(%s) has no required machine metadata", j.Name)
+	} else {
+		log.V(1).Infof("Job(%s) requires machine metadata: %v", j.Name, metadata)
+		ms := a.Machine.State()
+		if !machine.HasMetadata(&ms, metadata) {
+			log.Infof("Unable to run Job(%s): local Machine metadata insufficient", j.Name)
+			return false
+		}
 	}
 
 	if tgt, ok := j.RequiredTarget(); ok && !a.Machine.State().MatchID(tgt) {
-		log.Infof("Agent does not meet machine target requirement for Job(%s)", j.Name)
+		log.Infof("Unable to run Job(%s): agent does not meet machine target requirement (%s)", j.Name, tgt)
 		return false
 	}
 
 	peers := j.Peers()
-	if len(peers) > 0 {
-		log.V(1).Infof("Asserting required Peers %v of Job(%s) are scheduled locally", peers, j.Name)
+	if len(peers) == 0 {
+		log.V(1).Infof("Job(%s) has no required peers", j.Name)
+	} else {
+		log.V(1).Infof("Job(%s) requires peers: %v", j.Name, peers)
 		for _, peer := range peers {
 			if !a.peerScheduledHere(j.Name, peer) {
-				log.Infof("Required Peer(%s) of Job(%s) is not scheduled locally", peer, j.Name)
+				log.Infof("Unable to run Job(%s): required Peer(%s) is not scheduled locally", j.Name, peer)
 				return false
 			}
 		}
-	} else {
-		log.V(1).Infof("Job(%s) has no peers to worry about", j.Name)
 	}
 
 	if conflicted, conflictedJobName := a.HasConflict(j.Name, j.Conflicts()); conflicted {
-		log.Infof("Job(%s) has conflict with Job(%s)", j.Name, conflictedJobName)
+		log.Infof("Unable to run Job(%s): conflict with Job(%s)", j.Name, conflictedJobName)
 		return false
 	}
 
