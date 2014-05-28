@@ -12,6 +12,7 @@ import (
 	"github.com/coreos/fleet/config"
 	"github.com/coreos/fleet/engine"
 	"github.com/coreos/fleet/event"
+	"github.com/coreos/fleet/heartbeat"
 	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/registry"
 	"github.com/coreos/fleet/sign"
@@ -27,12 +28,15 @@ const (
 )
 
 type Server struct {
+	reg     registry.Registry
 	agent   *agent.Agent
 	engine  *engine.Engine
 	rStream *registry.EventStream
 	sStream *systemd.EventStream
 	eBus    *event.EventBus
 	mach    *machine.CoreOSMachine
+	mHeart  *heartbeat.Heart
+	aHeart  *heartbeat.Heart
 
 	stop chan bool
 }
@@ -43,12 +47,24 @@ func New(cfg config.Config) (*Server, error) {
 		return nil, err
 	}
 
+	mHeart, err := newMachineHeartFromConfig(cfg, mach)
+	if err != nil {
+		return nil, err
+	}
+
+	reg := newRegistryFromConfig(cfg)
+
 	mgr, err := systemd.NewSystemdUnitManager(systemd.DefaultUnitsDirectory)
 	if err != nil {
 		return nil, err
 	}
 
 	a, err := newAgentFromConfig(mach, cfg, mgr)
+	if err != nil {
+		return nil, err
+	}
+
+	aHeart, err := newAgentHeartFromConfig(cfg, mach, a)
 	if err != nil {
 		return nil, err
 	}
@@ -72,13 +88,18 @@ func New(cfg config.Config) (*Server, error) {
 	eBus.AddListener("engine", eHandler)
 	eBus.AddListener("agent", aHandler)
 
-	return &Server{a, e, rStream, sStream, eBus, mach, nil}, nil
+	return &Server{reg, a, e, rStream, sStream, eBus, mach, mHeart, aHeart, nil}, nil
 }
 
 func newEtcdClientFromConfig(cfg config.Config) *etcd.Client {
 	c := etcd.NewClient(cfg.EtcdServers)
 	c.SetConsistency(etcd.STRONG_CONSISTENCY)
 	return c
+}
+
+func newRegistryFromConfig(cfg config.Config) registry.Registry {
+	eClient := newEtcdClientFromConfig(cfg)
+	return registry.New(eClient, cfg.EtcdKeyPrefix)
 }
 
 func newRegistryEventStreamFromConfig(cfg config.Config) (*registry.EventStream, error) {
@@ -102,6 +123,36 @@ func newMachineFromConfig(cfg config.Config) (*machine.CoreOSMachine, error) {
 	}
 
 	return mach, nil
+}
+
+func newMachineHeartFromConfig(cfg config.Config, mach machine.Machine) (*heartbeat.Heart, error) {
+	ttl, err := time.ParseDuration(cfg.AgentTTL)
+	if err != nil {
+		return nil, err
+	}
+
+	ival := ttl / 2
+
+	eClient := newEtcdClientFromConfig(cfg)
+	reg := registry.New(eClient, cfg.EtcdKeyPrefix)
+
+	fn := heartbeat.MachineHeartbeatFunc(reg, mach, ttl)
+	return heartbeat.NewHeart(fn, ival), nil
+}
+
+func newAgentHeartFromConfig(cfg config.Config, mach machine.Machine, a *agent.Agent) (*heartbeat.Heart, error) {
+	ttl, err := time.ParseDuration(cfg.AgentTTL)
+	if err != nil {
+		return nil, err
+	}
+
+	ival := ttl / 2
+
+	eClient := newEtcdClientFromConfig(cfg)
+	reg := registry.New(eClient, cfg.EtcdKeyPrefix)
+
+	fn := agent.AgentHeartbeatFunc(reg, mach, a, ttl)
+	return heartbeat.NewHeart(fn, ival), nil
 }
 
 func newAgentFromConfig(mach machine.Machine, cfg config.Config, mgr unit.UnitManager) (*agent.Agent, error) {
@@ -135,10 +186,14 @@ func (s *Server) Run() {
 	}
 
 	s.stop = make(chan bool)
+
 	go s.mach.PeriodicRefresh(machineStateRefreshInterval, s.stop)
+
+	go s.mHeart.Start(s.stop)
+	go s.aHeart.Start(s.stop)
+
 	go s.rStream.Stream(idx, asyncDispatch, s.stop)
 	go s.sStream.Stream(asyncDispatch, s.stop)
-	go s.agent.Heartbeat(s.stop)
 
 	s.engine.CheckForWork()
 }
@@ -148,7 +203,21 @@ func (s *Server) Stop() {
 }
 
 func (s *Server) Purge() {
+	// Continue heartbeating the machine state so the rest of the
+	// cluster will allow the Agent to purge its own state.
+	stop := make(chan bool)
+	go s.mHeart.Start(stop)
+
 	s.agent.Purge()
+
+	close(stop)
+
+	machID := s.mach.State().ID
+	log.Info("Removing Machine(%s) from Registry", machID)
+	err := s.reg.RemoveMachineState(machID)
+	if err != nil {
+		log.Errorf("Failed to remove Machine(%s) from Registry: %v", machID, err)
+	}
 }
 
 func (s *Server) MarshalJSON() ([]byte, error) {

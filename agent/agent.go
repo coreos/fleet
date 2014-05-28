@@ -2,7 +2,6 @@ package agent
 
 import (
 	"encoding/json"
-	"fmt"
 	"time"
 
 	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
@@ -55,14 +54,6 @@ func (a *Agent) MarshalJSON() ([]byte, error) {
 		State:       a.state,
 	}
 	return json.Marshal(data)
-}
-
-// Heartbeat updates the Registry periodically with this Agent's
-// presence information as well as an acknowledgement of the jobs
-// it is expected to be running.
-func (a *Agent) Heartbeat(stop chan bool) {
-	go a.heartbeatAgent(a.ttl, stop)
-	go a.heartbeatJobs(a.ttl, stop)
 }
 
 // Initialize prepares the Agent for normal operation by doing three things:
@@ -159,11 +150,6 @@ func (a *Agent) Initialize() uint64 {
 
 // Purge removes the Agent's state from the Registry
 func (a *Agent) Purge() {
-	// Continue heartbeating the agent's machine state while attempting to
-	// stop all the locally-running jobs
-	purged := make(chan bool)
-	go a.heartbeatAgent(a.ttl, purged)
-
 	a.state.Lock()
 	scheduled := a.state.ScheduledJobs()
 	a.state.Unlock()
@@ -174,87 +160,6 @@ func (a *Agent) Purge() {
 		a.unloadJob(jobName)
 		log.Infof("Unscheduling Job(%s) from local machine", jobName)
 		a.registry.ClearJobTarget(jobName, machID)
-	}
-
-	// Jobs have been stopped, the heartbeat can stop
-	close(purged)
-
-	log.Info("Removing Agent from Registry")
-	if err := a.registry.RemoveMachineState(machID); err != nil {
-		log.Errorf("Failed to remove Machine %s from Registry: %s", machID, err.Error())
-	}
-}
-
-// heartbeatAgent periodically reports to the Registry at an
-// interval equal to half of the provided ttl. heartbeatAgent
-// stops reporting when the provided channel is closed. Failed
-// attempts to report state to the Registry are retried twice
-// before moving on to the next reporting interval.
-func (a *Agent) heartbeatAgent(ttl time.Duration, stop chan bool) {
-	attempt := func(attempts int, f func() error) (err error) {
-		if attempts < 1 {
-			return fmt.Errorf("attempts argument must be 1 or greater, got %d", attempts)
-		}
-
-		// The amount of time the retry mechanism waits after a failed attempt
-		// doubles following each failure. This is a simple exponential backoff.
-		sleep := time.Second
-
-		for i := 1; i <= attempts; i++ {
-			err = f()
-			if err == nil || i == attempts {
-				break
-			}
-
-			sleep = sleep * 2
-			log.V(1).Infof("function returned err, retrying in %v: %v", sleep, err)
-			time.Sleep(sleep)
-		}
-
-		return err
-	}
-
-	heartbeat := func() error {
-		_, err := a.registry.SetMachineState(a.Machine.State(), ttl)
-		return err
-	}
-
-	interval := ttl / refreshInterval
-	ticker := time.Tick(interval)
-	for {
-		select {
-		case <-stop:
-			log.V(1).Info("Heartbeat exiting due to stop signal")
-			return
-		case <-ticker:
-			log.V(1).Info("Heartbeat tick")
-			if err := attempt(3, heartbeat); err != nil {
-				log.Errorf("Failed heartbeat after 3 attempts: %v", err)
-			}
-		}
-	}
-}
-
-func (a *Agent) heartbeatJobs(ttl time.Duration, stop chan bool) {
-	heartbeat := func() {
-		machID := a.Machine.State().ID
-		launched := a.state.LaunchedJobs()
-		for _, j := range launched {
-			go a.registry.JobHeartbeat(j, machID, ttl)
-		}
-	}
-
-	interval := ttl / refreshInterval
-	ticker := time.Tick(interval)
-	for {
-		select {
-		case <-stop:
-			log.V(1).Info("HeartbeatJobs exiting due to stop signal")
-			return
-		case <-ticker:
-			log.V(1).Info("HeartbeatJobs tick")
-			heartbeat()
-		}
 	}
 }
 
