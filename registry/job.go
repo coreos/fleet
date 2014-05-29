@@ -5,10 +5,10 @@ import (
 	"path"
 	"strings"
 
-	etcdErr "github.com/coreos/fleet/third_party/github.com/coreos/etcd/error"
-	"github.com/coreos/fleet/third_party/github.com/coreos/go-etcd/etcd"
+	goetcd "github.com/coreos/fleet/third_party/github.com/coreos/go-etcd/etcd"
 	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
 
+	"github.com/coreos/fleet/etcd"
 	"github.com/coreos/fleet/event"
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/unit"
@@ -185,7 +185,7 @@ func (r *EtcdRegistry) CreateJob(j *job.Job) (err error) {
 	}
 
 	_, err = r.etcd.Create(key, json, 0)
-	if err != nil && err.(*etcd.EtcdError).ErrorCode == etcdErr.EcodeNodeExist {
+	if err != nil && err.(*goetcd.EtcdError).ErrorCode == etcd.EcodeNodeExist {
 		err = errors.New("job already exists")
 	}
 
@@ -196,7 +196,7 @@ func (r *EtcdRegistry) GetJobTargetState(jobName string) (*job.JobState, error) 
 	key := r.jobTargetStatePath(jobName)
 	resp, err := r.etcd.Get(key, false, false)
 	if err != nil {
-		if err.(*etcd.EtcdError).ErrorCode != etcdErr.EcodeNodeExist {
+		if err.(*goetcd.EtcdError).ErrorCode != etcd.EcodeNodeExist {
 			log.Errorf("Unable to determine target-state of Job(%s): %v", jobName, err)
 		}
 		return nil, err
@@ -211,7 +211,7 @@ func (r *EtcdRegistry) SetJobTargetState(jobName string, state job.JobState) err
 	return err
 }
 
-func (es *EventStream) filterJobTargetStateChanges(resp *etcd.Response) *event.Event {
+func (es *EventStream) filterJobTargetStateChanges(resp *goetcd.Response) *event.Event {
 	if resp.Action != "set" {
 		return nil
 	}
@@ -270,7 +270,7 @@ func (r *EtcdRegistry) LockJob(jobName, context string) *TimedResourceMutex {
 	return r.lockResource("job", jobName, context)
 }
 
-func filterEventJobScheduled(resp *etcd.Response) *event.Event {
+func filterEventJobScheduled(resp *goetcd.Response) *event.Event {
 	if resp.Action != "create" {
 		return nil
 	}
@@ -293,7 +293,7 @@ func filterEventJobScheduled(resp *etcd.Response) *event.Event {
 	return &event.Event{"EventJobScheduled", jobName, resp.Node.Value}
 }
 
-func filterEventJobUnscheduled(resp *etcd.Response) *event.Event {
+func filterEventJobUnscheduled(resp *goetcd.Response) *event.Event {
 	if resp.Action != "delete" && resp.Action != "compareAndDelete" {
 		return nil
 	}
@@ -320,7 +320,7 @@ func filterEventJobUnscheduled(resp *etcd.Response) *event.Event {
 	return &event.Event{"EventJobUnscheduled", jobName, resp.PrevNode.Value}
 }
 
-func filterEventJobDestroyed(resp *etcd.Response) *event.Event {
+func filterEventJobDestroyed(resp *goetcd.Response) *event.Event {
 	if resp.Action != "delete" {
 		return nil
 	}

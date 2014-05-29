@@ -16,9 +16,9 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/coreos/fleet/third_party/github.com/coreos/go-etcd/etcd"
 	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
 
+	"github.com/coreos/fleet/etcd"
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/registry"

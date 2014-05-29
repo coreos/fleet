@@ -5,12 +5,12 @@ import (
 	"errors"
 	"time"
 
-	"github.com/coreos/fleet/third_party/github.com/coreos/go-etcd/etcd"
 	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
 
 	"github.com/coreos/fleet/agent"
 	"github.com/coreos/fleet/config"
 	"github.com/coreos/fleet/engine"
+	"github.com/coreos/fleet/etcd"
 	"github.com/coreos/fleet/event"
 	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/registry"
@@ -49,7 +49,6 @@ func New(cfg config.Config) (*Server, error) {
 	}
 
 	eClient := etcd.NewClient(cfg.EtcdServers)
-	eClient.SetConsistency(etcd.STRONG_CONSISTENCY)
 
 	reg := registry.New(eClient, cfg.EtcdKeyPrefix)
 

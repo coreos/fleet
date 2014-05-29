@@ -5,19 +5,19 @@ import (
 	"strings"
 	"time"
 
-	etcdErr "github.com/coreos/fleet/third_party/github.com/coreos/etcd/error"
-	"github.com/coreos/fleet/third_party/github.com/coreos/go-etcd/etcd"
+	goetcd "github.com/coreos/fleet/third_party/github.com/coreos/go-etcd/etcd"
 	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
 
 	"github.com/coreos/fleet/event"
+	"github.com/coreos/fleet/etcd"
 )
 
 type EventStream struct {
-	etcd     *etcd.Client
+	etcd     etcd.Client
 	registry *EtcdRegistry
 }
 
-func NewEventStream(client *etcd.Client, registry Registry) (*EventStream, error) {
+func NewEventStream(client etcd.Client, registry Registry) (*EventStream, error) {
 	reg, ok := registry.(*EtcdRegistry)
 	if !ok {
 		return nil, errors.New("EventStream currently only works with EtcdRegistry")
@@ -27,7 +27,7 @@ func NewEventStream(client *etcd.Client, registry Registry) (*EventStream, error
 }
 
 func (es *EventStream) Stream(idx uint64, sendFunc func(*event.Event), stop chan bool) {
-	filters := []func(*etcd.Response) *event.Event{
+	filters := []func(*goetcd.Response) *event.Event{
 		filterEventJobDestroyed,
 		filterEventJobScheduled,
 		filterEventJobUnscheduled,
@@ -38,12 +38,12 @@ func (es *EventStream) Stream(idx uint64, sendFunc func(*event.Event), stop chan
 		filterEventJobBidSubmitted,
 	}
 
-	etcdchan := make(chan *etcd.Response)
+	etcdchan := make(chan *goetcd.Response)
 	go watch(es.etcd, idx, etcdchan, es.registry.keyPrefix, stop)
 	go pipe(etcdchan, filters, sendFunc, stop)
 }
 
-func pipe(etcdchan chan *etcd.Response, filters []func(resp *etcd.Response) *event.Event, sendFunc func(*event.Event), stop chan bool) {
+func pipe(etcdchan chan *goetcd.Response, filters []func(resp *goetcd.Response) *event.Event, sendFunc func(*event.Event), stop chan bool) {
 	for true {
 		select {
 		case <-stop:
@@ -63,7 +63,7 @@ func pipe(etcdchan chan *etcd.Response, filters []func(resp *etcd.Response) *eve
 	}
 }
 
-func watch(client *etcd.Client, idx uint64, etcdchan chan *etcd.Response, key string, stop chan bool) {
+func watch(client etcd.Client, idx uint64, etcdchan chan *goetcd.Response, key string, stop chan bool) {
 	for true {
 		select {
 		case <-stop:
@@ -81,7 +81,7 @@ func watch(client *etcd.Client, idx uint64, etcdchan chan *etcd.Response, key st
 
 			log.Errorf("etcd watcher returned error: key=%s, err=\"%s\"", key, err.Error())
 
-			etcdError, ok := err.(*etcd.EtcdError)
+			etcdError, ok := err.(*goetcd.EtcdError)
 			if !ok {
 				// Let's not slam the etcd server in the event that we know
 				// an unexpected error occurred.
@@ -90,7 +90,7 @@ func watch(client *etcd.Client, idx uint64, etcdchan chan *etcd.Response, key st
 			}
 
 			switch etcdError.ErrorCode {
-			case etcdErr.EcodeEventIndexCleared:
+			case etcd.EcodeEventIndexCleared:
 				// This is racy, but adding one to the last known index
 				// will help get this watcher back into the range of
 				// etcd's internal event history

@@ -4,7 +4,7 @@ import (
 	"path"
 	"strings"
 
-	"github.com/coreos/fleet/third_party/github.com/coreos/go-etcd/etcd"
+	goetcd "github.com/coreos/fleet/third_party/github.com/coreos/go-etcd/etcd"
 	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
 
 	"github.com/coreos/fleet/event"
@@ -145,7 +145,7 @@ func (r *EtcdRegistry) SubmitJobBid(jb *job.JobBid) {
 	r.etcd.Set(key, "", 0)
 }
 
-func (es *EventStream) filterEventJobOffered(resp *etcd.Response) *event.Event {
+func (es *EventStream) filterEventJobOffered(resp *goetcd.Response) *event.Event {
 	if resp.Action != "set" {
 		return nil
 	}
@@ -171,7 +171,7 @@ func (es *EventStream) filterEventJobOffered(resp *etcd.Response) *event.Event {
 	return &event.Event{"EventJobOffered", *jo, nil}
 }
 
-func filterEventJobBidSubmitted(resp *etcd.Response) *event.Event {
+func filterEventJobBidSubmitted(resp *goetcd.Response) *event.Event {
 	if resp.Action != "set" {
 		return nil
 	}

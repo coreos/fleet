@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"path"
 
-	"github.com/coreos/fleet/third_party/github.com/coreos/go-etcd/etcd"
+	goetcd "github.com/coreos/fleet/third_party/github.com/coreos/go-etcd/etcd"
 	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
+
+	"github.com/coreos/fleet/etcd"
 )
 
 const (
@@ -38,8 +40,8 @@ func (r *EtcdRegistry) lockResource(class, id, context string) *TimedResourceMut
 // stored in the Registry. It assumes the mutex creator has
 // initialized a timer.
 type TimedResourceMutex struct {
-	etcd *etcd.Client
-	node etcd.Node
+	etcd etcd.Client
+	node goetcd.Node
 }
 
 // Unlock will attempt to remove the lock held on the mutex

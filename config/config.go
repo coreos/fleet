@@ -2,14 +2,12 @@ package config
 
 import (
 	"flag"
-	"io/ioutil"
-	"log"
-	"os"
 	"strconv"
 	"strings"
 
-	"github.com/coreos/fleet/third_party/github.com/coreos/go-etcd/etcd"
 	"github.com/coreos/fleet/third_party/github.com/golang/glog"
+
+	"github.com/coreos/fleet/etcd"
 )
 
 type Config struct {
@@ -55,8 +53,8 @@ func UpdateLoggingFlagsFromConfig(flagset *flag.FlagSet, conf *Config) {
 	}
 
 	if conf.Verbosity > 2 {
-		etcd.SetLogger(log.New(os.Stdout, "go-etcd", log.LstdFlags))
+		etcd.EnableDebugLogging()
 	} else {
-		etcd.SetLogger(log.New(ioutil.Discard, "go-etcd", log.LstdFlags))
+		etcd.DisableDebugLogging()
 	}
 }
