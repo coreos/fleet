@@ -130,14 +130,10 @@ func newEngineFromConfig(mach machine.Machine, cfg config.Config) (*engine.Engin
 func (s *Server) Run() {
 	idx := s.agent.Initialize()
 
-	asyncDispatch := func(ev *event.Event) {
-		go s.eBus.Dispatch(ev)
-	}
-
 	s.stop = make(chan bool)
 	go s.mach.PeriodicRefresh(machineStateRefreshInterval, s.stop)
-	go s.rStream.Stream(idx, asyncDispatch, s.stop)
-	go s.sStream.Stream(asyncDispatch, s.stop)
+	go s.rStream.Stream(idx, s.eBus.Dispatch, s.stop)
+	go s.sStream.Stream(s.eBus.Dispatch, s.stop)
 	go s.agent.Heartbeat(s.stop)
 
 	s.engine.CheckForWork()
