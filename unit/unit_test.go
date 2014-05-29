@@ -96,46 +96,55 @@ func TestNewUnitState(t *testing.T) {
 
 }
 
-func TestInstanceUnit(t *testing.T) {
+func TestNamedUnit(t *testing.T) {
 	tts := []struct {
-		name string
-		tmpl string
-		pref string
-		inst string
+		fname  string
+		name   string
+		pref   string
+		tmpl   string
+		inst   string
+		isinst bool
 	}{
-		// Everything past the first @ and before the last . is the instance
-		{"foo@.service", "foo@.service", "foo", ""},
-		{"foo@bar.service", "foo@.service", "foo", "bar"},
-		{"foo@bar@baz.service", "foo@.service", "foo", "bar@baz"},
-		{"foo.1@.service", "foo.1@.service", "foo.1", ""},
-		{"foo.1@2.service", "foo.1@.service", "foo.1", "2"},
-		{"ssh@.socket", "ssh@.socket", "ssh", ""},
-		{"ssh@1.socket", "ssh@.socket", "ssh", "1"},
+		{"foo.service", "foo", "foo", "", "", false},
+		{"foo@.service", "foo@", "foo", "foo@.service", "", false},
+		{"foo@bar.service", "foo@bar", "foo", "foo@.service", "bar", true},
+		{"foo@bar@baz.service", "foo@bar@baz", "foo", "foo@.service", "bar@baz", true},
+		{"foo.1@.service", "foo.1@", "foo.1", "foo.1@.service", "", false},
+		{"foo.1@2.service", "foo.1@2", "foo.1", "foo.1@.service", "2", true},
+		{"ssh@.socket", "ssh@", "ssh", "ssh@.socket", "", false},
+		{"ssh@1.socket", "ssh@1", "ssh", "ssh@.socket", "1", true},
 	}
 	for _, tt := range tts {
-		u := UnitNameToInstance(tt.name)
+		u := NewUnitNameInfo(tt.fname)
 		if u == nil {
-			t.Errorf("UnitNameToInstance(%s) returned nil InstanceUnit!", tt.name)
+			t.Errorf("NewUnitNameInfo(%s) returned nil InstanceUnit!", tt.name)
 			continue
 		}
-		if u.FullName != tt.name {
-			t.Errorf("UnitNameToInstance(%s) returned bad name: got %s, want %s", tt.name, u.FullName, tt.name)
+		if u.FullName != tt.fname {
+			t.Errorf("NewUnitNameInfo(%s) returned bad fullname: got %s, want %s", tt.name, u.FullName, tt.fname)
+		}
+		if u.Name != tt.name {
+			t.Errorf("NewUnitNameInfo(%s) returned bad name: got %s, want %s", tt.name, u.Name, tt.name)
 		}
 		if u.Template != tt.tmpl {
-			t.Errorf("UnitNameToInstance(%s) returned bad template name: got %s, want %s", tt.name, u.Template, tt.tmpl)
+			t.Errorf("NewUnitNameInfo(%s) returned bad template name: got %s, want %s", tt.name, u.Template, tt.tmpl)
 		}
 		if u.Prefix != tt.pref {
-			t.Errorf("UnitNameToInstance(%s) returned bad prefix name: got %s, want %s", tt.name, u.Prefix, tt.pref)
+			t.Errorf("NewUnitNameInfo(%s) returned bad prefix name: got %s, want %s", tt.name, u.Prefix, tt.pref)
 		}
 		if u.Instance != tt.inst {
-			t.Errorf("UnitNameToInstance(%s) returned bad instance name: got %s, want %s", tt.name, u.Instance, tt.inst)
+			t.Errorf("NewUnitNameInfo(%s) returned bad instance name: got %s, want %s", tt.name, u.Instance, tt.inst)
+		}
+		i := u.IsInstance()
+		if i != tt.isinst {
+			t.Errorf("NewUnitNameInfo(%s).IsInstance returned %t, want %s", tt.name, i, tt.isinst)
 		}
 	}
 
-	bad := []string{"foo.service", "foo@", "bar.socket", "ssh.1.service"}
+	bad := []string{"foo", "bar@baz"}
 	for _, tt := range bad {
-		if UnitNameToInstance(tt) != nil {
-			t.Errorf("UnitNameToInstance returned non-nil InstanceUnit unexpectedly")
+		if NewUnitNameInfo(tt) != nil {
+			t.Errorf("NewUnitNameInfo returned non-nil InstanceUnit unexpectedly")
 		}
 	}
 

@@ -79,32 +79,50 @@ func NewUnitState(loadState, activeState, subState string, ms *machine.MachineSt
 	return &UnitState{loadState, activeState, subState, ms}
 }
 
-// InstanceUnit represents a Unit that has been instantiated from a template unit
-type InstanceUnit struct {
-	FullName string // Original name of the template unit (e.g. foo@bar.service)
-	Template string // Name of the canonical template unit (e.g. foo@.service)
+// UnitNameInfo exposes certain interesting items about a Unit based on its
+// name. For example, a unit with the name "foo@.service" constitutes a
+// template unit, and a unit named "foo@1.service" would represent an instance
+// unit of that template.
+type UnitNameInfo struct {
+	FullName string // Original complete name of the unit (e.g. foo.socket, foo@bar.service)
+	Name     string // Name of the unit without suffix (e.g. foo, foo@bar)
 	Prefix   string // Prefix of the template unit (e.g. foo)
+
+	// If the unit represents an instance or a template, the following values are set
+	Template string // Name of the canonical template unit (e.g. foo@.service)
 	Instance string // Instance name (e.g. bar)
 }
 
-// UnitNameToInstance determines whether the given unit name appears to be an instance
-// of a template unit. If so, it returns a non-nil *InstanceUnit; otherwise, nil.
-func UnitNameToInstance(name string) *InstanceUnit {
+// IsInstance returns a boolean indicating whether the UnitNameInfo appears to be
+// an Instance of a Template unit
+func (nu UnitNameInfo) IsInstance() bool {
+	return len(nu.Instance) > 0
+}
+
+// NewUnitNameInfo generates a UnitNameInfo from the given name. If the given string
+// is not a correct unit name, nil is returned.
+func NewUnitNameInfo(un string) *UnitNameInfo {
+
 	// Everything past the first @ and before the last . is the instance
-	s := strings.LastIndex(name, ".")
+	s := strings.LastIndex(un, ".")
 	if s == -1 {
 		return nil
 	}
-	suffix := name[s:]
-	prefix := name[:s]
-	if !strings.Contains(prefix, "@") {
-		return nil
+
+	nu := &UnitNameInfo{FullName: un}
+	name := un[:s]
+	suffix := un[s:]
+	nu.Name = name
+
+	a := strings.Index(name, "@")
+	if a == -1 {
+		// This does not appear to be a template or instance unit.
+		nu.Prefix = name
+		return nu
 	}
-	a := strings.Index(prefix, "@")
-	return &InstanceUnit{
-		FullName: name,
-		Template: fmt.Sprintf("%s@%s", prefix[:a], suffix),
-		Prefix:   prefix[:a],
-		Instance: prefix[a+1:],
-	}
+
+	nu.Prefix = name[:a]
+	nu.Template = fmt.Sprintf("%s@%s", name[:a], suffix)
+	nu.Instance = name[a+1:]
+	return nu
 }

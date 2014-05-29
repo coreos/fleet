@@ -141,6 +141,49 @@ X-Ping=Pang
 	}
 }
 
+func TestParseRequirementsInstanceUnit(t *testing.T) {
+	contents := `
+[X-Fleet]
+X-Foo=%n
+X-Bar=%N
+X-Baz=%p
+X-Qux=%i
+X-Zzz=something
+`
+	// Ensure the correct values are replaced for a non-instance unit
+	j := NewJob("test.service", *unit.NewUnit(contents))
+	reqs := j.Requirements()
+	for field, want := range map[string]string{
+		"Foo": "test.service",
+		"Bar": "test",
+		"Baz": "test",
+		"Qux": "",
+		"Zzz": "something",
+	} {
+		got := reqs[field]
+		if len(got) != 1 || got[0] != want {
+			t.Errorf("Requirement %q unexpectedly altered for non-instance unit: want %q, got %q", field, want, got)
+		}
+	}
+
+	// Now ensure that they are substituted appropriately for an instance unit
+	j = NewJob("ssh@2.service", *unit.NewUnit(contents))
+	reqs = j.Requirements()
+	for field, want := range map[string]string{
+		"Foo": "ssh@2.service",
+		"Bar": "ssh@2",
+		"Baz": "ssh",
+		"Qux": "2",
+		"Zzz": "something",
+	} {
+		got := reqs[field]
+		if len(got) != 1 || got[0] != want {
+			t.Errorf("Bad instance unit requirement substitution for %q: want %q, got %q", field, want, got)
+		}
+	}
+
+}
+
 func TestParseRequirementsMissingSection(t *testing.T) {
 	contents := `
 [Unit]
@@ -245,5 +288,25 @@ Type=oneshot`))
 	if !bj.IsBatch() {
 		t.Error("IsBatch() on oneshot job returned false unexpectedly")
 	}
+}
 
+func TestInstanceUnitPrintf(t *testing.T) {
+	u := unit.NewUnitNameInfo("foo@bar.waldo")
+	if u == nil {
+		t.Fatal("NewNamedUnit returned nil - aborting")
+	}
+	for _, tt := range []struct {
+		in   string
+		want string
+	}{
+		{"%n", "foo@bar.waldo"},
+		{"%N", "foo@bar"},
+		{"%p", "foo"},
+		{"%i", "bar"},
+	} {
+		got := unitPrintf(tt.in, *u)
+		if got != tt.want {
+			t.Errorf("Replacement of %q failed: got %q, want %q", tt.in, got, tt.want)
+		}
+	}
 }

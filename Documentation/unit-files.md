@@ -30,4 +30,15 @@ ExecStart=/bin/monitorme
 X-ConditionMachineID=148a18ff-6e95-4cd8-92da-c9de9bb90d5a
 ```
 
-Note that [Systemd Specifiers](http://www.freedesktop.org/software/systemd/man/systemd.unit.html#Specifiers) are not yet available within `[X-Fleet]` sections. See [the issue](https://github.com/coreos/fleet/issues/303) for more information. 
+## systemd specifiers
+
+When evaluating the `[X-Fleet]` section, fleet supports a subset of systemd's [specifiers][systemd specifiers] to perform variable substitution. The following specifiers are currently supported:
+
+* `%n`
+* `%N`
+* `%p`
+* `%i`
+
+For the meaning of the specifiers, refer to the official [systemd documentation][systemd specifiers].
+
+[systemd specifiers]: http://www.freedesktop.org/software/systemd/man/systemd.unit.html#Specifiers
