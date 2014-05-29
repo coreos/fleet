@@ -579,6 +579,15 @@ func (a *Agent) JobScheduledElsewhere(jobName string) {
 // the job. The ability to run the job will be revalidated before
 // loading, and unscheduled if such validation fails.
 func (a *Agent) JobScheduledLocally(jobName string) {
+	machID := a.Machine.State().ID
+
+	log.Infof("Committing scheduling decision for Job(%s)", jobName)
+	err := a.registry.CommitSchedule(jobName, machID)
+	if err != nil {
+		log.Errorf("Failed committing scheduling decision for Job(%s): %v", jobName, err)
+		return
+	}
+
 	a.state.Lock()
 	defer a.state.Unlock()
 
