@@ -272,7 +272,6 @@ func (c *Client) SendRequest(rr *RawRequest) (*RawResponse, error) {
 
 		// if there is no error, it should receive response
 		resps = append(resps, *resp)
-		defer resp.Body.Close()
 		logger.Debug("recv.response.from", httpPath)
 
 		if validHttpStatusCode[resp.StatusCode] {
@@ -303,6 +302,7 @@ func (c *Client) SendRequest(rr *RawRequest) (*RawResponse, error) {
 			errors.New("Unexpected HTTP status code")); checkErr != nil {
 			return nil, checkErr
 		}
+		resp.Body.Close()
 	}
 
 	r := &RawResponse{
