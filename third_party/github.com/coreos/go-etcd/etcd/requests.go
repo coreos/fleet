@@ -296,6 +296,7 @@ func (c *Client) SendRequest(rr *RawRequest) (*RawResponse, error) {
 				c.cluster.updateLeaderFromURL(u)
 				logger.Debug("recv.response.relocate", u.String())
 			}
+			resp.Body.Close()
 			continue
 		}
 
