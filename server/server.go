@@ -48,19 +48,21 @@ func New(cfg config.Config) (*Server, error) {
 		return nil, err
 	}
 
-	a, err := newAgentFromConfig(mach, cfg, mgr)
+	eClient := etcd.NewClient(cfg.EtcdServers)
+	eClient.SetConsistency(etcd.STRONG_CONSISTENCY)
+
+	reg := registry.New(eClient, cfg.EtcdKeyPrefix)
+
+	a, err := newAgentFromConfig(mach, reg, cfg, mgr)
 	if err != nil {
 		return nil, err
 	}
 
-	e, err := newEngineFromConfig(mach, cfg)
-	if err != nil {
-		return nil, err
-	}
+	e := engine.New(reg, mach)
 
 	sStream := systemd.NewEventStream(mgr)
 
-	rStream, err := newRegistryEventStreamFromConfig(cfg)
+	rStream, err := registry.NewEventStream(eClient, reg)
 	if err != nil {
 		return nil, err
 	}
@@ -73,18 +75,6 @@ func New(cfg config.Config) (*Server, error) {
 	eBus.AddListener("agent", aHandler)
 
 	return &Server{a, e, rStream, sStream, eBus, mach, nil}, nil
-}
-
-func newEtcdClientFromConfig(cfg config.Config) *etcd.Client {
-	c := etcd.NewClient(cfg.EtcdServers)
-	c.SetConsistency(etcd.STRONG_CONSISTENCY)
-	return c
-}
-
-func newRegistryEventStreamFromConfig(cfg config.Config) (*registry.EventStream, error) {
-	eClient := newEtcdClientFromConfig(cfg)
-	reg := registry.New(eClient, cfg.EtcdKeyPrefix)
-	return registry.NewEventStream(eClient, reg)
 }
 
 func newMachineFromConfig(cfg config.Config) (*machine.CoreOSMachine, error) {
@@ -104,10 +94,7 @@ func newMachineFromConfig(cfg config.Config) (*machine.CoreOSMachine, error) {
 	return mach, nil
 }
 
-func newAgentFromConfig(mach machine.Machine, cfg config.Config, mgr unit.UnitManager) (*agent.Agent, error) {
-	regClient := newEtcdClientFromConfig(cfg)
-	reg := registry.New(regClient, cfg.EtcdKeyPrefix)
-
+func newAgentFromConfig(mach machine.Machine, reg registry.Registry, cfg config.Config, mgr unit.UnitManager) (*agent.Agent, error) {
 	var verifier *sign.SignatureVerifier
 	if cfg.VerifyUnits {
 		var err error
@@ -119,12 +106,6 @@ func newAgentFromConfig(mach machine.Machine, cfg config.Config, mgr unit.UnitMa
 	}
 
 	return agent.New(mgr, reg, mach, cfg.AgentTTL, verifier)
-}
-
-func newEngineFromConfig(mach machine.Machine, cfg config.Config) (*engine.Engine, error) {
-	regClient := newEtcdClientFromConfig(cfg)
-	reg := registry.New(regClient, cfg.EtcdKeyPrefix)
-	return engine.New(reg, mach), nil
 }
 
 func (s *Server) Run() {
