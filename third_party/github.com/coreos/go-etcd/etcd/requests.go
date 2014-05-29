@@ -272,6 +272,7 @@ func (c *Client) SendRequest(rr *RawRequest) (*RawResponse, error) {
 
 		// if there is no error, it should receive response
 		resps = append(resps, *resp)
+		defer resp.Body.Close()
 		logger.Debug("recv.response.from", httpPath)
 
 		if validHttpStatusCode[resp.StatusCode] {
