@@ -16,6 +16,10 @@ import (
 
 const (
 	jobPrefix = "job"
+
+	// ScheduleTTL is a number to wait before retriggering the
+	// offer process for a Job after making a scheduling decision
+	ScheduleTTL = 10
 )
 
 // GetAllJobs lists all Jobs known by the Registry
@@ -260,9 +264,19 @@ func (es *EventStream) filterJobTargetStateChanges(resp *etcd.Response) *event.E
 	return &event.Event{cType, jobName, agent}
 }
 
+// ScheduleJob writes a temporary scheduling decision to the
+// Registry. The decision will time out if CommitSchedule is
+// not called within ScheduleTTL seconds.
 func (r *EtcdRegistry) ScheduleJob(jobName string, machID string) error {
 	key := r.jobTargetAgentPath(jobName)
-	_, err := r.etcd.Create(key, machID, 0)
+	_, err := r.etcd.Create(key, machID, uint64(ScheduleTTL))
+	return err
+}
+
+// CommitSchedule affirms an uncommitted scheduling decision.
+func (r *EtcdRegistry) CommitSchedule(jobName string, machID string) error {
+	key := r.jobTargetAgentPath(jobName)
+	_, err := r.etcd.CompareAndSwap(key, machID, 0, machID, 0)
 	return err
 }
 
@@ -318,6 +332,33 @@ func filterEventJobUnscheduled(resp *etcd.Response) *event.Event {
 	}
 
 	return &event.Event{"EventJobUnscheduled", jobName, resp.PrevNode.Value}
+}
+
+func filterEventJobScheduleExpired(resp *etcd.Response) *event.Event {
+	if resp.Action != "expire" {
+		return nil
+	}
+
+	dir, baseName := path.Split(resp.Node.Key)
+	if baseName != "target" {
+		return nil
+	}
+
+	dir = strings.TrimSuffix(dir, "/")
+	dir, jobName := path.Split(dir)
+
+	dir = strings.TrimSuffix(dir, "/")
+	dir, prefixName := path.Split(dir)
+
+	if prefixName != jobPrefix {
+		return nil
+	}
+
+	if resp.PrevNode == nil {
+		return nil
+	}
+
+	return &event.Event{"EventJobScheduleExpired", jobName, nil}
 }
 
 func filterEventJobDestroyed(resp *etcd.Response) *event.Event {

@@ -1,6 +1,8 @@
 package engine
 
 import (
+	"errors"
+
 	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
 
 	"github.com/coreos/fleet/event"
@@ -47,25 +49,44 @@ func (eh *EventHandler) HandleEventJobScheduled(ev event.Event) {
 	eh.engine.clust.jobScheduled(jobName, target)
 }
 
+// EventJobScheduleExpired is triggered when a scheduling decision
+// was never committed by the target.
+func (eh *EventHandler) HandleEventJobScheduleExpired(ev event.Event) {
+	jobName := ev.Payload.(string)
+	err := eh.maybeOfferJob(jobName)
+	if err != nil {
+		log.Errorf("EventJobScheduleExpired(%s): Failed re-offering Job: %v", jobName, err)
+	}
+}
+
 // EventJobUnscheduled is triggered when a scheduling decision has been
 // rejected, or is now unfulfillable due to changes in the cluster.
 // Attempt to reschedule the job if it is in a non-inactive state.
 func (eh *EventHandler) HandleEventJobUnscheduled(ev event.Event) {
 	jobName := ev.Payload.(string)
+	err := eh.maybeOfferJob(jobName)
+	if err != nil {
+		log.Errorf("EventJobUnscheduled(%s): Failed re-offering Job: %v", jobName, err)
+	}
+}
 
+// maybeOfferJob offers the indicated Job only if its target state is
+// not inactive.
+func (eh *EventHandler) maybeOfferJob(jobName string) error {
 	ts, _ := eh.engine.registry.GetJobTargetState(jobName)
 	if ts == nil || *ts == job.JobStateInactive {
-		return
+		return nil
 	}
 
 	j, _ := eh.engine.registry.GetJob(jobName)
 	if j == nil {
-		log.Errorf("EventJobUnscheduled(%s): unable to re-offer Job, as it could not be found in the Registry", jobName)
-		return
+		return errors.New("unable to re-offer Job, as it could not be found in the Registry")
 	}
 
-	log.Infof("EventJobUnscheduled(%s): publishing JobOffer", jobName)
+	log.Infof("Publishing JobOffer(%s)", jobName)
 	eh.engine.OfferJob(*j)
+
+	return nil
 }
 
 func (eh *EventHandler) HandleCommandStopJob(ev event.Event) {

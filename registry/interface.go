@@ -17,6 +17,7 @@ type Registry interface {
 	CheckJobPulse(jobName string) (string, bool)
 	ClearJobHeartbeat(jobName string)
 	ClearJobTarget(jobName, machID string) error
+	CommitSchedule(jobName string, machID string) error
 	CreateJob(j *job.Job) (err error)
 	CreateJobOffer(jo *job.JobOffer) error
 	CreateSignatureSet(ss *sign.SignatureSet) error
