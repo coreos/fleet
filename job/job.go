@@ -13,9 +13,17 @@ import (
 type JobState string
 
 const (
+	// JobStateInactive means a Job is known by fleet, and loaded into the Registry, but not loaded into any agents.
 	JobStateInactive = JobState("inactive")
-	JobStateLoaded   = JobState("loaded")
+
+	// JobStateLoaded indicates that a Job is loaded into an agent somewhere in the cluster.
+	JobStateLoaded = JobState("loaded")
+
+	// JobStateLaunched is used for all non-batch units, and corresponds to the Job running somewhere in the cluster.
 	JobStateLaunched = JobState("launched")
+
+	// JobStateCompleted is used for batch units only, and is the final state of the Job after it has successfully completed.
+	JobStateCompleted = JobState("completed")
 )
 
 // fleet-specific unit file requirement keys.

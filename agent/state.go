@@ -200,27 +200,37 @@ func (as *AgentState) dropTargetState(jobName string) {
 	delete(as.targetStates, jobName)
 }
 
-func (as *AgentState) LaunchedJobs() []string {
+// StartedJobs returns a list of Job names that have been started by the agent
+func (as *AgentState) StartedJobs() []string {
 	jobs := make([]string, 0)
 	for j, ts := range as.targetStates {
-		if ts == job.JobStateLaunched {
+		if isStarted(ts) {
 			jobs = append(jobs, j)
 		}
 	}
 	return jobs
 }
 
+// ScheduledJobs returns a list of Job names that are currently scheduled to the agent
 func (as *AgentState) ScheduledJobs() []string {
 	jobs := make([]string, 0)
 	for j, ts := range as.targetStates {
-		if ts == job.JobStateLoaded || ts == job.JobStateLaunched {
+		if isScheduled(ts) {
 			jobs = append(jobs, j)
 		}
 	}
 	return jobs
 }
 
+// ScheduledHere returns whether the Job by the given name is scheduled to the agent
 func (as *AgentState) ScheduledHere(jobName string) bool {
-	ts := as.targetStates[jobName]
-	return ts == job.JobStateLoaded || ts == job.JobStateLaunched
+	return isScheduled(as.targetStates[jobName])
+}
+
+func isScheduled(ts job.JobState) bool {
+	return ts == job.JobStateLoaded || ts == job.JobStateLaunched || ts == job.JobStateCompleted
+}
+
+func isStarted(ts job.JobState) bool {
+	return ts == job.JobStateLaunched || ts == job.JobStateCompleted
 }

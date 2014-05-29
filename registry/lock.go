@@ -36,16 +36,14 @@ func (r *EtcdRegistry) lockResource(class, id, context string) *TimedResourceMut
 	return &TimedResourceMutex{r.etcd, *resp.Node}
 }
 
-// TimedResourceMutex is a proxy to an auto-expiring mutex
-// stored in the Registry. It assumes the mutex creator has
-// initialized a timer.
+// TimedResourceMutex is a proxy to an auto-expiring mutex stored in the
+// Registry. It assumes the mutex creator has initialized a timer.
 type TimedResourceMutex struct {
 	etcd etcd.Client
 	node goetcd.Node
 }
 
-// Unlock will attempt to remove the lock held on the mutex
-// in the Registry.
+// Unlock will attempt to remove the lock held on the mutex in the Registry.
 func (t *TimedResourceMutex) Unlock() error {
 	_, err := t.etcd.CompareAndDelete(t.node.Key, "", t.node.CreatedIndex)
 	if err != nil {

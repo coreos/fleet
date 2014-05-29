@@ -91,8 +91,8 @@ func (a *Agent) Initialize() uint64 {
 	defer a.state.Unlock()
 
 	machID := a.Machine.State().ID
-	loaded := map[string]job.Job{}
-	launched := map[string]job.Job{}
+	scheduled := map[string]job.Job{}
+	started := map[string]job.Job{}
 	jobs, _ := a.registry.GetAllJobs()
 	for _, j := range jobs {
 		tm, _ := a.registry.GetJobTarget(j.Name)
@@ -111,36 +111,34 @@ func (a *Agent) Initialize() uint64 {
 			continue
 		}
 
-		loaded[j.Name] = j
+		scheduled[j.Name] = j
 
-		if *ts != job.JobStateLaunched {
+		if !shouldStart(*ts) {
 			continue
 		}
 
-		launched[j.Name] = j
+		started[j.Name] = j
 	}
 
 	units, err := a.um.Units()
 	if err != nil {
-		log.Warningf("Failed determining what units are already loaded: %v", err)
+		log.Warningf("Failed determining what units are already scheduled: %v", err)
 	}
 
 	for _, name := range units {
-		if _, ok := loaded[name]; !ok {
-			log.Infof("Unit(%s) should not be loaded here, unloading", name)
+		if _, ok := scheduled[name]; !ok {
+			log.Infof("Unit(%s) should not be scheduled here, unloading", name)
 			a.um.Stop(name)
 			a.um.Unload(name)
 		}
 	}
 
-	for _, j := range loaded {
+	for _, j := range scheduled {
 		a.state.TrackJob(&j)
 		a.loadJob(&j)
+	}
 
-		if _, ok := launched[j.Name]; !ok {
-			continue
-		}
-
+	for _, j := range started {
 		a.startJobUnlocked(j.Name)
 	}
 
@@ -238,8 +236,8 @@ func (a *Agent) heartbeatAgent(ttl time.Duration, stop chan bool) {
 func (a *Agent) heartbeatJobs(ttl time.Duration, stop chan bool) {
 	heartbeat := func() {
 		machID := a.Machine.State().ID
-		launched := a.state.LaunchedJobs()
-		for _, j := range launched {
+		started := a.state.StartedJobs()
+		for _, j := range started {
 			go a.registry.JobHeartbeat(j, machID, ttl)
 		}
 	}
@@ -604,7 +602,7 @@ func (a *Agent) JobScheduledLocally(jobName string) {
 	a.bidForPossiblePeers(j.Name)
 
 	ts, _ := a.registry.GetJobTargetState(j.Name)
-	if ts == nil || *ts != job.JobStateLaunched {
+	if ts == nil || !shouldStart(*ts) {
 		return
 	}
 
@@ -630,4 +628,9 @@ func (a *Agent) JobUnscheduled(jobName string) {
 
 	log.Infof("Checking outstanding JobOffers")
 	a.bidForPossibleJobs()
+}
+
+// shouldStart returns whether a target state means a Job should be started on this agent
+func shouldStart(ts job.JobState) bool {
+	return ts == job.JobStateLaunched || ts == job.JobStateCompleted
 }
