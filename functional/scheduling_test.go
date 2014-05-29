@@ -302,3 +302,83 @@ X-ConditionMachineID=%s
 		}
 	}
 }
+
+// Ensure units can be scheduled directly to a given machine using the
+// X-ConditionMachineMetadata unit option.
+func TestScheduleConditionMachineMetadata(t *testing.T) {
+	cluster, err := platform.NewNspawnCluster("smoke")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cluster.Destroy()
+
+	// Start with a simple three-node cluster
+	config := platform.MachineConfig{
+		Metadata: map[string]string{"region": "us-east-1"},
+	}
+	if err := platform.CreateNClusterMembers(cluster, 3, config); err != nil {
+		t.Fatal(err)
+	}
+	machines, err := waitForNMachines(3)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Start 2 units that are each scheduled to one of our machines
+	schedule := make(map[string]string)
+	for i := 0; i < 2; i++ {
+		contents := `
+[Service]
+ExecStart=/bin/bash -c "while true; do echo Hello, World!; sleep 1; done"
+
+[X-Fleet]
+X-ConditionMachineMetadata=us-east-1
+`
+		unit, err := startUnit(contents)
+		if err != nil {
+			t.Fatal(err)
+		}
+		schedule[unit] = machines[i]
+	}
+
+	// Block until our three units have been started
+	states, err := waitForNActiveUnits(2)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for unit, unitState := range states {
+		if unitState.Machine != schedule[unit] {
+			t.Errorf("Unit %s was scheduled to %s, expected %s", unit, unitState.Machine, schedule[unit])
+		}
+	}
+
+	//this unit should not be scheduled
+	contents := `
+[Service]
+ExecStart=/bin/bash -c "while true; do echo Hello, World!; sleep 1; done"
+
+[X-Fleet]
+X-ConditionMachineMetadata=us-west-1
+`
+	unit, err := startUnit(contents)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+}
+
+func startUnit(contents string) (string, error) {
+	unitFile, err := tempUnit(contents)
+	if err != nil {
+		return nil, err
+	}
+	defer os.Remove(unitFile)
+
+	_, _, err = fleetctl("start", unitFile)
+	if err != nil {
+		return nil, errors.New("Failed starting unit file %s: %v", unitFile, err)
+	}
+
+	return filepath.Base(unitFile), nil
+}
