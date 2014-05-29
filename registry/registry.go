@@ -4,20 +4,21 @@ import (
 	"encoding/json"
 	"fmt"
 
-	etcdErr "github.com/coreos/fleet/third_party/github.com/coreos/etcd/error"
-	"github.com/coreos/fleet/third_party/github.com/coreos/go-etcd/etcd"
+	goetcd "github.com/coreos/fleet/third_party/github.com/coreos/go-etcd/etcd"
+
+	"github.com/coreos/fleet/etcd"
 )
 
 const DefaultKeyPrefix = "/_coreos.com/fleet/"
 
 // EtcdRegistry fulfils the Registry interface and uses etcd as a backend
 type EtcdRegistry struct {
-	etcd      *etcd.Client
+	etcd      etcd.Client
 	keyPrefix string
 }
 
 // New creates a new EtcdRegistry with the given parameters
-func New(client *etcd.Client, keyPrefix string) (registry Registry) {
+func New(client etcd.Client, keyPrefix string) (registry Registry) {
 	return &EtcdRegistry{client, keyPrefix}
 }
 
@@ -46,6 +47,6 @@ func unmarshal(val string, obj interface{}) error {
 }
 
 func isKeyNotFound(err error) bool {
-	e, ok := err.(*etcd.EtcdError)
-	return ok && e.ErrorCode == etcdErr.EcodeKeyNotFound
+	e, ok := err.(*goetcd.EtcdError)
+	return ok && e.ErrorCode == etcd.EcodeKeyNotFound
 }

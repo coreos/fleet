@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/coreos/fleet/third_party/github.com/coreos/go-etcd/etcd"
+	goetcd "github.com/coreos/fleet/third_party/github.com/coreos/go-etcd/etcd"
 
 	"github.com/coreos/fleet/event"
 	"github.com/coreos/fleet/machine"
@@ -97,7 +97,7 @@ func (r *EtcdRegistry) LockMachine(machID, context string) *TimedResourceMutex {
 	return r.lockResource("machine", machID, context)
 }
 
-func filterEventMachineCreated(resp *etcd.Response) *event.Event {
+func filterEventMachineCreated(resp *goetcd.Response) *event.Event {
 	dir, baseName := path.Split(resp.Node.Key)
 	if baseName != "object" {
 		return nil
@@ -120,7 +120,7 @@ func filterEventMachineCreated(resp *etcd.Response) *event.Event {
 	return &event.Event{"EventMachineCreated", m, nil}
 }
 
-func filterEventMachineRemoved(resp *etcd.Response) *event.Event {
+func filterEventMachineRemoved(resp *goetcd.Response) *event.Event {
 	dir, baseName := path.Split(resp.Node.Key)
 	if baseName != "object" {
 		return nil

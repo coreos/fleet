@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"path"
 
-	etcdErr "github.com/coreos/fleet/third_party/github.com/coreos/etcd/error"
-	"github.com/coreos/fleet/third_party/github.com/coreos/go-etcd/etcd"
+	goetcd "github.com/coreos/fleet/third_party/github.com/coreos/go-etcd/etcd"
 	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
 
+	"github.com/coreos/fleet/etcd"
 	"github.com/coreos/fleet/unit"
 )
 
@@ -28,7 +28,7 @@ func (r *EtcdRegistry) storeOrGetUnit(u unit.Unit) (err error) {
 	log.V(3).Infof("Storing Unit(%s) in Registry: %s", u.Hash(), json)
 	_, err = r.etcd.Create(key, json, 0)
 	// unit is already stored
-	if err != nil && err.(*etcd.EtcdError).ErrorCode == etcdErr.EcodeNodeExist {
+	if err != nil && err.(*goetcd.EtcdError).ErrorCode == etcd.EcodeNodeExist {
 		log.V(2).Infof("Unit(%s) already exists in Registry", u.Hash())
 		// TODO(jonboulle): verify more here?
 		err = nil
