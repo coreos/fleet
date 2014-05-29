@@ -19,10 +19,7 @@ const (
 
 	// ScheduleTTL is a number to wait before retriggering the
 	// offer process for a Job after making a scheduling decision
-	// NOTE(bcwaldon): This is set to 0 for now for compatibility
-	// with old Agents. Once this code has been fully deployed, we
-	// can set a nonzero value here.
-	ScheduleTTL = 0
+	ScheduleTTL = 10
 )
 
 // GetAllJobs lists all Jobs known by the Registry
