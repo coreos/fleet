@@ -6,8 +6,6 @@ import (
 	"strings"
 
 	"github.com/coreos/fleet/third_party/github.com/golang/glog"
-
-	"github.com/coreos/fleet/etcd"
 )
 
 type Config struct {
@@ -50,11 +48,5 @@ func UpdateLoggingFlagsFromConfig(flagset *flag.FlagSet, conf *Config) {
 	err = flagset.Lookup("logtostderr").Value.Set("true")
 	if err != nil {
 		glog.Errorf("Failed to set flag.logtostderr to true: %v", err)
-	}
-
-	if conf.Verbosity > 2 {
-		etcd.EnableDebugLogging()
-	} else {
-		etcd.DisableDebugLogging()
 	}
 }

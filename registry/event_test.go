@@ -3,23 +3,22 @@ package registry
 import (
 	"testing"
 
-	goetcd "github.com/coreos/fleet/third_party/github.com/coreos/go-etcd/etcd"
-
+	"github.com/coreos/fleet/etcd"
 	"github.com/coreos/fleet/event"
 )
 
 func TestPipe(t *testing.T) {
-	etcdchan := make(chan *goetcd.Response)
+	etcdchan := make(chan *etcd.Result)
 
-	translate1 := func(resp *goetcd.Response) *event.Event {
+	translate1 := func(resp *etcd.Result) *event.Event {
 		return &event.Event{"TranslateTest1", resp.Action, nil}
 	}
 
-	translate2 := func(resp *goetcd.Response) *event.Event {
+	translate2 := func(resp *etcd.Result) *event.Event {
 		return &event.Event{"TranslateTest2", resp.Action, "foo"}
 	}
 
-	filters := []func(resp *goetcd.Response) *event.Event{translate1, translate2}
+	filters := []func(resp *etcd.Result) *event.Event{translate1, translate2}
 
 	eventchan := make(chan *event.Event)
 	stopchan := make(chan bool)
@@ -30,7 +29,7 @@ func TestPipe(t *testing.T) {
 
 	go pipe(etcdchan, filters, send, stopchan)
 
-	resp := goetcd.Response{Action: "TestAction", Node: &goetcd.Node{Key: "/", ModifiedIndex: 0}}
+	resp := etcd.Result{Action: "TestAction", Node: &etcd.Node{Key: "/", ModifiedIndex: 0}}
 	etcdchan <- &resp
 
 	ev1 := <-eventchan

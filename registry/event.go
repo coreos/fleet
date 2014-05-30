@@ -2,10 +2,8 @@ package registry
 
 import (
 	"errors"
-	"strings"
 	"time"
 
-	goetcd "github.com/coreos/fleet/third_party/github.com/coreos/go-etcd/etcd"
 	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
 
 	"github.com/coreos/fleet/etcd"
@@ -27,7 +25,7 @@ func NewEventStream(client etcd.Client, registry Registry) (*EventStream, error)
 }
 
 func (es *EventStream) Stream(idx uint64, sendFunc func(*event.Event), stop chan bool) {
-	filters := []func(*goetcd.Response) *event.Event{
+	filters := []func(*etcd.Result) *event.Event{
 		filterEventJobDestroyed,
 		filterEventJobScheduled,
 		filterEventJobUnscheduled,
@@ -39,50 +37,58 @@ func (es *EventStream) Stream(idx uint64, sendFunc func(*event.Event), stop chan
 		filterEventJobBidSubmitted,
 	}
 
-	etcdchan := make(chan *goetcd.Response)
+	etcdchan := make(chan *etcd.Result)
 	go watch(es.etcd, idx, etcdchan, es.registry.keyPrefix, stop)
 	go pipe(etcdchan, filters, sendFunc, stop)
 }
 
-func pipe(etcdchan chan *goetcd.Response, filters []func(resp *goetcd.Response) *event.Event, sendFunc func(*event.Event), stop chan bool) {
+func pipe(etcdchan chan *etcd.Result, filters []func(res *etcd.Result) *event.Event, sendFunc func(*event.Event), stop chan bool) {
 	for true {
 		select {
 		case <-stop:
 			return
-		case resp := <-etcdchan:
-			log.V(1).Infof("Received response from etcd watcher: Action=%s ModifiedIndex=%d Key=%s", resp.Action, resp.Node.ModifiedIndex, resp.Node.Key)
+		case res := <-etcdchan:
+			log.V(1).Infof("Received %v from etcd watch", res)
 			for _, f := range filters {
-				ev := f(resp)
+				ev := f(res)
 				if ev == nil {
 					continue
 				}
 
-				log.V(1).Infof("Translated response(ModifiedIndex=%d) to event(Type=%s)", resp.Node.ModifiedIndex, ev.Type)
+				log.V(1).Infof("Translated %v to Event(Type=%s)", res, ev.Type)
 				sendFunc(ev)
 			}
 		}
 	}
 }
 
-func watch(client etcd.Client, idx uint64, etcdchan chan *goetcd.Response, key string, stop chan bool) {
+func watch(client etcd.Client, idx uint64, etcdchan chan *etcd.Result, key string, stop chan bool) {
 	for true {
 		select {
 		case <-stop:
 			log.V(1).Infof("Gracefully closing etcd watch loop: key=%s", key)
 			return
 		default:
-			log.V(1).Infof("Creating etcd watcher: key=%s, index=%d, machines=%s", key, idx, strings.Join(client.GetCluster(), ","))
-			resp, err := client.Watch(key, idx, true, nil, stop)
+			req := &etcd.Watch{
+				Key:       key,
+				WaitIndex: idx,
+				Recursive: true,
+			}
 
+			log.V(1).Infof("Creating etcd watcher: %v", req)
+
+			resp, err := client.Wait(req, stop)
 			if err == nil {
-				idx = resp.Node.ModifiedIndex + 1
+				if resp.Node != nil {
+					idx = resp.Node.ModifiedIndex + 1
+				}
 				etcdchan <- resp
 				continue
 			}
 
-			log.Errorf("etcd watcher returned error: key=%s, err=\"%s\"", key, err.Error())
+			log.Errorf("etcd watcher %v returned error: %v", req, err)
 
-			etcdError, ok := err.(*goetcd.EtcdError)
+			etcdError, ok := err.(etcd.Error)
 			if !ok {
 				// Let's not slam the etcd server in the event that we know
 				// an unexpected error occurred.
@@ -91,7 +97,7 @@ func watch(client etcd.Client, idx uint64, etcdchan chan *goetcd.Response, key s
 			}
 
 			switch etcdError.ErrorCode {
-			case etcd.EcodeEventIndexCleared:
+			case etcd.ErrorEventIndexCleared:
 				// This is racy, but adding one to the last known index
 				// will help get this watcher back into the range of
 				// etcd's internal event history

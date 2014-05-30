@@ -5,7 +5,6 @@ import (
 	"path"
 	"strings"
 
-	goetcd "github.com/coreos/fleet/third_party/github.com/coreos/go-etcd/etcd"
 	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
 
 	"github.com/coreos/fleet/etcd"
@@ -22,8 +21,13 @@ const (
 func (r *EtcdRegistry) GetAllJobs() ([]job.Job, error) {
 	var jobs []job.Job
 
-	key := path.Join(r.keyPrefix, jobPrefix)
-	resp, err := r.etcd.Get(key, true, true)
+	req := etcd.Get{
+		Key:       path.Join(r.keyPrefix, jobPrefix),
+		Sorted:    true,
+		Recursive: true,
+	}
+
+	resp, err := r.etcd.Do(&req)
 	if err != nil {
 		if isKeyNotFound(err) {
 			err = nil
@@ -53,9 +57,13 @@ func (r *EtcdRegistry) GetAllJobs() ([]job.Job, error) {
 // been scheduled, the ID the target machine is returned. Otherwise, an
 // empty string is returned.
 func (r *EtcdRegistry) GetJobTarget(jobName string) (string, error) {
-	// Figure out to which Machine this Job is scheduled
-	key := r.jobTargetAgentPath(jobName)
-	resp, err := r.etcd.Get(key, false, true)
+	req := etcd.Get{
+		Key:       r.jobTargetAgentPath(jobName),
+		Sorted:    false,
+		Recursive: true,
+	}
+
+	resp, err := r.etcd.Do(&req)
 	if err != nil {
 		return "", err
 	}
@@ -64,19 +72,27 @@ func (r *EtcdRegistry) GetJobTarget(jobName string) (string, error) {
 }
 
 func (r *EtcdRegistry) ClearJobTarget(jobName, machID string) error {
-	key := r.jobTargetAgentPath(jobName)
-	_, err := r.etcd.CompareAndDelete(key, machID, 0)
+	req := etcd.Delete{
+		Key:           r.jobTargetAgentPath(jobName),
+		PreviousValue: machID,
+	}
+
+	_, err := r.etcd.Do(&req)
 	if isKeyNotFound(err) {
 		err = nil
 	}
+
 	return err
 }
 
 // GetJob looks for a Job of the given name in the Registry. It returns a fully
 // hydrated Job on success, or nil on any kind of failure.
 func (r *EtcdRegistry) GetJob(jobName string) (j *job.Job, err error) {
-	key := path.Join(r.keyPrefix, jobPrefix, jobName, "object")
-	resp, err := r.etcd.Get(key, false, true)
+	req := etcd.Get{
+		Key: path.Join(r.keyPrefix, jobPrefix, jobName, "object"),
+	}
+
+	resp, err := r.etcd.Do(&req)
 	if err != nil {
 		if isKeyNotFound(err) {
 			err = nil
@@ -152,19 +168,27 @@ type jobModel struct {
 // associated Payload and SignatureSet. It does not yet remove underlying
 // Units from the repository.
 func (r *EtcdRegistry) DestroyJob(jobName string) error {
-	key := path.Join(r.keyPrefix, jobPrefix, jobName)
-	r.etcd.Delete(key, true)
+	req := etcd.Delete{
+		Key:       path.Join(r.keyPrefix, jobPrefix, jobName),
+		Recursive: true,
+	}
+
+	r.etcd.Do(&req)
+
 	// TODO(jonboulle): add unit reference counting and actually destroying Units
 	r.destroyLegacyPayload(jobName)
 	r.destroySignatureSetOfJob(jobName)
 	// TODO(jonboulle): handle errors
+
 	return nil
 }
 
 // destroyLegacyPayload removes an old-style Payload from the registry
 func (r *EtcdRegistry) destroyLegacyPayload(payloadName string) {
-	key := path.Join(r.keyPrefix, payloadPrefix, payloadName)
-	r.etcd.Delete(key, false)
+	req := etcd.Delete{
+		Key: path.Join(r.keyPrefix, payloadPrefix, payloadName),
+	}
+	r.etcd.Do(&req)
 }
 
 // CreateJob attempts to store a Job and its associated Unit in the registry
@@ -172,8 +196,6 @@ func (r *EtcdRegistry) CreateJob(j *job.Job) (err error) {
 	if err := r.storeOrGetUnit(j.Unit); err != nil {
 		return err
 	}
-
-	key := path.Join(r.keyPrefix, jobPrefix, j.Name, "object")
 
 	jm := jobModel{
 		Name:     j.Name,
@@ -184,8 +206,13 @@ func (r *EtcdRegistry) CreateJob(j *job.Job) (err error) {
 		return
 	}
 
-	_, err = r.etcd.Create(key, json, 0)
-	if err != nil && err.(*goetcd.EtcdError).ErrorCode == etcd.EcodeNodeExist {
+	req := etcd.Create{
+		Key:   path.Join(r.keyPrefix, jobPrefix, j.Name, "object"),
+		Value: json,
+	}
+
+	_, err = r.etcd.Do(&req)
+	if err != nil && err.(etcd.Error).ErrorCode == etcd.ErrorNodeExist {
 		err = errors.New("job already exists")
 	}
 
@@ -193,10 +220,12 @@ func (r *EtcdRegistry) CreateJob(j *job.Job) (err error) {
 }
 
 func (r *EtcdRegistry) GetJobTargetState(jobName string) (*job.JobState, error) {
-	key := r.jobTargetStatePath(jobName)
-	resp, err := r.etcd.Get(key, false, false)
+	req := etcd.Get{
+		Key: r.jobTargetStatePath(jobName),
+	}
+	resp, err := r.etcd.Do(&req)
 	if err != nil {
-		if err.(*goetcd.EtcdError).ErrorCode != etcd.EcodeNodeExist {
+		if err.(etcd.Error).ErrorCode != etcd.ErrorNodeExist {
 			log.Errorf("Unable to determine target-state of Job(%s): %v", jobName, err)
 		}
 		return nil, err
@@ -206,12 +235,15 @@ func (r *EtcdRegistry) GetJobTargetState(jobName string) (*job.JobState, error) 
 }
 
 func (r *EtcdRegistry) SetJobTargetState(jobName string, state job.JobState) error {
-	key := r.jobTargetStatePath(jobName)
-	_, err := r.etcd.Set(key, string(state), 0)
+	req := etcd.Set{
+		Key:   r.jobTargetStatePath(jobName),
+		Value: string(state),
+	}
+	_, err := r.etcd.Do(&req)
 	return err
 }
 
-func (es *EventStream) filterJobTargetStateChanges(resp *goetcd.Response) *event.Event {
+func (es *EventStream) filterJobTargetStateChanges(resp *etcd.Result) *event.Event {
 	if resp.Action != "set" {
 		return nil
 	}
@@ -261,8 +293,11 @@ func (es *EventStream) filterJobTargetStateChanges(resp *goetcd.Response) *event
 }
 
 func (r *EtcdRegistry) ScheduleJob(jobName string, machID string) error {
-	key := r.jobTargetAgentPath(jobName)
-	_, err := r.etcd.Create(key, machID, 0)
+	req := etcd.Create{
+		Key:   r.jobTargetAgentPath(jobName),
+		Value: machID,
+	}
+	_, err := r.etcd.Do(&req)
 	return err
 }
 
@@ -270,7 +305,7 @@ func (r *EtcdRegistry) LockJob(jobName, context string) *TimedResourceMutex {
 	return r.lockResource("job", jobName, context)
 }
 
-func filterEventJobScheduled(resp *goetcd.Response) *event.Event {
+func filterEventJobScheduled(resp *etcd.Result) *event.Event {
 	if resp.Action != "create" {
 		return nil
 	}
@@ -293,7 +328,7 @@ func filterEventJobScheduled(resp *goetcd.Response) *event.Event {
 	return &event.Event{"EventJobScheduled", jobName, resp.Node.Value}
 }
 
-func filterEventJobUnscheduled(resp *goetcd.Response) *event.Event {
+func filterEventJobUnscheduled(resp *etcd.Result) *event.Event {
 	if resp.Action != "delete" && resp.Action != "compareAndDelete" {
 		return nil
 	}
@@ -320,7 +355,7 @@ func filterEventJobUnscheduled(resp *goetcd.Response) *event.Event {
 	return &event.Event{"EventJobUnscheduled", jobName, resp.PrevNode.Value}
 }
 
-func filterEventJobDestroyed(resp *goetcd.Response) *event.Event {
+func filterEventJobDestroyed(resp *etcd.Result) *event.Event {
 	if resp.Action != "delete" {
 		return nil
 	}

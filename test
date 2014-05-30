@@ -14,7 +14,7 @@ COVER=${COVER:-"-cover"}
 
 source ./build
 
-TESTABLE="agent config engine event fleetctl job machine pkg registry sign ssh unit"
+TESTABLE="agent config engine etcd event fleetctl job machine pkg registry sign ssh unit"
 FORMATTABLE="$TESTABLE functional server fleet.go"
 
 # user has not provided PKG override

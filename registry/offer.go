@@ -4,9 +4,9 @@ import (
 	"path"
 	"strings"
 
-	goetcd "github.com/coreos/fleet/third_party/github.com/coreos/go-etcd/etcd"
 	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
 
+	"github.com/coreos/fleet/etcd"
 	"github.com/coreos/fleet/event"
 	"github.com/coreos/fleet/job"
 )
@@ -37,8 +37,11 @@ func (r *EtcdRegistry) CreateJobOffer(jo *job.JobOffer) error {
 		return err
 	}
 
-	key := path.Join(r.keyPrefix, offerPrefix, jo.Job.Name, "object")
-	_, err = r.etcd.Set(key, json, 0)
+	req := etcd.Set{
+		Key:   path.Join(r.keyPrefix, offerPrefix, jo.Job.Name, "object"),
+		Value: json,
+	}
+	_, err = r.etcd.Do(&req)
 	return err
 }
 
@@ -66,8 +69,11 @@ func (r *EtcdRegistry) getJobOfferFromJSON(val string) *job.JobOffer {
 func (r *EtcdRegistry) Bids(jo *job.JobOffer) ([]job.JobBid, error) {
 	var bids []job.JobBid
 
-	key := path.Join(r.keyPrefix, offerPrefix, jo.Job.Name, "bids")
-	resp, err := r.etcd.Get(key, false, true)
+	req := etcd.Get{
+		Key:       path.Join(r.keyPrefix, offerPrefix, jo.Job.Name, "bids"),
+		Recursive: true,
+	}
+	resp, err := r.etcd.Do(&req)
 	if err != nil {
 		if isKeyNotFound(err) {
 			return bids, nil
@@ -88,16 +94,26 @@ func (r *EtcdRegistry) Bids(jo *job.JobOffer) ([]job.JobBid, error) {
 func (r *EtcdRegistry) UnresolvedJobOffers() []job.JobOffer {
 	var offers []job.JobOffer
 
-	key := path.Join(r.keyPrefix, offerPrefix)
-	resp, err := r.etcd.Get(key, true, true)
+	req := etcd.Get{
+		Key:       path.Join(r.keyPrefix, offerPrefix),
+		Sorted:    true,
+		Recursive: true,
+	}
+	resp, err := r.etcd.Do(&req)
 
 	if err != nil {
 		return offers
 	}
 
 	for _, node := range resp.Node.Nodes {
-		key := path.Join(node.Key, "object")
-		resp, err := r.etcd.Get(key, true, true)
+		req := etcd.Get{
+			Key: path.Join(node.Key, "object"),
+
+			//TODO(bcwaldon): This request should not need to be sorted/recursive
+			Sorted:    true,
+			Recursive: true,
+		}
+		resp, err := r.etcd.Do(&req)
 
 		// The object was probably handled between when we attempted to
 		// start resolving offers and when we actually tried to get it
@@ -117,8 +133,11 @@ func (r *EtcdRegistry) UnresolvedJobOffers() []job.JobOffer {
 }
 
 func (r *EtcdRegistry) LockJobOffer(jobName, context string) *TimedResourceMutex {
-	key := path.Join(r.keyPrefix, offerPrefix, jobName)
-	_, err := r.etcd.Get(key, false, true)
+	req := etcd.Get{
+		Key:       path.Join(r.keyPrefix, offerPrefix, jobName),
+		Recursive: true,
+	}
+	_, err := r.etcd.Do(&req)
 	if err != nil {
 		return nil
 	}
@@ -127,25 +146,32 @@ func (r *EtcdRegistry) LockJobOffer(jobName, context string) *TimedResourceMutex
 }
 
 func (r *EtcdRegistry) ResolveJobOffer(jobName string) error {
-	key := path.Join(r.keyPrefix, offerPrefix, jobName, "object")
-	if _, err := r.etcd.Delete(key, false); err != nil {
+	req := etcd.Delete{
+		Key: path.Join(r.keyPrefix, offerPrefix, jobName, "object"),
+	}
+	if _, err := r.etcd.Do(&req); err != nil {
 		if !isKeyNotFound(err) {
 			return err
 		}
 	}
 
-	key = path.Join(r.keyPrefix, offerPrefix, jobName)
-	r.etcd.Delete(key, true)
+	req = etcd.Delete{
+		Key:       path.Join(r.keyPrefix, offerPrefix, jobName),
+		Recursive: true,
+	}
+
+	r.etcd.Do(&req)
 	return nil
 }
 
 func (r *EtcdRegistry) SubmitJobBid(jb *job.JobBid) {
-	key := path.Join(r.keyPrefix, offerPrefix, jb.JobName, "bids", jb.MachineID)
-	//TODO: Use a TTL
-	r.etcd.Set(key, "", 0)
+	req := etcd.Set{
+		Key: path.Join(r.keyPrefix, offerPrefix, jb.JobName, "bids", jb.MachineID),
+	}
+	r.etcd.Do(&req)
 }
 
-func (es *EventStream) filterEventJobOffered(resp *goetcd.Response) *event.Event {
+func (es *EventStream) filterEventJobOffered(resp *etcd.Result) *event.Event {
 	if resp.Action != "set" {
 		return nil
 	}
@@ -171,7 +197,7 @@ func (es *EventStream) filterEventJobOffered(resp *goetcd.Response) *event.Event
 	return &event.Event{"EventJobOffered", *jo, nil}
 }
 
-func filterEventJobBidSubmitted(resp *goetcd.Response) *event.Event {
+func filterEventJobBidSubmitted(resp *etcd.Result) *event.Event {
 	if resp.Action != "set" {
 		return nil
 	}

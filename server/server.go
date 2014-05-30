@@ -3,6 +3,7 @@ package server
 import (
 	"encoding/json"
 	"errors"
+	"net/http"
 	"time"
 
 	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
@@ -48,7 +49,10 @@ func New(cfg config.Config) (*Server, error) {
 		return nil, err
 	}
 
-	eClient := etcd.NewClient(cfg.EtcdServers)
+	eClient, err := etcd.NewClient(cfg.EtcdServers, http.Transport{})
+	if err != nil {
+		return nil, err
+	}
 
 	reg := registry.New(eClient, cfg.EtcdKeyPrefix)
 

@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-	goetcd "github.com/coreos/fleet/third_party/github.com/coreos/go-etcd/etcd"
-
 	"github.com/coreos/fleet/etcd"
 )
 
@@ -23,11 +21,17 @@ func New(client etcd.Client, keyPrefix string) (registry Registry) {
 }
 
 func (r *EtcdRegistry) GetDebugInfo() (string, error) {
-	resp, err := r.etcd.RawGet(r.keyPrefix, true, true)
+	req := etcd.Get{
+		Key:       r.keyPrefix,
+		Sorted:    true,
+		Recursive: true,
+	}
+
+	resp, err := r.etcd.Do(&req)
 	if err != nil {
 		return "", err
 	}
-	return string(resp.Body), nil
+	return string(resp.Raw), nil
 }
 
 func marshal(obj interface{}) (string, error) {
@@ -47,6 +51,6 @@ func unmarshal(val string, obj interface{}) error {
 }
 
 func isKeyNotFound(err error) bool {
-	e, ok := err.(*goetcd.EtcdError)
-	return ok && e.ErrorCode == etcd.EcodeKeyNotFound
+	e, ok := err.(etcd.Error)
+	return ok && e.ErrorCode == etcd.ErrorKeyNotFound
 }
