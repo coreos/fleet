@@ -13,6 +13,7 @@ fleet will schedule any valid service, socket, path or timer systemd unit to a m
 |---------------|-------------|
 | `X-ConditionMachineID` | Require the unit be scheduled to the machine identified by the given string. |
 | `X-ConditionMachineOf` | Limit eligible machines to the one that hosts a specific unit. |
+| `X-ConditionMachineMetadata` | Limit eligible machines to those with this specific metadata. |
 | `X-Conflicts` | Prevent a unit from being collocated with other units using glob-matching on the other unit names. |
 
 See [more information](https://github.com/coreos/fleet/blob/master/Documentation/scheduling.md) on these parameters and how they impact scheduling decisions.
@@ -27,7 +28,8 @@ Description=Some Monitoring Service
 ExecStart=/bin/monitorme
 
 [X-Fleet]
-X-ConditionMachineID=148a18ff-6e95-4cd8-92da-c9de9bb90d5a
+X-ConditionMachineMetadata=location=chicago
+X-Conflicts=monitor*
 ```
 
 ## systemd specifiers
