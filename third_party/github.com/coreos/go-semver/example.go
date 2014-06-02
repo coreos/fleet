@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/coreos/fleet/github.com/coreos/go-semver/semver"
+	"github.com/coreos/fleet/third_party/github.com/coreos/go-semver/semver"
 	"os"
 )
 
