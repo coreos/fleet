@@ -455,13 +455,20 @@ func lazyStartJobs(args []string) ([]string, error) {
 			return nil, fmt.Errorf("unable to find Job(%s)", name)
 		} else if j.State == nil {
 			return nil, fmt.Errorf("unable to determine current state of Job")
-		} else if *(j.State) == job.JobStateLaunched {
+		}
+
+		ts := job.JobStateLaunched
+		if j.IsBatch() {
+			ts = job.JobStateCompleted
+		}
+
+		if *(j.State) == ts {
 			log.V(1).Infof("Job(%s) already %s, skipping.", j.Name, *(j.State))
 			continue
 		}
 
-		log.V(1).Infof("Setting Job(%s) target state to launched", j.Name)
-		registryCtl.SetJobTargetState(j.Name, job.JobStateLaunched)
+		log.V(1).Infof("Setting Job(%s) target state to %s", j.Name, ts)
+		registryCtl.SetJobTargetState(j.Name, ts)
 		triggered = append(triggered, j.Name)
 	}
 

@@ -94,6 +94,7 @@ func (eh *EventHandler) HandleEventMachineCreated(ev event.Event) {
 func (eh *EventHandler) HandleEventMachineRemoved(ev event.Event) {
 	machID := ev.Payload.(string)
 	mutex := eh.engine.registry.LockMachine(machID, eh.engine.machine.State().ID)
+	// TODO(jonboulle): what if we die before completing?
 	if mutex == nil {
 		log.V(1).Infof("EventMachineRemoved(%s): failed to lock Machine, ignoring event", machID)
 		return
