@@ -4,7 +4,7 @@ fleet will schedule any valid service, socket, path or timer systemd unit to a m
 
 ## Unit Requirements
 
-* Only service, socket, path and timer unit types are supported.
+* Must be a supported unit type: `service`, `socket`, `device`, `mount`, `automount`, `timer`, `path`
 * Each unit file must have a file extension corresponding to its respective unit type.
 
 ## fleet-specific Options
