@@ -390,8 +390,7 @@ func lazyCreateJobs(args []string, signAndVerify bool) error {
 		jobName := unitNameMangle(arg)
 		j, err := registryCtl.GetJob(jobName)
 		if err != nil {
-			log.V(1).Infof("Error retrieving Job(%s) from Registry: %v", jobName, err)
-			continue
+			return fmt.Errorf("error retrieving Job(%s) from Registry: %v", jobName, err)
 		}
 		if j != nil {
 			log.V(1).Infof("Found Job(%s) in Registry, no need to recreate it", jobName)
