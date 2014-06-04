@@ -423,31 +423,28 @@ func lazyCreateJobs(args []string, signAndVerify bool) error {
 }
 
 func lazyLoadJobs(args []string) ([]string, error) {
-	triggered := make([]string, 0)
-	for _, v := range args {
-		name := unitNameMangle(v)
-		j, err := registryCtl.GetJob(name)
-		if err != nil {
-			return nil, fmt.Errorf("error retrieving Job(%s) from Registry: %v", name, err)
-		} else if j == nil || j.State == nil {
-			return nil, fmt.Errorf("unable to determine state of job %s", name)
-		} else if *(j.State) == job.JobStateLoaded || *(j.State) == job.JobStateLaunched {
-			log.V(1).Infof("Job(%s) already %s, skipping.", j.Name, *(j.State))
-			continue
-		}
-
-		log.V(1).Infof("Setting Job(%s) target state to loaded", j.Name)
-		registryCtl.SetJobTargetState(j.Name, job.JobStateLoaded)
-		triggered = append(triggered, j.Name)
+	jobs := make([]string, len(args))
+	for _, j := range args {
+		jobs = append(jobs, unitNameMangle(j))
 	}
-
-	return triggered, nil
+	return setTargetStateOfJobs(jobs, job.JobStateLoaded)
 }
 
 func lazyStartJobs(args []string) ([]string, error) {
+	jobs := make([]string, len(args))
+	for _, j := range args {
+		jobs = append(jobs, unitNameMangle(j))
+	}
+	return setTargetStateOfJobs(jobs, job.JobStateLaunched)
+}
+
+// setTargetStateOfJobs ensures that the target state for the given Jobs is set
+// to the given state in the Registry.
+// On success, a slice of the Jobs for which a state change was made is returned.
+// Any error encountered is immediately returned (i.e. this is not a transaction).
+func setTargetStateOfJobs(jobs []string, state job.JobState) ([]string, error) {
 	triggered := make([]string, 0)
-	for _, v := range args {
-		name := unitNameMangle(v)
+	for _, name := range jobs {
 		j, err := registryCtl.GetJob(name)
 		if err != nil {
 			return nil, fmt.Errorf("error retrieving Job(%s) from Registry: %v", name, err)
@@ -455,13 +452,13 @@ func lazyStartJobs(args []string) ([]string, error) {
 			return nil, fmt.Errorf("unable to find Job(%s)", name)
 		} else if j.State == nil {
 			return nil, fmt.Errorf("unable to determine current state of Job")
-		} else if *(j.State) == job.JobStateLaunched {
+		} else if *(j.State) == state {
 			log.V(1).Infof("Job(%s) already %s, skipping.", j.Name, *(j.State))
 			continue
 		}
 
-		log.V(1).Infof("Setting Job(%s) target state to launched", j.Name)
-		registryCtl.SetJobTargetState(j.Name, job.JobStateLaunched)
+		log.V(1).Infof("Setting Job(%s) target state to %s", j.Name, state)
+		registryCtl.SetJobTargetState(j.Name, state)
 		triggered = append(triggered, j.Name)
 	}
 
