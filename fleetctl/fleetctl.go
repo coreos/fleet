@@ -422,7 +422,7 @@ func lazyCreateJobs(args []string, signAndVerify bool) error {
 }
 
 func lazyLoadJobs(args []string) ([]string, error) {
-	jobs := make([]string, len(args))
+	jobs := make([]string, 0, len(args))
 	for _, j := range args {
 		jobs = append(jobs, unitNameMangle(j))
 	}
@@ -430,7 +430,7 @@ func lazyLoadJobs(args []string) ([]string, error) {
 }
 
 func lazyStartJobs(args []string) ([]string, error) {
-	jobs := make([]string, len(args))
+	jobs := make([]string, 0, len(args))
 	for _, j := range args {
 		jobs = append(jobs, unitNameMangle(j))
 	}
