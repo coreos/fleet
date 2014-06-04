@@ -12,10 +12,9 @@
 # no IP address is published.
 # public_ip=""
 
-# Comma-delimited key/value pairs that are published with the local
-# to the fleet registry. This data can be used directly by a client
-# of fleet to make scheduling descisions. An example set of metadata
-# could look like:  metadata="region=us-west,az=us-west-1"
+# Comma-delimited key/value pairs that are published to the fleet registry.
+# This data can be referenced in unit files to affect scheduling descisions.
+# An example could look like: metadata="region=us-west,az=us-west-1"
 # metadata=""
 
 # An Agent will be considered dead if it exceeds this amount of time to
