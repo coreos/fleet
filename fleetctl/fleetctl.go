@@ -273,8 +273,8 @@ func getChecker() *ssh.HostKeyChecker {
 	return ssh.NewHostKeyChecker(keyFile)
 }
 
-// getUnitFromFile attempts to load a Job from a given filename
-// It returns the Job or nil, and any error encountered
+// getUnitFromFile attempts to load a Unit from a given filename
+// It returns the Unit or nil, and any error encountered
 func getUnitFromFile(file string) (*unit.Unit, error) {
 	out, err := ioutil.ReadFile(file)
 	if err != nil {
@@ -410,6 +410,7 @@ func lazyCreateJobs(args []string, signAndVerify bool) error {
 		}
 		if j != nil {
 			log.V(1).Infof("Found Job(%s) in Registry, no need to recreate it", jobName)
+			warnOnDifferentLocalUnit(arg, j)
 			if signAndVerify {
 				if err := verifyJob(j); err != nil {
 					return err
@@ -437,7 +438,7 @@ func lazyCreateJobs(args []string, signAndVerify bool) error {
 		}
 
 		// Otherwise (if the unit file does not exist), check if the name appears to be an instance unit,
-		// and if so, check for a corresponding template unit in the registry or on disk
+		// and if so, check for a corresponding template unit in the Registry
 		uni := unit.NewUnitNameInfo(jobName)
 		if uni == nil {
 			return fmt.Errorf("error extracting information from unit name %s", jobName)
@@ -448,6 +449,8 @@ func lazyCreateJobs(args []string, signAndVerify bool) error {
 		if err != nil {
 			return fmt.Errorf("error retrieving template Job(%s) from Registry: %v", uni.Template, err)
 		}
+
+		// Finally, if we could not find a template unit in the Registry, check the local disk for one instead
 		var u *unit.Unit
 		if tmpl == nil {
 			if _, err := os.Stat(uni.Template); os.IsNotExist(err) {
@@ -458,10 +461,11 @@ func lazyCreateJobs(args []string, signAndVerify bool) error {
 				return fmt.Errorf("failed getting template Unit(%s) from file: %v", uni.Template, err)
 			}
 		} else {
+			warnOnDifferentLocalUnit(arg, tmpl)
 			u = &tmpl.Unit
 		}
 
-		// If we found a template Unit or Job, create a near-identical Job in
+		// If we found a template Unit or Job, create a near-identical instance Job in
 		// the Registry - same Unit as the template, but different name
 		j, err = createJob(jobName, u)
 		if err != nil {
@@ -474,6 +478,24 @@ func lazyCreateJobs(args []string, signAndVerify bool) error {
 		}
 	}
 	return nil
+}
+
+func warnOnDifferentLocalUnit(name string, j *job.Job) {
+	if _, err := os.Stat(name); !os.IsNotExist(err) {
+		unit, err := getUnitFromFile(name)
+		if err == nil && unit.Hash() != j.UnitHash {
+			fmt.Fprintf(os.Stderr, "WARNING: Job(%s) in Registry differs from local Unit(%s)\n", j.Name, name)
+			return
+		}
+	}
+	if uni := unit.NewUnitNameInfo(name); uni != nil && uni.IsInstance() {
+		if _, err := os.Stat(uni.Template); !os.IsNotExist(err) {
+			tmpl, err := getUnitFromFile(uni.Template)
+			if err == nil && tmpl.Hash() != j.UnitHash {
+				fmt.Fprintf(os.Stderr, "WARNING: Job(%s) in Registry differs from local template Unit(%s)\n", j.Name, uni.Template)
+			}
+		}
+	}
 }
 
 func lazyLoadJobs(args []string) ([]string, error) {
