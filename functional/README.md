@@ -1,7 +1,10 @@
 ## fleet functional tests
 
-This functional test suite deploys a fleet cluster nspawn containers and asserts fleet is functioning properly.
-It shares etcd deployed on the host machine with each of the nspawn containers.
+This functional test suite deploys a fleet cluster using nspawn containers, and asserts fleet is functioning properly.
+
+It shares an instance of etcd deployed on the host machine with each of the nspawn containers.
+
+It's recommended to run this in a virtual machine environment on CoreOS (e.g. using coreos-vagrant). The only dependency for the tests not provided on the CoreOS image is `go`.
 
 The caller must do three things before running the tests:
 
@@ -13,21 +16,43 @@ $ ssh-add fleet/functional/fixtures/id_rsa
 $ echo $SSH_AUTH_SOCK
 /tmp/ssh-kwmtTOsL7978/agent.7978
 ```
-2. The `FLEETCTL_BIN` environment variable must point to the fleetctl binary that should be used to drive the actual tests.
+2. Ensure the `FLEET_BIN` and `FLEETCTL_BIN` environment variables point to the respective fleet and fleetctl binaries that should be used to drive the actual tests.
 
 ```
-$ export FLEETCTL_BIN=/usr/bin/fleetctl
+$ export FLEET_BIN=/path/to/fleet
+$ export FLEETCTL_BIN=/path/to/fleetctl
 ```
 
-3. Make sure etcd is running on the host system
+3. Make sure etcd is running on the host system.
 
 ```
 $ systemctl start etcd
 ```
 
-Then the tests can be run (probably as root):
+Then the tests can be run with:
 
 ```
-$ go test github.com/coreos/fleet/functional
-ok  	github.com/coreos/fleet/functional	9.479s
+# go test github.com/coreos/fleet/functional
+```
+
+Since the tests utilize `systemd-nspawn`, this needs to be invoked as sudo/root.
+
+An example test session using coreos-vagrant follows. This assumes that go is available in `/home/core/go` and the fleet repository in `/home/core/fleet` on the target machine (the easiest way to achieve this is to use shared folders).
+```
+vagrant ssh core-01 -- -A
+export GOROOT="$(pwd)/go"
+export PATH="${GOROOT}/bin:$PATH"
+cd fleet
+ssh-add functional/fixtures/id_rsa
+export GOPATH="$(pwd)/gopath"
+export FLEET_BIN="$(pwd)/bin/fleet"
+export FLEETCTL_BIN="$(pwd)/bin/fleetctl"
+sudo -E env PATH=$PATH go test github.com/coreos/fleet/functional
+```
+
+If the tests are aborted partway through, it's currently possible for them to leave residual state as a result of the systemd-nspawn operations. Manual cleanup can be performed as follows:
+```
+sudo rm -fr /run/systemd/system/*smoke*
+machinectl --no-legend | cut -d ' ' -f1 | sudo xargs machinectl terminate
+sudo systemctl daemon-reload
 ```

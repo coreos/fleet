@@ -24,8 +24,8 @@ func TestUnitRunnable(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, _, err := cluster.Fleetctl("start", "fixtures/units/hello.service"); err != nil {
-		t.Fatalf("Unable to start fleet unit: %v", err)
+	if stdout, stderr, err := cluster.Fleetctl("start", "fixtures/units/hello.service"); err != nil {
+		t.Fatalf("Unable to start fleet unit: \nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)
 	}
 
 	units, err := cluster.WaitForNActiveUnits(1)
@@ -112,8 +112,8 @@ func TestUnitRestart(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, _, err := cluster.Fleetctl("start", "fixtures/units/hello.service"); err != nil {
-		t.Fatalf("Unable to start fleet unit: %v", err)
+	if stdout, stderr, err := cluster.Fleetctl("start", "fixtures/units/hello.service"); err != nil {
+		t.Fatalf("Unable to start fleet unit: \nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)
 	}
 
 	units, err := cluster.WaitForNActiveUnits(1)
@@ -136,8 +136,8 @@ func TestUnitRestart(t *testing.T) {
 		t.Fatalf("Zero units should be running, found %v", units)
 	}
 
-	if _, _, err := cluster.Fleetctl("start", "hello.service"); err != nil {
-		t.Fatalf("Unable to start fleet unit: %v", err)
+	if stdout, stderr, err := cluster.Fleetctl("start", "hello.service"); err != nil {
+		t.Fatalf("Unable to start fleet unit: \nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)
 	}
 	units, err = cluster.WaitForNActiveUnits(1)
 	if err != nil {

@@ -35,8 +35,8 @@ func TestKnownHostsVerification(t *testing.T) {
 
 	khFile := tmp.Name()
 
-	if _, _, err := cluster.FleetctlWithInput("yes", "--strict-host-key-checking=true", fmt.Sprintf("--known-hosts-file=%s", khFile), "ssh", machine, "uptime"); err != nil {
-		t.Errorf("Unable to SSH into fleet machine: %v", err)
+	if stdout, stderr, err := cluster.FleetctlWithInput("yes", "--strict-host-key-checking=true", fmt.Sprintf("--known-hosts-file=%s", khFile), "ssh", machine, "uptime"); err != nil {
+		t.Errorf("Unable to SSH into fleet machine: \nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)
 	}
 
 	// Recreation of the cluster simulates a change in the server's host key
@@ -59,8 +59,8 @@ func TestKnownHostsVerification(t *testing.T) {
 	}
 
 	// And SSH should work again
-	if _, _, err := cluster.FleetctlWithInput("yes", "--strict-host-key-checking=true", fmt.Sprintf("--known-hosts-file=%s", khFile), "ssh", machine, "uptime"); err != nil {
-		t.Errorf("Unable to SSH into fleet machine: %v", err)
+	if stdout, stderr, err := cluster.FleetctlWithInput("yes", "--strict-host-key-checking=true", fmt.Sprintf("--known-hosts-file=%s", khFile), "ssh", machine, "uptime"); err != nil {
+		t.Errorf("Unable to SSH into fleet machine: \nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)
 	}
 
 }
