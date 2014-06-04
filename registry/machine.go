@@ -120,6 +120,28 @@ func filterEventMachineCreated(resp *goetcd.Response) *event.Event {
 	return &event.Event{"EventMachineCreated", m, nil}
 }
 
+func filterEventMachineLost(resp *goetcd.Response) *event.Event {
+	dir, baseName := path.Split(resp.Node.Key)
+	if baseName != "object" {
+		return nil
+	}
+
+	dir = strings.TrimSuffix(dir, "/")
+	dir = path.Dir(dir)
+	prefixName := path.Base(dir)
+
+	if prefixName != machinePrefix {
+		return nil
+	}
+
+	if resp.Action != "expire" {
+		return nil
+	}
+
+	machID := path.Base(path.Dir(resp.Node.Key))
+	return &event.Event{"EventMachineLost", machID, nil}
+}
+
 func filterEventMachineRemoved(resp *goetcd.Response) *event.Event {
 	dir, baseName := path.Split(resp.Node.Key)
 	if baseName != "object" {
@@ -134,7 +156,7 @@ func filterEventMachineRemoved(resp *goetcd.Response) *event.Event {
 		return nil
 	}
 
-	if resp.Action != "expire" && resp.Action != "delete" {
+	if resp.Action != "delete" {
 		return nil
 	}
 

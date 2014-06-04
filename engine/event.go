@@ -92,10 +92,18 @@ func (eh *EventHandler) HandleEventMachineCreated(ev event.Event) {
 }
 
 func (eh *EventHandler) HandleEventMachineRemoved(ev event.Event) {
+	eh.handleLossOfMachineEvents(ev)
+}
+
+func (eh *EventHandler) HandleEventMachineLost(ev event.Event) {
+	eh.handleLossOfMachineEvents(ev)
+}
+
+func (eh *EventHandler) handleLossOfMachineEvents(ev event.Event) {
 	machID := ev.Payload.(string)
 	mutex := eh.engine.registry.LockMachine(machID, eh.engine.machine.State().ID)
 	if mutex == nil {
-		log.V(1).Infof("EventMachineRemoved(%s): failed to lock Machine, ignoring event", machID)
+		log.V(1).Infof("%s(%s): failed to lock Machine, ignoring event", ev.Type, machID)
 		return
 	}
 	defer mutex.Unlock()
@@ -103,18 +111,18 @@ func (eh *EventHandler) HandleEventMachineRemoved(ev event.Event) {
 	jobs := getJobsScheduledToMachine(eh.engine.registry, machID)
 
 	for _, j := range jobs {
-		log.Infof("EventMachineRemoved(%s): clearing UnitState(%s)", machID, j.Name)
+		log.Infof("%s(%s): clearing UnitState(%s)", ev.Type, machID, j.Name)
 		err := eh.engine.registry.RemoveUnitState(j.Name)
 		if err != nil {
 			log.Errorf("Failed removing UnitState(%s) from Registry: %v", j.Name, err)
 		}
 
-		log.Infof("EventMachineRemoved(%s): unscheduling Job(%s)", machID, j.Name)
+		log.Infof("%s(%s): unscheduling Job(%s)", ev.Type, machID, j.Name)
 		eh.engine.registry.ClearJobTarget(j.Name, machID)
 	}
 
 	for _, j := range jobs {
-		log.Infof("EventMachineRemoved(%s): re-publishing JobOffer(%s)", machID, j.Name)
+		log.Infof("%s(%s): re-publishing JobOffer(%s)", ev.Type, machID, j.Name)
 		eh.engine.OfferJob(j)
 	}
 	eh.engine.clust.machineRemoved(machID)

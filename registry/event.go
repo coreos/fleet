@@ -34,6 +34,7 @@ func (es *EventStream) Stream(idx uint64, sendFunc func(*event.Event), stop chan
 		es.filterJobTargetStateChanges,
 		filterEventMachineCreated,
 		filterEventMachineRemoved,
+		filterEventMachineLost,
 		es.filterEventJobOffered,
 		filterEventJobBidSubmitted,
 	}
