@@ -101,7 +101,7 @@ func formatMetadata(metadata map[string]string) string {
 		pairs[idx] = fmt.Sprintf("%s=%s", key, value)
 		idx++
 	}
-	return strings.Join(pairs, ", ")
+	return strings.Join(pairs, ",")
 }
 
 // findAllMachines returns a map describing all the machines in the Registry, and a

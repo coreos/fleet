@@ -44,7 +44,7 @@ func TestListMachinesFieldsToStrings(t *testing.T) {
 	id := "4d389537d9d14bdabe8be54a9c29f68d"
 	ip := "192.0.2.1"
 	metadata := map[string]string{
-		"foo": "bar",
+		"foo":  "bar",
 		"ping": "pong",
 	}
 	ver := "v9.9.9"
@@ -62,7 +62,7 @@ func TestListMachinesFieldsToStrings(t *testing.T) {
 	assertEqual(t, "ip", "192.0.2.1", val)
 
 	val = listMachinesFields["metadata"](ms, false)
-	assertEqual(t, "metadata", "foo=bar, ping=pong", val)
+	assertEqual(t, "metadata", "foo=bar,ping=pong", val)
 }
 
 func TestListMachinesFieldsEmpty(t *testing.T) {
