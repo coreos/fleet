@@ -66,9 +66,9 @@ func TestUnitSubmit(t *testing.T) {
 		t.Fatalf("Did not find 1 unit in cluster: \n%s", stdout)
 	}
 
-	// submitting the same unit should fail
-	if _, _, err = cluster.Fleetctl("submit", "fixtures/units/hello.service"); err == nil {
-		t.Fatalf("Expected failure when double-submitting unit, got success.")
+	// submitting the same unit should not fail
+	if _, _, err = cluster.Fleetctl("submit", "fixtures/units/hello.service"); err != nil {
+		t.Fatalf("Expected no failure when double-submitting unit, got this: %v", err)
 	}
 
 	// destroy the unit and ensure it disappears from the unit list
