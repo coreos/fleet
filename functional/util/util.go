@@ -77,11 +77,12 @@ loop:
 		case <-alarm:
 			return machines, fmt.Errorf("failed to find %d machines within %v", count, timeout)
 		case <-ticker:
-			stdout, _, err := fleetctl("list-machines", "--no-legend", "--full")
-			stdout = strings.TrimSpace(stdout)
+			stdout, _, err := fleetctl("list-machines", "--no-legend", "--full", "--fields", "machine")
 			if err != nil {
 				continue
 			}
+
+			stdout = strings.TrimSpace(stdout)
 
 			found := 0
 			if stdout != "" {
@@ -91,10 +92,6 @@ loop:
 
 			if found != count {
 				continue
-			}
-
-			for k, v := range machines {
-				machines[k] = strings.SplitN(v, "\t", 2)[0]
 			}
 
 			break loop

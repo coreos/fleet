@@ -31,8 +31,8 @@ func TestScheduleConditionMachineOf(t *testing.T) {
 
 	// Ensure we can SSH into each machine using fleetctl
 	for _, machine := range machines {
-		if _, _, err := cluster.Fleetctl("--strict-host-key-checking=false", "ssh", machine, "uptime"); err != nil {
-			t.Errorf("Unable to SSH into fleet machine: %v", err)
+		if stdout, stderr, err := cluster.Fleetctl("--strict-host-key-checking=false", "ssh", machine, "uptime"); err != nil {
+			t.Errorf("Unable to SSH into fleet machine: \nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)
 		}
 	}
 
@@ -133,8 +133,8 @@ func TestScheduleGlobalConflicts(t *testing.T) {
 
 	// Ensure we can SSH into each machine using fleetctl
 	for _, machine := range machines {
-		if _, _, err := cluster.Fleetctl("--strict-host-key-checking=false", "ssh", machine, "uptime"); err != nil {
-			t.Errorf("Unable to SSH into fleet machine: %v", err)
+		if stdout, stderr, err := cluster.Fleetctl("--strict-host-key-checking=false", "ssh", machine, "uptime"); err != nil {
+			t.Errorf("Unable to SSH into fleet machine: \nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)
 		}
 	}
 

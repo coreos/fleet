@@ -19,6 +19,19 @@ import (
 	"github.com/coreos/fleet/functional/util"
 )
 
+var fleetBinPath string
+
+func init() {
+	fleetBinPath = os.Getenv("FLEET_BIN")
+	if fleetBinPath == "" {
+		fmt.Println("FLEET_BIN environment variable must be set")
+		os.Exit(1)
+	} else if _, err := os.Stat(fleetBinPath); err != nil {
+		fmt.Printf("%v\n", err)
+		os.Exit(1)
+	}
+}
+
 type nspawnCluster struct {
 	name    string
 	members map[string]string
@@ -200,8 +213,7 @@ func (nc *nspawnCluster) CreateMember(name string, cfg MachineConfig) (err error
 	}
 
 	sshKeySrc := path.Join("fixtures", "id_rsa.pub")
-	fleetBinSrc := path.Join("../", "bin", "fleet")
-	if err = nc.prepFleet(fsdir, ip, sshKeySrc, fleetBinSrc, cfg); err != nil {
+	if err = nc.prepFleet(fsdir, ip, sshKeySrc, fleetBinPath, cfg); err != nil {
 		log.Printf("Failed preparing fleet in filesystem: %v", err)
 		return
 	}
