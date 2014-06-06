@@ -65,10 +65,9 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed creating Server: %v", err.Error())
 	}
-	srv.Run()
 
 	reconfigure := func() {
-		log.Infof("Reloading configuration from %s", *cfgPath)
+		log.Infof("Reloading configuration")
 
 		cfg, err := getConfig(cfgset, *cfgPath)
 		if err != nil {
@@ -117,7 +116,9 @@ func main() {
 		syscall.SIGUSR1: writeState,
 	}
 
-	listenForSignals(signals)
+	go listenForSignals(signals)
+
+	srv.Run()
 }
 
 func getConfig(flagset *flag.FlagSet, userCfgFile string) (*config.Config, error) {

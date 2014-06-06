@@ -33,7 +33,8 @@ type Agent struct {
 	// A nil verifier implies that all Units are accepted.
 	verifier *sign.SignatureVerifier
 
-	state *AgentState
+	state       *AgentState
+	initialized bool
 }
 
 func New(mgr unit.UnitManager, reg registry.Registry, mach machine.Machine, ttl string, verifier *sign.SignatureVerifier) (*Agent, error) {
@@ -42,7 +43,7 @@ func New(mgr unit.UnitManager, reg registry.Registry, mach machine.Machine, ttl 
 		return nil, err
 	}
 
-	a := &Agent{reg, mgr, mach, ttldur, verifier, NewState()}
+	a := &Agent{reg, mgr, mach, ttldur, verifier, NewState(), false}
 	return a, nil
 }
 
@@ -70,7 +71,7 @@ func (a *Agent) Heartbeat(stop chan bool) {
 // 2. Discover any jobs that are scheduled locally, loading/starting them if they can run locally
 // 3. Cache all unresolved job offers and bid for any that can be run locally
 // The returned value is the etcd index at which the agent's presence was announced.
-func (a *Agent) Initialize() uint64 {
+func (a *Agent) Initialize(stop chan bool) uint64 {
 	log.Infof("Initializing Agent")
 
 	var idx uint64
@@ -82,8 +83,15 @@ func (a *Agent) Initialize() uint64 {
 			break
 		}
 		log.V(1).Infof("Failed heartbeat, retrying in %v", wait)
-		time.Sleep(wait)
+		select {
+		case <-time.After(wait):
+			continue
+		case <-stop:
+			log.Infof("Agent got stop signal, aborting initialization")
+			return 0
+		}
 	}
+	a.initialized = true
 
 	// Lock the state early so we can decide what the Agent needs to do
 	// without the risk of conflicting with any of its other moving parts
@@ -159,6 +167,10 @@ func (a *Agent) Initialize() uint64 {
 
 // Purge removes the Agent's state from the Registry
 func (a *Agent) Purge() {
+	if !a.initialized {
+		log.Info("Agent not initialized, nothing to purge")
+		return
+	}
 	// Continue heartbeating the agent's machine state while attempting to
 	// stop all the locally-running jobs
 	purged := make(chan bool)

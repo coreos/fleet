@@ -73,7 +73,7 @@ func New(cfg config.Config) (*Server, error) {
 	eBus.AddListener("engine", eHandler)
 	eBus.AddListener("agent", aHandler)
 
-	return &Server{a, e, rStream, sStream, eBus, mach, nil}, nil
+	return &Server{a, e, rStream, sStream, eBus, mach, make(chan bool)}, nil
 }
 
 func newMachineFromConfig(cfg config.Config) (*machine.CoreOSMachine, error) {
@@ -108,9 +108,14 @@ func newAgentFromConfig(mach machine.Machine, reg registry.Registry, cfg config.
 }
 
 func (s *Server) Run() {
-	idx := s.agent.Initialize()
-
-	s.stop = make(chan bool)
+	idx := s.agent.Initialize(s.stop)
+	// Initialize is potentially blocking, so ensure we haven't been stopped already
+	select {
+	case <-s.stop:
+		log.Info("Aborted during server.Run()")
+		return
+	default:
+	}
 	go s.mach.PeriodicRefresh(machineStateRefreshInterval, s.stop)
 	go s.rStream.Stream(idx, s.eBus.Dispatch, s.stop)
 	go s.sStream.Stream(s.eBus.Dispatch, s.stop)

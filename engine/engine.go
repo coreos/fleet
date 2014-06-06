@@ -24,7 +24,7 @@ func New(reg registry.Registry, mach machine.Machine) *Engine {
 // CheckForWork attempts to rectify the current state of all Jobs in the cluster
 // with their target states wherever discrepancies are identified.
 func (e *Engine) CheckForWork() {
-	log.Infof("Polling etcd for actionable Jobs")
+	log.Info("Polling etcd for actionable Jobs")
 
 	for _, jo := range e.registry.UnresolvedJobOffers() {
 		bids, err := e.registry.Bids(&jo)
@@ -61,6 +61,8 @@ func (e *Engine) CheckForWork() {
 			e.registry.ClearJobTarget(j.Name, target)
 		}
 	}
+
+	log.Info("Done checking for work")
 }
 
 func (e *Engine) OfferJob(j job.Job) error {
