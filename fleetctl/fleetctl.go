@@ -453,10 +453,11 @@ func lazyCreateJobs(args []string, signAndVerify bool) error {
 		// Finally, if we could not find a template unit in the Registry, check the local disk for one instead
 		var u *unit.Unit
 		if tmpl == nil {
-			if _, err := os.Stat(uni.Template); os.IsNotExist(err) {
+			file := path.Join(path.Dir(arg), uni.Template)
+			if _, err := os.Stat(file); os.IsNotExist(err) {
 				return fmt.Errorf("unable to find template for Unit(%s) in Registry or on disk", jobName)
 			}
-			u, err = getUnitFromFile(uni.Template)
+			u, err = getUnitFromFile(file)
 			if err != nil {
 				return fmt.Errorf("failed getting template Unit(%s) from file: %v", uni.Template, err)
 			}
@@ -488,9 +489,10 @@ func warnOnDifferentLocalUnit(name string, j *job.Job) {
 			return
 		}
 	}
-	if uni := unit.NewUnitNameInfo(name); uni != nil && uni.IsInstance() {
-		if _, err := os.Stat(uni.Template); !os.IsNotExist(err) {
-			tmpl, err := getUnitFromFile(uni.Template)
+	if uni := unit.NewUnitNameInfo(path.Base(name)); uni != nil && uni.IsInstance() {
+		file := path.Join(path.Dir(name), uni.Template)
+		if _, err := os.Stat(file); !os.IsNotExist(err) {
+			tmpl, err := getUnitFromFile(file)
 			if err == nil && tmpl.Hash() != j.UnitHash {
 				fmt.Fprintf(os.Stderr, "WARNING: Job(%s) in Registry differs from local template Unit(%s)\n", j.Name, uni.Template)
 			}
