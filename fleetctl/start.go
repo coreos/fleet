@@ -36,20 +36,20 @@ func init() {
 
 func runStartUnit(args []string) (exit int) {
 	if err := lazyCreateJobs(args, sharedFlags.Sign); err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
+		fmt.Fprintf(os.Stderr, "Error creating jobs: %v\n", err)
 		return 1
 	}
 
 	triggered, err := lazyStartJobs(args)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
+		fmt.Fprintf(os.Stderr, "Error starting jobs: %v\n", err)
 		return 1
 	}
 
 	if !sharedFlags.NoBlock {
 		errchan := waitForJobStates(triggered, job.JobStateLaunched, sharedFlags.BlockAttempts, os.Stdout)
 		for err := range errchan {
-			fmt.Fprintf(os.Stderr, "%v\n", err)
+			fmt.Fprintf(os.Stderr, "Error waiting for jobs: %v\n", err)
 			exit = 1
 		}
 	} else {
