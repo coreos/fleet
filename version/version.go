@@ -4,7 +4,7 @@ import (
 	"github.com/coreos/fleet/third_party/github.com/coreos/go-semver/semver"
 )
 
-const Version = "0.5.0-rc.1"
+const Version = "0.5.0-rc.2"
 
 var SemVersion semver.Version
 
