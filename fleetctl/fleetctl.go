@@ -455,7 +455,7 @@ func lazyCreateJobs(args []string, signAndVerify bool) error {
 		if tmpl == nil {
 			file := path.Join(path.Dir(arg), uni.Template)
 			if _, err := os.Stat(file); os.IsNotExist(err) {
-				return fmt.Errorf("unable to find template for Unit(%s) in Registry or on disk", jobName)
+				return fmt.Errorf("unable to find Unit(%s) or template Unit(%s) in Registry or on filesystem", jobName, uni.Template)
 			}
 			u, err = getUnitFromFile(file)
 			if err != nil {
