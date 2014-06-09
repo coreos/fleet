@@ -29,7 +29,7 @@ func init() {
 
 func runSubmitUnits(args []string) (exit int) {
 	if err := lazyCreateJobs(args, sharedFlags.Sign); err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
+		fmt.Fprintf(os.Stderr, "Error creating jobs: %v\n", err)
 		exit = 1
 	}
 	return
