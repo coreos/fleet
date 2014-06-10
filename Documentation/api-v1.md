@@ -11,6 +11,7 @@ The primary goal of this document is to describe a new API for [fleet][fleet-gh]
 - request IDs
 - flesh out MACHINE.networks
 - should POST /commands be a transaction?
+- signed unit files
 
 ## Media-Types
 
