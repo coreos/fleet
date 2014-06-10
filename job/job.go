@@ -70,10 +70,10 @@ func NewJob(name string, unit unit.Unit) *Job {
 	}
 }
 
-// IsBatch identifies whether the Job is intended to execute once, and, on
+// IsOneshot identifies whether the Job is intended to execute once, and, on
 // completion, not be migrated around the cluster. This is determined by
 // whether the unit file associated with the Job is a Service of type "oneshot".
-func (j *Job) IsBatch() bool {
+func (j *Job) IsOneshot() bool {
 	s, ok := j.Unit.Contents["Service"]
 	if !ok {
 		return false
