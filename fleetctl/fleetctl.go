@@ -573,14 +573,14 @@ func checkJobState(jobName string, js job.JobState, maxAttempts int, out io.Writ
 
 	if maxAttempts < 1 {
 		for {
-			if assertJobState(jobName, js) {
+			if assertJobState(jobName, js, out) {
 				return
 			}
 			time.Sleep(sleep)
 		}
 	} else {
 		for attempt := 0; attempt < maxAttempts; attempt++ {
-			if assertJobState(jobName, js) {
+			if assertJobState(jobName, js, out) {
 				return
 			}
 			time.Sleep(sleep)
@@ -589,7 +589,7 @@ func checkJobState(jobName string, js job.JobState, maxAttempts int, out io.Writ
 	}
 }
 
-func assertJobState(name string, js job.JobState) bool {
+func assertJobState(name string, js job.JobState, out io.Writer) bool {
 	j, err := registryCtl.GetJob(name)
 	if err != nil {
 		log.Warningf("Error retrieving Job(%s) from Registry: %v", name, err)
