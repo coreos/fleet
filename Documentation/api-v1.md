@@ -31,7 +31,7 @@ As the v1 API develops, new media-types will be introduced. Support for older me
 
 ### Version
 
-The version field in a media-type is comprised of a single major version numbers. A change in a version is intended to signify a new representation without any forwards- or backwards-compatibility guarantees.
+The version field in a media-type is comprised of a single major version number. A change in a version is intended to signify a new representation without any forwards- or backwards-compatibility guarantees.
 
 ### Format
 
@@ -45,7 +45,7 @@ All responses must provide an entity of a `Content-Type` that fulfills the expec
 
 ### Content-Type Headers
 
-If a request is made or a response returned with a non-empty body, an appropriate  Content-Type header must be provided.
+If a request is made or a response returned with a non-empty body, an appropriate `Content-Type` header must be provided.
 
 ### URL Slug
 
@@ -227,8 +227,8 @@ If this unit is not already loaded, this command will fail.
 
 #### StopUnit
 
-Request that the unit be started on its machine.
-If this unit is not already loaded, this command will fail.
+Request that the unit be stopped on its machine.
+If this unit is not loaded, this command will fail.
 
 - **unitName** (string): unique identifier of unit
 
@@ -270,7 +270,7 @@ Accept: application/vnd.coreos.fleet.units-v1+json
 
 HTTP 1.1 200 OK
 Content-Length: N
-Content-Type: application/vnd.fleet.units-v1+json
+Content-Type: application/vnd.coreos.fleet.units-v1+json
 
 {"units"": [UNIT, ... ], "first": URL, "next": URL}
 ```
