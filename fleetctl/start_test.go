@@ -4,8 +4,8 @@ import (
 	"time"
 
 	"github.com/coreos/fleet/machine"
-	"github.com/coreos/fleet/resource"
 	"github.com/coreos/fleet/registry"
+	"github.com/coreos/fleet/resource"
 	"github.com/coreos/fleet/unit"
 )
 
