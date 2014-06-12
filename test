@@ -14,26 +14,34 @@ COVER=${COVER:-"-cover"}
 
 source ./build
 
-declare -a TESTPKGS=(agent config engine event fleetctl job machine pkg registry sign ssh unit)
+TESTABLE="agent config engine event fleetctl job machine pkg registry sign ssh unit"
+FORMATTABLE="$TESTABLE functional server fleet.go"
 
+# user has not provided PKG override
 if [ -z "$PKG" ]; then
-	GOFMTPATH="$TESTPKGS engine functional server fleet.go"
-	# prepend repo path to each package
-	TESTPKGS=${TESTPKGS[@]/#/${REPO_PATH}/}
+	TEST=$TESTABLE
+	FMT=$FORMATTABLE
+
+# user has provided PKG override
 else
-	GOFMTPATH="$TESTPKGS"
 	# strip out slashes and dots from PKG=./foo/
-	TESTPKGS=${PKG//\//}
-	TESTPKGS=${TESTPKGS//./}
-	TESTPKGS=${TESTPKGS/#/${REPO_PATH}/}
+	TEST=${PKG//\//}
+	TEST=${TEST//./}
+
+	# only run gofmt on packages provided by user
+	FMT="$TEST"
 fi
 
+# split TEST into an array and prepent REPO_PATH to each local package
+split=(${TEST// / })
+TEST=${split[@]/#/${REPO_PATH}/}
+
 echo "Running tests..."
-go test -i ${TESTPKGS}
-go test ${COVER} $@ ${TESTPKGS}
+go test -i ${TEST}
+go test ${COVER} $@ ${TEST}
 
 echo "Checking gofmt..."
-fmtRes=$(gofmt -l $GOFMTPATH)
+fmtRes=$(gofmt -l $FMT)
 if [ -n "${fmtRes}" ]; then
 	echo -e "gofmt checking failed:\n${fmtRes}"
 	exit 255
