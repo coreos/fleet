@@ -47,12 +47,14 @@ ssh-add functional/fixtures/id_rsa
 export GOPATH="$(pwd)/gopath"
 export FLEET_BIN="$(pwd)/bin/fleet"
 export FLEETCTL_BIN="$(pwd)/bin/fleetctl"
-sudo -E env PATH=$PATH go test github.com/coreos/fleet/functional
+sudo -E env PATH=$PATH go test github.com/coreos/fleet/functional -v
 ```
 
 If the tests are aborted partway through, it's currently possible for them to leave residual state as a result of the systemd-nspawn operations. Manual cleanup can be performed as follows:
 ```
-sudo rm -fr /run/systemd/system/*smoke*
-machinectl --no-legend | cut -d ' ' -f1 | sudo xargs machinectl terminate
+machinectl --no-legend | cut -d ' ' -f1 | sudo xargs -r machinectl terminate
+sudo pkill -9 systemd-nspawn
+sudo rm -fr /run/systemd/system/*smoke* /tmp/smoke
 sudo systemctl daemon-reload
+ip link show fleet0 >/dev/null && sudo ip link del fleet0
 ```

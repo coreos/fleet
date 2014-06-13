@@ -66,7 +66,6 @@ func RunFleetctlWithInput(input string, args ...string) (string, string, error) 
 // Wait up to 10s to find the specified number of machines, retrying periodically.
 func WaitForNMachines(fleetctl fleetfunc, count int) ([]string, error) {
 	var machines []string
-
 	timeout := 10 * time.Second
 	alarm := time.After(timeout)
 

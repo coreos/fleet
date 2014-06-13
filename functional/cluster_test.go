@@ -140,18 +140,9 @@ func TestDynamicClusterMemberReboot(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	found := false
 	for _, unit := range []string{"conflict.0.service", "conflict.1.service", "conflict.2.service"} {
 		if oldStates[unit].Machine != newStates[unit].Machine {
-			if found {
-				t.Fatal("More than one unit migrated")
-			} else {
-				found = true
-			}
+			t.Fatalf("Unit %s migrated unexpectedly", unit)
 		}
-	}
-
-	if !found {
-		t.Fatal("Could not find migrated unit")
 	}
 }
