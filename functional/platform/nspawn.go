@@ -338,7 +338,7 @@ func (nc *nspawnCluster) DestroyMember(name string) error {
 	dir := path.Join(os.TempDir(), nc.name, name)
 	label := fmt.Sprintf("%s%s", nc.name, name)
 	cmds := []string{
-		fmt.Sprintf("machinectl terminate %s%s", nc.name, name),
+		fmt.Sprintf("machinectl terminate %s", label),
 		fmt.Sprintf("rm -f /run/systemd/system/machine-%s.scope", label),
 		fmt.Sprintf("rm -f /run/systemd/system/%s.service", label),
 		fmt.Sprintf("rm -fr /run/systemd/system/%s.service.d", label),
