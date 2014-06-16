@@ -296,7 +296,19 @@ func (a *Agent) startJobUnlocked(jobName string) {
 	machID := a.Machine.State().ID
 	a.registry.JobHeartbeat(jobName, machID, a.ttl)
 
-	go a.um.Start(jobName)
+	go func() {
+		a.um.Start(jobName)
+
+		// We explicitly refresh the payload state here as the dbus
+		// event listener does not send us an event if the job was
+		// already loaded.
+		us, err := a.um.GetUnitState(jobName)
+		if err != nil {
+			log.Errorf("Failed fetching state of Unit(%s): %v", jobName, err)
+			return
+		}
+		a.ReportUnitState(jobName, us)
+	}()
 }
 
 // StopJob stops the indicated Job after first acquiring the state mutex
