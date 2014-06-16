@@ -230,11 +230,8 @@ func getFlagsFromEnv(prefix string, fs *flag.FlagSet) {
 
 // getRegistry initializes a connection to the Registry
 func getRegistry() registry.Registry {
+	var dial func(string, string) (net.Conn, error)
 	tun := getTunnelFlag()
-
-	machines := []string{globalFlags.Endpoint}
-	client := etcd.NewClient(machines)
-
 	if tun != "" {
 		sshClient, err := ssh.NewSSHClient("core", tun, getChecker(), false)
 		if err != nil {
@@ -242,22 +239,26 @@ func getRegistry() registry.Registry {
 			os.Exit(1)
 		}
 
-		dial := func(network, addr string) (net.Conn, error) {
+		dial = func(network, addr string) (net.Conn, error) {
 			tcpaddr, err := net.ResolveTCPAddr(network, addr)
 			if err != nil {
 				return nil, err
 			}
 			return sshClient.DialTCP(network, nil, tcpaddr)
 		}
+	}
 
-		tr := http.Transport{
-			Dial: dial,
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: true,
-			},
-		}
+	trans := http.Transport{
+		Dial: dial,
+		TLSClientConfig: &tls.Config{
+			InsecureSkipVerify: true,
+		},
+	}
 
-		client.SetTransport(&tr)
+	machines := []string{globalFlags.Endpoint}
+	client, err := etcd.NewClient(machines, trans)
+	if err != nil {
+		return nil
 	}
 
 	return registry.New(client, globalFlags.EtcdKeyPrefix)

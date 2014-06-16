@@ -5,8 +5,7 @@ import (
 	"strings"
 	"time"
 
-	goetcd "github.com/coreos/fleet/third_party/github.com/coreos/go-etcd/etcd"
-
+	"github.com/coreos/fleet/etcd"
 	"github.com/coreos/fleet/event"
 	"github.com/coreos/fleet/machine"
 )
@@ -17,9 +16,12 @@ const (
 
 // Describe all active Machines
 func (r *EtcdRegistry) GetActiveMachines() (machines []machine.MachineState, err error) {
-	key := path.Join(r.keyPrefix, machinePrefix)
-	resp, err := r.etcd.Get(key, false, true)
+	req := etcd.Get{
+		Key:       path.Join(r.keyPrefix, machinePrefix),
+		Recursive: true,
+	}
 
+	resp, err := r.etcd.Do(&req)
 	if err != nil {
 		if isKeyNotFound(err) {
 			err = nil
@@ -38,11 +40,12 @@ func (r *EtcdRegistry) GetActiveMachines() (machines []machine.MachineState, err
 	return
 }
 
-// Get Machine object from etcd
 func (r *EtcdRegistry) GetMachineState(machID string) (*machine.MachineState, error) {
-	key := path.Join(r.keyPrefix, machinePrefix, machID, "object")
-	resp, err := r.etcd.Get(key, false, true)
-
+	req := etcd.Get{
+		Key:       path.Join(r.keyPrefix, machinePrefix, machID, "object"),
+		Recursive: true,
+	}
+	resp, err := r.etcd.Do(&req)
 	if err != nil {
 		if isKeyNotFound(err) {
 			err = nil
@@ -58,23 +61,32 @@ func (r *EtcdRegistry) GetMachineState(machID string) (*machine.MachineState, er
 	return &mach, nil
 }
 
-// Push Machine object to etcd
 func (r *EtcdRegistry) SetMachineState(ms machine.MachineState, ttl time.Duration) (uint64, error) {
 	json, err := marshal(ms)
 	if err != nil {
 		return uint64(0), err
 	}
-	key := path.Join(r.keyPrefix, machinePrefix, ms.ID, "object")
 
-	// Assume state is already present, returning on success
-	resp, err := r.etcd.Update(key, json, uint64(ttl.Seconds()))
+	update := etcd.Update{
+		Key:   path.Join(r.keyPrefix, machinePrefix, ms.ID, "object"),
+		Value: json,
+		TTL:   ttl,
+	}
+
+	resp, err := r.etcd.Do(&update)
 	if err == nil {
 		return resp.Node.ModifiedIndex, nil
 	}
 
 	// If state was not present, explicitly create it so the other members
 	// in the cluster know this is a new member
-	resp, err = r.etcd.Create(key, json, uint64(ttl.Seconds()))
+	create := etcd.Create{
+		Key:   path.Join(r.keyPrefix, machinePrefix, ms.ID, "object"),
+		Value: json,
+		TTL:   ttl,
+	}
+
+	resp, err = r.etcd.Do(&create)
 	if err != nil {
 		return uint64(0), err
 	}
@@ -82,10 +94,11 @@ func (r *EtcdRegistry) SetMachineState(ms machine.MachineState, ttl time.Duratio
 	return resp.Node.ModifiedIndex, nil
 }
 
-// Remove Machine object from etcd
 func (r *EtcdRegistry) RemoveMachineState(machID string) error {
-	key := path.Join(r.keyPrefix, machinePrefix, machID, "object")
-	_, err := r.etcd.Delete(key, false)
+	req := etcd.Delete{
+		Key: path.Join(r.keyPrefix, machinePrefix, machID, "object"),
+	}
+	_, err := r.etcd.Do(&req)
 	if isKeyNotFound(err) {
 		err = nil
 	}
@@ -97,7 +110,7 @@ func (r *EtcdRegistry) LockMachine(machID, context string) *TimedResourceMutex {
 	return r.lockResource("machine", machID, context)
 }
 
-func filterEventMachineCreated(resp *goetcd.Response) *event.Event {
+func filterEventMachineCreated(resp *etcd.Result) *event.Event {
 	dir, baseName := path.Split(resp.Node.Key)
 	if baseName != "object" {
 		return nil
@@ -120,7 +133,7 @@ func filterEventMachineCreated(resp *goetcd.Response) *event.Event {
 	return &event.Event{"EventMachineCreated", m, nil}
 }
 
-func filterEventMachineLost(resp *goetcd.Response) *event.Event {
+func filterEventMachineLost(resp *etcd.Result) *event.Event {
 	dir, baseName := path.Split(resp.Node.Key)
 	if baseName != "object" {
 		return nil
@@ -142,7 +155,7 @@ func filterEventMachineLost(resp *goetcd.Response) *event.Event {
 	return &event.Event{"EventMachineLost", machID, nil}
 }
 
-func filterEventMachineRemoved(resp *goetcd.Response) *event.Event {
+func filterEventMachineRemoved(resp *etcd.Result) *event.Event {
 	dir, baseName := path.Split(resp.Node.Key)
 	if baseName != "object" {
 		return nil

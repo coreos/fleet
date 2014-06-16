@@ -4,6 +4,7 @@ import (
 	"path"
 	"time"
 
+	"github.com/coreos/fleet/etcd"
 	"github.com/coreos/fleet/job"
 )
 
@@ -31,14 +32,20 @@ func (r *EtcdRegistry) determineJobState(jobName string) *job.JobState {
 }
 
 func (r *EtcdRegistry) JobHeartbeat(jobName, agentMachID string, ttl time.Duration) error {
-	key := r.jobHeartbeatPath(jobName)
-	_, err := r.etcd.Set(key, agentMachID, uint64(ttl.Seconds()))
+	req := etcd.Set{
+		Key:   r.jobHeartbeatPath(jobName),
+		Value: agentMachID,
+		TTL:   ttl,
+	}
+	_, err := r.etcd.Do(&req)
 	return err
 }
 
 func (r *EtcdRegistry) CheckJobPulse(jobName string) (string, bool) {
-	key := r.jobHeartbeatPath(jobName)
-	resp, err := r.etcd.Get(key, false, false)
+	req := etcd.Get{
+		Key: r.jobHeartbeatPath(jobName),
+	}
+	resp, err := r.etcd.Do(&req)
 	if err != nil {
 		return "", false
 	}
@@ -47,8 +54,10 @@ func (r *EtcdRegistry) CheckJobPulse(jobName string) (string, bool) {
 }
 
 func (r *EtcdRegistry) ClearJobHeartbeat(jobName string) {
-	key := r.jobHeartbeatPath(jobName)
-	r.etcd.Delete(key, false)
+	req := etcd.Delete{
+		Key: r.jobHeartbeatPath(jobName),
+	}
+	r.etcd.Do(&req)
 }
 
 func (r *EtcdRegistry) jobHeartbeatPath(jobName string) string {

@@ -3,6 +3,7 @@ package registry
 import (
 	"path"
 
+	"github.com/coreos/fleet/etcd"
 	"github.com/coreos/fleet/sign"
 )
 
@@ -12,22 +13,30 @@ const (
 
 // CreateSignatureSet stores the given SignatureSet in the repository
 func (r *EtcdRegistry) CreateSignatureSet(ss *sign.SignatureSet) error {
-	key := r.signatureSetPath(ss.Tag)
 	json, _ := marshal(ss)
-	_, err := r.etcd.Create(key, json, 0)
+	req := etcd.Create{
+		Key:   r.signatureSetPath(ss.Tag),
+		Value: json,
+	}
+	_, err := r.etcd.Do(&req)
 	return err
 }
 
 // DestroySignatureSet destroys the SignatureSet associated with the given tag
 func (r *EtcdRegistry) DestroySignatureSet(tag string) {
-	key := r.signatureSetPath(tag)
-	r.etcd.Delete(key, false)
+	req := etcd.Delete{
+		Key: r.signatureSetPath(tag),
+	}
+	r.etcd.Do(&req)
 }
 
 // GetSignatureSet returns the SignatureSet associated with the given tag
 func (r *EtcdRegistry) GetSignatureSet(tag string) *sign.SignatureSet {
-	key := r.signatureSetPath(tag)
-	resp, err := r.etcd.Get(key, false, true)
+	req := etcd.Get{
+		Key:       r.signatureSetPath(tag),
+		Recursive: true,
+	}
+	resp, err := r.etcd.Do(&req)
 
 	// Assume the error was KeyNotFound and return an empty data structure
 	if err != nil {

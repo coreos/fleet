@@ -3,17 +3,19 @@ package registry
 import (
 	"fmt"
 	"path"
+	"time"
 
-	goetcd "github.com/coreos/fleet/third_party/github.com/coreos/go-etcd/etcd"
 	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
 
 	"github.com/coreos/fleet/etcd"
 )
 
-const (
-	// ResourceMutexTTL is the number of seconds to allow a mutex to be held on a resource
-	ResourceMutexTTL = 10
+var (
+	// ResourceMutexTTL is the duration of time to allow a mutex to be held on a resource
+	ResourceMutexTTL = 10 * time.Second
+)
 
+const (
 	mutexPrefix = "/mutex/"
 )
 
@@ -24,9 +26,13 @@ func (r *EtcdRegistry) lockResource(class, id, context string) *TimedResourceMut
 	mutexName := fmt.Sprintf("%s-%s", class, id)
 	log.V(1).Infof("Attempting to acquire mutex on %s", mutexName)
 
-	key := path.Join(r.keyPrefix, mutexPrefix, mutexName)
-	resp, err := r.etcd.Create(key, context, uint64(ResourceMutexTTL))
+	req := etcd.Create{
+		Key:   path.Join(r.keyPrefix, mutexPrefix, mutexName),
+		Value: context,
+		TTL:   ResourceMutexTTL,
+	}
 
+	resp, err := r.etcd.Do(&req)
 	if err != nil {
 		log.V(1).Infof("Failed to acquire mutex on %s", mutexName)
 		return nil
@@ -41,13 +47,17 @@ func (r *EtcdRegistry) lockResource(class, id, context string) *TimedResourceMut
 // initialized a timer.
 type TimedResourceMutex struct {
 	etcd etcd.Client
-	node goetcd.Node
+	node etcd.Node
 }
 
 // Unlock will attempt to remove the lock held on the mutex
 // in the Registry.
 func (t *TimedResourceMutex) Unlock() error {
-	_, err := t.etcd.CompareAndDelete(t.node.Key, "", t.node.CreatedIndex)
+	req := etcd.Delete{
+		Key:           t.node.Key,
+		PreviousIndex: t.node.CreatedIndex,
+	}
+	_, err := t.etcd.Do(&req)
 	if err != nil {
 		err = fmt.Errorf("received error while unlocking mutex: %v", err)
 		log.Error(err)
