@@ -32,9 +32,14 @@ func init() {
 	}
 }
 
+type member struct {
+	ip  string
+	pid int
+}
+
 type nspawnCluster struct {
 	name    string
-	members map[string]string
+	members map[string]*member
 }
 
 func (nc *nspawnCluster) keyspace() string {
@@ -156,7 +161,7 @@ func (nc *nspawnCluster) Members() []string {
 }
 
 func (nc *nspawnCluster) MemberCommand(member string, args ...string) (string, error) {
-	ip := nc.members[member]
+	ip := nc.members[member].ip
 	baseArgs := []string{"-o", "UserKnownHostsFile=/dev/null", "-o", "StrictHostKeyChecking=no", fmt.Sprintf("core@%s", ip)}
 	args = append(baseArgs, args...)
 	log.Printf("ssh %s", strings.Join(args, " "))
@@ -172,8 +177,8 @@ func (nc *nspawnCluster) findUsableIP() (string, error) {
 ip:
 	for octet := base; octet < 256; octet++ {
 		ip := fmt.Sprintf("172.17.1.%d", octet)
-		for _, memberIP := range nc.members {
-			if ip == memberIP {
+		for _, member := range nc.members {
+			if ip == member.ip {
 				continue ip
 			}
 		}
@@ -188,28 +193,55 @@ func (nc *nspawnCluster) CreateMember(name string, cfg MachineConfig) (err error
 	if err != nil {
 		return err
 	}
-	nc.members[name] = ip
+	nc.members[name] = &member{ip: ip}
 
 	basedir := path.Join(os.TempDir(), nc.name)
 	fsdir := path.Join(basedir, name, "fs")
 	cmds := []string{
+		// set up directory for fleet service
 		fmt.Sprintf("mkdir -p %s/etc/systemd/system", fsdir),
-		fmt.Sprintf("cp /etc/os-release %s/etc", fsdir),
+
+		// update-ca-certificates takes an inordinate amount of time, so simply mask it for now
+		// until https://github.com/coreos/coreos-overlay/pull/681 is integrated
+		fmt.Sprintf("ln -s /dev/null %s/etc/systemd/system/update-ca-certificates.service", fsdir),
+
+		// since we're in a container we lack initrd bootstrapping magic
+		// https://github.com/coreos/bootengine/blob/master/dracut/80setup-root/pre-pivot-setup-root.sh#L28
+		// so until this is fixed, manually copy nsswitch.conf so that systemd-tmpfiles.service can access users it needs
+		// https://github.com/coreos/init/pull/111/
+		fmt.Sprintf("cp /etc/nsswitch.conf %s/etc", fsdir),
+
+		// minimum requirements for running systemd/coreos in a container
 		fmt.Sprintf("mkdir -p %s/usr", fsdir),
+		fmt.Sprintf("cp /etc/os-release %s/etc", fsdir),
+		fmt.Sprintf("ln -s /proc/self/mounts %s/etc/mtab", fsdir),
 		fmt.Sprintf("ln -s usr/lib64 %s/lib64", fsdir),
 		fmt.Sprintf("ln -s lib64 %s/lib", fsdir),
 		fmt.Sprintf("ln -s usr/bin %s/bin", fsdir),
 		fmt.Sprintf("ln -s usr/sbin %s/sbin", fsdir),
 		fmt.Sprintf("mkdir -p %s/home/core", fsdir),
 		fmt.Sprintf("chown core:core %s/home/core", fsdir),
+
+		// set up directory for machine-id (see below)
+		fmt.Sprintf("mkdir -p %s/var/lib/dbus", fsdir),
 	}
 
 	for _, cmd := range cmds {
-		_, _, err = run(cmd)
+		var stderr, stdout string
+		stdout, stderr, err = run(cmd)
 		if err != nil {
-			log.Printf("Command '%s' failed: %v", cmd, err)
+			log.Printf("Command '%s' failed:\nstdout:: %s\nstderr: %s\nerr: %v", cmd, stdout, stderr, err)
 			return
 		}
+	}
+
+	// Write machine-id manually to override systemd picking up the host OS's machine-id in the case of the host being a KVM
+	// (otherwise all smoke machines will have the same machine-id, causing havoc)
+	// TODO(jonboulle): this should be fixed upstream in fdd25311706bd32580ec4d43211cdf4665d2f9de; remove once newer systemd is deployed
+	uuid := fmt.Sprintf("0000000000000000000000000000000%s\n", name)
+	if err = ioutil.WriteFile(path.Join(fsdir, "/var/lib/dbus/machine-id"), []byte(uuid), 0755); err != nil {
+		log.Printf("Failed writing machine-id: %v", err)
+		return
 	}
 
 	sshKeySrc := path.Join("fixtures", "id_rsa.pub")
@@ -226,29 +258,53 @@ func (nc *nspawnCluster) CreateMember(name string, cfg MachineConfig) (err error
 		return
 	}
 
-	time.Sleep(time.Second)
+	pid, err := nc.machinePID(name)
+	if err != nil {
+		log.Printf("Failed detecting machine %s%s PID: %v", nc.name, name, err)
+		return err
+	}
+
+	alarm := time.After(10 * time.Second)
+	for {
+		select {
+		case <-alarm:
+			log.Printf("Timed out waiting for machine to start")
+			return
+		default:
+		}
+		// TODO(jonboulle): probably a cleaner way to check here
+		if _, _, e := nc.nsenter(pid, "systemd-analyze"); e == nil {
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+
+	}
+
+	nc.members[name].pid = pid
+
+	var stderr string
 
 	cmd := fmt.Sprintf("ip addr add %s/16 dev host0", ip)
-	err = nc.nsenter(name, cmd)
+	_, stderr, err = nc.nsenter(pid, cmd)
 	if err != nil {
-		log.Printf("Failed adding IP address to container")
+		log.Printf("Failed adding IP address to container: %s", stderr)
 		return
 	}
 
 	cmd = fmt.Sprintf("update-ssh-keys -u core -a fleet /opt/fleet/id_rsa.pub")
-	err = nc.nsenter(name, cmd)
+	_, _, err = nc.nsenter(pid, cmd)
 	if err != nil {
 		log.Printf("Failed authorizing SSH key in container")
 		return
 	}
 
-	err = nc.nsenter(name, "ln -s /opt/fleet/fleet.service /etc/systemd/system/fleet.service")
+	_, _, err = nc.nsenter(pid, "ln -s /opt/fleet/fleet.service /etc/systemd/system/fleet.service")
 	if err != nil {
 		log.Printf("Failed symlinking fleet.service: %v", err)
 		return
 	}
 
-	err = nc.nsenter(name, "systemctl start fleet.service")
+	_, _, err = nc.nsenter(pid, "systemctl start fleet.service")
 	if err != nil {
 		log.Printf("Failed starting fleet.service: %v", err)
 		return
@@ -273,15 +329,19 @@ func (nc *nspawnCluster) Destroy() error {
 	// altogether until this is fixed.
 	run("etcdctl rm --recursive " + nc.keyspace())
 
+	run("ip link del fleet0")
+
 	return nil
 }
 
 func (nc *nspawnCluster) DestroyMember(name string) error {
 	dir := path.Join(os.TempDir(), nc.name, name)
+	label := fmt.Sprintf("%s%s", nc.name, name)
 	cmds := []string{
 		fmt.Sprintf("machinectl terminate %s%s", nc.name, name),
-		fmt.Sprintf("rm -f /run/systemd/system/%s%s.service", nc.name, name),
-		fmt.Sprintf("rm -fr /run/systemd/system/%s%s.service.d", nc.name, name),
+		fmt.Sprintf("rm -f /run/systemd/system/machine-%s.scope", label),
+		fmt.Sprintf("rm -f /run/systemd/system/%s.service", label),
+		fmt.Sprintf("rm -fr /run/systemd/system/%s.service.d", label),
 		fmt.Sprintf("rm -r %s", dir),
 	}
 
@@ -291,6 +351,10 @@ func (nc *nspawnCluster) DestroyMember(name string) error {
 			log.Printf("Command '%s' failed, but operation will continue: %v", cmd, err)
 		}
 	}
+
+	// Unfortunately nspawn doesn't always seem to tear down the interfaces
+	// in time, which can result in subsequent tests failing
+	run(fmt.Sprintf("ip link del vb-%s", label))
 
 	if err := nc.systemdReload(); err != nil {
 		log.Printf("Failed systemd daemon-reload: %v", err)
@@ -335,13 +399,14 @@ func (nc *nspawnCluster) systemd(unitName, exec string) error {
 	return err
 }
 
+// wait up to 10s for a machine to be started
 func (nc *nspawnCluster) machinePID(name string) (int, error) {
-	for i := 0; i < 5; i++ {
+	for i := 0; i < 100; i++ {
 		mach := fmt.Sprintf("%s%s", nc.name, name)
 		stdout, _, err := run(fmt.Sprintf("machinectl show -p Leader %s", mach))
 		if err != nil {
-			if i != 4 {
-				time.Sleep(time.Second)
+			if i != -1 {
+				time.Sleep(100 * time.Millisecond)
 				continue
 			}
 			return -1, fmt.Errorf("failed detecting machine %s status: %v", mach, err)
@@ -353,25 +418,13 @@ func (nc *nspawnCluster) machinePID(name string) (int, error) {
 	return -1, fmt.Errorf("unable to detect machine PID")
 }
 
-func (nc *nspawnCluster) nsenter(name string, cmd string) error {
-	pid, err := nc.machinePID(name)
-	if err != nil {
-		log.Printf("Failed detecting machine %s%s PID: %v", nc.name, name, err)
-		return err
-	}
-
+func (nc *nspawnCluster) nsenter(pid int, cmd string) (string, string, error) {
 	cmd = fmt.Sprintf("nsenter -t %d -m -n -p -- %s", pid, cmd)
-	_, _, err = run(cmd)
-	if err != nil {
-		log.Printf("Command '%s' failed: %v", cmd, err)
-		return err
-	}
-
-	return nil
+	return run(cmd)
 }
 
 func NewNspawnCluster(name string) (Cluster, error) {
-	nc := &nspawnCluster{name, map[string]string{}}
+	nc := &nspawnCluster{name, map[string]*member{}}
 	err := nc.prepCluster()
 	return nc, err
 }
