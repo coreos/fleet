@@ -52,7 +52,7 @@ func mapMachinePageToMachineStates(entities []*schema.Machine) []machine.Machine
 		me := entities[i]
 
 		ms := machine.MachineState{
-			ID: me.Id,
+			ID:       me.Id,
 			PublicIP: me.PrimaryIP,
 		}
 
