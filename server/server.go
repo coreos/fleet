@@ -6,9 +6,11 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/coreos/fleet/third_party/github.com/coreos/go-systemd/activation"
 	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
 
 	"github.com/coreos/fleet/agent"
+	"github.com/coreos/fleet/api"
 	"github.com/coreos/fleet/config"
 	"github.com/coreos/fleet/engine"
 	"github.com/coreos/fleet/etcd"
@@ -76,6 +78,16 @@ func New(cfg config.Config) (*Server, error) {
 	eBus := event.NewEventBus()
 	eBus.AddListener("engine", eHandler)
 	eBus.AddListener("agent", aHandler)
+
+	listeners, err := activation.Listeners(false)
+	if err != nil {
+		return nil, err
+	}
+
+	mux := api.NewServeMux(reg)
+	for _, f := range listeners {
+		go http.Serve(f, mux)
+	}
 
 	return &Server{a, e, rStream, sStream, eBus, mach, nil}, nil
 }
