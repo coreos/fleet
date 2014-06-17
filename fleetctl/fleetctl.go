@@ -18,7 +18,7 @@ import (
 
 	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
 
-	"github.com/coreos/fleet/etcd"
+	"github.com/coreos/fleet/client"
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/registry"
@@ -47,8 +47,8 @@ var (
 	// set of top-level commands
 	commands []*Command
 
-	// global Registry used by commands
-	registryCtl registry.Registry
+	// global API client used by commands
+	cAPI client.API
 
 	// flags used by all commands
 	globalFlags = struct {
@@ -135,7 +135,7 @@ func getFlags(flagset *flag.FlagSet) (flags []*flag.Flag) {
 // false and a scary warning to the user.
 func checkVersion() (string, bool) {
 	fv := version.SemVersion
-	lv, err := registryCtl.GetLatestVersion()
+	lv, err := cAPI.GetLatestVersion()
 	if err != nil {
 		log.Errorf("error attempting to check latest fleet version in Registry: %v", err)
 	} else if lv != nil && fv.LessThan(*lv) {
@@ -192,9 +192,8 @@ func main() {
 		os.Exit(2)
 	}
 
-	// TODO(jonboulle): increase cleverness of registry initialization
 	if cmd.Name != "help" && cmd.Name != "version" {
-		registryCtl = getRegistry()
+		cAPI = getClient()
 		msg, ok := checkVersion()
 		if !ok {
 			fmt.Fprint(os.Stderr, msg)
@@ -227,8 +226,7 @@ func getFlagsFromEnv(prefix string, fs *flag.FlagSet) {
 	})
 }
 
-// getRegistry initializes a connection to the Registry
-func getRegistry() registry.Registry {
+func getClient() client.API {
 	var dial func(string, string) (net.Conn, error)
 	tun := getTunnelFlag()
 	if tun != "" {
@@ -254,13 +252,7 @@ func getRegistry() registry.Registry {
 		},
 	}
 
-	machines := []string{globalFlags.Endpoint}
-	client, err := etcd.NewClient(machines, trans)
-	if err != nil {
-		return nil
-	}
-
-	return registry.New(client, globalFlags.EtcdKeyPrefix)
+	return client.NewRegistryClient(&trans, globalFlags.Endpoint, globalFlags.EtcdKeyPrefix)
 }
 
 // getChecker creates and returns a HostKeyChecker, or nil if any error is encountered
@@ -315,7 +307,7 @@ func findJobs(args []string) (jobs []job.Job, err error) {
 	jobs = make([]job.Job, len(args))
 	for i, v := range args {
 		name := unitNameMangle(v)
-		j, err := registryCtl.GetJob(name)
+		j, err := cAPI.GetJob(name)
 		if err != nil {
 			return nil, fmt.Errorf("error retrieving Job(%s) from Registry: %v", name, err)
 		} else if j == nil {
@@ -331,7 +323,7 @@ func findJobs(args []string) (jobs []job.Job, err error) {
 func createJob(jobName string, unit *unit.Unit) (*job.Job, error) {
 	j := job.NewJob(jobName, *unit)
 
-	if err := registryCtl.CreateJob(j); err != nil {
+	if err := cAPI.CreateJob(j); err != nil {
 		return nil, fmt.Errorf("failed creating job %s: %v", j.Name, err)
 	}
 
@@ -353,7 +345,7 @@ func signJob(j *job.Job) error {
 		return fmt.Errorf("failed signing Job(%s): %v", j.Name, err)
 	}
 
-	err = registryCtl.CreateSignatureSet(ss)
+	err = cAPI.CreateSignatureSet(ss)
 	if err != nil {
 		return fmt.Errorf("failed storing Job signature in registry: %v", err)
 	}
@@ -370,7 +362,7 @@ func verifyJob(j *job.Job) error {
 		return fmt.Errorf("failed creating SignatureVerifier: %v", err)
 	}
 
-	ss, err := registryCtl.GetSignatureSetOfJob(j.Name)
+	ss, err := cAPI.GetSignatureSetOfJob(j.Name)
 	if err != nil {
 		return fmt.Errorf("failed attempting to retrieve SignatureSet of Job(%s): %v", j.Name, err)
 	}
@@ -404,7 +396,7 @@ func lazyCreateJobs(args []string, signAndVerify bool) error {
 		jobName := unitNameMangle(arg)
 
 		// First, check if there already exists a Job by the given name in the Registry
-		j, err := registryCtl.GetJob(jobName)
+		j, err := cAPI.GetJob(jobName)
 		if err != nil {
 			return fmt.Errorf("error retrieving Job(%s) from Registry: %v", jobName, err)
 		}
@@ -445,7 +437,7 @@ func lazyCreateJobs(args []string, signAndVerify bool) error {
 		} else if !uni.IsInstance() {
 			return fmt.Errorf("unable to find Unit(%s) in Registry or on filesystem", jobName)
 		}
-		tmpl, err := registryCtl.GetJob(uni.Template)
+		tmpl, err := cAPI.GetJob(uni.Template)
 		if err != nil {
 			return fmt.Errorf("error retrieving template Job(%s) from Registry: %v", uni.Template, err)
 		}
@@ -523,7 +515,7 @@ func lazyStartJobs(args []string) ([]string, error) {
 func setTargetStateOfJobs(jobs []string, state job.JobState) ([]string, error) {
 	triggered := make([]string, 0)
 	for _, name := range jobs {
-		j, err := registryCtl.GetJob(name)
+		j, err := cAPI.GetJob(name)
 		if err != nil {
 			return nil, fmt.Errorf("error retrieving Job(%s) from Registry: %v", name, err)
 		} else if j == nil {
@@ -536,7 +528,7 @@ func setTargetStateOfJobs(jobs []string, state job.JobState) ([]string, error) {
 		}
 
 		log.V(1).Infof("Setting Job(%s) target state to %s", j.Name, state)
-		registryCtl.SetJobTargetState(j.Name, state)
+		cAPI.SetJobTargetState(j.Name, state)
 		triggered = append(triggered, j.Name)
 	}
 
@@ -590,7 +582,7 @@ func checkJobState(jobName string, js job.JobState, maxAttempts int, out io.Writ
 }
 
 func assertJobState(name string, js job.JobState, out io.Writer) bool {
-	j, err := registryCtl.GetJob(name)
+	j, err := cAPI.GetJob(name)
 	if err != nil {
 		log.Warningf("Error retrieving Job(%s) from Registry: %v", name, err)
 		return false
@@ -601,11 +593,11 @@ func assertJobState(name string, js job.JobState, out io.Writer) bool {
 
 	msg := fmt.Sprintf("Job %s %s", name, *(j.State))
 
-	tgt, err := registryCtl.GetJobTarget(name)
+	tgt, err := cAPI.GetJobTarget(name)
 	if err != nil {
 		log.Warningf("Error retrieving target information for Job(%s) from Registry: %v", name, err)
 	} else if tgt != "" {
-		if ms, _ := registryCtl.GetMachineState(tgt); ms != nil {
+		if ms, _ := cAPI.GetMachineState(tgt); ms != nil {
 			msg = fmt.Sprintf("%s on %s", msg, machineFullLegend(*ms, false))
 		}
 	}

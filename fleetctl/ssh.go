@@ -138,7 +138,7 @@ func globalMachineLookup(args []string) (string, error) {
 }
 
 func findAddressInMachineList(lookup string) (string, bool) {
-	states, err := registryCtl.GetActiveMachines()
+	states, err := cAPI.GetActiveMachines()
 	if err != nil {
 		log.V(1).Infof("Unable to retrieve list of active machines from the Registry: %v", err)
 		return "", false
@@ -165,7 +165,7 @@ func findAddressInMachineList(lookup string) (string, bool) {
 
 func findAddressInRunningUnits(jobName string) (string, bool) {
 	name := unitNameMangle(jobName)
-	j, err := registryCtl.GetJob(name)
+	j, err := cAPI.GetJob(name)
 	if err != nil {
 		log.V(1).Infof("Unable to retrieve Job(%s) from Repository: %v", name, err)
 	}
