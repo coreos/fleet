@@ -27,21 +27,71 @@ func (mr *machinesResource) ServeHTTP(rw http.ResponseWriter, req *http.Request)
 		return
 	}
 
-	states, err := mr.reg.GetActiveMachines()
+	token, err := findNextPageToken(req.URL)
 	if err != nil {
-		log.Error("Failed fetching MachineStates from Registry: %v", err)
+		rw.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	if token == nil {
+		def := DefaultPageToken()
+		token = &def
+	}
+
+	page, err := getMachinePage(mr.reg, *token)
+	if err != nil {
+		log.Error("Failed fetching page of Machines: %v", err)
 		rw.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	page := newMachinePage(states)
 	sendResponse(rw, page)
 }
 
-func newMachinePage(states []machine.MachineState) *schema.MachinePage {
-	smp := schema.MachinePage{Machines: make([]*schema.Machine, 0, len(states))}
-	for i, _ := range states {
-		ms := states[i]
+func getMachinePage(reg registry.Registry, tok PageToken) (*schema.MachinePage, error) {
+	all, err := reg.GetActiveMachines()
+	if err != nil {
+		return nil, err
+	}
+
+	page := extractPage(all, tok)
+	return page, nil
+}
+
+func extractPage(all []machine.MachineState, tok PageToken) *schema.MachinePage {
+	total := len(all)
+
+	startIndex := int((tok.Page - 1) * tok.Limit)
+	stopIndex := int(tok.Page * tok.Limit)
+
+	var items []machine.MachineState
+	var next *PageToken
+
+	if startIndex < total {
+		if stopIndex > total {
+			stopIndex = total
+		} else {
+			n := tok.Next()
+			next = &n
+		}
+
+		items = all[startIndex:stopIndex]
+	}
+
+	return newMachinePage(items, next)
+}
+
+func newMachinePage(items []machine.MachineState, tok *PageToken) *schema.MachinePage {
+	smp := schema.MachinePage{
+		Machines: make([]*schema.Machine, 0, len(items)),
+	}
+
+	if tok != nil {
+		smp.NextPageToken = tok.Encode()
+	}
+
+	for i, _ := range items {
+		ms := items[i]
 		sm := mapMachineStateToSchema(&ms)
 		smp.Machines = append(smp.Machines, sm)
 	}
