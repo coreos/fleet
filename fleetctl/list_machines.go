@@ -109,7 +109,7 @@ func formatMetadata(metadata map[string]string) string {
 // machine IDs). It returns any error encountered in communicating with the Registry.
 func findAllMachines() (machines map[string]machine.MachineState, sortable sort.StringSlice, err error) {
 	machines = make(map[string]machine.MachineState, 0)
-	mm, err := registryCtl.GetActiveMachines()
+	mm, err := fc.GetActiveMachines()
 	if err != nil {
 		return
 	}

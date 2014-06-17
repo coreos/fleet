@@ -24,12 +24,12 @@ func newFakeRegistryForCheckVersion(v string) registry.Registry {
 }
 
 func TestCheckVersion(t *testing.T) {
-	registryCtl = newFakeRegistryForCheckVersion(version.Version)
+	fc = newFakeRegistryForCheckVersion(version.Version)
 	_, ok := checkVersion()
 	if !ok {
 		t.Errorf("checkVersion failed but should have succeeded")
 	}
-	registryCtl = newFakeRegistryForCheckVersion("9.0.0")
+	fc = newFakeRegistryForCheckVersion("9.0.0")
 	msg, ok := checkVersion()
 	if ok || msg == "" {
 		t.Errorf("checkVersion succeeded but should have failed")

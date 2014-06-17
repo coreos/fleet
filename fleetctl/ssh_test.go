@@ -38,7 +38,7 @@ func newFakeRegistryForSsh() registry.Registry {
 }
 
 func TestSshUnknownMachine(t *testing.T) {
-	registryCtl = newFakeRegistryForSsh()
+	fc = newFakeRegistryForSsh()
 
 	_, ok := findAddressInMachineList("asdf")
 	if ok {
@@ -47,7 +47,7 @@ func TestSshUnknownMachine(t *testing.T) {
 }
 
 func TestSshFindMachine(t *testing.T) {
-	registryCtl = newFakeRegistryForSsh()
+	fc = newFakeRegistryForSsh()
 
 	ip, _ := findAddressInMachineList("c31e44e1-f858-436e-933e-59c642517860")
 	if ip != "1.2.3.4" {
@@ -56,7 +56,7 @@ func TestSshFindMachine(t *testing.T) {
 }
 
 func TestSshFindMachineByUnknownJobName(t *testing.T) {
-	registryCtl = newFakeRegistryForSsh()
+	fc = newFakeRegistryForSsh()
 
 	_, ok := findAddressInRunningUnits("asdf")
 	if ok {
@@ -65,7 +65,7 @@ func TestSshFindMachineByUnknownJobName(t *testing.T) {
 }
 
 func TestSshFindMachineByJobName(t *testing.T) {
-	registryCtl = newFakeRegistryForSsh()
+	fc = newFakeRegistryForSsh()
 
 	ip, _ := findAddressInRunningUnits("j1")
 	if ip != "1.2.3.4" {
@@ -74,7 +74,7 @@ func TestSshFindMachineByJobName(t *testing.T) {
 }
 
 func TestGlobalLookupByUnknownArgument(t *testing.T) {
-	registryCtl = newFakeRegistryForSsh()
+	fc = newFakeRegistryForSsh()
 
 	ip, err := globalMachineLookup([]string{"asdf"})
 	if err != nil {
@@ -87,7 +87,7 @@ func TestGlobalLookupByUnknownArgument(t *testing.T) {
 }
 
 func TestGlobalLookupByMachineID(t *testing.T) {
-	registryCtl = newFakeRegistryForSsh()
+	fc = newFakeRegistryForSsh()
 
 	ip, err := globalMachineLookup([]string{"c31e44e1-f858-436e-933e-59c642517860"})
 	if err != nil {
@@ -100,7 +100,7 @@ func TestGlobalLookupByMachineID(t *testing.T) {
 }
 
 func TestGlobalLookupByJobName(t *testing.T) {
-	registryCtl = newFakeRegistryForSsh()
+	fc = newFakeRegistryForSsh()
 
 	ip, err := globalMachineLookup([]string{"j1"})
 	if err != nil {
@@ -113,7 +113,7 @@ func TestGlobalLookupByJobName(t *testing.T) {
 }
 
 func TestGlobalLookupWithAmbiguousArgument(t *testing.T) {
-	registryCtl = newFakeRegistryForSsh()
+	fc = newFakeRegistryForSsh()
 
 	_, err := globalMachineLookup([]string{"hello.service"})
 	if err == nil {
