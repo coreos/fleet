@@ -57,6 +57,79 @@
           "type": "string"
         }
       }
+    },
+    "Unit": {
+      "id": "Unit",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "required": true
+        },
+        "fileHash": {
+          "type": "string",
+          "required": true
+        },
+        "fileContents": {
+          "type": "string",
+          "format": "byte"
+        },
+        "desiredState": {
+          "type": "string",
+          "required": true,
+          "enum": [
+            "inactive",
+            "loaded",
+            "launched"
+          ]
+        },
+        "currentState": {
+          "type": "string",
+          "required": true,
+          "enum": [
+            "inactive",
+            "loaded",
+            "launched"
+          ]
+        },
+        "systemd": {
+          "$ref": "SystemdState"
+        }
+      }
+    },
+    "SystemdState": {
+      "id": "SystemdState",
+      "type": "object",
+      "properties": {
+        "loadState": {
+          "type": "string"
+        },
+        "activeState": {
+          "type": "string"
+        },
+        "subState": {
+          "type": "string"
+        },
+        "machineID": {
+          "type": "string"
+        }
+      }
+    },
+    "UnitPage": {
+      "id": "UnitPage",
+      "type": "object",
+      "properties": {
+        "units": {
+          "type": "array",
+          "required": true,
+          "items": {
+            "$ref": "Unit"
+          }
+        },
+        "nextPageToken": {
+          "type": "string"
+        }
+      }
     }
   },
   "resources": {
@@ -75,6 +148,25 @@
           },
           "response": {
             "$ref": "MachinePage"
+          }
+        }
+      }
+    },
+    "Units": {
+      "methods": {
+        "List": {
+          "id": "fleet.Unit.List",
+          "description": "Retrieve a page of Unit objects.",
+          "httpMethod": "GET",
+          "path": "units",
+          "parameters": {
+            "nextPageToken": {
+              "type": "string",
+              "location": "query"
+            }
+          },
+          "response": {
+            "$ref": "UnitPage"
           }
         }
       }
