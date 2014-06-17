@@ -26,7 +26,7 @@ func newFakeRegistryForListUnits(jobs []job.Job) registry.Registry {
 }
 
 func TestGetAllJobs(t *testing.T) {
-	registryCtl = newFakeRegistryForListUnits(nil)
+	fc = newFakeRegistryForListUnits(nil)
 
 	jobs, sortable, err := findAllUnits()
 	if err != nil {
@@ -46,7 +46,7 @@ func TestJobDescription(t *testing.T) {
 Description=PING
 `
 	j := []job.Job{*job.NewJob("ping.service", *unit.NewUnit(contents))}
-	registryCtl = newFakeRegistryForListUnits(j)
+	fc = newFakeRegistryForListUnits(j)
 
 	jobs, _, _ := findAllUnits()
 	if len(jobs) != 2 {

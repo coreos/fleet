@@ -46,5 +46,5 @@ func setupRegistryForStart(echoAttempts int) {
 	reg.SetMachines(machines)
 	reg.SetUnitStates(states)
 
-	registryCtl = &BlockedFakeRegistry{echoAttempts, *reg}
+	fc = &BlockedFakeRegistry{echoAttempts, *reg}
 }

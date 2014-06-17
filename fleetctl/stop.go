@@ -55,7 +55,7 @@ func runStopUnit(args []string) (exit int) {
 			continue
 		}
 
-		registryCtl.SetJobTargetState(j.Name, job.JobStateLoaded)
+		fc.SetJobTargetState(j.Name, job.JobStateLoaded)
 		stopping = append(stopping, j.Name)
 	}
 

@@ -22,7 +22,7 @@ func runVerifyUnit(args []string) (exit int) {
 	}
 
 	name := unitNameMangle(args[0])
-	j, err := registryCtl.GetJob(name)
+	j, err := fc.GetJob(name)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error retrieving Job %s: %v", name, err)
 		return 1
