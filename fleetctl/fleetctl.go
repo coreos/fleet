@@ -57,6 +57,7 @@ var (
 		Version               bool
 		Endpoint              string
 		EtcdKeyPrefix         string
+		UseAPI                bool
 		KnownHostsFile        string
 		StrictHostKeyChecking bool
 		Tunnel                string
@@ -79,6 +80,7 @@ func init() {
 	globalFlagset.IntVar(&globalFlags.Verbosity, "verbosity", 0, "Log at a specified level of verbosity to stderr.")
 	globalFlagset.StringVar(&globalFlags.Endpoint, "endpoint", "http://127.0.0.1:4001", "etcd endpoint for fleet")
 	globalFlagset.StringVar(&globalFlags.EtcdKeyPrefix, "etcd-key-prefix", registry.DefaultKeyPrefix, "Keyspace for fleet data in etcd (development use only!)")
+	globalFlagset.BoolVar(&globalFlags.UseAPI, "experimental-api", false, "Use the experimental HTTP API. This flag will be removed when the API is no longer considered experimental.")
 	globalFlagset.StringVar(&globalFlags.KnownHostsFile, "known-hosts-file", ssh.DefaultKnownHostsFile, "File used to store remote machine fingerprints. Ignored if strict host key checking is disabled.")
 	globalFlagset.BoolVar(&globalFlags.StrictHostKeyChecking, "strict-host-key-checking", true, "Verify host keys presented by remote machines before initiating SSH connections.")
 	globalFlagset.StringVar(&globalFlags.Tunnel, "tunnel", "", "Establish an SSH tunnel through the provided address for communication with fleet and etcd.")
@@ -193,7 +195,14 @@ func main() {
 	}
 
 	if cmd.Name != "help" && cmd.Name != "version" {
-		cAPI = getClient()
+		var err error
+		cAPI, err = getClient()
+		if err != nil {
+			msg := fmt.Sprintf("Unable to initialize client: %v", err)
+			fmt.Fprint(os.Stderr, msg)
+			os.Exit(1)
+		}
+
 		msg, ok := checkVersion()
 		if !ok {
 			fmt.Fprint(os.Stderr, msg)
@@ -226,7 +235,32 @@ func getFlagsFromEnv(prefix string, fs *flag.FlagSet) {
 	})
 }
 
-func getClient() client.API {
+// getClient initializes a client of fleet based on CLI flags
+func getClient() (client.API, error) {
+	if globalFlags.UseAPI {
+		return getHTTPClient()
+	} else {
+		return getRegistryClient(), nil
+	}
+}
+
+func getHTTPClient() (client.API, error) {
+	dialFunc := func(string, string) (net.Conn, error) {
+		return net.Dial("unix", "/var/run/fleet.sock")
+	}
+
+	trans := http.Transport{
+		Dial: dialFunc,
+	}
+
+	hc := http.Client{
+		Transport: &trans,
+	}
+
+	return client.NewHTTPClient(&hc)
+}
+
+func getRegistryClient() client.API {
 	var dial func(string, string) (net.Conn, error)
 	tun := getTunnelFlag()
 	if tun != "" {
