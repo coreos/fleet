@@ -43,7 +43,7 @@ func runUnloadUnit(args []string) (exit int) {
 		}
 
 		log.V(1).Infof("Unloading Job(%s)", j.Name)
-		registryCtl.SetJobTargetState(j.Name, job.JobStateInactive)
+		cAPI.SetJobTargetState(j.Name, job.JobStateInactive)
 		wait = append(wait, j.Name)
 	}
 

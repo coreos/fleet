@@ -1,0 +1,83 @@
+{
+  "kind": "discovery#restDescription",
+  "discoveryVersion": "v1-alpha",
+  "id": "fleet:v1-alpha",
+  "name": "fleet",
+  "version": "v1-alpha",
+  "title": "Fleet API",
+  "description": "",
+  "documentationLink": "http://github.com/coreos/fleet",
+  "protocol": "rest",
+  "icons": {
+    "x16": "",
+    "x32": ""
+  },
+  "labels": [],
+  "baseUrl": "http://example.com/v1-alpha/",
+  "basePath": "/v1-alpha/",
+  "rootUrl": "http://example.com/",
+  "servicePath": "v1-alpha/",
+  "batchPath": "batch",
+  "parameters": {},
+  "auth": {},
+  "schemas": {
+    "Machine": {
+      "id": "Machine",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "required": true
+        },
+        "primaryIP": {
+          "type": "string"
+        },
+        "metadata": {
+          "type": "object",
+          "required": true,
+          "properties": {},
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "MachinePage": {
+      "id": "MachinePage",
+      "type": "object",
+      "properties": {
+        "machines": {
+          "type": "array",
+          "required": true,
+          "items": {
+            "$ref": "Machine"
+          }
+        },
+        "nextPageToken": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "resources": {
+    "Machines": {
+      "methods": {
+        "List": {
+          "id": "fleet.Machine.List",
+          "description": "Retrieve a page of Machine objects.",
+          "httpMethod": "GET",
+          "path": "machines",
+          "parameters": {
+            "nextPageToken": {
+              "type": "string",
+              "location": "query"
+            }
+          },
+          "response": {
+            "$ref": "MachinePage"
+          }
+        }
+      }
+    }
+  }
+}

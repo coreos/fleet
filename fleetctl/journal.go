@@ -36,7 +36,7 @@ func runJournal(args []string) (exit int) {
 	}
 	jobName := unitNameMangle(args[0])
 
-	j, err := registryCtl.GetJob(jobName)
+	j, err := cAPI.GetJob(jobName)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error retrieving Job %s: %v", jobName, err)
 		return 1

@@ -22,7 +22,7 @@ func newTestRegistryForListMachines() registry.Registry {
 }
 
 func TestGetAllMachines(t *testing.T) {
-	registryCtl = newTestRegistryForListMachines()
+	cAPI = newTestRegistryForListMachines()
 	machines, sortable, err := findAllMachines()
 	if err != nil {
 		t.Fatalf("Unexpected error getting all machines: %v\n", err)
