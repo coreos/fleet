@@ -2,8 +2,11 @@ package unit
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"strings"
+
+	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
 )
 
 // Description returns the first Description option found in the [Unit] section.
@@ -40,7 +43,7 @@ func deserializeUnitFile(raw string) map[string]map[string][]string {
 	sections := make(map[string]map[string][]string)
 	var section string
 	var prev string
-	for _, line := range strings.Split(raw, "\n") {
+	for i, line := range strings.Split(raw, "\n") {
 
 		// Join lines ending in backslash
 		if strings.HasSuffix(line, "\\") {
@@ -77,7 +80,11 @@ func deserializeUnitFile(raw string) map[string]map[string][]string {
 			continue
 		}
 
-		key, values := deserializeUnitLine(line)
+		key, values, err := deserializeUnitLine(line)
+		if err != nil {
+			log.Errorf("error parsing line %d: %v", i+1, err)
+			continue
+		}
 		for _, v := range values {
 			sections[section][key] = append(sections[section][key], v)
 		}
@@ -86,10 +93,14 @@ func deserializeUnitFile(raw string) map[string]map[string][]string {
 	return sections
 }
 
-func deserializeUnitLine(line string) (key string, values []string) {
-	parts := strings.SplitN(line, "=", 2)
-	key = strings.TrimSpace(parts[0])
-	value := strings.TrimSpace(parts[1])
+func deserializeUnitLine(line string) (key string, values []string, err error) {
+	e := strings.Index(line, "=")
+	if e == -1 {
+		err = errors.New("missing '='")
+		return
+	}
+	key = strings.TrimSpace(line[:e])
+	value := strings.TrimSpace(line[e+1:])
 
 	if strings.HasPrefix(value, `"`) && strings.HasSuffix(value, `"`) {
 		for _, v := range parseMultivalueLine(value) {
