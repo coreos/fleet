@@ -2,21 +2,29 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 
 	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
 )
 
-func hasValidContentType(req *http.Request) bool {
-	for _, hdr := range req.Header["Content-Type"] {
-		val := strings.SplitN(hdr, ";", 2)[0]
-		val = strings.TrimSpace(val)
-		if val != "application/json" {
-			return false
-		}
+func validateContentType(req *http.Request) error {
+	values := req.Header["Content-Type"]
+	count := len(values)
+
+	if count != 1 {
+		return fmt.Errorf("expected 1 Content-Type, got %d", count)
 	}
-	return true
+
+	val := strings.SplitN(values[0], ";", 2)[0]
+	val = strings.TrimSpace(val)
+	if val != "application/json" {
+		return errors.New("only acceptable Content-Type is application/json")
+	}
+
+	return nil
 }
 
 // sendResponse attempts to marshal an arbitrary thing to JSON then write
@@ -24,7 +32,7 @@ func hasValidContentType(req *http.Request) bool {
 func sendResponse(rw http.ResponseWriter, resp interface{}) {
 	enc, err := json.Marshal(resp)
 	if err != nil {
-		log.Error("Failed JSON-encoding HTTP response: %v", err)
+		log.Errorf("Failed JSON-encoding HTTP response: %v", err)
 		rw.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -33,6 +41,6 @@ func sendResponse(rw http.ResponseWriter, resp interface{}) {
 
 	_, err = rw.Write(enc)
 	if err != nil {
-		log.Error("Failed sending HTTP response body: %v", err)
+		log.Errorf("Failed sending HTTP response body: %v", err)
 	}
 }
