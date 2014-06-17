@@ -24,7 +24,6 @@ type Registry interface {
 	DestroySignatureSet(tag string)
 	GetActiveMachines() ([]machine.MachineState, error)
 	GetAllJobs() ([]job.Job, error)
-	GetDebugInfo() (string, error)
 	GetJob(jobName string) (j *job.Job, err error)
 	GetJobTarget(jobName string) (string, error)
 	GetJobTargetState(jobName string) (*job.JobState, error)

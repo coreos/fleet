@@ -20,20 +20,6 @@ func New(client etcd.Client, keyPrefix string) (registry Registry) {
 	return &EtcdRegistry{client, keyPrefix}
 }
 
-func (r *EtcdRegistry) GetDebugInfo() (string, error) {
-	req := etcd.Get{
-		Key:       r.keyPrefix,
-		Sorted:    true,
-		Recursive: true,
-	}
-
-	resp, err := r.etcd.Do(&req)
-	if err != nil {
-		return "", err
-	}
-	return string(resp.Raw), nil
-}
-
 func marshal(obj interface{}) (string, error) {
 	encoded, err := json.Marshal(obj)
 	if err == nil {
