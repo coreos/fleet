@@ -17,7 +17,10 @@ const (
 )
 
 func TestUnitHash(t *testing.T) {
-	u := NewUnit(testData)
+	u, err := NewUnit(testData)
+	if err != nil {
+		t.Fatalf("Unexpected error encountered creating unit: %v", err)
+	}
 	h := u.Hash()
 	if h.String() != testShaString {
 		t.Fatalf("Unit Hash (%s) does not match expected (%s)", h.String(), testShaString)

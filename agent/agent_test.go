@@ -14,12 +14,13 @@ func newTestJobWithMachineMetadata(metadata string) *job.Job {
 [X-Fleet]
 %s
 `, metadata)
+	u, _ := unit.NewUnit(contents)
 
-	return job.NewJob("pong.service", *unit.NewUnit(contents))
+	return job.NewJob("pong.service", *u)
 }
 
 func TestAbleToRunConditionMachineIDMatch(t *testing.T) {
-	u := unit.NewUnit(`[X-Fleet]
+	u, _ := unit.NewUnit(`[X-Fleet]
 X-ConditionMachineID=XYZ
 `)
 	job := job.NewJob("example.service", *u)
@@ -32,7 +33,7 @@ X-ConditionMachineID=XYZ
 }
 
 func TestAbleToRunConditionMachineIDMismatch(t *testing.T) {
-	u := unit.NewUnit(`[X-Fleet]
+	u, _ := unit.NewUnit(`[X-Fleet]
 X-ConditionMachineID=XYZ
 `)
 	job := job.NewJob("example.service", *u)
@@ -48,7 +49,7 @@ X-ConditionMachineID=XYZ
 func TestHasConflictExistingMatch(t *testing.T) {
 	state := NewState()
 
-	u := unit.NewUnit(`[X-Fleet]
+	u, _ := unit.NewUnit(`[X-Fleet]
 X-Conflicts=other.service
 `)
 	j := job.NewJob("example.service", *u)
@@ -69,7 +70,7 @@ X-Conflicts=other.service
 func TestHasConflictPotentialMatch(t *testing.T) {
 	state := NewState()
 
-	u := unit.NewUnit(`[X-Fleet]`)
+	u, _ := unit.NewUnit(`[X-Fleet]`)
 	j := job.NewJob("example.service", *u)
 	state.TrackJob(j)
 	state.SetTargetState(j.Name, job.JobStateLoaded)
@@ -89,7 +90,7 @@ func TestHasConflictPotentialMatch(t *testing.T) {
 func TestHasConflictNoMatch(t *testing.T) {
 	state := NewState()
 
-	u := unit.NewUnit(`[X-Fleet]`)
+	u, _ := unit.NewUnit(`[X-Fleet]`)
 	j := job.NewJob("example.service", *u)
 	state.TrackJob(j)
 	state.SetTargetState(j.Name, job.JobStateLoaded)
@@ -106,7 +107,7 @@ func TestHasConflictNoMatch(t *testing.T) {
 func TestHasConflictComplexGlob(t *testing.T) {
 	state := NewState()
 
-	u := unit.NewUnit(`[X-Fleet]
+	u, _ := unit.NewUnit(`[X-Fleet]
 X-Conflicts=*.[1-9].service
 `)
 	j := job.NewJob("example.service", *u)
@@ -126,7 +127,7 @@ X-Conflicts=*.[1-9].service
 func TestHasConflictIgnoresUnscheduledJobs(t *testing.T) {
 	state := NewState()
 
-	u := unit.NewUnit(`[X-Fleet]
+	u, _ := unit.NewUnit(`[X-Fleet]
 X-Conflicts=other.service
 `)
 	j := job.NewJob("example.service", *u)
@@ -144,7 +145,7 @@ X-Conflicts=other.service
 func TestHasConflictIgnoresBids(t *testing.T) {
 	state := NewState()
 
-	u := unit.NewUnit(`[X-Fleet]
+	u, _ := unit.NewUnit(`[X-Fleet]
 X-Conflicts=other.service
 `)
 	j := job.NewJob("example.service", *u)

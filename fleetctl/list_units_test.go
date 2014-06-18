@@ -10,8 +10,13 @@ import (
 	"github.com/coreos/fleet/unit"
 )
 
+func newUnitIgnoreErrors(str string) *unit.Unit {
+	u, _ := unit.NewUnit(str)
+	return u
+}
+
 func newFakeRegistryForListUnits(jobs []job.Job) registry.Registry {
-	j := []job.Job{*job.NewJob("pong.service", *unit.NewUnit("Echo"))}
+	j := []job.Job{*job.NewJob("pong.service", *newUnitIgnoreErrors("Echo"))}
 
 	if jobs != nil {
 		for _, job := range jobs {
@@ -45,7 +50,7 @@ func TestJobDescription(t *testing.T) {
 	contents := `[Unit]
 Description=PING
 `
-	j := []job.Job{*job.NewJob("ping.service", *unit.NewUnit(contents))}
+	j := []job.Job{*job.NewJob("ping.service", *newUnitIgnoreErrors(contents))}
 	cAPI = newFakeRegistryForListUnits(j)
 
 	jobs, _, _ := findAllUnits()
@@ -67,7 +72,7 @@ func assertEqual(t *testing.T, name string, want, got interface{}) {
 }
 
 func TestListUnitsFieldsToStrings(t *testing.T) {
-	j := job.NewJob("test", *unit.NewUnit(""))
+	j := job.NewJob("test", *newUnitIgnoreErrors(""))
 	for _, tt := range []string{"state", "load", "active", "sub", "desc", "machine"} {
 		f := listUnitsFields[tt](j, false)
 		assertEqual(t, tt, "-", f)
@@ -76,7 +81,7 @@ func TestListUnitsFieldsToStrings(t *testing.T) {
 	f := listUnitsFields["unit"](j, false)
 	assertEqual(t, "unit", "test", f)
 
-	j = job.NewJob("test", *unit.NewUnit(`[Unit]
+	j = job.NewJob("test", *newUnitIgnoreErrors(`[Unit]
 Description=some description`))
 	d := listUnitsFields["desc"](j, false)
 	assertEqual(t, "desc", "some description", d)

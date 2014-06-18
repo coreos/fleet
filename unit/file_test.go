@@ -36,28 +36,34 @@ X-ConditionMachineMetadata=baz=qux
 		},
 	}
 
-	unitFile := NewUnit(contents)
+	unitFile, err := NewUnit(contents)
+	if err != nil {
+		t.Fatalf("Unexpected error parsing unit %q: %v", contents, err)
+	}
 
 	if !reflect.DeepEqual(expected, unitFile.Contents) {
 		t.Fatalf("Map func did not produce expected output.\nActual=%v\nExpected=%v", unitFile.Contents, expected)
 	}
 }
 
-func TestDeserializedIgnoreGarbage(t *testing.T) {
+func TestDeserializedUnitGarbage(t *testing.T) {
 	contents := `
 >>>>>>>>>>>>>
 [Service]
-somerandomline
-<<<<<<<<<<<<<
-!@&*#&(**(*(k
 ExecStart=jim
+# As long as a line has an equals sign, systemd is happy, so we should pass it through
+<<<<<<<<<<<=bar
 `
 	expected := map[string]map[string][]string{
 		"Service": {
-			"ExecStart": {"jim"},
+			"ExecStart":   {"jim"},
+			"<<<<<<<<<<<": {"bar"},
 		},
 	}
-	unitFile := NewUnit(contents)
+	unitFile, err := NewUnit(contents)
+	if err != nil {
+		t.Fatalf("Unexpected error parsing unit %q: %v", contents, err)
+	}
 
 	if !reflect.DeepEqual(expected, unitFile.Contents) {
 		t.Fatalf("Map func did not produce expected output.\nActual=%v\nExpected=%v", unitFile.Contents, expected)
@@ -88,7 +94,10 @@ pung
 			"ExecStopPost": {`echo #peng pung`},
 		},
 	}
-	unitFile := NewUnit(contents)
+	unitFile, err := NewUnit(contents)
+	if err != nil {
+		t.Fatalf("Unexpected error parsing unit %q: %v", contents, err)
+	}
 
 	if !reflect.DeepEqual(expected, unitFile.Contents) {
 		t.Fatalf("Map func did not produce expected output.\nActual=%v\nExpected=%v", unitFile.Contents, expected)
@@ -100,14 +109,20 @@ func TestSerializeDeserialize(t *testing.T) {
 [Unit]
 Description = Foo
 `
-	deserialized := NewUnit(contents)
+	deserialized, err := NewUnit(contents)
+	if err != nil {
+		t.Fatalf("Unexpected error parsing unit %q: %v", contents, err)
+	}
 	section := deserialized.Contents["Unit"]
 	if val, ok := section["Description"]; !ok || val[0] != "Foo" {
 		t.Errorf("Failed to persist data through serialize/deserialize: %v", val)
 	}
 
 	serialized := deserialized.String()
-	deserialized = NewUnit(serialized)
+	deserialized, err = NewUnit(serialized)
+	if err != nil {
+		t.Fatalf("Unexpected error parsing unit %q: %v", serialized, err)
+	}
 
 	section = deserialized.Contents["Unit"]
 	if val, ok := section["Description"]; !ok || val[0] != "Foo" {
@@ -125,7 +140,10 @@ ExecStart=echo "ping";
 ExecStop=echo "pong";
 `
 
-	unitFile := NewUnit(contents)
+	unitFile, err := NewUnit(contents)
+	if err != nil {
+		t.Fatalf("Unexpected error parsing unit %q: %v", contents, err)
+	}
 	if unitFile.Description() != "Foo" {
 		t.Fatalf("Unit.Description is incorrect")
 	}
@@ -140,7 +158,10 @@ ExecStart=echo "ping";
 ExecStop=echo "pong";
 `
 
-	unitFile := NewUnit(contents)
+	unitFile, err := NewUnit(contents)
+	if err != nil {
+		t.Fatalf("Unexpected error parsing unit %q: %v", contents, err)
+	}
 	if unitFile.Description() != "" {
 		t.Fatalf("Unit.Description is incorrect")
 	}
@@ -167,7 +188,11 @@ func TestNewSystemdUnitFileFromLegacyContents(t *testing.T) {
 		},
 	}
 
-	actual := NewUnitFromLegacyContents(legacy).Contents
+	u, err := NewUnitFromLegacyContents(legacy)
+	if err != nil {
+		t.Fatalf("Unexpected error parsing unit %q: %v", legacy, err)
+	}
+	actual := u.Contents
 
 	if !reflect.DeepEqual(actual, expected) {
 		t.Fatalf("Map func did not produce expected output.\nActual=%v\nExpected=%v", actual, expected)
@@ -198,6 +223,7 @@ func TestDeserializeLine(t *testing.T) {
 		}
 	}
 
+	// Any non-empty line without an '=' is bad
 	badLines := []string{
 		`<<<<<<<<<<<<<<<<<<<<<<<<`,
 		`asdjfkl;`,
@@ -208,6 +234,26 @@ func TestDeserializeLine(t *testing.T) {
 		_, _, err := deserializeUnitLine(l)
 		if err == nil {
 			t.Fatalf("Did not get expected error deserializing %q", l)
+		}
+	}
+}
+
+func TestBadUnitsFail(t *testing.T) {
+	bad := []string{
+		`
+[Unit]
+
+[Service]
+<<<<<<<<<<<<<<<<
+`,
+		`
+[Unit]
+nonsense upon stilts
+`,
+	}
+	for _, tt := range bad {
+		if _, err := NewUnit(tt); err == nil {
+			t.Fatalf("Did not get expected error creating Unit from %q", tt)
 		}
 	}
 }
