@@ -83,6 +83,27 @@ The request must not have a body.
 
 A successful response will contain a single page of zero or more Unit entities.
 
+### Destroy Units
+
+Destroy one or more existing Unit entities.
+
+#### Request
+
+```
+DELETE /units HTTP/1.1
+```
+
+Indicate which Units should be destroyed in the request body like so:
+
+```
+{"units": [{"name": <name>}, ... ]}
+```
+
+#### Response
+
+A successful response will not contain a body or any additional headers.
+If any Units entities do not exist, a `400 Bad Request` will be returned.
+
 ## Machines
 
 ### Machine Entity

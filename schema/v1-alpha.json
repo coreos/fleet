@@ -58,6 +58,28 @@
         }
       }
     },
+    "DeletableUnit": {
+      "id": "DeletableUnit",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "required": true
+        }
+      }
+    },
+    "DeletableUnitCollection": {
+      "id": "DeletableUnitCollection",
+      "type": "object",
+      "properties": {
+        "units": {
+          "type": "array",
+          "items": {
+            "$ref": "DeletableUnit"
+          }
+        }
+      }
+    },
     "Unit": {
       "id": "Unit",
       "type": "object",
@@ -167,6 +189,15 @@
           },
           "response": {
             "$ref": "UnitPage"
+          }
+        },
+        "Delete": {
+          "id": "fleet.Unit.Delete",
+          "description": "Delete the referenced Unit objects.",
+          "httpMethod": "DELETE",
+          "path": "units",
+          "request": {
+            "$ref": "DeletableUnitCollection"
           }
         }
       }
