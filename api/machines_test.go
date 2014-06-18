@@ -92,12 +92,12 @@ func TestExtractMachinePage(t *testing.T) {
 
 		first := page.Machines[0].Id
 		if first != strconv.FormatInt(int64(tt.idxStart), 10) {
-			t.Errorf("case %d: irst element in first page should have ID %d, got %d", i, tt.idxStart, first)
+			t.Errorf("case %d: first element in page should have ID %d, got %d", i, tt.idxStart, first)
 		}
 
 		last := page.Machines[len(page.Machines)-1].Id
 		if last != strconv.FormatInt(int64(tt.idxEnd), 10) {
-			t.Errorf("case %d: first element in first page should have ID %d, got %d", i, tt.idxEnd, last)
+			t.Errorf("case %d: first element in page should have ID %d, got %d", i, tt.idxEnd, last)
 		}
 
 		if tt.next == nil && page.NextPageToken != "" {
