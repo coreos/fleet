@@ -47,7 +47,12 @@ func TestPageTokenDecode(t *testing.T) {
 	}{
 		{"_wMAAA==", &PageToken{Limit: 1023}},
 		{"LQAJAA==", &PageToken{Limit: 45, Page: 9}},
+
+		// incorrectly base64-encoded data
 		{"basdfasdf", nil},
+
+		// empty string is valid base64, but fails binary decode
+		{"", nil},
 	}
 
 	for i, tt := range tests {

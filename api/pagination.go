@@ -41,7 +41,11 @@ func decodePageToken(value string) (*PageToken, error) {
 	db := bytes.NewBuffer(dec)
 
 	var tok PageToken
-	binary.Read(db, binary.LittleEndian, &tok)
+	err = binary.Read(db, binary.LittleEndian, &tok)
+	if err != nil {
+		return nil, err
+	}
+
 	return &tok, nil
 }
 
