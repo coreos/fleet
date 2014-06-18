@@ -10,28 +10,30 @@ import (
 	"github.com/coreos/fleet/unit"
 )
 
-func newUnitIgnoreErrors(str string) *unit.Unit {
-	u, _ := unit.NewUnit(str)
-	return u
+func newNamedTestJobFromUnitContents(t *testing.T, name, contents string) *job.Job {
+	u, err := unit.NewUnit(contents)
+	if err != nil {
+		t.Fatalf("error creating Unit from %q: %v", contents, err)
+	}
+	j := job.NewJob(name, *u)
+	if j == nil {
+		t.Fatalf("error creating Job %q from %q", name, u)
+	}
+	return j
 }
 
-func newFakeRegistryForListUnits(jobs []job.Job) registry.Registry {
-	j := []job.Job{*job.NewJob("pong.service", *newUnitIgnoreErrors("Echo"))}
+func newTestJobFromUnitContents(t *testing.T, contents string) *job.Job {
+	return newNamedTestJobFromUnitContents(t, "foo.service", contents)
+}
 
-	if jobs != nil {
-		for _, job := range jobs {
-			j = append(j, job)
-		}
-	}
-
+func newFakeRegistryForListUnits(t *testing.T, jobs []job.Job) registry.Registry {
 	reg := registry.NewFakeRegistry()
-	reg.SetJobs(j)
-
+	reg.SetJobs(jobs)
 	return reg
 }
 
 func TestGetAllJobs(t *testing.T) {
-	cAPI = newFakeRegistryForListUnits(nil)
+	cAPI = newFakeRegistryForListUnits(t, []job.Job{*newNamedTestJobFromUnitContents(t, "pong.service", "")})
 
 	jobs, sortable, err := findAllUnits()
 	if err != nil {
@@ -50,8 +52,10 @@ func TestJobDescription(t *testing.T) {
 	contents := `[Unit]
 Description=PING
 `
-	j := []job.Job{*job.NewJob("ping.service", *newUnitIgnoreErrors(contents))}
-	cAPI = newFakeRegistryForListUnits(j)
+	cAPI = newFakeRegistryForListUnits(t, []job.Job{
+		*newTestJobFromUnitContents(t, ""),
+		*newNamedTestJobFromUnitContents(t, "ping.service", contents),
+	})
 
 	jobs, _, _ := findAllUnits()
 	if len(jobs) != 2 {
@@ -72,17 +76,17 @@ func assertEqual(t *testing.T, name string, want, got interface{}) {
 }
 
 func TestListUnitsFieldsToStrings(t *testing.T) {
-	j := job.NewJob("test", *newUnitIgnoreErrors(""))
+	j := newTestJobFromUnitContents(t, "")
 	for _, tt := range []string{"state", "load", "active", "sub", "desc", "machine"} {
 		f := listUnitsFields[tt](j, false)
 		assertEqual(t, tt, "-", f)
 	}
 
 	f := listUnitsFields["unit"](j, false)
-	assertEqual(t, "unit", "test", f)
+	assertEqual(t, "unit", j.Name, f)
 
-	j = job.NewJob("test", *newUnitIgnoreErrors(`[Unit]
-Description=some description`))
+	j = newTestJobFromUnitContents(t, `[Unit]
+Description=some description`)
 	d := listUnitsFields["desc"](j, false)
 	assertEqual(t, "desc", "some description", d)
 
