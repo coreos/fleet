@@ -44,26 +44,22 @@ func TestPageTokenDecode(t *testing.T) {
 	tests := []struct {
 		input  string
 		expect *PageToken
+		pass   bool
 	}{
-		{"_wMAAA==", &PageToken{Limit: 1023}},
-		{"LQAJAA==", &PageToken{Limit: 45, Page: 9}},
+		{"_wMAAA==", &PageToken{Limit: 1023}, true},
+		{"LQAJAA==", &PageToken{Limit: 45, Page: 9}, true},
 
 		// incorrectly base64-encoded data
-		{"basdfasdf", nil},
+		{"basdfasdf", nil, false},
 
 		// empty string is valid base64, but fails binary decode
-		{"", nil},
+		{"", nil, false},
 	}
 
 	for i, tt := range tests {
 		tok, err := decodePageToken(tt.input)
-		if err == nil && tt.expect == nil {
-			t.Errorf("case %d: expected error, got nil", i)
-			continue
-		}
-
-		if err != nil && tt.expect != nil {
-			t.Errorf("case %d: expected success, got non-nil error: %v", i, err)
+		if (err == nil) != tt.pass {
+			t.Errorf("case %d: expected pass=%t, got err=%v", i, tt.pass, err)
 			continue
 		}
 
