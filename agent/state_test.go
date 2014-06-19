@@ -1,27 +1,20 @@
 package agent
 
-import (
-	"testing"
-
-	"github.com/coreos/fleet/job"
-	"github.com/coreos/fleet/unit"
-)
+import "testing"
 
 // Assert that jobs and their peers are properly indexed
 func TestGetJobsByPeer(t *testing.T) {
 	state := NewState()
 
-	u1 := unit.NewUnit(`[X-Fleet]
+	j1 := newNamedTestJobWithXFleetValues(t, "a", `
 X-ConditionMachineOf=b
 X-ConditionMachineOf=c
 `)
-	j1 := job.NewJob("a", *u1)
 	state.TrackJob(j1)
 
-	u2 := unit.NewUnit(`[X-Fleet]
+	j2 := newNamedTestJobWithXFleetValues(t, "d", `[X-Fleet]
 X-ConditionMachineOf=c
 `)
-	j2 := job.NewJob("d", *u2)
 	state.TrackJob(j2)
 
 	peers := state.GetJobsByPeer("b")
@@ -37,12 +30,9 @@ X-ConditionMachineOf=c
 
 // Assert that no jobs are returned for unknown peers
 func TestGetJobsByPeerUnknown(t *testing.T) {
-	u := unit.NewUnit(`[X-Fleet]
-X-ConditionMachineOf=b
-`)
-	j := job.NewJob("a", *u)
-
 	state := NewState()
+
+	j := newNamedTestJobWithXFleetValues(t, "a", `X-ConditionMachineOf=b`)
 	state.TrackJob(j)
 
 	peers := state.GetJobsByPeer("c")
@@ -56,17 +46,15 @@ X-ConditionMachineOf=b
 func TestDropPeersJob(t *testing.T) {
 	state := NewState()
 
-	u1 := unit.NewUnit(`[X-Fleet]
+	j1 := newNamedTestJobWithXFleetValues(t, "a", `[X-Fleet]
 X-ConditionMachineOf=b
 X-ConditionMachineOf=c
 `)
-	j1 := job.NewJob("a", *u1)
 	state.TrackJob(j1)
 
-	u2 := unit.NewUnit(`[X-Fleet]
+	j2 := newNamedTestJobWithXFleetValues(t, "d", `[X-Fleet]
 X-ConditionMachineOf=c
 `)
-	j2 := job.NewJob("d", *u2)
 	state.TrackJob(j2)
 
 	state.PurgeJob(j1.Name)

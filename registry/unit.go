@@ -104,11 +104,17 @@ func (ljp *LegacyJobPayload) UnmarshalJSON(data []byte) error {
 		return fmt.Errorf("unable to JSON-deserialize object: %s", err)
 	}
 
+	var u *unit.Unit
 	if len(ljpm.Unit.Raw) > 0 {
-		ljp.Unit = *unit.NewUnit(ljpm.Unit.Raw)
+		u, err = unit.NewUnit(ljpm.Unit.Raw)
 	} else {
-		ljp.Unit = *unit.NewUnitFromLegacyContents(ljpm.Unit.Contents)
+		u, err = unit.NewUnitFromLegacyContents(ljpm.Unit.Contents)
 	}
+	if err != nil {
+		return err
+	}
+
+	ljp.Unit = *u
 	ljp.Name = ljpm.Name
 
 	return nil

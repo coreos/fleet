@@ -2,6 +2,7 @@ package unit
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"strings"
 )
@@ -15,14 +16,17 @@ func (u *Unit) Description() string {
 	return ""
 }
 
-func NewUnit(raw string) *Unit {
-	parsed := deserializeUnitFile(raw)
-	return &Unit{parsed, raw}
+func NewUnit(raw string) (*Unit, error) {
+	parsed, err := deserializeUnitFile(raw)
+	if err != nil {
+		return nil, err
+	}
+	return &Unit{parsed, raw}, nil
 }
 
 // NewUnitFromLegacyContents creates a Unit object from an obsolete unit
 // file datastructure. This should only be used to remain backwards-compatible where necessary.
-func NewUnitFromLegacyContents(contents map[string]map[string]string) *Unit {
+func NewUnitFromLegacyContents(contents map[string]map[string]string) (*Unit, error) {
 	var serialized string
 	for section, keyMap := range contents {
 		serialized += fmt.Sprintf("[%s]\n", section)
@@ -36,11 +40,11 @@ func NewUnitFromLegacyContents(contents map[string]map[string]string) *Unit {
 
 // deserializeUnitFile parses a systemd unit file and attempts to map its various sections and values.
 // Currently this function is dangerously simple and should be rewritten to match the systemd unit file spec
-func deserializeUnitFile(raw string) map[string]map[string][]string {
+func deserializeUnitFile(raw string) (map[string]map[string][]string, error) {
 	sections := make(map[string]map[string][]string)
 	var section string
 	var prev string
-	for _, line := range strings.Split(raw, "\n") {
+	for i, line := range strings.Split(raw, "\n") {
 
 		// Join lines ending in backslash
 		if strings.HasSuffix(line, "\\") {
@@ -77,19 +81,26 @@ func deserializeUnitFile(raw string) map[string]map[string][]string {
 			continue
 		}
 
-		key, values := deserializeUnitLine(line)
+		key, values, err := deserializeUnitLine(line)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing line %d: %v", i+1, err)
+		}
 		for _, v := range values {
 			sections[section][key] = append(sections[section][key], v)
 		}
 	}
 
-	return sections
+	return sections, nil
 }
 
-func deserializeUnitLine(line string) (key string, values []string) {
-	parts := strings.SplitN(line, "=", 2)
-	key = strings.TrimSpace(parts[0])
-	value := strings.TrimSpace(parts[1])
+func deserializeUnitLine(line string) (key string, values []string, err error) {
+	e := strings.Index(line, "=")
+	if e == -1 {
+		err = errors.New("missing '='")
+		return
+	}
+	key = strings.TrimSpace(line[:e])
+	value := strings.TrimSpace(line[e+1:])
 
 	if strings.HasPrefix(value, `"`) && strings.HasSuffix(value, `"`) {
 		for _, v := range parseMultivalueLine(value) {

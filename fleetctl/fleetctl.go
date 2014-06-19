@@ -310,7 +310,7 @@ func getUnitFromFile(file string) (*unit.Unit, error) {
 	unitName := path.Base(file)
 	log.V(1).Infof("Unit(%s) found in local filesystem", unitName)
 
-	return unit.NewUnit(string(out)), nil
+	return unit.NewUnit(string(out))
 }
 
 func getTunnelFlag() string {
