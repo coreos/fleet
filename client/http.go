@@ -162,6 +162,15 @@ func mapUnitToJob(entity *schema.Unit, mm map[string]*machine.MachineState) (*jo
 	return &j, nil
 }
 
+func (c *HTTPClient) DestroyJob(name string) error {
+	req := schema.DeletableUnitCollection{
+		Units: []*schema.DeletableUnit{
+			&schema.DeletableUnit{Name: name},
+		},
+	}
+	return c.svc.Units.Delete(&req).Do()
+}
+
 //NOTE(bcwaldon): This is only temporary until a better version negotiation mechanism is in place
 func (c *HTTPClient) GetLatestVersion() (*semver.Version, error) {
 	return semver.NewVersion("0.0.0")

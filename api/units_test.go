@@ -1,8 +1,10 @@
 package api
 
 import (
+	"bytes"
 	"crypto/sha1"
 	"encoding/json"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -171,5 +173,45 @@ func TestMapJobToSchema(t *testing.T) {
 		if !reflect.DeepEqual(tt.expect, *output) {
 			t.Errorf("case %d: expect=%v, got=%v", i, tt.expect, *output)
 		}
+	}
+}
+
+func TestUnitsDestroy(t *testing.T) {
+	fr := registry.NewFakeRegistry()
+	fr.SetJobs([]job.Job{
+		{Name: "XXX"},
+		{Name: "YYY"},
+		{Name: "ZZZ"},
+	})
+	resource := &unitsResource{fr}
+	rw := httptest.NewRecorder()
+	req, err := http.NewRequest("DELETE", "http://example.com", nil)
+	if err != nil {
+		t.Fatalf("Failed creating http.Request: %v", err)
+	}
+
+	body := schema.DeletableUnitCollection{
+		Units: []*schema.DeletableUnit{
+			{Name: "ZZZ"},
+			{Name: "XXX"},
+		},
+	}
+	enc, err := json.Marshal(body)
+	if err != nil {
+		t.Fatalf("Unable to JSON-encode request: %v", err)
+	}
+	req.Body = ioutil.NopCloser(bytes.NewBuffer(enc))
+	req.Header.Set("Content-Type", "application/json")
+
+	resource.destroy(rw, req)
+	if rw.Code != http.StatusNoContent {
+		t.Errorf("Expected 204, got %d", rw.Code)
+	}
+
+	jobs, _ := fr.GetAllJobs()
+	if len(jobs) != 1 {
+		t.Errorf("Expected a single Job after request completion")
+	} else if jobs[0].Name != "YYY" {
+		t.Errorf("Incorrect Job was deleted")
 	}
 }

@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"net/http"
 	"path"
 
@@ -27,9 +28,37 @@ func (ur *unitsResource) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	switch req.Method {
 	case "GET":
 		ur.list(rw, req)
+	case "DELETE":
+		ur.destroy(rw, req)
 	default:
 		rw.WriteHeader(http.StatusMethodNotAllowed)
 	}
+}
+
+func (ur *unitsResource) destroy(rw http.ResponseWriter, req *http.Request) {
+	if validateContentType(req) != nil {
+		rw.WriteHeader(http.StatusNotAcceptable)
+		return
+	}
+
+	var c schema.DeletableUnitCollection
+	dec := json.NewDecoder(req.Body)
+	err := dec.Decode(&c)
+	if err != nil {
+		rw.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	for _, unit := range c.Units {
+		err := ur.reg.DestroyJob(unit.Name)
+		if err != nil {
+			//TODO(bcwaldon): Which error is correct here?
+			rw.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+	}
+
+	rw.WriteHeader(http.StatusNoContent)
 }
 
 func (ur *unitsResource) list(rw http.ResponseWriter, req *http.Request) {
