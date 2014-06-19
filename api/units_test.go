@@ -24,9 +24,9 @@ func TestUnitsList(t *testing.T) {
 		{Name: "XXX"},
 		{Name: "YYY"},
 	})
-	resource := &unitsResource{fr}
+	resource := &unitsResource{fr, "/units"}
 	rw := httptest.NewRecorder()
-	req, err := http.NewRequest("GET", "http://example.com", nil)
+	req, err := http.NewRequest("GET", "http://example.com/units", nil)
 	if err != nil {
 		t.Fatalf("Failed creating http.Request: %v", err)
 	}
@@ -60,7 +60,7 @@ func TestUnitsList(t *testing.T) {
 
 func TestUnitsListBadNextPageToken(t *testing.T) {
 	fr := registry.NewFakeRegistry()
-	resource := &unitsResource{fr}
+	resource := &unitsResource{fr, "/units"}
 	rw := httptest.NewRecorder()
 	req, err := http.NewRequest("GET", "http://example.com/units?nextPageToken=EwBMLg==", nil)
 	if err != nil {
@@ -176,6 +176,46 @@ func TestMapJobToSchema(t *testing.T) {
 	}
 }
 
+func TestUnitGet(t *testing.T) {
+	fr := registry.NewFakeRegistry()
+	fr.SetJobs([]job.Job{
+		{Name: "XXX"},
+		{Name: "YYY"},
+	})
+	resource := &unitsResource{fr, "/units"}
+	rw := httptest.NewRecorder()
+	req, err := http.NewRequest("GET", "http://example.com/units/XXX", nil)
+	if err != nil {
+		t.Fatalf("Failed creating http.Request: %v", err)
+	}
+
+	resource.get(rw, req, "XXX")
+	if rw.Code != http.StatusOK {
+		t.Errorf("Expected 200, got %d", rw.Code)
+	}
+
+	ct := rw.HeaderMap["Content-Type"]
+	if len(ct) != 1 {
+		t.Errorf("Response has wrong number of Content-Type values: %v", ct)
+	} else if ct[0] != "application/json" {
+		t.Errorf("Expected application/json, got %s", ct)
+	}
+
+	if rw.Body == nil {
+		t.Error("Received nil response body")
+	} else {
+		var unit schema.Unit
+		err := json.Unmarshal(rw.Body.Bytes(), &unit)
+		if err != nil {
+			t.Fatalf("Received unparseable body: %v", err)
+		}
+
+		if unit.Name != "XXX" {
+			t.Errorf("Received incorrect Unit entity: %v", unit)
+		}
+	}
+}
+
 func TestUnitsDestroy(t *testing.T) {
 	fr := registry.NewFakeRegistry()
 	fr.SetJobs([]job.Job{
@@ -183,9 +223,9 @@ func TestUnitsDestroy(t *testing.T) {
 		{Name: "YYY"},
 		{Name: "ZZZ"},
 	})
-	resource := &unitsResource{fr}
+	resource := &unitsResource{fr, "/units"}
 	rw := httptest.NewRecorder()
-	req, err := http.NewRequest("DELETE", "http://example.com", nil)
+	req, err := http.NewRequest("DELETE", "http://example.com/units", nil)
 	if err != nil {
 		t.Fatalf("Failed creating http.Request: %v", err)
 	}

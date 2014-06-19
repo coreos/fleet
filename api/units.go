@@ -15,23 +15,36 @@ import (
 )
 
 func wireUpUnitsResource(mux *http.ServeMux, prefix string, reg registry.Registry) {
-	res := path.Join(prefix, "units")
-	ur := unitsResource{reg}
-	mux.Handle(res, &ur)
+	base := path.Join(prefix, "units")
+	ur := unitsResource{reg, base}
+	mux.Handle(base, &ur)
+	mux.Handle(base+"/", &ur)
 }
 
 type unitsResource struct {
-	reg registry.Registry
+	reg      registry.Registry
+	basePath string
 }
 
 func (ur *unitsResource) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
-	switch req.Method {
-	case "GET":
-		ur.list(rw, req)
-	case "DELETE":
-		ur.destroy(rw, req)
-	default:
-		rw.WriteHeader(http.StatusMethodNotAllowed)
+	if isCollectionPath(ur.basePath, req.URL.Path) {
+		switch req.Method {
+		case "GET":
+			ur.list(rw, req)
+		case "DELETE":
+			ur.destroy(rw, req)
+		default:
+			rw.WriteHeader(http.StatusMethodNotAllowed)
+		}
+	} else if item, ok := isItemPath(ur.basePath, req.URL.Path); ok {
+		switch req.Method {
+		case "GET":
+			ur.get(rw, req, item)
+		default:
+			rw.WriteHeader(http.StatusMethodNotAllowed)
+		}
+	} else {
+		rw.WriteHeader(http.StatusNotFound)
 	}
 }
 
@@ -59,6 +72,31 @@ func (ur *unitsResource) destroy(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	rw.WriteHeader(http.StatusNoContent)
+}
+
+func (ur *unitsResource) get(rw http.ResponseWriter, req *http.Request, item string) {
+	j, err := ur.reg.GetJob(item)
+	if err != nil {
+		log.Errorf("Failed fetching Unit: %v", err)
+		rw.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	if j == nil {
+		rw.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	tgt, err := ur.reg.GetJobTarget(j.Name)
+	if err != nil {
+		rw.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	u := mapJobToSchema(j)
+	u.TargetMachineID = tgt
+
+	sendResponse(rw, *u)
 }
 
 func (ur *unitsResource) list(rw http.ResponseWriter, req *http.Request) {
@@ -90,6 +128,12 @@ func getUnitPage(reg registry.Registry, tok PageToken) (*schema.UnitPage, error)
 	}
 
 	page := extractUnitPage(all, tok)
+
+	err = setUnitPageTargets(reg, page)
+	if err != nil {
+		return nil, err
+	}
+
 	return page, nil
 }
 
@@ -154,6 +198,17 @@ func mapJobToSchema(j *job.Job) *schema.Unit {
 	}
 
 	return &su
+}
+
+func setUnitPageTargets(reg registry.Registry, page *schema.UnitPage) error {
+	for i, _ := range page.Units {
+		tgt, err := reg.GetJobTarget(page.Units[i].Name)
+		if err != nil {
+			return err
+		}
+		page.Units[i].TargetMachineID = tgt
+	}
+	return nil
 }
 
 func encodeUnitContents(u *unit.Unit) string {

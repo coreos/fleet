@@ -107,6 +107,39 @@ func (c *HTTPClient) GetAllJobs() ([]job.Job, error) {
 	return jobs, nil
 }
 
+func (c *HTTPClient) GetJob(name string) (*job.Job, error) {
+	u, err := c.svc.Units.Get(name).Do()
+	if err != nil {
+		return nil, err
+	}
+
+	if u == nil {
+		return nil, nil
+	}
+
+	machines, err := c.GetActiveMachines()
+	if err != nil {
+		return nil, err
+	}
+
+	mm := make(map[string]*machine.MachineState, len(machines))
+	for i, _ := range machines {
+		m := machines[i]
+		mm[m.ID] = &m
+	}
+
+	return mapUnitToJob(u, mm)
+}
+
+func (c *HTTPClient) GetJobTarget(name string) (string, error) {
+	u, err := c.svc.Units.Get(name).Do()
+	if err != nil {
+		return "", err
+	}
+
+	return u.TargetMachineID, nil
+}
+
 func mapUnitPageToJobs(entities []*schema.Unit, mm map[string]*machine.MachineState) ([]job.Job, error) {
 	jobs := make([]job.Job, len(entities))
 	for i, _ := range entities {
