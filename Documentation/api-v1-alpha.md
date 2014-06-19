@@ -17,6 +17,43 @@ This document is available in the [fleet source][schema]:
 All API requests and responses use the `application/json` media type.
 New media types may be introduced in the future.
 
+## Pagination
+
+If a collection is large enough to warrant a paginated response, it will return a `nextPageToken` field in its response body.
+To retrieve the next page of entities, a client must make a subsequent HTTP request with a single `nextPageToken` query parameter set to the value received in a response body.
+If a paginated response does not contain a `nextPageToken` field, a client may safely assume no more entities are available.
+
+### Pagination Example
+
+The following series of HTTP request/response pairs demonstrates how pagination works against a fictional resource:
+
+```
+GET /cats HTTP/1.1
+
+
+HTTP/1.1 200 OK
+
+{"cats": [{"id": "baxter"}, {"id": "charlie"}], "nextPageToken": "8fefec2c"}
+```
+
+```
+GET /cats?nextPageToken=8fefec2c HTTP/1.1
+
+
+HTTP/1.1 200 OK
+
+{"cats": [{"id": "michael"}, {"id": "prescott"}], "nextPageToken": "cbb06916"}
+```
+
+```
+GET /cats?nextPageToken=cbb06916 HTTP/1.1
+
+
+HTTP/1.1 200 OK
+
+{"cats": [{"id":"timothy"}]}
+```
+
 ## Machines
 
 ### Machine Entity
@@ -32,7 +69,7 @@ It uses the host's [machine-id][systemd-machine-id] as a unique identifier.
 
 ### List Machines
 
-Explore a collection of Machine entities.
+Explore a paginated collection of Machine entities.
 
 #### Request
 
@@ -44,4 +81,4 @@ The request must not have a body.
 
 #### Response
 
-A successful response will contain a list of zero or more Machine entities.
+A successful response will contain a page of zero or more Machine entities.

@@ -3,6 +3,8 @@ package api
 import (
 	"net/http"
 	"net/http/httptest"
+	"reflect"
+	"strconv"
 	"testing"
 
 	"github.com/coreos/fleet/machine"
@@ -41,6 +43,81 @@ func TestMachinesList(t *testing.T) {
 		expected := `{"machines":[{"id":"XXX"},{"id":"YYY","metadata":{"ping":"pong"},"primaryIP":"1.2.3.4"}]}`
 		if body != expected {
 			t.Errorf("Expected body:\n%s\n\nReceived body:\n%s\n", expected, body)
+		}
+	}
+}
+
+func TestMachinesListBadNextPageToken(t *testing.T) {
+	fr := registry.NewFakeRegistry()
+	resource := &machinesResource{fr}
+	rw := httptest.NewRecorder()
+	req, err := http.NewRequest("GET", "http://example.com/machines?nextPageToken=EwBMLg==", nil)
+	if err != nil {
+		t.Fatalf("Failed creating http.Request: %v", err)
+	}
+
+	resource.ServeHTTP(rw, req)
+	if rw.Code != http.StatusBadRequest {
+		t.Errorf("Expected 400, got %d", rw.Code)
+	}
+
+	if rw.Body.Len() != 0 {
+		t.Error("Received non-empty response body")
+	}
+}
+
+func TestExtractMachinePage(t *testing.T) {
+	all := make([]machine.MachineState, 103)
+	for i := 0; i < 103; i++ {
+		id := strconv.FormatInt(int64(i), 10)
+		all[i] = machine.MachineState{ID: id}
+	}
+
+	tests := []struct {
+		token    PageToken
+		idxStart int
+		idxEnd   int
+		next     *PageToken
+	}{
+		{PageToken{Page: 1, Limit: 60}, 0, 59, &PageToken{Page: 2, Limit: 60}},
+		{PageToken{Page: 2, Limit: 60}, 60, 102, nil},
+	}
+
+	for i, tt := range tests {
+		page := extractPage(all, tt.token)
+		expectCount := (tt.idxEnd - tt.idxStart + 1)
+		if len(page.Machines) != expectCount {
+			t.Fatalf("case %d: expected page of %d, got %d", i, expectCount, len(page.Machines))
+		}
+
+		first := page.Machines[0].Id
+		if first != strconv.FormatInt(int64(tt.idxStart), 10) {
+			t.Errorf("case %d: first element in page should have ID %d, got %d", i, tt.idxStart, first)
+		}
+
+		last := page.Machines[len(page.Machines)-1].Id
+		if last != strconv.FormatInt(int64(tt.idxEnd), 10) {
+			t.Errorf("case %d: first element in page should have ID %d, got %d", i, tt.idxEnd, last)
+		}
+
+		if tt.next == nil && page.NextPageToken != "" {
+			t.Errorf("case %d: did not expect NextPageToken", i)
+			continue
+		} else if page.NextPageToken == "" {
+			if tt.next != nil {
+				t.Errorf("case %d: did not receive expected NextPageToken", i)
+			}
+			continue
+		}
+
+		next, err := decodePageToken(page.NextPageToken)
+		if err != nil {
+			t.Errorf("case %d: unable to parse NextPageToken: %v", i, err)
+			continue
+		}
+
+		if !reflect.DeepEqual(next, tt.next) {
+			t.Errorf("case %d: expected PageToken %v, got %v", i, tt.next, next)
 		}
 	}
 }

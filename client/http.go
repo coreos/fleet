@@ -26,11 +26,23 @@ type HTTPClient struct {
 }
 
 func (c *HTTPClient) GetActiveMachines() ([]machine.MachineState, error) {
-	page, err := c.svc.Machines.List().Do()
-	if err != nil {
-		return nil, err
+	machines := make([]machine.MachineState, 0)
+	call := c.svc.Machines.List()
+	for call != nil {
+		page, err := call.Do()
+		if err != nil {
+			return nil, err
+		}
+
+		machines = append(machines, mapMachinePageToMachineStates(page.Machines)...)
+
+		if len(page.NextPageToken) > 0 {
+			call = c.svc.Machines.List()
+			call.NextPageToken(page.NextPageToken)
+		} else {
+			call = nil
+		}
 	}
-	machines := mapMachinePageToMachineStates(page.Machines)
 	return machines, nil
 }
 
@@ -40,7 +52,7 @@ func mapMachinePageToMachineStates(entities []*schema.Machine) []machine.Machine
 		me := entities[i]
 
 		ms := machine.MachineState{
-			ID: me.Id,
+			ID:       me.Id,
 			PublicIP: me.PrimaryIP,
 		}
 
