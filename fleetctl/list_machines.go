@@ -97,7 +97,13 @@ func runListMachines(args []string) (exit int) {
 func formatMetadata(metadata map[string]string) string {
 	pairs := make([]string, len(metadata))
 	idx := 0
-	for key, value := range metadata {
+	var sorted sort.StringSlice
+	for k := range metadata {
+		sorted = append(sorted, k)
+	}
+	sorted.Sort()
+	for _, key := range sorted {
+		value := metadata[key]
 		pairs[idx] = fmt.Sprintf("%s=%s", key, value)
 		idx++
 	}
