@@ -21,12 +21,16 @@ func newTestJobFromUnitContents(t *testing.T, name, contents string) *job.Job {
 	return j
 }
 
-func newTestJobWithXFleetValues(t *testing.T, metadata string) *job.Job {
+func newNamedTestJobWithXFleetValues(t *testing.T, name, metadata string) *job.Job {
 	contents := fmt.Sprintf(`
 [X-Fleet]
 %s
 `, metadata)
-	return newTestJobFromUnitContents(t, "pong.service", contents)
+	return newTestJobFromUnitContents(t, name, contents)
+}
+
+func newTestJobWithXFleetValues(t *testing.T, metadata string) *job.Job {
+	return newNamedTestJobWithXFleetValues(t, "pong.service", metadata)
 }
 
 func TestAbleToRunConditionMachineID(t *testing.T) {
