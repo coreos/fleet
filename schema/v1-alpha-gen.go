@@ -85,6 +85,18 @@ type DeletableUnitCollection struct {
 	Units []*DeletableUnit `json:"units,omitempty"`
 }
 
+type DesiredUnitState struct {
+	DesiredState string `json:"desiredState,omitempty"`
+
+	FileContents string `json:"fileContents,omitempty"`
+
+	Name string `json:"name,omitempty"`
+}
+
+type DesiredUnitStateCollection struct {
+	Units []*DesiredUnitState `json:"units,omitempty"`
+}
+
 type Machine struct {
 	Id string `json:"id,omitempty"`
 
@@ -361,6 +373,57 @@ func (c *UnitsListCall) Do() (*UnitPage, error) {
 	//   "path": "units",
 	//   "response": {
 	//     "$ref": "UnitPage"
+	//   }
+	// }
+
+}
+
+// method id "fleet.Unit.Set":
+
+type UnitsSetCall struct {
+	s                          *Service
+	desiredunitstatecollection *DesiredUnitStateCollection
+	opt_                       map[string]interface{}
+}
+
+// Set: Persist the state of the provided DesiredUnit objects.
+func (r *UnitsService) Set(desiredunitstatecollection *DesiredUnitStateCollection) *UnitsSetCall {
+	c := &UnitsSetCall{s: r.s, opt_: make(map[string]interface{})}
+	c.desiredunitstatecollection = desiredunitstatecollection
+	return c
+}
+
+func (c *UnitsSetCall) Do() error {
+	var body io.Reader = nil
+	body, err := googleapi.WithoutDataWrapper.JSONReader(c.desiredunitstatecollection)
+	if err != nil {
+		return err
+	}
+	ctype := "application/json"
+	params := make(url.Values)
+	params.Set("alt", "json")
+	urls := googleapi.ResolveRelative(c.s.BasePath, "units")
+	urls += "?" + params.Encode()
+	req, _ := http.NewRequest("POST", urls, body)
+	googleapi.SetOpaque(req.URL)
+	req.Header.Set("Content-Type", ctype)
+	req.Header.Set("User-Agent", "google-api-go-client/0.5")
+	res, err := c.s.client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer googleapi.CloseBody(res)
+	if err := googleapi.CheckResponse(res); err != nil {
+		return err
+	}
+	return nil
+	// {
+	//   "description": "Persist the state of the provided DesiredUnit objects.",
+	//   "httpMethod": "POST",
+	//   "id": "fleet.Unit.Set",
+	//   "path": "units",
+	//   "request": {
+	//     "$ref": "DesiredUnitStateCollection"
 	//   }
 	// }
 

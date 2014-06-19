@@ -70,6 +70,36 @@ HTTP/1.1 200 OK
   - **machineID**: identifier of the Machine that published this systemd state
 
 
+### Create & Modify Units
+
+```
+POST /units HTTP/1.1
+```
+
+#### Request
+
+A request is comprised of one or more partial Unit objects. If creating a new Unit, supply the name, desiredState and fileContents fields. To modify an existing Unit, provide just the name and desiredState. The base datastructure looks like so:
+
+```
+{"units": [PartialUnit, ... ]}
+```
+
+For example, launching a new unit "foo.service" while unloading "bar.service" could look like this:
+
+```
+{
+  "units": [
+    {"name": "foo.service", "desiredState": "launched",
+     "fileContents": "W1NlcnZpY2VdCkV4ZWNTdGFydD0vdXNyL2Jpbi9zbGVlcCAzMDAwCg=="},
+    {"name": "bar.service", "desiredState": "inactive"}
+  ]
+}
+```
+
+#### Response
+
+A successful response contains no body.
+
 ### List Units
 
 Explore a paginated collection of Unit entities.
