@@ -58,14 +58,17 @@ HTTP/1.1 200 OK
 ### Unit Entity
 
 - **name**: unique identifier of entity
+- **desiredState**: state the user wishes the Unit to be in (inactive, loaded, or launched)
 - **fileContents**: base64-encoded contents of the Unit's file
 - **fileHash**: SHA1 hash of the Unit's file contents
-- **desiredState**: state the user wishes the Unit to be in (inactive, loaded, or launched)
 - **currentState**: last known state of the Unit (inactive, loaded, or launched)
-- **loadState**: LOAD state of the underlying systemd unit
-- **activeState**: ACTIVE state of the underlying systemd unit
-- **subState**: SUB state of the underlying systemd unit
-- **targetMachine**: identifier of the Machine to which this Unit is scheduled
+- **targetMachineID**: identifier of the Machine to which this Unit is currently scheduled
+- **sytemd**:
+  - **loadState**: LOAD state of the underlying systemd unit
+  - **activeState**: ACTIVE state of the underlying systemd unit
+  - **subState**: SUB state of the underlying systemd unit
+  - **machineID**: identifier of the Machine that published this systemd state
+
 
 ### List Units
 
@@ -82,6 +85,23 @@ The request must not have a body.
 #### Response
 
 A successful response will contain a single page of zero or more Unit entities.
+
+### Fetch Unit
+
+Retrieve a single Unit entity.
+
+#### Request
+
+```
+GET /units/<name> HTTP/1.1
+```
+
+The request must not have a body.
+
+#### Response
+
+A successful response will contain a single Unit entity.
+If the indicated Unit does not exist, a `404 Not Found` will be returned.
 
 ### Destroy Units
 

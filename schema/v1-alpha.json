@@ -114,6 +114,9 @@
             "launched"
           ]
         },
+        "targetMachineID": {
+          "type": "string"
+        },
         "systemd": {
           "$ref": "SystemdState"
         }
@@ -189,6 +192,25 @@
           },
           "response": {
             "$ref": "UnitPage"
+          }
+        },
+        "Get": {
+          "id": "fleet.Unit.Get",
+          "description": "Retrieve a single Unit object.",
+          "httpMethod": "GET",
+          "path": "units/{name}",
+          "parameters": {
+            "name": {
+              "type": "string",
+              "location": "path",
+              "required": true
+            }
+          },
+          "parameterOrder": [
+            "name"
+          ],
+          "response": {
+            "$ref": "Unit"
           }
         },
         "Delete": {

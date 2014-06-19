@@ -121,6 +121,8 @@ type Unit struct {
 	Name string `json:"name,omitempty"`
 
 	Systemd *SystemdState `json:"systemd,omitempty"`
+
+	TargetMachineID string `json:"targetMachineID,omitempty"`
 }
 
 type UnitPage struct {
@@ -237,6 +239,66 @@ func (c *UnitsDeleteCall) Do() error {
 	//   "path": "units",
 	//   "request": {
 	//     "$ref": "DeletableUnitCollection"
+	//   }
+	// }
+
+}
+
+// method id "fleet.Unit.Get":
+
+type UnitsGetCall struct {
+	s    *Service
+	name string
+	opt_ map[string]interface{}
+}
+
+// Get: Retrieve a single Unit object.
+func (r *UnitsService) Get(name string) *UnitsGetCall {
+	c := &UnitsGetCall{s: r.s, opt_: make(map[string]interface{})}
+	c.name = name
+	return c
+}
+
+func (c *UnitsGetCall) Do() (*Unit, error) {
+	var body io.Reader = nil
+	params := make(url.Values)
+	params.Set("alt", "json")
+	urls := googleapi.ResolveRelative(c.s.BasePath, "units/{name}")
+	urls += "?" + params.Encode()
+	req, _ := http.NewRequest("GET", urls, body)
+	req.URL.Path = strings.Replace(req.URL.Path, "{name}", url.QueryEscape(c.name), 1)
+	googleapi.SetOpaque(req.URL)
+	req.Header.Set("User-Agent", "google-api-go-client/0.5")
+	res, err := c.s.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer googleapi.CloseBody(res)
+	if err := googleapi.CheckResponse(res); err != nil {
+		return nil, err
+	}
+	var ret *Unit
+	if err := json.NewDecoder(res.Body).Decode(&ret); err != nil {
+		return nil, err
+	}
+	return ret, nil
+	// {
+	//   "description": "Retrieve a single Unit object.",
+	//   "httpMethod": "GET",
+	//   "id": "fleet.Unit.Get",
+	//   "parameterOrder": [
+	//     "name"
+	//   ],
+	//   "parameters": {
+	//     "name": {
+	//       "location": "path",
+	//       "required": true,
+	//       "type": "string"
+	//     }
+	//   },
+	//   "path": "units/{name}",
+	//   "response": {
+	//     "$ref": "Unit"
 	//   }
 	// }
 
