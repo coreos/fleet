@@ -24,11 +24,15 @@ type unitsResource struct {
 }
 
 func (ur *unitsResource) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
-	if req.Method != "GET" {
+	switch req.Method {
+	case "GET":
+		ur.list(rw, req)
+	default:
 		rw.WriteHeader(http.StatusMethodNotAllowed)
-		return
 	}
+}
 
+func (ur *unitsResource) list(rw http.ResponseWriter, req *http.Request) {
 	token, err := findNextPageToken(req.URL)
 	if err != nil {
 		rw.WriteHeader(http.StatusBadRequest)

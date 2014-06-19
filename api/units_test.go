@@ -29,7 +29,7 @@ func TestUnitsList(t *testing.T) {
 		t.Fatalf("Failed creating http.Request: %v", err)
 	}
 
-	resource.ServeHTTP(rw, req)
+	resource.list(rw, req)
 	if rw.Code != http.StatusOK {
 		t.Errorf("Expected 200, got %d", rw.Code)
 	}
@@ -65,7 +65,7 @@ func TestUnitsListBadNextPageToken(t *testing.T) {
 		t.Fatalf("Failed creating http.Request: %v", err)
 	}
 
-	resource.ServeHTTP(rw, req)
+	resource.list(rw, req)
 	if rw.Code != http.StatusBadRequest {
 		t.Errorf("Expected 400, got %d", rw.Code)
 	}
