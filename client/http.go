@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"net/http"
 
+	"github.com/coreos/fleet/third_party/code.google.com/p/google-api-go-client/googleapi"
 	"github.com/coreos/fleet/third_party/github.com/coreos/go-semver/semver"
 
 	"github.com/coreos/fleet/job"
@@ -123,6 +124,9 @@ func (c *HTTPClient) GetAllJobs() ([]job.Job, error) {
 func (c *HTTPClient) GetJob(name string) (*job.Job, error) {
 	u, err := c.svc.Units.Get(name).Do()
 	if err != nil {
+		if is404(err) {
+			err = nil
+		}
 		return nil, err
 	}
 
@@ -217,7 +221,41 @@ func (c *HTTPClient) DestroyJob(name string) error {
 	return c.svc.Units.Delete(&req).Do()
 }
 
+func (c *HTTPClient) CreateJob(j *job.Job) error {
+	req := schema.DesiredUnitStateCollection{
+		Units: []*schema.DesiredUnitState{
+			&schema.DesiredUnitState{
+				Name:         j.Name,
+				DesiredState: string(job.JobStateInactive),
+				FileContents: base64.StdEncoding.EncodeToString([]byte(j.Unit.Raw)),
+			},
+		},
+	}
+	return c.svc.Units.Set(&req).Do()
+}
+
+func (c *HTTPClient) SetJobTargetState(name string, state job.JobState) error {
+	req := schema.DesiredUnitStateCollection{
+		Units: []*schema.DesiredUnitState{
+			&schema.DesiredUnitState{
+				Name:         name,
+				DesiredState: string(state),
+			},
+		},
+	}
+	return c.svc.Units.Set(&req).Do()
+}
+
 //NOTE(bcwaldon): This is only temporary until a better version negotiation mechanism is in place
 func (c *HTTPClient) GetLatestVersion() (*semver.Version, error) {
 	return semver.NewVersion("0.0.0")
+}
+
+func encodeUnitContents(u *unit.Unit) string {
+	return base64.StdEncoding.EncodeToString([]byte(u.Raw))
+}
+
+func is404(err error) bool {
+	googerr, ok := err.(*googleapi.Error)
+	return ok && googerr.Code == http.StatusNotFound
 }

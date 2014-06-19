@@ -33,6 +33,8 @@ func (ur *unitsResource) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 			ur.list(rw, req)
 		case "DELETE":
 			ur.destroy(rw, req)
+		case "POST":
+			ur.set(rw, req)
 		default:
 			rw.WriteHeader(http.StatusMethodNotAllowed)
 		}
@@ -46,6 +48,54 @@ func (ur *unitsResource) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	} else {
 		rw.WriteHeader(http.StatusNotFound)
 	}
+}
+
+func (ur *unitsResource) set(rw http.ResponseWriter, req *http.Request) {
+	if validateContentType(req) != nil {
+		rw.WriteHeader(http.StatusNotAcceptable)
+		return
+	}
+
+	var c schema.DesiredUnitStateCollection
+	dec := json.NewDecoder(req.Body)
+	err := dec.Decode(&c)
+	if err != nil {
+		rw.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	for _, c := range c.Units {
+		j, err := ur.reg.GetJob(c.Name)
+		if err != nil {
+			log.Errorf("Failed fetching Job(%s) from Registry: %v", c.Name, err)
+			rw.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		if j == nil {
+			u, err := decodeUnitContents(c.FileContents)
+			if err != nil {
+				rw.WriteHeader(http.StatusBadRequest)
+				return
+			}
+
+			j = job.NewJob(c.Name, *u)
+
+			if err = ur.reg.CreateJob(j); err != nil {
+				log.Errorf("Failed creating Job(%s) in Registry: %v", j.Name, err)
+				rw.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+		}
+
+		if err := ur.reg.SetJobTargetState(j.Name, job.JobState(c.DesiredState)); err != nil {
+			log.Errorf("Failed setting target state of Job(%s): %v", j.Name, err)
+			rw.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+	}
+
+	rw.WriteHeader(http.StatusNoContent)
 }
 
 func (ur *unitsResource) destroy(rw http.ResponseWriter, req *http.Request) {
@@ -213,4 +263,13 @@ func setUnitPageTargets(reg registry.Registry, page *schema.UnitPage) error {
 
 func encodeUnitContents(u *unit.Unit) string {
 	return base64.StdEncoding.EncodeToString([]byte(u.Raw))
+}
+
+func decodeUnitContents(c string) (*unit.Unit, error) {
+	dec, err := base64.StdEncoding.DecodeString(c)
+	if err != nil {
+		return nil, err
+	}
+
+	return unit.NewUnit(string(dec))
 }
