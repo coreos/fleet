@@ -6,13 +6,16 @@ import (
 	"github.com/coreos/fleet/unit"
 )
 
-func newUnitIgnoreErrors(str string) *unit.Unit {
-	u, _ := unit.NewUnit(str)
+func newUnit(t *testing.T, str string) *unit.Unit {
+	u, err := unit.NewUnit(str)
+	if err != nil {
+		t.Fatalf("Unexpected error creating unit from %q: %v", str, err)
+	}
 	return u
 }
 
 func TestNewJob(t *testing.T) {
-	j1 := NewJob("pong.service", *newUnitIgnoreErrors("Echo"))
+	j1 := NewJob("pong.service", *newUnit(t, "Echo"))
 
 	if j1.Name != "pong.service" {
 		t.Error("job.Job.Name != 'pong.service'")
@@ -20,7 +23,7 @@ func TestNewJob(t *testing.T) {
 }
 
 func TestJobWithPeers(t *testing.T) {
-	j := NewJob("echo.service", *newUnitIgnoreErrors(``))
+	j := NewJob("echo.service", *newUnit(t, ``))
 	peers := j.Peers()
 
 	if len(peers) != 0 {
@@ -32,7 +35,7 @@ func TestJobWithoutPeers(t *testing.T) {
 	contents := `[X-Fleet]
 X-ConditionMachineOf="foo.service" "bar.service"
 `
-	j := NewJob("echo.service", *newUnitIgnoreErrors(contents))
+	j := NewJob("echo.service", *newUnit(t, contents))
 	peers := j.Peers()
 
 	if len(peers) != 2 {
@@ -55,7 +58,7 @@ Description=Testing
 [X-Fleet]
 X-Conflicts=*bar*
 `
-	j := NewJob("echo.service", *newUnitIgnoreErrors(contents))
+	j := NewJob("echo.service", *newUnit(t, contents))
 	conflicts := j.Conflicts()
 
 	if len(conflicts) != 1 {
@@ -68,7 +71,7 @@ X-Conflicts=*bar*
 }
 
 func TestJobConflictsNotProvided(t *testing.T) {
-	j := NewJob("echo.socket", *newUnitIgnoreErrors(""))
+	j := NewJob("echo.socket", *newUnit(t, ""))
 	conflicts := j.Conflicts()
 
 	if len(conflicts) > 0 {
@@ -85,7 +88,7 @@ X-MemoryReservation=1024
 X-CoresReservation=150
 X-DiskReservation=524288
 `
-	j := NewJob("echo.service", *newUnitIgnoreErrors(contents))
+	j := NewJob("echo.service", *newUnit(t, contents))
 	res := j.Resources()
 
 	if res.Cores != 150 {
@@ -108,7 +111,7 @@ X-Foo=Bar
 Ping=Pong
 X-Key=Value
 `
-	j := NewJob("foo.service", *newUnitIgnoreErrors(contents))
+	j := NewJob("foo.service", *newUnit(t, contents))
 	reqs := j.Requirements()
 	if len(reqs) != 2 {
 		t.Fatalf("Incorrect number of requirements; got %d, expected 2", len(reqs))
@@ -131,7 +134,7 @@ X-Foo=Baz
 X-Ping=Pong
 X-Ping=Pang
 `
-	j := NewJob("foo.service", *newUnitIgnoreErrors(contents))
+	j := NewJob("foo.service", *newUnit(t, contents))
 	reqs := j.Requirements()
 	if len(reqs) != 2 {
 		t.Fatalf("Incorrect number of requirements; got %d, expected 2: %v", len(reqs), reqs)
@@ -156,7 +159,7 @@ X-Qux=%i
 X-Zzz=something
 `
 	// Ensure the correct values are replaced for a non-instance unit
-	j := NewJob("test.service", *newUnitIgnoreErrors(contents))
+	j := NewJob("test.service", *newUnit(t, contents))
 	reqs := j.Requirements()
 	for field, want := range map[string]string{
 		"Foo": "test.service",
@@ -172,7 +175,7 @@ X-Zzz=something
 	}
 
 	// Now ensure that they are substituted appropriately for an instance unit
-	j = NewJob("ssh@2.service", *newUnitIgnoreErrors(contents))
+	j = NewJob("ssh@2.service", *newUnit(t, contents))
 	reqs = j.Requirements()
 	for field, want := range map[string]string{
 		"Foo": "ssh@2.service",
@@ -194,7 +197,7 @@ func TestParseRequirementsMissingSection(t *testing.T) {
 [Unit]
 Description=Timmy
 `
-	j := NewJob("foo.service", *newUnitIgnoreErrors(contents))
+	j := NewJob("foo.service", *newUnit(t, contents))
 	reqs := j.Requirements()
 	if len(reqs) != 0 {
 		t.Fatalf("Incorrect number of requirements; got %d, expected 0", len(reqs))
@@ -254,7 +257,7 @@ X-ConditionMachineID=456
 	}
 
 	for _, tt := range tests {
-		j := NewJob("echo.service", *newUnitIgnoreErrors(tt.unit))
+		j := NewJob("echo.service", *newUnit(t, tt.unit))
 		outS, outB := j.RequiredTarget()
 
 		if outS != tt.outS {
@@ -268,26 +271,26 @@ X-ConditionMachineID=456
 }
 
 func TestOneshotJob(t *testing.T) {
-	ej := NewJob("foo.service", *newUnitIgnoreErrors(""))
+	ej := NewJob("foo.service", *newUnit(t, ""))
 	if ej.IsOneshot() {
 		t.Error("IsOneshot() on job without Service section returned true unexpectedly")
 	}
 
-	j := NewJob("bar.service", *newUnitIgnoreErrors(`
+	j := NewJob("bar.service", *newUnit(t, `
 [Service]
 ExecStart=/bin/false`))
 	if j.IsOneshot() {
 		t.Error("IsOneshot() on Service job with no Type returned true unexpectedly")
 	}
 
-	sj := NewJob("bar.service", *newUnitIgnoreErrors(`
+	sj := NewJob("bar.service", *newUnit(t, `
 [Service]
 Type=simple`))
 	if sj.IsOneshot() {
 		t.Error("IsOneshot() on simple job returned true unexpectedly")
 	}
 
-	bj := NewJob("bar.service", *newUnitIgnoreErrors(`
+	bj := NewJob("bar.service", *newUnit(t, `
 [Service]
 Type=oneshot`))
 	if !bj.IsOneshot() {
