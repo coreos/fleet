@@ -25,7 +25,10 @@ func TestMarshaling(t *testing.T) {
 	}
 
 	for _, contents := range units {
-		u, _ := unit.NewUnit(contents)
+		u, err := unit.NewUnit(contents)
+		if err != nil {
+			t.Fatalf("unexpected error creating unit from %q: %v", contents, err)
+		}
 		json, err := marshal(u)
 		if err != nil {
 			t.Error("Error marshaling unit:", err)
@@ -43,14 +46,17 @@ func TestMarshaling(t *testing.T) {
 }
 
 func TestLegacyPayload(t *testing.T) {
-	unitContents := `
+	contents := `
 [Service]
 ExecStart=/bin/sleep 30000
 `[1:]
 	legacyPayloadContents := `{"Name":"sleep.service","Unit":{"Contents":{"Service":{"ExecStart":"/bin/sleep 30000"}},"Raw":"[Service]\nExecStart=/bin/sleep 30000\n"}}`
-	want, _ := unit.NewUnit(unitContents)
+	want, err := unit.NewUnit(contents)
+	if err != nil {
+		t.Fatalf("unexpected error creating unit from %q: %v", contents, err)
+	}
 	var ljp LegacyJobPayload
-	err := unmarshal(legacyPayloadContents, &ljp)
+	err = unmarshal(legacyPayloadContents, &ljp)
 	if err != nil {
 		t.Error("Error unmarshaling legacy payload:", err)
 	}
