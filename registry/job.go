@@ -215,7 +215,7 @@ func (r *EtcdRegistry) CreateJob(j *job.Job) (err error) {
 	}
 
 	_, err = r.etcd.Do(&req)
-	if err != nil && err.(etcd.Error).ErrorCode == etcd.ErrorNodeExist {
+	if err != nil && isNodeExist(err) {
 		err = errors.New("job already exists")
 	}
 
@@ -228,9 +228,7 @@ func (r *EtcdRegistry) GetJobTargetState(jobName string) (*job.JobState, error) 
 	}
 	resp, err := r.etcd.Do(&req)
 	if err != nil {
-		if err.(etcd.Error).ErrorCode != etcd.ErrorNodeExist {
-			log.Errorf("Unable to determine target-state of Job(%s): %v", jobName, err)
-		}
+		log.Errorf("Unable to determine target-state of Job(%s): %v", jobName, err)
 		return nil, err
 	}
 
