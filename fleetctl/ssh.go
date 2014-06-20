@@ -138,7 +138,7 @@ func globalMachineLookup(args []string) (string, error) {
 }
 
 func findAddressInMachineList(lookup string) (string, bool) {
-	states, err := cAPI.GetActiveMachines()
+	states, err := cAPI.Machines()
 	if err != nil {
 		log.V(1).Infof("Unable to retrieve list of active machines from the Registry: %v", err)
 		return "", false

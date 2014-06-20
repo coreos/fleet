@@ -77,7 +77,7 @@ func (f *FakeRegistry) SetLatestVersion(v semver.Version) {
 	f.version = &v
 }
 
-func (f *FakeRegistry) GetActiveMachines() ([]machine.MachineState, error) {
+func (f *FakeRegistry) Machines() ([]machine.MachineState, error) {
 	f.RLock()
 	defer f.RUnlock()
 

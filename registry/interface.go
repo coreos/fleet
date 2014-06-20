@@ -22,7 +22,6 @@ type Registry interface {
 	CreateSignatureSet(ss *sign.SignatureSet) error
 	DestroyJob(jobName string) error
 	DestroySignatureSet(tag string)
-	GetActiveMachines() ([]machine.MachineState, error)
 	GetAllJobs() ([]job.Job, error)
 	GetJob(jobName string) (j *job.Job, err error)
 	GetJobTarget(jobName string) (string, error)
@@ -34,6 +33,7 @@ type Registry interface {
 	LockJob(jobName, context string) *TimedResourceMutex
 	LockJobOffer(jobName, context string) *TimedResourceMutex
 	LockMachine(machID, context string) *TimedResourceMutex
+	Machines() ([]machine.MachineState, error)
 	RemoveMachineState(machID string) error
 	RemoveUnitState(jobName string) error
 	ResolveJobOffer(jobName string) error

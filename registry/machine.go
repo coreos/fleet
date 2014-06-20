@@ -14,8 +14,7 @@ const (
 	machinePrefix = "machines"
 )
 
-// Describe all active Machines
-func (r *EtcdRegistry) GetActiveMachines() (machines []machine.MachineState, err error) {
+func (r *EtcdRegistry) Machines() (machines []machine.MachineState, err error) {
 	req := etcd.Get{
 		Key:       path.Join(r.keyPrefix, machinePrefix),
 		Recursive: true,
