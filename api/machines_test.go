@@ -84,7 +84,7 @@ func TestExtractMachinePage(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		page := extractPage(all, tt.token)
+		page := extractMachinePage(all, tt.token)
 		expectCount := (tt.idxEnd - tt.idxStart + 1)
 		if len(page.Machines) != expectCount {
 			t.Fatalf("case %d: expected page of %d, got %d", i, expectCount, len(page.Machines))

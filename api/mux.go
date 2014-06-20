@@ -12,6 +12,7 @@ func NewServeMux(reg registry.Registry) http.Handler {
 	prefix := "/v1-alpha"
 	sm := http.NewServeMux()
 	wireUpMachinesResource(sm, prefix, reg)
+	wireUpUnitsResource(sm, prefix, reg)
 
 	lm := &loggingMiddleware{sm}
 
