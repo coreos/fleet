@@ -34,10 +34,14 @@ func TestSystemdUnitFlow(t *testing.T) {
 		t.Fatalf("Expected no units to be returned, got %v", units)
 	}
 
-	name := fmt.Sprintf("fleet-unit-%d.service", rand.Int63())
-	uf := unit.NewUnit(`[Service]
+	contents := `[Service]
 ExecStart=/usr/bin/sleep 3000
-`)
+`
+	name := fmt.Sprintf("fleet-unit-%d.service", rand.Int63())
+	uf, err := unit.NewUnit(contents)
+	if err != nil {
+		t.Fatalf("Invalid unit file: %v", err)
+	}
 	j := job.NewJob(name, *uf)
 
 	if err := mgr.Load(j.Name, j.Unit); err != nil {
