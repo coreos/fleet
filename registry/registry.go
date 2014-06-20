@@ -40,3 +40,8 @@ func isKeyNotFound(err error) bool {
 	e, ok := err.(etcd.Error)
 	return ok && e.ErrorCode == etcd.ErrorKeyNotFound
 }
+
+func isNodeExist(err error) bool {
+	e, ok := err.(etcd.Error)
+	return ok && e.ErrorCode == etcd.ErrorNodeExist
+}

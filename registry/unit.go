@@ -31,7 +31,7 @@ func (r *EtcdRegistry) storeOrGetUnit(u unit.Unit) (err error) {
 	}
 	_, err = r.etcd.Do(&req)
 	// unit is already stored
-	if err != nil && err.(etcd.Error).ErrorCode == etcd.ErrorNodeExist {
+	if err != nil && isNodeExist(err) {
 		log.V(2).Infof("Unit(%s) already exists in Registry", u.Hash())
 		// TODO(jonboulle): verify more here?
 		err = nil
