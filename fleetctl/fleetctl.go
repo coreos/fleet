@@ -198,7 +198,7 @@ func main() {
 		var err error
 		cAPI, err = getClient()
 		if err != nil {
-			msg := fmt.Sprintf("Unable to initialize client: %v", err)
+			msg := fmt.Sprintf("Unable to initialize client: %v\n", err)
 			fmt.Fprint(os.Stderr, msg)
 			os.Exit(1)
 		}
@@ -240,7 +240,7 @@ func getClient() (client.API, error) {
 	if globalFlags.UseAPI {
 		return getHTTPClient()
 	} else {
-		return getRegistryClient(), nil
+		return getRegistryClient()
 	}
 }
 
@@ -260,14 +260,13 @@ func getHTTPClient() (client.API, error) {
 	return client.NewHTTPClient(&hc)
 }
 
-func getRegistryClient() client.API {
+func getRegistryClient() (client.API, error) {
 	var dial func(string, string) (net.Conn, error)
 	tun := getTunnelFlag()
 	if tun != "" {
 		sshClient, err := ssh.NewSSHClient("core", tun, getChecker(), false)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed initializing SSH client: %v\n", err)
-			os.Exit(1)
+			return nil, fmt.Errorf("failed initializing SSH client: %v", err)
 		}
 
 		dial = func(network, addr string) (net.Conn, error) {
