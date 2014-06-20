@@ -614,29 +614,42 @@ func checkJobState(jobName string, js job.JobState, maxAttempts int, out io.Writ
 	}
 }
 
-func assertJobState(name string, js job.JobState, out io.Writer) bool {
+func assertJobState(name string, js job.JobState, out io.Writer) (ret bool) {
 	j, err := cAPI.GetJob(name)
 	if err != nil {
 		log.Warningf("Error retrieving Job(%s) from Registry: %v", name, err)
-		return false
+		return
 	}
 	if j == nil || j.State == nil || *(j.State) != js {
-		return false
+		return
 	}
 
+	ret = true
 	msg := fmt.Sprintf("Job %s %s", name, *(j.State))
 
 	tgt, err := cAPI.GetJobTarget(name)
 	if err != nil {
 		log.Warningf("Error retrieving target information for Job(%s) from Registry: %v", name, err)
-	} else if tgt != "" {
-		if ms, _ := cAPI.GetMachineState(tgt); ms != nil {
-			msg = fmt.Sprintf("%s on %s", msg, machineFullLegend(*ms, false))
+		return
+	}
+	if tgt == "" {
+		return
+	}
+
+	machines, err := cAPI.Machines()
+	if err != nil {
+		log.Warningf("Failed retrieving list of Machines from Registry: %v", err)
+	}
+	for _, ms := range machines {
+		if ms.ID != tgt {
+			continue
 		}
+		msg = fmt.Sprintf("%s on %s", msg, machineFullLegend(ms, false))
+		break
 	}
 
 	fmt.Fprintln(out, msg)
-	return true
+	return
 }
 
 // unitNameMangle tries to turn a string that might not be a unit name into a

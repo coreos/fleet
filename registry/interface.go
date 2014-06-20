@@ -26,7 +26,6 @@ type Registry interface {
 	GetJob(jobName string) (j *job.Job, err error)
 	GetJobTarget(jobName string) (string, error)
 	GetJobTargetState(jobName string) (*job.JobState, error)
-	GetMachineState(machID string) (*machine.MachineState, error)
 	GetSignatureSetOfJob(name string) (*sign.SignatureSet, error)
 	GetSignatureSet(tag string) *sign.SignatureSet
 	JobHeartbeat(jobName, agentMachID string, ttl time.Duration) error

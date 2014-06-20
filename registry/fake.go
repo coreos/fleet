@@ -140,18 +140,6 @@ func (f *FakeRegistry) GetJobTarget(name string) (string, error) {
 	return "", nil
 }
 
-func (f *FakeRegistry) GetMachineState(machID string) (*machine.MachineState, error) {
-	f.RLock()
-	defer f.RUnlock()
-
-	for _, ms := range f.machines {
-		if ms.ID == machID {
-			return &ms, nil
-		}
-	}
-	return nil, nil
-}
-
 func (f *FakeRegistry) Bids(jo *job.JobOffer) ([]job.JobBid, error) {
 	f.RLock()
 	defer f.RUnlock()

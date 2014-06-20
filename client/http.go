@@ -50,19 +50,6 @@ func (c *HTTPClient) Machines() ([]machine.MachineState, error) {
 	return machines, nil
 }
 
-func (c *HTTPClient) GetMachineState(machID string) (*machine.MachineState, error) {
-	machines, err := c.Machines()
-	if err != nil {
-		return nil, err
-	}
-	for _, m := range machines {
-		if m.ID == machID {
-			return &m, nil
-		}
-	}
-	return nil, nil
-}
-
 func mapMachinePageToMachineStates(entities []*schema.Machine) []machine.MachineState {
 	machines := make([]machine.MachineState, len(entities))
 	for i, _ := range entities {
