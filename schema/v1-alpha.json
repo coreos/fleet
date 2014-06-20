@@ -58,6 +58,28 @@
         }
       }
     },
+    "DeletableUnit": {
+      "id": "DeletableUnit",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "required": true
+        }
+      }
+    },
+    "DeletableUnitCollection": {
+      "id": "DeletableUnitCollection",
+      "type": "object",
+      "properties": {
+        "units": {
+          "type": "array",
+          "items": {
+            "$ref": "DeletableUnit"
+          }
+        }
+      }
+    },
     "Unit": {
       "id": "Unit",
       "type": "object",
@@ -91,6 +113,9 @@
             "loaded",
             "launched"
           ]
+        },
+        "targetMachineID": {
+          "type": "string"
         },
         "systemd": {
           "$ref": "SystemdState"
@@ -130,6 +155,41 @@
           "type": "string"
         }
       }
+    },
+    "DesiredUnitState": {
+      "id": "DesiredUnitState",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "required": true
+        },
+        "desiredState": {
+          "type": "string",
+          "required": true,
+          "enum": [
+            "inactive",
+            "loaded",
+            "launched"
+          ]
+        },
+        "fileContents": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
+    "DesiredUnitStateCollection": {
+      "id": "DesiredUnitStateCollection",
+      "type": "object",
+      "properties": {
+        "units": {
+          "type": "array",
+          "items": {
+            "$ref": "DesiredUnitState"
+          }
+        }
+      }
     }
   },
   "resources": {
@@ -167,6 +227,43 @@
           },
           "response": {
             "$ref": "UnitPage"
+          }
+        },
+        "Get": {
+          "id": "fleet.Unit.Get",
+          "description": "Retrieve a single Unit object.",
+          "httpMethod": "GET",
+          "path": "units/{name}",
+          "parameters": {
+            "name": {
+              "type": "string",
+              "location": "path",
+              "required": true
+            }
+          },
+          "parameterOrder": [
+            "name"
+          ],
+          "response": {
+            "$ref": "Unit"
+          }
+        },
+        "Delete": {
+          "id": "fleet.Unit.Delete",
+          "description": "Delete the referenced Unit objects.",
+          "httpMethod": "DELETE",
+          "path": "units",
+          "request": {
+            "$ref": "DeletableUnitCollection"
+          }
+        },
+        "Set": {
+          "id": "fleet.Unit.Set",
+          "description": "Persist the state of the provided DesiredUnit objects.",
+          "httpMethod": "POST",
+          "path": "units",
+          "request": {
+            "$ref": "DesiredUnitStateCollection"
           }
         }
       }

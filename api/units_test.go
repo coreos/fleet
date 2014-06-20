@@ -1,8 +1,10 @@
 package api
 
 import (
+	"bytes"
 	"crypto/sha1"
 	"encoding/json"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -22,14 +24,14 @@ func TestUnitsList(t *testing.T) {
 		{Name: "XXX"},
 		{Name: "YYY"},
 	})
-	resource := &unitsResource{fr}
+	resource := &unitsResource{fr, "/units"}
 	rw := httptest.NewRecorder()
-	req, err := http.NewRequest("GET", "http://example.com", nil)
+	req, err := http.NewRequest("GET", "http://example.com/units", nil)
 	if err != nil {
 		t.Fatalf("Failed creating http.Request: %v", err)
 	}
 
-	resource.ServeHTTP(rw, req)
+	resource.list(rw, req)
 	if rw.Code != http.StatusOK {
 		t.Errorf("Expected 200, got %d", rw.Code)
 	}
@@ -58,14 +60,14 @@ func TestUnitsList(t *testing.T) {
 
 func TestUnitsListBadNextPageToken(t *testing.T) {
 	fr := registry.NewFakeRegistry()
-	resource := &unitsResource{fr}
+	resource := &unitsResource{fr, "/units"}
 	rw := httptest.NewRecorder()
 	req, err := http.NewRequest("GET", "http://example.com/units?nextPageToken=EwBMLg==", nil)
 	if err != nil {
 		t.Fatalf("Failed creating http.Request: %v", err)
 	}
 
-	resource.ServeHTTP(rw, req)
+	resource.list(rw, req)
 	if rw.Code != http.StatusBadRequest {
 		t.Errorf("Expected 400, got %d", rw.Code)
 	}
@@ -170,6 +172,142 @@ func TestMapJobToSchema(t *testing.T) {
 		output := mapJobToSchema(&tt.input)
 		if !reflect.DeepEqual(tt.expect, *output) {
 			t.Errorf("case %d: expect=%v, got=%v", i, tt.expect, *output)
+		}
+	}
+}
+
+func TestUnitGet(t *testing.T) {
+	fr := registry.NewFakeRegistry()
+	fr.SetJobs([]job.Job{
+		{Name: "XXX"},
+		{Name: "YYY"},
+	})
+	resource := &unitsResource{fr, "/units"}
+	rw := httptest.NewRecorder()
+	req, err := http.NewRequest("GET", "http://example.com/units/XXX", nil)
+	if err != nil {
+		t.Fatalf("Failed creating http.Request: %v", err)
+	}
+
+	resource.get(rw, req, "XXX")
+	if rw.Code != http.StatusOK {
+		t.Errorf("Expected 200, got %d", rw.Code)
+	}
+
+	ct := rw.HeaderMap["Content-Type"]
+	if len(ct) != 1 {
+		t.Errorf("Response has wrong number of Content-Type values: %v", ct)
+	} else if ct[0] != "application/json" {
+		t.Errorf("Expected application/json, got %s", ct)
+	}
+
+	if rw.Body == nil {
+		t.Error("Received nil response body")
+	} else {
+		var unit schema.Unit
+		err := json.Unmarshal(rw.Body.Bytes(), &unit)
+		if err != nil {
+			t.Fatalf("Received unparseable body: %v", err)
+		}
+
+		if unit.Name != "XXX" {
+			t.Errorf("Received incorrect Unit entity: %v", unit)
+		}
+	}
+}
+
+func TestUnitsDestroy(t *testing.T) {
+	fr := registry.NewFakeRegistry()
+	fr.SetJobs([]job.Job{
+		{Name: "XXX"},
+		{Name: "YYY"},
+		{Name: "ZZZ"},
+	})
+	resource := &unitsResource{fr, "/units"}
+	rw := httptest.NewRecorder()
+	req, err := http.NewRequest("DELETE", "http://example.com/units", nil)
+	if err != nil {
+		t.Fatalf("Failed creating http.Request: %v", err)
+	}
+
+	body := schema.DeletableUnitCollection{
+		Units: []*schema.DeletableUnit{
+			{Name: "ZZZ"},
+			{Name: "XXX"},
+		},
+	}
+	enc, err := json.Marshal(body)
+	if err != nil {
+		t.Fatalf("Unable to JSON-encode request: %v", err)
+	}
+	req.Body = ioutil.NopCloser(bytes.NewBuffer(enc))
+	req.Header.Set("Content-Type", "application/json")
+
+	resource.destroy(rw, req)
+	if rw.Code != http.StatusNoContent {
+		t.Errorf("Expected 204, got %d", rw.Code)
+	}
+
+	jobs, _ := fr.GetAllJobs()
+	if len(jobs) != 1 {
+		t.Errorf("Expected a single Job after request completion")
+	} else if jobs[0].Name != "YYY" {
+		t.Errorf("Incorrect Job was deleted")
+	}
+}
+
+func TestUnitsSetDesiredUnitStates(t *testing.T) {
+	fr := registry.NewFakeRegistry()
+	fr.SetJobs([]job.Job{
+		{Name: "XXX"},
+		{Name: "YYY"},
+	})
+	fr.SetJobTargetState("XXX", "active")
+	fr.SetJobTargetState("YYY", "inactive")
+
+	resource := &unitsResource{fr, "/units"}
+	rw := httptest.NewRecorder()
+	req, err := http.NewRequest("POST", "http://example.com", nil)
+	if err != nil {
+		t.Fatalf("Failed creating http.Request: %v", err)
+	}
+
+	body := schema.DesiredUnitStateCollection{
+		Units: []*schema.DesiredUnitState{
+			{Name: "XXX", DesiredState: "loaded"},
+			{Name: "YYY", DesiredState: "launched"},
+			{Name: "ZZZ", DesiredState: "loaded", FileContents: "W1NlcnZpY2VdCkV4ZWNTdGFydD0vdXNyL2Jpbi9zbGVlcCAzMDAwCg=="},
+		},
+	}
+	enc, err := json.Marshal(body)
+	if err != nil {
+		t.Fatalf("Unable to JSON-encode request: %v", err)
+	}
+	req.Body = ioutil.NopCloser(bytes.NewBuffer(enc))
+	req.Header.Set("Content-Type", "application/json")
+
+	resource.set(rw, req)
+	if rw.Code != http.StatusNoContent {
+		t.Errorf("Expected 204, got %d", rw.Code)
+	}
+
+	expect := map[string]string{
+		"XXX": "loaded",
+		"YYY": "launched",
+		"ZZZ": "loaded",
+	}
+	for name, state := range expect {
+		j, _ := fr.GetJob(name)
+		if j == nil {
+			t.Errorf("Expected job %s to exist, got nil", j.Name)
+			continue
+		}
+
+		ts, _ := fr.GetJobTargetState(name)
+		if ts == nil {
+			t.Errorf("Expected job %s to have target state %v, got nil", j, state)
+		} else if sts := string(*ts); sts != state {
+			t.Errorf("Expected job %s to have target state %v, got %v", j, state, sts)
 		}
 	}
 }

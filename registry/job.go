@@ -65,6 +65,9 @@ func (r *EtcdRegistry) GetJobTarget(jobName string) (string, error) {
 
 	resp, err := r.etcd.Do(&req)
 	if err != nil {
+		if isKeyNotFound(err) {
+			err = nil
+		}
 		return "", err
 	}
 

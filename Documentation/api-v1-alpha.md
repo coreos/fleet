@@ -58,14 +58,47 @@ HTTP/1.1 200 OK
 ### Unit Entity
 
 - **name**: unique identifier of entity
+- **desiredState**: state the user wishes the Unit to be in (inactive, loaded, or launched)
 - **fileContents**: base64-encoded contents of the Unit's file
 - **fileHash**: SHA1 hash of the Unit's file contents
-- **desiredState**: state the user wishes the Unit to be in (inactive, loaded, or launched)
 - **currentState**: last known state of the Unit (inactive, loaded, or launched)
-- **loadState**: LOAD state of the underlying systemd unit
-- **activeState**: ACTIVE state of the underlying systemd unit
-- **subState**: SUB state of the underlying systemd unit
-- **targetMachine**: identifier of the Machine to which this Unit is scheduled
+- **targetMachineID**: identifier of the Machine to which this Unit is currently scheduled
+- **sytemd**:
+  - **loadState**: LOAD state of the underlying systemd unit
+  - **activeState**: ACTIVE state of the underlying systemd unit
+  - **subState**: SUB state of the underlying systemd unit
+  - **machineID**: identifier of the Machine that published this systemd state
+
+
+### Create & Modify Units
+
+```
+POST /units HTTP/1.1
+```
+
+#### Request
+
+A request is comprised of one or more partial Unit objects. If creating a new Unit, supply the name, desiredState and fileContents fields. To modify an existing Unit, provide just the name and desiredState. The base datastructure looks like so:
+
+```
+{"units": [PartialUnit, ... ]}
+```
+
+For example, launching a new unit "foo.service" while unloading "bar.service" could look like this:
+
+```
+{
+  "units": [
+    {"name": "foo.service", "desiredState": "launched",
+     "fileContents": "W1NlcnZpY2VdCkV4ZWNTdGFydD0vdXNyL2Jpbi9zbGVlcCAzMDAwCg=="},
+    {"name": "bar.service", "desiredState": "inactive"}
+  ]
+}
+```
+
+#### Response
+
+A successful response contains no body.
 
 ### List Units
 
@@ -82,6 +115,44 @@ The request must not have a body.
 #### Response
 
 A successful response will contain a single page of zero or more Unit entities.
+
+### Fetch Unit
+
+Retrieve a single Unit entity.
+
+#### Request
+
+```
+GET /units/<name> HTTP/1.1
+```
+
+The request must not have a body.
+
+#### Response
+
+A successful response will contain a single Unit entity.
+If the indicated Unit does not exist, a `404 Not Found` will be returned.
+
+### Destroy Units
+
+Destroy one or more existing Unit entities.
+
+#### Request
+
+```
+DELETE /units HTTP/1.1
+```
+
+Indicate which Units should be destroyed in the request body like so:
+
+```
+{"units": [{"name": <name>}, ... ]}
+```
+
+#### Response
+
+A successful response will not contain a body or any additional headers.
+If any Units entities do not exist, a `400 Bad Request` will be returned.
 
 ## Machines
 

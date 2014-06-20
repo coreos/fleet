@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"net/http"
 
+	"github.com/coreos/fleet/third_party/code.google.com/p/google-api-go-client/googleapi"
 	"github.com/coreos/fleet/third_party/github.com/coreos/go-semver/semver"
 
 	"github.com/coreos/fleet/job"
@@ -47,6 +48,19 @@ func (c *HTTPClient) GetActiveMachines() ([]machine.MachineState, error) {
 		}
 	}
 	return machines, nil
+}
+
+func (c *HTTPClient) GetMachineState(machID string) (*machine.MachineState, error) {
+	machines, err := c.GetActiveMachines()
+	if err != nil {
+		return nil, err
+	}
+	for _, m := range machines {
+		if m.ID == machID {
+			return &m, nil
+		}
+	}
+	return nil, nil
 }
 
 func mapMachinePageToMachineStates(entities []*schema.Machine) []machine.MachineState {
@@ -107,6 +121,42 @@ func (c *HTTPClient) GetAllJobs() ([]job.Job, error) {
 	return jobs, nil
 }
 
+func (c *HTTPClient) GetJob(name string) (*job.Job, error) {
+	u, err := c.svc.Units.Get(name).Do()
+	if err != nil {
+		if is404(err) {
+			err = nil
+		}
+		return nil, err
+	}
+
+	if u == nil {
+		return nil, nil
+	}
+
+	machines, err := c.GetActiveMachines()
+	if err != nil {
+		return nil, err
+	}
+
+	mm := make(map[string]*machine.MachineState, len(machines))
+	for i, _ := range machines {
+		m := machines[i]
+		mm[m.ID] = &m
+	}
+
+	return mapUnitToJob(u, mm)
+}
+
+func (c *HTTPClient) GetJobTarget(name string) (string, error) {
+	u, err := c.svc.Units.Get(name).Do()
+	if err != nil {
+		return "", err
+	}
+
+	return u.TargetMachineID, nil
+}
+
 func mapUnitPageToJobs(entities []*schema.Unit, mm map[string]*machine.MachineState) ([]job.Job, error) {
 	jobs := make([]job.Job, len(entities))
 	for i, _ := range entities {
@@ -162,7 +212,50 @@ func mapUnitToJob(entity *schema.Unit, mm map[string]*machine.MachineState) (*jo
 	return &j, nil
 }
 
+func (c *HTTPClient) DestroyJob(name string) error {
+	req := schema.DeletableUnitCollection{
+		Units: []*schema.DeletableUnit{
+			&schema.DeletableUnit{Name: name},
+		},
+	}
+	return c.svc.Units.Delete(&req).Do()
+}
+
+func (c *HTTPClient) CreateJob(j *job.Job) error {
+	req := schema.DesiredUnitStateCollection{
+		Units: []*schema.DesiredUnitState{
+			&schema.DesiredUnitState{
+				Name:         j.Name,
+				DesiredState: string(job.JobStateInactive),
+				FileContents: base64.StdEncoding.EncodeToString([]byte(j.Unit.Raw)),
+			},
+		},
+	}
+	return c.svc.Units.Set(&req).Do()
+}
+
+func (c *HTTPClient) SetJobTargetState(name string, state job.JobState) error {
+	req := schema.DesiredUnitStateCollection{
+		Units: []*schema.DesiredUnitState{
+			&schema.DesiredUnitState{
+				Name:         name,
+				DesiredState: string(state),
+			},
+		},
+	}
+	return c.svc.Units.Set(&req).Do()
+}
+
 //NOTE(bcwaldon): This is only temporary until a better version negotiation mechanism is in place
 func (c *HTTPClient) GetLatestVersion() (*semver.Version, error) {
 	return semver.NewVersion("0.0.0")
+}
+
+func encodeUnitContents(u *unit.Unit) string {
+	return base64.StdEncoding.EncodeToString([]byte(u.Raw))
+}
+
+func is404(err error) bool {
+	googerr, ok := err.(*googleapi.Error)
+	return ok && googerr.Code == http.StatusNotFound
 }
