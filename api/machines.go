@@ -54,11 +54,11 @@ func getMachinePage(reg registry.Registry, tok PageToken) (*schema.MachinePage, 
 		return nil, err
 	}
 
-	page := extractPage(all, tok)
+	page := extractMachinePage(all, tok)
 	return page, nil
 }
 
-func extractPage(all []machine.MachineState, tok PageToken) *schema.MachinePage {
+func extractMachinePage(all []machine.MachineState, tok PageToken) *schema.MachinePage {
 	total := len(all)
 
 	startIndex := int((tok.Page - 1) * tok.Limit)
@@ -90,10 +90,8 @@ func newMachinePage(items []machine.MachineState, tok *PageToken) *schema.Machin
 		smp.NextPageToken = tok.Encode()
 	}
 
-	for i, _ := range items {
-		ms := items[i]
-		sm := mapMachineStateToSchema(&ms)
-		smp.Machines = append(smp.Machines, sm)
+	for _, sm := range items {
+		smp.Machines = append(smp.Machines, mapMachineStateToSchema(&sm))
 	}
 	return &smp
 }
