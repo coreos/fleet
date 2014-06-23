@@ -135,7 +135,7 @@ func (c *HTTPClient) Job(name string) (*job.Job, error) {
 	return mapUnitToJob(u, mm)
 }
 
-func (c *HTTPClient) GetJobTarget(name string) (string, error) {
+func (c *HTTPClient) JobTarget(name string) (string, error) {
 	u, err := c.svc.Units.Get(name).Do()
 	if err != nil {
 		return "", err

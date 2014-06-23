@@ -56,7 +56,7 @@ func (r *EtcdRegistry) Jobs() ([]job.Job, error) {
 // GetJobTarget looks up where the given job is scheduled. If the job has
 // been scheduled, the ID the target machine is returned. Otherwise, an
 // empty string is returned.
-func (r *EtcdRegistry) GetJobTarget(jobName string) (string, error) {
+func (r *EtcdRegistry) JobTarget(jobName string) (string, error) {
 	req := etcd.Get{
 		Key:       r.jobTargetAgentPath(jobName),
 		Sorted:    false,
@@ -289,7 +289,7 @@ func (es *EventStream) filterJobTargetStateChanges(resp *etcd.Result) *event.Eve
 		return nil
 	}
 
-	agent, _ := es.registry.GetJobTarget(jobName)
+	agent, _ := es.registry.JobTarget(jobName)
 	return &event.Event{cType, jobName, agent}
 }
 

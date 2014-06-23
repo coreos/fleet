@@ -137,7 +137,7 @@ func (ur *unitsResource) get(rw http.ResponseWriter, req *http.Request, item str
 		return
 	}
 
-	tgt, err := ur.reg.GetJobTarget(j.Name)
+	tgt, err := ur.reg.JobTarget(j.Name)
 	if err != nil {
 		rw.WriteHeader(http.StatusInternalServerError)
 		return
@@ -252,7 +252,7 @@ func mapJobToSchema(j *job.Job) *schema.Unit {
 
 func setUnitPageTargets(reg registry.Registry, page *schema.UnitPage) error {
 	for i, _ := range page.Units {
-		tgt, err := reg.GetJobTarget(page.Units[i].Name)
+		tgt, err := reg.JobTarget(page.Units[i].Name)
 		if err != nil {
 			return err
 		}

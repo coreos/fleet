@@ -11,7 +11,7 @@ import (
 func (r *EtcdRegistry) determineJobState(jobName string) *job.JobState {
 	state := job.JobStateInactive
 
-	tgt, _ := r.GetJobTarget(jobName)
+	tgt, _ := r.JobTarget(jobName)
 	if tgt == "" {
 		return &state
 	}

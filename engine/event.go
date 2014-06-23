@@ -133,7 +133,7 @@ func getJobsScheduledToMachine(r registry.Registry, machID string) []job.Job {
 
 	jj, _ := r.Jobs()
 	for _, j := range jj {
-		tgt, _ := r.GetJobTarget(j.Name)
+		tgt, _ := r.JobTarget(j.Name)
 		if tgt == "" || tgt != machID {
 			continue
 		}

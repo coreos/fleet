@@ -627,7 +627,7 @@ func assertJobState(name string, js job.JobState, out io.Writer) (ret bool) {
 	ret = true
 	msg := fmt.Sprintf("Job %s %s", name, *(j.State))
 
-	tgt, err := cAPI.GetJobTarget(name)
+	tgt, err := cAPI.JobTarget(name)
 	if err != nil {
 		log.Warningf("Error retrieving target information for Job(%s) from Registry: %v", name, err)
 		return

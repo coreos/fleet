@@ -57,7 +57,7 @@ func (e *Engine) CheckForWork() {
 			e.OfferJob(j)
 		} else if *ts == job.JobStateInactive {
 			log.Infof("Unscheduling Job(%s)", j.Name)
-			target, _ := e.registry.GetJobTarget(j.Name)
+			target, _ := e.registry.JobTarget(j.Name)
 			e.registry.ClearJobTarget(j.Name, target)
 		}
 	}

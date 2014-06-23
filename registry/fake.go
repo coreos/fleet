@@ -129,7 +129,7 @@ func (f *FakeRegistry) DestroyJob(name string) error {
 	return nil
 }
 
-func (f *FakeRegistry) GetJobTarget(name string) (string, error) {
+func (f *FakeRegistry) JobTarget(name string) (string, error) {
 	f.RLock()
 	defer f.RUnlock()
 

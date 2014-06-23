@@ -95,7 +95,7 @@ func (a *Agent) Initialize() uint64 {
 	launched := map[string]job.Job{}
 	jobs, _ := a.registry.Jobs()
 	for _, j := range jobs {
-		tm, _ := a.registry.GetJobTarget(j.Name)
+		tm, _ := a.registry.JobTarget(j.Name)
 		if tm == "" || tm != machID {
 			continue
 		}
@@ -539,7 +539,7 @@ func (a *Agent) peerScheduledHere(jobName, peerName string) bool {
 	log.V(1).Infof("Looking for target of Peer(%s)", peerName)
 
 	//FIXME: ideally the machine would use its own knowledge rather than calling GetJobTarget
-	if tgt, _ := a.registry.GetJobTarget(peerName); tgt == "" || tgt != a.Machine.State().ID {
+	if tgt, _ := a.registry.JobTarget(peerName); tgt == "" || tgt != a.Machine.State().ID {
 		log.V(1).Infof("Peer(%s) of Job(%s) not scheduled here", peerName, jobName)
 		return false
 	}

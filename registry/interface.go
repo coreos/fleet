@@ -21,13 +21,13 @@ type Registry interface {
 	CreateSignatureSet(ss *sign.SignatureSet) error
 	DestroyJob(jobName string) error
 	DestroySignatureSet(tag string)
-	GetJobTarget(jobName string) (string, error)
 	GetJobTargetState(jobName string) (*job.JobState, error)
 	GetSignatureSetOfJob(name string) (*sign.SignatureSet, error)
 	GetSignatureSet(tag string) *sign.SignatureSet
 	Job(jobName string) (j *job.Job, err error)
 	JobHeartbeat(jobName, agentMachID string, ttl time.Duration) error
 	Jobs() ([]job.Job, error)
+	JobTarget(jobName string) (string, error)
 	LatestVersion() (*semver.Version, error)
 	LockJob(jobName, context string) *TimedResourceMutex
 	LockJobOffer(jobName, context string) *TimedResourceMutex
