@@ -200,37 +200,24 @@ func mapUnitToJob(entity *schema.Unit, mm map[string]*machine.MachineState) (*jo
 }
 
 func (c *HTTPClient) DestroyJob(name string) error {
-	req := schema.DeletableUnitCollection{
-		Units: []*schema.DeletableUnit{
-			&schema.DeletableUnit{Name: name},
-		},
-	}
-	return c.svc.Units.Delete(&req).Do()
+	return c.svc.Units.Delete(name).Do()
 }
 
 func (c *HTTPClient) CreateJob(j *job.Job) error {
-	req := schema.DesiredUnitStateCollection{
-		Units: []*schema.DesiredUnitState{
-			&schema.DesiredUnitState{
-				Name:         j.Name,
-				DesiredState: string(job.JobStateInactive),
-				FileContents: base64.StdEncoding.EncodeToString([]byte(j.Unit.Raw)),
-			},
-		},
+	req := schema.DesiredUnitState{
+		Name:         j.Name,
+		DesiredState: string(job.JobStateInactive),
+		FileContents: base64.StdEncoding.EncodeToString([]byte(j.Unit.Raw)),
 	}
-	return c.svc.Units.Set(&req).Do()
+	return c.svc.Units.Set(j.Name, &req).Do()
 }
 
 func (c *HTTPClient) SetJobTargetState(name string, state job.JobState) error {
-	req := schema.DesiredUnitStateCollection{
-		Units: []*schema.DesiredUnitState{
-			&schema.DesiredUnitState{
-				Name:         name,
-				DesiredState: string(state),
-			},
-		},
+	req := schema.DesiredUnitState{
+		Name:         name,
+		DesiredState: string(state),
 	}
-	return c.svc.Units.Set(&req).Do()
+	return c.svc.Units.Set(name, &req).Do()
 }
 
 //NOTE(bcwaldon): This is only temporary until a better version negotiation mechanism is in place

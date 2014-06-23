@@ -73,26 +73,26 @@ HTTP/1.1 200 OK
 ### Create & Modify Units
 
 ```
-POST /units HTTP/1.1
+PUT /units/<name> HTTP/1.1
 ```
 
 #### Request
 
-A request is comprised of one or more partial Unit objects. If creating a new Unit, supply the name, desiredState and fileContents fields. To modify an existing Unit, provide just the name and desiredState. The base datastructure looks like so:
+A request is comprised of a single partiall Unit entity.
+If creating a new Unit, supply the name, desiredState and fileContents fields.
+To modify an existing Unit, provide just the name and desiredState.
+The base datastructure looks like so:
 
 ```
-{"units": [PartialUnit, ... ]}
+{"desiredState": <state>, "fileContents": <encoded-contents>}
 ```
 
-For example, launching a new unit "foo.service" while unloading "bar.service" could look like this:
+For example, launching a new unit "foo.service" could look like this:
 
 ```
 {
-  "units": [
-    {"name": "foo.service", "desiredState": "launched",
-     "fileContents": "W1NlcnZpY2VdCkV4ZWNTdGFydD0vdXNyL2Jpbi9zbGVlcCAzMDAwCg=="},
-    {"name": "bar.service", "desiredState": "inactive"}
-  ]
+  "desiredState": "launched",
+  "fileContents": "W1NlcnZpY2VdCkV4ZWNTdGFydD0vdXNyL2Jpbi9zbGVlcCAzMDAwCg=="
 }
 ```
 
@@ -140,19 +140,15 @@ Destroy one or more existing Unit entities.
 #### Request
 
 ```
-DELETE /units HTTP/1.1
+DELETE /units/<name> HTTP/1.1
 ```
 
-Indicate which Units should be destroyed in the request body like so:
-
-```
-{"units": [{"name": <name>}, ... ]}
-```
+Indicate which Units should be destroyed in the URL.
 
 #### Response
 
 A successful response will not contain a body or any additional headers.
-If any Units entities do not exist, a `400 Bad Request` will be returned.
+If the indicated Unit does not exist, a `404 Not Found` will be returned.
 
 ## Machines
 

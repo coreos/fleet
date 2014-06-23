@@ -58,28 +58,6 @@
         }
       }
     },
-    "DeletableUnit": {
-      "id": "DeletableUnit",
-      "type": "object",
-      "properties": {
-        "name": {
-          "type": "string",
-          "required": true
-        }
-      }
-    },
-    "DeletableUnitCollection": {
-      "id": "DeletableUnitCollection",
-      "type": "object",
-      "properties": {
-        "units": {
-          "type": "array",
-          "items": {
-            "$ref": "DeletableUnit"
-          }
-        }
-      }
-    },
     "Unit": {
       "id": "Unit",
       "type": "object",
@@ -178,18 +156,6 @@
           "format": "byte"
         }
       }
-    },
-    "DesiredUnitStateCollection": {
-      "id": "DesiredUnitStateCollection",
-      "type": "object",
-      "properties": {
-        "units": {
-          "type": "array",
-          "items": {
-            "$ref": "DesiredUnitState"
-          }
-        }
-      }
     }
   },
   "resources": {
@@ -252,18 +218,35 @@
           "id": "fleet.Unit.Delete",
           "description": "Delete the referenced Unit objects.",
           "httpMethod": "DELETE",
-          "path": "units",
-          "request": {
-            "$ref": "DeletableUnitCollection"
-          }
+          "path": "units/{name}",
+          "parameters": {
+            "name": {
+              "type": "string",
+              "location": "path",
+              "required": true
+            }
+          },
+          "parameterOrder": [
+            "name"
+          ]
         },
         "Set": {
           "id": "fleet.Unit.Set",
-          "description": "Persist the state of the provided DesiredUnit objects.",
-          "httpMethod": "POST",
-          "path": "units",
+          "description": "Set the desired state of a Unit.",
+          "httpMethod": "PUT",
+          "path": "units/{name}",
+          "parameters": {
+            "name": {
+              "type": "string",
+              "location": "path",
+              "required": true
+            }
+          },
+          "parameterOrder": [
+            "name"
+          ],
           "request": {
-            "$ref": "DesiredUnitStateCollection"
+            "$ref": "DesiredUnitState"
           }
         }
       }

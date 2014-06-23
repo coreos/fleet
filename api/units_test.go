@@ -225,44 +225,39 @@ func TestUnitsDestroy(t *testing.T) {
 	})
 	resource := &unitsResource{fr, "/units"}
 	rw := httptest.NewRecorder()
-	req, err := http.NewRequest("DELETE", "http://example.com/units", nil)
+	req, err := http.NewRequest("DELETE", "http://example.com/units/YYY", nil)
 	if err != nil {
 		t.Fatalf("Failed creating http.Request: %v", err)
 	}
 
-	body := schema.DeletableUnitCollection{
-		Units: []*schema.DeletableUnit{
-			{Name: "ZZZ"},
-			{Name: "XXX"},
-		},
-	}
-	enc, err := json.Marshal(body)
-	if err != nil {
-		t.Fatalf("Unable to JSON-encode request: %v", err)
-	}
-	req.Body = ioutil.NopCloser(bytes.NewBuffer(enc))
-	req.Header.Set("Content-Type", "application/json")
-
-	resource.destroy(rw, req)
+	resource.destroy(rw, req, "YYY")
 	if rw.Code != http.StatusNoContent {
 		t.Errorf("Expected 204, got %d", rw.Code)
 	}
 
-	jobs, _ := fr.Jobs()
-	if len(jobs) != 1 {
-		t.Errorf("Expected a single Job after request completion")
-	} else if jobs[0].Name != "YYY" {
-		t.Errorf("Incorrect Job was deleted")
+	jobs, err := fr.Jobs()
+	if err != nil {
+		t.Fatalf("Failed fetching Jobs after destruction: %v", err)
+	}
+
+	remaining := make([]string, len(jobs))
+	for i, j := range jobs {
+		remaining[i] = j.Name
+	}
+
+	expect := []string{"XXX", "ZZZ"}
+	if !reflect.DeepEqual(remaining, expect) {
+		t.Errorf("Expected Jobs %v, got %v", expect, remaining)
 	}
 }
 
-func TestUnitsSetDesiredUnitStates(t *testing.T) {
+func TestUnitsSetDesiredState(t *testing.T) {
 	fr := registry.NewFakeRegistry()
 	fr.SetJobs([]job.Job{
 		{Name: "XXX"},
 		{Name: "YYY"},
 	})
-	fr.SetJobTargetState("XXX", "active")
+	fr.SetJobTargetState("XXX", "launched")
 	fr.SetJobTargetState("YYY", "inactive")
 
 	resource := &unitsResource{fr, "/units"}
@@ -272,13 +267,7 @@ func TestUnitsSetDesiredUnitStates(t *testing.T) {
 		t.Fatalf("Failed creating http.Request: %v", err)
 	}
 
-	body := schema.DesiredUnitStateCollection{
-		Units: []*schema.DesiredUnitState{
-			{Name: "XXX", DesiredState: "loaded"},
-			{Name: "YYY", DesiredState: "launched"},
-			{Name: "ZZZ", DesiredState: "loaded", FileContents: "W1NlcnZpY2VdCkV4ZWNTdGFydD0vdXNyL2Jpbi9zbGVlcCAzMDAwCg=="},
-		},
-	}
+	body := schema.DesiredUnitState{Name: "XXX", DesiredState: "loaded"}
 	enc, err := json.Marshal(body)
 	if err != nil {
 		t.Fatalf("Unable to JSON-encode request: %v", err)
@@ -286,15 +275,14 @@ func TestUnitsSetDesiredUnitStates(t *testing.T) {
 	req.Body = ioutil.NopCloser(bytes.NewBuffer(enc))
 	req.Header.Set("Content-Type", "application/json")
 
-	resource.set(rw, req)
+	resource.set(rw, req, "XXX")
 	if rw.Code != http.StatusNoContent {
 		t.Errorf("Expected 204, got %d", rw.Code)
 	}
 
 	expect := map[string]string{
 		"XXX": "loaded",
-		"YYY": "launched",
-		"ZZZ": "loaded",
+		"YYY": "inactive",
 	}
 	for name, state := range expect {
 		j, _ := fr.Job(name)

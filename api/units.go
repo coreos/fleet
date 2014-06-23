@@ -31,10 +31,6 @@ func (ur *unitsResource) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		switch req.Method {
 		case "GET":
 			ur.list(rw, req)
-		case "DELETE":
-			ur.destroy(rw, req)
-		case "POST":
-			ur.set(rw, req)
 		default:
 			rw.WriteHeader(http.StatusMethodNotAllowed)
 		}
@@ -42,6 +38,10 @@ func (ur *unitsResource) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		switch req.Method {
 		case "GET":
 			ur.get(rw, req, item)
+		case "DELETE":
+			ur.destroy(rw, req, item)
+		case "PUT":
+			ur.set(rw, req, item)
 		default:
 			rw.WriteHeader(http.StatusMethodNotAllowed)
 		}
@@ -50,75 +50,58 @@ func (ur *unitsResource) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (ur *unitsResource) set(rw http.ResponseWriter, req *http.Request) {
+func (ur *unitsResource) set(rw http.ResponseWriter, req *http.Request, item string) {
 	if validateContentType(req) != nil {
 		rw.WriteHeader(http.StatusNotAcceptable)
 		return
 	}
 
-	var c schema.DesiredUnitStateCollection
+	var dus schema.DesiredUnitState
 	dec := json.NewDecoder(req.Body)
-	err := dec.Decode(&c)
+	err := dec.Decode(&dus)
 	if err != nil {
 		rw.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	for _, c := range c.Units {
-		j, err := ur.reg.Job(c.Name)
+	j, err := ur.reg.Job(item)
+	if err != nil {
+		log.Errorf("Failed fetching Job(%s) from Registry: %v", item, err)
+		rw.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	if j == nil {
+		u, err := decodeUnitContents(dus.FileContents)
 		if err != nil {
-			log.Errorf("Failed fetching Job(%s) from Registry: %v", c.Name, err)
-			rw.WriteHeader(http.StatusInternalServerError)
+			rw.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
-		if j == nil {
-			u, err := decodeUnitContents(c.FileContents)
-			if err != nil {
-				rw.WriteHeader(http.StatusBadRequest)
-				return
-			}
+		j = job.NewJob(item, *u)
 
-			j = job.NewJob(c.Name, *u)
-
-			if err = ur.reg.CreateJob(j); err != nil {
-				log.Errorf("Failed creating Job(%s) in Registry: %v", j.Name, err)
-				rw.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-		}
-
-		if err := ur.reg.SetJobTargetState(j.Name, job.JobState(c.DesiredState)); err != nil {
-			log.Errorf("Failed setting target state of Job(%s): %v", j.Name, err)
+		if err = ur.reg.CreateJob(j); err != nil {
+			log.Errorf("Failed creating Job(%s) in Registry: %v", j.Name, err)
 			rw.WriteHeader(http.StatusInternalServerError)
 			return
 		}
+	}
+
+	if err := ur.reg.SetJobTargetState(j.Name, job.JobState(dus.DesiredState)); err != nil {
+		log.Errorf("Failed setting target state of Job(%s): %v", j.Name, err)
+		rw.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 
 	rw.WriteHeader(http.StatusNoContent)
 }
 
-func (ur *unitsResource) destroy(rw http.ResponseWriter, req *http.Request) {
-	if validateContentType(req) != nil {
-		rw.WriteHeader(http.StatusNotAcceptable)
-		return
-	}
-
-	var c schema.DeletableUnitCollection
-	dec := json.NewDecoder(req.Body)
-	err := dec.Decode(&c)
+func (ur *unitsResource) destroy(rw http.ResponseWriter, req *http.Request, item string) {
+	err := ur.reg.DestroyJob(item)
 	if err != nil {
-		rw.WriteHeader(http.StatusBadRequest)
+		//TODO(bcwaldon): Which error is correct here?
+		rw.WriteHeader(http.StatusInternalServerError)
 		return
-	}
-
-	for _, unit := range c.Units {
-		err := ur.reg.DestroyJob(unit.Name)
-		if err != nil {
-			//TODO(bcwaldon): Which error is correct here?
-			rw.WriteHeader(http.StatusInternalServerError)
-			return
-		}
 	}
 
 	rw.WriteHeader(http.StatusNoContent)
@@ -127,7 +110,7 @@ func (ur *unitsResource) destroy(rw http.ResponseWriter, req *http.Request) {
 func (ur *unitsResource) get(rw http.ResponseWriter, req *http.Request, item string) {
 	j, err := ur.reg.Job(item)
 	if err != nil {
-		log.Errorf("Failed fetching Unit: %v", err)
+		log.Errorf("Failed fetching Unit(%s): %v", item, err)
 		rw.WriteHeader(http.StatusInternalServerError)
 		return
 	}
