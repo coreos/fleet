@@ -21,10 +21,10 @@ type Registry interface {
 	CreateSignatureSet(ss *sign.SignatureSet) error
 	DestroyJob(jobName string) error
 	DestroySignatureSet(tag string)
-	GetSignatureSetOfJob(name string) (*sign.SignatureSet, error)
 	Job(jobName string) (j *job.Job, err error)
 	JobHeartbeat(jobName, agentMachID string, ttl time.Duration) error
 	Jobs() ([]job.Job, error)
+	JobSignatureSet(name string) (*sign.SignatureSet, error)
 	JobTarget(jobName string) (string, error)
 	JobTargetState(jobName string) (*job.JobState, error)
 	LatestVersion() (*semver.Version, error)

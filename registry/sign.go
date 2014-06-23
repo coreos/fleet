@@ -50,9 +50,9 @@ func (r *EtcdRegistry) getSignatureSet(tag string) *sign.SignatureSet {
 	return &sig
 }
 
-// GetSignatureSetOfJob retrieves the SignatureSet associated with the given
+// JobSignatureSet retrieves the SignatureSet associated with the given
 // job, or nil if none can be found
-func (r *EtcdRegistry) GetSignatureSetOfJob(name string) (*sign.SignatureSet, error) {
+func (r *EtcdRegistry) JobSignatureSet(name string) (*sign.SignatureSet, error) {
 	// TODO(jonboulle): handle errors
 	return r.getSignatureSet(sign.TagForJob(name)), nil
 }

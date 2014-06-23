@@ -451,7 +451,7 @@ func (a *Agent) verifyJobSignature(j *job.Job) bool {
 	if a.verifier == nil {
 		return true
 	}
-	ss, _ := a.registry.GetSignatureSetOfJob(j.Name)
+	ss, _ := a.registry.JobSignatureSet(j.Name)
 	ok, err := a.verifier.VerifyJob(j, ss)
 	if err != nil {
 		log.V(1).Infof("Error verifying signature of Job(%s): %v", j.Name, err)

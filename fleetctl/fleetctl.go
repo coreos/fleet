@@ -395,7 +395,7 @@ func verifyJob(j *job.Job) error {
 		return fmt.Errorf("failed creating SignatureVerifier: %v", err)
 	}
 
-	ss, err := cAPI.GetSignatureSetOfJob(j.Name)
+	ss, err := cAPI.JobSignatureSet(j.Name)
 	if err != nil {
 		return fmt.Errorf("failed attempting to retrieve SignatureSet of Job(%s): %v", j.Name, err)
 	}
