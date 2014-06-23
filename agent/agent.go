@@ -433,7 +433,11 @@ func (a *Agent) bid(jobName string) {
 // fetchJob attempts to retrieve a Job from the Registry
 func (a *Agent) fetchJob(jobName string) *job.Job {
 	log.V(1).Infof("Fetching Job(%s) from Registry", jobName)
-	j, _ := a.registry.GetJob(jobName)
+	j, err := a.registry.GetJob(jobName)
+	if err != nil {
+		log.Errorf("Failed to fetch Job(%s): %v", jobName, err)
+		return nil
+	}
 	if j == nil {
 		log.V(1).Infof("Job not found in Registry")
 		return nil
