@@ -84,7 +84,7 @@ func (f *FakeRegistry) Machines() ([]machine.MachineState, error) {
 	return f.machines, nil
 }
 
-func (f *FakeRegistry) GetAllJobs() ([]job.Job, error) {
+func (f *FakeRegistry) Jobs() ([]job.Job, error) {
 	f.RLock()
 	defer f.RUnlock()
 

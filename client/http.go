@@ -71,7 +71,7 @@ func mapMachinePageToMachineStates(entities []*schema.Machine) []machine.Machine
 	return machines
 }
 
-func (c *HTTPClient) GetAllJobs() ([]job.Job, error) {
+func (c *HTTPClient) Jobs() ([]job.Job, error) {
 	machines, err := c.Machines()
 	if err != nil {
 		return nil, err

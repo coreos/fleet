@@ -140,7 +140,7 @@ func runListUnits(args []string) (exit int) {
 // It returns any error encountered in communicating with the Registry.
 func findAllUnits() (jobs map[string]job.Job, sortable sort.StringSlice, err error) {
 	jobs = make(map[string]job.Job, 0)
-	jj, err := cAPI.GetAllJobs()
+	jj, err := cAPI.Jobs()
 	if err != nil {
 		return
 	}

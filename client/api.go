@@ -12,10 +12,10 @@ type API interface {
 	CreateJob(*job.Job) error
 	CreateSignatureSet(*sign.SignatureSet) error
 	DestroyJob(string) error
-	GetAllJobs() ([]job.Job, error)
 	GetJob(string) (*job.Job, error)
 	GetJobTarget(string) (string, error)
 	GetSignatureSetOfJob(string) (*sign.SignatureSet, error)
+	Jobs() ([]job.Job, error)
 	LatestVersion() (*semver.Version, error)
 	Machines() ([]machine.MachineState, error)
 	SetJobTargetState(string, job.JobState) error

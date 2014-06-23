@@ -248,7 +248,7 @@ func TestUnitsDestroy(t *testing.T) {
 		t.Errorf("Expected 204, got %d", rw.Code)
 	}
 
-	jobs, _ := fr.GetAllJobs()
+	jobs, _ := fr.Jobs()
 	if len(jobs) != 1 {
 		t.Errorf("Expected a single Job after request completion")
 	} else if jobs[0].Name != "YYY" {

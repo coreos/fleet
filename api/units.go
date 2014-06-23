@@ -172,7 +172,7 @@ func (ur *unitsResource) list(rw http.ResponseWriter, req *http.Request) {
 }
 
 func getUnitPage(reg registry.Registry, tok PageToken) (*schema.UnitPage, error) {
-	all, err := reg.GetAllJobs()
+	all, err := reg.Jobs()
 	if err != nil {
 		return nil, err
 	}

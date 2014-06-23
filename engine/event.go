@@ -131,7 +131,7 @@ func (eh *EventHandler) handleLossOfMachineEvents(ev event.Event) {
 func getJobsScheduledToMachine(r registry.Registry, machID string) []job.Job {
 	var jobs []job.Job
 
-	jj, _ := r.GetAllJobs()
+	jj, _ := r.Jobs()
 	for _, j := range jj {
 		tgt, _ := r.GetJobTarget(j.Name)
 		if tgt == "" || tgt != machID {

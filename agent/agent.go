@@ -93,7 +93,7 @@ func (a *Agent) Initialize() uint64 {
 	machID := a.Machine.State().ID
 	loaded := map[string]job.Job{}
 	launched := map[string]job.Job{}
-	jobs, _ := a.registry.GetAllJobs()
+	jobs, _ := a.registry.Jobs()
 	for _, j := range jobs {
 		tm, _ := a.registry.GetJobTarget(j.Name)
 		if tm == "" || tm != machID {

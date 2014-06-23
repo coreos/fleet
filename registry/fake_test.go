@@ -11,9 +11,9 @@ import (
 func TestFakeRegistryJobLifecycle(t *testing.T) {
 	reg := NewFakeRegistry()
 
-	jobs, err := reg.GetAllJobs()
+	jobs, err := reg.Jobs()
 	if err != nil {
-		t.Fatalf("Received error while calling GetAllJobs: %v", err)
+		t.Fatalf("Received error while calling Jobs: %v", err)
 	}
 	if !reflect.DeepEqual([]job.Job{}, jobs) {
 		t.Fatalf("Expected no jobs, got %v", jobs)
@@ -26,9 +26,9 @@ func TestFakeRegistryJobLifecycle(t *testing.T) {
 		t.Fatalf("Received error while calling CreateJob: %v", err)
 	}
 
-	jobs, err = reg.GetAllJobs()
+	jobs, err = reg.Jobs()
 	if err != nil {
-		t.Fatalf("Received error while calling GetAllJobs: %v", err)
+		t.Fatalf("Received error while calling Jobs: %v", err)
 	}
 	if len(jobs) != 1 {
 		t.Fatalf("Expected 1 Job, got %v", jobs)
@@ -42,9 +42,9 @@ func TestFakeRegistryJobLifecycle(t *testing.T) {
 		t.Fatalf("Received error while calling DestroyJob: %v", err)
 	}
 
-	jobs, err = reg.GetAllJobs()
+	jobs, err = reg.Jobs()
 	if err != nil {
-		t.Fatalf("Received error while calling GetAllJobs: %v", err)
+		t.Fatalf("Received error while calling Jobs: %v", err)
 	}
 	if !reflect.DeepEqual([]job.Job{}, jobs) {
 		t.Fatalf("Expected no jobs, got %v", jobs)

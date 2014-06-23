@@ -17,8 +17,8 @@ const (
 	jobPrefix = "job"
 )
 
-// GetAllJobs lists all Jobs known by the Registry
-func (r *EtcdRegistry) GetAllJobs() ([]job.Job, error) {
+// Jobs lists all Jobs known by the Registry
+func (r *EtcdRegistry) Jobs() ([]job.Job, error) {
 	var jobs []job.Job
 
 	req := etcd.Get{

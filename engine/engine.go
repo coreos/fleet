@@ -45,7 +45,7 @@ func (e *Engine) CheckForWork() {
 		}
 	}
 
-	jobs, _ := e.registry.GetAllJobs()
+	jobs, _ := e.registry.Jobs()
 	for _, j := range jobs {
 		ts, _ := e.registry.GetJobTargetState(j.Name)
 		if ts == nil || j.State == nil || *ts == *j.State {
