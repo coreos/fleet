@@ -149,6 +149,11 @@ Indicate which Units should be destroyed in the request body like so:
 {"units": [{"name": <name>}, ... ]}
 ```
 
+The Unit's "fileHash" field may be provided to ensure safe entity deletion.
+The server will compare the provided value to the actual value before performing the delete.
+A `409 Conflict` will be returned if the values do not match.
+A single conflict will not block other units from being deleted in the same request.
+
 #### Response
 
 A successful response will not contain a body or any additional headers.

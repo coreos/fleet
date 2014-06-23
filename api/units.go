@@ -113,6 +113,21 @@ func (ur *unitsResource) destroy(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	for _, unit := range c.Units {
+		if unit.FileHash != "" {
+			j, err := ur.reg.Job(unit.Name)
+			if err != nil {
+				rw.WriteHeader(http.StatusInternalServerError)
+				return
+			} else if j == nil {
+				continue
+			}
+
+			if j.Unit.Hash().String() != unit.FileHash {
+				rw.WriteHeader(http.StatusConflict)
+				continue
+			}
+		}
+
 		err := ur.reg.DestroyJob(unit.Name)
 		if err != nil {
 			//TODO(bcwaldon): Which error is correct here?
