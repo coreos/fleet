@@ -88,9 +88,9 @@ func (r *EtcdRegistry) ClearJobTarget(jobName, machID string) error {
 	return err
 }
 
-// GetJob looks for a Job of the given name in the Registry. It returns a fully
+// Job looks for a Job of the given name in the Registry. It returns a fully
 // hydrated Job on success, or nil on any kind of failure.
-func (r *EtcdRegistry) GetJob(jobName string) (j *job.Job, err error) {
+func (r *EtcdRegistry) Job(jobName string) (j *job.Job, err error) {
 	req := etcd.Get{
 		Key: path.Join(r.keyPrefix, jobPrefix, jobName, "object"),
 	}

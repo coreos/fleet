@@ -108,7 +108,7 @@ func (c *HTTPClient) Jobs() ([]job.Job, error) {
 	return jobs, nil
 }
 
-func (c *HTTPClient) GetJob(name string) (*job.Job, error) {
+func (c *HTTPClient) Job(name string) (*job.Job, error) {
 	u, err := c.svc.Units.Get(name).Do()
 	if err != nil {
 		if is404(err) {

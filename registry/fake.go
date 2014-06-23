@@ -95,7 +95,7 @@ func (f *FakeRegistry) Jobs() ([]job.Job, error) {
 	return jobs, nil
 }
 
-func (f *FakeRegistry) GetJob(name string) (*job.Job, error) {
+func (f *FakeRegistry) Job(name string) (*job.Job, error) {
 	f.RLock()
 	defer f.RUnlock()
 

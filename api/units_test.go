@@ -297,7 +297,7 @@ func TestUnitsSetDesiredUnitStates(t *testing.T) {
 		"ZZZ": "loaded",
 	}
 	for name, state := range expect {
-		j, _ := fr.GetJob(name)
+		j, _ := fr.Job(name)
 		if j == nil {
 			t.Errorf("Expected job %s to exist, got nil", j.Name)
 			continue

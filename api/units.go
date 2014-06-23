@@ -65,7 +65,7 @@ func (ur *unitsResource) set(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	for _, c := range c.Units {
-		j, err := ur.reg.GetJob(c.Name)
+		j, err := ur.reg.Job(c.Name)
 		if err != nil {
 			log.Errorf("Failed fetching Job(%s) from Registry: %v", c.Name, err)
 			rw.WriteHeader(http.StatusInternalServerError)
@@ -125,7 +125,7 @@ func (ur *unitsResource) destroy(rw http.ResponseWriter, req *http.Request) {
 }
 
 func (ur *unitsResource) get(rw http.ResponseWriter, req *http.Request, item string) {
-	j, err := ur.reg.GetJob(item)
+	j, err := ur.reg.Job(item)
 	if err != nil {
 		log.Errorf("Failed fetching Unit: %v", err)
 		rw.WriteHeader(http.StatusInternalServerError)
