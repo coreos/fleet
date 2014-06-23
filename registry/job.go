@@ -222,7 +222,7 @@ func (r *EtcdRegistry) CreateJob(j *job.Job) (err error) {
 	return
 }
 
-func (r *EtcdRegistry) GetJobTargetState(jobName string) (*job.JobState, error) {
+func (r *EtcdRegistry) JobTargetState(jobName string) (*job.JobState, error) {
 	req := etcd.Get{
 		Key: r.jobTargetStatePath(jobName),
 	}

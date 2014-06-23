@@ -303,7 +303,7 @@ func TestUnitsSetDesiredUnitStates(t *testing.T) {
 			continue
 		}
 
-		ts, _ := fr.GetJobTargetState(name)
+		ts, _ := fr.JobTargetState(name)
 		if ts == nil {
 			t.Errorf("Expected job %s to have target state %v, got nil", j, state)
 		} else if sts := string(*ts); sts != state {

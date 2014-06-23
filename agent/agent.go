@@ -106,7 +106,7 @@ func (a *Agent) Initialize() uint64 {
 			continue
 		}
 
-		ts, _ := a.registry.GetJobTargetState(j.Name)
+		ts, _ := a.registry.JobTargetState(j.Name)
 		if ts == nil || *ts == job.JobStateInactive {
 			continue
 		}
@@ -619,7 +619,7 @@ func (a *Agent) JobScheduledLocally(jobName string) {
 	log.Infof("Bidding for all possible peers of Job(%s)", j.Name)
 	a.bidForPossiblePeers(j.Name)
 
-	ts, _ := a.registry.GetJobTargetState(j.Name)
+	ts, _ := a.registry.JobTargetState(j.Name)
 	if ts == nil || *ts != job.JobStateLaunched {
 		return
 	}

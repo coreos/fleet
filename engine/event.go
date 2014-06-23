@@ -53,7 +53,7 @@ func (eh *EventHandler) HandleEventJobScheduled(ev event.Event) {
 func (eh *EventHandler) HandleEventJobUnscheduled(ev event.Event) {
 	jobName := ev.Payload.(string)
 
-	ts, _ := eh.engine.registry.GetJobTargetState(jobName)
+	ts, _ := eh.engine.registry.JobTargetState(jobName)
 	if ts == nil || *ts == job.JobStateInactive {
 		return
 	}

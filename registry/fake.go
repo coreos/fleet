@@ -166,7 +166,7 @@ func (f *FakeRegistry) SetJobTargetState(name string, target job.JobState) error
 	return nil
 }
 
-func (f *FakeRegistry) GetJobTargetState(jobName string) (*job.JobState, error) {
+func (f *FakeRegistry) JobTargetState(jobName string) (*job.JobState, error) {
 	f.RLock()
 	defer f.RUnlock()
 
