@@ -17,8 +17,8 @@ const (
 	jobPrefix = "job"
 )
 
-// GetAllJobs lists all Jobs known by the Registry
-func (r *EtcdRegistry) GetAllJobs() ([]job.Job, error) {
+// Jobs lists all Jobs known by the Registry
+func (r *EtcdRegistry) Jobs() ([]job.Job, error) {
 	var jobs []job.Job
 
 	req := etcd.Get{
@@ -56,7 +56,7 @@ func (r *EtcdRegistry) GetAllJobs() ([]job.Job, error) {
 // GetJobTarget looks up where the given job is scheduled. If the job has
 // been scheduled, the ID the target machine is returned. Otherwise, an
 // empty string is returned.
-func (r *EtcdRegistry) GetJobTarget(jobName string) (string, error) {
+func (r *EtcdRegistry) JobTarget(jobName string) (string, error) {
 	req := etcd.Get{
 		Key:       r.jobTargetAgentPath(jobName),
 		Sorted:    false,
@@ -88,9 +88,9 @@ func (r *EtcdRegistry) ClearJobTarget(jobName, machID string) error {
 	return err
 }
 
-// GetJob looks for a Job of the given name in the Registry. It returns a fully
+// Job looks for a Job of the given name in the Registry. It returns a fully
 // hydrated Job on success, or nil on any kind of failure.
-func (r *EtcdRegistry) GetJob(jobName string) (j *job.Job, err error) {
+func (r *EtcdRegistry) Job(jobName string) (j *job.Job, err error) {
 	req := etcd.Get{
 		Key: path.Join(r.keyPrefix, jobPrefix, jobName, "object"),
 	}
@@ -222,7 +222,7 @@ func (r *EtcdRegistry) CreateJob(j *job.Job) (err error) {
 	return
 }
 
-func (r *EtcdRegistry) GetJobTargetState(jobName string) (*job.JobState, error) {
+func (r *EtcdRegistry) JobTargetState(jobName string) (*job.JobState, error) {
 	req := etcd.Get{
 		Key: r.jobTargetStatePath(jobName),
 	}
@@ -289,7 +289,7 @@ func (es *EventStream) filterJobTargetStateChanges(resp *etcd.Result) *event.Eve
 		return nil
 	}
 
-	agent, _ := es.registry.GetJobTarget(jobName)
+	agent, _ := es.registry.JobTarget(jobName)
 	return &event.Event{cType, jobName, agent}
 }
 

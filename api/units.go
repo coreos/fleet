@@ -65,7 +65,7 @@ func (ur *unitsResource) set(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	for _, c := range c.Units {
-		j, err := ur.reg.GetJob(c.Name)
+		j, err := ur.reg.Job(c.Name)
 		if err != nil {
 			log.Errorf("Failed fetching Job(%s) from Registry: %v", c.Name, err)
 			rw.WriteHeader(http.StatusInternalServerError)
@@ -125,7 +125,7 @@ func (ur *unitsResource) destroy(rw http.ResponseWriter, req *http.Request) {
 }
 
 func (ur *unitsResource) get(rw http.ResponseWriter, req *http.Request, item string) {
-	j, err := ur.reg.GetJob(item)
+	j, err := ur.reg.Job(item)
 	if err != nil {
 		log.Errorf("Failed fetching Unit: %v", err)
 		rw.WriteHeader(http.StatusInternalServerError)
@@ -137,7 +137,7 @@ func (ur *unitsResource) get(rw http.ResponseWriter, req *http.Request, item str
 		return
 	}
 
-	tgt, err := ur.reg.GetJobTarget(j.Name)
+	tgt, err := ur.reg.JobTarget(j.Name)
 	if err != nil {
 		rw.WriteHeader(http.StatusInternalServerError)
 		return
@@ -172,7 +172,7 @@ func (ur *unitsResource) list(rw http.ResponseWriter, req *http.Request) {
 }
 
 func getUnitPage(reg registry.Registry, tok PageToken) (*schema.UnitPage, error) {
-	all, err := reg.GetAllJobs()
+	all, err := reg.Jobs()
 	if err != nil {
 		return nil, err
 	}
@@ -252,7 +252,7 @@ func mapJobToSchema(j *job.Job) *schema.Unit {
 
 func setUnitPageTargets(reg registry.Registry, page *schema.UnitPage) error {
 	for i, _ := range page.Units {
-		tgt, err := reg.GetJobTarget(page.Units[i].Name)
+		tgt, err := reg.JobTarget(page.Units[i].Name)
 		if err != nil {
 			return err
 		}

@@ -248,7 +248,7 @@ func TestUnitsDestroy(t *testing.T) {
 		t.Errorf("Expected 204, got %d", rw.Code)
 	}
 
-	jobs, _ := fr.GetAllJobs()
+	jobs, _ := fr.Jobs()
 	if len(jobs) != 1 {
 		t.Errorf("Expected a single Job after request completion")
 	} else if jobs[0].Name != "YYY" {
@@ -297,13 +297,13 @@ func TestUnitsSetDesiredUnitStates(t *testing.T) {
 		"ZZZ": "loaded",
 	}
 	for name, state := range expect {
-		j, _ := fr.GetJob(name)
+		j, _ := fr.Job(name)
 		if j == nil {
 			t.Errorf("Expected job %s to exist, got nil", j.Name)
 			continue
 		}
 
-		ts, _ := fr.GetJobTargetState(name)
+		ts, _ := fr.JobTargetState(name)
 		if ts == nil {
 			t.Errorf("Expected job %s to have target state %v, got nil", j, state)
 		} else if sts := string(*ts); sts != state {

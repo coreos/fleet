@@ -173,9 +173,9 @@ func (eg *Engine) refreshCluster(force bool) {
 		cu.populateMachine(m.ID)
 	}
 
-	jobs, _ := eg.registry.GetAllJobs()
+	jobs, _ := eg.registry.Jobs()
 	for _, j := range jobs {
-		tgt, _ := eg.registry.GetJobTarget(j.Name)
+		tgt, _ := eg.registry.JobTarget(j.Name)
 		if tgt != "" {
 			cu.populateJob(j.Name, tgt)
 		}

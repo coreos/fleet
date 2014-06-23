@@ -165,7 +165,7 @@ func findAddressInMachineList(lookup string) (string, bool) {
 
 func findAddressInRunningUnits(jobName string) (string, bool) {
 	name := unitNameMangle(jobName)
-	j, err := cAPI.GetJob(name)
+	j, err := cAPI.Job(name)
 	if err != nil {
 		log.V(1).Infof("Unable to retrieve Job(%s) from Repository: %v", name, err)
 	}

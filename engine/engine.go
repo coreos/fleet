@@ -45,9 +45,9 @@ func (e *Engine) CheckForWork() {
 		}
 	}
 
-	jobs, _ := e.registry.GetAllJobs()
+	jobs, _ := e.registry.Jobs()
 	for _, j := range jobs {
-		ts, _ := e.registry.GetJobTargetState(j.Name)
+		ts, _ := e.registry.JobTargetState(j.Name)
 		if ts == nil || j.State == nil || *ts == *j.State {
 			continue
 		}
@@ -57,7 +57,7 @@ func (e *Engine) CheckForWork() {
 			e.OfferJob(j)
 		} else if *ts == job.JobStateInactive {
 			log.Infof("Unscheduling Job(%s)", j.Name)
-			target, _ := e.registry.GetJobTarget(j.Name)
+			target, _ := e.registry.JobTarget(j.Name)
 			e.registry.ClearJobTarget(j.Name, target)
 		}
 	}

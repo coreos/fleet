@@ -93,9 +93,9 @@ func (a *Agent) Initialize() uint64 {
 	machID := a.Machine.State().ID
 	loaded := map[string]job.Job{}
 	launched := map[string]job.Job{}
-	jobs, _ := a.registry.GetAllJobs()
+	jobs, _ := a.registry.Jobs()
 	for _, j := range jobs {
-		tm, _ := a.registry.GetJobTarget(j.Name)
+		tm, _ := a.registry.JobTarget(j.Name)
 		if tm == "" || tm != machID {
 			continue
 		}
@@ -106,7 +106,7 @@ func (a *Agent) Initialize() uint64 {
 			continue
 		}
 
-		ts, _ := a.registry.GetJobTargetState(j.Name)
+		ts, _ := a.registry.JobTargetState(j.Name)
 		if ts == nil || *ts == job.JobStateInactive {
 			continue
 		}
@@ -433,7 +433,7 @@ func (a *Agent) bid(jobName string) {
 // fetchJob attempts to retrieve a Job from the Registry
 func (a *Agent) fetchJob(jobName string) *job.Job {
 	log.V(1).Infof("Fetching Job(%s) from Registry", jobName)
-	j, err := a.registry.GetJob(jobName)
+	j, err := a.registry.Job(jobName)
 	if err != nil {
 		log.Errorf("Failed to fetch Job(%s): %v", jobName, err)
 		return nil
@@ -451,7 +451,7 @@ func (a *Agent) verifyJobSignature(j *job.Job) bool {
 	if a.verifier == nil {
 		return true
 	}
-	ss, _ := a.registry.GetSignatureSetOfJob(j.Name)
+	ss, _ := a.registry.JobSignatureSet(j.Name)
 	ok, err := a.verifier.VerifyJob(j, ss)
 	if err != nil {
 		log.V(1).Infof("Error verifying signature of Job(%s): %v", j.Name, err)
@@ -539,7 +539,7 @@ func (a *Agent) peerScheduledHere(jobName, peerName string) bool {
 	log.V(1).Infof("Looking for target of Peer(%s)", peerName)
 
 	//FIXME: ideally the machine would use its own knowledge rather than calling GetJobTarget
-	if tgt, _ := a.registry.GetJobTarget(peerName); tgt == "" || tgt != a.Machine.State().ID {
+	if tgt, _ := a.registry.JobTarget(peerName); tgt == "" || tgt != a.Machine.State().ID {
 		log.V(1).Infof("Peer(%s) of Job(%s) not scheduled here", peerName, jobName)
 		return false
 	}
@@ -619,7 +619,7 @@ func (a *Agent) JobScheduledLocally(jobName string) {
 	log.Infof("Bidding for all possible peers of Job(%s)", j.Name)
 	a.bidForPossiblePeers(j.Name)
 
-	ts, _ := a.registry.GetJobTargetState(j.Name)
+	ts, _ := a.registry.JobTargetState(j.Name)
 	if ts == nil || *ts != job.JobStateLaunched {
 		return
 	}

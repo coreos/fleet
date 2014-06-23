@@ -30,8 +30,8 @@ func (r *EtcdRegistry) DestroySignatureSet(tag string) {
 	r.etcd.Do(&req)
 }
 
-// GetSignatureSet returns the SignatureSet associated with the given tag
-func (r *EtcdRegistry) GetSignatureSet(tag string) *sign.SignatureSet {
+// getSignatureSet returns the SignatureSet associated with the given tag
+func (r *EtcdRegistry) getSignatureSet(tag string) *sign.SignatureSet {
 	req := etcd.Get{
 		Key:       r.signatureSetPath(tag),
 		Recursive: true,
@@ -50,11 +50,11 @@ func (r *EtcdRegistry) GetSignatureSet(tag string) *sign.SignatureSet {
 	return &sig
 }
 
-// GetSignatureSetOfJob retrieves the SignatureSet associated with the given
+// JobSignatureSet retrieves the SignatureSet associated with the given
 // job, or nil if none can be found
-func (r *EtcdRegistry) GetSignatureSetOfJob(name string) (*sign.SignatureSet, error) {
+func (r *EtcdRegistry) JobSignatureSet(name string) (*sign.SignatureSet, error) {
 	// TODO(jonboulle): handle errors
-	return r.GetSignatureSet(sign.TagForJob(name)), nil
+	return r.getSignatureSet(sign.TagForJob(name)), nil
 }
 
 func (r *EtcdRegistry) destroySignatureSetOfJob(name string) {

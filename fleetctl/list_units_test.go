@@ -32,7 +32,7 @@ func newFakeRegistryForListUnits(t *testing.T, jobs []job.Job) registry.Registry
 	return reg
 }
 
-func TestGetAllJobs(t *testing.T) {
+func TestJobs(t *testing.T) {
 	cAPI = newFakeRegistryForListUnits(t, []job.Job{*newNamedTestJobFromUnitContents(t, "pong.service", "")})
 
 	jobs, sortable, err := findAllUnits()

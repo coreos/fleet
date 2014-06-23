@@ -38,7 +38,7 @@ func runStatusUnits(args []string) (exit int) {
 }
 
 func printUnitStatus(jobName string) int {
-	j, err := cAPI.GetJob(jobName)
+	j, err := cAPI.Job(jobName)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error retrieving Job %s: %v", jobName, err)
 		return 1

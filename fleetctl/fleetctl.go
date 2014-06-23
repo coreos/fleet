@@ -137,7 +137,7 @@ func getFlags(flagset *flag.FlagSet) (flags []*flag.Flag) {
 // false and a scary warning to the user.
 func checkVersion() (string, bool) {
 	fv := version.SemVersion
-	lv, err := cAPI.GetLatestVersion()
+	lv, err := cAPI.LatestVersion()
 	if err != nil {
 		log.Errorf("error attempting to check latest fleet version in Registry: %v", err)
 	} else if lv != nil && fv.LessThan(*lv) {
@@ -340,7 +340,7 @@ func findJobs(args []string) (jobs []job.Job, err error) {
 	jobs = make([]job.Job, len(args))
 	for i, v := range args {
 		name := unitNameMangle(v)
-		j, err := cAPI.GetJob(name)
+		j, err := cAPI.Job(name)
 		if err != nil {
 			return nil, fmt.Errorf("error retrieving Job(%s) from Registry: %v", name, err)
 		} else if j == nil {
@@ -395,7 +395,7 @@ func verifyJob(j *job.Job) error {
 		return fmt.Errorf("failed creating SignatureVerifier: %v", err)
 	}
 
-	ss, err := cAPI.GetSignatureSetOfJob(j.Name)
+	ss, err := cAPI.JobSignatureSet(j.Name)
 	if err != nil {
 		return fmt.Errorf("failed attempting to retrieve SignatureSet of Job(%s): %v", j.Name, err)
 	}
@@ -429,7 +429,7 @@ func lazyCreateJobs(args []string, signAndVerify bool) error {
 		jobName := unitNameMangle(arg)
 
 		// First, check if there already exists a Job by the given name in the Registry
-		j, err := cAPI.GetJob(jobName)
+		j, err := cAPI.Job(jobName)
 		if err != nil {
 			return fmt.Errorf("error retrieving Job(%s) from Registry: %v", jobName, err)
 		}
@@ -470,7 +470,7 @@ func lazyCreateJobs(args []string, signAndVerify bool) error {
 		} else if !uni.IsInstance() {
 			return fmt.Errorf("unable to find Unit(%s) in Registry or on filesystem", jobName)
 		}
-		tmpl, err := cAPI.GetJob(uni.Template)
+		tmpl, err := cAPI.Job(uni.Template)
 		if err != nil {
 			return fmt.Errorf("error retrieving template Job(%s) from Registry: %v", uni.Template, err)
 		}
@@ -548,7 +548,7 @@ func lazyStartJobs(args []string) ([]string, error) {
 func setTargetStateOfJobs(jobs []string, state job.JobState) ([]string, error) {
 	triggered := make([]string, 0)
 	for _, name := range jobs {
-		j, err := cAPI.GetJob(name)
+		j, err := cAPI.Job(name)
 		if err != nil {
 			return nil, fmt.Errorf("error retrieving Job(%s) from Registry: %v", name, err)
 		} else if j == nil {
@@ -615,7 +615,7 @@ func checkJobState(jobName string, js job.JobState, maxAttempts int, out io.Writ
 }
 
 func assertJobState(name string, js job.JobState, out io.Writer) (ret bool) {
-	j, err := cAPI.GetJob(name)
+	j, err := cAPI.Job(name)
 	if err != nil {
 		log.Warningf("Error retrieving Job(%s) from Registry: %v", name, err)
 		return
@@ -627,7 +627,7 @@ func assertJobState(name string, js job.JobState, out io.Writer) (ret bool) {
 	ret = true
 	msg := fmt.Sprintf("Job %s %s", name, *(j.State))
 
-	tgt, err := cAPI.GetJobTarget(name)
+	tgt, err := cAPI.JobTarget(name)
 	if err != nil {
 		log.Warningf("Error retrieving target information for Job(%s) from Registry: %v", name, err)
 		return

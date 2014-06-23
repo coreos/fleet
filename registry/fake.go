@@ -84,7 +84,7 @@ func (f *FakeRegistry) Machines() ([]machine.MachineState, error) {
 	return f.machines, nil
 }
 
-func (f *FakeRegistry) GetAllJobs() ([]job.Job, error) {
+func (f *FakeRegistry) Jobs() ([]job.Job, error) {
 	f.RLock()
 	defer f.RUnlock()
 
@@ -95,7 +95,7 @@ func (f *FakeRegistry) GetAllJobs() ([]job.Job, error) {
 	return jobs, nil
 }
 
-func (f *FakeRegistry) GetJob(name string) (*job.Job, error) {
+func (f *FakeRegistry) Job(name string) (*job.Job, error) {
 	f.RLock()
 	defer f.RUnlock()
 
@@ -129,7 +129,7 @@ func (f *FakeRegistry) DestroyJob(name string) error {
 	return nil
 }
 
-func (f *FakeRegistry) GetJobTarget(name string) (string, error) {
+func (f *FakeRegistry) JobTarget(name string) (string, error) {
 	f.RLock()
 	defer f.RUnlock()
 
@@ -166,7 +166,7 @@ func (f *FakeRegistry) SetJobTargetState(name string, target job.JobState) error
 	return nil
 }
 
-func (f *FakeRegistry) GetJobTargetState(jobName string) (*job.JobState, error) {
+func (f *FakeRegistry) JobTargetState(jobName string) (*job.JobState, error) {
 	f.RLock()
 	defer f.RUnlock()
 
@@ -184,7 +184,7 @@ func (f *FakeRegistry) SaveUnitState(jobName string, unitState *unit.UnitState) 
 	f.jobStates[jobName] = unitState
 }
 
-func (f *FakeRegistry) GetLatestVersion() (*semver.Version, error) {
+func (f *FakeRegistry) LatestVersion() (*semver.Version, error) {
 	f.RLock()
 	defer f.RUnlock()
 

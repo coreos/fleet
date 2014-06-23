@@ -71,7 +71,7 @@ func mapMachinePageToMachineStates(entities []*schema.Machine) []machine.Machine
 	return machines
 }
 
-func (c *HTTPClient) GetAllJobs() ([]job.Job, error) {
+func (c *HTTPClient) Jobs() ([]job.Job, error) {
 	machines, err := c.Machines()
 	if err != nil {
 		return nil, err
@@ -108,7 +108,7 @@ func (c *HTTPClient) GetAllJobs() ([]job.Job, error) {
 	return jobs, nil
 }
 
-func (c *HTTPClient) GetJob(name string) (*job.Job, error) {
+func (c *HTTPClient) Job(name string) (*job.Job, error) {
 	u, err := c.svc.Units.Get(name).Do()
 	if err != nil {
 		if is404(err) {
@@ -135,7 +135,7 @@ func (c *HTTPClient) GetJob(name string) (*job.Job, error) {
 	return mapUnitToJob(u, mm)
 }
 
-func (c *HTTPClient) GetJobTarget(name string) (string, error) {
+func (c *HTTPClient) JobTarget(name string) (string, error) {
 	u, err := c.svc.Units.Get(name).Do()
 	if err != nil {
 		return "", err
@@ -234,7 +234,7 @@ func (c *HTTPClient) SetJobTargetState(name string, state job.JobState) error {
 }
 
 //NOTE(bcwaldon): This is only temporary until a better version negotiation mechanism is in place
-func (c *HTTPClient) GetLatestVersion() (*semver.Version, error) {
+func (c *HTTPClient) LatestVersion() (*semver.Version, error) {
 	return semver.NewVersion("0.0.0")
 }
 
