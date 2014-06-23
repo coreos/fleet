@@ -12,7 +12,6 @@ import (
 )
 
 type Registry interface {
-	GetLatestVersion() (*semver.Version, error)
 	Bids(jb *job.JobOffer) ([]job.JobBid, error)
 	CheckJobPulse(jobName string) (string, bool)
 	ClearJobHeartbeat(jobName string)
@@ -29,6 +28,7 @@ type Registry interface {
 	GetSignatureSetOfJob(name string) (*sign.SignatureSet, error)
 	GetSignatureSet(tag string) *sign.SignatureSet
 	JobHeartbeat(jobName, agentMachID string, ttl time.Duration) error
+	LatestVersion() (*semver.Version, error)
 	LockJob(jobName, context string) *TimedResourceMutex
 	LockJobOffer(jobName, context string) *TimedResourceMutex
 	LockMachine(machID, context string) *TimedResourceMutex

@@ -2,10 +2,10 @@ package registry
 
 import "github.com/coreos/fleet/third_party/github.com/coreos/go-semver/semver"
 
-// GetLatestVersion attempts to retrieve the latest version of fleet that has
+// LatestVersion attempts to retrieve the latest version of fleet that has
 // been registered in the Registry. It returns the version if it can be
 // determined (or nil otherwise), and any error encountered.
-func (r *EtcdRegistry) GetLatestVersion() (*semver.Version, error) {
+func (r *EtcdRegistry) LatestVersion() (*semver.Version, error) {
 	machs, err := r.Machines()
 	if err != nil {
 		if isKeyNotFound(err) {

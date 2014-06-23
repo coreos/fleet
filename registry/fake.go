@@ -184,7 +184,7 @@ func (f *FakeRegistry) SaveUnitState(jobName string, unitState *unit.UnitState) 
 	f.jobStates[jobName] = unitState
 }
 
-func (f *FakeRegistry) GetLatestVersion() (*semver.Version, error) {
+func (f *FakeRegistry) LatestVersion() (*semver.Version, error) {
 	f.RLock()
 	defer f.RUnlock()
 

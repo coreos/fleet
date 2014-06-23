@@ -137,7 +137,7 @@ func getFlags(flagset *flag.FlagSet) (flags []*flag.Flag) {
 // false and a scary warning to the user.
 func checkVersion() (string, bool) {
 	fv := version.SemVersion
-	lv, err := cAPI.GetLatestVersion()
+	lv, err := cAPI.LatestVersion()
 	if err != nil {
 		log.Errorf("error attempting to check latest fleet version in Registry: %v", err)
 	} else if lv != nil && fv.LessThan(*lv) {

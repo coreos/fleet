@@ -234,7 +234,7 @@ func (c *HTTPClient) SetJobTargetState(name string, state job.JobState) error {
 }
 
 //NOTE(bcwaldon): This is only temporary until a better version negotiation mechanism is in place
-func (c *HTTPClient) GetLatestVersion() (*semver.Version, error) {
+func (c *HTTPClient) LatestVersion() (*semver.Version, error) {
 	return semver.NewVersion("0.0.0")
 }
 

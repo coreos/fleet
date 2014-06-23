@@ -15,8 +15,8 @@ type API interface {
 	GetAllJobs() ([]job.Job, error)
 	GetJob(string) (*job.Job, error)
 	GetJobTarget(string) (string, error)
-	GetLatestVersion() (*semver.Version, error)
 	GetSignatureSetOfJob(string) (*sign.SignatureSet, error)
+	LatestVersion() (*semver.Version, error)
 	Machines() ([]machine.MachineState, error)
 	SetJobTargetState(string, job.JobState) error
 }
