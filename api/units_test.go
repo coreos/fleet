@@ -217,42 +217,163 @@ func TestUnitGet(t *testing.T) {
 }
 
 func TestUnitsDestroy(t *testing.T) {
-	fr := registry.NewFakeRegistry()
-	fr.SetJobs([]job.Job{
-		{Name: "XXX"},
-		{Name: "YYY"},
-		{Name: "ZZZ"},
-	})
-	resource := &unitsResource{fr, "/units"}
-	rw := httptest.NewRecorder()
-	req, err := http.NewRequest("DELETE", "http://example.com/units", nil)
-	if err != nil {
-		t.Fatalf("Failed creating http.Request: %v", err)
-	}
+	tests := []struct {
+		// Starting point for the Registry
+		fixtures []job.Job
+		// Actual request being submtited
+		argument schema.DeletableUnitCollection
 
-	body := schema.DeletableUnitCollection{
-		Units: []*schema.DeletableUnit{
-			{Name: "ZZZ"},
-			{Name: "XXX"},
+		// Expected HTTP response code
+		code int
+		// Expected Jobs left in the Registry
+		remaining []string
+	}{
+		// Deleting a single Job should succeed
+		{
+			fixtures: []job.Job{
+				{Name: "XXX", Unit: unit.Unit{Raw: "ALPHA"}},
+			},
+			argument: schema.DeletableUnitCollection{
+				Units: []*schema.DeletableUnit{
+					{Name: "XXX"},
+				},
+			},
+			code:      http.StatusNoContent,
+			remaining: []string{},
+		},
+
+		// Deleting multiple Jobs should succeed
+		{
+			fixtures: []job.Job{
+				{Name: "XXX", Unit: unit.Unit{Raw: "ALPHA"}},
+				{Name: "YYY", Unit: unit.Unit{Raw: "BRAVO"}},
+				{Name: "ZZZ", Unit: unit.Unit{Raw: "CHARLIE"}},
+			},
+			argument: schema.DeletableUnitCollection{
+				Units: []*schema.DeletableUnit{
+					{Name: "XXX"},
+					{Name: "YYY"},
+					{Name: "ZZZ"},
+				},
+			},
+			code:      http.StatusNoContent,
+			remaining: []string{},
+		},
+
+		// Attempting to delete nonexistent Job should not fail
+		{
+			fixtures: []job.Job{
+				{Name: "XXX", Unit: unit.Unit{Raw: "ALPHA"}},
+			},
+			argument: schema.DeletableUnitCollection{
+				Units: []*schema.DeletableUnit{
+					{Name: "ZZZ"},
+				},
+			},
+			code:      http.StatusNoContent,
+			remaining: []string{"XXX"},
+		},
+
+		// Deleting a single Job should not affect other Jobs
+		{
+			fixtures: []job.Job{
+				{Name: "XXX", Unit: unit.Unit{Raw: "ALPHA"}},
+				{Name: "YYY", Unit: unit.Unit{Raw: "BRAVO"}},
+			},
+			argument: schema.DeletableUnitCollection{
+				Units: []*schema.DeletableUnit{
+					{Name: "XXX"},
+				},
+			},
+			code:      http.StatusNoContent,
+			remaining: []string{"YYY"},
+		},
+
+		// Deleting a single Job with the correct FileHash should succeed
+		{
+			fixtures: []job.Job{
+				{Name: "ZZZ", Unit: unit.Unit{Raw: "CHARLIE"}},
+			},
+			argument: schema.DeletableUnitCollection{
+				Units: []*schema.DeletableUnit{
+					{Name: "ZZZ", FileHash: "70f91352865ca41f8cffbeff845a847192a1e7d3"},
+				},
+			},
+			code:      http.StatusNoContent,
+			remaining: []string{},
+		},
+
+		// Deleting a single Job with the incorrect FileHash should fail
+		{
+			fixtures: []job.Job{
+				{Name: "ZZZ", Unit: unit.Unit{Raw: "CHARLIE"}},
+			},
+			argument: schema.DeletableUnitCollection{
+				Units: []*schema.DeletableUnit{
+					{Name: "ZZZ", FileHash: "b10fe0fb7ff3dc28d35773e0c171046c883572eb"},
+				},
+			},
+			code:      http.StatusConflict,
+			remaining: []string{"ZZZ"},
+		},
+
+		// Deleting a single Job with the incorrect FileHash should fail, but not block other delete operations
+		{
+			fixtures: []job.Job{
+				{Name: "XXX", Unit: unit.Unit{Raw: "ALPHA"}},
+				{Name: "YYY", Unit: unit.Unit{Raw: "BRAVO"}},
+				{Name: "ZZZ", Unit: unit.Unit{Raw: "CHARLIE"}},
+			},
+			argument: schema.DeletableUnitCollection{
+				Units: []*schema.DeletableUnit{
+					{Name: "XXX"},
+					{Name: "YYY", FileHash: "70f91352865ca41f8cffbeff845a847192a1e7d3"},
+					{Name: "ZZZ"},
+				},
+			},
+			code:      http.StatusConflict,
+			remaining: []string{"YYY"},
 		},
 	}
-	enc, err := json.Marshal(body)
-	if err != nil {
-		t.Fatalf("Unable to JSON-encode request: %v", err)
-	}
-	req.Body = ioutil.NopCloser(bytes.NewBuffer(enc))
-	req.Header.Set("Content-Type", "application/json")
 
-	resource.destroy(rw, req)
-	if rw.Code != http.StatusNoContent {
-		t.Errorf("Expected 204, got %d", rw.Code)
-	}
+	for i, tt := range tests {
+		fr := registry.NewFakeRegistry()
+		fr.SetJobs(tt.fixtures)
+		resource := &unitsResource{fr, "/units"}
+		rw := httptest.NewRecorder()
 
-	jobs, _ := fr.Jobs()
-	if len(jobs) != 1 {
-		t.Errorf("Expected a single Job after request completion")
-	} else if jobs[0].Name != "YYY" {
-		t.Errorf("Incorrect Job was deleted")
+		req, err := http.NewRequest("DELETE", "http://example.com/units", nil)
+		if err != nil {
+			t.Errorf("case %d: failed creating http.Request: %v", i, err)
+			continue
+		}
+
+		enc, err := json.Marshal(tt.argument)
+		if err != nil {
+			t.Errorf("case %d: unable to JSON-encode request: %v", i, err)
+			continue
+		}
+		req.Body = ioutil.NopCloser(bytes.NewBuffer(enc))
+		req.Header.Set("Content-Type", "application/json")
+
+		resource.destroy(rw, req)
+		if rw.Code != tt.code {
+			t.Errorf("case %d: expected %d, got %d", i, tt.code, rw.Code)
+		}
+
+		jobs, err := fr.Jobs()
+		if err != nil {
+			t.Errorf("case %d: failed fetching list of Jobs after test: %v", i, err)
+			continue
+		}
+
+		remaining := make([]string, len(jobs))
+		for i, j := range jobs {
+			remaining[i] = j.Name
+		}
+		if !reflect.DeepEqual(remaining, tt.remaining) {
+			t.Errorf("case %d: expected remaining jobs %v, got %v", i, tt.remaining, remaining)
+		}
 	}
 }
 

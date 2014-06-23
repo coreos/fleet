@@ -78,6 +78,8 @@ type UnitsService struct {
 }
 
 type DeletableUnit struct {
+	FileHash string `json:"fileHash,omitempty"`
+
 	Name string `json:"name,omitempty"`
 }
 

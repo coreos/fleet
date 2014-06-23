@@ -65,6 +65,9 @@
         "name": {
           "type": "string",
           "required": true
+        },
+        "fileHash": {
+          "type": "string"
         }
       }
     },
