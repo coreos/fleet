@@ -29,7 +29,7 @@ type HTTPClient struct {
 	API
 }
 
-func (c *HTTPClient) GetActiveMachines() ([]machine.MachineState, error) {
+func (c *HTTPClient) Machines() ([]machine.MachineState, error) {
 	machines := make([]machine.MachineState, 0)
 	call := c.svc.Machines.List()
 	for call != nil {
@@ -48,19 +48,6 @@ func (c *HTTPClient) GetActiveMachines() ([]machine.MachineState, error) {
 		}
 	}
 	return machines, nil
-}
-
-func (c *HTTPClient) GetMachineState(machID string) (*machine.MachineState, error) {
-	machines, err := c.GetActiveMachines()
-	if err != nil {
-		return nil, err
-	}
-	for _, m := range machines {
-		if m.ID == machID {
-			return &m, nil
-		}
-	}
-	return nil, nil
 }
 
 func mapMachinePageToMachineStates(entities []*schema.Machine) []machine.MachineState {
@@ -85,7 +72,7 @@ func mapMachinePageToMachineStates(entities []*schema.Machine) []machine.Machine
 }
 
 func (c *HTTPClient) GetAllJobs() ([]job.Job, error) {
-	machines, err := c.GetActiveMachines()
+	machines, err := c.Machines()
 	if err != nil {
 		return nil, err
 	}
@@ -134,7 +121,7 @@ func (c *HTTPClient) GetJob(name string) (*job.Job, error) {
 		return nil, nil
 	}
 
-	machines, err := c.GetActiveMachines()
+	machines, err := c.Machines()
 	if err != nil {
 		return nil, err
 	}

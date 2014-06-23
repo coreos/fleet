@@ -168,7 +168,7 @@ func (eg *Engine) refreshCluster(force bool) {
 
 	cu := newCluster()
 
-	ms, _ := eg.registry.GetActiveMachines()
+	ms, _ := eg.registry.Machines()
 	for _, m := range ms {
 		cu.populateMachine(m.ID)
 	}
@@ -195,7 +195,7 @@ func (eg *Engine) partitionCluster(j *job.Job) ([]string, error) {
 	// TODO(uwedeportivo): for now punt on jobs with requirements and offer to all machines
 	// because agents are decoding the requirements
 	if len(j.Requirements()) > 0 {
-		machines, _ := eg.registry.GetActiveMachines()
+		machines, _ := eg.registry.Machines()
 
 		machineIDs := make([]string, len(machines))
 		for i, mach := range machines {

@@ -49,7 +49,7 @@ func (mr *machinesResource) ServeHTTP(rw http.ResponseWriter, req *http.Request)
 }
 
 func getMachinePage(reg registry.Registry, tok PageToken) (*schema.MachinePage, error) {
-	all, err := reg.GetActiveMachines()
+	all, err := reg.Machines()
 	if err != nil {
 		return nil, err
 	}

@@ -77,7 +77,7 @@ func (f *FakeRegistry) SetLatestVersion(v semver.Version) {
 	f.version = &v
 }
 
-func (f *FakeRegistry) GetActiveMachines() ([]machine.MachineState, error) {
+func (f *FakeRegistry) Machines() ([]machine.MachineState, error) {
 	f.RLock()
 	defer f.RUnlock()
 
@@ -138,18 +138,6 @@ func (f *FakeRegistry) GetJobTarget(name string) (string, error) {
 		return js.MachineState.ID, nil
 	}
 	return "", nil
-}
-
-func (f *FakeRegistry) GetMachineState(machID string) (*machine.MachineState, error) {
-	f.RLock()
-	defer f.RUnlock()
-
-	for _, ms := range f.machines {
-		if ms.ID == machID {
-			return &ms, nil
-		}
-	}
-	return nil, nil
 }
 
 func (f *FakeRegistry) Bids(jo *job.JobOffer) ([]job.JobBid, error) {

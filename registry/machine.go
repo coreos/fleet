@@ -14,8 +14,7 @@ const (
 	machinePrefix = "machines"
 )
 
-// Describe all active Machines
-func (r *EtcdRegistry) GetActiveMachines() (machines []machine.MachineState, err error) {
+func (r *EtcdRegistry) Machines() (machines []machine.MachineState, err error) {
 	req := etcd.Get{
 		Key:       path.Join(r.keyPrefix, machinePrefix),
 		Recursive: true,
@@ -31,7 +30,7 @@ func (r *EtcdRegistry) GetActiveMachines() (machines []machine.MachineState, err
 
 	for _, kv := range resp.Node.Nodes {
 		_, machID := path.Split(kv.Key)
-		mach, _ := r.GetMachineState(machID)
+		mach, _ := r.getMachineState(machID)
 		if mach != nil {
 			machines = append(machines, *mach)
 		}
@@ -40,7 +39,7 @@ func (r *EtcdRegistry) GetActiveMachines() (machines []machine.MachineState, err
 	return
 }
 
-func (r *EtcdRegistry) GetMachineState(machID string) (*machine.MachineState, error) {
+func (r *EtcdRegistry) getMachineState(machID string) (*machine.MachineState, error) {
 	req := etcd.Get{
 		Key:       path.Join(r.keyPrefix, machinePrefix, machID, "object"),
 		Recursive: true,
