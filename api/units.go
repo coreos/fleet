@@ -182,19 +182,19 @@ func (ur *unitsResource) destroy(rw http.ResponseWriter, req *http.Request, item
 func (ur *unitsResource) get(rw http.ResponseWriter, req *http.Request, item string) {
 	j, err := ur.reg.Job(item)
 	if err != nil {
-		log.Errorf("Failed fetching Unit(%s): %v", item, err)
+		log.Errorf("Failed fetching Job(%s) from Registry: %v", item, err)
 		rw.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	if j == nil {
-		rw.WriteHeader(http.StatusNotFound)
+		sendError(rw, http.StatusNotFound, errors.New("unit does not exist"))
 		return
 	}
 
 	u, err := mapJobToSchema(ur.reg, j)
 	if err != nil {
-		log.Errorf("Failed mapping Job to schema: %v", err)
+		log.Errorf("Failed mapping Job(%s) to schema: %v", item, err)
 		rw.WriteHeader(http.StatusInternalServerError)
 		return
 	}

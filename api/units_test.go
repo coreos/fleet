@@ -216,8 +216,16 @@ func TestUnitGet(t *testing.T) {
 		}
 
 		resource.get(rw, req, tt.item)
-		if tt.code != rw.Code {
-			t.Errorf("case %d: expected %d, got %d", i, tt.code, rw.Code)
+
+		if tt.code/100 == 2 {
+			if tt.code != rw.Code {
+				t.Errorf("case %d: expected %d, got %d", i, tt.code, rw.Code)
+			}
+		} else {
+			err = assertErrorResponse(rw, tt.code)
+			if err != nil {
+				t.Errorf("case %d: %v", i, err)
+			}
 		}
 	}
 }
