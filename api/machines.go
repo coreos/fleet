@@ -84,15 +84,15 @@ func extractMachinePage(all []machine.MachineState, tok PageToken) *schema.Machi
 
 func newMachinePage(items []machine.MachineState, tok *PageToken) *schema.MachinePage {
 	smp := schema.MachinePage{
-		Machines: make([]*schema.Machine, 0, len(items)),
+		Data: &schema.MachinePageData{Items: make([]*schema.Machine, 0, len(items))},
 	}
 
 	if tok != nil {
-		smp.NextPageToken = tok.Encode()
+		smp.Data.NextPageToken = tok.Encode()
 	}
 
 	for _, sm := range items {
-		smp.Machines = append(smp.Machines, mapMachineStateToSchema(&sm))
+		smp.Data.Items = append(smp.Data.Items, mapMachineStateToSchema(&sm))
 	}
 	return &smp
 }

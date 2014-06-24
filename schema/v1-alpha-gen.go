@@ -78,12 +78,20 @@ type UnitsService struct {
 }
 
 type DeletableUnit struct {
+	Data *DeletableUnitData `json:"data,omitempty"`
+}
+
+type DeletableUnitData struct {
 	FileContents string `json:"fileContents,omitempty"`
 
 	Name string `json:"name,omitempty"`
 }
 
 type DesiredUnitState struct {
+	Data *DesiredUnitStateData `json:"data,omitempty"`
+}
+
+type DesiredUnitStateData struct {
 	DesiredState string `json:"desiredState,omitempty"`
 
 	FileContents string `json:"fileContents,omitempty"`
@@ -100,7 +108,11 @@ type Machine struct {
 }
 
 type MachinePage struct {
-	Machines []*Machine `json:"machines,omitempty"`
+	Data *MachinePageData `json:"data,omitempty"`
+}
+
+type MachinePageData struct {
+	Items []*Machine `json:"items,omitempty"`
 
 	NextPageToken string `json:"nextPageToken,omitempty"`
 }
@@ -116,6 +128,10 @@ type SystemdState struct {
 }
 
 type Unit struct {
+	Data *UnitFields `json:"data,omitempty"`
+}
+
+type UnitFields struct {
 	CurrentState string `json:"currentState,omitempty"`
 
 	DesiredState string `json:"desiredState,omitempty"`
@@ -132,9 +148,13 @@ type Unit struct {
 }
 
 type UnitPage struct {
-	NextPageToken string `json:"nextPageToken,omitempty"`
+	Data *UnitPageData `json:"data,omitempty"`
+}
 
-	Units []*Unit `json:"units,omitempty"`
+type UnitPageData struct {
+	Items []*UnitFields `json:"items,omitempty"`
+
+	NextPageToken string `json:"nextPageToken,omitempty"`
 }
 
 // method id "fleet.Machine.List":

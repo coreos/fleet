@@ -33,7 +33,7 @@ GET /cats HTTP/1.1
 
 HTTP/1.1 200 OK
 
-{"cats": [{"id": "baxter"}, {"id": "charlie"}], "nextPageToken": "8fefec2c"}
+{"data": {"items": [{"id": "baxter"}, {"id": "charlie"}], "nextPageToken": "8fefec2c"}}
 ```
 
 ```
@@ -42,7 +42,7 @@ GET /cats?nextPageToken=8fefec2c HTTP/1.1
 
 HTTP/1.1 200 OK
 
-{"cats": [{"id": "michael"}, {"id": "prescott"}], "nextPageToken": "cbb06916"}
+{"data": {"items": [{"id": "michael"}, {"id": "prescott"}], "nextPageToken": "cbb06916"}}
 ```
 
 ```
@@ -51,7 +51,7 @@ GET /cats?nextPageToken=cbb06916 HTTP/1.1
 
 HTTP/1.1 200 OK
 
-{"cats": [{"id":"timothy"}]}
+{"data": {"items": [{"id":"timothy"}]}}
 ```
 
 ## Error Communication
@@ -79,9 +79,9 @@ Content-Length: 80
 ### Unit Entity
 
 - **name**: unique identifier of entity
-- **desiredState**: state the user wishes the Unit to be in (inactive, loaded, or launched)
 - **fileContents**: base64-encoded contents of the Unit's file
 - **fileHash**: SHA1 hash of the Unit's file contents
+- **desiredState**: state the user wishes the Unit to be in (inactive, loaded, or launched)
 - **currentState**: last known state of the Unit (inactive, loaded, or launched)
 - **targetMachineID**: identifier of the Machine to which this Unit is currently scheduled
 - **sytemd**:
@@ -107,7 +107,7 @@ If the fileContents field is provided in a modification request, the server will
 The base datastructure looks like this:
 
 ```
-{"desiredState": <state>, "fileContents": <encoded-contents>}
+{"data": {"desiredState": <state>, "fileContents": <encoded-contents>}}
 ```
 
 For example, launching a new unit "foo.service" could be done like so: 
@@ -116,8 +116,10 @@ For example, launching a new unit "foo.service" could be done like so:
 PUT /units/foo.service HTTP/1.1
 
 {
-  "desiredState": "launched",
-  "fileContents": "W1NlcnZpY2VdCkV4ZWNTdGFydD0vdXNyL2Jpbi9zbGVlcCAzMDAwCg=="
+  "data": {
+    "desiredState": "launched",
+    "fileContents": "W1NlcnZpY2VdCkV4ZWNTdGFydD0vdXNyL2Jpbi9zbGVlcCAzMDAwCg=="
+  }
 }
 ```
 
@@ -127,7 +129,9 @@ Unloading an existing Unit called "bar.service" could look like this:
 PUT /units/bar.service HTTP/1.1
 
 {
-  "desiredState": "inactive"
+  "data": {
+    "desiredState": "inactive"
+  }
 }
 ```
 
@@ -137,8 +141,10 @@ The expected contents of "bar.service" could also be provided to make changes sa
 PUT /units/bar.service HTTP/1.1
 
 {
-  "desiredState": "inactive",
-  "fileContents": "W1NlcnZpY2VdDQpFeGVjU3RhcnQ9L3Vzci9iaW4vc2xlZXAgMWQNCg=="
+  "data": {
+    "desiredState": "inactive",
+    "fileContents": "W1NlcnZpY2VdDQpFeGVjU3RhcnQ9L3Vzci9iaW4vc2xlZXAgMWQNCg=="
+  }
 }
 ```
 
@@ -162,7 +168,44 @@ The request must not have a body.
 
 #### Response
 
-A successful response will contain a single page of zero or more Unit entities.
+A successful response will contain a single page of zero or more Unit entities. For example:
+
+```
+{
+  "data": {
+    "items": [
+      {
+        "name":"ping.service",
+        "fileContents": "W1VuaXRdCkRlc2NyaXB0aW9uPVBJTkcKCltTZXJ2aWNlXQpFeGVjU3RhcnQ9L2Jpbi9iYXNoIC1jICJ3aGlsZSB0cnVlOyBkbyBlY2hvIFwicGluZ1wiOyBzbGVlcCAxOyBkb25lIgo=",
+        "fileHash": "d9de011694dda111458a4fc9912ad629d86ad8af",
+        "desiredState": "launched",
+        "currentState": "launched",
+        "targetMachineID": "933fbdff1bdc4be0a7b64a9b58c3189d",
+        "systemd":{
+          "activeState": "active",
+          "loadState": "loaded",
+          "machineID": "933fbdff1bdc4be0a7b64a9b58c3189d",
+          "subState": "running"
+        }
+      },
+      {
+        "name": "pong.service",
+      "fileContents": "W1VuaXRdCkRlc2NyaXB0aW9uPVBPTkcKCltTZXJ2aWNlXQpFeGVjU3RhcnQ9L2Jpbi9iYXNoIC1jICJ3aGlsZSB0cnVlOyBkbyBlY2hvIFwicG9uZ1wiOyBzbGVlcCAxOyBkb25lIgoKW1gtRmxlZXRdClgtQ29uZGl0aW9uTWFjaGluZU9mPXBpbmcuc2VydmljZQo=",
+        "fileHash":"c555fd0e58a32ef0b290f4828757cef55ee39a88",
+        "desiredState": "loaded",
+        "currentState": "loaded",
+        "targetMachineID": "933fbdff1bdc4be0a7b64a9b58c3189d",
+        "systemd":{
+          "activeState": "active",
+          "loadState": "loaded",
+          "machineID": "933fbdff1bdc4be0a7b64a9b58c3189d",
+          "subState": "running"
+        }
+      }
+    ]
+  }
+}
+```
 
 ### Fetch Unit
 
@@ -178,7 +221,25 @@ The request must not have a body.
 
 #### Response
 
-A successful response will contain a single Unit entity.
+A successful response will contain a single Unit entity. For example:
+
+```
+{
+  "data": {
+    "name":"ping.service",
+    "currentState":"launched",
+    "fileContents":"W1VuaXRdCkRlc2NyaXB0aW9uPVBJTkcKCltTZXJ2aWNlXQpFeGVjU3RhcnQ9L2Jpbi9iYXNoIC1jICJ3aGlsZSB0cnVlOyBkbyBlY2hvIFwicGluZ1wiOyBzbGVlcCAxOyBkb25lIgo=",
+    "fileHash":"d9de011694dda111458a4fc9912ad629d86ad8af",
+    "targetMachineID":"933fbdff1bdc4be0a7b64a9b58c3189d",
+    "systemd": {
+      "activeState":"active",
+      "loadState":"loaded",
+      "subState":"running",
+      "machineID":"933fbdff1bdc4be0a7b64a9b58c3189d"
+    }
+}
+```
+
 If the indicated Unit does not exist, a `404 Not Found` will be returned.
 
 ### Destroy Units
@@ -195,7 +256,7 @@ The provided request body may contain a single optional field: "fileContents".
 If the fileContents field is provided, the server will ensure the contents match the existing unit before making any changes.
 
 ```
-{"fileContents": <encoded-contents>}
+{"data": {"fileContents": <encoded-contents>}}
 ```
 
 #### Response

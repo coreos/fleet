@@ -74,8 +74,8 @@ func (ur *unitsResource) set(rw http.ResponseWriter, req *http.Request, item str
 	}
 
 	var u *unit.Unit
-	if len(dus.FileContents) > 0 {
-		u, err = decodeUnitContents(dus.FileContents)
+	if len(dus.Data.FileContents) > 0 {
+		u, err = decodeUnitContents(dus.Data.FileContents)
 		if err != nil {
 			sendError(rw, http.StatusBadRequest, fmt.Errorf("invalid fileContents: %v", err))
 			return
@@ -83,7 +83,7 @@ func (ur *unitsResource) set(rw http.ResponseWriter, req *http.Request, item str
 	}
 
 	// TODO(bcwaldon): Assert value of DesiredState is launched, loaded or inactive
-	ds := job.JobState(dus.DesiredState)
+	ds := job.JobState(dus.Data.DesiredState)
 
 	if j != nil {
 		ur.update(rw, j, ds, u)
@@ -144,8 +144,8 @@ func (ur *unitsResource) destroy(rw http.ResponseWriter, req *http.Request, item
 	}
 
 	var u *unit.Unit
-	if len(du.FileContents) > 0 {
-		u, err = decodeUnitContents(du.FileContents)
+	if len(du.Data.FileContents) > 0 {
+		u, err = decodeUnitContents(du.Data.FileContents)
 		if err != nil {
 			sendError(rw, http.StatusBadRequest, fmt.Errorf("invalid fileContents: %v", err))
 			return
@@ -199,7 +199,7 @@ func (ur *unitsResource) get(rw http.ResponseWriter, req *http.Request, item str
 		return
 	}
 
-	sendResponse(rw, http.StatusOK, *u)
+	sendResponse(rw, http.StatusOK, schema.Unit{Data: u})
 }
 
 func (ur *unitsResource) list(rw http.ResponseWriter, req *http.Request) {
@@ -263,11 +263,13 @@ func extractUnitPage(reg registry.Registry, all []job.Job, tok PageToken) (*sche
 
 func newUnitPage(reg registry.Registry, items []job.Job, tok *PageToken) (*schema.UnitPage, error) {
 	sup := schema.UnitPage{
-		Units: make([]*schema.Unit, 0, len(items)),
+		Data: &schema.UnitPageData{
+			Items: make([]*schema.UnitFields, 0, len(items)),
+		},
 	}
 
 	if tok != nil {
-		sup.NextPageToken = tok.Encode()
+		sup.Data.NextPageToken = tok.Encode()
 	}
 
 	for _, j := range items {
@@ -275,13 +277,13 @@ func newUnitPage(reg registry.Registry, items []job.Job, tok *PageToken) (*schem
 		if err != nil {
 			return nil, err
 		}
-		sup.Units = append(sup.Units, u)
+		sup.Data.Items = append(sup.Data.Items, u)
 	}
 	return &sup, nil
 }
 
-func mapJobToSchema(reg registry.Registry, j *job.Job) (*schema.Unit, error) {
-	su := schema.Unit{
+func mapJobToSchema(reg registry.Registry, j *job.Job) (*schema.UnitFields, error) {
+	su := schema.UnitFields{
 		Name:         j.Name,
 		FileHash:     j.UnitHash.String(),
 		FileContents: encodeUnitContents(&j.Unit),

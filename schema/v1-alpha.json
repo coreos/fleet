@@ -46,20 +46,24 @@
       "id": "MachinePage",
       "type": "object",
       "properties": {
-        "machines": {
-          "type": "array",
-          "required": true,
-          "items": {
-            "$ref": "Machine"
+        "data": {
+          "type": "object",
+          "properties": {
+            "items": {
+              "type": "array",
+              "items": {
+                "$ref": "Machine"
+              }
+            },
+            "nextPageToken": {
+              "type": "string"
+            }
           }
-        },
-        "nextPageToken": {
-          "type": "string"
         }
       }
     },
-    "Unit": {
-      "id": "Unit",
+    "UnitFields": {
+      "id": "UnitFields",
       "type": "object",
       "properties": {
         "name": {
@@ -100,20 +104,6 @@
         }
       }
     },
-    "DeletableUnit": {
-      "id": "DeletableUnit",
-      "type": "object",
-      "properties": {
-        "name": {
-          "type": "string",
-          "required": true
-        },
-        "fileContents": {
-          "type": "string",
-          "format": "byte"
-        }
-      }
-    },
     "SystemdState": {
       "id": "SystemdState",
       "type": "object",
@@ -136,15 +126,48 @@
       "id": "UnitPage",
       "type": "object",
       "properties": {
-        "units": {
-          "type": "array",
-          "required": true,
-          "items": {
-            "$ref": "Unit"
+        "data": {
+          "type": "object",
+          "properties": {
+            "items": {
+              "type": "array",
+              "required": true,
+              "items": {
+                "$ref": "UnitFields"
+              }
+            },
+            "nextPageToken": {
+              "type": "string"
+            }
           }
-        },
-        "nextPageToken": {
-          "type": "string"
+        }
+      }
+    },
+    "Unit": {
+      "id": "Unit",
+      "type": "object",
+      "properties": {
+        "data": {
+          "$ref": "UnitFields"
+        }
+      }
+    },
+    "DeletableUnit": {
+      "id": "DeletableUnit",
+      "type": "object",
+      "properties": {
+        "data": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "required": true
+            },
+            "fileContents": {
+              "type": "string",
+              "format": "byte"
+            }
+          }
         }
       }
     },
@@ -152,22 +175,27 @@
       "id": "DesiredUnitState",
       "type": "object",
       "properties": {
-        "name": {
-          "type": "string",
-          "required": true
-        },
-        "desiredState": {
-          "type": "string",
-          "required": true,
-          "enum": [
-            "inactive",
-            "loaded",
-            "launched"
-          ]
-        },
-        "fileContents": {
-          "type": "string",
-          "format": "byte"
+        "data": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "required": true
+            },
+            "desiredState": {
+              "type": "string",
+              "required": true,
+              "enum": [
+                "inactive",
+                "loaded",
+                "launched"
+              ]
+            },
+            "fileContents": {
+              "type": "string",
+              "format": "byte"
+            }
+          }
         }
       }
     }

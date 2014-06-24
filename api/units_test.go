@@ -71,7 +71,7 @@ func TestUnitsList(t *testing.T) {
 			t.Fatalf("Received unparseable body: %v", err)
 		}
 
-		if len(page.Units) != 2 || page.Units[0].Name != "XXX" || page.Units[1].Name != "YYY" {
+		if len(page.Data.Items) != 2 || page.Data.Items[0].Name != "XXX" || page.Data.Items[1].Name != "YYY" {
 			t.Errorf("Received incorrect UnitPage entity: %v", page)
 		}
 	}
@@ -120,32 +120,32 @@ func TestExtractUnitPage(t *testing.T) {
 			continue
 		}
 		expectCount := (tt.idxEnd - tt.idxStart + 1)
-		if len(page.Units) != expectCount {
-			t.Errorf("case %d: expected page of %d, got %d", i, expectCount, len(page.Units))
+		if len(page.Data.Items) != expectCount {
+			t.Errorf("case %d: expected page of %d, got %d", i, expectCount, len(page.Data.Items))
 			continue
 		}
 
-		first := page.Units[0].Name
+		first := page.Data.Items[0].Name
 		if first != strconv.FormatInt(int64(tt.idxStart), 10) {
 			t.Errorf("case %d: irst element in first page should have ID %d, got %d", i, tt.idxStart, first)
 		}
 
-		last := page.Units[len(page.Units)-1].Name
+		last := page.Data.Items[len(page.Data.Items)-1].Name
 		if last != strconv.FormatInt(int64(tt.idxEnd), 10) {
 			t.Errorf("case %d: first element in first page should have ID %d, got %d", i, tt.idxEnd, last)
 		}
 
-		if tt.next == nil && page.NextPageToken != "" {
+		if tt.next == nil && page.Data.NextPageToken != "" {
 			t.Errorf("case %d: did not expect NextPageToken", i)
 			continue
-		} else if page.NextPageToken == "" {
+		} else if page.Data.NextPageToken == "" {
 			if tt.next != nil {
 				t.Errorf("case %d: did not receive expected NextPageToken", i)
 			}
 			continue
 		}
 
-		next, err := decodePageToken(page.NextPageToken)
+		next, err := decodePageToken(page.Data.NextPageToken)
 		if err != nil {
 			t.Errorf("case %d: unable to parse NextPageToken: %v", i, err)
 			continue
@@ -165,7 +165,7 @@ func TestMapJobToSchema(t *testing.T) {
 
 	tests := []struct {
 		input  job.Job
-		expect schema.Unit
+		expect schema.UnitFields
 	}{
 		{
 			job.Job{
@@ -180,7 +180,7 @@ func TestMapJobToSchema(t *testing.T) {
 					MachineState: &machine.MachineState{ID: "YYY"},
 				},
 			},
-			schema.Unit{
+			schema.UnitFields{
 				Name:            "XXX",
 				CurrentState:    "loaded",
 				DesiredState:    "launched",
@@ -262,42 +262,42 @@ func TestUnitsDestroy(t *testing.T) {
 		// Unsafe deletion of an existing unit should succeed
 		{
 			init:      []job.Job{job.Job{Name: "XXX", Unit: unit.Unit{Raw: "FOO"}}},
-			arg:       schema.DeletableUnit{Name: "XXX"},
+			arg:       schema.DeletableUnit{Data: &schema.DeletableUnitData{Name: "XXX"}},
 			code:      http.StatusNoContent,
 			remaining: []string{},
 		},
 		// Safe deletion of an existing unit should succeed
 		{
 			init:      []job.Job{job.Job{Name: "XXX", Unit: unit.Unit{Raw: "FOO"}}},
-			arg:       schema.DeletableUnit{Name: "XXX", FileContents: "Rk9P"},
+			arg:       schema.DeletableUnit{Data: &schema.DeletableUnitData{Name: "XXX", FileContents: "Rk9P"}},
 			code:      http.StatusNoContent,
 			remaining: []string{},
 		},
 		// Unsafe deletion of a nonexistent unit should fail
 		{
 			init:      []job.Job{job.Job{Name: "XXX", Unit: unit.Unit{Raw: "FOO"}}},
-			arg:       schema.DeletableUnit{Name: "YYY"},
+			arg:       schema.DeletableUnit{Data: &schema.DeletableUnitData{Name: "YYY"}},
 			code:      http.StatusNotFound,
 			remaining: []string{"XXX"},
 		},
 		// Safe deletion of a nonexistent unit should fail
 		{
 			init:      []job.Job{},
-			arg:       schema.DeletableUnit{Name: "XXX", FileContents: "Rk9P"},
+			arg:       schema.DeletableUnit{Data: &schema.DeletableUnitData{Name: "XXX", FileContents: "Rk9P"}},
 			code:      http.StatusNotFound,
 			remaining: []string{},
 		},
 		// Safe deletion of a unit with the wrong contents should fail
 		{
 			init:      []job.Job{job.Job{Name: "XXX", Unit: unit.Unit{Raw: "FOO"}}},
-			arg:       schema.DeletableUnit{Name: "XXX", FileContents: "QkFS"},
+			arg:       schema.DeletableUnit{Data: &schema.DeletableUnitData{Name: "XXX", FileContents: "QkFS"}},
 			code:      http.StatusConflict,
 			remaining: []string{"XXX"},
 		},
 		// Safe deletion of a unit with the malformed contents should fail
 		{
 			init:      []job.Job{job.Job{Name: "XXX", Unit: unit.Unit{Raw: "FOO"}}},
-			arg:       schema.DeletableUnit{Name: "XXX", FileContents: "*"},
+			arg:       schema.DeletableUnit{Data: &schema.DeletableUnitData{Name: "XXX", FileContents: "*"}},
 			code:      http.StatusBadRequest,
 			remaining: []string{"XXX"},
 		},
@@ -307,7 +307,7 @@ func TestUnitsDestroy(t *testing.T) {
 		fr := registry.NewFakeRegistry()
 		fr.SetJobs(tt.init)
 
-		req, err := http.NewRequest("DELETE", fmt.Sprintf("http://example.com/units/%s", tt.arg.Name), nil)
+		req, err := http.NewRequest("DELETE", fmt.Sprintf("http://example.com/units/%s", tt.arg.Data.Name), nil)
 		if err != nil {
 			t.Errorf("case %d: failed creating http.Request: %v", i, err)
 			continue
@@ -323,7 +323,7 @@ func TestUnitsDestroy(t *testing.T) {
 
 		resource := &unitsResource{fr, "/units"}
 		rw := httptest.NewRecorder()
-		resource.destroy(rw, req, tt.arg.Name)
+		resource.destroy(rw, req, tt.arg.Data.Name)
 
 		if tt.code/100 == 2 {
 			if tt.code != rw.Code {
@@ -369,7 +369,7 @@ func TestUnitsSetDesiredState(t *testing.T) {
 		{
 			initJobs:    []job.Job{job.Job{Name: "XXX", Unit: unit.Unit{Raw: "FOO"}}},
 			initStates:  map[string]job.JobState{"XXX": "inactive"},
-			arg:         schema.DesiredUnitState{Name: "XXX", DesiredState: "launched"},
+			arg:         schema.DesiredUnitState{Data: &schema.DesiredUnitStateData{Name: "XXX", DesiredState: "launched"}},
 			code:        http.StatusNoContent,
 			finalStates: map[string]job.JobState{"XXX": "launched"},
 		},
@@ -377,14 +377,14 @@ func TestUnitsSetDesiredState(t *testing.T) {
 		{
 			initJobs:    []job.Job{},
 			initStates:  map[string]job.JobState{},
-			arg:         schema.DesiredUnitState{Name: "YYY", DesiredState: "loaded", FileContents: "cGVubnkNCg=="},
+			arg:         schema.DesiredUnitState{Data: &schema.DesiredUnitStateData{Name: "YYY", DesiredState: "loaded", FileContents: "cGVubnkNCg=="}},
 			code:        http.StatusNoContent,
 			finalStates: map[string]job.JobState{"YYY": "loaded"},
 		},
 		{
 			initJobs:    []job.Job{},
 			initStates:  map[string]job.JobState{},
-			arg:         schema.DesiredUnitState{Name: "YYY", DesiredState: "loaded", FileContents: "*"},
+			arg:         schema.DesiredUnitState{Data: &schema.DesiredUnitStateData{Name: "YYY", DesiredState: "loaded", FileContents: "*"}},
 			code:        http.StatusBadRequest,
 			finalStates: map[string]job.JobState{},
 		},
@@ -392,7 +392,7 @@ func TestUnitsSetDesiredState(t *testing.T) {
 		{
 			initJobs:    []job.Job{job.Job{Name: "XXX", Unit: unit.Unit{Raw: "FOO"}}},
 			initStates:  map[string]job.JobState{"XXX": job.JobStateInactive},
-			arg:         schema.DesiredUnitState{Name: "YYY", DesiredState: "loaded", FileContents: "*"},
+			arg:         schema.DesiredUnitState{Data: &schema.DesiredUnitStateData{Name: "YYY", DesiredState: "loaded", FileContents: "*"}},
 			code:        http.StatusBadRequest,
 			finalStates: map[string]job.JobState{"XXX": job.JobStateInactive},
 		},
@@ -400,7 +400,7 @@ func TestUnitsSetDesiredState(t *testing.T) {
 		{
 			initJobs:    []job.Job{},
 			initStates:  map[string]job.JobState{},
-			arg:         schema.DesiredUnitState{Name: "YYY", DesiredState: "loaded"},
+			arg:         schema.DesiredUnitState{Data: &schema.DesiredUnitStateData{Name: "YYY", DesiredState: "loaded"}},
 			code:        http.StatusConflict,
 			finalStates: map[string]job.JobState{},
 		},
@@ -408,7 +408,7 @@ func TestUnitsSetDesiredState(t *testing.T) {
 		{
 			initJobs:    []job.Job{job.Job{Name: "XXX", Unit: unit.Unit{Raw: "FOO"}}},
 			initStates:  map[string]job.JobState{"XXX": "inactive"},
-			arg:         schema.DesiredUnitState{Name: "XXX", DesiredState: "loaded", FileContents: "ZWxyb3kNCg=="},
+			arg:         schema.DesiredUnitState{Data: &schema.DesiredUnitStateData{Name: "XXX", DesiredState: "loaded", FileContents: "ZWxyb3kNCg=="}},
 			code:        http.StatusConflict,
 			finalStates: map[string]job.JobState{"XXX": "inactive"},
 		},
@@ -424,7 +424,7 @@ func TestUnitsSetDesiredState(t *testing.T) {
 			}
 		}
 
-		req, err := http.NewRequest("PUT", fmt.Sprintf("http://example.com/units/%s", tt.arg.Name), nil)
+		req, err := http.NewRequest("PUT", fmt.Sprintf("http://example.com/units/%s", tt.arg.Data.Name), nil)
 		if err != nil {
 			t.Errorf("case %d: failed creating http.Request: %v", i, err)
 			continue
@@ -440,7 +440,7 @@ func TestUnitsSetDesiredState(t *testing.T) {
 
 		resource := &unitsResource{fr, "/units"}
 		rw := httptest.NewRecorder()
-		resource.set(rw, req, tt.arg.Name)
+		resource.set(rw, req, tt.arg.Data.Name)
 
 		if tt.code/100 == 2 {
 			if tt.code != rw.Code {
