@@ -347,6 +347,21 @@ func TestUnitsSetDesiredState(t *testing.T) {
 			code:        http.StatusNoContent,
 			finalStates: map[string]job.JobState{"YYY": "loaded"},
 		},
+		{
+			initJobs:    []job.Job{},
+			initStates:  map[string]job.JobState{},
+			arg:         schema.DesiredUnitState{Name: "YYY", DesiredState: "loaded", FileContents: "*"},
+			code:        http.StatusBadRequest,
+			finalStates: map[string]job.JobState{},
+		},
+		// Modifying a Job with garbage fileContents should fail
+		{
+			initJobs:    []job.Job{job.Job{Name: "XXX", Unit: unit.Unit{Raw: "FOO"}}},
+			initStates:  map[string]job.JobState{"XXX": job.JobStateInactive},
+			arg:         schema.DesiredUnitState{Name: "YYY", DesiredState: "loaded", FileContents: "*"},
+			code:        http.StatusBadRequest,
+			finalStates: map[string]job.JobState{"XXX": job.JobStateInactive},
+		},
 		// Modifying a nonexistent Job should fail
 		{
 			initJobs:    []job.Job{},
@@ -355,13 +370,13 @@ func TestUnitsSetDesiredState(t *testing.T) {
 			code:        http.StatusConflict,
 			finalStates: map[string]job.JobState{},
 		},
-		// Modifying a Job with the incorrect FileContents should fail
+		// Modifying a Job with the incorrect fileContents should fail
 		{
 			initJobs:    []job.Job{job.Job{Name: "XXX", Unit: unit.Unit{Raw: "FOO"}}},
 			initStates:  map[string]job.JobState{"XXX": "inactive"},
 			arg:         schema.DesiredUnitState{Name: "XXX", DesiredState: "loaded", FileContents: "ZWxyb3kNCg=="},
 			code:        http.StatusConflict,
-			finalStates: map[string]job.JobState{},
+			finalStates: map[string]job.JobState{"XXX": "inactive"},
 		},
 	}
 
@@ -392,8 +407,16 @@ func TestUnitsSetDesiredState(t *testing.T) {
 		resource := &unitsResource{fr, "/units"}
 		rw := httptest.NewRecorder()
 		resource.set(rw, req, tt.arg.Name)
-		if tt.code != rw.Code {
-			t.Errorf("case %d: expected %d, got %d", i, tt.code, rw.Code)
+
+		if tt.code/100 == 2 {
+			if tt.code != rw.Code {
+				t.Errorf("case %d: expected %d, got %d", i, tt.code, rw.Code)
+			}
+		} else {
+			err = assertErrorResponse(rw, tt.code)
+			if err != nil {
+				t.Errorf("case %d: %v", i, err)
+			}
 		}
 
 		for name, expect := range tt.finalStates {
