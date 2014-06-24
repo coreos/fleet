@@ -53,6 +53,7 @@ HTTP/1.1 200 OK
 
 {"cats": [{"id":"timothy"}]}
 ```
+
 ## Units
 
 ### Unit Entity
@@ -70,7 +71,7 @@ HTTP/1.1 200 OK
   - **machineID**: identifier of the Machine that published this systemd state
 
 
-### Create & Modify Units
+### Create or Modify Unit
 
 ```
 PUT /units/<name> HTTP/1.1
@@ -78,27 +79,54 @@ PUT /units/<name> HTTP/1.1
 
 #### Request
 
-A request is comprised of a single partiall Unit entity.
-If creating a new Unit, supply the name, desiredState and fileContents fields.
-To modify an existing Unit, provide just the name and desiredState.
-The base datastructure looks like so:
+A request is comprised of a partial Unit entity.
+If creating a new Unit, supply the desiredState and fileContents fields.
+To modify an existing Unit, only the desiredState field is required.
+If the fileContents field is provided in a modification request, the server will ensure the contents match the existing unit before making any changes.
+
+The base datastructure looks like this:
 
 ```
 {"desiredState": <state>, "fileContents": <encoded-contents>}
 ```
 
-For example, launching a new unit "foo.service" could look like this:
+For example, launching a new unit "foo.service" could be done like so: 
 
 ```
+PUT /units/foo.service HTTP/1.1
+
 {
   "desiredState": "launched",
   "fileContents": "W1NlcnZpY2VdCkV4ZWNTdGFydD0vdXNyL2Jpbi9zbGVlcCAzMDAwCg=="
 }
 ```
 
+Unloading an existing Unit called "bar.service" could look like this:
+
+```
+PUT /units/bar.service HTTP/1.1
+
+{
+  "desiredState": "inactive"
+}
+```
+
+The expected contents of "bar.service" could also be provided to make changes safely:
+
+```
+PUT /units/bar.service HTTP/1.1
+
+{
+  "desiredState": "inactive",
+  "fileContents": "W1NlcnZpY2VdDQpFeGVjU3RhcnQ9L3Vzci9iaW4vc2xlZXAgMWQNCg=="
+}
+```
+
 #### Response
 
 A successful response contains no body.
+Conflicts between fileContents values are indicated with a `409 Conflict` response.
+Attempting to create an entity without fileContents will also return a `409 Conflict` response.
 
 ### List Units
 

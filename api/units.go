@@ -71,23 +71,57 @@ func (ur *unitsResource) set(rw http.ResponseWriter, req *http.Request, item str
 		return
 	}
 
-	if j == nil {
+	if j != nil {
+		ur.update(rw, j, &dus)
+	} else if len(dus.FileContents) > 0 {
+		ur.create(rw, item, &dus)
+	} else {
+		// User referenced a nonexistent Job, but did not provide contents that can be used to create it
+		rw.WriteHeader(http.StatusConflict)
+	}
+}
+
+func (ur *unitsResource) create(rw http.ResponseWriter, item string, dus *schema.DesiredUnitState) {
+	u, err := decodeUnitContents(dus.FileContents)
+	if err != nil {
+		rw.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	j := job.NewJob(item, *u)
+
+	if err = ur.reg.CreateJob(j); err != nil {
+		log.Errorf("Failed creating Job(%s) in Registry: %v", j.Name, err)
+		rw.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	if err := ur.reg.SetJobTargetState(j.Name, job.JobState(dus.DesiredState)); err != nil {
+		log.Errorf("Failed setting target state of Job(%s): %v", j.Name, err)
+		rw.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	rw.WriteHeader(http.StatusNoContent)
+}
+
+func (ur *unitsResource) update(rw http.ResponseWriter, j *job.Job, dus *schema.DesiredUnitState) {
+	// Assert that the Job's Unit matches the Unit in the request, if provided
+	if len(dus.FileContents) > 0 {
 		u, err := decodeUnitContents(dus.FileContents)
 		if err != nil {
 			rw.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
-		j = job.NewJob(item, *u)
-
-		if err = ur.reg.CreateJob(j); err != nil {
-			log.Errorf("Failed creating Job(%s) in Registry: %v", j.Name, err)
-			rw.WriteHeader(http.StatusInternalServerError)
+		if u.Hash() != j.Unit.Hash() {
+			rw.WriteHeader(http.StatusConflict)
 			return
 		}
 	}
 
-	if err := ur.reg.SetJobTargetState(j.Name, job.JobState(dus.DesiredState)); err != nil {
+	err := ur.reg.SetJobTargetState(j.Name, job.JobState(dus.DesiredState))
+	if err != nil {
 		log.Errorf("Failed setting target state of Job(%s): %v", j.Name, err)
 		rw.WriteHeader(http.StatusInternalServerError)
 		return
