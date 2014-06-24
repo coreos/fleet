@@ -6,7 +6,7 @@ Deploying `fleet` on CoreOS is even simpler: just run `systemctl start fleet`. T
 
 ### etcd
 
-Each `fleet` daemon must be configured to talk to the same [etcd cluster][etcd]. By default, the `fleet` daemon will connect to 'http://127.0.0.1:4001. Refer to the [configuration documentation][config] for customization help.
+Each `fleet` daemon must be configured to talk to the same [etcd cluster][etcd]. By default, the `fleet` daemon will connect to http://127.0.0.1:4001. Refer to the [configuration documentation][config] for customization help.
 
 `fleet` requires etcd be of version 0.3.0+.
 
