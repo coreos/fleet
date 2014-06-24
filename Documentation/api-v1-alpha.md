@@ -53,6 +53,7 @@ HTTP/1.1 200 OK
 
 {"cats": [{"id":"timothy"}]}
 ```
+
 ## Units
 
 ### Unit Entity
@@ -70,35 +71,62 @@ HTTP/1.1 200 OK
   - **machineID**: identifier of the Machine that published this systemd state
 
 
-### Create & Modify Units
+### Create or Modify Unit
 
 ```
-POST /units HTTP/1.1
+PUT /units/<name> HTTP/1.1
 ```
 
 #### Request
 
-A request is comprised of one or more partial Unit objects. If creating a new Unit, supply the name, desiredState and fileContents fields. To modify an existing Unit, provide just the name and desiredState. The base datastructure looks like so:
+A request is comprised of a partial Unit entity.
+If creating a new Unit, supply the desiredState and fileContents fields.
+To modify an existing Unit, only the desiredState field is required.
+If the fileContents field is provided in a modification request, the server will ensure the contents match the existing unit before making any changes.
+
+The base datastructure looks like this:
 
 ```
-{"units": [PartialUnit, ... ]}
+{"desiredState": <state>, "fileContents": <encoded-contents>}
 ```
 
-For example, launching a new unit "foo.service" while unloading "bar.service" could look like this:
+For example, launching a new unit "foo.service" could be done like so: 
 
 ```
+PUT /units/foo.service HTTP/1.1
+
 {
-  "units": [
-    {"name": "foo.service", "desiredState": "launched",
-     "fileContents": "W1NlcnZpY2VdCkV4ZWNTdGFydD0vdXNyL2Jpbi9zbGVlcCAzMDAwCg=="},
-    {"name": "bar.service", "desiredState": "inactive"}
-  ]
+  "desiredState": "launched",
+  "fileContents": "W1NlcnZpY2VdCkV4ZWNTdGFydD0vdXNyL2Jpbi9zbGVlcCAzMDAwCg=="
+}
+```
+
+Unloading an existing Unit called "bar.service" could look like this:
+
+```
+PUT /units/bar.service HTTP/1.1
+
+{
+  "desiredState": "inactive"
+}
+```
+
+The expected contents of "bar.service" could also be provided to make changes safely:
+
+```
+PUT /units/bar.service HTTP/1.1
+
+{
+  "desiredState": "inactive",
+  "fileContents": "W1NlcnZpY2VdDQpFeGVjU3RhcnQ9L3Vzci9iaW4vc2xlZXAgMWQNCg=="
 }
 ```
 
 #### Response
 
 A successful response contains no body.
+Conflicts between fileContents values are indicated with a `409 Conflict` response.
+Attempting to create an entity without fileContents will also return a `409 Conflict` response.
 
 ### List Units
 
@@ -135,24 +163,26 @@ If the indicated Unit does not exist, a `404 Not Found` will be returned.
 
 ### Destroy Units
 
-Destroy one or more existing Unit entities.
+Destroy an existing Unit entity.
 
 #### Request
 
 ```
-DELETE /units HTTP/1.1
+DELETE /units/<name> HTTP/1.1
 ```
 
-Indicate which Units should be destroyed in the request body like so:
+The provided request body may contain a single optional field: "fileContents".
+If the fileContents field is provided, the server will ensure the contents match the existing unit before making any changes.
 
 ```
-{"units": [{"name": <name>}, ... ]}
+{"fileContents": <encoded-contents>}
 ```
 
 #### Response
 
 A successful response will not contain a body or any additional headers.
-If any Units entities do not exist, a `400 Bad Request` will be returned.
+If the indicated Unit does not exist, a `404 Not Found` will be returned.
+Conflicts between fileContents values are indicated with a `409 Conflict` response.
 
 ## Machines
 
