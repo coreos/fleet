@@ -202,7 +202,7 @@ func (ur *unitsResource) get(rw http.ResponseWriter, req *http.Request, item str
 	u := mapJobToSchema(j)
 	u.TargetMachineID = tgt
 
-	sendResponse(rw, *u)
+	sendResponse(rw, http.StatusOK, *u)
 }
 
 func (ur *unitsResource) list(rw http.ResponseWriter, req *http.Request) {
@@ -224,7 +224,7 @@ func (ur *unitsResource) list(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	sendResponse(rw, page)
+	sendResponse(rw, http.StatusOK, page)
 }
 
 func getUnitPage(reg registry.Registry, tok PageToken) (*schema.UnitPage, error) {

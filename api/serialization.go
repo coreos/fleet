@@ -30,7 +30,7 @@ func validateContentType(req *http.Request) error {
 
 // sendResponse attempts to marshal an arbitrary thing to JSON then write
 // it to the http.ResponseWriter
-func sendResponse(rw http.ResponseWriter, resp interface{}) {
+func sendResponse(rw http.ResponseWriter, code int, resp interface{}) {
 	enc, err := json.Marshal(resp)
 	if err != nil {
 		log.Errorf("Failed JSON-encoding HTTP response: %v", err)
@@ -39,6 +39,7 @@ func sendResponse(rw http.ResponseWriter, resp interface{}) {
 	}
 
 	rw.Header().Set("Content-Type", "application/json")
+	rw.WriteHeader(code)
 
 	_, err = rw.Write(enc)
 	if err != nil {
@@ -54,6 +55,5 @@ type errorResponse struct {
 // the object into the provided http.ResponseWriter
 func sendError(rw http.ResponseWriter, code int, err error) {
 	resp := errorResponse{Error: &googleapi.Error{Code: code, Message: err.Error()}}
-	rw.WriteHeader(code)
-	sendResponse(rw, resp)
+	sendResponse(rw, code, resp)
 }
