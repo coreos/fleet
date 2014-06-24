@@ -131,7 +131,7 @@ func (ur *unitsResource) update(rw http.ResponseWriter, j *job.Job, ds job.JobSt
 
 func (ur *unitsResource) destroy(rw http.ResponseWriter, req *http.Request, item string) {
 	if validateContentType(req) != nil {
-		rw.WriteHeader(http.StatusNotAcceptable)
+		sendError(rw, http.StatusNotAcceptable, errors.New("application/json is only supported Content-Type"))
 		return
 	}
 
@@ -139,7 +139,7 @@ func (ur *unitsResource) destroy(rw http.ResponseWriter, req *http.Request, item
 	dec := json.NewDecoder(req.Body)
 	err := dec.Decode(&du)
 	if err != nil {
-		rw.WriteHeader(http.StatusBadRequest)
+		sendError(rw, http.StatusBadRequest, fmt.Errorf("unable to decode body: %v", err))
 		return
 	}
 
@@ -147,7 +147,7 @@ func (ur *unitsResource) destroy(rw http.ResponseWriter, req *http.Request, item
 	if len(du.FileContents) > 0 {
 		u, err = decodeUnitContents(du.FileContents)
 		if err != nil {
-			rw.WriteHeader(http.StatusBadRequest)
+			sendError(rw, http.StatusBadRequest, fmt.Errorf("invalid fileContents: %v", err))
 			return
 		}
 	}
@@ -160,12 +160,12 @@ func (ur *unitsResource) destroy(rw http.ResponseWriter, req *http.Request, item
 	}
 
 	if j == nil {
-		rw.WriteHeader(http.StatusNotFound)
+		sendError(rw, http.StatusNotFound, errors.New("unit does not exist"))
 		return
 	}
 
 	if u != nil && u.Hash() != j.Unit.Hash() {
-		rw.WriteHeader(http.StatusConflict)
+		sendError(rw, http.StatusConflict, errors.New("hash of provided fileContents does not match that of existing unit"))
 		return
 	}
 

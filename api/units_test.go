@@ -298,8 +298,16 @@ func TestUnitsDestroy(t *testing.T) {
 		resource := &unitsResource{fr, "/units"}
 		rw := httptest.NewRecorder()
 		resource.destroy(rw, req, tt.arg.Name)
-		if tt.code != rw.Code {
-			t.Errorf("case %d: expected %d, got %d", i, tt.code, rw.Code)
+
+		if tt.code/100 == 2 {
+			if tt.code != rw.Code {
+				t.Errorf("case %d: expected %d, got %d", i, tt.code, rw.Code)
+			}
+		} else {
+			err = assertErrorResponse(rw, tt.code)
+			if err != nil {
+				t.Errorf("case %d: %v", i, err)
+			}
 		}
 
 		jobs, err := fr.Jobs()
