@@ -1,6 +1,7 @@
 package api
 
 import (
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -42,7 +43,6 @@ func TestSendResponseMarshalSuccess(t *testing.T) {
 	if body != expect {
 		t.Errorf("Expected body %q, got %q", expect, body)
 	}
-
 }
 
 func TestSendResponseMarshalFailure(t *testing.T) {
@@ -57,5 +57,20 @@ func TestSendResponseMarshalFailure(t *testing.T) {
 
 	if rw.Body.Len() != 0 {
 		t.Errorf("Expected empty response body")
+	}
+}
+
+func TestSendError(t *testing.T) {
+	rw := httptest.NewRecorder()
+	sendError(rw, http.StatusBadRequest, errors.New("sentinel"))
+
+	if rw.Code != http.StatusBadRequest {
+		t.Errorf("Expected 400, got %d", rw.Code)
+	}
+
+	body := rw.Body.String()
+	expect := `{"error":{"code":400,"message":"sentinel","Body":""}}`
+	if body != expect {
+		t.Errorf("Expected body %q, got %q", expect, body)
 	}
 }

@@ -29,7 +29,7 @@ func (mr *machinesResource) ServeHTTP(rw http.ResponseWriter, req *http.Request)
 
 	token, err := findNextPageToken(req.URL)
 	if err != nil {
-		rw.WriteHeader(http.StatusBadRequest)
+		sendError(rw, http.StatusBadRequest, err)
 		return
 	}
 

@@ -69,12 +69,10 @@ func TestUnitsListBadNextPageToken(t *testing.T) {
 	}
 
 	resource.list(rw, req)
-	if rw.Code != http.StatusBadRequest {
-		t.Errorf("Expected 400, got %d", rw.Code)
-	}
 
-	if rw.Body.Len() != 0 {
-		t.Error("Received non-empty response body")
+	err = assertErrorResponse(rw, http.StatusBadRequest)
+	if err != nil {
+		t.Error(err.Error())
 	}
 }
 

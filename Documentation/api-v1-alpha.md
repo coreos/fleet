@@ -7,7 +7,7 @@ The version of the API will transition from "v1-alpha" to "v1" when it has been 
 ## Capability Discovery
 
 The v1 fleet API is described by a [discovery document][disco].
-This document is available in the [fleet source][schema]:
+This document is available in the [fleet source][schema].
 
 [disco]: https://developers.google.com/discovery/v1/reference/apis
 [schema]: ../schema/v1-alpha.json
@@ -52,6 +52,26 @@ GET /cats?nextPageToken=cbb06916 HTTP/1.1
 HTTP/1.1 200 OK
 
 {"cats": [{"id":"timothy"}]}
+```
+
+## Error Communication
+
+400- and 500-level API responses may return JSON-encoded error entities.
+The response will have an `application/json` Content-Type header.
+An error entity has the following fields:
+
+- **error**
+  - **code**: The HTTP status code of the response
+  - **message**: A human-readable error message explaining the failure
+
+For example, if an invalid value is passed for a `nextPageToken`, the following HTTP response could be sent:
+
+```
+HTTP/1.1 400 Bad Request
+Content-Type: application/json
+Content-Length: 80
+
+{"error:{"code":400,"message":"invalid value of nextPageToken query parameter"}}
 ```
 
 ## Units

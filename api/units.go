@@ -208,7 +208,7 @@ func (ur *unitsResource) get(rw http.ResponseWriter, req *http.Request, item str
 func (ur *unitsResource) list(rw http.ResponseWriter, req *http.Request) {
 	token, err := findNextPageToken(req.URL)
 	if err != nil {
-		rw.WriteHeader(http.StatusBadRequest)
+		sendError(rw, http.StatusBadRequest, err)
 		return
 	}
 

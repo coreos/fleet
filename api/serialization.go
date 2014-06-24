@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/coreos/fleet/third_party/code.google.com/p/google-api-go-client/googleapi"
 	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
 )
 
@@ -43,4 +44,16 @@ func sendResponse(rw http.ResponseWriter, resp interface{}) {
 	if err != nil {
 		log.Errorf("Failed sending HTTP response body: %v", err)
 	}
+}
+
+type errorResponse struct {
+	Error *googleapi.Error `json:"error"`
+}
+
+// sendError builds a googleapi.Error entity from the given arguments, serializing
+// the object into the provided http.ResponseWriter
+func sendError(rw http.ResponseWriter, code int, err error) {
+	resp := errorResponse{Error: &googleapi.Error{Code: code, Message: err.Error()}}
+	rw.WriteHeader(code)
+	sendResponse(rw, resp)
 }
