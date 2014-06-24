@@ -54,7 +54,9 @@ Stopping a Job is a destructive action - no metadata is preserved. The Job's Uni
 
 Both Jobs and Machines have dynamic state which is published both for the user and cluster to consume.
 
-A UnitState object represents the state of a payload as reported by systemd on a given Machine. Only the Machine running an actual Job will publish a corresponding UnitState object.
+A JobState object represents the state of a Job in the fleet engine. A UnitState object represents the state of a payload as reported by systemd on a given Machine. Only the Machine running an actual Job will publish a corresponding UnitState object.
+
+For more information on Job and Unit states, see the [states documentation](states.md).
 
 A MachineState object represents the state of a host in the cluster at the time the object was generated. MachineState objects are published on an interval with a TTL, keeping the external view of a cluster relatively accurate at any given time.
 
