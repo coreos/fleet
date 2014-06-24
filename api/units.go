@@ -97,9 +97,48 @@ func (ur *unitsResource) set(rw http.ResponseWriter, req *http.Request, item str
 }
 
 func (ur *unitsResource) destroy(rw http.ResponseWriter, req *http.Request, item string) {
-	err := ur.reg.DestroyJob(item)
+	if validateContentType(req) != nil {
+		rw.WriteHeader(http.StatusNotAcceptable)
+		return
+	}
+
+	var du schema.DeletableUnit
+	dec := json.NewDecoder(req.Body)
+	err := dec.Decode(&du)
 	if err != nil {
-		//TODO(bcwaldon): Which error is correct here?
+		rw.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	var u *unit.Unit
+	if len(du.FileContents) > 0 {
+		u, err = decodeUnitContents(du.FileContents)
+		if err != nil {
+			rw.WriteHeader(http.StatusBadRequest)
+			return
+		}
+	}
+
+	j, err := ur.reg.Job(item)
+	if err != nil {
+		log.Errorf("Failed fetching Job(%s): %v", item, err)
+		rw.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	if j == nil {
+		rw.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	if u != nil && u.Hash() != j.Unit.Hash() {
+		rw.WriteHeader(http.StatusConflict)
+		return
+	}
+
+	err = ur.reg.DestroyJob(item)
+	if err != nil {
+		log.Errorf("Failed destroying Job(%s): %v", item, err)
 		rw.WriteHeader(http.StatusInternalServerError)
 		return
 	}

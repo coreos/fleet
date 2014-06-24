@@ -100,6 +100,20 @@
         }
       }
     },
+    "DeletableUnit": {
+      "id": "DeletableUnit",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "required": true
+        },
+        "fileContents": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
     "SystemdState": {
       "id": "SystemdState",
       "type": "object",
@@ -228,7 +242,10 @@
           },
           "parameterOrder": [
             "name"
-          ]
+          ],
+          "request": {
+            "$ref": "DeletableUnit"
+          }
         },
         "Set": {
           "id": "fleet.Unit.Set",

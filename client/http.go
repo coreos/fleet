@@ -200,7 +200,10 @@ func mapUnitToJob(entity *schema.Unit, mm map[string]*machine.MachineState) (*jo
 }
 
 func (c *HTTPClient) DestroyJob(name string) error {
-	return c.svc.Units.Delete(name).Do()
+	req := schema.DeletableUnit{
+		Name: name,
+	}
+	return c.svc.Units.Delete(name, &req).Do()
 }
 
 func (c *HTTPClient) CreateJob(j *job.Job) error {

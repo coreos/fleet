@@ -213,17 +213,53 @@ func TestUnitsDestroy(t *testing.T) {
 		// initial state of registry
 		init []job.Job
 		// which Job to attempt to delete
-		arg string
+		arg schema.DeletableUnit
 		// expected HTTP status code
 		code int
 		// expected state of registry after deletion attempt
 		remaining []string
 	}{
+		// Unsafe deletion of an existing unit should succeed
 		{
 			init:      []job.Job{job.Job{Name: "XXX", Unit: unit.Unit{Raw: "FOO"}}},
-			arg:       "XXX",
+			arg:       schema.DeletableUnit{Name: "XXX"},
 			code:      http.StatusNoContent,
 			remaining: []string{},
+		},
+		// Safe deletion of an existing unit should succeed
+		{
+			init:      []job.Job{job.Job{Name: "XXX", Unit: unit.Unit{Raw: "FOO"}}},
+			arg:       schema.DeletableUnit{Name: "XXX", FileContents: "Rk9P"},
+			code:      http.StatusNoContent,
+			remaining: []string{},
+		},
+		// Unsafe deletion of a nonexistent unit should fail
+		{
+			init:      []job.Job{job.Job{Name: "XXX", Unit: unit.Unit{Raw: "FOO"}}},
+			arg:       schema.DeletableUnit{Name: "YYY"},
+			code:      http.StatusNotFound,
+			remaining: []string{"XXX"},
+		},
+		// Safe deletion of a nonexistent unit should fail
+		{
+			init:      []job.Job{},
+			arg:       schema.DeletableUnit{Name: "XXX", FileContents: "Rk9P"},
+			code:      http.StatusNotFound,
+			remaining: []string{},
+		},
+		// Safe deletion of a unit with the wrong contents should fail
+		{
+			init:      []job.Job{job.Job{Name: "XXX", Unit: unit.Unit{Raw: "FOO"}}},
+			arg:       schema.DeletableUnit{Name: "XXX", FileContents: "QkFS"},
+			code:      http.StatusConflict,
+			remaining: []string{"XXX"},
+		},
+		// Safe deletion of a unit with the malformed contents should fail
+		{
+			init:      []job.Job{job.Job{Name: "XXX", Unit: unit.Unit{Raw: "FOO"}}},
+			arg:       schema.DeletableUnit{Name: "XXX", FileContents: "*"},
+			code:      http.StatusBadRequest,
+			remaining: []string{"XXX"},
 		},
 	}
 
@@ -231,15 +267,23 @@ func TestUnitsDestroy(t *testing.T) {
 		fr := registry.NewFakeRegistry()
 		fr.SetJobs(tt.init)
 
-		req, err := http.NewRequest("DELETE", fmt.Sprintf("http://example.com/units/%s", tt.arg), nil)
+		req, err := http.NewRequest("DELETE", fmt.Sprintf("http://example.com/units/%s", tt.arg.Name), nil)
 		if err != nil {
 			t.Errorf("case %d: failed creating http.Request: %v", i, err)
 			continue
 		}
 
+		enc, err := json.Marshal(tt.arg)
+		if err != nil {
+			t.Errorf("case %d: unable to JSON-encode request: %v", i, err)
+			continue
+		}
+		req.Body = ioutil.NopCloser(bytes.NewBuffer(enc))
+		req.Header.Set("Content-Type", "application/json")
+
 		resource := &unitsResource{fr, "/units"}
 		rw := httptest.NewRecorder()
-		resource.destroy(rw, req, tt.arg)
+		resource.destroy(rw, req, tt.arg.Name)
 		if tt.code != rw.Code {
 			t.Errorf("case %d: expected %d, got %d", i, tt.code, rw.Code)
 		}
