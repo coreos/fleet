@@ -70,7 +70,7 @@ func TestSendError(t *testing.T) {
 	}
 
 	body := rw.Body.String()
-	expect := `{"error":{"code":400,"message":"sentinel","Body":""}}`
+	expect := `{"error":{"code":400,"message":"sentinel"}}`
 	if body != expect {
 		t.Errorf("Expected body %q, got %q", expect, body)
 	}
@@ -87,7 +87,7 @@ func TestSendNilError(t *testing.T) {
 	sendError(rw, http.StatusBadRequest, nil)
 
 	body := rw.Body.String()
-	expect := `{"error":{"code":400,"message":"","Body":""}}`
+	expect := `{"error":{"code":400,"message":""}}`
 	if body != expect {
 		t.Errorf("Expected body %q, got %q", expect, body)
 	}
