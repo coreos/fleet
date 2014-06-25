@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"net/http"
 	"path"
 
@@ -23,7 +24,7 @@ type machinesResource struct {
 
 func (mr *machinesResource) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	if req.Method != "GET" {
-		rw.WriteHeader(http.StatusMethodNotAllowed)
+		sendError(rw, http.StatusBadRequest, fmt.Errorf("only HTTP GET supported against this resource"))
 		return
 	}
 
@@ -41,7 +42,7 @@ func (mr *machinesResource) ServeHTTP(rw http.ResponseWriter, req *http.Request)
 	page, err := getMachinePage(mr.reg, *token)
 	if err != nil {
 		log.Error("Failed fetching page of Machines: %v", err)
-		rw.WriteHeader(http.StatusInternalServerError)
+		sendError(rw, http.StatusInternalServerError, nil)
 		return
 	}
 

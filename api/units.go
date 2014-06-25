@@ -3,6 +3,8 @@ package api
 import (
 	"encoding/base64"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"net/http"
 	"path"
 
@@ -32,7 +34,7 @@ func (ur *unitsResource) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		case "GET":
 			ur.list(rw, req)
 		default:
-			rw.WriteHeader(http.StatusMethodNotAllowed)
+			sendError(rw, http.StatusMethodNotAllowed, errors.New("only GET supported against this resource"))
 		}
 	} else if item, ok := isItemPath(ur.basePath, req.URL.Path); ok {
 		switch req.Method {
@@ -43,16 +45,16 @@ func (ur *unitsResource) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		case "PUT":
 			ur.set(rw, req, item)
 		default:
-			rw.WriteHeader(http.StatusMethodNotAllowed)
+			sendError(rw, http.StatusMethodNotAllowed, errors.New("only GET, PUT and DELETE supported against this resource"))
 		}
 	} else {
-		rw.WriteHeader(http.StatusNotFound)
+		sendError(rw, http.StatusNotFound, nil)
 	}
 }
 
 func (ur *unitsResource) set(rw http.ResponseWriter, req *http.Request, item string) {
 	if validateContentType(req) != nil {
-		rw.WriteHeader(http.StatusNotAcceptable)
+		sendError(rw, http.StatusNotAcceptable, errors.New("application/json is only supported Content-Type"))
 		return
 	}
 
@@ -60,70 +62,67 @@ func (ur *unitsResource) set(rw http.ResponseWriter, req *http.Request, item str
 	dec := json.NewDecoder(req.Body)
 	err := dec.Decode(&dus)
 	if err != nil {
-		rw.WriteHeader(http.StatusBadRequest)
+		sendError(rw, http.StatusBadRequest, fmt.Errorf("unable to decode body: %v", err))
 		return
 	}
 
 	j, err := ur.reg.Job(item)
 	if err != nil {
 		log.Errorf("Failed fetching Job(%s) from Registry: %v", item, err)
-		rw.WriteHeader(http.StatusInternalServerError)
+		sendError(rw, http.StatusInternalServerError, nil)
 		return
 	}
 
+	var u *unit.Unit
+	if len(dus.FileContents) > 0 {
+		u, err = decodeUnitContents(dus.FileContents)
+		if err != nil {
+			sendError(rw, http.StatusBadRequest, fmt.Errorf("invalid fileContents: %v", err))
+			return
+		}
+	}
+
+	// TODO(bcwaldon): Assert value of DesiredState is launched, loaded or inactive
+	ds := job.JobState(dus.DesiredState)
+
 	if j != nil {
-		ur.update(rw, j, &dus)
-	} else if len(dus.FileContents) > 0 {
-		ur.create(rw, item, &dus)
+		ur.update(rw, j, ds, u)
+	} else if u != nil {
+		ur.create(rw, item, ds, u)
 	} else {
-		// User referenced a nonexistent Job, but did not provide contents that can be used to create it
-		rw.WriteHeader(http.StatusConflict)
+		sendError(rw, http.StatusConflict, errors.New("unit does not exist and no fileContents provided"))
 	}
 }
 
-func (ur *unitsResource) create(rw http.ResponseWriter, item string, dus *schema.DesiredUnitState) {
-	u, err := decodeUnitContents(dus.FileContents)
-	if err != nil {
-		rw.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
+func (ur *unitsResource) create(rw http.ResponseWriter, item string, ds job.JobState, u *unit.Unit) {
 	j := job.NewJob(item, *u)
 
-	if err = ur.reg.CreateJob(j); err != nil {
+	if err := ur.reg.CreateJob(j); err != nil {
 		log.Errorf("Failed creating Job(%s) in Registry: %v", j.Name, err)
-		rw.WriteHeader(http.StatusInternalServerError)
+		sendError(rw, http.StatusInternalServerError, nil)
 		return
 	}
 
-	if err := ur.reg.SetJobTargetState(j.Name, job.JobState(dus.DesiredState)); err != nil {
+	if err := ur.reg.SetJobTargetState(j.Name, ds); err != nil {
 		log.Errorf("Failed setting target state of Job(%s): %v", j.Name, err)
-		rw.WriteHeader(http.StatusInternalServerError)
+		sendError(rw, http.StatusInternalServerError, nil)
 		return
 	}
 
 	rw.WriteHeader(http.StatusNoContent)
 }
 
-func (ur *unitsResource) update(rw http.ResponseWriter, j *job.Job, dus *schema.DesiredUnitState) {
+func (ur *unitsResource) update(rw http.ResponseWriter, j *job.Job, ds job.JobState, cmp *unit.Unit) {
 	// Assert that the Job's Unit matches the Unit in the request, if provided
-	if len(dus.FileContents) > 0 {
-		u, err := decodeUnitContents(dus.FileContents)
-		if err != nil {
-			rw.WriteHeader(http.StatusBadRequest)
-			return
-		}
-
-		if u.Hash() != j.Unit.Hash() {
-			rw.WriteHeader(http.StatusConflict)
-			return
-		}
+	if cmp != nil && cmp.Hash() != j.Unit.Hash() {
+		sendError(rw, http.StatusConflict, errors.New("hash of provided fileContents does not match that of existing unit"))
+		return
 	}
 
-	err := ur.reg.SetJobTargetState(j.Name, job.JobState(dus.DesiredState))
+	err := ur.reg.SetJobTargetState(j.Name, ds)
 	if err != nil {
 		log.Errorf("Failed setting target state of Job(%s): %v", j.Name, err)
-		rw.WriteHeader(http.StatusInternalServerError)
+		sendError(rw, http.StatusInternalServerError, nil)
 		return
 	}
 
@@ -132,7 +131,7 @@ func (ur *unitsResource) update(rw http.ResponseWriter, j *job.Job, dus *schema.
 
 func (ur *unitsResource) destroy(rw http.ResponseWriter, req *http.Request, item string) {
 	if validateContentType(req) != nil {
-		rw.WriteHeader(http.StatusNotAcceptable)
+		sendError(rw, http.StatusNotAcceptable, errors.New("application/json is only supported Content-Type"))
 		return
 	}
 
@@ -140,7 +139,7 @@ func (ur *unitsResource) destroy(rw http.ResponseWriter, req *http.Request, item
 	dec := json.NewDecoder(req.Body)
 	err := dec.Decode(&du)
 	if err != nil {
-		rw.WriteHeader(http.StatusBadRequest)
+		sendError(rw, http.StatusBadRequest, fmt.Errorf("unable to decode body: %v", err))
 		return
 	}
 
@@ -148,7 +147,7 @@ func (ur *unitsResource) destroy(rw http.ResponseWriter, req *http.Request, item
 	if len(du.FileContents) > 0 {
 		u, err = decodeUnitContents(du.FileContents)
 		if err != nil {
-			rw.WriteHeader(http.StatusBadRequest)
+			sendError(rw, http.StatusBadRequest, fmt.Errorf("invalid fileContents: %v", err))
 			return
 		}
 	}
@@ -156,24 +155,24 @@ func (ur *unitsResource) destroy(rw http.ResponseWriter, req *http.Request, item
 	j, err := ur.reg.Job(item)
 	if err != nil {
 		log.Errorf("Failed fetching Job(%s): %v", item, err)
-		rw.WriteHeader(http.StatusInternalServerError)
+		sendError(rw, http.StatusInternalServerError, nil)
 		return
 	}
 
 	if j == nil {
-		rw.WriteHeader(http.StatusNotFound)
+		sendError(rw, http.StatusNotFound, errors.New("unit does not exist"))
 		return
 	}
 
 	if u != nil && u.Hash() != j.Unit.Hash() {
-		rw.WriteHeader(http.StatusConflict)
+		sendError(rw, http.StatusConflict, errors.New("hash of provided fileContents does not match that of existing unit"))
 		return
 	}
 
 	err = ur.reg.DestroyJob(item)
 	if err != nil {
 		log.Errorf("Failed destroying Job(%s): %v", item, err)
-		rw.WriteHeader(http.StatusInternalServerError)
+		sendError(rw, http.StatusInternalServerError, nil)
 		return
 	}
 
@@ -183,20 +182,20 @@ func (ur *unitsResource) destroy(rw http.ResponseWriter, req *http.Request, item
 func (ur *unitsResource) get(rw http.ResponseWriter, req *http.Request, item string) {
 	j, err := ur.reg.Job(item)
 	if err != nil {
-		log.Errorf("Failed fetching Unit(%s): %v", item, err)
-		rw.WriteHeader(http.StatusInternalServerError)
+		log.Errorf("Failed fetching Job(%s) from Registry: %v", item, err)
+		sendError(rw, http.StatusInternalServerError, nil)
 		return
 	}
 
 	if j == nil {
-		rw.WriteHeader(http.StatusNotFound)
+		sendError(rw, http.StatusNotFound, errors.New("unit does not exist"))
 		return
 	}
 
 	u, err := mapJobToSchema(ur.reg, j)
 	if err != nil {
-		log.Errorf("Failed mapping Job to schema: %v", err)
-		rw.WriteHeader(http.StatusInternalServerError)
+		log.Errorf("Failed mapping Job(%s) to schema: %v", item, err)
+		sendError(rw, http.StatusInternalServerError, nil)
 		return
 	}
 
@@ -218,7 +217,7 @@ func (ur *unitsResource) list(rw http.ResponseWriter, req *http.Request) {
 	page, err := getUnitPage(ur.reg, *token)
 	if err != nil {
 		log.Errorf("Failed fetching page of Units: %v", err)
-		rw.WriteHeader(http.StatusInternalServerError)
+		sendError(rw, http.StatusInternalServerError, nil)
 		return
 	}
 

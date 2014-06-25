@@ -54,6 +54,9 @@ type errorResponse struct {
 // sendError builds a googleapi.Error entity from the given arguments, serializing
 // the object into the provided http.ResponseWriter
 func sendError(rw http.ResponseWriter, code int, err error) {
-	resp := errorResponse{Error: &googleapi.Error{Code: code, Message: err.Error()}}
+	resp := errorResponse{Error: &googleapi.Error{Code: code}}
+	if err != nil {
+		resp.Error.Message = err.Error()
+	}
 	sendResponse(rw, code, resp)
 }

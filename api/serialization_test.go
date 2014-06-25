@@ -81,3 +81,14 @@ func TestSendError(t *testing.T) {
 		t.Errorf("Expected header Content-Type to be %v, got %v", expectCTypes, ctypes)
 	}
 }
+
+func TestSendNilError(t *testing.T) {
+	rw := httptest.NewRecorder()
+	sendError(rw, http.StatusBadRequest, nil)
+
+	body := rw.Body.String()
+	expect := `{"error":{"code":400,"message":"","Body":""}}`
+	if body != expect {
+		t.Errorf("Expected body %q, got %q", expect, body)
+	}
+}
