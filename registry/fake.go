@@ -20,6 +20,7 @@ func NewFakeRegistry() *FakeRegistry {
 		version:      nil,
 		bids:         map[string][]job.JobBid{},
 		targetStates: map[string]job.JobState{},
+		schedule:     map[string]string{},
 	}
 }
 
@@ -37,6 +38,7 @@ type FakeRegistry struct {
 	version      *semver.Version
 	bids         map[string][]job.JobBid
 	targetStates map[string]job.JobState
+	schedule     map[string]string
 }
 
 func (f *FakeRegistry) SetMachines(machines []machine.MachineState) {
@@ -129,17 +131,6 @@ func (f *FakeRegistry) DestroyJob(name string) error {
 	return nil
 }
 
-func (f *FakeRegistry) JobTarget(name string) (string, error) {
-	f.RLock()
-	defer f.RUnlock()
-
-	js := f.jobStates[name]
-	if js != nil {
-		return js.MachineState.ID, nil
-	}
-	return "", nil
-}
-
 func (f *FakeRegistry) Bids(jo *job.JobOffer) ([]job.JobBid, error) {
 	f.RLock()
 	defer f.RUnlock()
@@ -175,6 +166,21 @@ func (f *FakeRegistry) JobTargetState(jobName string) (*job.JobState, error) {
 		return nil, nil
 	}
 	return &ts, nil
+}
+
+func (f *FakeRegistry) ScheduleJob(name string, machID string) error {
+	f.Lock()
+	defer f.Unlock()
+
+	f.schedule[name] = machID
+	return nil
+}
+
+func (f *FakeRegistry) JobTarget(name string) (string, error) {
+	f.RLock()
+	defer f.RUnlock()
+
+	return f.schedule[name], nil
 }
 
 func (f *FakeRegistry) SaveUnitState(jobName string, unitState *unit.UnitState) {

@@ -193,14 +193,12 @@ func (ur *unitsResource) get(rw http.ResponseWriter, req *http.Request, item str
 		return
 	}
 
-	tgt, err := ur.reg.JobTarget(j.Name)
+	u, err := mapJobToSchema(ur.reg, j)
 	if err != nil {
+		log.Errorf("Failed mapping Job to schema: %v", err)
 		rw.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-
-	u := mapJobToSchema(j)
-	u.TargetMachineID = tgt
 
 	sendResponse(rw, http.StatusOK, *u)
 }
@@ -233,9 +231,7 @@ func getUnitPage(reg registry.Registry, tok PageToken) (*schema.UnitPage, error)
 		return nil, err
 	}
 
-	page := extractUnitPage(all, tok)
-
-	err = setUnitPageTargets(reg, page)
+	page, err := extractUnitPage(reg, all, tok)
 	if err != nil {
 		return nil, err
 	}
@@ -243,7 +239,7 @@ func getUnitPage(reg registry.Registry, tok PageToken) (*schema.UnitPage, error)
 	return page, nil
 }
 
-func extractUnitPage(all []job.Job, tok PageToken) *schema.UnitPage {
+func extractUnitPage(reg registry.Registry, all []job.Job, tok PageToken) (*schema.UnitPage, error) {
 	total := len(all)
 
 	startIndex := int((tok.Page - 1) * tok.Limit)
@@ -263,10 +259,10 @@ func extractUnitPage(all []job.Job, tok PageToken) *schema.UnitPage {
 		items = all[startIndex:stopIndex]
 	}
 
-	return newUnitPage(items, next)
+	return newUnitPage(reg, items, next)
 }
 
-func newUnitPage(items []job.Job, tok *PageToken) *schema.UnitPage {
+func newUnitPage(reg registry.Registry, items []job.Job, tok *PageToken) (*schema.UnitPage, error) {
 	sup := schema.UnitPage{
 		Units: make([]*schema.Unit, 0, len(items)),
 	}
@@ -276,12 +272,16 @@ func newUnitPage(items []job.Job, tok *PageToken) *schema.UnitPage {
 	}
 
 	for _, j := range items {
-		sup.Units = append(sup.Units, mapJobToSchema(&j))
+		u, err := mapJobToSchema(reg, &j)
+		if err != nil {
+			return nil, err
+		}
+		sup.Units = append(sup.Units, u)
 	}
-	return &sup
+	return &sup, nil
 }
 
-func mapJobToSchema(j *job.Job) *schema.Unit {
+func mapJobToSchema(reg registry.Registry, j *job.Job) (*schema.Unit, error) {
 	su := schema.Unit{
 		Name:         j.Name,
 		FileHash:     j.UnitHash.String(),
@@ -303,18 +303,23 @@ func mapJobToSchema(j *job.Job) *schema.Unit {
 		}
 	}
 
-	return &su
-}
-
-func setUnitPageTargets(reg registry.Registry, page *schema.UnitPage) error {
-	for i, _ := range page.Units {
-		tgt, err := reg.JobTarget(page.Units[i].Name)
-		if err != nil {
-			return err
-		}
-		page.Units[i].TargetMachineID = tgt
+	tgtMachID, err := reg.JobTarget(j.Name)
+	if err != nil {
+		return nil, err
 	}
-	return nil
+
+	su.TargetMachineID = tgtMachID
+
+	tgtState, err := reg.JobTargetState(j.Name)
+	if err != nil {
+		return nil, err
+	}
+
+	if tgtState != nil {
+		su.DesiredState = string(*tgtState)
+	}
+
+	return &su, nil
 }
 
 func encodeUnitContents(u *unit.Unit) string {
