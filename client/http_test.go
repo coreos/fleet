@@ -15,11 +15,11 @@ func TestMapUnitEntityToJob(t *testing.T) {
 	loaded := job.JobStateLoaded
 
 	tests := []struct {
-		input  schema.Unit
+		input  schema.UnitFields
 		expect *job.Job
 	}{
 		{
-			schema.Unit{
+			schema.UnitFields{
 				Name:         "XXX",
 				CurrentState: "loaded",
 				Systemd: &schema.SystemdState{
@@ -52,7 +52,7 @@ func TestMapUnitEntityToJob(t *testing.T) {
 
 		// Lack of LoadState should result in a nil UnitState
 		{
-			schema.Unit{
+			schema.UnitFields{
 				Name:         "XXX",
 				CurrentState: "loaded",
 				FileContents: "W1NlcnZpY2VdCkV4ZWNTdGFydD0vdXNyL2Jpbi9zbGVlcCAzMDAwCg==",
@@ -75,7 +75,7 @@ func TestMapUnitEntityToJob(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		output, err := mapUnitToJob(&tt.input, nil)
+		output, err := mapUnitFieldsToJob(&tt.input, nil)
 		if err != nil {
 			t.Errorf("case %d: err=%v", i, err)
 			continue
@@ -87,9 +87,9 @@ func TestMapUnitEntityToJob(t *testing.T) {
 }
 
 func TestMapUnitEntityToJobFailure(t *testing.T) {
-	units := []schema.Unit{
+	units := []schema.UnitFields{
 		// Poorly-formatted FileContents should result in an error
-		schema.Unit{
+		schema.UnitFields{
 			Name:         "XXX",
 			CurrentState: "loaded",
 			Systemd: &schema.SystemdState{
@@ -104,7 +104,7 @@ func TestMapUnitEntityToJobFailure(t *testing.T) {
 	}
 
 	for i, u := range units {
-		output, err := mapUnitToJob(&u, nil)
+		output, err := mapUnitFieldsToJob(&u, nil)
 		if err == nil {
 			t.Errorf("case %d: expected non-nil error", i)
 		}
@@ -116,11 +116,11 @@ func TestMapUnitEntityToJobFailure(t *testing.T) {
 
 func TestMapUnitEntityToJobMachineFields(t *testing.T) {
 	tests := []struct {
-		input  schema.Unit
+		input  schema.UnitFields
 		expect *job.Job
 	}{
 		{
-			schema.Unit{
+			schema.UnitFields{
 				Systemd: &schema.SystemdState{
 					LoadState:   "loaded",
 					ActiveState: "active",
@@ -140,7 +140,7 @@ func TestMapUnitEntityToJobMachineFields(t *testing.T) {
 
 		// Missing MachineState in map does not result in loss of Machine ID
 		{
-			schema.Unit{
+			schema.UnitFields{
 				Systemd: &schema.SystemdState{
 					LoadState:   "loaded",
 					ActiveState: "active",
@@ -164,7 +164,7 @@ func TestMapUnitEntityToJobMachineFields(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		output, err := mapUnitToJob(&tt.input, mm)
+		output, err := mapUnitFieldsToJob(&tt.input, mm)
 		if err != nil {
 			t.Errorf("case %d: err=%v", i, err)
 			continue

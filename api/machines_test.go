@@ -40,7 +40,7 @@ func TestMachinesList(t *testing.T) {
 		t.Error("Received nil response body")
 	} else {
 		body := rw.Body.String()
-		expected := `{"machines":[{"id":"XXX"},{"id":"YYY","metadata":{"ping":"pong"},"primaryIP":"1.2.3.4"}]}`
+		expected := `{"data":{"items":[{"id":"XXX"},{"id":"YYY","metadata":{"ping":"pong"},"primaryIP":"1.2.3.4"}]}}`
 		if body != expected {
 			t.Errorf("Expected body:\n%s\n\nReceived body:\n%s\n", expected, body)
 		}
@@ -82,33 +82,33 @@ func TestExtractMachinePage(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		page := extractMachinePage(all, tt.token)
+		resp := extractMachinePage(all, tt.token)
 		expectCount := (tt.idxEnd - tt.idxStart + 1)
-		if len(page.Machines) != expectCount {
-			t.Fatalf("case %d: expected page of %d, got %d", i, expectCount, len(page.Machines))
+		if len(resp.Data.Items) != expectCount {
+			t.Fatalf("case %d: expected page of %d, got %d", i, expectCount, len(resp.Data.Items))
 		}
 
-		first := page.Machines[0].Id
+		first := resp.Data.Items[0].Id
 		if first != strconv.FormatInt(int64(tt.idxStart), 10) {
 			t.Errorf("case %d: first element in page should have ID %d, got %d", i, tt.idxStart, first)
 		}
 
-		last := page.Machines[len(page.Machines)-1].Id
+		last := resp.Data.Items[len(resp.Data.Items)-1].Id
 		if last != strconv.FormatInt(int64(tt.idxEnd), 10) {
 			t.Errorf("case %d: first element in page should have ID %d, got %d", i, tt.idxEnd, last)
 		}
 
-		if tt.next == nil && page.NextPageToken != "" {
+		if tt.next == nil && resp.Data.NextPageToken != "" {
 			t.Errorf("case %d: did not expect NextPageToken", i)
 			continue
-		} else if page.NextPageToken == "" {
+		} else if resp.Data.NextPageToken == "" {
 			if tt.next != nil {
 				t.Errorf("case %d: did not receive expected NextPageToken", i)
 			}
 			continue
 		}
 
-		next, err := decodePageToken(page.NextPageToken)
+		next, err := decodePageToken(resp.Data.NextPageToken)
 		if err != nil {
 			t.Errorf("case %d: unable to parse NextPageToken: %v", i, err)
 			continue
