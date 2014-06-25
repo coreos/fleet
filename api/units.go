@@ -69,7 +69,7 @@ func (ur *unitsResource) set(rw http.ResponseWriter, req *http.Request, item str
 	j, err := ur.reg.Job(item)
 	if err != nil {
 		log.Errorf("Failed fetching Job(%s) from Registry: %v", item, err)
-		rw.WriteHeader(http.StatusInternalServerError)
+		sendError(rw, http.StatusInternalServerError, nil)
 		return
 	}
 
@@ -99,13 +99,13 @@ func (ur *unitsResource) create(rw http.ResponseWriter, item string, ds job.JobS
 
 	if err := ur.reg.CreateJob(j); err != nil {
 		log.Errorf("Failed creating Job(%s) in Registry: %v", j.Name, err)
-		rw.WriteHeader(http.StatusInternalServerError)
+		sendError(rw, http.StatusInternalServerError, nil)
 		return
 	}
 
 	if err := ur.reg.SetJobTargetState(j.Name, ds); err != nil {
 		log.Errorf("Failed setting target state of Job(%s): %v", j.Name, err)
-		rw.WriteHeader(http.StatusInternalServerError)
+		sendError(rw, http.StatusInternalServerError, nil)
 		return
 	}
 
@@ -122,7 +122,7 @@ func (ur *unitsResource) update(rw http.ResponseWriter, j *job.Job, ds job.JobSt
 	err := ur.reg.SetJobTargetState(j.Name, ds)
 	if err != nil {
 		log.Errorf("Failed setting target state of Job(%s): %v", j.Name, err)
-		rw.WriteHeader(http.StatusInternalServerError)
+		sendError(rw, http.StatusInternalServerError, nil)
 		return
 	}
 
@@ -155,7 +155,7 @@ func (ur *unitsResource) destroy(rw http.ResponseWriter, req *http.Request, item
 	j, err := ur.reg.Job(item)
 	if err != nil {
 		log.Errorf("Failed fetching Job(%s): %v", item, err)
-		rw.WriteHeader(http.StatusInternalServerError)
+		sendError(rw, http.StatusInternalServerError, nil)
 		return
 	}
 
@@ -172,7 +172,7 @@ func (ur *unitsResource) destroy(rw http.ResponseWriter, req *http.Request, item
 	err = ur.reg.DestroyJob(item)
 	if err != nil {
 		log.Errorf("Failed destroying Job(%s): %v", item, err)
-		rw.WriteHeader(http.StatusInternalServerError)
+		sendError(rw, http.StatusInternalServerError, nil)
 		return
 	}
 
@@ -183,7 +183,7 @@ func (ur *unitsResource) get(rw http.ResponseWriter, req *http.Request, item str
 	j, err := ur.reg.Job(item)
 	if err != nil {
 		log.Errorf("Failed fetching Job(%s) from Registry: %v", item, err)
-		rw.WriteHeader(http.StatusInternalServerError)
+		sendError(rw, http.StatusInternalServerError, nil)
 		return
 	}
 
@@ -195,7 +195,7 @@ func (ur *unitsResource) get(rw http.ResponseWriter, req *http.Request, item str
 	u, err := mapJobToSchema(ur.reg, j)
 	if err != nil {
 		log.Errorf("Failed mapping Job(%s) to schema: %v", item, err)
-		rw.WriteHeader(http.StatusInternalServerError)
+		sendError(rw, http.StatusInternalServerError, nil)
 		return
 	}
 
@@ -217,7 +217,7 @@ func (ur *unitsResource) list(rw http.ResponseWriter, req *http.Request) {
 	page, err := getUnitPage(ur.reg, *token)
 	if err != nil {
 		log.Errorf("Failed fetching page of Units: %v", err)
-		rw.WriteHeader(http.StatusInternalServerError)
+		sendError(rw, http.StatusInternalServerError, nil)
 		return
 	}
 
