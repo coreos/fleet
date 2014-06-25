@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/coreos/fleet/third_party/code.google.com/p/google-api-go-client/googleapi"
 	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
 )
 
@@ -47,14 +46,23 @@ func sendResponse(rw http.ResponseWriter, code int, resp interface{}) {
 	}
 }
 
-type errorResponse struct {
-	Error *googleapi.Error `json:"error"`
+// errorEntity is a fork of "code.google.com/p/google-api-go-client/googleapi".Error
+type errorEntity struct {
+	// Code is the HTTP response status code and will always be populated.
+	Code int `json:"code"`
+	// Message is the server response message and is only populated when
+	// explicitly referenced by the JSON server response.
+	Message string `json:"message"`
 }
 
-// sendError builds a googleapi.Error entity from the given arguments, serializing
+type errorResponse struct {
+	Error errorEntity `json:"error"`
+}
+
+// sendError builds an errorResponse entity from the given arguments, serializing
 // the object into the provided http.ResponseWriter
 func sendError(rw http.ResponseWriter, code int, err error) {
-	resp := errorResponse{Error: &googleapi.Error{Code: code}}
+	resp := errorResponse{Error: errorEntity{Code: code}}
 	if err != nil {
 		resp.Error.Message = err.Error()
 	}
