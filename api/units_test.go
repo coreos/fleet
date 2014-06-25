@@ -77,6 +77,8 @@ func TestUnitsListBadNextPageToken(t *testing.T) {
 }
 
 func TestExtractUnitPage(t *testing.T) {
+	fr := registry.NewFakeRegistry()
+
 	all := make([]job.Job, 103)
 	for i := 0; i < 103; i++ {
 		name := strconv.FormatInt(int64(i), 10)
@@ -94,10 +96,15 @@ func TestExtractUnitPage(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		page := extractUnitPage(all, tt.token)
+		page, err := extractUnitPage(fr, all, tt.token)
+		if err != nil {
+			t.Errorf("case %d: call to extractUnitPage failed: %v", err)
+			continue
+		}
 		expectCount := (tt.idxEnd - tt.idxStart + 1)
 		if len(page.Units) != expectCount {
-			t.Fatalf("case %d: expected page of %d, got %d", i, expectCount, len(page.Units))
+			t.Errorf("case %d: expected page of %d, got %d", i, expectCount, len(page.Units))
+			continue
 		}
 
 		first := page.Units[0].Name
@@ -134,6 +141,9 @@ func TestExtractUnitPage(t *testing.T) {
 
 func TestMapJobToSchema(t *testing.T) {
 	loaded := job.JobStateLoaded
+	fr := registry.NewFakeRegistry()
+	fr.SetJobTargetState("XXX", "launched")
+	fr.ScheduleJob("XXX", "ZZZ")
 
 	tests := []struct {
 		input  job.Job
@@ -153,8 +163,10 @@ func TestMapJobToSchema(t *testing.T) {
 				},
 			},
 			schema.Unit{
-				Name:         "XXX",
-				CurrentState: "loaded",
+				Name:            "XXX",
+				CurrentState:    "loaded",
+				DesiredState:    "launched",
+				TargetMachineID: "ZZZ",
 				Systemd: &schema.SystemdState{
 					LoadState:   "loaded",
 					ActiveState: "active",
@@ -168,7 +180,11 @@ func TestMapJobToSchema(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		output := mapJobToSchema(&tt.input)
+		output, err := mapJobToSchema(fr, &tt.input)
+		if err != nil {
+			t.Errorf("case %d: call to mapJobToSchema failed: %v", err)
+			continue
+		}
 		if !reflect.DeepEqual(tt.expect, *output) {
 			t.Errorf("case %d: expect=%v, got=%v", i, tt.expect, *output)
 		}
