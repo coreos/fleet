@@ -4,11 +4,18 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http/httptest"
+	"reflect"
 )
 
 func assertErrorResponse(rr *httptest.ResponseRecorder, code int) error {
 	if rr.Code != code {
 		return fmt.Errorf("expected HTTP code %d, got %d", code, rr.Code)
+	}
+
+	ctypes := rr.HeaderMap["Content-Type"]
+	expect := []string{"application/json"}
+	if !reflect.DeepEqual(expect, ctypes) {
+		return fmt.Errorf("Expected Content-Type %v, got %v", expect, ctypes)
 	}
 
 	var eresp errorResponse
