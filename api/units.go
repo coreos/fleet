@@ -34,7 +34,7 @@ func (ur *unitsResource) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		case "GET":
 			ur.list(rw, req)
 		default:
-			rw.WriteHeader(http.StatusMethodNotAllowed)
+			sendError(rw, http.StatusMethodNotAllowed, errors.New("only GET supported against this resource"))
 		}
 	} else if item, ok := isItemPath(ur.basePath, req.URL.Path); ok {
 		switch req.Method {
@@ -45,7 +45,7 @@ func (ur *unitsResource) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		case "PUT":
 			ur.set(rw, req, item)
 		default:
-			rw.WriteHeader(http.StatusMethodNotAllowed)
+			sendError(rw, http.StatusMethodNotAllowed, errors.New("only GET, PUT and DELETE supported against this resource"))
 		}
 	} else {
 		rw.WriteHeader(http.StatusNotFound)
