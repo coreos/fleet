@@ -24,7 +24,10 @@ If you prefer to execute fleetctl from an external host (i.e. your laptop), the 
 
 One can also provide `--tunnel` through the environment variable `FLEETCTL_TUNNEL`:
 
-	FLEETCTL_TUNNEL=<IP[:PORT]> fleetctl list-units
+```
+FLEETCTL_TUNNEL=<IP[:PORT]>
+fleetctl list-units
+```
 
 When using `--tunnel` and `--endpoint` together, it is important to note that all etcd requests will be made through the SSH tunnel. The address in the `--endpoint` flag must be routable from the server hosting the tunnel.
 
