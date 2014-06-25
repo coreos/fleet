@@ -45,7 +45,7 @@ func (mr *machinesResource) ServeHTTP(rw http.ResponseWriter, req *http.Request)
 		return
 	}
 
-	sendResponse(rw, page)
+	sendResponse(rw, http.StatusOK, page)
 }
 
 func getMachinePage(reg registry.Registry, tok PageToken) (*schema.MachinePage, error) {

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"testing"
 )
 
@@ -32,7 +33,7 @@ func TestValidateContentType(t *testing.T) {
 
 func TestSendResponseMarshalSuccess(t *testing.T) {
 	rw := httptest.NewRecorder()
-	sendResponse(rw, nil)
+	sendResponse(rw, http.StatusOK, nil)
 
 	if rw.Code != http.StatusOK {
 		t.Errorf("Expected 200, got %d", rw.Code)
@@ -49,7 +50,7 @@ func TestSendResponseMarshalFailure(t *testing.T) {
 	rw := httptest.NewRecorder()
 
 	// channels are not JSON-serializable
-	sendResponse(rw, make(chan bool))
+	sendResponse(rw, http.StatusOK, make(chan bool))
 
 	if rw.Code != http.StatusInternalServerError {
 		t.Errorf("Expected 500, got %d", rw.Code)
@@ -72,5 +73,11 @@ func TestSendError(t *testing.T) {
 	expect := `{"error":{"code":400,"message":"sentinel","Body":""}}`
 	if body != expect {
 		t.Errorf("Expected body %q, got %q", expect, body)
+	}
+
+	ctypes := rw.HeaderMap["Content-Type"]
+	expectCTypes := []string{"application/json"}
+	if !reflect.DeepEqual(ctypes, expectCTypes) {
+		t.Errorf("Expected header Content-Type to be %v, got %v", expectCTypes, ctypes)
 	}
 }
