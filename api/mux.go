@@ -9,8 +9,11 @@ import (
 )
 
 func NewServeMux(reg registry.Registry) http.Handler {
-	prefix := "/v1-alpha"
 	sm := http.NewServeMux()
+	prefix := "/"
+	wireUpHealthResource(sm, prefix, reg)
+
+	prefix = "/v1-alpha"
 	wireUpMachinesResource(sm, prefix, reg)
 	wireUpUnitsResource(sm, prefix, reg)
 
