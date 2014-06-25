@@ -19,6 +19,24 @@ import (
 	"github.com/coreos/fleet/unit"
 )
 
+func TestUnitsSubResourceNotFound(t *testing.T) {
+	fr := registry.NewFakeRegistry()
+	ur := &unitsResource{fr, "/units"}
+	rr := httptest.NewRecorder()
+
+	req, err := http.NewRequest("GET", "/units/foo/bar", nil)
+	if err != nil {
+		t.Fatalf("Failed setting up http.Request for test: %v", err)
+	}
+
+	ur.ServeHTTP(rr, req)
+
+	err = assertErrorResponse(rr, http.StatusNotFound)
+	if err != nil {
+		t.Error(err)
+	}
+}
+
 func TestUnitsList(t *testing.T) {
 	fr := registry.NewFakeRegistry()
 	fr.SetJobs([]job.Job{

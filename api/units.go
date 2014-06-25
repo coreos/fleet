@@ -48,7 +48,7 @@ func (ur *unitsResource) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 			sendError(rw, http.StatusMethodNotAllowed, errors.New("only GET, PUT and DELETE supported against this resource"))
 		}
 	} else {
-		rw.WriteHeader(http.StatusNotFound)
+		sendError(rw, http.StatusNotFound, nil)
 	}
 }
 
