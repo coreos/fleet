@@ -3,7 +3,7 @@ package engine
 import (
 	"errors"
 
-	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
+	log "github.com/coreos/fleet/Godeps/_workspace/src/github.com/golang/glog"
 
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/machine"

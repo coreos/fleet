@@ -9,8 +9,8 @@ import (
 	"strings"
 	"syscall"
 
-	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
-	"github.com/coreos/fleet/third_party/github.com/rakyll/globalconf"
+	log "github.com/coreos/fleet/Godeps/_workspace/src/github.com/golang/glog"
+	"github.com/coreos/fleet/Godeps/_workspace/src/github.com/rakyll/globalconf"
 
 	"github.com/coreos/fleet/agent"
 	"github.com/coreos/fleet/config"
