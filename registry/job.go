@@ -41,8 +41,9 @@ func (r *EtcdRegistry) Jobs() ([]job.Job, error) {
 				continue
 			}
 
-			j := r.getJobFromJSON(node.Value)
-			if j == nil {
+			j, err := r.getJobFromJSON(node.Value)
+			if err != nil {
+				log.Infof("Unable to parse Job in Registry at key %s", node.Key)
 				continue
 			}
 
@@ -103,20 +104,16 @@ func (r *EtcdRegistry) Job(jobName string) (j *job.Job, err error) {
 		return
 	}
 
-	j = r.getJobFromJSON(resp.Node.Value)
-	if j == nil {
-		log.V(1).Infof("Error unmarshaling Job(%s): %v", jobName, err)
-	}
-	return
+	return r.getJobFromJSON(resp.Node.Value)
 }
 
-func (r *EtcdRegistry) getJobFromJSON(val string) *job.Job {
+func (r *EtcdRegistry) getJobFromJSON(val string) (*job.Job, error) {
 	var jm jobModel
 	if err := unmarshal(val, &jm); err != nil {
-		return nil
+		return nil, err
 	}
 
-	return r.getJobFromModel(jm)
+	return r.getJobFromModel(jm), nil
 }
 
 func (r *EtcdRegistry) getJobFromModel(jm jobModel) *job.Job {
