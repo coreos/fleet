@@ -1,7 +1,7 @@
 package machine
 
 import (
-	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
+	log "github.com/golang/glog"
 )
 
 type Machine interface {

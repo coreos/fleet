@@ -5,7 +5,7 @@ import (
 	"path"
 	"time"
 
-	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
+	log "github.com/golang/glog"
 
 	"github.com/coreos/fleet/etcd"
 )

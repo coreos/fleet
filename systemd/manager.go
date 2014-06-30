@@ -7,8 +7,8 @@ import (
 	"os"
 	"path"
 
-	"github.com/coreos/fleet/third_party/github.com/coreos/go-systemd/dbus"
-	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
+	"github.com/coreos/go-systemd/dbus"
+	log "github.com/golang/glog"
 
 	"github.com/coreos/fleet/unit"
 )

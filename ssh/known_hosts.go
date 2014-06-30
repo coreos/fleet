@@ -12,8 +12,8 @@ import (
 	"strconv"
 	"strings"
 
-	gossh "github.com/coreos/fleet/third_party/code.google.com/p/gosshnew/ssh"
-	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
+	gossh "code.google.com/p/gosshnew/ssh"
+	log "github.com/golang/glog"
 
 	"github.com/coreos/fleet/pkg"
 )

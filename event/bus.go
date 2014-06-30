@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"sync"
 
-	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
+	log "github.com/golang/glog"
 )
 
 type EventBus struct {

@@ -7,8 +7,8 @@ import (
 	"os"
 	"testing"
 
-	gossh "github.com/coreos/fleet/third_party/code.google.com/p/gosshnew/ssh"
-	gosshagent "github.com/coreos/fleet/third_party/code.google.com/p/gosshnew/ssh/agent"
+	gossh "code.google.com/p/gosshnew/ssh"
+	gosshagent "code.google.com/p/gosshnew/ssh/agent"
 )
 
 const (

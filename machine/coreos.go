@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/coreos/fleet/resource"
-	"github.com/coreos/fleet/third_party/github.com/dotcloud/docker/pkg/netlink"
-	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
+	"github.com/docker/libcontainer/netlink"
+	log "github.com/golang/glog"
 )
 
 const (

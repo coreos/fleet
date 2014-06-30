@@ -1,7 +1,7 @@
 package client
 
 import (
-	"github.com/coreos/fleet/third_party/github.com/coreos/go-semver/semver"
+	"github.com/coreos/go-semver/semver"
 
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/machine"
