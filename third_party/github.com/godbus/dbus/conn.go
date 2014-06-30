@@ -546,13 +546,14 @@ type transport interface {
 	SendMessage(*Message) error
 }
 
+var (
+	transports map[string]func(string) (transport, error) = make(map[string]func(string) (transport, error))
+)
+
 func getTransport(address string) (transport, error) {
 	var err error
 	var t transport
 
-	m := map[string]func(string) (transport, error){
-		"unix": newUnixTransport,
-	}
 	addresses := strings.Split(address, ";")
 	for _, v := range addresses {
 		i := strings.IndexRune(v, ':')
@@ -560,7 +561,7 @@ func getTransport(address string) (transport, error) {
 			err = errors.New("dbus: invalid bus address (no transport)")
 			continue
 		}
-		f := m[v[:i]]
+		f := transports[v[:i]]
 		if f == nil {
 			err = errors.New("dbus: invalid bus address (invalid or unsupported transport)")
 		}
