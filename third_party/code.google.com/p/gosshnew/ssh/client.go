@@ -11,7 +11,7 @@ import (
 	"sync"
 )
 
-// Client implements a traditional SSH client supporting shells,
+// Client implements a traditional SSH client that supports shells,
 // subprocesses, port forwarding and tunneled dialing.
 type Client struct {
 	Conn
@@ -28,6 +28,7 @@ func (c *Client) HandleChannelOpen(channelType string) <-chan NewChannel {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if c.channelHandlers == nil {
+		// The SSH channel has been closed.
 		c := make(chan NewChannel)
 		close(c)
 		return c
@@ -62,10 +63,10 @@ func NewClient(c Conn, chans <-chan NewChannel, reqs <-chan *Request) *Client {
 
 // NewClientConn establishes an authenticated SSH connection using c
 // as the underlying transport.  The Request and NewChannel channels
-// must be serviced, or the connection will hang.
+// must be serviced or the connection will hang.
 func NewClientConn(c net.Conn, addr string, config *ClientConfig) (Conn, <-chan NewChannel, <-chan *Request, error) {
 	fullConf := *config
-	fullConf.setDefaults()
+	fullConf.SetDefaults()
 	conn := &connection{
 		sshConn: sshConn{conn: c},
 	}
@@ -78,7 +79,8 @@ func NewClientConn(c net.Conn, addr string, config *ClientConfig) (Conn, <-chan 
 	return conn, conn.mux.incomingChannels, conn.mux.incomingRequests, nil
 }
 
-// handshake performs the client side key exchange. See RFC 4253 Section 7.
+// clientHandshake performs the client side key exchange. See RFC 4253 Section
+// 7.
 func (c *connection) clientHandshake(dialAddress string, config *ClientConfig) error {
 	c.clientVersion = []byte(packageVersion)
 	if config.ClientVersion != "" {
@@ -117,7 +119,8 @@ func verifyHostKeySignature(hostKey PublicKey, result *kexResult) error {
 	return hostKey.Verify(result.H, sig)
 }
 
-// NewSession opens a new Session for this client.
+// NewSession opens a new Session for this client. (A session is a remote
+// execution of a program.)
 func (c *Client) NewSession() (*Session, error) {
 	ch, in, err := c.OpenChannel("session", nil)
 	if err != nil {
@@ -134,7 +137,7 @@ func (c *Client) handleGlobalRequests(incoming <-chan *Request) {
 	}
 }
 
-// Handle channel open messages from the remote side.
+// handleChannelOpens channel open messages from the remote side.
 func (c *Client) handleChannelOpens(in <-chan NewChannel) {
 	for ch := range in {
 		c.mu.Lock()
@@ -165,7 +168,7 @@ func parseTCPAddr(b []byte) (*net.TCPAddr, []byte, bool) {
 		return nil, b, false
 	}
 	port, b, ok := parseUint32(b)
-	if !ok {
+	if !ok || port == 0 || port > 65535 {
 		return nil, b, false
 	}
 	ip := net.ParseIP(string(addr))
@@ -175,7 +178,7 @@ func parseTCPAddr(b []byte) (*net.TCPAddr, []byte, bool) {
 	return &net.TCPAddr{IP: ip, Port: int(port)}, b, true
 }
 
-// Dial starts a client connecting to the given SSH server. It is a
+// Dial starts a client connection to the given SSH server. It is a
 // convenience function that connects to the given network address,
 // initiates the SSH handshake, and then sets up a Client.  For access
 // to incoming channels and requests, use net.Dial with NewClientConn
@@ -192,18 +195,19 @@ func Dial(network, addr string, config *ClientConfig) (*Client, error) {
 	return NewClient(c, chans, reqs), nil
 }
 
-// A ClientConfig structure is used to configure a Client. After one has
-// been passed to an SSH function it must not be modified.
+// A ClientConfig structure is used to configure a Client. It must not be
+// modified after having been passed to an SSH function.
 type ClientConfig struct {
-	// Shared configuration.
+	// Config contains configuration that is shared between clients and
+	// servers.
 	Config
 
-	// The username to authenticate.
+	// User contains the username to authenticate as.
 	User string
 
-	// A slice of AuthMethod instances. Only the first
-	// instance of a particular RFC 4252 method will be used
-	// during authentication.
+	// Auth contains possible authentication methods to use with the
+	// server. Only the first instance of a particular RFC 4252 method will
+	// be used during authentication.
 	Auth []AuthMethod
 
 	// HostKeyCallback, if not nil, is called during the cryptographic
@@ -211,7 +215,7 @@ type ClientConfig struct {
 	// implies that all host keys are accepted.
 	HostKeyCallback func(hostname string, remote net.Addr, key PublicKey) error
 
-	// The identification string that will be used for the connection.
-	// If empty, a reasonable default is used.
+	// ClientVersion contains the version identification string that will
+	// be used for the connection. If empty, a reasonable default is used.
 	ClientVersion string
 }

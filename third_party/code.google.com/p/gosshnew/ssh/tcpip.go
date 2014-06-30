@@ -16,9 +16,10 @@ import (
 	"time"
 )
 
-// Listen requests the remote peer open a listening socket
-// on addr. Incoming connections will be available by calling
-// Accept on the returned net.Listener.
+// Listen requests the remote peer open a listening socket on
+// addr. Incoming connections will be available by calling Accept on
+// the returned net.Listener. The listener must be serviced, or the
+// SSH connection may hang.
 func (c *Client) Listen(n, addr string) (net.Listener, error) {
 	laddr, err := net.ResolveTCPAddr(n, addr)
 	if err != nil {
@@ -99,7 +100,7 @@ func (c *Client) ListenTCP(laddr *net.TCPAddr) (net.Listener, error) {
 		return nil, err
 	}
 	if !ok {
-		return nil, errors.New("tcpip-forward denied")
+		return nil, errors.New("ssh: tcpip-forward request denied by peer")
 	}
 
 	// If the original port was 0, then the remote side will
@@ -138,7 +139,7 @@ type forwardEntry struct {
 // arguments to add/remove/lookup should be address as specified in
 // the original forward-request.
 type forward struct {
-	c     Channel      // the ssh client channel underlying this forward
+	newCh NewChannel   // the ssh client channel underlying this forward
 	raddr *net.TCPAddr // the raddr of the incoming connection
 }
 
@@ -159,27 +160,21 @@ func (l *forwardList) handleChannels(in <-chan NewChannel) {
 		if !ok {
 			// invalid request
 			ch.Reject(ConnectionFailed, "could not parse TCP address")
-			return
-		}
-
-		l, ok := l.lookup(*laddr)
-		if !ok {
-			// Section 7.2, implementations MUST reject spurious incoming
-			// connections.
-			ch.Reject(Prohibited, "no forward for address")
-			return
+			continue
 		}
 
 		raddr, rest, ok := parseTCPAddr(rest)
 		if !ok {
 			// invalid request
 			ch.Reject(ConnectionFailed, "could not parse TCP address")
-			return
+			continue
 		}
 
-		if ch, incoming, err := ch.Accept(); err == nil {
-			go DiscardRequests(incoming)
-			l <- forward{ch, raddr}
+		if ok := l.forward(*laddr, *raddr, ch); !ok {
+			// Section 7.2, implementations MUST reject spurious incoming
+			// connections.
+			ch.Reject(Prohibited, "no forward for address")
+			continue
 		}
 	}
 }
@@ -208,15 +203,16 @@ func (l *forwardList) closeAll() {
 	l.entries = nil
 }
 
-func (l *forwardList) lookup(addr net.TCPAddr) (chan forward, bool) {
+func (l *forwardList) forward(laddr, raddr net.TCPAddr, ch NewChannel) bool {
 	l.Lock()
 	defer l.Unlock()
 	for _, f := range l.entries {
-		if addr.IP.Equal(f.laddr.IP) && addr.Port == f.laddr.Port {
-			return f.c, true
+		if laddr.IP.Equal(f.laddr.IP) && laddr.Port == f.laddr.Port {
+			f.c <- forward{ch, &raddr}
+			return true
 		}
 	}
-	return nil, false
+	return false
 }
 
 type tcpListener struct {
@@ -232,8 +228,14 @@ func (l *tcpListener) Accept() (net.Conn, error) {
 	if !ok {
 		return nil, io.EOF
 	}
+	ch, incoming, err := s.newCh.Accept()
+	if err != nil {
+		return nil, err
+	}
+	go DiscardRequests(incoming)
+
 	return &tcpChanConn{
-		Channel: s.c,
+		Channel: ch,
 		laddr:   l.laddr,
 		raddr:   s.raddr,
 	}, nil

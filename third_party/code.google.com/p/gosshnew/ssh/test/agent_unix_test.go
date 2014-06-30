@@ -10,8 +10,8 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/coreos/fleet/third_party/github.com/coreos/fleet/third_party/code.google.com/p/gosshnew/ssh"
-	"github.com/coreos/fleet/third_party/github.com/coreos/fleet/third_party/code.google.com/p/gosshnew/ssh/agent"
+	"github.com/coreos/fleet/third_party/code.google.com/p/gosshnew/ssh"
+	"github.com/coreos/fleet/third_party/code.google.com/p/gosshnew/ssh/agent"
 )
 
 func TestAgentForward(t *testing.T) {

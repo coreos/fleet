@@ -6,7 +6,6 @@ package ssh
 
 import (
 	"bytes"
-	"crypto/rand"
 	"errors"
 	"fmt"
 	"io"
@@ -39,8 +38,8 @@ type Signature struct {
 	Blob   []byte
 }
 
-// CertTimeInfinity can be used for OpenSSHCertV01.ValidBefore for a
-// certificate that does not expire.
+// CertTimeInfinity can be used for OpenSSHCertV01.ValidBefore to indicate that
+// a certificate does not expire.
 const CertTimeInfinity = 1<<64 - 1
 
 // An Certificate represents an OpenSSH certificate as defined in
@@ -60,9 +59,9 @@ type Certificate struct {
 	Signature    *Signature
 }
 
-// genericCertData holds the key-independent part of the cert data:
-// all certs look like {Nonce, public key fields, generic data
-// fields}.
+// genericCertData holds the key-independent part of the certificate data.
+// Overall, certificates contain an nonce, public key fields and
+// key-independent fields.
 type genericCertData struct {
 	Serial          uint64
 	CertType        uint32
@@ -103,6 +102,9 @@ func marshalTuples(tups map[string]string) []byte {
 
 func parseTuples(in []byte) (map[string]string, error) {
 	tups := map[string]string{}
+	var lastKey string
+	var haveLastKey bool
+
 	for len(in) > 0 {
 		nameBytes, rest, ok := parseString(in)
 		if !ok {
@@ -113,9 +115,14 @@ func parseTuples(in []byte) (map[string]string, error) {
 			return nil, errShortRead
 		}
 		name := string(nameBytes)
-		if _, ok := tups[name]; ok {
-			return nil, fmt.Errorf("duplicate key %s", name)
+
+		// according to [PROTOCOL.certkeys], the names must be in
+		// lexical order.
+		if haveLastKey && name <= lastKey {
+			return nil, fmt.Errorf("ssh: certificate options are not in lexical order")
 		}
+		lastKey, haveLastKey = name, true
+
 		tups[name] = string(data)
 		in = rest
 	}
@@ -127,12 +134,8 @@ func parseCert(in []byte, privAlgo string) (*Certificate, error) {
 	if !ok {
 		return nil, errShortRead
 	}
-	c := &Certificate{
-		Nonce: nonce,
-	}
 
-	var err error
-	c.Key, rest, err = parsePubKey(rest, privAlgo)
+	key, rest, err := parsePubKey(rest, privAlgo)
 	if err != nil {
 		return nil, err
 	}
@@ -141,22 +144,25 @@ func parseCert(in []byte, privAlgo string) (*Certificate, error) {
 	if err := Unmarshal(rest, &g); err != nil {
 		return nil, err
 	}
-	c.Serial = g.Serial
-	c.CertType = g.CertType
-	c.KeyId = g.KeyId
 
-	p := g.ValidPrincipals
-	for len(p) > 0 {
-		principal, rest, ok := parseString(p)
+	c := &Certificate{
+		Nonce:       nonce,
+		Key:         key,
+		Serial:      g.Serial,
+		CertType:    g.CertType,
+		KeyId:       g.KeyId,
+		ValidAfter:  g.ValidAfter,
+		ValidBefore: g.ValidBefore,
+	}
+
+	for principals := g.ValidPrincipals; len(principals) > 0; {
+		principal, rest, ok := parseString(principals)
 		if !ok {
 			return nil, errShortRead
 		}
 		c.ValidPrincipals = append(c.ValidPrincipals, string(principal))
-		p = rest
+		principals = rest
 	}
-
-	c.ValidAfter = g.ValidAfter
-	c.ValidBefore = g.ValidBefore
 
 	c.CriticalOptions, err = parseTuples(g.CriticalOptions)
 	if err != nil {
@@ -186,9 +192,9 @@ type openSSHCertSigner struct {
 	signer Signer
 }
 
-// NewCertSigner constructs a Signer whose public key is the given
-// certificate. The public key in cert.Key should be the same as
-// signer.PublicKey().
+// NewCertSigner returns a Signer that signs with the given Certificate, whose
+// private key is held by signer. It returns an error if the public key in cert
+// doesn't match the key used by signer.
 func NewCertSigner(cert *Certificate, signer Signer) (Signer, error) {
 	if bytes.Compare(cert.Key.Marshal(), signer.PublicKey().Marshal()) != 0 {
 		return nil, errors.New("ssh: signer and cert have different public key")
@@ -222,20 +228,24 @@ type CertChecker struct {
 	// certificates.
 	IsAuthority func(auth PublicKey) bool
 
-	// Clock is used for verifying time stamps. If unset, time.Now
+	// Clock is used for verifying time stamps. If nil, time.Now
 	// is used.
 	Clock func() time.Time
 
-	// UserKeyFallback is the fallback for non-certificate
-	// user keys. If it is nil, non-certificate keys are rejected.
+	// UserKeyFallback is called when CertChecker.Authenticate encounters a
+	// public key that is not a certificate. It must implement validation
+	// of user keys or else, if nil, all such keys are rejected.
 	UserKeyFallback func(conn ConnMetadata, key PublicKey) (*Permissions, error)
 
-	// HostKeyFallback is the fallback for non-certificate host
-	// keys.  If it is nil, non-certificate keys are rejected.
+	// HostKeyFallback is called when CertChecker.CheckHostKey encounters a
+	// public key that is not a certificate. It must implement host key
+	// validation or else, if nil, all such keys are rejected.
 	HostKeyFallback func(addr string, remote net.Addr, key PublicKey) error
 
-	// IsRevoked should indicate if the key has been revoked. If
-	// unset, no keys are considered revoked.
+	// IsRevoked is called for each certificate so that revocation checking
+	// can be implemented. It should return true if the given certificate
+	// is revoked and false otherwise. If nil, no certificates are
+	// considered to have been revoked.
 	IsRevoked func(cert *Certificate) bool
 }
 
@@ -247,10 +257,10 @@ func (c *CertChecker) CheckHostKey(addr string, remote net.Addr, key PublicKey) 
 		if c.HostKeyFallback != nil {
 			return c.HostKeyFallback(addr, remote, key)
 		}
-		return errors.New("ssh: not a cert")
+		return errors.New("ssh: non-certificate host key")
 	}
 	if cert.CertType != HostCert {
-		return errors.New("ssh: not a host cert")
+		return fmt.Errorf("ssh: certificate presented as a host key has type %d", cert.CertType)
 	}
 
 	return c.CheckCert(addr, cert)
@@ -279,7 +289,7 @@ func (c *CertChecker) Authenticate(conn ConnMetadata, pubKey PublicKey) (*Permis
 }
 
 // CheckCert checks CriticalOptions, ValidPrincipals, revocation, timestamp and
-// signature of the certificate.
+// the signature of the certificate.
 func (c *CertChecker) CheckCert(principal string, cert *Certificate) error {
 	if c.IsRevoked != nil && c.IsRevoked(cert) {
 		return fmt.Errorf("ssh: certicate serial %d revoked", cert.Serial)
@@ -300,7 +310,7 @@ func (c *CertChecker) CheckCert(principal string, cert *Certificate) error {
 			}
 		}
 		if !found {
-			return fmt.Errorf("ssh: unsupported critical option %q", opt)
+			return fmt.Errorf("ssh: unsupported critical option %q in certificate", opt)
 		}
 	}
 
@@ -314,12 +324,12 @@ func (c *CertChecker) CheckCert(principal string, cert *Certificate) error {
 			}
 		}
 		if !found {
-			return fmt.Errorf("ssh: principal %q not in %q", principal, cert.ValidPrincipals)
+			return fmt.Errorf("ssh: principal %q not in the set of valid principals for given certificate: %q", principal, cert.ValidPrincipals)
 		}
 	}
 
 	if !c.IsAuthority(cert.SignatureKey) {
-		return fmt.Errorf("ssh: key is not an authority")
+		return fmt.Errorf("ssh: certificate signed by unrecognized authority")
 	}
 
 	clock := c.Clock
@@ -341,15 +351,16 @@ func (c *CertChecker) CheckCert(principal string, cert *Certificate) error {
 	return nil
 }
 
-// SignCert sets the SignatureKey to the authority's public key, and
-// stores a Signature by the authority in the certificate.
-func (c *Certificate) SignCert(authority Signer) error {
+// SignCert sets c.SignatureKey to the authority's public key and stores a
+// Signature, by authority, in the certificate.
+func (c *Certificate) SignCert(rand io.Reader, authority Signer) error {
 	c.Nonce = make([]byte, 32)
-	rand.Reader.Read(c.Nonce)
+	if _, err := io.ReadFull(rand, c.Nonce); err != nil {
+		return err
+	}
 	c.SignatureKey = authority.PublicKey()
 
-	// Should get rand from some config?
-	sig, err := authority.Sign(rand.Reader, c.bytesForSigning())
+	sig, err := authority.Sign(rand, c.bytesForSigning())
 	if err != nil {
 		return err
 	}
@@ -384,8 +395,8 @@ func (cert *Certificate) bytesForSigning() []byte {
 	return out[:len(out)-4]
 }
 
-// Marshal serializes the certificate.  It is part of the PublicKey
-// interface.
+// Marshal serializes c into OpenSSH's wire format. It is part of the
+// PublicKey interface.
 func (c *Certificate) Marshal() []byte {
 	generic := genericCertData{
 		Serial:          c.Serial,
@@ -411,11 +422,9 @@ func (c *Certificate) Marshal() []byte {
 		Key   []byte `ssh:"rest"`
 	}{c.Type(), c.Nonce, keyBytes})
 
-	result := make([]byte, len(prefix)+len(genericBytes))
-	dst := result
-	copy(dst, prefix)
-	dst = dst[len(prefix):]
-	copy(dst, genericBytes)
+	result := make([]byte, 0, len(prefix)+len(genericBytes))
+	result = append(result, prefix...)
+	result = append(result, genericBytes...)
 	return result
 }
 
@@ -435,8 +444,8 @@ func (c *Certificate) Verify(data []byte, sig *Signature) error {
 }
 
 func parseSignatureBody(in []byte) (out *Signature, rest []byte, ok bool) {
-	var format []byte
-	if format, in, ok = parseString(in); !ok {
+	format, in, ok := parseString(in)
+	if !ok {
 		return
 	}
 
@@ -452,13 +461,13 @@ func parseSignatureBody(in []byte) (out *Signature, rest []byte, ok bool) {
 }
 
 func parseSignature(in []byte) (out *Signature, rest []byte, ok bool) {
-	var sigBytes []byte
-	if sigBytes, rest, ok = parseString(in); !ok {
+	sigBytes, rest, ok := parseString(in)
+	if !ok {
 		return
 	}
 
-	out, sigBytes, ok = parseSignatureBody(sigBytes)
-	if !ok || len(sigBytes) > 0 {
+	out, trailing, ok := parseSignatureBody(sigBytes)
+	if !ok || len(trailing) > 0 {
 		return nil, nil, false
 	}
 	return

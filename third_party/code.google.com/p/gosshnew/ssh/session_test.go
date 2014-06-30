@@ -138,7 +138,7 @@ func TestSessionOutput(t *testing.T) {
 	}
 	defer session.Close()
 
-	buf, err := session.Output("") // cmd is ignored by fixedOutputHandler
+	buf, err := session.Output("")	// cmd is ignored by fixedOutputHandler
 	if err != nil {
 		t.Error("Remote command did not exit cleanly:", err)
 	}
@@ -162,7 +162,7 @@ func TestSessionCombinedOutput(t *testing.T) {
 	}
 	defer session.Close()
 
-	buf, err := session.CombinedOutput("") // cmd is ignored by fixedOutputHandler
+	buf, err := session.CombinedOutput("")	// cmd is ignored by fixedOutputHandler
 	if err != nil {
 		t.Error("Remote command did not exit cleanly:", err)
 	}
@@ -395,10 +395,10 @@ type exitStatusMsg struct {
 }
 
 type exitSignalMsg struct {
-	Signal     string
-	CoreDumped bool
-	Errmsg     string
-	Lang       string
+	Signal		string
+	CoreDumped	bool
+	Errmsg		string
+	Lang		string
 }
 
 func handleTerminalRequests(in <-chan *Request) {
@@ -518,10 +518,10 @@ func sendStatus(status uint32, ch Channel, t *testing.T) {
 
 func sendSignal(signal string, ch Channel, t *testing.T) {
 	sig := exitSignalMsg{
-		Signal:     signal,
-		CoreDumped: false,
-		Errmsg:     "Process terminated",
-		Lang:       "en-GB-oed",
+		Signal:		signal,
+		CoreDumped:	false,
+		Errmsg:		"Process terminated",
+		Lang:		"en-GB-oed",
 	}
 	if _, err := ch.SendRequest("exit-signal", false, Marshal(&sig)); err != nil {
 		t.Errorf("unable to send signal: %v", err)
@@ -544,9 +544,9 @@ func echoHandler(ch Channel, in <-chan *Request, t *testing.T) {
 // buffer size to exercise more code paths.
 func copyNRandomly(title string, dst io.Writer, src io.Reader, n int) (int, error) {
 	var (
-		buf       = make([]byte, 32*1024)
-		written   int
-		remaining = n
+		buf		= make([]byte, 32*1024)
+		written		int
+		remaining	= n
 	)
 	for remaining > 0 {
 		l := rand.Intn(1 << 15)

@@ -6,6 +6,7 @@ package ssh
 
 import (
 	"bytes"
+	"crypto/rand"
 	"errors"
 	"fmt"
 	"strings"
@@ -186,7 +187,7 @@ func TestAuthMethodRSAandDSA(t *testing.T) {
 }
 
 func TestClientHMAC(t *testing.T) {
-	for _, mac := range DefaultMACOrder {
+	for _, mac := range supportedMACs {
 		config := &ClientConfig{
 			User: "testuser",
 			Auth: []AuthMethod{
@@ -239,7 +240,7 @@ func TestClientLoginCert(t *testing.T) {
 		ValidBefore: CertTimeInfinity,
 		CertType:    UserCert,
 	}
-	cert.SignCert(testSigners["ecdsa"])
+	cert.SignCert(rand.Reader, testSigners["ecdsa"])
 	certSigner, err := NewCertSigner(cert, testSigners["rsa"])
 	if err != nil {
 		t.Fatalf("NewCertSigner: %v", err)
@@ -263,21 +264,21 @@ func TestClientLoginCert(t *testing.T) {
 
 	t.Log("revoked")
 	cert.Serial = 666
-	cert.SignCert(testSigners["ecdsa"])
+	cert.SignCert(rand.Reader, testSigners["ecdsa"])
 	if err := tryAuth(t, clientConfig); err == nil {
 		t.Errorf("revoked cert login succeeded")
 	}
 	cert.Serial = 1
 
 	t.Log("sign with wrong key")
-	cert.SignCert(testSigners["dsa"])
+	cert.SignCert(rand.Reader, testSigners["dsa"])
 	if err := tryAuth(t, clientConfig); err == nil {
 		t.Errorf("cert login passed with non-authoritive key")
 	}
 
 	t.Log("host cert")
 	cert.CertType = HostCert
-	cert.SignCert(testSigners["ecdsa"])
+	cert.SignCert(rand.Reader, testSigners["ecdsa"])
 	if err := tryAuth(t, clientConfig); err == nil {
 		t.Errorf("cert login passed with wrong type")
 	}
@@ -285,14 +286,14 @@ func TestClientLoginCert(t *testing.T) {
 
 	t.Log("principal specified")
 	cert.ValidPrincipals = []string{"user"}
-	cert.SignCert(testSigners["ecdsa"])
+	cert.SignCert(rand.Reader, testSigners["ecdsa"])
 	if err := tryAuth(t, clientConfig); err != nil {
 		t.Errorf("cert login failed: %v", err)
 	}
 
 	t.Log("wrong principal specified")
 	cert.ValidPrincipals = []string{"fred"}
-	cert.SignCert(testSigners["ecdsa"])
+	cert.SignCert(rand.Reader, testSigners["ecdsa"])
 	if err := tryAuth(t, clientConfig); err == nil {
 		t.Errorf("cert login passed with wrong principal")
 	}
@@ -300,21 +301,21 @@ func TestClientLoginCert(t *testing.T) {
 
 	t.Log("added critical option")
 	cert.CriticalOptions = map[string]string{"root-access": "yes"}
-	cert.SignCert(testSigners["ecdsa"])
+	cert.SignCert(rand.Reader, testSigners["ecdsa"])
 	if err := tryAuth(t, clientConfig); err == nil {
 		t.Errorf("cert login passed with unrecognized critical option")
 	}
 
 	t.Log("allowed source address")
 	cert.CriticalOptions = map[string]string{"source-address": "127.0.0.42/24"}
-	cert.SignCert(testSigners["ecdsa"])
+	cert.SignCert(rand.Reader, testSigners["ecdsa"])
 	if err := tryAuth(t, clientConfig); err != nil {
 		t.Errorf("cert login with source-address failed: %v", err)
 	}
 
 	t.Log("disallowed source address")
 	cert.CriticalOptions = map[string]string{"source-address": "127.0.0.42"}
-	cert.SignCert(testSigners["ecdsa"])
+	cert.SignCert(rand.Reader, testSigners["ecdsa"])
 	if err := tryAuth(t, clientConfig); err == nil {
 		t.Errorf("cert login with source-address succeeded")
 	}

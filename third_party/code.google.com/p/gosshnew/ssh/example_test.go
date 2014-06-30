@@ -118,7 +118,7 @@ func ExampleDial() {
 	// To authenticate with the remote server you must pass at least one
 	// implementation of AuthMethod via the Auth field in ClientConfig.
 	config := &ClientConfig{
-		User: "username",
+		User:	"username",
 		Auth: []AuthMethod{
 			Password("yourpassword"),
 		},
@@ -148,7 +148,7 @@ func ExampleDial() {
 
 func ExampleClient_Listen() {
 	config := &ClientConfig{
-		User: "username",
+		User:	"username",
 		Auth: []AuthMethod{
 			Password("password"),
 		},
@@ -176,7 +176,7 @@ func ExampleClient_Listen() {
 func ExampleSession_RequestPty() {
 	// Create client config
 	config := &ClientConfig{
-		User: "username",
+		User:	"username",
 		Auth: []AuthMethod{
 			Password("password"),
 		},
@@ -195,9 +195,9 @@ func ExampleSession_RequestPty() {
 	defer session.Close()
 	// Set up terminal modes
 	modes := TerminalModes{
-		ECHO:          0,     // disable echoing
-		TTY_OP_ISPEED: 14400, // input speed = 14.4kbaud
-		TTY_OP_OSPEED: 14400, // output speed = 14.4kbaud
+		ECHO:		0,	// disable echoing
+		TTY_OP_ISPEED:	14400,	// input speed = 14.4kbaud
+		TTY_OP_OSPEED:	14400,	// output speed = 14.4kbaud
 	}
 	// Request pseudo terminal
 	if err := session.RequestPty("xterm", 80, 40, modes); err != nil {

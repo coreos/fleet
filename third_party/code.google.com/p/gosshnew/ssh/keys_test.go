@@ -190,11 +190,11 @@ func TestMarshalParsePublicKey(t *testing.T) {
 }
 
 type authResult struct {
-	pubKey   PublicKey
-	options  []string
-	comments string
-	rest     string
-	ok       bool
+	pubKey		PublicKey
+	options		[]string
+	comments	string
+	rest		string
+	ok		bool
 }
 
 func testAuthorizedKeys(t *testing.T, authKeys []byte, expected []authResult) {

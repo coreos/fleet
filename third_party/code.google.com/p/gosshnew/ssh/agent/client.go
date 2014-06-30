@@ -58,24 +58,24 @@ type Agent interface {
 
 // See [PROTOCOL.agent], section 3.
 const (
-	agentRequestV1Identities = 1
+	agentRequestV1Identities	= 1
 
 	// 3.2 Requests from client to agent for protocol 2 key operations
-	agentAddIdentity         = 17
-	agentRemoveIdentity      = 18
-	agentRemoveAllIdentities = 19
-	agentAddIdConstrained    = 25
+	agentAddIdentity		= 17
+	agentRemoveIdentity		= 18
+	agentRemoveAllIdentities	= 19
+	agentAddIdConstrained		= 25
 
 	// 3.3 Key-type independent requests from client to agent
-	agentAddSmartcardKey            = 20
-	agentRemoveSmartcardKey         = 21
-	agentLock                       = 22
-	agentUnlock                     = 23
-	agentAddSmartcardKeyConstrained = 26
+	agentAddSmartcardKey		= 20
+	agentRemoveSmartcardKey		= 21
+	agentLock			= 22
+	agentUnlock			= 23
+	agentAddSmartcardKeyConstrained	= 26
 
 	// 3.7 Key constraint identifiers
-	agentConstrainLifetime = 1
-	agentConstrainConfirm  = 2
+	agentConstrainLifetime	= 1
+	agentConstrainConfirm	= 2
 )
 
 // maxAgentResponseBytes is the maximum agent reply size that is accepted. This
@@ -104,17 +104,17 @@ type requestIdentitiesAgentMsg struct{}
 const agentIdentitiesAnswer = 12
 
 type identitiesAnswerAgentMsg struct {
-	NumKeys uint32 `sshtype:"12"`
-	Keys    []byte `ssh:"rest"`
+	NumKeys	uint32	`sshtype:"12"`
+	Keys	[]byte	`ssh:"rest"`
 }
 
 // See [PROTOCOL.agent], section 2.6.2.
 const agentSignRequest = 13
 
 type signRequestAgentMsg struct {
-	KeyBlob []byte `sshtype:"13"`
-	Data    []byte
-	Flags   uint32
+	KeyBlob	[]byte	`sshtype:"13"`
+	Data	[]byte
+	Flags	uint32
 }
 
 // See [PROTOCOL.agent], section 2.6.2.
@@ -127,16 +127,20 @@ type signResponseAgentMsg struct {
 }
 
 type publicKey struct {
-	Format string
-	Rest   []byte `ssh:"rest"`
+	Format	string
+	Rest	[]byte	`ssh:"rest"`
 }
 
 // Key represents a protocol 2 public key as defined in
 // [PROTOCOL.agent], section 2.5.2.
 type Key struct {
-	Format  string
-	Blob    []byte
-	Comment string
+	Format	string
+	Blob	[]byte
+	Comment	string
+}
+
+func clientErr(err error) error {
+	return fmt.Errorf("agent: client error: %v", err)
 }
 
 // String returns the storage form of an agent key with the format, base64
@@ -168,15 +172,15 @@ func (k *Key) Verify(data []byte, sig *ssh.Signature) error {
 }
 
 type wireKey struct {
-	Format string
-	Rest   []byte `ssh:"rest"`
+	Format	string
+	Rest	[]byte	`ssh:"rest"`
 }
 
 func parseKey(in []byte) (out *Key, rest []byte, err error) {
 	var record struct {
-		Blob    []byte
-		Comment string
-		Rest    []byte `ssh:"rest"`
+		Blob	[]byte
+		Comment	string
+		Rest	[]byte	`ssh:"rest"`
 	}
 
 	if err := ssh.Unmarshal(in, &record); err != nil {
@@ -189,18 +193,18 @@ func parseKey(in []byte) (out *Key, rest []byte, err error) {
 	}
 
 	return &Key{
-		Format:  wk.Format,
-		Blob:    record.Blob,
-		Comment: record.Comment,
+		Format:		wk.Format,
+		Blob:		record.Blob,
+		Comment:	record.Comment,
 	}, record.Rest, nil
 }
 
 // client is a client for an ssh-agent process.
 type client struct {
 	// conn is typically a *net.UnixConn
-	conn io.ReadWriter
+	conn	io.ReadWriter
 	// mu is used to prevent concurrent access to the agent
-	mu sync.Mutex
+	mu	sync.Mutex
 }
 
 // NewClient returns an Agent that talks to an ssh-agent process over
@@ -220,23 +224,27 @@ func (c *client) call(req []byte) (reply interface{}, err error) {
 	binary.BigEndian.PutUint32(msg, uint32(len(req)))
 	copy(msg[4:], req)
 	if _, err = c.conn.Write(msg); err != nil {
-		return
+		return nil, clientErr(err)
 	}
 
 	var respSizeBuf [4]byte
 	if _, err = io.ReadFull(c.conn, respSizeBuf[:]); err != nil {
-		return
+		return nil, clientErr(err)
 	}
 	respSize := binary.BigEndian.Uint32(respSizeBuf[:])
 	if respSize > maxAgentResponseBytes {
-		return
+		return nil, clientErr(err)
 	}
 
 	buf := make([]byte, respSize)
 	if _, err = io.ReadFull(c.conn, buf); err != nil {
-		return
+		return nil, clientErr(err)
 	}
-	return unmarshal(buf)
+	reply, err = unmarshal(buf)
+	if err != nil {
+		return nil, clientErr(err)
+	}
+	return reply, err
 }
 
 func (c *client) simpleCall(req []byte) error {
@@ -311,8 +319,8 @@ func (c *client) List() ([]*Key, error) {
 // in [PROTOCOL.agent] section 2.6.2.
 func (c *client) Sign(key ssh.PublicKey, data []byte) (*ssh.Signature, error) {
 	req := ssh.Marshal(signRequestAgentMsg{
-		KeyBlob: key.Marshal(),
-		Data:    data,
+		KeyBlob:	key.Marshal(),
+		Data:		data,
 	})
 
 	msg, err := c.call(req)
@@ -360,32 +368,32 @@ func unmarshal(packet []byte) (interface{}, error) {
 }
 
 type rsaKeyMsg struct {
-	Type     string `sshtype:"17"`
-	N        *big.Int
-	E        *big.Int
-	D        *big.Int
-	Iqmp     *big.Int // IQMP = Inverse Q Mod P
-	P        *big.Int
-	Q        *big.Int
-	Comments string
+	Type		string	`sshtype:"17"`
+	N		*big.Int
+	E		*big.Int
+	D		*big.Int
+	Iqmp		*big.Int	// IQMP = Inverse Q Mod P
+	P		*big.Int
+	Q		*big.Int
+	Comments	string
 }
 
 type dsaKeyMsg struct {
-	Type     string `sshtype:"17"`
-	P        *big.Int
-	Q        *big.Int
-	G        *big.Int
-	Y        *big.Int
-	X        *big.Int
-	Comments string
+	Type		string	`sshtype:"17"`
+	P		*big.Int
+	Q		*big.Int
+	G		*big.Int
+	Y		*big.Int
+	X		*big.Int
+	Comments	string
 }
 
 type ecdsaKeyMsg struct {
-	Type     string `sshtype:"17"`
-	Curve    string
-	KeyBytes []byte
-	D        *big.Int
-	Comments string
+	Type		string	`sshtype:"17"`
+	Curve		string
+	KeyBytes	[]byte
+	D		*big.Int
+	Comments	string
 }
 
 // Insert adds a private key to the agent.
@@ -398,33 +406,33 @@ func (c *client) insertKey(s interface{}, comment string) error {
 		}
 		k.Precompute()
 		req = ssh.Marshal(rsaKeyMsg{
-			Type:     ssh.KeyAlgoRSA,
-			N:        k.N,
-			E:        big.NewInt(int64(k.E)),
-			D:        k.D,
-			Iqmp:     k.Precomputed.Qinv,
-			P:        k.Primes[0],
-			Q:        k.Primes[1],
-			Comments: comment,
+			Type:		ssh.KeyAlgoRSA,
+			N:		k.N,
+			E:		big.NewInt(int64(k.E)),
+			D:		k.D,
+			Iqmp:		k.Precomputed.Qinv,
+			P:		k.Primes[0],
+			Q:		k.Primes[1],
+			Comments:	comment,
 		})
 	case *dsa.PrivateKey:
 		req = ssh.Marshal(dsaKeyMsg{
-			Type:     ssh.KeyAlgoDSA,
-			P:        k.P,
-			Q:        k.Q,
-			G:        k.G,
-			Y:        k.Y,
-			X:        k.X,
-			Comments: comment,
+			Type:		ssh.KeyAlgoDSA,
+			P:		k.P,
+			Q:		k.Q,
+			G:		k.G,
+			Y:		k.Y,
+			X:		k.X,
+			Comments:	comment,
 		})
 	case *ecdsa.PrivateKey:
 		nistID := fmt.Sprintf("nistp%d", k.Params().BitSize)
 		req = ssh.Marshal(ecdsaKeyMsg{
-			Type:     "ecdsa-sha2-" + nistID,
-			Curve:    nistID,
-			KeyBytes: elliptic.Marshal(k.Curve, k.X, k.Y),
-			D:        k.D,
-			Comments: comment,
+			Type:		"ecdsa-sha2-" + nistID,
+			Curve:		nistID,
+			KeyBytes:	elliptic.Marshal(k.Curve, k.X, k.Y),
+			D:		k.D,
+			Comments:	comment,
 		})
 	default:
 		return fmt.Errorf("ssh: unsupported key type %T", s)
@@ -440,27 +448,27 @@ func (c *client) insertKey(s interface{}, comment string) error {
 }
 
 type rsaCertMsg struct {
-	Type      string `sshtype:"17"`
-	CertBytes []byte
-	D         *big.Int
-	Iqmp      *big.Int // IQMP = Inverse Q Mod P
-	P         *big.Int
-	Q         *big.Int
-	Comments  string
+	Type		string	`sshtype:"17"`
+	CertBytes	[]byte
+	D		*big.Int
+	Iqmp		*big.Int	// IQMP = Inverse Q Mod P
+	P		*big.Int
+	Q		*big.Int
+	Comments	string
 }
 
 type dsaCertMsg struct {
-	Type      string `sshtype:"17"`
-	CertBytes []byte
-	X         *big.Int
-	Comments  string
+	Type		string	`sshtype:"17"`
+	CertBytes	[]byte
+	X		*big.Int
+	Comments	string
 }
 
 type ecdsaCertMsg struct {
-	Type      string `sshtype:"17"`
-	CertBytes []byte
-	D         *big.Int
-	Comments  string
+	Type		string	`sshtype:"17"`
+	CertBytes	[]byte
+	D		*big.Int
+	Comments	string
 }
 
 // Insert adds a private key to the agent. If a certificate is given,
@@ -482,27 +490,27 @@ func (c *client) insertCert(s interface{}, cert *ssh.Certificate, comment string
 		}
 		k.Precompute()
 		req = ssh.Marshal(rsaCertMsg{
-			Type:      cert.Type(),
-			CertBytes: cert.Marshal(),
-			D:         k.D,
-			Iqmp:      k.Precomputed.Qinv,
-			P:         k.Primes[0],
-			Q:         k.Primes[1],
-			Comments:  comment,
+			Type:		cert.Type(),
+			CertBytes:	cert.Marshal(),
+			D:		k.D,
+			Iqmp:		k.Precomputed.Qinv,
+			P:		k.Primes[0],
+			Q:		k.Primes[1],
+			Comments:	comment,
 		})
 	case *dsa.PrivateKey:
 		req = ssh.Marshal(dsaCertMsg{
-			Type:      cert.Type(),
-			CertBytes: cert.Marshal(),
-			X:         k.X,
-			Comments:  comment,
+			Type:		cert.Type(),
+			CertBytes:	cert.Marshal(),
+			X:		k.X,
+			Comments:	comment,
 		})
 	case *ecdsa.PrivateKey:
 		req = ssh.Marshal(ecdsaCertMsg{
-			Type:      cert.Type(),
-			CertBytes: cert.Marshal(),
-			D:         k.D,
-			Comments:  comment,
+			Type:		cert.Type(),
+			CertBytes:	cert.Marshal(),
+			D:		k.D,
+			Comments:	comment,
 		})
 	default:
 		return fmt.Errorf("ssh: unsupported key type %T", s)
@@ -541,8 +549,8 @@ func (c *client) Signers() ([]ssh.Signer, error) {
 }
 
 type agentKeyringSigner struct {
-	agent *client
-	pub   ssh.PublicKey
+	agent	*client
+	pub	ssh.PublicKey
 }
 
 func (s *agentKeyringSigner) PublicKey() ssh.PublicKey {

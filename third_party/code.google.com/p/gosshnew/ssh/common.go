@@ -23,17 +23,37 @@ const (
 	serviceSSH      = "ssh-connection"
 )
 
+// supportedCiphers specifies the supported ciphers in preference order.
+var supportedCiphers = []string{
+	"aes128-ctr", "aes192-ctr", "aes256-ctr",
+	"aes128-gcm@openssh.com",
+	"arcfour256", "arcfour128",
+}
+
+// supportedKexAlgos specifies the supported key-exchange algorithms in
+// preference order.
 var supportedKexAlgos = []string{
+	// P384 and P521 are not constant-time yet, but since we don't
+	// reuse ephemeral keys, using them for ECDH should be OK.
 	kexAlgoECDH256, kexAlgoECDH384, kexAlgoECDH521,
 	kexAlgoDH14SHA1, kexAlgoDH1SHA1,
 }
 
+// supportedKexAlgos specifies the supported host-key algorithms (i.e. methods
+// of authenticating servers) in preference order.
 var supportedHostKeyAlgos = []string{
 	CertAlgoRSAv01, CertAlgoDSAv01, CertAlgoECDSA256v01,
 	CertAlgoECDSA384v01, CertAlgoECDSA521v01,
 
 	KeyAlgoECDSA256, KeyAlgoECDSA384, KeyAlgoECDSA521,
 	KeyAlgoRSA, KeyAlgoDSA,
+}
+
+// supportedMACs specifies a default set of MAC algorithms in preference order.
+// This is based on RFC 4253, section 6.4, but with hmac-md5 variants removed
+// because they have reached the end of their useful life.
+var supportedMACs = []string{
+	"hmac-sha1", "hmac-sha1-96",
 }
 
 var supportedCompressions = []string{compressionNone}
@@ -167,29 +187,32 @@ type Config struct {
 	// default set of algorithms is used.
 	KeyExchanges []string
 
-	// The allowed cipher algorithms. If unspecified then DefaultCipherOrder is
-	// used.
+	// The allowed cipher algorithms. If unspecified then a sensible
+	// default is used.
 	Ciphers []string
 
-	// The allowed MAC algorithms. If unspecified then DefaultMACOrder is used.
+	// The allowed MAC algorithms. If unspecified then a sensible default
+	// is used.
 	MACs []string
 }
 
-// setDefaults sets sensible values for unset fields in config.
-func (c *Config) setDefaults() {
+// SetDefaults sets sensible values for unset fields in config. This is
+// exported for testing: Configs passed to SSH functions are copied and have
+// default values set automatically.
+func (c *Config) SetDefaults() {
 	if c.Rand == nil {
 		c.Rand = rand.Reader
 	}
 	if c.Ciphers == nil {
-		c.Ciphers = DefaultCipherOrder
+		c.Ciphers = supportedCiphers
 	}
 
 	if c.KeyExchanges == nil {
-		c.KeyExchanges = defaultKeyExchangeOrder
+		c.KeyExchanges = supportedKexAlgos
 	}
 
 	if c.MACs == nil {
-		c.MACs = DefaultMACOrder
+		c.MACs = supportedMACs
 	}
 
 	if c.RekeyThreshold == 0 {
@@ -252,11 +275,9 @@ func appendString(buf []byte, s string) []byte {
 
 func appendBool(buf []byte, b bool) []byte {
 	if b {
-		buf = append(buf, 1)
-	} else {
-		buf = append(buf, 0)
+		return append(buf, 1)
 	}
-	return buf
+	return append(buf, 0)
 }
 
 // newCond is a helper to hide the fact that there is no usable zero
@@ -308,8 +329,8 @@ func (w *window) close() {
 func (w *window) reserve(win uint32) (uint32, error) {
 	var err error
 	w.L.Lock()
-	w.Broadcast()
 	w.writeWaiters++
+	w.Broadcast()
 	for w.win == 0 && !w.closed {
 		w.Wait()
 	}
