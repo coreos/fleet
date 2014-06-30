@@ -9,7 +9,7 @@ Effortlessly persist/retrieve flags of your Golang programs. If you need global 
 ~~~ go
 import "github.com/rakyll/globalconf"
 ~~~
-    
+
 ### Loading a config file
 
 By default, globalconf provides you a config file under `~/.config/<yourappname>/config.ini`.
@@ -21,10 +21,20 @@ globalconf.New("appname") // loads from ~/.config/<appname>/config.ini
 If you don't prefer the default location you can load from a specified path as well.
 
 ~~~ go
-opts := globalconf.Options{Filename: "/path/to/config/file"}
-globalconf.NewWithOptions(&opts)
+globalconf.NewWithOptions(&globalconf.Options{
+	Filename: "/path/to/config/file",
+})
 ~~~
-	
+
+You may like to override configuration with env variables. See "Environment variables" header to see how to it works.
+
+~~~ go
+globalconf.NewWithOptions(&globalconf.Options{
+	Filename:  "/path/to/config/file",
+	EnvPrefix: "APPCONF_",
+})
+~~~
+
 ### Parsing flag values
 
 `globalconf` populates flags with data in the config file if they are not already set.
@@ -40,7 +50,7 @@ Assume the configuration file to be loaded contains the following lines.
 
 	name = Burcu
 	addr = Brandschenkestrasse 110, 8002
-	
+
 And your program is being started, `$ myapp -name=Jane`
 ~~~ go
 conf, err := globalconf.New("myapp")
@@ -102,7 +112,7 @@ object was configured with a filename.
 ~~~ go
 f := &flag.Flag{Name: "name", Value: val}
 conf.Set("", f) // if you are modifying a command line flag
-	
+
 f := &flag.Flag{Name: "color", Value: val}
 conf.Set("termopts", color) // if you are modifying a custom flag set flag
 ~~~

@@ -19,14 +19,14 @@ var flags map[string]*flag.FlagSet = make(map[string]*flag.FlagSet)
 
 // Represents a GlobalConf context.
 type GlobalConf struct {
-	Filename  string
-	EnvPrefix string
-	dict      *ini.Dict
+	Filename	string
+	EnvPrefix	string
+	dict		*ini.Dict
 }
 
 type Options struct {
-	Filename  string
-	EnvPrefix string
+	Filename	string
+	EnvPrefix	string
 }
 
 // NewWithOptions creates a GlobalConf from the provided
@@ -46,9 +46,9 @@ func NewWithOptions(opts *Options) (g *GlobalConf, err error) {
 	}
 
 	return &GlobalConf{
-		Filename:  opts.Filename,
-		EnvPrefix: opts.EnvPrefix,
-		dict:      &dict,
+		Filename:	opts.Filename,
+		EnvPrefix:	opts.EnvPrefix,
+		dict:		&dict,
 	}, nil
 }
 
