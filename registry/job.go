@@ -47,6 +47,11 @@ func (r *EtcdRegistry) Jobs() ([]job.Job, error) {
 				continue
 			}
 
+			if err = r.hydrateJob(j); err != nil {
+				log.Errorf("Failed to hydrate Job(%s) model", j.Name)
+				continue
+			}
+
 			jobs = append(jobs, *j)
 		}
 	}
@@ -54,10 +59,10 @@ func (r *EtcdRegistry) Jobs() ([]job.Job, error) {
 	return jobs, nil
 }
 
-// GetJobTarget looks up where the given job is scheduled. If the job has
+// jobTargetMachine looks up where the given job is scheduled. If the job has
 // been scheduled, the ID the target machine is returned. Otherwise, an
 // empty string is returned.
-func (r *EtcdRegistry) JobTarget(jobName string) (string, error) {
+func (r *EtcdRegistry) jobTargetMachine(jobName string) (string, error) {
 	req := etcd.Get{
 		Key:       r.jobTargetAgentPath(jobName),
 		Sorted:    false,
@@ -91,7 +96,7 @@ func (r *EtcdRegistry) ClearJobTarget(jobName, machID string) error {
 
 // Job looks for a Job of the given name in the Registry. It returns a fully
 // hydrated Job on success, or nil on any kind of failure.
-func (r *EtcdRegistry) Job(jobName string) (j *job.Job, err error) {
+func (r *EtcdRegistry) Job(jobName string) (*job.Job, error) {
 	req := etcd.Get{
 		Key: path.Join(r.keyPrefix, jobPrefix, jobName, "object"),
 	}
@@ -101,10 +106,37 @@ func (r *EtcdRegistry) Job(jobName string) (j *job.Job, err error) {
 		if isKeyNotFound(err) {
 			err = nil
 		}
+		return nil, err
+	}
+
+	var j *job.Job
+	j, err = r.getJobFromJSON(resp.Node.Value)
+	if j == nil || err != nil {
+		return nil, err
+	}
+
+	if err = r.hydrateJob(j); err != nil {
+		return nil, err
+	}
+
+	return j, nil
+}
+
+func (r *EtcdRegistry) hydrateJob(j *job.Job) (err error) {
+	j.TargetState, err = r.jobTargetState(j.Name)
+	if err != nil {
 		return
 	}
 
-	return r.getJobFromJSON(resp.Node.Value)
+	j.TargetMachineID, err = r.jobTargetMachine(j.Name)
+	if err != nil {
+		return
+	}
+
+	j.UnitState = r.getUnitState(j.Name)
+	j.State = r.determineJobState(j.Name)
+
+	return
 }
 
 func (r *EtcdRegistry) getJobFromJSON(val string) (*job.Job, error) {
@@ -150,12 +182,7 @@ func (r *EtcdRegistry) getJobFromModel(jm jobModel) *job.Job {
 		}
 	}
 
-	j := job.NewJob(jm.Name, *unit)
-
-	j.UnitState = r.getUnitState(jm.Name)
-	j.State = r.determineJobState(jm.Name)
-
-	return j
+	return job.NewJob(jm.Name, *unit)
 }
 
 // jobModel is used for serializing and deserializing Jobs stored in the Registry
@@ -219,13 +246,15 @@ func (r *EtcdRegistry) CreateJob(j *job.Job) (err error) {
 	return
 }
 
-func (r *EtcdRegistry) JobTargetState(jobName string) (*job.JobState, error) {
+func (r *EtcdRegistry) jobTargetState(jobName string) (*job.JobState, error) {
 	req := etcd.Get{
 		Key: r.jobTargetStatePath(jobName),
 	}
 	resp, err := r.etcd.Do(&req)
 	if err != nil {
-		log.Errorf("Unable to determine target-state of Job(%s): %v", jobName, err)
+		if isKeyNotFound(err) {
+			err = nil
+		}
 		return nil, err
 	}
 
@@ -286,7 +315,12 @@ func (es *EventStream) filterJobTargetStateChanges(resp *etcd.Result) *event.Eve
 		return nil
 	}
 
-	agent, _ := es.registry.JobTarget(jobName)
+	agent, err := es.registry.jobTargetMachine(jobName)
+	if err != nil {
+		log.Errorf("Failed to look up target of Job(%s): %v", jobName, err)
+		return nil
+	}
+
 	return &event.Event{cType, jobName, agent}
 }
 

@@ -135,15 +135,6 @@ func (c *HTTPClient) Job(name string) (*job.Job, error) {
 	return mapUnitToJob(u, mm)
 }
 
-func (c *HTTPClient) JobTarget(name string) (string, error) {
-	u, err := c.svc.Units.Get(name).Do()
-	if err != nil {
-		return "", err
-	}
-
-	return u.TargetMachineID, nil
-}
-
 func mapUnitPageToJobs(entities []*schema.Unit, mm map[string]*machine.MachineState) ([]job.Job, error) {
 	jobs := make([]job.Job, len(entities))
 	for i, _ := range entities {

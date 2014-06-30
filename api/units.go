@@ -192,7 +192,7 @@ func (ur *unitsResource) get(rw http.ResponseWriter, req *http.Request, item str
 		return
 	}
 
-	u, err := mapJobToSchema(ur.reg, j)
+	u, err := mapJobToSchema(j)
 	if err != nil {
 		log.Errorf("Failed mapping Job(%s) to schema: %v", item, err)
 		sendError(rw, http.StatusInternalServerError, nil)
@@ -271,7 +271,7 @@ func newUnitPage(reg registry.Registry, items []job.Job, tok *PageToken) (*schem
 	}
 
 	for _, j := range items {
-		u, err := mapJobToSchema(reg, &j)
+		u, err := mapJobToSchema(&j)
 		if err != nil {
 			return nil, err
 		}
@@ -280,11 +280,12 @@ func newUnitPage(reg registry.Registry, items []job.Job, tok *PageToken) (*schem
 	return &sup, nil
 }
 
-func mapJobToSchema(reg registry.Registry, j *job.Job) (*schema.Unit, error) {
+func mapJobToSchema(j *job.Job) (*schema.Unit, error) {
 	su := schema.Unit{
-		Name:         j.Name,
-		FileHash:     j.UnitHash.String(),
-		FileContents: encodeUnitContents(&j.Unit),
+		Name:            j.Name,
+		FileHash:        j.UnitHash.String(),
+		FileContents:    encodeUnitContents(&j.Unit),
+		TargetMachineID: j.TargetMachineID,
 	}
 
 	if j.State != nil {
@@ -302,20 +303,8 @@ func mapJobToSchema(reg registry.Registry, j *job.Job) (*schema.Unit, error) {
 		}
 	}
 
-	tgtMachID, err := reg.JobTarget(j.Name)
-	if err != nil {
-		return nil, err
-	}
-
-	su.TargetMachineID = tgtMachID
-
-	tgtState, err := reg.JobTargetState(j.Name)
-	if err != nil {
-		return nil, err
-	}
-
-	if tgtState != nil {
-		su.DesiredState = string(*tgtState)
+	if j.TargetState != nil {
+		su.DesiredState = string(*j.TargetState)
 	}
 
 	return &su, nil
