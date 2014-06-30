@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/coreos/fleet/third_party/github.com/golang/glog"
+	"github.com/coreos/fleet/Godeps/_workspace/src/github.com/golang/glog"
 )
 
 type Config struct {
