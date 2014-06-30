@@ -453,7 +453,7 @@ func TestMuxMaxPacketSize(t *testing.T) {
 	defer b.Close()
 	defer mux.Close()
 
-	large := make([]byte, a.maxPayload+1)
+	large := make([]byte, a.maxRemotePayload+1)
 	packet := make([]byte, 1+4+4+1+len(large))
 	packet[0] = msgChannelData
 	marshalUint32(packet[1:], a.remoteId)

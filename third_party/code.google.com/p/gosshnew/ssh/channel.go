@@ -15,18 +15,20 @@ import (
 
 const (
 	minPacketLength = 9
-	// As per RFC 4253, section 6.1, 32k is also the minimum.
+	// channelMaxPacket contains the maximum number of bytes that will be
+	// sent in a single packet. As per RFC 4253, section 6.1, 32k is also
+	// the minimum.
 	channelMaxPacket = 1 << 15
 	// We follow OpenSSH here.
 	channelWindowSize = 64 * channelMaxPacket
 )
 
-// NewChannel is an incoming request to a channel. It must either be
-// accepted for use with the Accept method or rejected with Reject.
+// NewChannel represents an incoming request to a channel. It must either be
+// accepted for use by calling Accept, or rejected by calling Reject.
 type NewChannel interface {
-	// Accept accepts the channel creation request. It returns the
-	// Channel and the side-channel for requests. The side-channel
-	// must be serviced.
+	// Accept accepts the channel creation request. It returns the Channel
+	// and a Go channel containing SSH requests. The Go channel must be
+	// serviced otherwise the Channel will hang.
 	Accept() (Channel, <-chan *Request, error)
 
 	// Reject rejects the channel creation request. After calling
@@ -51,7 +53,7 @@ type Channel interface {
 	// Write writes len(data) bytes to the channel.
 	Write(data []byte) (int, error)
 
-	// Signals end of channel use. No data may be sent after this
+	// Close signals end of channel use. No data may be sent after this
 	// call.
 	Close() error
 
@@ -63,7 +65,7 @@ type Channel interface {
 	// SendRequest sends a channel request.  If wantReply is true,
 	// it will wait for a reply and return the result as a
 	// boolean, otherwise the return value will be false. Channel
-	// requests are out-of-band messages, so they may be sent even
+	// requests are out-of-band messages so they may be sent even
 	// if the data stream is closed or blocked by flow control.
 	SendRequest(name string, wantReply bool, payload []byte) (bool, error)
 
@@ -84,12 +86,12 @@ type Request struct {
 	mux *mux
 }
 
-// Reply sends a message back to the request.  It should be called for
-// all requests that have WantReply set.  The payload argument is
-// ignored for channel specific requests
+// Reply sends a response to a request. It must be called for all requests
+// where WantReply is true and is a no-op otherwise. The payload argument is
+// ignored for replies to channel-specific requests.
 func (r *Request) Reply(ok bool, payload []byte) error {
 	if !r.WantReply {
-		return errors.New("ssh: request did not have WantReply")
+		return nil
 	}
 
 	if r.ch == nil {
@@ -132,6 +134,13 @@ func min(a uint32, b int) uint32 {
 	return uint32(b)
 }
 
+type channelDirection uint8
+
+const (
+	channelInbound channelDirection = iota
+	channelOutbound
+)
+
 // channel is an implementation of the Channel interface that works
 // with the mux class.
 type channel struct {
@@ -140,14 +149,22 @@ type channel struct {
 	extraData         []byte
 	localId, remoteId uint32
 
-	// maxPayload is the maximum payload size of normal and
-	// extended data packets. The wire packet will be 9 or 13 bytes
-	// larger (excluding encryption overhead).
-	maxPayload uint32
-	mux        *mux
+	// maxIncomingPayload and maxRemotePayload are the maximum
+	// payload sizes of normal and extended data packets for
+	// receiving and sending, respectively. The wire packet will
+	// be 9 or 13 bytes larger (excluding encryption overhead).
+	maxIncomingPayload uint32
+	maxRemotePayload   uint32
 
-	// If set, we have called Accept or Reject on this channel
+	mux *mux
+
+	// decided is set to true if an accept or reject message has been sent
+	// (for outbound channels) or received (for inbound channels).
 	decided bool
+
+	// direction contains either channelOutbound, for channels created
+	// locally, or channelInbound, for channels created by the peer.
+	direction channelDirection
 
 	// Pending internal channel messages.
 	msg chan interface{}
@@ -178,9 +195,8 @@ type channel struct {
 	sentClose bool
 }
 
-// writePacket sends the packet over the wire. If the packet is a
-// channel close, it updates sentClose. This method takes the lock
-// c.mu.
+// writePacket sends a packet. If the packet is a channel close, it updates
+// sentClose. This method takes the lock c.writeMu.
 func (c *channel) writePacket(packet []byte) error {
 	c.writeMu.Lock()
 	if c.sentClose {
@@ -203,6 +219,8 @@ func (c *channel) sendMessage(msg interface{}) error {
 	return c.writePacket(p)
 }
 
+// WriteExtended writes data to a specific extended stream. These streams are
+// used, for example, for stderr.
 func (c *channel) WriteExtended(data []byte, extendedCode uint32) (n int, err error) {
 	if c.sentEOF {
 		return 0, io.EOF
@@ -216,7 +234,7 @@ func (c *channel) WriteExtended(data []byte, extendedCode uint32) (n int, err er
 	}
 
 	for len(data) > 0 {
-		space := min(c.maxPayload, len(data))
+		space := min(c.maxRemotePayload, len(data))
 		if space, err = c.remoteWin.reserve(space); err != nil {
 			return n, err
 		}
@@ -224,11 +242,11 @@ func (c *channel) WriteExtended(data []byte, extendedCode uint32) (n int, err er
 
 		packet := make([]byte, headerLength+uint32(len(todo)))
 		packet[0] = opCode
-		marshalUint32(packet[1:], c.remoteId)
+		binary.BigEndian.PutUint32(packet[1:], c.remoteId)
 		if extendedCode > 0 {
-			marshalUint32(packet[5:], uint32(extendedCode))
+			binary.BigEndian.PutUint32(packet[5:], uint32(extendedCode))
 		}
-		marshalUint32(packet[headerLength-4:], uint32(len(todo)))
+		binary.BigEndian.PutUint32(packet[headerLength-4:], uint32(len(todo)))
 		copy(packet[headerLength:], todo)
 		if err = c.writePacket(packet); err != nil {
 			return n, err
@@ -243,7 +261,8 @@ func (c *channel) WriteExtended(data []byte, extendedCode uint32) (n int, err er
 
 func (c *channel) handleData(packet []byte) error {
 	headerLen := 9
-	if packet[0] == msgChannelExtendedData {
+	isExtendedData := packet[0] == msgChannelExtendedData
+	if isExtendedData {
 		headerLen = 13
 	}
 	if len(packet) < headerLen {
@@ -252,7 +271,7 @@ func (c *channel) handleData(packet []byte) error {
 	}
 
 	var extended uint32
-	if headerLen > 9 {
+	if isExtendedData {
 		extended = binary.BigEndian.Uint32(packet[5:])
 	}
 
@@ -260,7 +279,7 @@ func (c *channel) handleData(packet []byte) error {
 	if length == 0 {
 		return nil
 	}
-	if uint32(length) > c.maxPayload {
+	if length > c.maxIncomingPayload {
 		// TODO(hanwen): should send Disconnect?
 		return errors.New("ssh: incoming packet exceeds maximum payload size")
 	}
@@ -338,13 +357,26 @@ func (c *channel) close() {
 	c.remoteWin.close()
 }
 
+// responseMessageReceived is called when a success or failure message is
+// received on a channel to check that such a message is reasonable for the
+// given channel.
+func (c *channel) responseMessageReceived() error {
+	if c.direction == channelInbound {
+		return errors.New("ssh: channel response message received on inbound channel")
+	}
+	if c.decided {
+		return errors.New("ssh: duplicate response received for channel")
+	}
+	c.decided = true
+	return nil
+}
+
 func (c *channel) handlePacket(packet []byte) error {
 	switch packet[0] {
 	case msgChannelData, msgChannelExtendedData:
 		return c.handleData(packet)
 	case msgChannelClose:
-		c.sendMessage(channelCloseMsg{
-			PeersId: c.remoteId})
+		c.sendMessage(channelCloseMsg{PeersId: c.remoteId})
 		c.mux.chanList.remove(c.localId)
 		c.close()
 		return nil
@@ -363,21 +395,25 @@ func (c *channel) handlePacket(packet []byte) error {
 
 	switch msg := decoded.(type) {
 	case *channelOpenFailureMsg:
+		if err := c.responseMessageReceived(); err != nil {
+			return err
+		}
 		c.mux.chanList.remove(msg.PeersId)
 		c.msg <- msg
 	case *channelOpenConfirmMsg:
-		if msg.MaxPacketSize < minPacketLength || msg.MaxPacketSize > 1<<31 {
-			return errors.New("ssh: invalid MaxPacketSize from peer")
+		if err := c.responseMessageReceived(); err != nil {
+			return err
 		}
-		// fixup remoteId field
+		if msg.MaxPacketSize < minPacketLength || msg.MaxPacketSize > 1<<31 {
+			return fmt.Errorf("ssh: invalid MaxPacketSize %d from peer", msg.MaxPacketSize)
+		}
 		c.remoteId = msg.MyId
-		c.maxPayload = msg.MaxPacketSize
+		c.maxRemotePayload = msg.MaxPacketSize
 		c.remoteWin.add(msg.MyWindow)
-		c.decided = true
 		c.msg <- msg
 	case *windowAdjustMsg:
 		if !c.remoteWin.add(msg.AdditionalBytes) {
-			return fmt.Errorf("invalid window update %d", msg.AdditionalBytes)
+			return fmt.Errorf("ssh: invalid window update for %d bytes", msg.AdditionalBytes)
 		}
 	case *channelRequestMsg:
 		req := Request{
@@ -394,12 +430,13 @@ func (c *channel) handlePacket(packet []byte) error {
 	return nil
 }
 
-func (m *mux) newChannel(chanType string, extraData []byte) *channel {
+func (m *mux) newChannel(chanType string, direction channelDirection, extraData []byte) *channel {
 	ch := &channel{
 		remoteWin:        window{Cond: newCond()},
 		myWindow:         channelWindowSize,
 		pending:          newBuffer(),
 		extPending:       newBuffer(),
+		direction:        direction,
 		incomingRequests: make(chan *Request, 16),
 		msg:              make(chan interface{}, 16),
 		chanType:         chanType,
@@ -430,11 +467,12 @@ func (c *channel) Accept() (Channel, <-chan *Request, error) {
 	if c.decided {
 		return nil, nil, errDecidedAlready
 	}
+	c.maxIncomingPayload = channelMaxPacket
 	confirm := channelOpenConfirmMsg{
 		PeersId:       c.remoteId,
 		MyId:          c.localId,
 		MyWindow:      c.myWindow,
-		MaxPacketSize: c.maxPayload,
+		MaxPacketSize: c.maxIncomingPayload,
 	}
 	c.decided = true
 	if err := c.sendMessage(confirm); err != nil {
@@ -490,6 +528,8 @@ func (ch *channel) Close() error {
 		PeersId: ch.remoteId})
 }
 
+// Extended returns an io.ReadWriter that sends and receives data on the given,
+// SSH extended stream. Such streams are used, for example, for stderr.
 func (ch *channel) Extended(code uint32) io.ReadWriter {
 	if !ch.decided {
 		return nil
@@ -533,7 +573,7 @@ func (ch *channel) SendRequest(name string, wantReply bool, payload []byte) (boo
 		case *channelRequestSuccessMsg:
 			return true, nil
 		default:
-			return false, fmt.Errorf("unexpected response %#v", m)
+			return false, fmt.Errorf("ssh: unexpected response to channel request: %#v", m)
 		}
 	}
 

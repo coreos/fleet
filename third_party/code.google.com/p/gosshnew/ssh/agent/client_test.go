@@ -6,6 +6,7 @@ package agent
 
 import (
 	"bytes"
+	"crypto/rand"
 	"errors"
 	"net"
 	"os"
@@ -132,11 +133,11 @@ func TestAgent(t *testing.T) {
 
 func TestCert(t *testing.T) {
 	cert := &ssh.Certificate{
-		Key:         testPublicKeys["rsa"],
-		ValidBefore: ssh.CertTimeInfinity,
-		CertType:    ssh.UserCert,
+		Key:		testPublicKeys["rsa"],
+		ValidBefore:	ssh.CertTimeInfinity,
+		CertType:	ssh.UserCert,
 	}
-	cert.SignCert(testSigners["ecdsa"])
+	cert.SignCert(rand.Reader, testSigners["ecdsa"])
 
 	testAgent(t, testPrivateKeys["rsa"], cert)
 }

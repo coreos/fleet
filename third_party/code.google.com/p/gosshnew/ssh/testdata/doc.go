@@ -3,6 +3,6 @@
 // license that can be found in the LICENSE file.
 
 // This package contains test data shared between the various subpackages of
-// the github.com/coreos/fleet/third_party/code.google.com/p/gosshnew/ssh package. Under no circumstance should
+// the code.google.com/p/gosshnew/ssh package. Under no circumstance should
 // this data be used for production code.
 package testdata

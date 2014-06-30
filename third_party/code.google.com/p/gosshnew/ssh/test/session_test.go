@@ -276,13 +276,17 @@ func TestValidTerminalMode(t *testing.T) {
 }
 
 func TestCiphers(t *testing.T) {
-	for _, ciph := range ssh.DefaultCipherOrder {
+	var config ssh.Config
+	config.SetDefaults()
+	cipherOrder := config.Ciphers
+
+	for _, ciph := range cipherOrder {
 		server := newServer(t)
 		defer server.Shutdown()
 		conf := clientConfig()
 		conf.Ciphers = []string{ciph}
 		// Don't fail if sshd doesnt have the cipher.
-		conf.Ciphers = append(conf.Ciphers, ssh.DefaultCipherOrder...)
+		conf.Ciphers = append(conf.Ciphers, cipherOrder...)
 		conn, err := server.TryDial(conf)
 		if err == nil {
 			conn.Close()
@@ -293,13 +297,17 @@ func TestCiphers(t *testing.T) {
 }
 
 func TestMACs(t *testing.T) {
-	for _, mac := range ssh.DefaultMACOrder {
+	var config ssh.Config
+	config.SetDefaults()
+	macOrder := config.MACs
+
+	for _, mac := range macOrder {
 		server := newServer(t)
 		defer server.Shutdown()
 		conf := clientConfig()
 		conf.MACs = []string{mac}
 		// Don't fail if sshd doesnt have the MAC.
-		conf.MACs = append(conf.MACs, ssh.DefaultMACOrder...)
+		conf.MACs = append(conf.MACs, macOrder...)
 		if conn, err := server.TryDial(conf); err == nil {
 			conn.Close()
 		} else {

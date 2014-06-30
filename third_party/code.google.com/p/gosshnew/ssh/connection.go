@@ -45,7 +45,7 @@ type ConnMetadata interface {
 }
 
 // Conn represents an SSH connection for both server and client roles.
-// The Conn is the basis for implementing an application layer, such
+// Conn is the basis for implementing an application layer, such
 // as ClientConn, which implements the traditional shell access for
 // clients.
 type Conn interface {
@@ -57,8 +57,8 @@ type Conn interface {
 	SendRequest(name string, wantReply bool, payload []byte) (bool, []byte, error)
 
 	// OpenChannel tries to open an channel. If the request is
-	// rejected, it returns *OpenChannelError. On success, returns
-	// the SSH Channel, and a Go channel for incoming out-of-band
+	// rejected, it returns *OpenChannelError. On success it returns
+	// the SSH Channel and a Go channel for incoming, out-of-band
 	// requests. The Go channel must be serviced, or the
 	// connection will hang.
 	OpenChannel(name string, data []byte) (Channel, <-chan *Request, error)
@@ -85,7 +85,7 @@ func DiscardRequests(in <-chan *Request) {
 	}
 }
 
-// A serverConn represents an incoming connection.
+// A connection represents an incoming connection.
 type connection struct {
 	transport *handshakeTransport
 	sshConn

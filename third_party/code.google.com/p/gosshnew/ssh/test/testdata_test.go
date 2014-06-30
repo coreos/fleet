@@ -9,16 +9,17 @@
 package test
 
 import (
+	"crypto/rand"
 	"fmt"
 
-	"github.com/coreos/fleet/third_party/github.com/coreos/fleet/third_party/code.google.com/p/gosshnew/ssh"
-	"github.com/coreos/fleet/third_party/github.com/coreos/fleet/third_party/code.google.com/p/gosshnew/ssh/testdata"
+	"github.com/coreos/fleet/third_party/code.google.com/p/gosshnew/ssh"
+	"github.com/coreos/fleet/third_party/code.google.com/p/gosshnew/ssh/testdata"
 )
 
 var (
-	testPrivateKeys map[string]interface{}
-	testSigners     map[string]ssh.Signer
-	testPublicKeys  map[string]ssh.PublicKey
+	testPrivateKeys	map[string]interface{}
+	testSigners	map[string]ssh.Signer
+	testPublicKeys	map[string]ssh.PublicKey
 )
 
 func init() {
@@ -42,19 +43,19 @@ func init() {
 
 	// Create a cert and sign it for use in tests.
 	testCert := &ssh.Certificate{
-		Nonce:           []byte{},                       // To pass reflect.DeepEqual after marshal & parse, this must be non-nil
-		ValidPrincipals: []string{"gopher1", "gopher2"}, // increases test coverage
-		ValidAfter:      0,                              // unix epoch
-		ValidBefore:     ssh.CertTimeInfinity,           // The end of currently representable time.
-		Reserved:        []byte{},                       // To pass reflect.DeepEqual after marshal & parse, this must be non-nil
-		Key:             testPublicKeys["ecdsa"],
-		SignatureKey:    testPublicKeys["rsa"],
+		Nonce:			[]byte{},			// To pass reflect.DeepEqual after marshal & parse, this must be non-nil
+		ValidPrincipals:	[]string{"gopher1", "gopher2"},	// increases test coverage
+		ValidAfter:		0,				// unix epoch
+		ValidBefore:		ssh.CertTimeInfinity,		// The end of currently representable time.
+		Reserved:		[]byte{},			// To pass reflect.DeepEqual after marshal & parse, this must be non-nil
+		Key:			testPublicKeys["ecdsa"],
+		SignatureKey:		testPublicKeys["rsa"],
 		Permissions: ssh.Permissions{
-			CriticalOptions: map[string]string{},
-			Extensions:      map[string]string{},
+			CriticalOptions:	map[string]string{},
+			Extensions:		map[string]string{},
 		},
 	}
-	testCert.SignCert(testSigners["rsa"])
+	testCert.SignCert(rand.Reader, testSigners["rsa"])
 	testPrivateKeys["cert"] = testPrivateKeys["ecdsa"]
 	testSigners["cert"], err = ssh.NewCertSigner(testCert, testSigners["ecdsa"])
 	if err != nil {

@@ -48,7 +48,7 @@ func parsePubKey(in []byte, algo string) (pubKey PublicKey, rest []byte, err err
 		}
 		return cert, nil, nil
 	}
-	return nil, nil, fmt.Errorf("unknown key algorithm: %v", err)
+	return nil, nil, fmt.Errorf("ssh: unknown key algorithm: %v", err)
 }
 
 // parseAuthorizedKey parses a public key in OpenSSH authorized_keys format
@@ -305,11 +305,14 @@ func parseDSA(in []byte) (out PublicKey, rest []byte, err error) {
 		return nil, nil, err
 	}
 
-	key := &dsaPublicKey{}
-	key.P = w.P
-	key.Q = w.Q
-	key.G = w.G
-	key.Y = w.Y
+	key := &dsaPublicKey{
+		Parameters: dsa.Parameters{
+			P: w.P,
+			Q: w.Q,
+			G: w.G,
+		},
+		Y: w.Y,
+	}
 	return key, w.Rest, nil
 }
 
@@ -401,7 +404,7 @@ func (key *ecdsaPublicKey) nistID() string {
 }
 
 func supportedEllipticCurve(curve elliptic.Curve) bool {
-	return (curve == elliptic.P256() || curve == elliptic.P384() || curve == elliptic.P521())
+	return curve == elliptic.P256() || curve == elliptic.P384() || curve == elliptic.P521()
 }
 
 // ecHash returns the hash to match the given elliptic curve, see RFC
@@ -419,9 +422,8 @@ func ecHash(curve elliptic.Curve) crypto.Hash {
 
 // parseECDSA parses an ECDSA key according to RFC 5656, section 3.1.
 func parseECDSA(in []byte) (out PublicKey, rest []byte, err error) {
-	var identifier []byte
-	var ok bool
-	if identifier, in, ok = parseString(in); !ok {
+	identifier, in, ok := parseString(in)
+	if !ok {
 		return nil, nil, errShortRead
 	}
 

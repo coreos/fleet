@@ -6,6 +6,7 @@ package ssh
 
 import (
 	"bytes"
+	"crypto/rand"
 	"testing"
 	"time"
 )
@@ -74,7 +75,7 @@ func TestValidateCertTime(t *testing.T) {
 		ValidBefore:     100,
 	}
 
-	cert.SignCert(testSigners["ecdsa"])
+	cert.SignCert(rand.Reader, testSigners["ecdsa"])
 
 	for ts, ok := range map[int64]bool{
 		25:  false,
@@ -109,7 +110,7 @@ func TestHostKeyCert(t *testing.T) {
 		ValidBefore:     CertTimeInfinity,
 		CertType:        HostCert,
 	}
-	cert.SignCert(testSigners["ecdsa"])
+	cert.SignCert(rand.Reader, testSigners["ecdsa"])
 
 	checker := &CertChecker{
 		IsAuthority: func(p PublicKey) bool {

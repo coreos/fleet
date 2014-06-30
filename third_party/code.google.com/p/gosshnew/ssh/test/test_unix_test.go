@@ -21,8 +21,8 @@ import (
 	"testing"
 	"text/template"
 
-	"github.com/coreos/fleet/third_party/github.com/coreos/fleet/third_party/code.google.com/p/gosshnew/ssh"
-	"github.com/coreos/fleet/third_party/github.com/coreos/fleet/third_party/code.google.com/p/gosshnew/ssh/testdata"
+	"github.com/coreos/fleet/third_party/code.google.com/p/gosshnew/ssh"
+	"github.com/coreos/fleet/third_party/code.google.com/p/gosshnew/ssh/testdata"
 )
 
 const sshd_config = `
@@ -51,14 +51,14 @@ HostbasedAuthentication no
 var configTmpl = template.Must(template.New("").Parse(sshd_config))
 
 type server struct {
-	t          *testing.T
-	cleanup    func() // executed during Shutdown
-	configfile string
-	cmd        *exec.Cmd
-	output     bytes.Buffer // holds stderr from sshd process
+	t		*testing.T
+	cleanup		func()	// executed during Shutdown
+	configfile	string
+	cmd		*exec.Cmd
+	output		bytes.Buffer	// holds stderr from sshd process
 
 	// Client half of the network connection.
-	clientConn net.Conn
+	clientConn	net.Conn
 }
 
 func username() string {
@@ -79,11 +79,11 @@ func username() string {
 
 type storedHostKey struct {
 	// keys map from an algorithm string to binary key data.
-	keys map[string][]byte
+	keys	map[string][]byte
 
 	// checkCount counts the Check calls. Used for testing
 	// rekeying.
-	checkCount int
+	checkCount	int
 }
 
 func (k *storedHostKey) Add(key ssh.PublicKey) {
@@ -113,11 +113,11 @@ func hostKeyDB() *storedHostKey {
 
 func clientConfig() *ssh.ClientConfig {
 	config := &ssh.ClientConfig{
-		User: username(),
+		User:	username(),
 		Auth: []ssh.AuthMethod{
 			ssh.PublicKeys(testSigners["user"]),
 		},
-		HostKeyCallback: hostKeyDB().Check,
+		HostKeyCallback:	hostKeyDB().Check,
 	}
 	return config
 }
@@ -247,8 +247,8 @@ func newServer(t *testing.T) *server {
 	}
 
 	return &server{
-		t:          t,
-		configfile: f.Name(),
+		t:		t,
+		configfile:	f.Name(),
 		cleanup: func() {
 			if err := os.RemoveAll(dir); err != nil {
 				t.Error(err)

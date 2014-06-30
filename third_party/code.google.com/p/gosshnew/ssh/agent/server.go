@@ -40,8 +40,8 @@ func (s *server) processRequestBytes(reqData []byte) []byte {
 
 func marshalKey(k *Key) []byte {
 	var record struct {
-		Blob    []byte
-		Comment string
+		Blob	[]byte
+		Comment	string
 	}
 	record.Blob = k.Marshal()
 	record.Comment = k.Comment
@@ -112,11 +112,11 @@ func (s *server) processRequest(data []byte) (interface{}, error) {
 		}
 
 		k := &Key{
-			Format: wk.Format,
-			Blob:   req.KeyBlob,
+			Format:	wk.Format,
+			Blob:	req.KeyBlob,
 		}
 
-		sig, err := s.agent.Sign(k, req.Data) //  TODO(hanwen): flags.
+		sig, err := s.agent.Sign(k, req.Data)	//  TODO(hanwen): flags.
 		if err != nil {
 			return nil, err
 		}
@@ -143,8 +143,8 @@ func (s *server) processRequest(data []byte) (interface{}, error) {
 
 func (s *server) insertIdentity(req []byte) error {
 	var record struct {
-		Type string `sshtype:"17"`
-		Rest []byte `ssh:"rest"`
+		Type	string	`sshtype:"17"`
+		Rest	[]byte	`ssh:"rest"`
 	}
 	if err := ssh.Unmarshal(req, &record); err != nil {
 		return err
@@ -159,11 +159,11 @@ func (s *server) insertIdentity(req []byte) error {
 
 		priv := rsa.PrivateKey{
 			PublicKey: rsa.PublicKey{
-				E: int(k.E.Int64()),
-				N: k.N,
+				E:	int(k.E.Int64()),
+				N:	k.N,
 			},
-			D:      k.D,
-			Primes: []*big.Int{k.P, k.Q},
+			D:	k.D,
+			Primes:	[]*big.Int{k.P, k.Q},
 		}
 		priv.Precompute()
 

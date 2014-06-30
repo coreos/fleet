@@ -24,16 +24,12 @@ const (
 	// indicates implementations SHOULD be able to handle larger packet sizes, but then
 	// waffles on about reasonable limits.
 	//
-	// OpenSSH caps their maxPacket at 256kb so we choose to do
+	// OpenSSH caps their maxPacket at 256kB so we choose to do
 	// the same. maxPacket is also used to ensure that uint32
 	// length fields do not overflow, so it should remain well
 	// below 4G.
 	maxPacket = 256 * 1024
 )
-
-// streamDump is used to dump the initial keystream for stream ciphers. It is a
-// a write-only buffer, and not intended for reading so do not require a mutex.
-var streamDump [512]byte
 
 // noneCipher implements cipher.Stream and provides no encryption. It is used
 // by the transport before the first key-exchange.
@@ -75,6 +71,11 @@ func (c *streamCipherMode) createStream(key, iv []byte) (cipher.Stream, error) {
 		return nil, err
 	}
 
+	var streamDump []byte
+	if c.skip > 0 {
+		streamDump = make([]byte, 512)
+	}
+
 	for remainingToDump := c.skip; remainingToDump > 0; {
 		dumpThisTime := remainingToDump
 		if dumpThisTime > len(streamDump) {
@@ -85,14 +86,6 @@ func (c *streamCipherMode) createStream(key, iv []byte) (cipher.Stream, error) {
 	}
 
 	return stream, nil
-}
-
-// DefaultCipherOrder specifies a default set of ciphers and a
-// preference order. This is based on OpenSSH's default client
-// preference order, minus algorithms that are not implemented.
-var DefaultCipherOrder = []string{
-	"aes128-ctr", "aes192-ctr", "aes256-ctr",
-	"arcfour256", "arcfour128", "aes128-gcm@openssh.com",
 }
 
 // cipherModes documents properties of supported ciphers. Ciphers not included
@@ -116,14 +109,9 @@ var cipherModes = map[string]*streamCipherMode{
 	gcmCipherID: {16, 12, 0, nil},
 }
 
-// defaultKeyExchangeOrder specifies a default set of key exchange algorithms
-// with preferences.
-var defaultKeyExchangeOrder = []string{
-	// P384 and P521 are not constant-time yet, but since we don't
-	// reuse ephemeral keys, using them for ECDH should be OK.
-	kexAlgoECDH256, kexAlgoECDH384, kexAlgoECDH521,
-	kexAlgoDH14SHA1, kexAlgoDH1SHA1,
-}
+// prefixLen is the length of the packet prefix that contains the packet length
+// and number of padding bytes.
+const prefixLen = 5
 
 // streamPacketCipher is a packetCipher using a stream cipher.
 type streamPacketCipher struct {
@@ -131,7 +119,7 @@ type streamPacketCipher struct {
 	cipher cipher.Stream
 
 	// The following members are to avoid per-packet allocations.
-	prefix      [5]byte
+	prefix      [prefixLen]byte
 	seqNumBytes [4]byte
 	padding     [2 * packetSizeMultiple]byte
 	packetData  []byte
@@ -182,7 +170,8 @@ func (s *streamPacketCipher) readPacket(seqNum uint32, r io.Reader) ([]byte, err
 
 	if s.mac != nil {
 		s.mac.Write(data)
-		if subtle.ConstantTimeCompare(s.mac.Sum(s.macResult[:0]), mac) != 1 {
+		s.macResult = s.mac.Sum(s.macResult[:0])
+		if subtle.ConstantTimeCompare(s.macResult, mac) != 1 {
 			return nil, errors.New("ssh: MAC failure")
 		}
 	}
@@ -196,8 +185,7 @@ func (s *streamPacketCipher) writePacket(seqNum uint32, w io.Writer, rand io.Rea
 		return errors.New("ssh: packet too large")
 	}
 
-	// 5 = len(s.prefix)
-	paddingLength := packetSizeMultiple - (5+len(packet))%packetSizeMultiple
+	paddingLength := packetSizeMultiple - (prefixLen+len(packet))%packetSizeMultiple
 	if paddingLength < 4 {
 		paddingLength += packetSizeMultiple
 	}
@@ -206,8 +194,7 @@ func (s *streamPacketCipher) writePacket(seqNum uint32, w io.Writer, rand io.Rea
 	binary.BigEndian.PutUint32(s.prefix[:], uint32(length))
 	s.prefix[4] = byte(paddingLength)
 	padding := s.padding[:paddingLength]
-	_, err := io.ReadFull(rand, padding)
-	if err != nil {
+	if _, err := io.ReadFull(rand, padding); err != nil {
 		return err
 	}
 
@@ -235,12 +222,13 @@ func (s *streamPacketCipher) writePacket(seqNum uint32, w io.Writer, rand io.Rea
 	}
 
 	if s.mac != nil {
-		if _, err := w.Write(s.mac.Sum(s.macResult[:0])); err != nil {
+		s.macResult = s.mac.Sum(s.macResult[:0])
+		if _, err := w.Write(s.macResult); err != nil {
 			return err
 		}
 	}
 
-	return err
+	return nil
 }
 
 type gcmCipher struct {
@@ -291,7 +279,9 @@ func (c *gcmCipher) writePacket(seqNum uint32, w io.Writer, rand io.Reader, pack
 
 	c.buf[0] = padding
 	copy(c.buf[1:], packet)
-	rand.Read(c.buf[1+len(packet):])
+	if _, err := io.ReadFull(rand, c.buf[1+len(packet):]); err != nil {
+		return err
+	}
 	c.buf = c.aead.Seal(c.buf[:0], c.iv, c.buf, c.prefix[:])
 	if _, err := w.Write(c.buf); err != nil {
 		return err

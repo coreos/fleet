@@ -7,8 +7,10 @@
 package test
 
 import (
-	"github.com/coreos/fleet/third_party/code.google.com/p/gosshnew/ssh"
+	"crypto/rand"
 	"testing"
+
+	"github.com/coreos/fleet/third_party/code.google.com/p/gosshnew/ssh"
 )
 
 func TestCertLogin(t *testing.T) {
@@ -19,12 +21,12 @@ func TestCertLogin(t *testing.T) {
 	clientKey := testSigners["dsa"]
 	caAuthKey := testSigners["ecdsa"]
 	cert := &ssh.Certificate{
-		Key:             clientKey.PublicKey(),
-		ValidPrincipals: []string{username()},
-		CertType:        ssh.UserCert,
-		ValidBefore:     ssh.CertTimeInfinity,
+		Key:			clientKey.PublicKey(),
+		ValidPrincipals:	[]string{username()},
+		CertType:		ssh.UserCert,
+		ValidBefore:		ssh.CertTimeInfinity,
 	}
-	if err := cert.SignCert(caAuthKey); err != nil {
+	if err := cert.SignCert(rand.Reader, caAuthKey); err != nil {
 		t.Fatalf("SetSignature: %v", err)
 	}
 

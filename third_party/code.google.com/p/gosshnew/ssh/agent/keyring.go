@@ -16,16 +16,16 @@ import (
 )
 
 type privKey struct {
-	signer  ssh.Signer
-	comment string
+	signer	ssh.Signer
+	comment	string
 }
 
 type keyring struct {
-	mu   sync.Mutex
-	keys []privKey
+	mu	sync.Mutex
+	keys	[]privKey
 
-	locked     bool
-	passphrase []byte
+	locked		bool
+	passphrase	[]byte
 }
 
 var errLocked = errors.New("agent: locked")
@@ -117,9 +117,9 @@ func (r *keyring) List() ([]*Key, error) {
 	for _, k := range r.keys {
 		pub := k.signer.PublicKey()
 		ids = append(ids, &Key{
-			Format:  pub.Type(),
-			Blob:    pub.Marshal(),
-			Comment: k.comment})
+			Format:		pub.Type(),
+			Blob:		pub.Marshal(),
+			Comment:	k.comment})
 	}
 	return ids, nil
 }

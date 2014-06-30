@@ -9,15 +9,16 @@
 package ssh
 
 import (
+	"crypto/rand"
 	"fmt"
 
 	"github.com/coreos/fleet/third_party/code.google.com/p/gosshnew/ssh/testdata"
 )
 
 var (
-	testPrivateKeys map[string]interface{}
-	testSigners     map[string]Signer
-	testPublicKeys  map[string]PublicKey
+	testPrivateKeys	map[string]interface{}
+	testSigners	map[string]Signer
+	testPublicKeys	map[string]PublicKey
 )
 
 func init() {
@@ -41,19 +42,19 @@ func init() {
 
 	// Create a cert and sign it for use in tests.
 	testCert := &Certificate{
-		Nonce:           []byte{},                       // To pass reflect.DeepEqual after marshal & parse, this must be non-nil
-		ValidPrincipals: []string{"gopher1", "gopher2"}, // increases test coverage
-		ValidAfter:      0,                              // unix epoch
-		ValidBefore:     CertTimeInfinity,               // The end of currently representable time.
-		Reserved:        []byte{},                       // To pass reflect.DeepEqual after marshal & parse, this must be non-nil
-		Key:             testPublicKeys["ecdsa"],
-		SignatureKey:    testPublicKeys["rsa"],
+		Nonce:			[]byte{},			// To pass reflect.DeepEqual after marshal & parse, this must be non-nil
+		ValidPrincipals:	[]string{"gopher1", "gopher2"},	// increases test coverage
+		ValidAfter:		0,				// unix epoch
+		ValidBefore:		CertTimeInfinity,		// The end of currently representable time.
+		Reserved:		[]byte{},			// To pass reflect.DeepEqual after marshal & parse, this must be non-nil
+		Key:			testPublicKeys["ecdsa"],
+		SignatureKey:		testPublicKeys["rsa"],
 		Permissions: Permissions{
-			CriticalOptions: map[string]string{},
-			Extensions:      map[string]string{},
+			CriticalOptions:	map[string]string{},
+			Extensions:		map[string]string{},
 		},
 	}
-	testCert.SignCert(testSigners["rsa"])
+	testCert.SignCert(rand.Reader, testSigners["rsa"])
 	testPrivateKeys["cert"] = testPrivateKeys["ecdsa"]
 	testSigners["cert"], err = NewCertSigner(testCert, testSigners["ecdsa"])
 	if err != nil {

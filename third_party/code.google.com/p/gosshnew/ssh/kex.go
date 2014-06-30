@@ -30,10 +30,10 @@ type kexResult struct {
 	// Shared secret. See also RFC 4253, section 8.
 	K []byte
 
-	// Host key as hashed into H
+	// Host key as hashed into H.
 	HostKey []byte
 
-	// Signature of H
+	// Signature of H.
 	Signature []byte
 
 	// A cryptographic hash function that matches the security

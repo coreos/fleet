@@ -81,20 +81,20 @@ type handshakeTransport struct {
 	writeError      error
 }
 
-func newHandshakeTransport(conn keyingTransport, clientVersion, serverVersion []byte) *handshakeTransport {
+func newHandshakeTransport(conn keyingTransport, config *Config, clientVersion, serverVersion []byte) *handshakeTransport {
 	t := &handshakeTransport{
 		conn:          conn,
 		serverVersion: serverVersion,
 		clientVersion: clientVersion,
 		incoming:      make(chan []byte, 16),
+		config:        config,
 	}
 	t.cond = sync.NewCond(&t.mu)
 	return t
 }
 
 func newClientTransport(conn keyingTransport, clientVersion, serverVersion []byte, config *ClientConfig, dialAddr string, addr net.Addr) *handshakeTransport {
-	t := newHandshakeTransport(conn, clientVersion, serverVersion)
-	t.setConfig(&config.Config)
+	t := newHandshakeTransport(conn, &config.Config, clientVersion, serverVersion)
 	t.dialAddress = dialAddr
 	t.remoteAddr = addr
 	t.hostKeyCallback = config.HostKeyCallback
@@ -103,8 +103,7 @@ func newClientTransport(conn keyingTransport, clientVersion, serverVersion []byt
 }
 
 func newServerTransport(conn keyingTransport, clientVersion, serverVersion []byte, config *ServerConfig) *handshakeTransport {
-	t := newHandshakeTransport(conn, clientVersion, serverVersion)
-	t.setConfig(&config.Config)
+	t := newHandshakeTransport(conn, &config.Config, clientVersion, serverVersion)
 	t.hostKeys = config.hostKeys
 	go t.readLoop()
 	return t
@@ -112,10 +111,6 @@ func newServerTransport(conn keyingTransport, clientVersion, serverVersion []byt
 
 func (t *handshakeTransport) getSessionID() []byte {
 	return t.conn.getSessionID()
-}
-
-func (t *handshakeTransport) setConfig(c *Config) {
-	t.config = c
 }
 
 func (t *handshakeTransport) id() string {

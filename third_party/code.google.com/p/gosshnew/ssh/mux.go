@@ -144,22 +144,22 @@ func (m *mux) SendRequest(name string, wantReply bool, payload []byte) (bool, []
 		return false, nil, err
 	}
 
-	if wantReply {
-		msg, ok := <-m.globalResponses
-		if !ok {
-			return false, nil, io.EOF
-		}
-		switch msg := msg.(type) {
-		case *globalRequestFailureMsg:
-			return false, msg.Data, nil
-		case *globalRequestSuccessMsg:
-			return true, msg.Data, nil
-		default:
-			return false, nil, fmt.Errorf("ssh: unexpected response %#v", msg)
-		}
+	if !wantReply {
+		return false, nil, nil
 	}
 
-	return false, nil, nil
+	msg, ok := <-m.globalResponses
+	if !ok {
+		return false, nil, io.EOF
+	}
+	switch msg := msg.(type) {
+	case *globalRequestFailureMsg:
+		return false, msg.Data, nil
+	case *globalRequestSuccessMsg:
+		return true, msg.Data, nil
+	default:
+		return false, nil, fmt.Errorf("ssh: unexpected response to request: %#v", msg)
+	}
 }
 
 // ackRequest must be called after processing a global request that
@@ -308,9 +308,9 @@ func (m *mux) handleChannelOpen(packet []byte) error {
 		return m.sendMessage(failMsg)
 	}
 
-	c := m.newChannel(msg.ChanType, msg.TypeSpecificData)
+	c := m.newChannel(msg.ChanType, channelInbound, msg.TypeSpecificData)
 	c.remoteId = msg.PeersId
-	c.maxPayload = msg.MaxPacketSize
+	c.maxRemotePayload = msg.MaxPacketSize
 	c.remoteWin.add(msg.PeersWindow)
 	m.incomingChannels <- c
 	return nil
@@ -326,14 +326,14 @@ func (m *mux) OpenChannel(chanType string, extra []byte) (Channel, <-chan *Reque
 }
 
 func (m *mux) openChannel(chanType string, extra []byte) (*channel, error) {
-	ch := m.newChannel(chanType, extra)
+	ch := m.newChannel(chanType, channelOutbound, extra)
 
-	ch.maxPayload = channelMaxPacket
+	ch.maxIncomingPayload = channelMaxPacket
 
 	open := channelOpenMsg{
 		ChanType:         chanType,
 		PeersWindow:      ch.myWindow,
-		MaxPacketSize:    ch.maxPayload,
+		MaxPacketSize:    ch.maxIncomingPayload,
 		TypeSpecificData: extra,
 		PeersId:          ch.localId,
 	}
@@ -347,6 +347,6 @@ func (m *mux) openChannel(chanType string, extra []byte) (*channel, error) {
 	case *channelOpenFailureMsg:
 		return nil, &OpenChannelError{msg.Reason, msg.Message}
 	default:
-		return nil, fmt.Errorf("ssh: unexpected packet %T", msg)
+		return nil, fmt.Errorf("ssh: unexpected packet in response to channel open: %T", msg)
 	}
 }

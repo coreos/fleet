@@ -11,7 +11,7 @@ import (
 	"io"
 )
 
-// authenticate authenticates with the remote server. See RFC 4252.
+// clientAuthenticate authenticates with the remote server. See RFC 4252.
 func (c *connection) clientAuthenticate(config *ClientConfig) error {
 	// initiate user auth session
 	if err := c.transport.writePacket(Marshal(&serviceRequestMsg{serviceUserAuth})); err != nil {
@@ -28,7 +28,7 @@ func (c *connection) clientAuthenticate(config *ClientConfig) error {
 
 	// during the authentication phase the client first attempts the "none" method
 	// then any untried methods suggested by the server.
-	tried, remain := make(map[string]bool), make(map[string]bool)
+	tried := make(map[string]bool)
 	for auth := AuthMethod(new(noneAuth)); auth != nil; {
 		ok, methods, err := auth.auth(c.transport.getSessionID(), config.User, c.transport, config.Rand)
 		if err != nil {
@@ -39,30 +39,31 @@ func (c *connection) clientAuthenticate(config *ClientConfig) error {
 			return nil
 		}
 		tried[auth.method()] = true
-		delete(remain, auth.method())
-		for _, meth := range methods {
-			if tried[meth] {
-				// if we've tried meth already, skip it.
-				continue
-			}
-			remain[meth] = true
-		}
+
 		auth = nil
 		for _, a := range config.Auth {
-			if remain[a.method()] {
-				auth = a
-				break
+			candidateMethod := a.method()
+			for _, meth := range methods {
+				if meth != candidateMethod {
+					continue
+				}
+				if !tried[meth] {
+					auth = a
+					break
+				}
 			}
 		}
 	}
 	return fmt.Errorf("ssh: unable to authenticate, attempted methods %v, no supported methods remain", keys(tried))
 }
 
-func keys(m map[string]bool) (s []string) {
-	for k := range m {
-		s = append(s, k)
+func keys(m map[string]bool) []string {
+	s := make([]string, 0, len(m))
+
+	for key := range m {
+		s = append(s, key)
 	}
-	return
+	return s
 }
 
 // An AuthMethod represents an instance of an RFC 4252 authentication method.
@@ -110,6 +111,9 @@ func (cb passwordCallback) auth(session []byte, user string, c packetConn, rand 
 	}
 
 	pw, err := cb()
+	// REVIEW NOTE: is there a need to support skipping a password attempt?
+	// The program may only find out that the user doesn't have a password
+	// when prompting.
 	if err != nil {
 		return false, nil, err
 	}
@@ -150,13 +154,14 @@ type publickeyAuthMsg struct {
 	// should be used for authentication of the request.
 	HasSig   bool
 	Algoname string
-	Pubkey   string
-	// Sig is defined as []byte so Marshal will exclude it during validateKey
+	PubKey   []byte
+	// Sig is tagged with "rest" so Marshal will exclude it during
+	// validateKey
 	Sig []byte `ssh:"rest"`
 }
 
 // publicKeyCallback is an AuthMethod that uses a set of key
-// pairs fors authentication.
+// pairs for authentication.
 type publicKeyCallback func() ([]Signer, error)
 
 func (cb publicKeyCallback) method() string {
@@ -169,7 +174,6 @@ func (cb publicKeyCallback) auth(session []byte, user string, c packetConn, rand
 	// stage attempts to authenticate with the valid keys obtained in the
 	// first stage.
 
-	// a map of public keys to their index in the keyring
 	signers, err := cb()
 	if err != nil {
 		return false, nil, err
@@ -190,12 +194,12 @@ func (cb publicKeyCallback) auth(session []byte, user string, c packetConn, rand
 	for _, signer := range validKeys {
 		pub := signer.PublicKey()
 
-		pubkey := pub.Marshal()
+		pubKey := pub.Marshal()
 		sign, err := signer.Sign(rand, buildDataSignedForAuth(session, userAuthRequestMsg{
 			User:    user,
 			Service: serviceSSH,
 			Method:  cb.method(),
-		}, []byte(pub.Type()), pubkey))
+		}, []byte(pub.Type()), pubKey))
 		if err != nil {
 			return false, nil, err
 		}
@@ -210,7 +214,7 @@ func (cb publicKeyCallback) auth(session []byte, user string, c packetConn, rand
 			Method:   cb.method(),
 			HasSig:   true,
 			Algoname: pub.Type(),
-			Pubkey:   string(pubkey),
+			PubKey:   pubKey,
 			Sig:      sig,
 		}
 		p := Marshal(&msg)
@@ -230,14 +234,14 @@ func (cb publicKeyCallback) auth(session []byte, user string, c packetConn, rand
 
 // validateKey validates the key provided is acceptable to the server.
 func validateKey(key PublicKey, user string, c packetConn) (bool, error) {
-	pubkey := key.Marshal()
+	pubKey := key.Marshal()
 	msg := publickeyAuthMsg{
 		User:     user,
 		Service:  serviceSSH,
 		Method:   "publickey",
 		HasSig:   false,
 		Algoname: key.Type(),
-		Pubkey:   string(pubkey),
+		PubKey:   pubKey,
 	}
 	if err := c.writePacket(Marshal(&msg)); err != nil {
 		return false, err
@@ -247,7 +251,7 @@ func validateKey(key PublicKey, user string, c packetConn) (bool, error) {
 }
 
 func confirmKeyAck(key PublicKey, c packetConn) (bool, error) {
-	pubkey := key.Marshal()
+	pubKey := key.Marshal()
 	algoname := key.Type()
 
 	for {
@@ -259,11 +263,11 @@ func confirmKeyAck(key PublicKey, c packetConn) (bool, error) {
 		case msgUserAuthBanner:
 			// TODO(gpaul): add callback to present the banner to the user
 		case msgUserAuthPubKeyOk:
-			msg := userAuthPubKeyOkMsg{}
+			var msg userAuthPubKeyOkMsg
 			if err := Unmarshal(packet, &msg); err != nil {
 				return false, err
 			}
-			if msg.Algo != algoname || !bytes.Equal(msg.PubKey, pubkey) {
+			if msg.Algo != algoname || !bytes.Equal(msg.PubKey, pubKey) {
 				return false, nil
 			}
 			return true, nil
@@ -273,7 +277,6 @@ func confirmKeyAck(key PublicKey, c packetConn) (bool, error) {
 			return false, unexpectedMessageError(msgUserAuthSuccess, packet[0])
 		}
 	}
-	panic("unreachable")
 }
 
 // PublicKeys returns an AuthMethod that uses the given key
@@ -302,7 +305,7 @@ func handleAuthResponse(c packetConn) (bool, []string, error) {
 		case msgUserAuthBanner:
 			// TODO: add callback to present the banner to the user
 		case msgUserAuthFailure:
-			msg := userAuthFailureMsg{}
+			var msg userAuthFailureMsg
 			if err := Unmarshal(packet, &msg); err != nil {
 				return false, nil, err
 			}
@@ -315,7 +318,6 @@ func handleAuthResponse(c packetConn) (bool, []string, error) {
 			return false, nil, unexpectedMessageError(msgUserAuthSuccess, packet[0])
 		}
 	}
-	panic("unreachable")
 }
 
 // KeyboardInteractiveChallenge should print questions, optionally
@@ -399,7 +401,7 @@ func (cb KeyboardInteractiveChallenge) auth(session []byte, user string, c packe
 		}
 
 		if len(rest) != 0 {
-			return false, nil, fmt.Errorf("ssh: junk following message %q", rest)
+			return false, nil, errors.New("ssh: extra data following keyboard-interactive pairs")
 		}
 
 		answers, err := cb(msg.User, msg.Instruction, prompts, echos)

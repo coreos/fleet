@@ -35,7 +35,7 @@ type Permissions struct {
 
 // ServerConfig holds server specific configuration data.
 type ServerConfig struct {
-	// Shared configuration.
+	// Config contains configuration shared between client and server.
 	Config
 
 	hostKeys []Signer
@@ -50,7 +50,7 @@ type ServerConfig struct {
 
 	// PublicKeyCallback, if non-nil, is called when a client attempts public
 	// key authentication. It must return true if the given public key is
-	// valid for the given user.
+	// valid for the given user. For example, see CertChecker.Authenticate.
 	PublicKeyCallback func(conn ConnMetadata, key PublicKey) (*Permissions, error)
 
 	// KeyboardInteractiveCallback, if non-nil, is called when
@@ -62,7 +62,8 @@ type ServerConfig struct {
 	// unknown.
 	KeyboardInteractiveCallback func(conn ConnMetadata, client KeyboardInteractiveChallenge) (*Permissions, error)
 
-	// If set, all authentication attempts are logged with this method.
+	// AuthLogCallback, if non-nil, is called to log all authentication
+	// attempts.
 	AuthLogCallback func(conn ConnMetadata, method string, err error)
 }
 
@@ -131,13 +132,13 @@ type ServerConn struct {
 }
 
 // NewServerConn starts a new SSH server with c as the underlying
-// transport.  It starts with a handshake, and if the handshake is
+// transport.  It starts with a handshake and, if the handshake is
 // unsuccessful, it closes the connection and returns an error.  The
 // Request and NewChannel channels must be serviced, or the connection
 // will hang.
 func NewServerConn(c net.Conn, config *ServerConfig) (*ServerConn, <-chan NewChannel, <-chan *Request, error) {
 	fullConf := *config
-	fullConf.setDefaults()
+	fullConf.SetDefaults()
 	s := &connection{
 		sshConn: sshConn{conn: c},
 	}
@@ -224,12 +225,12 @@ func isAcceptableAlgo(algo string) bool {
 
 func checkSourceAddress(addr net.Addr, sourceAddr string) error {
 	if addr == nil {
-		return errors.New("ssh: no address, but source-address given.")
+		return errors.New("ssh: no address known for client, but source-address match required")
 	}
 
 	tcpAddr, ok := addr.(*net.TCPAddr)
 	if !ok {
-		return fmt.Errorf("ssh: remote address %v is not an TCP address.", addr)
+		return fmt.Errorf("ssh: remote address %v is not an TCP address when checking source-address match", addr)
 	}
 
 	if allowedIP := net.ParseIP(sourceAddr); allowedIP != nil {
@@ -247,7 +248,7 @@ func checkSourceAddress(addr net.Addr, sourceAddr string) error {
 		}
 	}
 
-	return fmt.Errorf("ssh: remote address %v is not allowed", addr)
+	return fmt.Errorf("ssh: remote address %v is not allowed because of source-address restriction", addr)
 }
 
 func (s *connection) serverAuthenticate(config *ServerConfig) (*Permissions, error) {

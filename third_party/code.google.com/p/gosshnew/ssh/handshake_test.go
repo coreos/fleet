@@ -61,14 +61,14 @@ func handshakePair(clientConf *ClientConfig, addr string) (client *handshakeTran
 
 	trC := newTransport(a, rand.Reader, true)
 	trS := newTransport(b, rand.Reader, false)
-	clientConf.setDefaults()
+	clientConf.SetDefaults()
 
 	v := []byte("version")
 	client = newClientTransport(trC, v, v, clientConf, addr, a.RemoteAddr())
 
 	serverConf := &ServerConfig{}
 	serverConf.AddHostKey(testSigners["ecdsa"])
-	serverConf.setDefaults()
+	serverConf.SetDefaults()
 	server = newServerTransport(trS, v, v, serverConf)
 
 	return client, server, nil
