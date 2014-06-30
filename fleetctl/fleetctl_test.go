@@ -8,7 +8,7 @@ import (
 	"github.com/coreos/fleet/resource"
 	"github.com/coreos/fleet/version"
 
-	"github.com/coreos/fleet/third_party/github.com/coreos/go-semver/semver"
+	"github.com/coreos/fleet/Godeps/_workspace/src/github.com/coreos/go-semver/semver"
 )
 
 func newFakeRegistryForCheckVersion(v string) registry.Registry {

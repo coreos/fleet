@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"testing"
 
-	gossh "github.com/coreos/fleet/third_party/code.google.com/p/gosshnew/ssh"
+	gossh "github.com/coreos/fleet/Godeps/_workspace/src/code.google.com/p/gosshnew/ssh"
 
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/unit"
