@@ -19,9 +19,7 @@ package log
 
 import (
 	"fmt"
-	"github.com/coreos/fleet/third_party/github.com/coreos/go-systemd/journal"
 	"io"
-	"strings"
 	"sync"
 )
 
@@ -33,17 +31,17 @@ type Sink interface {
 
 type nullSink struct{}
 
-func (sink *nullSink) Log(fields Fields)	{}
+func (sink *nullSink) Log(fields Fields) {}
 
 func NullSink() Sink {
 	return &nullSink{}
 }
 
 type writerSink struct {
-	lock	sync.Mutex
-	out	io.Writer
-	format	string
-	fields	[]string
+	lock   sync.Mutex
+	out    io.Writer
+	format string
+	fields []string
 }
 
 func (sink *writerSink) Log(fields Fields) {
@@ -63,53 +61,10 @@ func (sink *writerSink) Log(fields Fields) {
 
 func WriterSink(out io.Writer, format string, fields []string) Sink {
 	return &writerSink{
-		out:	out,
-		format:	format,
-		fields:	fields,
+		out:    out,
+		format: format,
+		fields: fields,
 	}
-}
-
-type journalSink struct{}
-
-func (sink *journalSink) Log(fields Fields) {
-	message := fields["message"].(string)
-	priority := toJournalPriority(fields["priority"].(Priority))
-	journalFields := make(map[string]string)
-	for k, v := range fields {
-		if k == "message" || k == "priority" {
-			continue
-		}
-		journalFields[strings.ToUpper(k)] = fmt.Sprint(v)
-	}
-	journal.Send(message, priority, journalFields)
-}
-
-func toJournalPriority(priority Priority) journal.Priority {
-	switch priority {
-	case PriEmerg:
-		return journal.PriEmerg
-	case PriAlert:
-		return journal.PriAlert
-	case PriCrit:
-		return journal.PriCrit
-	case PriErr:
-		return journal.PriErr
-	case PriWarning:
-		return journal.PriWarning
-	case PriNotice:
-		return journal.PriNotice
-	case PriInfo:
-		return journal.PriInfo
-	case PriDebug:
-		return journal.PriDebug
-
-	default:
-		return journal.PriErr
-	}
-}
-
-func JournalSink() Sink {
-	return &journalSink{}
 }
 
 type combinedSink struct {
@@ -122,21 +77,9 @@ func (sink *combinedSink) Log(fields Fields) {
 	}
 }
 
-func CombinedSink(writer io.Writer, format string, fields []string) Sink {
-	sinks := make([]Sink, 0)
-	sinks = append(sinks, WriterSink(writer, format, fields))
-	if journal.Enabled() {
-		sinks = append(sinks, JournalSink())
-	}
-
-	return &combinedSink{
-		sinks: sinks,
-	}
-}
-
 type priorityFilter struct {
-	priority	Priority
-	target		Sink
+	priority Priority
+	target   Sink
 }
 
 func (filter *priorityFilter) Log(fields Fields) {
@@ -148,7 +91,7 @@ func (filter *priorityFilter) Log(fields Fields) {
 
 func PriorityFilter(priority Priority, target Sink) Sink {
 	return &priorityFilter{
-		priority:	priority,
-		target:		target,
+		priority: priority,
+		target:   target,
 	}
 }
