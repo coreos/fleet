@@ -1,0 +1,46 @@
+{
+	"ImportPath": "github.com/coreos/fleet",
+	"GoVersion": "go1.3",
+	"Deps": [
+		{
+			"ImportPath": "code.google.com/p/google-api-go-client/googleapi",
+			"Rev": "c99e2061b8c6"
+		},
+		{
+			"ImportPath": "code.google.com/p/gosshnew/ssh",
+			"Rev": "841c53ee2005"
+		},
+		{
+			"ImportPath": "github.com/coreos/go-semver/semver",
+			"Rev": "a9a0c39c7e4a2929f73d4b757d1860fbb8e66d06"
+		},
+		{
+			"ImportPath": "github.com/coreos/go-systemd/activation",
+			"Rev": "f743bc15d6bddd23662280b4ad20f7c874cdd5ad"
+		},
+		{
+			"ImportPath": "github.com/coreos/go-systemd/dbus",
+			"Rev": "f743bc15d6bddd23662280b4ad20f7c874cdd5ad"
+		},
+		{
+			"ImportPath": "github.com/dotcloud/docker/pkg/netlink",
+			"Rev": "bb368b0563e1c7c2055cc49455ce9a7ba126c713"
+		},
+		{
+			"ImportPath": "github.com/godbus/dbus",
+			"Rev": "cb98efbb933d8389ab549a060e880ea3c375d213"
+		},
+		{
+			"ImportPath": "github.com/golang/glog",
+			"Rev": "20cea4dfef0c0151bba0422a6244cc1d3e8292b1"
+		},
+		{
+			"ImportPath": "github.com/rakyll/globalconf",
+			"Rev": "fd9ff89130a682478a0c94e893ff4affe570b002"
+		},
+		{
+			"ImportPath": "github.com/rakyll/goini",
+			"Rev": "907cca0f578a5316fb864ec6992dc3d9730ec58c"
+		}
+	]
+}

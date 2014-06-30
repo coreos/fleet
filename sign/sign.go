@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"io/ioutil"
 
-	gossh "code.google.com/p/gosshnew/ssh"
-	gosshagent "code.google.com/p/gosshnew/ssh/agent"
-	log "github.com/golang/glog"
+	gossh "github.com/coreos/fleet/Godeps/_workspace/src/code.google.com/p/gosshnew/ssh"
+	gosshagent "github.com/coreos/fleet/Godeps/_workspace/src/code.google.com/p/gosshnew/ssh/agent"
+	log "github.com/coreos/fleet/Godeps/_workspace/src/github.com/golang/glog"
 
 	"github.com/coreos/fleet/pkg"
 	"github.com/coreos/fleet/ssh"

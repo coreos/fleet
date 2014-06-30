@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
-	gossh "code.google.com/p/gosshnew/ssh"
-	gosshagent "code.google.com/p/gosshnew/ssh/agent"
-	"code.google.com/p/gosshnew/ssh/terminal"
+	gossh "github.com/coreos/fleet/Godeps/_workspace/src/code.google.com/p/gosshnew/ssh"
+	gosshagent "github.com/coreos/fleet/Godeps/_workspace/src/code.google.com/p/gosshnew/ssh/agent"
+	"github.com/coreos/fleet/Godeps/_workspace/src/code.google.com/p/gosshnew/ssh/terminal"
 )
 
 type SSHForwardingClient struct {

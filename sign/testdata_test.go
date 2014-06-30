@@ -3,8 +3,8 @@ package sign
 import (
 	"fmt"
 
-	gossh "code.google.com/p/gosshnew/ssh"
-	"code.google.com/p/gosshnew/ssh/testdata"
+	gossh "github.com/coreos/fleet/Godeps/_workspace/src/code.google.com/p/gosshnew/ssh"
+	"github.com/coreos/fleet/Godeps/_workspace/src/code.google.com/p/gosshnew/ssh/testdata"
 )
 
 var (

@@ -1,8 +1,8 @@
 package systemd
 
 import (
-	"github.com/coreos/go-systemd/dbus"
-	log "github.com/golang/glog"
+	"github.com/coreos/fleet/Godeps/_workspace/src/github.com/coreos/go-systemd/dbus"
+	log "github.com/coreos/fleet/Godeps/_workspace/src/github.com/golang/glog"
 
 	"github.com/coreos/fleet/event"
 	"github.com/coreos/fleet/unit"

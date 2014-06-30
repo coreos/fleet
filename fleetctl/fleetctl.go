@@ -16,7 +16,7 @@ import (
 	"text/tabwriter"
 	"time"
 
-	log "github.com/golang/glog"
+	log "github.com/coreos/fleet/Godeps/_workspace/src/github.com/golang/glog"
 
 	"github.com/coreos/fleet/client"
 	"github.com/coreos/fleet/job"

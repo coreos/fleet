@@ -4,8 +4,8 @@ import (
 	"encoding/base64"
 	"net/http"
 
-	"code.google.com/p/google-api-go-client/googleapi"
-	"github.com/coreos/go-semver/semver"
+	"github.com/coreos/fleet/Godeps/_workspace/src/code.google.com/p/google-api-go-client/googleapi"
+	"github.com/coreos/fleet/Godeps/_workspace/src/github.com/coreos/go-semver/semver"
 
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/machine"
