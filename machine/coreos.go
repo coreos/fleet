@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/coreos/fleet/resource"
-	"github.com/coreos/fleet/third_party/github.com/dotcloud/docker/pkg/netlink"
 	log "github.com/coreos/fleet/third_party/github.com/golang/glog"
+	"github.com/coreos/fleet/third_party/github.com/docker/libcontainer/netlink"
 )
 
 const (
@@ -26,8 +26,8 @@ func NewCoreOSMachine(static MachineState) *CoreOSMachine {
 type CoreOSMachine struct {
 	sync.RWMutex
 
-	staticState  MachineState
-	dynamicState *MachineState
+	staticState	MachineState
+	dynamicState	*MachineState
 }
 
 func (m *CoreOSMachine) String() string {
