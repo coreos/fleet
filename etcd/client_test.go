@@ -216,7 +216,7 @@ func assertClientSteps(t *testing.T, c *client, act Action, steps []clientStep, 
 func TestClientRedirectsFollowed(t *testing.T) {
 	steps := []clientStep{
 		{
-			"GET", "http://192.0.2.1:4001/v2/keys/foo?recursive=false&sorted=false",
+			"GET", "http://192.0.2.1:4001/v2/keys/foo?consistent=true&recursive=false&sorted=false",
 			http.Response{
 				StatusCode: http.StatusTemporaryRedirect,
 				Header: http.Header{
@@ -256,7 +256,7 @@ func TestClientRedirectsFollowed(t *testing.T) {
 func TestClientRedirectsAndAlternateEndpoints(t *testing.T) {
 	steps := []clientStep{
 		{
-			"GET", "http://192.0.2.1:4001/v2/keys/foo?recursive=false&sorted=false",
+			"GET", "http://192.0.2.1:4001/v2/keys/foo?consistent=true&recursive=false&sorted=false",
 			http.Response{
 				StatusCode: http.StatusTemporaryRedirect,
 				Header: http.Header{
@@ -271,7 +271,7 @@ func TestClientRedirectsAndAlternateEndpoints(t *testing.T) {
 			},
 		},
 		{
-			"GET", "http://192.0.2.2:4002/v2/keys/foo?recursive=false&sorted=false",
+			"GET", "http://192.0.2.2:4002/v2/keys/foo?consistent=true&recursive=false&sorted=false",
 			http.Response{
 				StatusCode: http.StatusOK,
 				Header:     http.Header{"X-Etcd-Index": {"123"}},

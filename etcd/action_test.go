@@ -14,13 +14,13 @@ func TestGetHTTPRequest(t *testing.T) {
 		{
 			&Get{Key: "/foo"},
 			"GET",
-			"/v2/keys/foo?recursive=false&sorted=false",
+			"/v2/keys/foo?consistent=true&recursive=false&sorted=false",
 			"",
 		},
 		{
 			&Get{Key: "/foo", Sorted: true, Recursive: true},
 			"GET",
-			"/v2/keys/foo?recursive=true&sorted=true",
+			"/v2/keys/foo?consistent=true&recursive=true&sorted=true",
 			"",
 		},
 	}

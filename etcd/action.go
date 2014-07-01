@@ -161,6 +161,7 @@ func (g *Get) HTTPRequest() (*http.Request, error) {
 	endpoint := v2URL(g.Key)
 
 	params := endpoint.Query()
+	params.Add("consistent", "true")
 	params.Add("sorted", strconv.FormatBool(g.Sorted))
 	params.Add("recursive", strconv.FormatBool(g.Recursive))
 	endpoint.RawQuery = params.Encode()
