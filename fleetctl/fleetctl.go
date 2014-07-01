@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"os"
 	"path"
-	"strconv"
 	"strings"
 	"sync"
 	"text/tabwriter"
@@ -53,7 +52,6 @@ var (
 	// flags used by all commands
 	globalFlags = struct {
 		Debug                 bool
-		Verbosity             int
 		Version               bool
 		Endpoint              string
 		EtcdKeyPrefix         string
@@ -75,9 +73,8 @@ var (
 )
 
 func init() {
-	globalFlagset.BoolVar(&globalFlags.Debug, "debug", false, "Print out more debug information to stderr. Equivalent to --verbosity=1")
+	globalFlagset.BoolVar(&globalFlags.Debug, "debug", false, "Print out more debug information to stderr")
 	globalFlagset.BoolVar(&globalFlags.Version, "version", false, "Print the version and exit")
-	globalFlagset.IntVar(&globalFlags.Verbosity, "verbosity", 0, "Log at a specified level of verbosity to stderr.")
 	globalFlagset.StringVar(&globalFlags.Endpoint, "endpoint", "http://127.0.0.1:4001", "etcd endpoint for fleet")
 	globalFlagset.StringVar(&globalFlags.EtcdKeyPrefix, "etcd-key-prefix", registry.DefaultKeyPrefix, "Keyspace for fleet data in etcd (development use only!)")
 	globalFlagset.BoolVar(&globalFlags.UseAPI, "experimental-api", false, "Use the experimental HTTP API. This flag will be removed when the API is no longer considered experimental.")
@@ -154,13 +151,9 @@ func main() {
 
 	getFlagsFromEnv(cliName, globalFlagset)
 
-	if globalFlags.Debug && globalFlags.Verbosity < 1 {
-		globalFlags.Verbosity = 1
-	}
-
 	// configure glog, which uses the global command line options
-	if globalFlags.Verbosity > 0 {
-		flag.CommandLine.Lookup("v").Value.Set(strconv.Itoa(globalFlags.Verbosity))
+	if globalFlags.Debug {
+		flag.CommandLine.Lookup("v").Value.Set("1")
 		flag.CommandLine.Lookup("logtostderr").Value.Set("true")
 	}
 
