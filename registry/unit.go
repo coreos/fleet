@@ -23,8 +23,6 @@ func (r *EtcdRegistry) storeOrGetUnit(u unit.Unit) (err error) {
 		return err
 	}
 
-	log.V(3).Infof("Storing Unit(%s) in Registry: %s", u.Hash(), json)
-
 	req := etcd.Create{
 		Key:   r.hashedUnitPath(u.Hash()),
 		Value: json,
@@ -32,7 +30,6 @@ func (r *EtcdRegistry) storeOrGetUnit(u unit.Unit) (err error) {
 	_, err = r.etcd.Do(&req)
 	// unit is already stored
 	if err != nil && isNodeExist(err) {
-		log.V(2).Infof("Unit(%s) already exists in Registry", u.Hash())
 		// TODO(jonboulle): verify more here?
 		err = nil
 	}
