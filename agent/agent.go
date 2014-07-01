@@ -428,21 +428,6 @@ func (a *Agent) bid(jobName string) {
 	a.state.TrackBid(jb.JobName)
 }
 
-// fetchJob attempts to retrieve a Job from the Registry
-func (a *Agent) fetchJob(jobName string) *job.Job {
-	log.V(1).Infof("Fetching Job(%s) from Registry", jobName)
-	j, err := a.registry.Job(jobName)
-	if err != nil {
-		log.Errorf("Failed to fetch Job(%s): %v", jobName, err)
-		return nil
-	}
-	if j == nil {
-		log.V(1).Infof("Job not found in Registry")
-		return nil
-	}
-	return j
-}
-
 // verifyJobSignature attempts to verify the integrity of the given Job by checking the
 // signature against a SignatureSet stored in its repository.
 func (a *Agent) verifyJobSignature(j *job.Job) bool {
@@ -470,12 +455,23 @@ func (a *Agent) bidForPossiblePeers(jobName string) {
 	for _, peer := range peers {
 		log.V(1).Infof("Found unresolved offer for Peer(%s) of Job(%s)", peer, jobName)
 
-		peerJob := a.fetchJob(peer)
-		if peerJob != nil && a.ableToRun(peerJob) {
-			a.bid(peer)
-		} else {
-			log.V(1).Infof("Unable to bid for Peer(%s) of Job(%s)", peer, jobName)
+		peerJob, err := a.registry.Job(peer)
+		if err != nil {
+			log.Errorf("Failed fetching Job(%s) from Registry: %v", peer, err)
+			return
 		}
+
+		if peerJob == nil {
+			log.V(1).Infof("Unable to find Peer(%s) of Job(%s) in Registry", peer, jobName)
+			return
+		}
+
+		if !a.ableToRun(peerJob) {
+			log.V(1).Infof("Unable to run Peer(%s) of Job(%s), not bidding", peer, jobName)
+			return
+		}
+
+		a.bid(peer)
 	}
 }
 
@@ -606,9 +602,14 @@ func (a *Agent) JobScheduledLocally(jobName string) {
 	log.Infof("Dropping offer and bid for Job(%s) from cache", jobName)
 	a.state.PurgeOffer(jobName)
 
-	j := a.fetchJob(jobName)
+	j, err := a.registry.Job(jobName)
+	if err != nil {
+		log.Errorf("Failed fetching Job(%s) from Registry: %v", jobName, err)
+		return
+	}
+
 	if j == nil {
-		log.Errorf("Failed to fetch Job(%s)", jobName)
+		log.Errorf("Unable to find Job(%s) in Registry", jobName)
 		return
 	}
 
