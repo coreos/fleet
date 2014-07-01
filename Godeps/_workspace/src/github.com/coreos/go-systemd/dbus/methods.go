@@ -18,6 +18,7 @@ package dbus
 
 import (
 	"errors"
+
 	"github.com/coreos/fleet/Godeps/_workspace/src/github.com/godbus/dbus"
 )
 
@@ -62,7 +63,7 @@ func (c *Conn) runJob(job string, args ...interface{}) (string, error) {
 	return <-respCh, nil
 }
 
-// StartUnit enqeues a start job and depending jobs, if any (unless otherwise
+// StartUnit enqueues a start job and depending jobs, if any (unless otherwise
 // specified by the mode string).
 //
 // Takes the unit to activate, plus a mode string. The mode needs to be one of
@@ -138,12 +139,17 @@ func (c *Conn) KillUnit(name string, signal int32) {
 	c.sysobj.Call("org.freedesktop.systemd1.Manager.KillUnit", 0, name, "all", signal).Store()
 }
 
+// ResetFailedUnit resets the "failed" state of a specific unit.
+func (c *Conn) ResetFailedUnit(name string) (string, error) {
+	return c.runJob("org.freedesktop.systemd1.Manager.ResetFailedUnit", name)
+}
+
 // getProperties takes the unit name and returns all of its dbus object properties, for the given dbus interface
 func (c *Conn) getProperties(unit string, dbusInterface string) (map[string]interface{}, error) {
 	var err error
 	var props map[string]dbus.Variant
 
-	path := ObjectPath("/org/freedesktop/systemd1/unit/" + unit)
+	path := unitPath(unit)
 	if !path.IsValid() {
 		return nil, errors.New("invalid unit name: " + unit)
 	}
@@ -171,7 +177,7 @@ func (c *Conn) getProperty(unit string, dbusInterface string, propertyName strin
 	var err error
 	var prop dbus.Variant
 
-	path := ObjectPath("/org/freedesktop/systemd1/unit/" + unit)
+	path := unitPath(unit)
 	if !path.IsValid() {
 		return nil, errors.New("invalid unit name: " + unit)
 	}
@@ -393,4 +399,8 @@ type DisableUnitFileChange struct {
 // equivalent to a 'systemctl daemon-reload'.
 func (c *Conn) Reload() error {
 	return c.sysobj.Call("org.freedesktop.systemd1.Manager.Reload", 0).Store()
+}
+
+func unitPath(name string) dbus.ObjectPath {
+	return dbus.ObjectPath("/org/freedesktop/systemd1/unit/" + PathBusEscape(name))
 }
