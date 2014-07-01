@@ -196,13 +196,25 @@ func (c *client) resolve(act Action, rf requestFunc, cancel <-chan bool) (*Resul
 // a Result if one can be acquired. This function call will wait 10s before
 // aborting any in-flight requests and returning an error.
 func (c *client) Do(act Action) (*Result, error) {
+	type re struct {
+		res *Result
+		err error
+	}
 	cancel := make(chan bool)
+	result := make(chan re)
+
 	go func() {
-		<-time.After(actionTimeout)
-		close(cancel)
+		r, e := c.resolve(act, c.requestHTTP, cancel)
+		result <- re{r, e}
 	}()
 
-	return c.resolve(act, c.requestHTTP, cancel)
+	select {
+	case <-time.After(actionTimeout):
+		close(cancel)
+		return nil, errors.New("timeout reached")
+	case r := <-result:
+		return r.res, r.err
+	}
 }
 
 // Make any necessary HTTP requests to resolve the given Action, returning
