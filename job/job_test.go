@@ -318,3 +318,26 @@ func TestInstanceUnitPrintf(t *testing.T) {
 		}
 	}
 }
+
+func TestParseJobState(t *testing.T) {
+	tests := []struct {
+		in  string
+		out JobState
+		err bool
+	}{
+		{"inactive", JobStateInactive, false},
+		{"loaded", JobStateLoaded, false},
+		{"launched", JobStateLaunched, false},
+		{"active", JobStateInactive, true},
+	}
+
+	for i, tt := range tests {
+		out, err := ParseJobState(tt.in)
+		if (err != nil) != tt.err {
+			t.Errorf("case %d: expected error=%t, got %v", i, tt.err, err)
+		}
+		if out != tt.out {
+			t.Errorf("case %d: expected JobState=%v, got %v", i, tt.out, out)
+		}
+	}
+}

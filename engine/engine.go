@@ -47,14 +47,14 @@ func (e *Engine) CheckForWork() {
 
 	jobs, _ := e.registry.Jobs()
 	for _, j := range jobs {
-		if j.TargetState == nil || j.State == nil || *j.TargetState == *j.State {
+		if j.State == nil || j.TargetState == *j.State {
 			continue
 		}
 
 		if *j.State == job.JobStateInactive {
 			log.Infof("Offering Job(%s)", j.Name)
 			e.OfferJob(j)
-		} else if *j.TargetState == job.JobStateInactive {
+		} else if j.TargetState == job.JobStateInactive {
 			log.Infof("Unscheduling Job(%s)", j.Name)
 			e.registry.ClearJobTarget(j.Name, j.TargetMachineID)
 		}
