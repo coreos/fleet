@@ -163,10 +163,8 @@ func (r *EtcdRegistry) getJobFromModel(jm jobModel) *job.Job {
 			log.Errorf("Unit Hash %s does not match expected %s for Job(%s)!", unit.Hash(), jm.UnitHash, jm.Name)
 			return nil
 		}
-		log.V(2).Infof("Got Unit for Job(%s) from registry", jm.Name)
 	} else {
 		// Old-style Jobs had "Payloads" instead of Units, also stored separately in the Registry
-		log.V(2).Infof("Legacy Job(%s) has no PayloadHash - looking for associated Payload", jm.Name)
 		unit, err = r.getUnitFromLegacyPayload(jm.Name)
 		if err != nil {
 			log.Errorf("Error retrieving legacy payload for Job(%s)", jm.Name)
