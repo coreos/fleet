@@ -53,14 +53,13 @@ func (eh *EventHandler) HandleEventJobScheduled(ev event.Event) {
 func (eh *EventHandler) HandleEventJobUnscheduled(ev event.Event) {
 	jobName := ev.Payload.(string)
 
-	ts, _ := eh.engine.registry.JobTargetState(jobName)
-	if ts == nil || *ts == job.JobStateInactive {
-		return
-	}
-
 	j, _ := eh.engine.registry.Job(jobName)
 	if j == nil {
 		log.Errorf("EventJobUnscheduled(%s): unable to re-offer Job, as it could not be found in the Registry", jobName)
+		return
+	}
+
+	if j.TargetState == nil || *j.TargetState == job.JobStateInactive {
 		return
 	}
 
@@ -133,8 +132,7 @@ func getJobsScheduledToMachine(r registry.Registry, machID string) []job.Job {
 
 	jj, _ := r.Jobs()
 	for _, j := range jj {
-		tgt, _ := r.JobTarget(j.Name)
-		if tgt == "" || tgt != machID {
+		if j.TargetMachineID == "" || j.TargetMachineID != machID {
 			continue
 		}
 		jobs = append(jobs, j)

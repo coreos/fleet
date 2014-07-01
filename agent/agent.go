@@ -95,8 +95,7 @@ func (a *Agent) Initialize() uint64 {
 	launched := map[string]job.Job{}
 	jobs, _ := a.registry.Jobs()
 	for _, j := range jobs {
-		tm, _ := a.registry.JobTarget(j.Name)
-		if tm == "" || tm != machID {
+		if j.TargetMachineID == "" || j.TargetMachineID != machID {
 			continue
 		}
 
@@ -106,14 +105,13 @@ func (a *Agent) Initialize() uint64 {
 			continue
 		}
 
-		ts, _ := a.registry.JobTargetState(j.Name)
-		if ts == nil || *ts == job.JobStateInactive {
+		if j.TargetState == nil || *j.TargetState == job.JobStateInactive {
 			continue
 		}
 
 		loaded[j.Name] = j
 
-		if *ts != job.JobStateLaunched {
+		if *j.TargetState != job.JobStateLaunched {
 			continue
 		}
 
@@ -538,8 +536,15 @@ func (a *Agent) ableToRun(j *job.Job) bool {
 func (a *Agent) peerScheduledHere(jobName, peerName string) bool {
 	log.V(1).Infof("Looking for target of Peer(%s)", peerName)
 
-	//FIXME: ideally the machine would use its own knowledge rather than calling GetJobTarget
-	if tgt, _ := a.registry.JobTarget(peerName); tgt == "" || tgt != a.Machine.State().ID {
+	j, err := a.registry.Job(peerName)
+	if err != nil {
+		log.Errorf("Failed retrieving Job(%s) from Registry: %v", err)
+		return false
+	} else if j == nil {
+		return false
+	}
+
+	if j.TargetMachineID == "" || j.TargetMachineID != a.Machine.State().ID {
 		log.V(1).Infof("Peer(%s) of Job(%s) not scheduled here", peerName, jobName)
 		return false
 	}
@@ -619,8 +624,7 @@ func (a *Agent) JobScheduledLocally(jobName string) {
 	log.Infof("Bidding for all possible peers of Job(%s)", j.Name)
 	a.bidForPossiblePeers(j.Name)
 
-	ts, _ := a.registry.JobTargetState(j.Name)
-	if ts == nil || *ts != job.JobStateLaunched {
+	if j.TargetState == nil || *j.TargetState != job.JobStateLaunched {
 		return
 	}
 

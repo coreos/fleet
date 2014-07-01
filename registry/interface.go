@@ -25,8 +25,6 @@ type Registry interface {
 	JobHeartbeat(jobName, agentMachID string, ttl time.Duration) error
 	Jobs() ([]job.Job, error)
 	JobSignatureSet(name string) (*sign.SignatureSet, error)
-	JobTarget(jobName string) (string, error)
-	JobTargetState(jobName string) (*job.JobState, error)
 	LatestVersion() (*semver.Version, error)
 	LockJob(jobName, context string) *TimedResourceMutex
 	LockJobOffer(jobName, context string) *TimedResourceMutex

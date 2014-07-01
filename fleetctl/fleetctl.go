@@ -627,12 +627,7 @@ func assertJobState(name string, js job.JobState, out io.Writer) (ret bool) {
 	ret = true
 	msg := fmt.Sprintf("Job %s %s", name, *(j.State))
 
-	tgt, err := cAPI.JobTarget(name)
-	if err != nil {
-		log.Warningf("Error retrieving target information for Job(%s) from Registry: %v", name, err)
-		return
-	}
-	if tgt == "" {
+	if j.TargetMachineID == "" {
 		return
 	}
 
@@ -641,7 +636,7 @@ func assertJobState(name string, js job.JobState, out io.Writer) (ret bool) {
 		log.Warningf("Failed retrieving list of Machines from Registry: %v", err)
 	}
 	for _, ms := range machines {
-		if ms.ID != tgt {
+		if ms.ID != j.TargetMachineID {
 			continue
 		}
 		msg = fmt.Sprintf("%s on %s", msg, machineFullLegend(ms, false))

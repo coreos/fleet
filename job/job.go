@@ -50,11 +50,13 @@ func ParseJobState(s string) *JobState {
 }
 
 type Job struct {
-	Name      string
-	State     *JobState
-	Unit      unit.Unit
-	UnitHash  unit.Hash
-	UnitState *unit.UnitState
+	Name            string
+	State           *JobState
+	TargetState     *JobState
+	TargetMachineID string
+	Unit            unit.Unit
+	UnitHash        unit.Hash
+	UnitState       *unit.UnitState
 }
 
 // NewJob creates a new Job based on the given name and Unit.
@@ -62,11 +64,13 @@ type Job struct {
 // UnitState. nil is returned on failure.
 func NewJob(name string, unit unit.Unit) *Job {
 	return &Job{
-		Name:      name,
-		State:     nil,
-		Unit:      unit,
-		UnitHash:  unit.Hash(),
-		UnitState: nil,
+		Name:            name,
+		State:           nil,
+		TargetState:     nil,
+		TargetMachineID: "",
+		Unit:            unit,
+		UnitHash:        unit.Hash(),
+		UnitState:       nil,
 	}
 }
 

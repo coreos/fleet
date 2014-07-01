@@ -13,14 +13,12 @@ import (
 
 func NewFakeRegistry() *FakeRegistry {
 	return &FakeRegistry{
-		machines:     []machine.MachineState{},
-		jobStates:    map[string]*unit.UnitState{},
-		jobs:         map[string]job.Job{},
-		units:        []unit.Unit{},
-		version:      nil,
-		bids:         map[string][]job.JobBid{},
-		targetStates: map[string]job.JobState{},
-		schedule:     map[string]string{},
+		machines:  []machine.MachineState{},
+		jobStates: map[string]*unit.UnitState{},
+		jobs:      map[string]job.Job{},
+		units:     []unit.Unit{},
+		version:   nil,
+		bids:      map[string][]job.JobBid{},
 	}
 }
 
@@ -31,14 +29,12 @@ type FakeRegistry struct {
 	Registry
 	sync.RWMutex
 
-	machines     []machine.MachineState
-	jobStates    map[string]*unit.UnitState
-	jobs         map[string]job.Job
-	units        []unit.Unit
-	version      *semver.Version
-	bids         map[string][]job.JobBid
-	targetStates map[string]job.JobState
-	schedule     map[string]string
+	machines  []machine.MachineState
+	jobStates map[string]*unit.UnitState
+	jobs      map[string]job.Job
+	units     []unit.Unit
+	version   *semver.Version
+	bids      map[string][]job.JobBid
 }
 
 func (f *FakeRegistry) SetMachines(machines []machine.MachineState) {
@@ -153,34 +149,32 @@ func (f *FakeRegistry) SetJobTargetState(name string, target job.JobState) error
 	f.Lock()
 	defer f.Unlock()
 
-	f.targetStates[name] = target
-	return nil
-}
+	j, ok := f.jobs[name]
 
-func (f *FakeRegistry) JobTargetState(jobName string) (*job.JobState, error) {
-	f.RLock()
-	defer f.RUnlock()
-
-	ts, ok := f.targetStates[jobName]
 	if !ok {
-		return nil, nil
+		return errors.New("job does not exist")
 	}
-	return &ts, nil
+
+	j.TargetState = &target
+	f.jobs[name] = j
+
+	return nil
 }
 
 func (f *FakeRegistry) ScheduleJob(name string, machID string) error {
 	f.Lock()
 	defer f.Unlock()
 
-	f.schedule[name] = machID
+	j, ok := f.jobs[name]
+
+	if !ok {
+		return errors.New("job does not exist")
+	}
+
+	j.TargetMachineID = machID
+	f.jobs[name] = j
+
 	return nil
-}
-
-func (f *FakeRegistry) JobTarget(name string) (string, error) {
-	f.RLock()
-	defer f.RUnlock()
-
-	return f.schedule[name], nil
 }
 
 func (f *FakeRegistry) SaveUnitState(jobName string, unitState *unit.UnitState) {

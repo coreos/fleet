@@ -42,12 +42,12 @@ func TestFakeRegistryJobLifecycle(t *testing.T) {
 		t.Fatalf("Received error while calling ScheduleJob: %v", err)
 	}
 
-	tgt, err := reg.JobTarget("job1.service")
+	j, err := reg.Job("job1.service")
 	if err != nil {
 		t.Fatalf("Received error while calling JobTarget: %v", err)
 	}
-	if tgt != "XXX" {
-		t.Fatalf("Job should be scheduled to XXX, got %v", tgt)
+	if j.TargetMachineID != "XXX" {
+		t.Fatalf("Job should be scheduled to XXX, got %v", j.TargetMachineID)
 	}
 
 	err = reg.DestroyJob("job1.service")

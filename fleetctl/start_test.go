@@ -3,6 +3,7 @@ package main
 import (
 	"time"
 
+	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/registry"
 	"github.com/coreos/fleet/resource"
@@ -14,7 +15,7 @@ type BlockedFakeRegistry struct {
 	registry.FakeRegistry
 }
 
-func (b BlockedFakeRegistry) JobTarget(name string) (string, error) {
+func (b BlockedFakeRegistry) Job(name string) (*job.Job, error) {
 	if name == "hello.service" {
 		time.Sleep(500 * time.Millisecond)
 	}
@@ -22,11 +23,11 @@ func (b BlockedFakeRegistry) JobTarget(name string) (string, error) {
 	if name == "echo.service" {
 		if b.EchoAttempts != 0 {
 			b.EchoAttempts--
-			return "", nil
+			return nil, nil
 		}
 	}
 
-	return b.FakeRegistry.JobTarget(name)
+	return b.FakeRegistry.Job(name)
 }
 
 func setupRegistryForStart(echoAttempts int) {

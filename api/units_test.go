@@ -159,9 +159,7 @@ func TestExtractUnitPage(t *testing.T) {
 
 func TestMapJobToSchema(t *testing.T) {
 	loaded := job.JobStateLoaded
-	fr := registry.NewFakeRegistry()
-	fr.SetJobTargetState("XXX", "launched")
-	fr.ScheduleJob("XXX", "ZZZ")
+	launched := job.JobStateLaunched
 
 	tests := []struct {
 		input  job.Job
@@ -169,10 +167,12 @@ func TestMapJobToSchema(t *testing.T) {
 	}{
 		{
 			job.Job{
-				Name:     "XXX",
-				State:    &loaded,
-				Unit:     unit.Unit{Raw: "[Service]\nExecStart=/usr/bin/sleep 3000\n"},
-				UnitHash: unit.Hash([sha1.Size]byte{36, 139, 153, 125, 107, 236, 238, 27, 131, 91, 126, 199, 217, 200, 230, 141, 125, 210, 70, 35}),
+				Name:            "XXX",
+				State:           &loaded,
+				TargetState:     &launched,
+				TargetMachineID: "ZZZ",
+				Unit:            unit.Unit{Raw: "[Service]\nExecStart=/usr/bin/sleep 3000\n"},
+				UnitHash:        unit.Hash([sha1.Size]byte{36, 139, 153, 125, 107, 236, 238, 27, 131, 91, 126, 199, 217, 200, 230, 141, 125, 210, 70, 35}),
 				UnitState: &unit.UnitState{
 					LoadState:    "loaded",
 					ActiveState:  "active",
@@ -198,7 +198,7 @@ func TestMapJobToSchema(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		output, err := mapJobToSchema(fr, &tt.input)
+		output, err := mapJobToSchema(&tt.input)
 		if err != nil {
 			t.Errorf("case %d: call to mapJobToSchema failed: %v", err)
 			continue
@@ -460,13 +460,11 @@ func TestUnitsSetDesiredState(t *testing.T) {
 			} else if j == nil {
 				t.Errorf("case %d: fetched nil Job(%s), expected non-nil", i, name)
 			}
-			finalState, err := fr.JobTargetState(name)
-			if err != nil {
-				t.Errorf("case %d: failed fetching target JobState: %v", i, err)
-			} else if finalState == nil {
+
+			if j.TargetState == nil {
 				t.Errorf("case %d: got nil target state for Job(%s), expected non-nil", i, name)
-			} else if *finalState != expect {
-				t.Errorf("case %d: expect Job(%s) target state %q, got %q", i, name, expect, *finalState)
+			} else if *j.TargetState != expect {
+				t.Errorf("case %d: expect Job(%s) target state %q, got %q", i, name, expect, *j.TargetState)
 			}
 		}
 	}
