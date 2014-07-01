@@ -509,7 +509,7 @@ func lazyCreateJobs(args []string, signAndVerify bool) error {
 func warnOnDifferentLocalUnit(name string, j *job.Job) {
 	if _, err := os.Stat(name); !os.IsNotExist(err) {
 		unit, err := getUnitFromFile(name)
-		if err == nil && unit.Hash() != j.UnitHash {
+		if err == nil && unit.Hash() != j.Unit.Hash() {
 			fmt.Fprintf(os.Stderr, "WARNING: Job(%s) in Registry differs from local Unit(%s)\n", j.Name, name)
 			return
 		}
@@ -518,7 +518,7 @@ func warnOnDifferentLocalUnit(name string, j *job.Job) {
 		file := path.Join(path.Dir(name), uni.Template)
 		if _, err := os.Stat(file); !os.IsNotExist(err) {
 			tmpl, err := getUnitFromFile(file)
-			if err == nil && tmpl.Hash() != j.UnitHash {
+			if err == nil && tmpl.Hash() != j.Unit.Hash() {
 				fmt.Fprintf(os.Stderr, "WARNING: Job(%s) in Registry differs from local template Unit(%s)\n", j.Name, uni.Template)
 			}
 		}
