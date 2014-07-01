@@ -367,7 +367,7 @@ func (a *Agent) unloadJob(jobName string) {
 // unit.UnitState object, then persists that state in the Registry
 func (a *Agent) ReportUnitState(jobName string, us *unit.UnitState) {
 	if us == nil {
-		log.V(1).Infof("Job(%s): purging UnitState from Registry", jobName)
+		log.Infof("Job(%s): purging UnitState from Registry", jobName)
 		err := a.registry.RemoveUnitState(jobName)
 		if err != nil {
 			log.Errorf("Failed to remove UnitState for job %s from Registry: %s", jobName, err.Error())
@@ -375,7 +375,7 @@ func (a *Agent) ReportUnitState(jobName string, us *unit.UnitState) {
 	} else {
 		ms := a.Machine.State()
 		us.MachineState = &ms
-		log.V(1).Infof("Job(%s): pushing UnitState (loadState=%s, activeState=%s, subState=%s) to Registry", jobName, us.LoadState, us.ActiveState, us.SubState)
+		log.Infof("Job(%s): pushing UnitState (loadState=%s, activeState=%s, subState=%s) to Registry", jobName, us.LoadState, us.ActiveState, us.SubState)
 		a.registry.SaveUnitState(jobName, us)
 	}
 }
