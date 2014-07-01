@@ -283,7 +283,7 @@ func newUnitPage(reg registry.Registry, items []job.Job, tok *PageToken) (*schem
 func mapJobToSchema(j *job.Job) (*schema.Unit, error) {
 	su := schema.Unit{
 		Name:            j.Name,
-		FileHash:        j.UnitHash.String(),
+		FileHash:        j.Unit.Hash().String(),
 		FileContents:    encodeUnitContents(&j.Unit),
 		TargetMachineID: j.TargetMachineID,
 	}

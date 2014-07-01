@@ -224,7 +224,7 @@ func (r *EtcdRegistry) CreateJob(j *job.Job) (err error) {
 
 	jm := jobModel{
 		Name:     j.Name,
-		UnitHash: j.UnitHash,
+		UnitHash: j.Unit.Hash(),
 	}
 	json, err := marshal(jm)
 	if err != nil {

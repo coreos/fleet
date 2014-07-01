@@ -80,9 +80,9 @@ Or, choose the columns to display:
 		},
 		"hash": func(j *job.Job, full bool) string {
 			if !full {
-				return j.UnitHash.Short()
+				return j.Unit.Hash().Short()
 			}
-			return j.UnitHash.String()
+			return j.Unit.Hash().String()
 		},
 	}
 )

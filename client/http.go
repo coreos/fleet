@@ -163,10 +163,9 @@ func mapUnitToJob(entity *schema.Unit, mm map[string]*machine.MachineState) (*jo
 
 	js := job.JobState(entity.CurrentState)
 	j := job.Job{
-		Name:     entity.Name,
-		State:    &js,
-		Unit:     *u,
-		UnitHash: u.Hash(),
+		Name:  entity.Name,
+		State: &js,
+		Unit:  *u,
 	}
 
 	// populate a UnitState object only if the entity

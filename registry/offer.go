@@ -26,7 +26,7 @@ func (r *EtcdRegistry) CreateJobOffer(jo *job.JobOffer) error {
 	jom := jobOfferModel{
 		Job: jobModel{
 			Name:     jo.Job.Name,
-			UnitHash: jo.Job.UnitHash,
+			UnitHash: jo.Job.Unit.Hash(),
 		},
 		MachineIDs: jo.MachineIDs,
 	}

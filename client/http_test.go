@@ -1,7 +1,6 @@
 package client
 
 import (
-	"crypto/sha1"
 	"reflect"
 	"testing"
 
@@ -41,7 +40,6 @@ func TestMapUnitEntityToJob(t *testing.T) {
 						},
 					},
 				},
-				UnitHash: unit.Hash([sha1.Size]byte{36, 139, 153, 125, 107, 236, 238, 27, 131, 91, 126, 199, 217, 200, 230, 141, 125, 210, 70, 35}),
 				UnitState: &unit.UnitState{
 					LoadState:   "loaded",
 					ActiveState: "active",
@@ -69,7 +67,6 @@ func TestMapUnitEntityToJob(t *testing.T) {
 						},
 					},
 				},
-				UnitHash: unit.Hash([sha1.Size]byte{36, 139, 153, 125, 107, 236, 238, 27, 131, 91, 126, 199, 217, 200, 230, 141, 125, 210, 70, 35}),
 			},
 		},
 	}

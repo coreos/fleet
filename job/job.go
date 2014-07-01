@@ -55,7 +55,6 @@ type Job struct {
 	TargetState     *JobState
 	TargetMachineID string
 	Unit            unit.Unit
-	UnitHash        unit.Hash
 	UnitState       *unit.UnitState
 }
 
@@ -69,7 +68,6 @@ func NewJob(name string, unit unit.Unit) *Job {
 		TargetState:     nil,
 		TargetMachineID: "",
 		Unit:            unit,
-		UnitHash:        unit.Hash(),
 		UnitState:       nil,
 	}
 }
