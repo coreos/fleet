@@ -116,7 +116,7 @@ func TestExtractUnitPage(t *testing.T) {
 	for i, tt := range tests {
 		page, err := extractUnitPage(fr, all, tt.token)
 		if err != nil {
-			t.Errorf("case %d: call to extractUnitPage failed: %v", err)
+			t.Errorf("case %d: call to extractUnitPage failed: %v", i, err)
 			continue
 		}
 		expectCount := (tt.idxEnd - tt.idxStart + 1)
@@ -200,7 +200,7 @@ func TestMapJobToSchema(t *testing.T) {
 	for i, tt := range tests {
 		output, err := mapJobToSchema(&tt.input)
 		if err != nil {
-			t.Errorf("case %d: call to mapJobToSchema failed: %v", err)
+			t.Errorf("case %d: call to mapJobToSchema failed: %v", i, err)
 			continue
 		}
 		if !reflect.DeepEqual(tt.expect, *output) {
@@ -420,7 +420,7 @@ func TestUnitsSetDesiredState(t *testing.T) {
 		for j, s := range tt.initStates {
 			err := fr.SetJobTargetState(j, s)
 			if err != nil {
-				t.Errorf("case %d: failed initializing Job target state: %v", err)
+				t.Errorf("case %d: failed initializing Job target state: %v", i, err)
 			}
 		}
 

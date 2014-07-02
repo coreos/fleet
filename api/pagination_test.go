@@ -19,7 +19,7 @@ func TestPageTokenAdvance(t *testing.T) {
 	next := tok.Next()
 	expect := PageToken{Page: 3, Limit: 12}
 	if !reflect.DeepEqual(expect, next) {
-		t.Errorf("Unexpected PageToken: expect=%s, got=%s", expect, next)
+		t.Errorf("Unexpected PageToken: expect=%v, got=%v", expect, next)
 	}
 }
 

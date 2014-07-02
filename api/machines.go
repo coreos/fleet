@@ -41,7 +41,7 @@ func (mr *machinesResource) ServeHTTP(rw http.ResponseWriter, req *http.Request)
 
 	page, err := getMachinePage(mr.reg, *token)
 	if err != nil {
-		log.Error("Failed fetching page of Machines: %v", err)
+		log.Errorf("Failed fetching page of Machines: %v", err)
 		sendError(rw, http.StatusInternalServerError, nil)
 		return
 	}

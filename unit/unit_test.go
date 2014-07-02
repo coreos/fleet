@@ -140,7 +140,7 @@ func TestNamedUnit(t *testing.T) {
 		}
 		i := u.IsInstance()
 		if i != tt.isinst {
-			t.Errorf("NewUnitNameInfo(%s).IsInstance returned %t, want %s", tt.name, i, tt.isinst)
+			t.Errorf("NewUnitNameInfo(%s).IsInstance returned %t, want %t", tt.name, i, tt.isinst)
 		}
 	}
 
