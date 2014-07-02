@@ -2,7 +2,6 @@ package agent
 
 import (
 	"encoding/json"
-	"fmt"
 	"time"
 
 	log "github.com/coreos/fleet/Godeps/_workspace/src/github.com/golang/glog"
@@ -17,9 +16,6 @@ import (
 const (
 	// TTL to use with all state pushed to Registry
 	DefaultTTL = "30s"
-
-	// Refresh TTLs at 1/2 the TTL length
-	refreshInterval = 2
 )
 
 // The Agent owns all of the coordination between the Registry, the local
@@ -61,29 +57,15 @@ func (a *Agent) MarshalJSON() ([]byte, error) {
 // presence information as well as an acknowledgement of the jobs
 // it is expected to be running.
 func (a *Agent) Heartbeat(stop chan bool) {
-	go a.heartbeatAgent(a.ttl, stop)
 	go a.heartbeatJobs(a.ttl, stop)
 }
 
 // Initialize prepares the Agent for normal operation by doing three things:
-// 1. Announce presence to the Registry, tracking the etcd index of the operation
+// 1. Announce presence to the Registry
 // 2. Discover any jobs that are scheduled locally, loading/starting them if they can run locally
 // 3. Cache all unresolved job offers and bid for any that can be run locally
-// The returned value is the etcd index at which the agent's presence was announced.
-func (a *Agent) Initialize() uint64 {
+func (a *Agent) Initialize() {
 	log.Infof("Initializing Agent")
-
-	var idx uint64
-	wait := time.Second
-	for {
-		var err error
-		if idx, err = a.registry.SetMachineState(a.Machine.State(), a.ttl); err == nil {
-			log.V(1).Infof("Heartbeat succeeded")
-			break
-		}
-		log.V(1).Infof("Failed heartbeat, retrying in %v", wait)
-		time.Sleep(wait)
-	}
 
 	// Lock the state early so we can decide what the Agent needs to do
 	// without the risk of conflicting with any of its other moving parts
@@ -151,17 +133,10 @@ func (a *Agent) Initialize() uint64 {
 	}
 
 	a.bidForPossibleJobs()
-
-	return idx
 }
 
 // Purge removes the Agent's state from the Registry
 func (a *Agent) Purge() {
-	// Continue heartbeating the agent's machine state while attempting to
-	// stop all the locally-running jobs
-	purged := make(chan bool)
-	go a.heartbeatAgent(a.ttl, purged)
-
 	a.state.Lock()
 	scheduled := a.state.ScheduledJobs()
 	a.state.Unlock()
@@ -174,62 +149,9 @@ func (a *Agent) Purge() {
 		a.registry.ClearJobTarget(jobName, machID)
 	}
 
-	// Jobs have been stopped, the heartbeat can stop
-	close(purged)
-
 	log.Info("Removing Agent from Registry")
 	if err := a.registry.RemoveMachineState(machID); err != nil {
 		log.Errorf("Failed to remove Machine %s from Registry: %s", machID, err.Error())
-	}
-}
-
-// heartbeatAgent periodically reports to the Registry at an
-// interval equal to half of the provided ttl. heartbeatAgent
-// stops reporting when the provided channel is closed. Failed
-// attempts to report state to the Registry are retried twice
-// before moving on to the next reporting interval.
-func (a *Agent) heartbeatAgent(ttl time.Duration, stop chan bool) {
-	attempt := func(attempts int, f func() error) (err error) {
-		if attempts < 1 {
-			return fmt.Errorf("attempts argument must be 1 or greater, got %d", attempts)
-		}
-
-		// The amount of time the retry mechanism waits after a failed attempt
-		// doubles following each failure. This is a simple exponential backoff.
-		sleep := time.Second
-
-		for i := 1; i <= attempts; i++ {
-			err = f()
-			if err == nil || i == attempts {
-				break
-			}
-
-			sleep = sleep * 2
-			log.V(1).Infof("function returned err, retrying in %v: %v", sleep, err)
-			time.Sleep(sleep)
-		}
-
-		return err
-	}
-
-	heartbeat := func() error {
-		_, err := a.registry.SetMachineState(a.Machine.State(), ttl)
-		return err
-	}
-
-	interval := ttl / refreshInterval
-	ticker := time.Tick(interval)
-	for {
-		select {
-		case <-stop:
-			log.V(1).Info("Heartbeat exiting due to stop signal")
-			return
-		case <-ticker:
-			log.V(1).Info("Heartbeat tick")
-			if err := attempt(3, heartbeat); err != nil {
-				log.Errorf("Failed heartbeat after 3 attempts: %v", err)
-			}
-		}
 	}
 }
 
@@ -242,7 +164,7 @@ func (a *Agent) heartbeatJobs(ttl time.Duration, stop chan bool) {
 		}
 	}
 
-	interval := ttl / refreshInterval
+	interval := ttl / 2
 	ticker := time.Tick(interval)
 	for {
 		select {
