@@ -84,7 +84,7 @@ func (m *SystemdUnitManager) GetUnitState(name string) (*unit.UnitState, error) 
 	if err != nil {
 		return nil, err
 	}
-	return unit.NewUnitState(loadState, activeState, subState, nil), nil
+	return unit.NewUnitState(loadState, activeState, subState, ""), nil
 }
 
 func (m *SystemdUnitManager) getUnitStates(name string) (string, string, string, error) {

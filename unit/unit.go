@@ -4,8 +4,6 @@ import (
 	"crypto/sha1"
 	"fmt"
 	"strings"
-
-	"github.com/coreos/fleet/machine"
 )
 
 // RecognizedUnitType determines whether or not the given unit name represents
@@ -69,14 +67,14 @@ func (u *Unit) Hash() Hash {
 
 // UnitState encodes the current state of a unit loaded into systemd
 type UnitState struct {
-	LoadState    string                `json:"loadState"`
-	ActiveState  string                `json:"activeState"`
-	SubState     string                `json:"subState"`
-	MachineState *machine.MachineState `json:"machineState"`
+	LoadState   string `json:"loadState"`
+	ActiveState string `json:"activeState"`
+	SubState    string `json:"subState"`
+	MachineID   string `json:"machineID"`
 }
 
-func NewUnitState(loadState, activeState, subState string, ms *machine.MachineState) *UnitState {
-	return &UnitState{loadState, activeState, subState, ms}
+func NewUnitState(loadState, activeState, subState, mID string) *UnitState {
+	return &UnitState{loadState, activeState, subState, mID}
 }
 
 // UnitNameInfo exposes certain interesting items about a Unit based on its

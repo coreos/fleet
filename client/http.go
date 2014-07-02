@@ -177,12 +177,7 @@ func mapUnitToJob(entity *schema.Unit, mm map[string]*machine.MachineState) (*jo
 			SubState:    entity.Systemd.SubState,
 		}
 		if len(entity.Systemd.MachineID) > 0 {
-			m, ok := mm[entity.Systemd.MachineID]
-			if ok {
-				j.UnitState.MachineState = m
-			} else {
-				j.UnitState.MachineState = &machine.MachineState{ID: entity.Systemd.MachineID}
-			}
+			j.UnitState.MachineID = entity.Systemd.MachineID
 		}
 	}
 

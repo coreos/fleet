@@ -3,9 +3,6 @@ package unit
 import (
 	"reflect"
 	"testing"
-
-	"github.com/coreos/fleet/machine"
-	"github.com/coreos/fleet/resource"
 )
 
 const (
@@ -84,15 +81,14 @@ func TestDefaultUnitType(t *testing.T) {
 }
 
 func TestNewUnitState(t *testing.T) {
-	ms := &machine.MachineState{"id", "ip", nil, "version", resource.ResourceTuple{}}
 	want := &UnitState{
-		LoadState:    "ls",
-		ActiveState:  "as",
-		SubState:     "ss",
-		MachineState: ms,
+		LoadState:   "ls",
+		ActiveState: "as",
+		SubState:    "ss",
+		MachineID:   "id",
 	}
 
-	got := NewUnitState("ls", "as", "ss", ms)
+	got := NewUnitState("ls", "as", "ss", "id")
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("NewUnitState did not create a correct UnitState: got %s, want %s", got, want)
 	}

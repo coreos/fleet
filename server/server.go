@@ -46,12 +46,12 @@ type Server struct {
 }
 
 func New(cfg config.Config) (*Server, error) {
-	mach, err := newMachineFromConfig(cfg)
+	mgr, err := systemd.NewSystemdUnitManager(systemd.DefaultUnitsDirectory)
 	if err != nil {
 		return nil, err
 	}
 
-	mgr, err := systemd.NewSystemdUnitManager(systemd.DefaultUnitsDirectory)
+	mach, err := newMachineFromConfig(cfg, mgr)
 	if err != nil {
 		return nil, err
 	}
@@ -122,14 +122,14 @@ func newHeartMonitorFromConfig(mach machine.Machine, reg registry.Registry, cfg 
 	return
 }
 
-func newMachineFromConfig(cfg config.Config) (*machine.CoreOSMachine, error) {
+func newMachineFromConfig(cfg config.Config, mgr *systemd.SystemdUnitManager) (*machine.CoreOSMachine, error) {
 	state := machine.MachineState{
 		PublicIP: cfg.PublicIP,
 		Metadata: cfg.Metadata(),
 		Version:  version.Version,
 	}
 
-	mach := machine.NewCoreOSMachine(state)
+	mach := machine.NewCoreOSMachine(state, mgr)
 	mach.Refresh()
 
 	if mach.State().ID == "" {

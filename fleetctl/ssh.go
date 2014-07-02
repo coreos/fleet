@@ -172,22 +172,31 @@ func findAddressInRunningUnits(jobName string) (string, bool) {
 	if j == nil || j.UnitState == nil {
 		return "", false
 	}
-	return j.UnitState.MachineState.PublicIP, true
+	m := cachedMachineState(j.UnitState.MachineID)
+	if m != nil && m.PublicIP != "" {
+		return m.PublicIP, true
+	}
+	return "", false
 }
 
 // runCommand will attempt to run a command on a given machine. It will attempt
 // to SSH to the machine if it is identified as being remote.
-func runCommand(cmd string, ms *machine.MachineState) (retcode int) {
+func runCommand(cmd string, machID string) (retcode int) {
 	var err error
-	if machine.IsLocalMachineState(ms) {
+	if machine.IsLocalMachineID(machID) {
 		err, retcode = runLocalCommand(cmd)
 		if err != nil {
 			fmt.Printf("Error running local command: %v\n", err)
 		}
 	} else {
-		err, retcode = runRemoteCommand(cmd, ms.PublicIP)
-		if err != nil {
-			fmt.Printf("Error running remote command: %v\n", err)
+		ms, err := machineState(machID)
+		if err != nil || ms == nil {
+			fmt.Printf("Error getting machine IP: %v\n", err)
+		} else {
+			err, retcode = runRemoteCommand(cmd, ms.PublicIP)
+			if err != nil {
+				fmt.Printf("Error running remote command: %v\n", err)
+			}
 		}
 	}
 	return
