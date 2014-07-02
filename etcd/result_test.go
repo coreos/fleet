@@ -75,7 +75,7 @@ func TestUnmarshalSuccessfulResponseNoNodes(t *testing.T) {
 		}
 
 		if (res == nil) != (tt.res == nil) {
-			t.Errorf("case %d: received res==%v, but expected res==%v", res, tt.res)
+			t.Errorf("case %d: received res==%v, but expected res==%v", i, res, tt.res)
 			continue
 		} else if tt.res == nil {
 			// expected and succesfully got nil response

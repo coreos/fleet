@@ -534,7 +534,7 @@ func (a *Agent) peerScheduledHere(jobName, peerName string) bool {
 
 	j, err := a.registry.Job(peerName)
 	if err != nil {
-		log.Errorf("Failed retrieving Job(%s) from Registry: %v", err)
+		log.Errorf("Failed retrieving Job(%s) from Registry: %v", peerName, err)
 		return false
 	} else if j == nil {
 		return false

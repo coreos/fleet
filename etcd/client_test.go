@@ -58,7 +58,7 @@ func TestSetDefaultPath(t *testing.T) {
 	for i, tt := range tests {
 		u, _ := url.Parse(tt.in)
 		if tt.in != u.String() {
-			t.Errorf("case %d: url.Parse modified the URL before we could test it")
+			t.Errorf("case %d: url.Parse modified the URL before we could test it", i)
 			continue
 		}
 
@@ -119,7 +119,7 @@ func TestFilterURL(t *testing.T) {
 	for i, tt := range tests {
 		u, _ := url.Parse(tt.endpoint)
 		if tt.endpoint != u.String() {
-			t.Errorf("case %d: url.Parse modified the URL before we could test it")
+			t.Errorf("case %d: url.Parse modified the URL before we could test it", i)
 			continue
 		}
 
