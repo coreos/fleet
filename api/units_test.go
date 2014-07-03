@@ -158,7 +158,6 @@ func TestExtractUnitPage(t *testing.T) {
 
 func TestMapJobToSchema(t *testing.T) {
 	loaded := job.JobStateLoaded
-	launched := job.JobStateLaunched
 
 	tests := []struct {
 		input  job.Job
@@ -168,7 +167,7 @@ func TestMapJobToSchema(t *testing.T) {
 			job.Job{
 				Name:            "XXX",
 				State:           &loaded,
-				TargetState:     &launched,
+				TargetState:     job.JobStateLaunched,
 				TargetMachineID: "ZZZ",
 				Unit:            unit.Unit{Raw: "[Service]\nExecStart=/usr/bin/sleep 3000\n"},
 				UnitState: &unit.UnitState{
@@ -459,10 +458,8 @@ func TestUnitsSetDesiredState(t *testing.T) {
 				t.Errorf("case %d: fetched nil Job(%s), expected non-nil", i, name)
 			}
 
-			if j.TargetState == nil {
-				t.Errorf("case %d: got nil target state for Job(%s), expected non-nil", i, name)
-			} else if *j.TargetState != expect {
-				t.Errorf("case %d: expect Job(%s) target state %q, got %q", i, name, expect, *j.TargetState)
+			if j.TargetState != expect {
+				t.Errorf("case %d: expect Job(%s) target state %q, got %q", i, name, expect, j.TargetState)
 			}
 		}
 	}

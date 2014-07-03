@@ -155,7 +155,7 @@ func (f *FakeRegistry) SetJobTargetState(name string, target job.JobState) error
 		return errors.New("job does not exist")
 	}
 
-	j.TargetState = &target
+	j.TargetState = target
 	f.jobs[name] = j
 
 	return nil

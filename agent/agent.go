@@ -105,13 +105,13 @@ func (a *Agent) Initialize() uint64 {
 			continue
 		}
 
-		if j.TargetState == nil || *j.TargetState == job.JobStateInactive {
+		if j.TargetState == job.JobStateInactive {
 			continue
 		}
 
 		loaded[j.Name] = j
 
-		if *j.TargetState != job.JobStateLaunched {
+		if j.TargetState != job.JobStateLaunched {
 			continue
 		}
 
@@ -625,7 +625,7 @@ func (a *Agent) JobScheduledLocally(jobName string) {
 	log.Infof("Bidding for all possible peers of Job(%s)", j.Name)
 	a.bidForPossiblePeers(j.Name)
 
-	if j.TargetState == nil || *j.TargetState != job.JobStateLaunched {
+	if j.TargetState != job.JobStateLaunched {
 		return
 	}
 

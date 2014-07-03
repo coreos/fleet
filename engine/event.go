@@ -59,7 +59,7 @@ func (eh *EventHandler) HandleEventJobUnscheduled(ev event.Event) {
 		return
 	}
 
-	if j.TargetState == nil || *j.TargetState == job.JobStateInactive {
+	if j.TargetState == job.JobStateInactive {
 		return
 	}
 

@@ -286,6 +286,7 @@ func mapJobToSchema(j *job.Job) (*schema.Unit, error) {
 		FileHash:        j.Unit.Hash().String(),
 		FileContents:    encodeUnitContents(&j.Unit),
 		TargetMachineID: j.TargetMachineID,
+		DesiredState:    string(j.TargetState),
 	}
 
 	if j.State != nil {
@@ -301,10 +302,6 @@ func mapJobToSchema(j *job.Job) (*schema.Unit, error) {
 		if j.UnitState.MachineState != nil {
 			su.Systemd.MachineID = j.UnitState.MachineState.ID
 		}
-	}
-
-	if j.TargetState != nil {
-		su.DesiredState = string(*j.TargetState)
 	}
 
 	return &su, nil

@@ -122,21 +122,23 @@ func (r *EtcdRegistry) Job(jobName string) (*job.Job, error) {
 	return j, nil
 }
 
-func (r *EtcdRegistry) hydrateJob(j *job.Job) (err error) {
-	j.TargetState, err = r.jobTargetState(j.Name)
+func (r *EtcdRegistry) hydrateJob(j *job.Job) error {
+	tgt, err := r.jobTargetState(j.Name)
 	if err != nil {
-		return
+		return err
 	}
+
+	j.TargetState = tgt
 
 	j.TargetMachineID, err = r.jobTargetMachine(j.Name)
 	if err != nil {
-		return
+		return err
 	}
 
 	j.UnitState = r.getUnitState(j.Name)
 	j.State = r.determineJobState(j.Name)
 
-	return
+	return nil
 }
 
 func (r *EtcdRegistry) getJobFromJSON(val string) (*job.Job, error) {
@@ -244,7 +246,7 @@ func (r *EtcdRegistry) CreateJob(j *job.Job) (err error) {
 	return
 }
 
-func (r *EtcdRegistry) jobTargetState(jobName string) (*job.JobState, error) {
+func (r *EtcdRegistry) jobTargetState(jobName string) (job.JobState, error) {
 	req := etcd.Get{
 		Key: r.jobTargetStatePath(jobName),
 	}
@@ -253,10 +255,10 @@ func (r *EtcdRegistry) jobTargetState(jobName string) (*job.JobState, error) {
 		if isKeyNotFound(err) {
 			err = nil
 		}
-		return nil, err
+		return job.JobStateInactive, err
 	}
 
-	return job.ParseJobState(resp.Node.Value), nil
+	return job.ParseJobState(resp.Node.Value)
 }
 
 func (r *EtcdRegistry) SetJobTargetState(jobName string, state job.JobState) error {
@@ -281,13 +283,14 @@ func (es *EventStream) filterJobTargetStateChanges(resp *etcd.Result) *event.Eve
 	dir = strings.TrimSuffix(dir, "/")
 	jobName := path.Base(dir)
 
-	ts := job.ParseJobState(resp.Node.Value)
-	if ts == nil {
+	ts, err := job.ParseJobState(resp.Node.Value)
+	if err != nil {
+		log.Errorf("Failed parsing JobState: %v", err)
 		return nil
 	}
 
 	cs := es.registry.determineJobState(jobName)
-	if *cs == *ts {
+	if *cs == ts {
 		return nil
 	}
 
@@ -296,15 +299,15 @@ func (es *EventStream) filterJobTargetStateChanges(resp *etcd.Result) *event.Eve
 	case job.JobStateInactive:
 		cType = "CommandLoadJob"
 	case job.JobStateLoaded:
-		if *ts == job.JobStateInactive {
+		if ts == job.JobStateInactive {
 			cType = "CommandUnloadJob"
-		} else if *ts == job.JobStateLaunched {
+		} else if ts == job.JobStateLaunched {
 			cType = "CommandStartJob"
 		}
 	case job.JobStateLaunched:
-		if *ts == job.JobStateLoaded {
+		if ts == job.JobStateLoaded {
 			cType = "CommandStopJob"
-		} else if *ts == job.JobStateInactive {
+		} else if ts == job.JobStateInactive {
 			cType = "CommandUnloadJob"
 		}
 	}

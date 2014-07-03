@@ -1,6 +1,7 @@
 package job
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -41,18 +42,22 @@ const (
 	fleetFlagMachineMetadata = "MachineMetadata"
 )
 
-func ParseJobState(s string) *JobState {
+func ParseJobState(s string) (JobState, error) {
 	js := JobState(s)
+
+	var err error
 	if js != JobStateInactive && js != JobStateLoaded && js != JobStateLaunched {
-		return nil
+		err = fmt.Errorf("invalid value %q for JobState", s)
+		js = JobStateInactive
 	}
-	return &js
+
+	return js, err
 }
 
 type Job struct {
 	Name            string
 	State           *JobState
-	TargetState     *JobState
+	TargetState     JobState
 	TargetMachineID string
 	Unit            unit.Unit
 	UnitState       *unit.UnitState
@@ -65,7 +70,7 @@ func NewJob(name string, unit unit.Unit) *Job {
 	return &Job{
 		Name:            name,
 		State:           nil,
-		TargetState:     nil,
+		TargetState:     JobStateInactive,
 		TargetMachineID: "",
 		Unit:            unit,
 		UnitState:       nil,
