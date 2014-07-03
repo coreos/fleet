@@ -40,6 +40,7 @@ type Server struct {
 	mach    *machine.CoreOSMachine
 	hrt     heart.Heart
 	mon     *heart.Monitor
+	api     *api.Server
 
 	stop chan bool
 }
@@ -93,10 +94,8 @@ func New(cfg config.Config) (*Server, error) {
 		return nil, err
 	}
 
-	mux := api.NewServeMux(reg)
-	for _, f := range listeners {
-		go http.Serve(f, mux)
-	}
+	apiServer := api.NewServer(listeners, api.NewServeMux(reg))
+	apiServer.Serve()
 
 	srv := Server{
 		agent:   a,
@@ -107,6 +106,7 @@ func New(cfg config.Config) (*Server, error) {
 		mach:    mach,
 		hrt:     hrt,
 		mon:     mon,
+		api:     apiServer,
 		stop:    nil,
 	}
 
@@ -175,7 +175,9 @@ func (s *Server) Run() {
 	s.agent.Initialize()
 
 	s.stop = make(chan bool)
+
 	go s.Monitor()
+	go s.api.Available(s.stop)
 	go s.mach.PeriodicRefresh(machineStateRefreshInterval, s.stop)
 	go s.rStream.Stream(idx, s.eBus.Dispatch, s.stop)
 	go s.sStream.Stream(s.eBus.Dispatch, s.stop)
