@@ -254,6 +254,9 @@ func (ar *actionResolver) Resolve(cancel <-chan bool) (*Result, error) {
 		log.Infof("Failed getting response from %v: %v", ar.endpoint, err)
 		return nil, nil
 	}
+	if resp != nil && resp.Body != nil {
+		defer resp.Body.Close()
+	}
 
 	hdlr, ok := handlers[resp.StatusCode]
 	if !ok {
@@ -277,7 +280,6 @@ func (ar *actionResolver) exhaust(cancel <-chan bool) (resp *http.Response, body
 		if err != nil {
 			return nil, nil, err
 		}
-
 		req, err = ar.next(resp)
 		if err != nil {
 			return nil, nil, err
