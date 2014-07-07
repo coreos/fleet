@@ -22,6 +22,14 @@ type Client interface {
 	Wait(Action, <-chan bool) (*Result, error)
 }
 
+// transport mimics http.Transport to provide an interface which can be
+// substituted for testing (since the RoundTripper interface alone does not
+// require the CancelRequest method)
+type transport interface {
+	http.RoundTripper
+	CancelRequest(req *http.Request)
+}
+
 func NewClient(endpoints []string, transport http.Transport) (*client, error) {
 	if len(endpoints) == 0 {
 		endpoints = []string{defaultEndpoint}
@@ -43,7 +51,10 @@ func NewClient(endpoints []string, transport http.Transport) (*client, error) {
 		parsed[i] = *u
 	}
 
-	return &client{parsed, &transport}, nil
+	return &client{
+		endpoints: parsed,
+		transport: &transport,
+	}, nil
 }
 
 // setDefaultPath will set the Path attribute of the provided
@@ -87,48 +98,57 @@ func filterURL(u *url.URL) error {
 
 type client struct {
 	endpoints []url.URL
-	transport *http.Transport
+	transport transport
 }
 
 // a requestFunc must never return a nil *http.Response and a nil error together
 type requestFunc func(*http.Request, <-chan bool) (*http.Response, []byte, error)
 
+// reqResp encapsulates a response/error retrieved asynchronously
+type reqResp struct {
+	r *http.Response
+	b []byte
+	e error
+}
+
 // Make a single http request, draining the body on success. If the request
 // fails, an error is returned. If the provided channel is ever closed, the
-// in-flight request will be cancelled.
+// in-flight request will be cancelled asynchronously and an error returned
+// immediately.
 func (c *client) requestHTTP(req *http.Request, cancel <-chan bool) (resp *http.Response, body []byte, err error) {
-	respchan := make(chan *http.Response, 1)
-	errchan := make(chan error, 1)
+	respchan := make(chan reqResp, 1)
 
+	// Spawn a goroutine to perform the actual request. This routine is
+	// responsible for draining and closing the body of any response.
 	go func() {
-		resp, err := c.transport.RoundTrip(req)
-		if resp == nil && err == nil {
-			err = errors.New("nil error and nil response")
+		var r *http.Response
+		var b []byte
+		var e error
+		r, e = c.transport.RoundTrip(req)
+		if r == nil && e == nil {
+			e = errors.New("nil error and nil response")
 		}
 
-		if err != nil {
-			errchan <- err
-			if resp != nil {
-				resp.Body.Close()
+		if e != nil {
+			if r != nil {
+				r.Body.Close()
 			}
-			return
+			r, b = nil, nil
+		} else {
+			b, e = ioutil.ReadAll(r.Body)
+			r.Body.Close()
 		}
-
-		respchan <- resp
+		respchan <- reqResp{r, b, e}
 	}()
 
 	select {
-	case resp = <-respchan:
-		defer resp.Body.Close()
-	case err = <-errchan:
-		return nil, nil, err
+	case res := <-respchan:
+		resp, body, err = res.r, res.b, res.e
 	case <-cancel:
 		go c.transport.CancelRequest(req)
-		return nil, nil, errors.New("cancelled")
+		resp, body, err = nil, nil, errors.New("cancelled")
 	}
-
-	body, err = ioutil.ReadAll(resp.Body)
-	return resp, body, err
+	return
 }
 
 // Attempt to get a usable Result for the provided Action.
