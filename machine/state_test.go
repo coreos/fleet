@@ -1,6 +1,7 @@
 package machine
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/coreos/fleet/resource"
@@ -81,6 +82,7 @@ var shortIDTests = []struct {
 			map[string]string{"foo": "bar"},
 			"",
 			resource.ResourceTuple{},
+			resource.ResourceTuple{},
 			0,
 		},
 		s: "595989bb",
@@ -157,5 +159,37 @@ func TestStackResources(t *testing.T) {
 
 	if state.TotalResources.Disk != 4000 {
 		t.Fatalf("Incorrect total resources disk %d, expected 4000", state.TotalResources.Disk)
+	}
+}
+
+func TestUpdateFreeResources(t *testing.T) {
+	r := func(cpu, mem, disk int) resource.ResourceTuple {
+		return resource.ResourceTuple{cpu, mem, disk}
+	}
+	for i, tt := range []struct {
+		total resource.ResourceTuple
+		res   map[string]resource.ResourceTuple
+		free  resource.ResourceTuple // before accounting for resource.HostResources
+	}{
+		{
+			resource.ResourceTuple{},
+			nil,
+			resource.ResourceTuple{},
+		},
+		{
+			r(1000, 4096, 1024),
+			map[string]resource.ResourceTuple{"job1.service": r(750, 3072, 768)},
+			r(250, 1024, 256),
+		},
+	} {
+		ms := MachineState{TotalResources: tt.total}
+		got := UpdateFreeResources(ms, tt.res)
+		want := MachineState{
+			TotalResources: tt.total,
+			FreeResources:  resource.Sub(tt.free, resource.HostResources),
+		}
+		if !reflect.DeepEqual(got, want) {
+			t.Errorf("case %d: got %v, want %v", i, got, want)
+		}
 	}
 }

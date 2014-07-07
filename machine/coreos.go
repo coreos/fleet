@@ -59,8 +59,7 @@ func (m *CoreOSMachine) Refresh() {
 	m.RLock()
 	defer m.RUnlock()
 
-	ms := m.currentState()
-	m.dynamicState = &ms
+	m.dynamicState = m.currentState()
 }
 
 // PeriodicRefresh updates the current state of the CoreOSMachine at the
@@ -81,7 +80,7 @@ func (m *CoreOSMachine) PeriodicRefresh(interval time.Duration, stop chan bool) 
 
 // currentState generates a MachineState object with the values read from
 // the local system
-func (m *CoreOSMachine) currentState() MachineState {
+func (m *CoreOSMachine) currentState() *MachineState {
 	id := readLocalMachineID("/")
 	publicIP := getLocalIP()
 	// TODO(jonboulle): clarify failure behaviour when unable to retrieve resources/units
@@ -95,7 +94,7 @@ func (m *CoreOSMachine) currentState() MachineState {
 		log.Errorf("Error retrieving local units: %v\n", err)
 		units = []string{}
 	}
-	return MachineState{
+	return &MachineState{
 		ID:             id,
 		PublicIP:       publicIP,
 		Metadata:       make(map[string]string, 0),
@@ -104,11 +103,7 @@ func (m *CoreOSMachine) currentState() MachineState {
 	}
 }
 
-// IsLocalMachineState checks whether machine state matches the state of local machine
-func IsLocalMachineState(ms *MachineState) bool {
-	return ms.ID == readLocalMachineID("/")
-}
-
+// IsLocalMachineID returns whether the given machine ID is equal to that of the local machine
 func IsLocalMachineID(mID string) bool {
 	return mID == readLocalMachineID("/")
 }
