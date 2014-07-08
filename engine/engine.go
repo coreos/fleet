@@ -1,7 +1,6 @@
 package engine
 
 import (
-	"errors"
 	"time"
 
 	log "github.com/coreos/fleet/Godeps/_workspace/src/github.com/golang/glog"
@@ -9,6 +8,11 @@ import (
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/registry"
+)
+
+const (
+	// time between triggering reconciliation routine
+	reconcileInterval = 2 * time.Second
 )
 
 type Engine struct {
@@ -23,7 +27,7 @@ func New(reg registry.Registry, mach machine.Machine) *Engine {
 }
 
 func (e *Engine) Run(stop chan bool) {
-	ticker := time.Tick(time.Second * 5)
+	ticker := time.Tick(reconcileInterval)
 
 	work := func() {
 		lock := e.registry.LockEngine(e.machine.State().ID)
@@ -33,7 +37,7 @@ func (e *Engine) Run(stop chan bool) {
 		}
 
 		defer lock.Unlock()
-		e.CheckForWork()
+		e.Reconcile()
 	}
 
 	for {
@@ -48,98 +52,189 @@ func (e *Engine) Run(stop chan bool) {
 	}
 }
 
-// CheckForWork attempts to rectify the current state of all Jobs in the cluster
-// with their target states wherever discrepancies are identified.
-func (e *Engine) CheckForWork() {
-	log.Infof("Polling etcd for actionable Jobs")
+// Reconcile attempts to advance the state of Jobs and JobOffers
+// towards their desired states wherever discrepancies are identified.
+func (e *Engine) Reconcile() {
+	log.V(1).Infof("Polling Registry for actionable work")
 
-	for _, jo := range e.registry.UnresolvedJobOffers() {
-		bids, err := e.registry.Bids(&jo)
-		if err != nil {
-			log.Errorf("Failed determining open JobBids for JobOffer(%s): %v", jo.Job.Name, err)
-			continue
-		}
-		if len(bids) == 0 {
-			log.V(1).Infof("No bids found for open JobOffer(%s), ignoring", jo.Job.Name)
-			continue
-		}
+	jobs, err := e.registry.Jobs()
+	if err != nil {
+		log.Errorf("Failed fetching Jobs from Registry: %v", err)
+		return
+	}
 
-		log.Infof("Resolving JobOffer(%s), scheduling to Machine(%s)", bids[0].JobName, bids[0].MachineID)
-		if e.ResolveJobOffer(bids[0].JobName, bids[0].MachineID); err != nil {
-			log.Infof("Failed scheduling Job(%s) to Machine(%s)", bids[0].JobName, bids[0].MachineID)
+	machines, err := e.registry.Machines()
+	if err != nil {
+		log.Errorf("Failed fetching Machines from Registry: %v", err)
+		return
+	}
+
+	mMap := make(map[string]*machine.MachineState, len(machines))
+	for i := range machines {
+		m := machines[i]
+		mMap[m.ID] = &m
+	}
+
+	offers := e.registry.UnresolvedJobOffers()
+	oMap := make(map[string]*job.JobOffer, len(offers))
+	for i := range offers {
+		o := offers[i]
+		oMap[o.Job.Name] = &o
+	}
+
+	// Jobs will be sorted into three categories:
+	// 1. Jobs where TargetState is inactive
+	inactive := make([]*job.Job, 0)
+	// 2. Jobs where TargetState is active, and the Job has been scheduled
+	activeScheduled := make([]*job.Job, 0)
+	// 3. Jobs where TargetState is active, and the Job has not been scheduled
+	activeNotScheduled := make([]*job.Job, 0)
+
+	for i := range jobs {
+		j := jobs[i]
+		if j.TargetState == job.JobStateInactive {
+			inactive = append(inactive, &j)
+		} else if j.Scheduled() {
+			activeScheduled = append(activeScheduled, &j)
 		} else {
-			log.Infof("Scheduled Job(%s) to Machine(%s)", bids[0].JobName, bids[0].MachineID)
+			activeNotScheduled = append(activeNotScheduled, &j)
 		}
 	}
 
-	jobs, _ := e.registry.Jobs()
-	for _, j := range jobs {
-		if j.State == nil || j.TargetState == *j.State {
+	// resolveJobOffer removes the referenced Job's corresponding
+	// JobOffer from the local cache before marking it as resolved
+	// in the Registry
+	resolveJobOffer := func(jName string) {
+		delete(oMap, jName)
+
+		err := e.registry.ResolveJobOffer(jName)
+		if err != nil {
+			log.Errorf("Failed resolving JobOffer(%s): %v", jName, err)
+		} else {
+			log.Infof("Resolved JobOffer(%s)", jName)
+		}
+	}
+
+	// unscheduleJob clears the current target of the provided Job from
+	// the Registry
+	unscheduleJob := func(j *job.Job) (err error) {
+		err = e.registry.ClearJobTarget(j.Name, j.TargetMachineID)
+		if err != nil {
+			log.Errorf("Failed clearing target Machine(%s) of Job(%s): %v", j.TargetMachineID, j.Name, err)
+		} else {
+			log.Infof("Unscheduled Job(%s) from Machine(%s)", j.Name, j.TargetMachineID)
+		}
+
+		return
+	}
+
+	// maybeScheduleJob attempts to schedule the given Job only if one or more
+	// bids have been submitted
+	maybeScheduleJob := func(jName string) error {
+		bids, err := e.registry.Bids(oMap[jName])
+		if err != nil {
+			log.Errorf("Failed determining open JobBids for JobOffer(%s): %v", jName, err)
+			return err
+		}
+
+		if len(bids) == 0 {
+			log.Infof("No bids found for unresolved JobOffer(%s), unable to resolve", jName)
+			return nil
+		}
+
+		choice := bids[0]
+
+		err = e.registry.ScheduleJob(jName, choice.MachineID)
+		if err != nil {
+			log.Errorf("Failed scheduling Job(%s) to Machine(%s): %v", choice.JobName, choice.MachineID, err)
+		} else {
+			log.Infof("Scheduled Job(%s) to Machine(%s)", jName, choice.MachineID)
+		}
+
+		return err
+	}
+
+	// offerExists returns true if the referenced Job has a corresponding
+	// offer in the local JobOffer cache
+	offerExists := func(jobName string) bool {
+		_, ok := oMap[jobName]
+		return ok
+	}
+
+	// machinePresent determines if the referenced Machine appears to be a
+	// current member of the cluster based on the local cache
+	machinePresent := func(machID string) bool {
+		_, ok := mMap[machID]
+		return ok
+	}
+
+	for _, j := range inactive {
+		if j.Scheduled() {
+			log.Infof("Unscheduling Job(%s) from Machine(%s) since target state is inactive %s", j.Name, j.TargetMachineID)
+			unscheduleJob(j)
+		}
+
+		if offerExists(j.Name) {
+			log.Infof("Resolving extraneous JobOffer(%s) since target state is inactive", j.Name)
+			resolveJobOffer(j.Name)
+		}
+	}
+
+	for _, j := range activeScheduled {
+		if machinePresent(j.TargetMachineID) {
+			if offerExists(j.Name) {
+				log.Infof("Resolving extraneous JobOffer(%s) since Job is already scheduled", j.Name)
+				resolveJobOffer(j.Name)
+			}
+		} else {
+			log.Infof("Unscheduling Job(%s) since target Machine(%s) seems to have gone away", j.Name, j.TargetMachineID)
+			err := unscheduleJob(j)
+			if err != nil {
+				continue
+			}
+
+			if !offerExists(j.Name) {
+				log.Infof("Offering Job(%s) since target state %s and Job not scheduled", j.Name, j.TargetState)
+				e.offerJob(j)
+			}
+		}
+	}
+
+	for _, j := range activeNotScheduled {
+		if !offerExists(j.Name) {
+			log.Infof("Offering Job(%s) since target state %s and Job not scheduled", j.Name, j.TargetState)
+			e.offerJob(j)
 			continue
 		}
 
-		if *j.State == job.JobStateInactive {
-			log.Infof("Offering Job(%s)", j.Name)
-			e.OfferJob(j)
-		} else if j.TargetState == job.JobStateInactive {
-			log.Infof("Unscheduling Job(%s)", j.Name)
-			e.registry.ClearJobTarget(j.Name, j.TargetMachineID)
+		log.Infof("Attempting to schedule Job(%s) since target state %s and Job not scheduled", j.Name, j.TargetState)
+
+		err := maybeScheduleJob(j.Name)
+		if err != nil {
+			continue
 		}
+
+		resolveJobOffer(j.Name)
+	}
+
+	// Deal with remaining JobOffers that do not have a corresponding Job
+	for jName, _ := range oMap {
+		log.Infof("Removing extraneous JobOffer(%s) since corresponding Job does not exist", jName)
+		resolveJobOffer(jName)
 	}
 }
 
-func (e *Engine) OfferJob(j job.Job) error {
-	log.V(1).Infof("Attempting to lock Job(%s)", j.Name)
-
-	mutex := e.registry.LockJob(j.Name, e.machine.State().ID)
-	if mutex == nil {
-		log.V(1).Infof("Could not lock Job(%s)", j.Name)
-		return errors.New("could not lock Job")
-	}
-	defer mutex.Unlock()
-
-	log.V(1).Infof("Claimed Job(%s)", j.Name)
-
-	machineIDs, err := e.partitionCluster(&j)
+func (e *Engine) offerJob(j *job.Job) {
+	machineIDs, err := e.partitionCluster(j)
 	if err != nil {
-		log.Errorf("failed partitioning cluster for Job(%s): %v", j.Name, err)
-		return err
+		log.Errorf("Failed partitioning cluster for Job(%s): %v", j.Name, err)
 	}
 
-	offer := job.NewOfferFromJob(j, machineIDs)
-
+	offer := job.NewOfferFromJob(*j, machineIDs)
 	err = e.registry.CreateJobOffer(offer)
-	if err == nil {
-		log.Infof("Published JobOffer(%s)", offer.Job.Name)
-	}
-
-	return err
-}
-
-func (e *Engine) ResolveJobOffer(jobName string, machID string) error {
-	log.V(1).Infof("Attempting to lock JobOffer(%s)", jobName)
-	mutex := e.registry.LockJobOffer(jobName, e.machine.State().ID)
-
-	if mutex == nil {
-		log.V(1).Infof("Could not lock JobOffer(%s)", jobName)
-		return errors.New("could not lock JobOffer")
-	}
-	defer mutex.Unlock()
-
-	log.V(1).Infof("Claimed JobOffer(%s)", jobName)
-
-	err := e.registry.ResolveJobOffer(jobName)
 	if err != nil {
-		log.Errorf("Failed resolving JobOffer(%s): %v", jobName, err)
-		return err
+		log.Errorf("Failed publishing JobOffer(%s): %v", j.Name, err)
+	} else {
+		log.Infof("Published JobOffer(%s)", j.Name)
 	}
-
-	err = e.registry.ScheduleJob(jobName, machID)
-	if err != nil {
-		log.Errorf("Failed scheduling Job(%s): %v", jobName, err)
-		return err
-	}
-
-	log.Infof("Scheduled Job(%s) to Machine(%s)", jobName, machID)
-	return nil
 }
