@@ -2,8 +2,10 @@ package etcd
 
 import (
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"strings"
 	"testing"
@@ -410,5 +412,127 @@ func TestClientRedirectNowhere(t *testing.T) {
 	}
 	if err != nil {
 		t.Errorf("Expected err=nil, got %v", err)
+	}
+}
+
+func newTestingRequestAndClient(t *testing.T, handler http.Handler) (*client, *http.Request) {
+	ts := httptest.NewServer(handler)
+	req, err := http.NewRequest("GET", ts.URL, nil)
+	if err != nil {
+		t.Fatalf("error creating request: %v", err)
+	}
+	c, err := NewClient(nil, http.Transport{})
+	if err != nil {
+		t.Fatalf("error creating client: %v", err)
+	}
+	return c, req
+}
+
+func TestGoodRequestHTTP(t *testing.T) {
+	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, "testing")
+	})
+	c, req := newTestingRequestAndClient(t, h)
+
+	cancel := make(chan bool)
+	resp, body, err := c.requestHTTP(req, cancel)
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	if resp == nil {
+		t.Errorf("unexpected nil response")
+	} else {
+		// ensure the body was closed
+		var b []byte
+		if n, err := resp.Body.Read(b); n != 0 || err == nil {
+			t.Errorf("resp.Body.Read() returned unexpectedly: want (0, err), got (%d, %v)", n, err)
+		}
+	}
+	if string(body) != "testing" {
+		t.Errorf("unexpected body: got %q, want %q", body, "testing")
+	}
+}
+
+// transport that returns a nil Response and nil error
+type nilNilTransport struct{}
+
+func (n *nilNilTransport) RoundTrip(req *http.Request) (*http.Response,
+	error) {
+	return nil, nil
+}
+func (n *nilNilTransport) CancelRequest(req *http.Request) {}
+
+// Ensure that any request that somehow returns (nil, nil) propagates an actual error
+func TestNilNilRequestHTTP(t *testing.T) {
+	c := &client{[]url.URL{}, &nilNilTransport{}}
+	cancel := make(chan bool)
+	resp, body, err := c.requestHTTP(nil, cancel)
+	if err == nil {
+		t.Error("unexpected nil error")
+	} else if err.Error() != "nil error and nil response" {
+		t.Errorf("unexpected error: %v", err)
+	}
+	if resp != nil {
+		t.Errorf("unexpected response: got %q, want %q", resp, nil)
+	}
+	if body != nil {
+		t.Errorf("unexpected body: got %q, want %q", body, nil)
+	}
+}
+
+// Simple implementation of ReadCloser to serve as response.Body
+type rc struct{}
+
+func (r *rc) Read(p []byte) (n int, err error) { return 0, nil }
+func (r *rc) Close() error                     { return nil }
+
+// transport that returns a non-nil Response and non-nil error
+type respAndErrTransport struct{}
+
+func (r *respAndErrTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	return &http.Response{
+		Body: &rc{},
+	}, errors.New("some error")
+}
+func (r *respAndErrTransport) CancelRequest(req *http.Request) {}
+
+// Ensure that the body of a response is closed even when an error is returned
+func TestRespAndErrRequestHTTP(t *testing.T) {
+	c := &client{[]url.URL{}, &respAndErrTransport{}}
+	cancel := make(chan bool)
+	resp, body, err := c.requestHTTP(nil, cancel)
+	if err == nil {
+		t.Error("unexpected nil error")
+	} else if err.Error() == "cancelled" {
+		t.Error("unexpected error, should not be cancelled")
+	}
+	if resp != nil {
+		t.Errorf("unexpected response: got %q, want %q", resp, nil)
+	}
+	if body != nil {
+		t.Errorf("unexpected body: got %q, want %q", body, nil)
+	}
+}
+
+func TestCancelledRequestHTTP(t *testing.T) {
+	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(time.Hour)
+	})
+	c, req := newTestingRequestAndClient(t, h)
+
+	cancel := make(chan bool)
+	close(cancel)
+	resp, body, err := c.requestHTTP(req, cancel)
+	if err == nil {
+		t.Error("unexpected nil error")
+	}
+	if err.Error() != "cancelled" {
+		t.Errorf("unexpected error: %v", err)
+	}
+	if resp != nil {
+		t.Errorf("unexpected response: got %q, want %q", resp, nil)
+	}
+	if body != nil {
+		t.Errorf("unexpected body: got %q, want %q", body, nil)
 	}
 }
