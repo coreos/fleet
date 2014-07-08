@@ -2,6 +2,7 @@ package engine
 
 import (
 	"errors"
+	"time"
 
 	log "github.com/coreos/fleet/Godeps/_workspace/src/github.com/golang/glog"
 
@@ -19,6 +20,32 @@ type Engine struct {
 
 func New(reg registry.Registry, mach machine.Machine) *Engine {
 	return &Engine{reg, mach, newCluster()}
+}
+
+func (e *Engine) Run(stop chan bool) {
+	ticker := time.Tick(time.Second * 5)
+
+	work := func() {
+		lock := e.registry.LockEngine(e.machine.State().ID)
+		if lock == nil {
+			log.V(1).Info("Unable to acquire engine lock")
+			return
+		}
+
+		defer lock.Unlock()
+		e.CheckForWork()
+	}
+
+	for {
+		select {
+		case <-stop:
+			log.V(1).Info("Engine exiting due to stop signal")
+			return
+		case <-ticker:
+			log.V(1).Info("Engine tick")
+			work()
+		}
+	}
 }
 
 // CheckForWork attempts to rectify the current state of all Jobs in the cluster
