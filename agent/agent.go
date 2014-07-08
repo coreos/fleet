@@ -108,8 +108,10 @@ func (a *Agent) Initialize() {
 	for _, name := range units {
 		if _, ok := loaded[name]; !ok {
 			log.Infof("Unit(%s) should not be loaded here, unloading", name)
-			a.um.Stop(name)
-			a.um.Unload(name)
+			go func() {
+				a.um.Stop(name)
+				a.um.Unload(name)
+			}()
 		}
 	}
 
