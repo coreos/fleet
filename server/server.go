@@ -15,7 +15,9 @@ import (
 	"github.com/coreos/fleet/engine"
 	"github.com/coreos/fleet/etcd"
 	"github.com/coreos/fleet/event"
+	"github.com/coreos/fleet/heart"
 	"github.com/coreos/fleet/machine"
+	"github.com/coreos/fleet/pkg"
 	"github.com/coreos/fleet/registry"
 	"github.com/coreos/fleet/sign"
 	"github.com/coreos/fleet/systemd"
@@ -36,6 +38,9 @@ type Server struct {
 	sStream *systemd.EventStream
 	eBus    *event.EventBus
 	mach    *machine.CoreOSMachine
+	hrt     heart.Heart
+	mon     *heart.Monitor
+	api     *api.Server
 
 	stop chan bool
 }
@@ -84,12 +89,40 @@ func New(cfg config.Config) (*Server, error) {
 		return nil, err
 	}
 
-	mux := api.NewServeMux(reg)
-	for _, f := range listeners {
-		go http.Serve(f, mux)
+	hrt, mon, err := newHeartMonitorFromConfig(mach, reg, cfg)
+	if err != nil {
+		return nil, err
 	}
 
-	return &Server{a, e, rStream, sStream, eBus, mach, nil}, nil
+	apiServer := api.NewServer(listeners, api.NewServeMux(reg))
+	apiServer.Serve()
+
+	srv := Server{
+		agent:   a,
+		engine:  e,
+		rStream: rStream,
+		sStream: sStream,
+		eBus:    eBus,
+		mach:    mach,
+		hrt:     hrt,
+		mon:     mon,
+		api:     apiServer,
+		stop:    nil,
+	}
+
+	return &srv, nil
+}
+
+func newHeartMonitorFromConfig(mach machine.Machine, reg registry.Registry, cfg config.Config) (hrt heart.Heart, mon *heart.Monitor, err error) {
+	var ttl time.Duration
+	ttl, err = time.ParseDuration(cfg.AgentTTL)
+	if err != nil {
+		return
+	}
+
+	hrt = heart.New(reg, mach)
+	mon = heart.NewMonitor(ttl)
+	return
 }
 
 func newMachineFromConfig(cfg config.Config) (*machine.CoreOSMachine, error) {
@@ -124,9 +157,27 @@ func newAgentFromConfig(mach machine.Machine, reg registry.Registry, cfg config.
 }
 
 func (s *Server) Run() {
-	idx := s.agent.Initialize()
+	log.Infof("Establishing etcd connectivity")
+
+	var idx uint64
+	var err error
+	for sleep := time.Second; ; sleep = pkg.ExpBackoff(sleep, time.Minute) {
+		idx, err = s.hrt.Beat(s.mon.TTL)
+		if err == nil {
+			break
+		}
+		time.Sleep(sleep)
+	}
+
+	log.Infof("Starting server components")
+
+	//TODO(bcwaldon): initialize Agent at the index yielded by the first heartbeat
+	s.agent.Initialize()
 
 	s.stop = make(chan bool)
+
+	go s.Monitor()
+	go s.api.Available(s.stop)
 	go s.mach.PeriodicRefresh(machineStateRefreshInterval, s.stop)
 	go s.rStream.Stream(idx, s.eBus.Dispatch, s.stop)
 	go s.sStream.Stream(s.eBus.Dispatch, s.stop)
@@ -135,7 +186,20 @@ func (s *Server) Run() {
 	s.engine.CheckForWork()
 }
 
+// Monitor tracks the health of the Server. If the Server is ever deemed
+// unhealthy, the Server is stopped, purged, and started up again.
+func (s *Server) Monitor() {
+	err := s.mon.Monitor(s.hrt, s.stop)
+	if err != nil {
+		log.Errorf("Server monitor triggered: %v", err)
+		s.Stop()
+		s.Purge()
+		s.Run()
+	}
+}
+
 func (s *Server) Stop() {
+	log.Infof("Stopping server components")
 	close(s.stop)
 }
 
