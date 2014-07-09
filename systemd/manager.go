@@ -55,26 +55,26 @@ func (m *SystemdUnitManager) Load(name string, u unit.Unit) error {
 		return err
 	}
 
-	m.subscriptions.Add(name)
 	return m.daemonReload()
 }
 
 // Unload removes the indicated unit from the filesystem, unsubscribing
 // from relevant dbus events.
 func (m *SystemdUnitManager) Unload(name string) {
-	m.subscriptions.Remove(name)
 	m.removeUnit(name)
 	m.daemonReload()
 }
 
 // Start starts the unit identified by the given name
 func (m *SystemdUnitManager) Start(name string) {
+	m.subscriptions.Add(name)
 	m.startUnit(name)
 }
 
 // Stop stops the unit identified by the given name
 func (m *SystemdUnitManager) Stop(name string) {
 	m.stopUnit(name)
+	m.subscriptions.Remove(name)
 }
 
 // GetUnitState generates a UnitState object representing the
