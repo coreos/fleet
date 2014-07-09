@@ -49,7 +49,7 @@ func runJournal(args []string) (exit int) {
 		return 1
 	}
 
-	command := fmt.Sprintf("journalctl -u %s --no-pager -l -n %d", jobName, flagLines)
+	command := fmt.Sprintf("journalctl --unit %s --no-pager -n %d", jobName, flagLines)
 	if flagFollow {
 		command += " -f"
 	}
