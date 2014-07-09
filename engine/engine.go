@@ -63,23 +63,28 @@ func (e *Engine) Reconcile() {
 		return
 	}
 
+	offers, err := e.registry.UnresolvedJobOffers()
+	if err != nil {
+		log.Errorf("Failed fetching JobOffers from Registry: %v", err)
+		return
+	}
+
 	machines, err := e.registry.Machines()
 	if err != nil {
 		log.Errorf("Failed fetching Machines from Registry: %v", err)
 		return
 	}
 
-	mMap := make(map[string]*machine.MachineState, len(machines))
-	for i := range machines {
-		m := machines[i]
-		mMap[m.ID] = &m
-	}
-
-	offers := e.registry.UnresolvedJobOffers()
 	oMap := make(map[string]*job.JobOffer, len(offers))
 	for i := range offers {
 		o := offers[i]
 		oMap[o.Job.Name] = &o
+	}
+
+	mMap := make(map[string]*machine.MachineState, len(machines))
+	for i := range machines {
+		m := machines[i]
+		mMap[m.ID] = &m
 	}
 
 	// Jobs will be sorted into three categories:

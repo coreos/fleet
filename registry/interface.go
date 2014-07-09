@@ -39,5 +39,5 @@ type Registry interface {
 	SetJobTargetState(jobName string, state job.JobState) error
 	SetMachineState(ms machine.MachineState, ttl time.Duration) (uint64, error)
 	SubmitJobBid(jb *job.JobBid)
-	UnresolvedJobOffers() []job.JobOffer
+	UnresolvedJobOffers() ([]job.JobOffer, error)
 }

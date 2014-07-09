@@ -126,7 +126,8 @@ func (a *Agent) Initialize() {
 		a.startJobUnlocked(j.Name)
 	}
 
-	for _, jo := range a.registry.UnresolvedJobOffers() {
+	offers, _ := a.registry.UnresolvedJobOffers()
+	for _, jo := range offers {
 		// Everything we check against could change over time, so we track
 		// all offers starting here for future bidding even if we are
 		// currently unable to bid

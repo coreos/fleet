@@ -91,20 +91,21 @@ func (r *EtcdRegistry) Bids(jo *job.JobOffer) ([]job.JobBid, error) {
 }
 
 // UnresolvedJobOffers returns a list of hydrated JobOffers from the Registry
-func (r *EtcdRegistry) UnresolvedJobOffers() []job.JobOffer {
-	var offers []job.JobOffer
-
+func (r *EtcdRegistry) UnresolvedJobOffers() ([]job.JobOffer, error) {
 	req := etcd.Get{
 		Key:       path.Join(r.keyPrefix, offerPrefix),
 		Sorted:    true,
 		Recursive: true,
 	}
 	resp, err := r.etcd.Do(&req)
-
 	if err != nil {
-		return offers
+		if isKeyNotFound(err) {
+			err = nil
+		}
+		return nil, err
 	}
 
+	var offers []job.JobOffer
 	for _, node := range resp.Node.Nodes {
 		req := etcd.Get{
 			Key: path.Join(node.Key, "object"),
@@ -129,7 +130,7 @@ func (r *EtcdRegistry) UnresolvedJobOffers() []job.JobOffer {
 		offers = append(offers, *jo)
 	}
 
-	return offers
+	return offers, nil
 }
 
 func (r *EtcdRegistry) LockJobOffer(jobName, context string) *TimedResourceMutex {
