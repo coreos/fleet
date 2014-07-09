@@ -107,27 +107,18 @@ func (r *EtcdRegistry) UnresolvedJobOffers() ([]job.JobOffer, error) {
 
 	var offers []job.JobOffer
 	for _, node := range resp.Node.Nodes {
-		req := etcd.Get{
-			Key: path.Join(node.Key, "object"),
+		for _, obj := range node.Nodes {
+			if !strings.HasSuffix(obj.Key, "/object") {
+				continue
+			}
 
-			//TODO(bcwaldon): This request should not need to be sorted/recursive
-			Sorted:    true,
-			Recursive: true,
+			jo := r.getJobOfferFromJSON(obj.Value)
+			if jo == nil {
+				continue
+			}
+
+			offers = append(offers, *jo)
 		}
-		resp, err := r.etcd.Do(&req)
-
-		// The object was probably handled between when we attempted to
-		// start resolving offers and when we actually tried to get it
-		if err != nil {
-			continue
-		}
-
-		jo := r.getJobOfferFromJSON(resp.Node.Value)
-		if jo == nil {
-			continue
-		}
-
-		offers = append(offers, *jo)
 	}
 
 	return offers, nil
