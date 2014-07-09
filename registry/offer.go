@@ -91,45 +91,37 @@ func (r *EtcdRegistry) Bids(jo *job.JobOffer) ([]job.JobBid, error) {
 }
 
 // UnresolvedJobOffers returns a list of hydrated JobOffers from the Registry
-func (r *EtcdRegistry) UnresolvedJobOffers() []job.JobOffer {
-	var offers []job.JobOffer
-
+func (r *EtcdRegistry) UnresolvedJobOffers() ([]job.JobOffer, error) {
 	req := etcd.Get{
 		Key:       path.Join(r.keyPrefix, offerPrefix),
 		Sorted:    true,
 		Recursive: true,
 	}
 	resp, err := r.etcd.Do(&req)
-
 	if err != nil {
-		return offers
+		if isKeyNotFound(err) {
+			err = nil
+		}
+		return nil, err
 	}
 
+	var offers []job.JobOffer
 	for _, node := range resp.Node.Nodes {
-		req := etcd.Get{
-			Key: path.Join(node.Key, "object"),
+		for _, obj := range node.Nodes {
+			if !strings.HasSuffix(obj.Key, "/object") {
+				continue
+			}
 
-			//TODO(bcwaldon): This request should not need to be sorted/recursive
-			Sorted:    true,
-			Recursive: true,
+			jo := r.getJobOfferFromJSON(obj.Value)
+			if jo == nil {
+				continue
+			}
+
+			offers = append(offers, *jo)
 		}
-		resp, err := r.etcd.Do(&req)
-
-		// The object was probably handled between when we attempted to
-		// start resolving offers and when we actually tried to get it
-		if err != nil {
-			continue
-		}
-
-		jo := r.getJobOfferFromJSON(resp.Node.Value)
-		if jo == nil {
-			continue
-		}
-
-		offers = append(offers, *jo)
 	}
 
-	return offers
+	return offers, nil
 }
 
 func (r *EtcdRegistry) LockJobOffer(jobName, context string) *TimedResourceMutex {

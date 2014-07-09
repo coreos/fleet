@@ -341,3 +341,17 @@ func TestParseJobState(t *testing.T) {
 		}
 	}
 }
+
+func TestJobScheduled(t *testing.T) {
+	j1 := NewJob("pong.service", *newUnit(t, "Echo"))
+
+	if j1.Scheduled() {
+		t.Error("Job should not be scheduled yet")
+	}
+
+	j1.TargetMachineID = "XXX"
+
+	if !j1.Scheduled() {
+		t.Error("Job should now be scheduled")
+	}
+}

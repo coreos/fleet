@@ -27,6 +27,7 @@ type Registry interface {
 	JobSignatureSet(name string) (*sign.SignatureSet, error)
 	LatestVersion() (*semver.Version, error)
 	LockJob(jobName, context string) *TimedResourceMutex
+	LockEngine(context string) *TimedResourceMutex
 	LockJobOffer(jobName, context string) *TimedResourceMutex
 	LockMachine(machID, context string) *TimedResourceMutex
 	Machines() ([]machine.MachineState, error)
@@ -38,5 +39,5 @@ type Registry interface {
 	SetJobTargetState(jobName string, state job.JobState) error
 	SetMachineState(ms machine.MachineState, ttl time.Duration) (uint64, error)
 	SubmitJobBid(jb *job.JobBid)
-	UnresolvedJobOffers() []job.JobOffer
+	UnresolvedJobOffers() ([]job.JobOffer, error)
 }

@@ -77,11 +77,8 @@ func New(cfg config.Config) (*Server, error) {
 		return nil, err
 	}
 
-	aHandler := agent.NewEventHandler(a)
-	eHandler := engine.NewEventHandler(e)
-
 	eBus := event.NewEventBus()
-	eBus.AddListener("engine", eHandler)
+	aHandler := agent.NewEventHandler(a)
 	eBus.AddListener("agent", aHandler)
 
 	listeners, err := activation.Listeners(false)
@@ -182,8 +179,7 @@ func (s *Server) Run() {
 	go s.rStream.Stream(idx, s.eBus.Dispatch, s.stop)
 	go s.sStream.Stream(s.eBus.Dispatch, s.stop)
 	go s.agent.Heartbeat(s.stop)
-
-	s.engine.CheckForWork()
+	go s.engine.Run(s.stop)
 }
 
 // Monitor tracks the health of the Server. If the Server is ever deemed

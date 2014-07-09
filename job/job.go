@@ -226,6 +226,10 @@ func (j *Job) RequiredTargetMetadata() map[string][]string {
 	return metadata
 }
 
+func (j *Job) Scheduled() bool {
+	return len(j.TargetMachineID) > 0
+}
+
 // unitPrintf is analogous to systemd's `unit_name_printf`. It will take the
 // given string and replace the following specifiers with the values from the
 // provided UnitNameInfo:
