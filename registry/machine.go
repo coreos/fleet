@@ -28,36 +28,23 @@ func (r *EtcdRegistry) Machines() (machines []machine.MachineState, err error) {
 		return
 	}
 
-	for _, kv := range resp.Node.Nodes {
-		_, machID := path.Split(kv.Key)
-		mach, _ := r.getMachineState(machID)
-		if mach != nil {
-			machines = append(machines, *mach)
+	for _, node := range resp.Node.Nodes {
+		for _, obj := range node.Nodes {
+			if !strings.HasSuffix(obj.Key, "/object") {
+				continue
+			}
+
+			var mach machine.MachineState
+			err = unmarshal(obj.Value, &mach)
+			if err != nil {
+				return
+			}
+
+			machines = append(machines, mach)
 		}
 	}
 
 	return
-}
-
-func (r *EtcdRegistry) getMachineState(machID string) (*machine.MachineState, error) {
-	req := etcd.Get{
-		Key:       path.Join(r.keyPrefix, machinePrefix, machID, "object"),
-		Recursive: true,
-	}
-	resp, err := r.etcd.Do(&req)
-	if err != nil {
-		if isKeyNotFound(err) {
-			err = nil
-		}
-		return nil, err
-	}
-
-	var mach machine.MachineState
-	if err := unmarshal(resp.Node.Value, &mach); err != nil {
-		return nil, err
-	}
-
-	return &mach, nil
 }
 
 func (r *EtcdRegistry) SetMachineState(ms machine.MachineState, ttl time.Duration) (uint64, error) {
