@@ -13,6 +13,11 @@ import (
 const (
 	// time between triggering reconciliation routine
 	reconcileInterval = 2 * time.Second
+
+	// name of role that represents the lead engine in a cluster
+	engineRoleName = "engine-leader"
+	// time the role will be leased before the lease must be renewed
+	engineRoleLeasePeriod = 10 * time.Second
 )
 
 type Engine struct {
@@ -20,25 +25,16 @@ type Engine struct {
 	machine  machine.Machine
 	// keeps a picture of the load in the cluster for more intelligent scheduling
 	clust *cluster
+	lease registry.Lease
 }
 
 func New(reg registry.Registry, mach machine.Machine) *Engine {
-	return &Engine{reg, mach, newCluster()}
+	return &Engine{reg, mach, newCluster(), nil}
 }
 
 func (e *Engine) Run(stop chan bool) {
 	ticker := time.Tick(reconcileInterval)
-
-	work := func() {
-		lock := e.registry.LockEngine(e.machine.State().ID)
-		if lock == nil {
-			log.V(1).Info("Unable to acquire engine lock")
-			return
-		}
-
-		defer lock.Unlock()
-		e.Reconcile()
-	}
+	machID := e.machine.State().ID
 
 	for {
 		select {
@@ -47,9 +43,41 @@ func (e *Engine) Run(stop chan bool) {
 			return
 		case <-ticker:
 			log.V(1).Info("Engine tick")
-			work()
+
+			e.lease = ensureLeader(e.lease, e.registry, machID)
+			if e.lease == nil {
+				continue
+			}
+
+			e.Reconcile()
 		}
 	}
+}
+
+// ensureLeader will attempt to renew a non-nil Lease, falling back to
+// acquiring a new Lease on the lead engine role.
+func ensureLeader(prev registry.Lease, reg registry.Registry, machID string) (cur registry.Lease) {
+	if prev != nil {
+		err := prev.Renew(engineRoleLeasePeriod)
+		if err == nil {
+			cur = prev
+			return
+		} else {
+			log.Errorf("Engine leadership could not be renewed: %v", err)
+		}
+	}
+
+	var err error
+	cur, err = reg.LeaseRole(engineRoleName, machID, engineRoleLeasePeriod)
+	if err != nil {
+		log.Errorf("Failed acquiring engine leadership: %v", err)
+	} else if cur == nil {
+		log.V(1).Infof("Unable to acquire engine leadership")
+	} else {
+		log.Infof("Acquired engine leadership")
+	}
+
+	return
 }
 
 // Reconcile attempts to advance the state of Jobs and JobOffers

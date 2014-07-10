@@ -26,7 +26,6 @@ type Registry interface {
 	Jobs() ([]job.Job, error)
 	JobSignatureSet(name string) (*sign.SignatureSet, error)
 	LatestVersion() (*semver.Version, error)
-	LockEngine(context string) *TimedResourceMutex
 	LeaseRole(role, machID string, period time.Duration) (Lease, error)
 	Machines() ([]machine.MachineState, error)
 	RemoveMachineState(machID string) error
