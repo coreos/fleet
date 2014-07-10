@@ -188,19 +188,22 @@ func (s *Server) Monitor() {
 	err := s.mon.Monitor(s.hrt, s.stop)
 	if err != nil {
 		log.Errorf("Server monitor triggered: %v", err)
+
+		log.Infof("Gracefully restarting")
 		s.Stop()
 		s.Purge()
+
 		s.Run()
 	}
 }
 
 func (s *Server) Stop() {
-	log.Infof("Stopping server components")
 	close(s.stop)
 }
 
 func (s *Server) Purge() {
 	s.agent.Purge()
+	s.engine.Purge()
 }
 
 func (s *Server) MarshalJSON() ([]byte, error) {

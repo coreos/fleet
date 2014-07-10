@@ -54,6 +54,16 @@ func (e *Engine) Run(stop chan bool) {
 	}
 }
 
+func (e *Engine) Purge() {
+	if e.lease == nil {
+		return
+	}
+	err := e.lease.Release()
+	if err != nil {
+		log.Errorf("Failed to release lease: %v", err)
+	}
+}
+
 // ensureLeader will attempt to renew a non-nil Lease, falling back to
 // acquiring a new Lease on the lead engine role.
 func ensureLeader(prev registry.Lease, reg registry.Registry, machID string) (cur registry.Lease) {
