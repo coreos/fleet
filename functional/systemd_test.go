@@ -59,7 +59,7 @@ ExecStart=/usr/bin/sleep 3000
 
 	us, err := mgr.GetUnitState(name)
 	if err == nil {
-		expect := unit.UnitState{"loaded", "inactive", "dead", nil}
+		expect := unit.UnitState{"loaded", "inactive", "dead", ""}
 		if !reflect.DeepEqual(expect, *us) {
 			t.Errorf("Expected UnitState %v, got %v", expect, *us)
 		}
@@ -71,7 +71,7 @@ ExecStart=/usr/bin/sleep 3000
 
 	us, err = mgr.GetUnitState(name)
 	if err == nil {
-		expect := unit.UnitState{"loaded", "active", "running", nil}
+		expect := unit.UnitState{"loaded", "active", "running", ""}
 		if !reflect.DeepEqual(expect, *us) {
 			t.Errorf("Expected UnitState %v, got %v", expect, *us)
 		}
@@ -83,7 +83,7 @@ ExecStart=/usr/bin/sleep 3000
 
 	us, err = mgr.GetUnitState(name)
 	if err == nil {
-		expect := unit.UnitState{"loaded", "inactive", "dead", nil}
+		expect := unit.UnitState{"loaded", "inactive", "dead", ""}
 		if !reflect.DeepEqual(expect, *us) {
 			t.Errorf("Expected UnitState %v, got %v", expect, *us)
 		}
