@@ -1,137 +1,112 @@
 package engine
 
 import (
-	"fmt"
+	"reflect"
 	"sort"
 	"testing"
 
+	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/machine"
+	"github.com/coreos/fleet/unit"
 )
 
-func machName(c int) string {
-	return fmt.Sprintf("boot%d", c)
+var sizes = map[string]int{
+	"empty":        0,
+	"small":        1,
+	"medium":       5,
+	"large":        10,
+	"huge":         100,
+	"preposterous": 1000,
 }
 
-func jobName(c int) string {
-	return fmt.Sprintf("job%d", c)
-}
-
-func createMachines(num int) []machine.MachineState {
-	ms := make([]machine.MachineState, num)
-
-	for i := 0; i < num; i++ {
-		ms[i].ID = machName(i)
+func TestMachsByUnitCount(t *testing.T) {
+	ms := machsByUnitCount{}
+	for id, count := range sizes {
+		ms = append(ms, &machine.MachineState{ID: id, LoadedUnits: count})
 	}
-	return ms
-}
-
-func createCluster(jd []int) *cluster {
-	cu := newCluster()
-
-	jc := 0
-	for mi, nj := range jd {
-		mach := machName(mi)
-		cu.populateMachine(mach)
-		for i := 0; i < nj; i++ {
-			cu.populateJob(jobName(jc), mach)
-			jc++
+	// To ensure we're not totally relying on the random map iteration order, inject one at the end
+	ms = append(ms, &machine.MachineState{ID: "deuxzero", LoadedUnits: 20})
+	sort.Sort(ms)
+	if !sort.IsSorted(ms) {
+		t.Errorf("IsSorted(machsByUnitCount) returned false unexpectedly")
+	}
+	sorted := []string{"empty", "small", "medium", "large", "deuxzero", "huge", "preposterous"}
+	for i, m := range ms {
+		want := sorted[i]
+		got := m.ID
+		if got != want {
+			t.Fatalf("machsByUnitCount: got %v, want %v", got, want)
 		}
 	}
-
-	return cu
 }
 
-func verifyCluster(clust *cluster, ejd []int, t *testing.T) {
-	for i := 0; i < len(ejd); i++ {
-		mach := machName(i)
-		if clust.machineJobCount[mach] != ejd[i]+1 {
-			t.Errorf("expected %d jobs on machine %s, got %d", ejd[i]+1, mach, clust.machineJobCount[mach])
-		}
+func newTestCluster() *cluster {
+	c := newCluster()
+	var ms []*machine.MachineState
+	for id, count := range sizes {
+		ms = append(ms, &machine.MachineState{ID: id, LoadedUnits: count})
 	}
-
-	numJobs := 0
-	partials := make([]int, len(ejd))
-	for i, v := range ejd {
-		numJobs += v
-		partials[i] = numJobs
+	for _, m := range ms {
+		c.machines[m.ID] = m
 	}
-
-	for i := 0; i < numJobs; i++ {
-		m := sort.SearchInts(partials, i+1)
-		if clust.jobsToMachines[jobName(i)] != machName(m) {
-			t.Errorf("expected job %s on machine %s, got %s", jobName(i), machName(m), clust.jobsToMachines[jobName(i)])
-		}
-	}
+	return c
 }
 
 func TestLeastLoaded(t *testing.T) {
-	expectedJobDistribution := []int{1, 4, 3, 5, 5, 3, 0, 2, 6, 3}
-	clust := createCluster(expectedJobDistribution)
-	clust.upToDate = true
-
-	least := clust.kLeastLoaded(3)
-
-	if len(least) != 3 {
-		t.Errorf("expected len of least 3, got %d", len(least))
+	c := newTestCluster()
+	want := []string{"empty", "small", "medium", "large", "huge", "preposterous"}
+	got := c.kLeastLoaded(10)
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("kLeastLoaded: got %v, want %v", got, want)
 	}
 
-	sort.Strings(least)
-
-	expectedLeast := []string{"boot0", "boot6", "boot7"}
-
-	for i := 0; i < 3; i++ {
-		if least[i] != expectedLeast[i] {
-			t.Errorf("expected machine %s, got %s", expectedLeast[i], least[i])
-		}
+	c = newTestCluster()
+	want = []string{"empty", "small"}
+	got = c.kLeastLoaded(2)
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("kLeastLoaded: got %v, want %v", got, want)
 	}
 }
 
-func TestRefreshFrom(t *testing.T) {
-	clust := newCluster()
-	if clust.isUpToDate() {
-		t.Errorf("newly created cluster cannot be up to date")
-	}
-
-	// mma: RandomVariate[PoissonDistribution[3], 10]
-	expectedJobDistribution := []int{6, 3, 4, 2, 4, 1, 3, 6, 1, 2}
-
-	cu := createCluster(expectedJobDistribution)
-
-	clust.refreshFrom(cu, false)
-	if !clust.isUpToDate() {
-		t.Errorf("refreshed cluster is not up to date")
-	}
-
-	verifyCluster(clust, expectedJobDistribution, t)
-}
-
-func TestClusterKeepsUpToDate(t *testing.T) {
-	clust := newCluster()
-	expectedJobDistribution := []int{4, 1, 0, 4, 1, 4, 2, 7, 1, 5}
-	clust.upToDate = true
-
-	ms := createMachines(len(expectedJobDistribution))
-	for _, mach := range ms {
-		clust.populateMachine(mach.ID)
-	}
-
-	jc := 0
-	for mi, nj := range expectedJobDistribution {
-		for i := 0; i < nj; i++ {
-			clust.jobScheduled(jobName(jc), ms[mi].ID)
-			jc++
+func TestPartitionCluster(t *testing.T) {
+	for i, tt := range []struct {
+		c        *cluster
+		contents string
+		want     []string
+	}{
+		{
+			// empty cluster = no results
+			newCluster(),
+			``,
+			[]string{},
+		},
+		{
+			// should be limited to partitionSize=5, sorted lexigraphically
+			newTestCluster(),
+			``,
+			[]string{"empty", "huge", "large", "medium", "small"},
+		},
+		{
+			// specific MachineID should return only that one
+			newTestCluster(),
+			"[X-Fleet]\nX-ConditionMachineID=large",
+			[]string{"large"},
+		},
+		{
+			// even with no matching ID (in case the machine subsequently comes online)
+			newTestCluster(),
+			"[X-Fleet]\nX-ConditionMachineID=beer",
+			[]string{"beer"},
+		},
+	} {
+		u, err := unit.NewUnit(tt.contents)
+		if err != nil {
+			t.Fatalf("case %d: unable to create NewUnit: %v", i, err)
 		}
-	}
-	verifyCluster(clust, expectedJobDistribution, t)
-
-	clust.jobStopped(jobName(4))
-	clust.jobStopped(jobName(7))
-
-	if clust.machineJobCount[machName(1)] != 1 {
-		t.Errorf("expected 1 jobs on machine 1, got %d", clust.machineJobCount[machName(1)])
-	}
-
-	if clust.machineJobCount[machName(3)] != 4 {
-		t.Errorf("expected 4 jobs on machine 3, got %d", clust.machineJobCount[machName(3)])
+		j := job.NewJob("foo", *u)
+		got := tt.c.partition(j)
+		if !reflect.DeepEqual(got, tt.want) {
+			t.Errorf("case %d: got %s, want %s", i, got, tt.want)
+		}
 	}
 }
