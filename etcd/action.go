@@ -116,9 +116,10 @@ func (u *Update) HTTPRequest() (*http.Request, error) {
 }
 
 type Set struct {
-	Key   string
-	Value string
-	TTL   time.Duration
+	Key           string
+	Value         string
+	TTL           time.Duration
+	PreviousIndex uint64
 }
 
 func (s *Set) String() string {
@@ -127,6 +128,12 @@ func (s *Set) String() string {
 
 func (s *Set) HTTPRequest() (*http.Request, error) {
 	endpoint := v2URL(s.Key)
+
+	params := endpoint.Query()
+	if s.PreviousIndex != 0 {
+		params.Add("prevIndex", strconv.FormatInt(int64(s.PreviousIndex), 10))
+	}
+	endpoint.RawQuery = params.Encode()
 
 	form := url.Values{}
 	form.Set("value", s.Value)
