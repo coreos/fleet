@@ -175,9 +175,21 @@ func (e *Engine) Reconcile() {
 		return
 	}
 
-	// maybeScheduleJob attempts to schedule the given Job only if one or more
-	// bids have been submitted
-	maybeScheduleJob := func(jName string) error {
+	// scheduleJob schedules a Job directly to a target machine by setting
+	// the target in the Registry
+	scheduleJob := func(jName, machID string) (err error) {
+		err = e.registry.ScheduleJob(jName, machID)
+		if err != nil {
+			log.Errorf("Failed scheduling Job(%s) to Machine(%s): %v", jName, machID, err)
+		} else {
+			log.Infof("Scheduled Job(%s) to Machine(%s)", jName, machID)
+		}
+		return
+	}
+
+	// maybeScheduleOfferedJob attempts to schedule the given Job only if
+	// one or more bids have been submitted
+	maybeScheduleOfferedJob := func(jName string) error {
 		bids, err := e.registry.Bids(oMap[jName])
 		if err != nil {
 			log.Errorf("Failed determining open JobBids for JobOffer(%s): %v", jName, err)
@@ -190,15 +202,7 @@ func (e *Engine) Reconcile() {
 		}
 
 		choice := bids[0]
-
-		err = e.registry.ScheduleJob(jName, choice.MachineID)
-		if err != nil {
-			log.Errorf("Failed scheduling Job(%s) to Machine(%s): %v", choice.JobName, choice.MachineID, err)
-		} else {
-			log.Infof("Scheduled Job(%s) to Machine(%s)", jName, choice.MachineID)
-		}
-
-		return err
+		return scheduleJob(jName, choice.MachineID)
 	}
 
 	// offerExists returns true if the referenced Job has a corresponding
@@ -241,20 +245,32 @@ func (e *Engine) Reconcile() {
 	}
 
 	for _, j := range activeNotScheduled {
-		if !offerExists(j.Name) {
-			log.Infof("Offering Job(%s) since target state %s and Job not scheduled", j.Name, j.TargetState)
-			e.offerJob(clust, j)
-			continue
+		// If a job has resource reservations, then schedule it directly to a machine.
+		// Otherwise, go through the offer/bid process.
+		// TODO(jonboulle): move to this model for all jobs
+		if !j.Resources().Empty() {
+			machIDs := clust.partition(j)
+			if len(machIDs) == 0 {
+				log.Infof("Unable to schedule Job(%s): no machines meet resource requirements", j.Name)
+			} else {
+				scheduleJob(j.Name, machIDs[0])
+			}
+		} else {
+			if !offerExists(j.Name) {
+				log.Infof("Offering Job(%s) since target state %s and Job not scheduled", j.Name, j.TargetState)
+				e.offerJob(clust, j)
+				continue
+			}
+
+			log.Infof("Attempting to schedule Job(%s) since target state %s and Job not scheduled", j.Name, j.TargetState)
+
+			err := maybeScheduleOfferedJob(j.Name)
+			if err != nil {
+				continue
+			}
+
+			resolveJobOffer(j.Name)
 		}
-
-		log.Infof("Attempting to schedule Job(%s) since target state %s and Job not scheduled", j.Name, j.TargetState)
-
-		err := maybeScheduleJob(j.Name)
-		if err != nil {
-			continue
-		}
-
-		resolveJobOffer(j.Name)
 	}
 
 	// Deal with remaining JobOffers that do not have a corresponding Job
