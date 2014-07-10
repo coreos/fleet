@@ -94,30 +94,28 @@ func deserializeUnitFile(raw string) (map[string]map[string][]string, error) {
 }
 
 func deserializeUnitLine(line string) (key string, values []string, err error) {
-	e := strings.Index(line, "=")
-	if e == -1 {
+	idx := strings.Index(line, "=")
+	if idx == -1 {
 		err = errors.New("missing '='")
 		return
 	}
-	key = strings.TrimSpace(line[:e])
-	value := strings.TrimSpace(line[e+1:])
 
-	if strings.HasPrefix(value, `"`) && strings.HasSuffix(value, `"`) {
-		for _, v := range parseMultivalueLine(value) {
-			values = append(values, v)
-		}
-	} else {
-		values = append(values, value)
-	}
+	key = strings.TrimSpace(line[:idx])
+	values = parseMultivalueLine(strings.TrimSpace(line[idx+1:]))
+
 	return
 }
 
 // parseMultivalueLine parses a line that includes several quoted values separated by whitespaces.
 // Example: MachineMetadata="foo=bar" "baz=qux"
+// If the provided line is not a multivalue string, the line is returned as the sole value.
 func parseMultivalueLine(line string) (values []string) {
+	if !strings.HasPrefix(line, `"`) || !strings.HasSuffix(line, `"`) {
+		return []string{line}
+	}
+
 	var v bytes.Buffer
 	w := false // check whether we're within quotes or not
-
 	for _, e := range []byte(line) {
 		// ignore quotes
 		if e == '"' {
