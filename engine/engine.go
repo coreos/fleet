@@ -57,6 +57,11 @@ func (e *Engine) Run(stop chan bool) {
 func (e *Engine) Reconcile() {
 	log.V(1).Infof("Polling Registry for actionable work")
 
+	start := time.Now()
+	defer func() {
+		log.Infof("Engine completed reconciliation in %s", time.Now().Sub(start))
+	}()
+
 	jobs, err := e.registry.Jobs()
 	if err != nil {
 		log.Errorf("Failed fetching Jobs from Registry: %v", err)
