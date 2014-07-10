@@ -175,26 +175,3 @@ func (es *EventStream) filterEventJobOffered(resp *etcd.Result) *event.Event {
 
 	return &event.Event{"EventJobOffered", *jo, nil}
 }
-
-func filterEventJobBidSubmitted(resp *etcd.Result) *event.Event {
-	if resp.Action != "set" {
-		return nil
-	}
-
-	dir, machID := path.Split(resp.Node.Key)
-	dir, prefix := path.Split(strings.TrimSuffix(dir, "/"))
-
-	if prefix != "bids" {
-		return nil
-	}
-
-	dir, jobName := path.Split(strings.TrimSuffix(dir, "/"))
-	prefix = path.Base(strings.TrimSuffix(dir, "/"))
-
-	if prefix != offerPrefix {
-		return nil
-	}
-
-	jb := job.NewBid(jobName, machID)
-	return &event.Event{"EventJobBidSubmitted", *jb, nil}
-}
