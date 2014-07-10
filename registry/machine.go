@@ -91,11 +91,6 @@ func (r *EtcdRegistry) RemoveMachineState(machID string) error {
 	return err
 }
 
-// Attempt to acquire a lock on a given machine for a given amount of time
-func (r *EtcdRegistry) LockMachine(machID, context string) *TimedResourceMutex {
-	return r.lockResource("machine", machID, context)
-}
-
 func filterEventMachineCreated(resp *etcd.Result) *event.Event {
 	dir, baseName := path.Split(resp.Node.Key)
 	if baseName != "object" {
