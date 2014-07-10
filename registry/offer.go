@@ -124,19 +124,6 @@ func (r *EtcdRegistry) UnresolvedJobOffers() ([]job.JobOffer, error) {
 	return offers, nil
 }
 
-func (r *EtcdRegistry) LockJobOffer(jobName, context string) *TimedResourceMutex {
-	req := etcd.Get{
-		Key:       path.Join(r.keyPrefix, offerPrefix, jobName),
-		Recursive: true,
-	}
-	_, err := r.etcd.Do(&req)
-	if err != nil {
-		return nil
-	}
-
-	return r.lockResource("offer", jobName, context)
-}
-
 func (r *EtcdRegistry) ResolveJobOffer(jobName string) error {
 	req := etcd.Delete{
 		Key: path.Join(r.keyPrefix, offerPrefix, jobName, "object"),

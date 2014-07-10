@@ -26,10 +26,7 @@ type Registry interface {
 	Jobs() ([]job.Job, error)
 	JobSignatureSet(name string) (*sign.SignatureSet, error)
 	LatestVersion() (*semver.Version, error)
-	LockJob(jobName, context string) *TimedResourceMutex
-	LockEngine(context string) *TimedResourceMutex
-	LockJobOffer(jobName, context string) *TimedResourceMutex
-	LockMachine(machID, context string) *TimedResourceMutex
+	LeaseRole(role, machID string, period time.Duration) (Lease, error)
 	Machines() ([]machine.MachineState, error)
 	RemoveMachineState(machID string) error
 	RemoveUnitState(jobName string) error
@@ -40,4 +37,9 @@ type Registry interface {
 	SetMachineState(ms machine.MachineState, ttl time.Duration) (uint64, error)
 	SubmitJobBid(jb *job.JobBid)
 	UnresolvedJobOffers() ([]job.JobOffer, error)
+}
+
+type Lease interface {
+	Renew(time.Duration) error
+	Release() error
 }

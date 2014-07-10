@@ -334,10 +334,6 @@ func (r *EtcdRegistry) ScheduleJob(jobName string, machID string) error {
 	return err
 }
 
-func (r *EtcdRegistry) LockJob(jobName, context string) *TimedResourceMutex {
-	return r.lockResource("job", jobName, context)
-}
-
 func filterEventJobScheduled(resp *etcd.Result) *event.Event {
 	if resp.Action != "create" {
 		return nil

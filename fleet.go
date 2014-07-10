@@ -75,6 +75,7 @@ func main() {
 			log.Fatalf(err.Error())
 		}
 
+		log.Infof("Restarting server components")
 		srv.Stop()
 
 		srv, err = server.New(*cfg)
