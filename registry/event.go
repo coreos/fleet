@@ -29,12 +29,7 @@ func (es *EventStream) Stream(idx uint64, sendFunc func(*event.Event), stop chan
 		filterEventJobDestroyed,
 		filterEventJobScheduled,
 		filterEventJobUnscheduled,
-		es.filterJobTargetStateChanges,
-		filterEventMachineCreated,
-		filterEventMachineRemoved,
-		filterEventMachineLost,
 		es.filterEventJobOffered,
-		filterEventJobBidSubmitted,
 	}
 
 	etcdchan := make(chan *etcd.Result)

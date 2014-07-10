@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/coreos/fleet/etcd"
-	"github.com/coreos/fleet/event"
 	"github.com/coreos/fleet/machine"
 )
 
@@ -89,71 +88,4 @@ func (r *EtcdRegistry) RemoveMachineState(machID string) error {
 		err = nil
 	}
 	return err
-}
-
-func filterEventMachineCreated(resp *etcd.Result) *event.Event {
-	dir, baseName := path.Split(resp.Node.Key)
-	if baseName != "object" {
-		return nil
-	}
-
-	dir = strings.TrimSuffix(dir, "/")
-	dir = path.Dir(dir)
-	prefixName := path.Base(dir)
-
-	if prefixName != machinePrefix {
-		return nil
-	}
-
-	if resp.Action != "create" {
-		return nil
-	}
-
-	var m machine.MachineState
-	unmarshal(resp.Node.Value, &m)
-	return &event.Event{"EventMachineCreated", m, nil}
-}
-
-func filterEventMachineLost(resp *etcd.Result) *event.Event {
-	dir, baseName := path.Split(resp.Node.Key)
-	if baseName != "object" {
-		return nil
-	}
-
-	dir = strings.TrimSuffix(dir, "/")
-	dir = path.Dir(dir)
-	prefixName := path.Base(dir)
-
-	if prefixName != machinePrefix {
-		return nil
-	}
-
-	if resp.Action != "expire" {
-		return nil
-	}
-
-	machID := path.Base(path.Dir(resp.Node.Key))
-	return &event.Event{"EventMachineLost", machID, nil}
-}
-
-func filterEventMachineRemoved(resp *etcd.Result) *event.Event {
-	dir, baseName := path.Split(resp.Node.Key)
-	if baseName != "object" {
-		return nil
-	}
-
-	dir = strings.TrimSuffix(dir, "/")
-	dir = path.Dir(dir)
-	prefixName := path.Base(dir)
-
-	if prefixName != machinePrefix {
-		return nil
-	}
-
-	if resp.Action != "delete" {
-		return nil
-	}
-
-	machID := path.Base(path.Dir(resp.Node.Key))
-	return &event.Event{"EventMachineRemoved", machID, nil}
 }
