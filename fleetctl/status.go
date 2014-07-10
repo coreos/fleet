@@ -52,5 +52,5 @@ func printUnitStatus(jobName string) int {
 	}
 
 	cmd := fmt.Sprintf("systemctl status -l %s", jobName)
-	return runCommand(cmd, j.UnitState.MachineState)
+	return runCommand(cmd, j.UnitState.MachineID)
 }

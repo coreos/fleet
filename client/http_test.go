@@ -127,10 +127,10 @@ func TestMapUnitEntityToJobMachineFields(t *testing.T) {
 			},
 			&job.Job{
 				UnitState: &unit.UnitState{
-					LoadState:    "loaded",
-					ActiveState:  "active",
-					SubState:     "running",
-					MachineState: &machine.MachineState{ID: "YYY", PublicIP: "ZZZ"},
+					LoadState:   "loaded",
+					ActiveState: "active",
+					SubState:    "running",
+					MachineID:   "YYY",
 				},
 			},
 		},
@@ -147,10 +147,10 @@ func TestMapUnitEntityToJobMachineFields(t *testing.T) {
 			},
 			&job.Job{
 				UnitState: &unit.UnitState{
-					LoadState:    "loaded",
-					ActiveState:  "active",
-					SubState:     "running",
-					MachineState: &machine.MachineState{ID: "FFF"},
+					LoadState:   "loaded",
+					ActiveState: "active",
+					SubState:    "running",
+					MachineID:   "FFF",
 				},
 			},
 		},

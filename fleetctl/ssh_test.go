@@ -6,15 +6,24 @@ import (
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/registry"
-	"github.com/coreos/fleet/resource"
 	"github.com/coreos/fleet/unit"
 )
 
+func newMachineState(id, ip string, md map[string]string) machine.MachineState {
+	return machine.MachineState{
+		ID:       id,
+		PublicIP: ip,
+		Metadata: md,
+	}
+}
+
 func newFakeRegistryForSsh() registry.Registry {
+	// clear machineStates for every invocation
+	machineStates = nil
 	machines := []machine.MachineState{
-		{"c31e44e1-f858-436e-933e-59c642517860", "1.2.3.4", map[string]string{"ping": "pong"}, "", resource.ResourceTuple{}},
-		{"595989bb-cbb7-49ce-8726-722d6e157b4e", "5.6.7.8", map[string]string{"foo": "bar"}, "", resource.ResourceTuple{}},
-		{"hello.service", "8.7.6.5", map[string]string{"foo": "bar"}, "", resource.ResourceTuple{}},
+		newMachineState("c31e44e1-f858-436e-933e-59c642517860", "1.2.3.4", map[string]string{"ping": "pong"}),
+		newMachineState("595989bb-cbb7-49ce-8726-722d6e157b4e", "5.6.7.8", map[string]string{"foo": "bar"}),
+		newMachineState("hello.service", "8.7.6.5", map[string]string{"foo": "bar"}),
 	}
 
 	jobs := []job.Job{
@@ -24,9 +33,9 @@ func newFakeRegistryForSsh() registry.Registry {
 	}
 
 	states := map[string]*unit.UnitState{
-		"j1.service":    unit.NewUnitState("loaded", "active", "listening", &machines[0]),
-		"j2.service":    unit.NewUnitState("loaded", "inactive", "dead", &machines[1]),
-		"hello.service": unit.NewUnitState("loaded", "inactive", "dead", &machines[2]),
+		"j1.service":    unit.NewUnitState("loaded", "active", "listening", machines[0].ID),
+		"j2.service":    unit.NewUnitState("loaded", "inactive", "dead", machines[1].ID),
+		"hello.service": unit.NewUnitState("loaded", "inactive", "dead", machines[2].ID),
 	}
 
 	reg := registry.NewFakeRegistry()

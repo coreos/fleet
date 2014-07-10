@@ -46,7 +46,7 @@ func translateUnitStatusEvents(changes map[string]*dbus.UnitStatus) []event.Even
 	for name, status := range changes {
 		var state *unit.UnitState
 		if status != nil {
-			state = unit.NewUnitState(status.LoadState, status.ActiveState, status.SubState, nil)
+			state = unit.NewUnitState(status.LoadState, status.ActiveState, status.SubState, "")
 		}
 		ev := event.Event{"EventUnitStateUpdated", state, name}
 		events = append(events, ev)

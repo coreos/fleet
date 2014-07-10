@@ -9,11 +9,16 @@ const (
 // MachineState represents a point-in-time snapshot of the
 // state of the local host.
 type MachineState struct {
-	ID             string
-	PublicIP       string
-	Metadata       map[string]string
-	Version        string
+	ID       string
+	PublicIP string
+	Metadata map[string]string
+	Version  string
+
+	// The total resources available on the underlying system
 	TotalResources resource.ResourceTuple
+
+	// Number of Units loaded into the fleet agent
+	LoadedUnits int
 }
 
 func (s MachineState) ShortID() string {
@@ -27,6 +32,8 @@ func (s MachineState) MatchID(ID string) bool {
 	return s.ID == ID || s.ShortID() == ID
 }
 
+// stackState is used to merge two MachineStates. Values configured on the top
+// MachineState always take precedence over those on the bottom.
 func stackState(top, bottom MachineState) MachineState {
 	state := MachineState(bottom)
 

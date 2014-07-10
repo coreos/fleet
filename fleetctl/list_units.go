@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/coreos/fleet/job"
+	"github.com/coreos/fleet/machine"
 )
 
 const (
@@ -73,10 +74,14 @@ Or, choose the columns to display:
 		},
 		"machine": func(j *job.Job, full bool) string {
 			us := j.UnitState
-			if us == nil || us.MachineState == nil {
+			if us == nil || us.MachineID == "" {
 				return "-"
 			}
-			return machineFullLegend(*us.MachineState, full)
+			ms := cachedMachineState(us.MachineID)
+			if ms == nil {
+				ms = &machine.MachineState{ID: us.MachineID}
+			}
+			return machineFullLegend(*ms, full)
 		},
 		"hash": func(j *job.Job, full bool) string {
 			if !full {

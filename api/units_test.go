@@ -12,7 +12,6 @@ import (
 	"testing"
 
 	"github.com/coreos/fleet/job"
-	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/registry"
 	"github.com/coreos/fleet/schema"
 	"github.com/coreos/fleet/unit"
@@ -171,10 +170,10 @@ func TestMapJobToSchema(t *testing.T) {
 				TargetMachineID: "ZZZ",
 				Unit:            unit.Unit{Raw: "[Service]\nExecStart=/usr/bin/sleep 3000\n"},
 				UnitState: &unit.UnitState{
-					LoadState:    "loaded",
-					ActiveState:  "active",
-					SubState:     "running",
-					MachineState: &machine.MachineState{ID: "YYY"},
+					LoadState:   "loaded",
+					ActiveState: "active",
+					SubState:    "running",
+					MachineID:   "YYY",
 				},
 			},
 			schema.Unit{

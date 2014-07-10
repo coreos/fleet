@@ -50,7 +50,13 @@ func TestListMachinesFieldsToStrings(t *testing.T) {
 	ver := "v9.9.9"
 	res := resource.ResourceTuple{10, 1024, 1024}
 
-	ms := &machine.MachineState{id, ip, metadata, ver, res}
+	ms := &machine.MachineState{
+		ID:             id,
+		PublicIP:       ip,
+		Metadata:       metadata,
+		Version:        ver,
+		TotalResources: res,
+	}
 
 	val := listMachinesFields["machine"](ms, false)
 	assertEqual(t, "machine", "4d389537...", val)
@@ -72,7 +78,13 @@ func TestListMachinesFieldsEmpty(t *testing.T) {
 	ver := "v9.9.9"
 	res := resource.ResourceTuple{10, 1024, 1024}
 
-	ms := &machine.MachineState{id, ip, metadata, ver, res}
+	ms := &machine.MachineState{
+		ID:             id,
+		PublicIP:       ip,
+		Metadata:       metadata,
+		Version:        ver,
+		TotalResources: res,
+	}
 
 	for _, tt := range []string{"ip", "metadata"} {
 		f := listMachinesFields[tt](ms, false)

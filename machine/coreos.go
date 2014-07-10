@@ -11,21 +11,26 @@ import (
 	"github.com/coreos/fleet/Godeps/_workspace/src/github.com/dotcloud/docker/pkg/netlink"
 	log "github.com/coreos/fleet/Godeps/_workspace/src/github.com/golang/glog"
 	"github.com/coreos/fleet/resource"
+	"github.com/coreos/fleet/systemd"
 )
 
 const (
 	machineIDPath = "/etc/machine-id"
 )
 
-func NewCoreOSMachine(static MachineState) *CoreOSMachine {
+func NewCoreOSMachine(static MachineState, sd *systemd.SystemdUnitManager) *CoreOSMachine {
 	log.V(1).Infof("Created CoreOSMachine with static state %s", static)
-	m := &CoreOSMachine{staticState: static}
+	m := &CoreOSMachine{
+		staticState: static,
+		systemd:     sd,
+	}
 	return m
 }
 
 type CoreOSMachine struct {
 	sync.RWMutex
 
+	systemd      *systemd.SystemdUnitManager
 	staticState  MachineState
 	dynamicState *MachineState
 }
@@ -54,7 +59,7 @@ func (m *CoreOSMachine) Refresh() {
 	m.RLock()
 	defer m.RUnlock()
 
-	ms := currentState()
+	ms := m.currentState()
 	m.dynamicState = &ms
 }
 
@@ -65,7 +70,7 @@ func (m *CoreOSMachine) PeriodicRefresh(interval time.Duration, stop chan bool) 
 	for {
 		select {
 		case <-stop:
-			log.V(1).Infof("Halting CoreOSMachine.PeriodicRefresh")
+			log.V(1).Info("Halting CoreOSMachine.PeriodicRefresh")
 			ticker.Stop()
 			return
 		case <-ticker.C:
@@ -76,19 +81,36 @@ func (m *CoreOSMachine) PeriodicRefresh(interval time.Duration, stop chan bool) 
 
 // currentState generates a MachineState object with the values read from
 // the local system
-func currentState() MachineState {
+func (m *CoreOSMachine) currentState() MachineState {
 	id := readLocalMachineID("/")
 	publicIP := getLocalIP()
+	// TODO(jonboulle): clarify failure behaviour when unable to retrieve resources/units
 	totalResources, err := readLocalResources()
 	if err != nil {
+		log.Errorf("Error retrieving local resources: %v\n", err)
 		totalResources = resource.ResourceTuple{}
 	}
-	return MachineState{ID: id, PublicIP: publicIP, Metadata: make(map[string]string, 0), TotalResources: totalResources}
+	units, err := m.systemd.Units()
+	if err != nil {
+		log.Errorf("Error retrieving local units: %v\n", err)
+		units = []string{}
+	}
+	return MachineState{
+		ID:             id,
+		PublicIP:       publicIP,
+		Metadata:       make(map[string]string, 0),
+		TotalResources: totalResources,
+		LoadedUnits:    len(units),
+	}
 }
 
 // IsLocalMachineState checks whether machine state matches the state of local machine
 func IsLocalMachineState(ms *MachineState) bool {
 	return ms.ID == readLocalMachineID("/")
+}
+
+func IsLocalMachineID(mID string) bool {
+	return mID == readLocalMachineID("/")
 }
 
 func readLocalMachineID(root string) string {

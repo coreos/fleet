@@ -14,11 +14,10 @@ const (
 	memInfoPath = "/proc/meminfo"
 )
 
-func readLocalResources() (resource.ResourceTuple, error) {
-	var res resource.ResourceTuple
+func readLocalResources() (res resource.ResourceTuple, err error) {
 	res.Cores = 100 * runtime.NumCPU()
 
-	// TODO(uwedeportivo): determine disk space
+	// TODO(jonboulle): determine disk space
 
 	mem, err := readMeminfo()
 	if err != nil {
@@ -29,8 +28,7 @@ func readLocalResources() (resource.ResourceTuple, error) {
 	return res, nil
 }
 
-// parseMeminfo extracts the total amount of memory
-// and returns it in MB.
+// parseMeminfo extracts the total amount of memory and returns it in MB.
 func parseMeminfo(memstr []byte) (int, error) {
 	ss := bufio.NewScanner(bytes.NewBuffer(memstr))
 	ss.Split(bufio.ScanWords)

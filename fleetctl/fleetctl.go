@@ -70,6 +70,9 @@ var (
 		BlockAttempts int
 		Fields        string
 	}{}
+
+	// used to cache MachineStates
+	machineStates map[string]*machine.MachineState
 )
 
 func init() {
@@ -624,20 +627,43 @@ func assertJobState(name string, js job.JobState, out io.Writer) (ret bool) {
 		return
 	}
 
-	machines, err := cAPI.Machines()
-	if err != nil {
-		log.Warningf("Failed retrieving list of Machines from Registry: %v", err)
-	}
-	for _, ms := range machines {
-		if ms.ID != j.TargetMachineID {
-			continue
-		}
-		msg = fmt.Sprintf("%s on %s", msg, machineFullLegend(ms, false))
-		break
+	ms := cachedMachineState(j.TargetMachineID)
+	if ms != nil {
+		msg = fmt.Sprintf("%s on %s", msg, machineFullLegend(*ms, false))
 	}
 
 	fmt.Fprintln(out, msg)
 	return
+}
+
+func machineState(machID string) (*machine.MachineState, error) {
+	machines, err := cAPI.Machines()
+	if err != nil {
+		return nil, err
+	}
+	for _, ms := range machines {
+		if ms.ID == machID {
+			return &ms, nil
+		}
+	}
+	return nil, nil
+}
+
+// cachedMachineState makes a best-effort to retrieve the MachineState of the given machine ID.
+// It memoizes MachineState information for the life of a fleetctl invocation.
+// Any error encountered retrieving the list of machines is ignored.
+func cachedMachineState(machID string) (ms *machine.MachineState) {
+	if machineStates == nil {
+		machineStates = make(map[string]*machine.MachineState)
+		ms, err := cAPI.Machines()
+		if err != nil {
+			return nil
+		}
+		for i, m := range ms {
+			machineStates[m.ID] = &ms[i]
+		}
+	}
+	return machineStates[machID]
 }
 
 // unitNameMangle tries to turn a string that might not be a unit name into a

@@ -299,8 +299,8 @@ func mapJobToSchema(j *job.Job) (*schema.Unit, error) {
 			ActiveState: j.UnitState.ActiveState,
 			SubState:    j.UnitState.SubState,
 		}
-		if j.UnitState.MachineState != nil {
-			su.Systemd.MachineID = j.UnitState.MachineState.ID
+		if j.UnitState.MachineID != "" {
+			su.Systemd.MachineID = j.UnitState.MachineID
 		}
 	}
 

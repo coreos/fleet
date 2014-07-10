@@ -47,7 +47,7 @@ func (fum *FakeUnitManager) GetUnitState(name string) (us *UnitState, err error)
 	defer fum.RUnlock()
 
 	if _, ok := fum.u[name]; ok {
-		us = &UnitState{"loaded", "active", "running", nil}
+		us = &UnitState{"loaded", "active", "running", ""}
 	}
 	return
 }

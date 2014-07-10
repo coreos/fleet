@@ -6,7 +6,6 @@ import (
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/registry"
-	"github.com/coreos/fleet/resource"
 	"github.com/coreos/fleet/unit"
 )
 
@@ -96,7 +95,7 @@ Description=some description`)
 		assertEqual(t, "state", string(state), f)
 	}
 
-	j.UnitState = unit.NewUnitState("foo", "bar", "baz", nil)
+	j.UnitState = unit.NewUnitState("foo", "bar", "baz", "")
 	for k, want := range map[string]string{
 		"load":    "foo",
 		"active":  "bar",
@@ -107,9 +106,19 @@ Description=some description`)
 		assertEqual(t, k, want, got)
 	}
 
-	j.UnitState.MachineState = &machine.MachineState{"some-id", "1.2.3.4", nil, "", resource.ResourceTuple{}}
+	j.UnitState.MachineID = "some-id"
 	ms := listUnitsFields["machine"](j, true)
-	assertEqual(t, "machine", "some-id/1.2.3.4", ms)
+	assertEqual(t, "machine", "some-id", ms)
+
+	j.UnitState.MachineID = "other-id"
+	machineStates = map[string]*machine.MachineState{
+		"other-id": &machine.MachineState{
+			ID:       "other-id",
+			PublicIP: "1.2.3.4",
+		},
+	}
+	ms = listUnitsFields["machine"](j, true)
+	assertEqual(t, "machine", "other-id/1.2.3.4", ms)
 
 	uh := "f035b2f14edc4d23572e5f3d3d4cb4f78d0e53c3"
 	fuh := listUnitsFields["hash"](j, true)

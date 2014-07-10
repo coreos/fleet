@@ -7,8 +7,18 @@ import (
 )
 
 func TestStackState(t *testing.T) {
-	top := MachineState{"c31e44e1-f858-436e-933e-59c642517860", "1.2.3.4", map[string]string{"ping": "pong"}, "1", resource.ResourceTuple{}}
-	bottom := MachineState{"595989bb-cbb7-49ce-8726-722d6e157b4e", "5.6.7.8", map[string]string{"foo": "bar"}, "", resource.ResourceTuple{}}
+	top := MachineState{
+		ID:       "c31e44e1-f858-436e-933e-59c642517860",
+		PublicIP: "1.2.3.4",
+		Metadata: map[string]string{"ping": "pong"},
+		Version:  "1",
+	}
+	bottom := MachineState{
+		ID:       "595989bb-cbb7-49ce-8726-722d6e157b4e",
+		PublicIP: "5.6.7.8",
+		Metadata: map[string]string{"foo": "bar"},
+		Version:  "",
+	}
 	stacked := stackState(top, bottom)
 
 	if stacked.ID != "c31e44e1-f858-436e-933e-59c642517860" {
@@ -30,7 +40,11 @@ func TestStackState(t *testing.T) {
 
 func TestStackStateEmptyTop(t *testing.T) {
 	top := MachineState{}
-	bottom := MachineState{"595989bb-cbb7-49ce-8726-722d6e157b4e", "5.6.7.8", map[string]string{"foo": "bar"}, "", resource.ResourceTuple{}}
+	bottom := MachineState{
+		ID:       "595989bb-cbb7-49ce-8726-722d6e157b4e",
+		PublicIP: "5.6.7.8",
+		Metadata: map[string]string{"foo": "bar"},
+	}
 	stacked := stackState(top, bottom)
 
 	if stacked.ID != "595989bb-cbb7-49ce-8726-722d6e157b4e" {
@@ -38,7 +52,7 @@ func TestStackStateEmptyTop(t *testing.T) {
 	}
 
 	if stacked.PublicIP != "5.6.7.8" {
-		t.Errorf("Unexpected PublicIp value %s", stacked.PublicIP)
+		t.Errorf("Unexpected PublicIP value %s", stacked.PublicIP)
 	}
 
 	if len(stacked.Metadata) != 1 || stacked.Metadata["foo"] != "bar" {
@@ -67,17 +81,16 @@ var shortIDTests = []struct {
 			map[string]string{"foo": "bar"},
 			"",
 			resource.ResourceTuple{},
+			0,
 		},
 		s: "595989bb",
 		l: "595989bb-cbb7-49ce-8726-722d6e157b4e",
 	},
 	{
 		m: MachineState{
-			"5959",
-			"5.6.7.8",
-			map[string]string{"foo": "bar"},
-			"",
-			resource.ResourceTuple{},
+			ID:       "5959",
+			PublicIP: "5.6.7.8",
+			Metadata: map[string]string{"foo": "bar"},
 		},
 		s: "5959",
 		l: "5959",

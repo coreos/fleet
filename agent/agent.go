@@ -298,8 +298,7 @@ func (a *Agent) ReportUnitState(jobName string, us *unit.UnitState) {
 			log.Errorf("Failed to remove UnitState for job %s from Registry: %s", jobName, err.Error())
 		}
 	} else {
-		ms := a.Machine.State()
-		us.MachineState = &ms
+		us.MachineID = a.Machine.State().ID
 		log.Infof("Job(%s): pushing UnitState (loadState=%s, activeState=%s, subState=%s) to Registry", jobName, us.LoadState, us.ActiveState, us.SubState)
 		a.registry.SaveUnitState(jobName, us)
 	}
