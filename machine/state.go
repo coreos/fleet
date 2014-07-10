@@ -17,19 +17,36 @@ type MachineState struct {
 	// The total resources available on the underlying system
 	TotalResources resource.ResourceTuple
 
+	// The resoures considered available for scheduling by fleet
+	FreeResources resource.ResourceTuple
+
 	// Number of Units loaded into the fleet agent
 	LoadedUnits int
 }
 
-func (s MachineState) ShortID() string {
-	if len(s.ID) <= shortIDLen {
-		return s.ID
+// UpdateFreeResources populates the FreeResources of a MachineState, given a
+// map of units to resource reservations, using the following formula:
+// FreeResources = TotalResources - (sum(unit resource reservations) + HostResources)
+func UpdateFreeResources(ms MachineState, reservations map[string]resource.ResourceTuple) MachineState {
+	all := []resource.ResourceTuple{resource.HostResources}
+	for _, res := range reservations {
+		all = append(all, res)
 	}
-	return s.ID[0:shortIDLen]
+	reserved := resource.Sum(all...)
+	// TODO(jonboulle): check for negatives!
+	ms.FreeResources = resource.Sub(ms.TotalResources, reserved)
+	return ms
 }
 
-func (s MachineState) MatchID(ID string) bool {
-	return s.ID == ID || s.ShortID() == ID
+func (ms MachineState) ShortID() string {
+	if len(ms.ID) <= shortIDLen {
+		return ms.ID
+	}
+	return ms.ID[0:shortIDLen]
+}
+
+func (ms MachineState) MatchID(ID string) bool {
+	return ms.ID == ID || ms.ShortID() == ID
 }
 
 // stackState is used to merge two MachineStates. Values configured on the top
