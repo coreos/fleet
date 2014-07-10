@@ -2,214 +2,76 @@ package engine
 
 import (
 	"sort"
-	"sync"
 
 	"github.com/coreos/fleet/job"
+	"github.com/coreos/fleet/machine"
 )
 
 const (
 	partitionSize = 5
 )
 
-type namedCount struct {
-	name  string
-	count int
-}
+// machsByUnitCount implements the Sort interfaces to sort a slice of MachineStates by their fleet LoadedUnit count
+type machsByUnitCount []*machine.MachineState
 
-type namedCounts []*namedCount
+func (m machsByUnitCount) Len() int           { return len(m) }
+func (m machsByUnitCount) Swap(i, j int)      { m[i], m[j] = m[j], m[i] }
+func (m machsByUnitCount) Less(i, j int) bool { return m[i].LoadedUnits < m[j].LoadedUnits }
 
-func (a namedCounts) Len() int           { return len(a) }
-func (a namedCounts) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-func (a namedCounts) Less(i, j int) bool { return a[i].count < a[j].count }
-
+// cluster encapsulates the state of the cluster (in particular, agent
+// resource availability) in order for the engine to make resource-based
+// scheduling decisions
 type cluster struct {
-	upToDate bool
-	mutex    sync.Mutex
-
-	// some statistics about what goes on in the cluster
-	// this will get more sophisticated as needed
-
-	// where are jobs running
-	jobsToMachines map[string]string
-	// how many jobs on a machine
-	// each active machine has at least one job,
-	// otherwise it won't show up here
-	machineJobCount map[string]int
+	machines map[string]*machine.MachineState
 }
 
 func newCluster() *cluster {
 	return &cluster{
-		jobsToMachines:  make(map[string]string),
-		machineJobCount: make(map[string]int),
+		machines: make(map[string]*machine.MachineState),
 	}
 }
 
-func (clust *cluster) machineCreated(machID string) {
-	clust.mutex.Lock()
-	defer clust.mutex.Unlock()
-
-	if !clust.upToDate {
-		return
-	}
-
-	clust.populateMachine(machID)
+// trackMachine adds the given machine to the cluster view
+func (c *cluster) trackMachine(m *machine.MachineState) {
+	c.machines[m.ID] = m
 }
 
-func (clust *cluster) machineRemoved(machID string) {
-	clust.mutex.Lock()
-	defer clust.mutex.Unlock()
-
-	if !clust.upToDate {
-		return
-	}
-
-	clust.deleteMachine(machID)
+// machinePresent determines if the referenced Machine appears to be a
+// current member of the cluster based on the local cache
+func (c *cluster) machinePresent(machID string) bool {
+	_, ok := c.machines[machID]
+	return ok
 }
 
-// jobScheduled handles the job scheduled event
-func (clust *cluster) jobScheduled(jobName, target string) {
-	clust.mutex.Lock()
-	defer clust.mutex.Unlock()
-
-	if !clust.upToDate {
-		return
+// kLeastLoaded returns a list of machine IDs representing the k machines
+// with the lowest number of loaded units
+func (c *cluster) kLeastLoaded(k int) []string {
+	ms := machsByUnitCount{}
+	for _, m := range c.machines {
+		ms = append(ms, m)
 	}
-
-	clust.populateJob(jobName, target)
+	sort.Sort(ms)
+	j := k
+	if len(ms) < k {
+		j = len(ms)
+	}
+	least := make([]string, 0)
+	for i := 0; i < j; i++ {
+		least = append(least, ms[i].ID)
+	}
+	return least
 }
 
-// jobStopped handles the job stopped event
-func (clust *cluster) jobStopped(jobName string) {
-	clust.mutex.Lock()
-	defer clust.mutex.Unlock()
-
-	if !clust.upToDate {
-		return
-	}
-
-	clust.deleteJob(jobName)
-}
-
-// isUpToDate returns whether the cluster has been told what happened before it got created
-func (clust *cluster) isUpToDate() bool {
-	clust.mutex.Lock()
-	defer clust.mutex.Unlock()
-	return clust.upToDate
-}
-
-// refreshFrom refreshes from a specified cluster
-func (clust *cluster) refreshFrom(cu *cluster, force bool) {
-	clust.mutex.Lock()
-	defer clust.mutex.Unlock()
-
-	if !force && clust.upToDate {
-		return
-	}
-
-	clust.jobsToMachines = cu.jobsToMachines
-	clust.machineJobCount = cu.machineJobCount
-	clust.upToDate = true
-}
-
-func (clust *cluster) populateJob(jobName string, machineID string) {
-	clust.jobsToMachines[jobName] = machineID
-	clust.machineJobCount[machineID] = clust.machineJobCount[machineID] + 1
-}
-
-func (clust *cluster) deleteJob(jobName string) {
-	machineID, ok := clust.jobsToMachines[jobName]
-
-	// TODO(uwedeportivo): this might be a signal that a refresh is needed
-	if !ok {
-		return
-	}
-
-	clust.machineJobCount[machineID] = clust.machineJobCount[machineID] - 1
-	delete(clust.jobsToMachines, jobName)
-}
-
-func (clust *cluster) populateMachine(machID string) {
-	clust.machineJobCount[machID] = 1
-}
-
-func (clust *cluster) deleteMachine(machID string) {
-	delete(clust.machineJobCount, machID)
-}
-
-func (clust *cluster) kLeastLoaded(k int) []string {
-	clust.mutex.Lock()
-	defer clust.mutex.Unlock()
-
-	mas := make(namedCounts, len(clust.machineJobCount))
-	cursor := 0
-
-	for k, v := range clust.machineJobCount {
-		mas[cursor] = &namedCount{k, v}
-		cursor++
-	}
-	sort.Sort(mas)
-
-	l := k
-	if l > len(mas) {
-		l = len(mas)
-	}
-
-	mbis := make([]string, l)
-	for i := 0; i < l; i++ {
-		mbis[i] = mas[i].name
-	}
-	return mbis
-}
-
-func (eg *Engine) refreshCluster(force bool) {
-	if !force && eg.clust.isUpToDate() {
-		return
-	}
-
-	cu := newCluster()
-
-	ms, _ := eg.registry.Machines()
-	for _, m := range ms {
-		cu.populateMachine(m.ID)
-	}
-
-	jobs, _ := eg.registry.Jobs()
-	for _, j := range jobs {
-		if j.TargetMachineID != "" {
-			cu.populateJob(j.Name, j.TargetMachineID)
-		}
-	}
-
-	eg.clust.refreshFrom(cu, force)
-}
-
-// partitionCluster returns a slice of IDs from a subset of active machines
-// that should be considered for scheduling the specified job.
-// The returned slice is sorted by ascending lexicographical string value of machine boot id.
-func (eg *Engine) partitionCluster(j *job.Job) ([]string, error) {
+// partition returns a slice of machine IDs from a subset of active machines that
+// should be considered for scheduling the specified job. The returned slice
+// is sorted by ascending lexicographical string value.
+func (c *cluster) partition(j *job.Job) []string {
 	if machID, ok := j.RequiredTarget(); ok {
-		return []string{machID}, nil
+		return []string{machID}
 	}
 
-	// TODO(uwedeportivo): for now punt on jobs with requirements and offer to all machines
-	// because agents are decoding the requirements
-	if len(j.Requirements()) > 0 {
-		machines, _ := eg.registry.Machines()
-
-		machineIDs := make([]string, len(machines))
-		for i, mach := range machines {
-			machineIDs[i] = mach.ID
-		}
-		sort.Strings(machineIDs)
-		return machineIDs, nil
-	}
-
-	// this is usually a cheap no-op
-	eg.refreshCluster(false)
-
-	// as an initial heuristic, choose the k least loaded, with k = partitionSize
-	machineIDs := eg.clust.kLeastLoaded(partitionSize)
+	machineIDs := c.kLeastLoaded(partitionSize)
 
 	sort.Strings(machineIDs)
-	return machineIDs, nil
+	return machineIDs
 }

@@ -23,13 +23,11 @@ const (
 type Engine struct {
 	registry registry.Registry
 	machine  machine.Machine
-	// keeps a picture of the load in the cluster for more intelligent scheduling
-	clust *cluster
-	lease registry.Lease
+	lease    registry.Lease
 }
 
 func New(reg registry.Registry, mach machine.Machine) *Engine {
-	return &Engine{reg, mach, newCluster(), nil}
+	return &Engine{reg, mach, nil}
 }
 
 func (e *Engine) Run(stop chan bool) {
@@ -124,10 +122,11 @@ func (e *Engine) Reconcile() {
 		oMap[o.Job.Name] = &o
 	}
 
-	mMap := make(map[string]*machine.MachineState, len(machines))
-	for i := range machines {
-		m := machines[i]
-		mMap[m.ID] = &m
+	// Initialize the cached view of the cluster, tracking all known machines
+	clust := newCluster()
+	for _, m := range machines {
+		m := m
+		clust.trackMachine(&m)
 	}
 
 	// Jobs will be sorted into three categories:
@@ -209,13 +208,6 @@ func (e *Engine) Reconcile() {
 		return ok
 	}
 
-	// machinePresent determines if the referenced Machine appears to be a
-	// current member of the cluster based on the local cache
-	machinePresent := func(machID string) bool {
-		_, ok := mMap[machID]
-		return ok
-	}
-
 	for _, j := range inactive {
 		if j.Scheduled() {
 			log.Infof("Unscheduling Job(%s) from Machine(%s) since target state is inactive %s", j.Name, j.TargetMachineID)
@@ -229,7 +221,7 @@ func (e *Engine) Reconcile() {
 	}
 
 	for _, j := range activeScheduled {
-		if machinePresent(j.TargetMachineID) {
+		if clust.machinePresent(j.TargetMachineID) {
 			if offerExists(j.Name) {
 				log.Infof("Resolving extraneous JobOffer(%s) since Job is already scheduled", j.Name)
 				resolveJobOffer(j.Name)
@@ -243,7 +235,7 @@ func (e *Engine) Reconcile() {
 
 			if !offerExists(j.Name) {
 				log.Infof("Offering Job(%s) since target state %s and Job not scheduled", j.Name, j.TargetState)
-				e.offerJob(j)
+				e.offerJob(clust, j)
 			}
 		}
 	}
@@ -251,7 +243,7 @@ func (e *Engine) Reconcile() {
 	for _, j := range activeNotScheduled {
 		if !offerExists(j.Name) {
 			log.Infof("Offering Job(%s) since target state %s and Job not scheduled", j.Name, j.TargetState)
-			e.offerJob(j)
+			e.offerJob(clust, j)
 			continue
 		}
 
@@ -272,14 +264,10 @@ func (e *Engine) Reconcile() {
 	}
 }
 
-func (e *Engine) offerJob(j *job.Job) {
-	machineIDs, err := e.partitionCluster(j)
-	if err != nil {
-		log.Errorf("Failed partitioning cluster for Job(%s): %v", j.Name, err)
-	}
-
+func (e *Engine) offerJob(clust *cluster, j *job.Job) {
+	machineIDs := clust.partition(j)
 	offer := job.NewOfferFromJob(*j, machineIDs)
-	err = e.registry.CreateJobOffer(offer)
+	err := e.registry.CreateJobOffer(offer)
 	if err != nil {
 		log.Errorf("Failed publishing JobOffer(%s): %v", j.Name, err)
 	} else {
