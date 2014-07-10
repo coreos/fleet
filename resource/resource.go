@@ -11,6 +11,11 @@ type ResourceTuple struct {
 	Disk int
 }
 
+// Empty returns true if all components of the ResourceTuple are zero.
+func (rt ResourceTuple) Empty() bool {
+	return rt.Cores == 0 && rt.Memory == 0 && rt.Disk == 0
+}
+
 const (
 	// TODO(jonboulle): make these configurable
 	HostCores  = 100
