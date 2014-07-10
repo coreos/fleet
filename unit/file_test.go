@@ -257,3 +257,38 @@ nonsense upon stilts
 		}
 	}
 }
+
+func TestParseMultivalueLine(t *testing.T) {
+	tests := []struct {
+		in  string
+		out []string
+	}{
+		{`"bar" "ping" "pong"`, []string{`bar`, `ping`, `pong`}},
+		{`"bar"`, []string{`bar`}},
+		{``, []string{""}},
+		{`""`, []string{``}},
+		{`"bar`, []string{`"bar`}},
+		{`bar"`, []string{`bar"`}},
+		{`foo\"bar`, []string{`foo\"bar`}},
+
+		{
+			`"bar" "`,
+			[]string{`bar`, ``},
+			//TODO(bcwaldon): should be something like this:
+			// []string{`bar`},
+		},
+
+		{
+			`"foo\"bar"`,
+			[]string{`foo\bar`},
+			//TODO(bcwaldon): should be something like this:
+			// []string{`foo\"bar`},
+		},
+	}
+	for i, tt := range tests {
+		out := parseMultivalueLine(tt.in)
+		if !reflect.DeepEqual(tt.out, out) {
+			t.Errorf("case %d:, epected %v, got %v", i, tt.out, out)
+		}
+	}
+}
