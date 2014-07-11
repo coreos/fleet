@@ -5,7 +5,9 @@ package netlink
 import (
 	"encoding/binary"
 	"fmt"
+	"math/rand"
 	"net"
+	"sync/atomic"
 	"syscall"
 	"unsafe"
 )
@@ -17,9 +19,21 @@ const (
 	IFLA_INFO_DATA = 2
 	VETH_INFO_PEER = 1
 	IFLA_NET_NS_FD = 28
+	SIOC_BRADDBR   = 0x89a0
+	SIOC_BRADDIF   = 0x89a2
 )
 
-var nextSeqNr int
+var nextSeqNr uint32
+
+type ifreqHwaddr struct {
+	IfrnName   [16]byte
+	IfruHwaddr syscall.RawSockaddr
+}
+
+type ifreqIndex struct {
+	IfrnName  [16]byte
+	IfruIndex int32
+}
 
 func nativeEndian() binary.ByteOrder {
 	var x uint32 = 0x01020304
@@ -27,11 +41,6 @@ func nativeEndian() binary.ByteOrder {
 		return binary.BigEndian
 	}
 	return binary.LittleEndian
-}
-
-func getSeq() int {
-	nextSeqNr = nextSeqNr + 1
-	return nextSeqNr
 }
 
 func getIpFamily(ip net.IP) int {
@@ -118,10 +127,9 @@ type RtMsg struct {
 	syscall.RtMsg
 }
 
-func newRtMsg(family int) *RtMsg {
+func newRtMsg() *RtMsg {
 	return &RtMsg{
 		RtMsg: syscall.RtMsg{
-			Family:   uint8(family),
 			Table:    syscall.RT_TABLE_MAIN,
 			Scope:    syscall.RT_SCOPE_UNIVERSE,
 			Protocol: syscall.RTPROT_BOOT,
@@ -254,7 +262,7 @@ func newNetlinkRequest(proto, flags int) *NetlinkRequest {
 			Len:   uint32(syscall.NLMSG_HDRLEN),
 			Type:  uint16(proto),
 			Flags: syscall.NLM_F_REQUEST | uint16(flags),
-			Seq:   uint32(getSeq()),
+			Seq:   atomic.AddUint32(&nextSeqNr, 1),
 		},
 	}
 }
@@ -354,38 +362,116 @@ done:
 	return nil
 }
 
-// Add a new default gateway. Identical to:
-// ip route add default via $ip
-func AddDefaultGw(ip net.IP) error {
+// Add a new route table entry.
+func AddRoute(destination, source, gateway, device string) error {
+	if destination == "" && source == "" && gateway == "" {
+		return fmt.Errorf("one of destination, source or gateway must not be blank")
+	}
+
 	s, err := getNetlinkSocket()
 	if err != nil {
 		return err
 	}
 	defer s.Close()
 
-	family := getIpFamily(ip)
-
 	wb := newNetlinkRequest(syscall.RTM_NEWROUTE, syscall.NLM_F_CREATE|syscall.NLM_F_EXCL|syscall.NLM_F_ACK)
+	msg := newRtMsg()
+	currentFamily := -1
+	var rtAttrs []*RtAttr
 
-	msg := newRtMsg(family)
-	wb.AddData(msg)
-
-	var ipData []byte
-	if family == syscall.AF_INET {
-		ipData = ip.To4()
-	} else {
-		ipData = ip.To16()
+	if destination != "" {
+		destIP, destNet, err := net.ParseCIDR(destination)
+		if err != nil {
+			return fmt.Errorf("destination CIDR %s couldn't be parsed", destination)
+		}
+		destFamily := getIpFamily(destIP)
+		currentFamily = destFamily
+		destLen, bits := destNet.Mask.Size()
+		if destLen == 0 && bits == 0 {
+			return fmt.Errorf("destination CIDR %s generated a non-canonical Mask", destination)
+		}
+		msg.Family = uint8(destFamily)
+		msg.Dst_len = uint8(destLen)
+		var destData []byte
+		if destFamily == syscall.AF_INET {
+			destData = destIP.To4()
+		} else {
+			destData = destIP.To16()
+		}
+		rtAttrs = append(rtAttrs, newRtAttr(syscall.RTA_DST, destData))
 	}
 
-	gateway := newRtAttr(syscall.RTA_GATEWAY, ipData)
+	if source != "" {
+		srcIP, srcNet, err := net.ParseCIDR(source)
+		if err != nil {
+			return fmt.Errorf("source CIDR %s couldn't be parsed", source)
+		}
+		srcFamily := getIpFamily(srcIP)
+		if currentFamily != -1 && currentFamily != srcFamily {
+			return fmt.Errorf("source and destination ip were not the same IP family")
+		}
+		currentFamily = srcFamily
+		srcLen, bits := srcNet.Mask.Size()
+		if srcLen == 0 && bits == 0 {
+			return fmt.Errorf("source CIDR %s generated a non-canonical Mask", source)
+		}
+		msg.Family = uint8(srcFamily)
+		msg.Src_len = uint8(srcLen)
+		var srcData []byte
+		if srcFamily == syscall.AF_INET {
+			srcData = srcIP.To4()
+		} else {
+			srcData = srcIP.To16()
+		}
+		rtAttrs = append(rtAttrs, newRtAttr(syscall.RTA_SRC, srcData))
+	}
 
-	wb.AddData(gateway)
+	if gateway != "" {
+		gwIP := net.ParseIP(gateway)
+		if gwIP == nil {
+			return fmt.Errorf("gateway IP %s couldn't be parsed", gateway)
+		}
+		gwFamily := getIpFamily(gwIP)
+		if currentFamily != -1 && currentFamily != gwFamily {
+			return fmt.Errorf("gateway, source, and destination ip were not the same IP family")
+		}
+		msg.Family = uint8(gwFamily)
+		var gwData []byte
+		if gwFamily == syscall.AF_INET {
+			gwData = gwIP.To4()
+		} else {
+			gwData = gwIP.To16()
+		}
+		rtAttrs = append(rtAttrs, newRtAttr(syscall.RTA_GATEWAY, gwData))
+	}
+
+	wb.AddData(msg)
+	for _, attr := range rtAttrs {
+		wb.AddData(attr)
+	}
+
+	var (
+		native = nativeEndian()
+		b      = make([]byte, 4)
+	)
+	iface, err := net.InterfaceByName(device)
+	if err != nil {
+		return err
+	}
+	native.PutUint32(b, uint32(iface.Index))
+
+	wb.AddData(newRtAttr(syscall.RTA_OIF, b))
 
 	if err := s.Send(wb); err != nil {
 		return err
 	}
-
 	return s.HandleAck(wb.Seq)
+}
+
+// Add a new default gateway. Identical to:
+// ip route add default via $ip
+func AddDefaultGw(ip, device string) error {
+	return AddRoute("", "", ip, device)
 }
 
 // Bring up a particular network interface
@@ -807,4 +893,72 @@ func NetworkCreateVethPair(name1, name2 string) error {
 		return err
 	}
 	return s.HandleAck(wb.Seq)
+}
+
+// Create the actual bridge device.  This is more backward-compatible than
+// netlink.NetworkLinkAdd and works on RHEL 6.
+func CreateBridge(name string, setMacAddr bool) error {
+	s, err := syscall.Socket(syscall.AF_INET6, syscall.SOCK_STREAM, syscall.IPPROTO_IP)
+	if err != nil {
+		// ipv6 issue, creating with ipv4
+		s, err = syscall.Socket(syscall.AF_INET, syscall.SOCK_STREAM, syscall.IPPROTO_IP)
+		if err != nil {
+			return err
+		}
+	}
+	defer syscall.Close(s)
+
+	nameBytePtr, err := syscall.BytePtrFromString(name)
+	if err != nil {
+		return err
+	}
+	if _, _, err := syscall.Syscall(syscall.SYS_IOCTL, uintptr(s), SIOC_BRADDBR, uintptr(unsafe.Pointer(nameBytePtr))); err != 0 {
+		return err
+	}
+	if setMacAddr {
+		return setBridgeMacAddress(s, name)
+	}
+	return nil
+}
+
+// Add a slave to abridge device.  This is more backward-compatible than
+// netlink.NetworkSetMaster and works on RHEL 6.
+func AddToBridge(iface, master *net.Interface) error {
+	s, err := syscall.Socket(syscall.AF_INET6, syscall.SOCK_STREAM, syscall.IPPROTO_IP)
+	if err != nil {
+		// ipv6 issue, creating with ipv4
+		s, err = syscall.Socket(syscall.AF_INET, syscall.SOCK_STREAM, syscall.IPPROTO_IP)
+		if err != nil {
+			return err
+		}
+	}
+	defer syscall.Close(s)
+
+	ifr := ifreqIndex{}
+	copy(ifr.IfrnName[:], master.Name)
+	ifr.IfruIndex = int32(iface.Index)
+
+	if _, _, err := syscall.Syscall(syscall.SYS_IOCTL, uintptr(s), SIOC_BRADDIF, uintptr(unsafe.Pointer(&ifr))); err != 0 {
+		return err
+	}
+
+	return nil
+}
+
+func setBridgeMacAddress(s int, name string) error {
+	ifr := ifreqHwaddr{}
+	ifr.IfruHwaddr.Family = syscall.ARPHRD_ETHER
+	copy(ifr.IfrnName[:], name)
+
+	for i := 0; i < 6; i++ {
+		ifr.IfruHwaddr.Data[i] = int8(rand.Intn(255))
+	}
+
+	ifr.IfruHwaddr.Data[0] &^= 0x1 // clear multicast bit
+	ifr.IfruHwaddr.Data[0] |= 0x2  // set local assignment bit (IEEE802)
+
+	if _, _, err := syscall.Syscall(syscall.SYS_IOCTL, uintptr(s), syscall.SIOCSIFHWADDR, uintptr(unsafe.Pointer(&ifr))); err != 0 {
+		return err
+	}
+	return nil
 }
