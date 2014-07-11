@@ -84,7 +84,7 @@ func (c *cluster) Candidates(j *job.Job) []string {
 	return machineIDs
 }
 
-// machineStates is used by clusterCache to order the machines in the cluster
+// machineStates is used by cluster to order the machines in the cluster
 // view by different criteria (for example, free resources)
 type machineStates []*machine.MachineState
 
