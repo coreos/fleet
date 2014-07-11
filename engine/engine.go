@@ -254,6 +254,7 @@ func (e *Engine) Reconcile() {
 				log.Infof("Unable to schedule Job(%s): no machines meet resource requirements", j.Name)
 			} else {
 				scheduleJob(j.Name, machIDs[0])
+				clust.addJobToMachine(machIDs[0], j)
 			}
 		} else {
 			if !offerExists(j.Name) {

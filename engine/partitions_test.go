@@ -20,20 +20,20 @@ var unitcount = map[string]int{
 	"preposterous": 1000,
 }
 
-func TestMachsByUnitCount(t *testing.T) {
+func TestByUnitCount(t *testing.T) {
 	ms := machineStates{}
 	for id, count := range unitcount {
 		ms = append(ms, &machine.MachineState{ID: id, LoadedUnits: count})
 	}
 	// To ensure we're not totally relying on the random map iteration order, inject one at the end
 	ms = append(ms, &machine.MachineState{ID: "deuxzero", LoadedUnits: 20})
-	sort.Sort(ByUnitCount{ms})
+	sort.Sort(byUnitCount{ms})
 	sorted := []string{"empty", "small", "medium", "large", "deuxzero", "huge", "preposterous"}
 	for i, m := range ms {
 		want := sorted[i]
 		got := m.ID
 		if got != want {
-			t.Fatalf("machsByUnitCount: got %v, want %v", got, want)
+			t.Fatalf("byUnitCount: got %v, want %v", got, want)
 		}
 	}
 }
@@ -44,20 +44,20 @@ var freeresources = map[string]resource.ResourceTuple{
 	"huge":  resource.ResourceTuple{10000, 32 * 1024, 1024 * 1024},
 }
 
-func TestMachsByResources(t *testing.T) {
+func TestByResources(t *testing.T) {
 	ms := machineStates{}
 	for id, res := range freeresources {
 		ms = append(ms, &machine.MachineState{ID: id, FreeResources: res})
 	}
 	// To ensure we're not totally relying on the random map iteration order, inject one at the end
 	ms = append(ms, &machine.MachineState{ID: "medium", FreeResources: resource.ResourceTuple{5000, 16 * 1024, 128 * 1024}})
-	sort.Sort(ByFreeResources{ms})
+	sort.Sort(byFreeResources{ms})
 	sorted := []string{"empty", "small", "medium", "huge"}
 	for i, m := range ms {
 		want := sorted[i]
 		got := m.ID
 		if got != want {
-			t.Fatalf("machsByResources: got %v, want %v", got, want)
+			t.Fatalf("byResources: got %v, want %v", got, want)
 		}
 	}
 }

@@ -17,19 +17,23 @@ type machineStates []*machine.MachineState
 func (m machineStates) Len() int      { return len(m) }
 func (m machineStates) Swap(i, j int) { m[i], m[j] = m[j], m[i] }
 
-// ByUnitCount embeds machineStates and implements sort.Interface to sort MachineStates by their fleet LoadedUnit count
-type ByUnitCount struct{ machineStates }
+// byUnitCount embeds machineStates and implements sort.Interface to sort MachineStates by their fleet LoadedUnit count
+type byUnitCount struct{ machineStates }
 
-func (m ByUnitCount) Less(i, j int) bool {
+func (m byUnitCount) Less(i, j int) bool {
 	return m.machineStates[i].LoadedUnits < m.machineStates[j].LoadedUnits
 }
 
-// ByFreeResources embeds machineStates and implements sort.Interface to sort MachineStates by their FreeResources
-type ByFreeResources struct{ machineStates }
+// byFreeResources embeds machineStates and implements sort.Interface to sort MachineStates by their FreeResources
+type byFreeResources struct{ machineStates }
 
-func (m ByFreeResources) Less(i, j int) bool {
+func (m byFreeResources) Less(i, j int) bool {
 	ifr := m.machineStates[i].FreeResources
 	jfr := m.machineStates[j].FreeResources
+	// Currently this orders somewhat naively, not always considering all
+	// three dimensions. This isn't a huge deal because when making the
+	// actual scheduling decision we ensure that all dimensions are
+	// satisfied exactly, but it may be worth revisiting at a later time
 	return ifr.Cores < jfr.Cores && ifr.Memory < jfr.Memory && ifr.Disk < jfr.Disk
 }
 
@@ -58,6 +62,16 @@ func (c *cluster) machinePresent(machID string) bool {
 	return ok
 }
 
+// addJobToMachine updates the FreeResources of the MachineState by the given
+// machine ID by subtracting the resource reservation of the given Job. It is
+// intended to be called during the engine's reconcilation process after a
+// Job has been scheduled in order to ensure subsequent scheduling decisions
+// factor this in
+func (c *cluster) addJobToMachine(machID string, j *job.Job) {
+	old := c.machines[machID].FreeResources
+	c.machines[machID].FreeResources = resource.Sub(old, j.Resources())
+}
+
 // kLeastLoaded returns a list of machine IDs representing the k machines
 // with the lowest number of loaded units
 func (c *cluster) kLeastLoaded(k int) []string {
@@ -66,7 +80,7 @@ func (c *cluster) kLeastLoaded(k int) []string {
 		ms = append(ms, m)
 	}
 
-	sort.Sort(ByUnitCount{ms})
+	sort.Sort(byUnitCount{ms})
 	j := k
 	if len(ms) < k {
 		j = len(ms)
@@ -87,15 +101,16 @@ func (c *cluster) haveResources(req resource.ResourceTuple) []string {
 		ms = append(ms, m)
 	}
 
-	sort.Sort(ByFreeResources{ms})
+	sort.Sort(byFreeResources{ms})
 	j := sort.Search(len(ms), func(i int) bool {
 		r := ms[i].FreeResources
 		return r.Cores >= req.Cores && r.Memory >= req.Memory && r.Disk >= req.Disk
 	})
-	if j < len(ms) {
-		return []string{ms[j].ID}
+	if j >= len(ms) {
+		// No suitable candidates
+		return []string{}
 	}
-	return []string{}
+	return []string{ms[j].ID}
 }
 
 // partition returns a slice of machine IDs from a subset of active machines that
@@ -106,7 +121,7 @@ func (c *cluster) partition(j *job.Job) []string {
 		return []string{machID}
 	}
 
-	machineIDs := make([]string, 0)
+	var machineIDs []string
 	if j.Resources().Empty() {
 		machineIDs = c.kLeastLoaded(partitionSize)
 	} else {
