@@ -63,7 +63,9 @@ func TestByResources(t *testing.T) {
 }
 
 func newTestCluster() *cluster {
-	c := newCluster()
+	c := &cluster{
+		machines: make(map[string]*machine.MachineState),
+	}
 	var ms []*machine.MachineState
 	for id, count := range unitcount {
 		ms = append(ms, &machine.MachineState{
@@ -97,13 +99,13 @@ func TestLeastLoaded(t *testing.T) {
 func TestHaveResources(t *testing.T) {
 	c := newTestCluster()
 	want := []string{"small"}
-	got := c.haveResources(resource.ResourceTuple{100, 2 * 1024, 32 * 1024})
+	got := c.sufficientResources(resource.ResourceTuple{100, 2 * 1024, 32 * 1024})
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("haveResources: got %v, want %v", got, want)
 	}
 }
 
-func TestPartitionCluster(t *testing.T) {
+func TestCandidates(t *testing.T) {
 	for i, tt := range []struct {
 		c        *cluster
 		contents string
@@ -111,7 +113,7 @@ func TestPartitionCluster(t *testing.T) {
 	}{
 		{
 			// empty cluster = no results
-			newCluster(),
+			&cluster{},
 			``,
 			[]string{},
 		},
@@ -139,7 +141,7 @@ func TestPartitionCluster(t *testing.T) {
 			t.Fatalf("case %d: unable to create NewUnit: %v", i, err)
 		}
 		j := job.NewJob("foo", *u)
-		got := tt.c.partition(j)
+		got := tt.c.Candidates(j)
 		if !reflect.DeepEqual(got, tt.want) {
 			t.Errorf("case %d: got %s, want %s", i, got, tt.want)
 		}

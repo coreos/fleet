@@ -126,7 +126,7 @@ func (e *Engine) Reconcile() {
 	clust := newCluster()
 	for _, m := range machines {
 		m := m
-		clust.trackMachine(&m)
+		clust.TrackMachine(&m)
 	}
 
 	// Jobs will be sorted into three categories:
@@ -225,7 +225,7 @@ func (e *Engine) Reconcile() {
 	}
 
 	for _, j := range activeScheduled {
-		if clust.machinePresent(j.TargetMachineID) {
+		if clust.MachinePresent(j.TargetMachineID) {
 			if offerExists(j.Name) {
 				log.Infof("Resolving extraneous JobOffer(%s) since Job is already scheduled", j.Name)
 				resolveJobOffer(j.Name)
@@ -249,12 +249,12 @@ func (e *Engine) Reconcile() {
 		// Otherwise, go through the offer/bid process.
 		// TODO(jonboulle): move to this model for all jobs
 		if !j.Resources().Empty() {
-			machIDs := clust.partition(j)
+			machIDs := clust.Candidates(j)
 			if len(machIDs) == 0 {
 				log.Infof("Unable to schedule Job(%s): no machines meet resource requirements", j.Name)
 			} else {
 				scheduleJob(j.Name, machIDs[0])
-				clust.addJobToMachine(machIDs[0], j)
+				clust.AddJob(machIDs[0], j)
 			}
 		} else {
 			if !offerExists(j.Name) {
@@ -281,8 +281,8 @@ func (e *Engine) Reconcile() {
 	}
 }
 
-func (e *Engine) offerJob(clust *cluster, j *job.Job) {
-	machineIDs := clust.partition(j)
+func (e *Engine) offerJob(clust ClusterCache, j *job.Job) {
+	machineIDs := clust.Candidates(j)
 	offer := job.NewOfferFromJob(*j, machineIDs)
 	err := e.registry.CreateJobOffer(offer)
 	if err != nil {
