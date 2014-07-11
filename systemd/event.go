@@ -10,7 +10,6 @@ import (
 
 type EventStream struct {
 	mgr   *SystemdUnitManager
-	close chan bool
 }
 
 func NewEventStream(mgr *SystemdUnitManager) *EventStream {
