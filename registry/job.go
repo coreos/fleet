@@ -270,6 +270,48 @@ func (r *EtcdRegistry) SetJobTargetState(jobName string, state job.JobState) err
 	return err
 }
 
+func (es *EventStream) filterJobTargetStateChanges(resp *etcd.Result) *event.Event {
+	if resp.Action != "set" {
+		return nil
+	}
+
+	dir, baseName := path.Split(resp.Node.Key)
+	if baseName != "target-state" {
+		return nil
+	}
+
+	dir = strings.TrimSuffix(dir, "/")
+	jobName := path.Base(dir)
+
+	ts, err := job.ParseJobState(resp.Node.Value)
+	if err != nil {
+		log.Errorf("Failed parsing JobState: %v", err)
+		return nil
+	}
+
+	cs := es.registry.determineJobState(jobName)
+	if *cs == ts {
+		return nil
+	}
+
+	var cType string
+	if *cs == job.JobStateLoaded && ts == job.JobStateLaunched {
+		cType = "CommandStartJob"
+	} else if *cs == job.JobStateLaunched && ts == job.JobStateLoaded {
+		cType = "CommandStopJob"
+	} else {
+		return nil
+	}
+
+	agent, err := es.registry.jobTargetMachine(jobName)
+	if err != nil {
+		log.Errorf("Failed to look up target of Job(%s): %v", jobName, err)
+		return nil
+	}
+
+	return &event.Event{cType, jobName, agent}
+}
+
 func (r *EtcdRegistry) ScheduleJob(jobName string, machID string) error {
 	req := etcd.Create{
 		Key:   r.jobTargetAgentPath(jobName),
