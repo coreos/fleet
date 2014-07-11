@@ -5,18 +5,33 @@ import (
 
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/machine"
+	"github.com/coreos/fleet/resource"
 )
 
 const (
 	partitionSize = 5
 )
 
-// machsByUnitCount implements the Sort interfaces to sort a slice of MachineStates by their fleet LoadedUnit count
-type machsByUnitCount []*machine.MachineState
+type machineStates []*machine.MachineState
 
-func (m machsByUnitCount) Len() int           { return len(m) }
-func (m machsByUnitCount) Swap(i, j int)      { m[i], m[j] = m[j], m[i] }
-func (m machsByUnitCount) Less(i, j int) bool { return m[i].LoadedUnits < m[j].LoadedUnits }
+func (m machineStates) Len() int      { return len(m) }
+func (m machineStates) Swap(i, j int) { m[i], m[j] = m[j], m[i] }
+
+// ByUnitCount embeds machineStates and implements sort.Interface to sort MachineStates by their fleet LoadedUnit count
+type ByUnitCount struct{ machineStates }
+
+func (m ByUnitCount) Less(i, j int) bool {
+	return m.machineStates[i].LoadedUnits < m.machineStates[j].LoadedUnits
+}
+
+// ByFreeResources embeds machineStates and implements sort.Interface to sort MachineStates by their FreeResources
+type ByFreeResources struct{ machineStates }
+
+func (m ByFreeResources) Less(i, j int) bool {
+	ifr := m.machineStates[i].FreeResources
+	jfr := m.machineStates[j].FreeResources
+	return ifr.Cores < jfr.Cores && ifr.Memory < jfr.Memory && ifr.Disk < jfr.Disk
+}
 
 // cluster encapsulates the state of the cluster (in particular, agent
 // resource availability) in order for the engine to make resource-based
@@ -46,11 +61,12 @@ func (c *cluster) machinePresent(machID string) bool {
 // kLeastLoaded returns a list of machine IDs representing the k machines
 // with the lowest number of loaded units
 func (c *cluster) kLeastLoaded(k int) []string {
-	ms := machsByUnitCount{}
+	ms := machineStates{}
 	for _, m := range c.machines {
 		ms = append(ms, m)
 	}
-	sort.Sort(ms)
+
+	sort.Sort(ByUnitCount{ms})
 	j := k
 	if len(ms) < k {
 		j = len(ms)
@@ -62,6 +78,26 @@ func (c *cluster) kLeastLoaded(k int) []string {
 	return least
 }
 
+// haveResources returns a slice containing a machine ID representing a
+// machine with free resources greater than the given requirement, or an empty
+// slice if none exists
+func (c *cluster) haveResources(req resource.ResourceTuple) []string {
+	ms := machineStates{}
+	for _, m := range c.machines {
+		ms = append(ms, m)
+	}
+
+	sort.Sort(ByFreeResources{ms})
+	j := sort.Search(len(ms), func(i int) bool {
+		r := ms[i].FreeResources
+		return r.Cores >= req.Cores && r.Memory >= req.Memory && r.Disk >= req.Disk
+	})
+	if j < len(ms) {
+		return []string{ms[j].ID}
+	}
+	return []string{}
+}
+
 // partition returns a slice of machine IDs from a subset of active machines that
 // should be considered for scheduling the specified job. The returned slice
 // is sorted by ascending lexicographical string value.
@@ -70,8 +106,12 @@ func (c *cluster) partition(j *job.Job) []string {
 		return []string{machID}
 	}
 
-	machineIDs := c.kLeastLoaded(partitionSize)
-
+	machineIDs := make([]string, 0)
+	if j.Resources().Empty() {
+		machineIDs = c.kLeastLoaded(partitionSize)
+	} else {
+		machineIDs = c.haveResources(j.Resources())
+	}
 	sort.Strings(machineIDs)
 	return machineIDs
 }
