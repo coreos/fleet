@@ -131,10 +131,10 @@ func (e *Engine) Reconcile() {
 
 	// Jobs will be sorted into three categories:
 	// 1. Jobs where TargetState is inactive
-	inactive := make([]*job.Job, 0)
 	// 2. Jobs where TargetState is active, and the Job has been scheduled
-	activeScheduled := make([]*job.Job, 0)
 	// 3. Jobs where TargetState is active, and the Job has not been scheduled
+	inactive := make([]*job.Job, 0)
+	activeScheduled := make([]*job.Job, 0)
 	activeNotScheduled := make([]*job.Job, 0)
 
 	for i := range jobs {
