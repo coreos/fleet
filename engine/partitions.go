@@ -63,13 +63,14 @@ func (c *cluster) machinePresent(machID string) bool {
 }
 
 // addJobToMachine updates the FreeResources of the MachineState by the given
-// machine ID by subtracting the resource reservation of the given Job. It is
-// intended to be called during the engine's reconcilation process after a
-// Job has been scheduled in order to ensure subsequent scheduling decisions
-// factor this in
+// machine ID by subtracting the resource reservation of the given Job, and
+// also increments the machine's LoadedUnits count. It is intended to be called
+// during the engine's reconcilation process after a Job has been scheduled in
+// order to ensure subsequent scheduling decisions factor this in
 func (c *cluster) addJobToMachine(machID string, j *job.Job) {
 	old := c.machines[machID].FreeResources
 	c.machines[machID].FreeResources = resource.Sub(old, j.Resources())
+	c.machines[machID].LoadedUnits++
 }
 
 // kLeastLoaded returns a list of machine IDs representing the k machines
