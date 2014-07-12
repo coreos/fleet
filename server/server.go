@@ -80,6 +80,7 @@ func New(cfg config.Config) (*Server, error) {
 	eBus := event.NewEventBus()
 	aHandler := agent.NewEventHandler(a)
 	eBus.AddListener("agent", aHandler)
+	eBus.AddListener("engine", e)
 
 	listeners, err := activation.Listeners(false)
 	if err != nil {

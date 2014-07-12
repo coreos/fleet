@@ -290,17 +290,22 @@ func (es *EventStream) filterJobTargetStateChanges(resp *etcd.Result) *event.Eve
 	}
 
 	cs := es.registry.determineJobState(jobName)
+	if cs == nil {
+		return nil
+	}
 	if *cs == ts {
+		// No state change has actually occurred
 		return nil
 	}
 
 	var cType string
-	if *cs == job.JobStateLoaded && ts == job.JobStateLaunched {
-		cType = "CommandStartJob"
-	} else if *cs == job.JobStateLaunched && ts == job.JobStateLoaded {
-		cType = "CommandStopJob"
-	} else {
-		return nil
+	switch {
+	case *cs == job.JobStateLoaded && ts == job.JobStateLaunched:
+		cType = "JobTargetStateStarted"
+	case *cs == job.JobStateLaunched && ts == job.JobStateLoaded:
+		cType = "JobTargetStateStopped"
+	default:
+		cType = "JobTargetStateChange"
 	}
 
 	agent, err := es.registry.jobTargetMachine(jobName)
