@@ -69,7 +69,11 @@ func TestUnitsList(t *testing.T) {
 			t.Fatalf("Received unparseable body: %v", err)
 		}
 
-		if len(page.Units) != 2 || page.Units[0].Name != "XXX" || page.Units[1].Name != "YYY" {
+		names := make(map[string]bool)
+		for _, u := range page.Units {
+			names[u.Name] = true
+		}
+		if !reflect.DeepEqual(names, map[string]bool{"XXX": true, "YYY": true}) {
 			t.Errorf("Received incorrect UnitPage entity: %v", page)
 		}
 	}
