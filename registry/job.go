@@ -42,7 +42,7 @@ func (r *EtcdRegistry) Jobs() ([]job.Job, error) {
 			}
 
 			j, err := r.getJobFromJSON(node.Value)
-			if err != nil {
+			if j == nil || err != nil {
 				log.Infof("Unable to parse Job in Registry at key %s", node.Key)
 				continue
 			}
