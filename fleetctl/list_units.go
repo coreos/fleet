@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	defaultListUnitsFields = "unit,state,load,active,sub,desc,machine"
+	defaultListUnitsFields = "unit,dstate,tmachine,state,machine,active"
 )
 
 var (

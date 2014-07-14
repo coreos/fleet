@@ -40,3 +40,4 @@ The systemd state is composed of three subcomponents, also exposed in `fleetctl 
 - `ACTIVE` (the high-level unit activation state, i.e. generalization of SUB)
 - `SUB` (the low-level unit activation state, values depend on unit type)
 
+By default, only the `ACTIVE` unit state is exposed by `fleetctl list-units`. Expose the `LOAD` and `SUB` fields using the `--fields` flag to `fleetctl list-units`.
