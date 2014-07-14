@@ -95,7 +95,13 @@ func (e *Engine) Reconcile() {
 
 	start := time.Now()
 	defer func() {
-		log.Infof("Engine completed reconciliation in %s", time.Now().Sub(start))
+		elapsed := time.Now().Sub(start)
+		logFunc := log.V(1).Infof
+		// If the reconciliation time is slow, elevate the log level
+		if elapsed > reconcileInterval {
+			logFunc = log.Warningf
+		}
+		logFunc("Engine completed reconciliation in %s", time.Now().Sub(start))
 	}()
 
 	jobs, err := e.registry.Jobs()
