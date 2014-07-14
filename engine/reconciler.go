@@ -14,12 +14,12 @@ type Reconciler interface {
 	Reconcile()
 }
 
-type reconciler struct {
+type wipReconciler struct {
 	reg     registry.Registry
 	machine machine.Machine
 }
 
-func (r *reconciler) Reconcile() {
+func (r *wipReconciler) Reconcile() {
 	log.V(1).Infof("Polling Registry for actionable work")
 
 	jobs, err := r.reg.Jobs()
@@ -204,7 +204,7 @@ func (r *reconciler) Reconcile() {
 	}
 }
 
-func (r *reconciler) offerJob(clust *cluster, j *job.Job) {
+func (r *wipReconciler) offerJob(clust *cluster, j *job.Job) {
 	machineIDs := clust.partition(j)
 	offer := job.NewOfferFromJob(*j, machineIDs)
 	err := r.reg.CreateJobOffer(offer)
