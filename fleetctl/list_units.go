@@ -44,6 +44,9 @@ Or, choose the columns to display:
 			}
 			return "-"
 		},
+		"dstate": func(j *job.Job, full bool) string {
+			return string(j.TargetState)
+		},
 		"load": func(j *job.Job, full bool) string {
 			us := j.UnitState
 			if us == nil {
@@ -80,6 +83,16 @@ Or, choose the columns to display:
 			ms := cachedMachineState(us.MachineID)
 			if ms == nil {
 				ms = &machine.MachineState{ID: us.MachineID}
+			}
+			return machineFullLegend(*ms, full)
+		},
+		"tmachine": func(j *job.Job, full bool) string {
+			if j.TargetMachineID == "" {
+				return "-"
+			}
+			ms := cachedMachineState(j.TargetMachineID)
+			if ms == nil {
+				ms = &machine.MachineState{ID: j.TargetMachineID}
 			}
 			return machineFullLegend(*ms, full)
 		},

@@ -1,13 +1,14 @@
 ## Job states
 
 There are currently three "fleet" states for a job:
-- `inactive` (known by fleet, but not assigned to a machine)
-- `loaded` (assigned to a machine and loaded into systemd there, but not started)
-- `launched` (loaded into systemd, and fleet has called the equivalent of `systemctl start`)
+
+- `inactive`: known by fleet, but not assigned to a machine
+- `loaded`: assigned to a machine and loaded into systemd there, but not started
+- `launched`: loaded into systemd, and fleet has called the equivalent of `systemctl start`
 
 Jobs may only transition directly between these states. For example, for a job to transition from `inactive` to `launched` it must first go state `loaded`.
 
-The current job state is exposed in the `state` column of the output from `fleetctl list-units`. 
+The desired and last known states are exposed in the `DSTATE` and `STATE` columns of the output from `fleetctl list-units`.
 
 The `fleetctl` commands to act on jobs change the *desired state* of a job. fleet itself is then responsible for performing the necessary state transitions to move a job to the desired state. The following table explains the relationship between each `fleetctl` command and job states.
 
