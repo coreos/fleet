@@ -67,10 +67,10 @@ func (u *Unit) Hash() Hash {
 
 // UnitState encodes the current state of a unit loaded into systemd
 type UnitState struct {
-	LoadState   string `json:"loadState"`
-	ActiveState string `json:"activeState"`
-	SubState    string `json:"subState"`
-	MachineID   string `json:"machineID"`
+	LoadState   string
+	ActiveState string
+	SubState    string
+	MachineID   string
 }
 
 func NewUnitState(loadState, activeState, subState, mID string) *UnitState {
