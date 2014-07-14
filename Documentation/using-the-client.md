@@ -31,7 +31,7 @@ When using `--tunnel` and `--endpoint` together, it is important to note that al
 Be sure to install one of the [tagged releases](https://github.com/coreos/fleet/releases) of `fleetctl` that matches the version of fleet running on the CoreOS machine. Find the version on the server with:
 
 ```
-fleet -version
+fleet --version
 ```
 
 See more about [configuring remote access](https://github.com/coreos/fleet/blob/master/Documentation/remote-access.md).
@@ -46,10 +46,10 @@ List all units in the fleet cluster with `fleetctl list-units`. This will descri
 
 ```
 $ fleetctl list-units
-UNIT			LOAD	ACTIVE	SUB		DESC	MACHINE
-hello.service	loaded	active	running	-	148a18ff-6e95-4cd8-92da-c9de9bb90d5a
-ping.service	-		-		-		-	-
-pong.service	-		-		-		-	-
+UNIT			DSTATE 		TMACHINE				STATE		MACHINE					ACTIVE
+hello.service	launched 	148a18ff.../192.0.2.13	launched	148a18ff.../192.0.2.13	active
+ping.service	inactive	-						-			-						-
+pong.service	inactive	-						-			-						-
 ```
 
 ### Push units into the cluster
@@ -163,7 +163,7 @@ Jan 30 01:14:55 ip-172-31-5-250 bash[6973]: Hello, world
 Describe all of the machines currently connected to the cluster with `fleetctl list-machines`:
 
 ```
-$ fleetctl list-machines
+$ fleetctl list-machines --no-legend
 MACHINE									IP			METADATA
 148a18ff-6e95-4cd8-92da-c9de9bb90d5a	19.4.0.112	region=us-west
 491586a6-508f-4583-a71d-bfc4d146e996	19.4.0.113	region=us-east
