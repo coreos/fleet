@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"fmt"
 	"time"
 
 	log "github.com/coreos/fleet/Godeps/_workspace/src/github.com/golang/glog"
@@ -47,7 +48,16 @@ func (e *Engine) Run(stop chan bool) {
 				continue
 			}
 
+			start := time.Now()
 			e.Reconcile()
+			elapsed := time.Now().Sub(start)
+
+			msg := fmt.Sprintf("Engine completed reconciliation in %s", elapsed)
+			if elapsed > reconcileInterval {
+				log.Warning(msg)
+			} else {
+				log.V(1).Info(msg)
+			}
 		}
 	}
 }
@@ -92,17 +102,6 @@ func ensureLeader(prev registry.Lease, reg registry.Registry, machID string) (cu
 // towards their desired states wherever discrepancies are identified.
 func (e *Engine) Reconcile() {
 	log.V(1).Infof("Polling Registry for actionable work")
-
-	start := time.Now()
-	defer func() {
-		elapsed := time.Now().Sub(start)
-		logFunc := log.V(1).Infof
-		// If the reconciliation time is slow, elevate the log level
-		if elapsed > reconcileInterval {
-			logFunc = log.Warningf
-		}
-		logFunc("Engine completed reconciliation in %s", time.Now().Sub(start))
-	}()
 
 	jobs, err := e.registry.Jobs()
 	if err != nil {
