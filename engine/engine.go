@@ -29,7 +29,7 @@ type Engine struct {
 }
 
 func New(reg registry.Registry, mach machine.Machine) *Engine {
-	rec := &wipReconciler{reg, mach}
+	rec := &dumbReconciler{reg, mach}
 	return &Engine{rec, reg, mach, nil}
 }
 
