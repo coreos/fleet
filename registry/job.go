@@ -17,7 +17,7 @@ const (
 	jobPrefix = "job"
 )
 
-// Jobs lists all Jobs known by the Registry
+// Jobs lists all Jobs known by the Registry, ordered by job name
 func (r *EtcdRegistry) Jobs() ([]job.Job, error) {
 	var jobs []job.Job
 

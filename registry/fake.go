@@ -2,6 +2,7 @@ package registry
 
 import (
 	"errors"
+	"sort"
 	"sync"
 
 	"github.com/coreos/fleet/Godeps/_workspace/src/github.com/coreos/go-semver/semver"
@@ -86,10 +87,17 @@ func (f *FakeRegistry) Jobs() ([]job.Job, error) {
 	f.RLock()
 	defer f.RUnlock()
 
-	jobs := make([]job.Job, 0, len(f.jobs))
+	var sorted sort.StringSlice
 	for _, j := range f.jobs {
-		jobs = append(jobs, j)
+		sorted = append(sorted, j.Name)
 	}
+	sorted.Sort()
+
+	jobs := make([]job.Job, 0, len(f.jobs))
+	for _, jName := range sorted {
+		jobs = append(jobs, f.jobs[jName])
+	}
+
 	return jobs, nil
 }
 
