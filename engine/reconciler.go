@@ -52,7 +52,7 @@ func (r *wipReconciler) Reconcile() {
 	for _, j := range jobs {
 		j := j
 		// TODO(jonboulle): consider only adding Active Jobs to the cluster, so we can optimistically make decisions about machines where Jobs will be unscheduled after this Reconcile
-		clust.AddJob(&j)
+		clust.TrackJob(&j)
 		if j.TargetState == job.JobStateInactive {
 			inactive = append(inactive, &j)
 		} else if j.Scheduled() {

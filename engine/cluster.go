@@ -14,18 +14,19 @@ const (
 )
 
 // ClusterCache encapsulates the state of the cluster (in particular, things
-// like the MachineState of every agent) in order for the fleet engine to be
-// able to make scheduling decisions based on the overall state of the cluster.
-// It is a point-in-time snapshot and makes no effort internally to keep up to
-// date with the actual state of the cluster; it must be updated by external
-// users as necessary.
+// like the MachineState of every agent) in order to make scheduling decisions
+// based on the overall state of the cluster.  It is a point-in-time snapshot
+// and makes no effort internally to keep up to date with the actual state of
+// the cluster; it must be updated by external users as necessary. In
+// particular, the TrackMachine and TrackJob functions should be use to
+// initialize the ClusterCache.
 type ClusterCache interface {
 	// TrackMachine adds the given machine to the cluster view.
 	TrackMachine(m *machine.MachineState)
 
-	// AddJob adds the given active Job to the cluster view, tracking its
+	// TrackJob adds the given active Job to the cluster view, tracking its
 	// currently scheduled location.
-	AddJob(j *job.Job)
+	TrackJob(j *job.Job)
 
 	// MachinePresent determines if the referenced Machine appears to be a
 	// current member of the cluster.
@@ -69,7 +70,7 @@ func (c *cluster) TrackMachine(m *machine.MachineState) {
 	c.machines[m.ID] = m
 }
 
-func (c *cluster) AddJob(j *job.Job) {
+func (c *cluster) TrackJob(j *job.Job) {
 	mID := j.TargetMachineID
 	m := c.machsToJobs[mID]
 	if m == nil {
