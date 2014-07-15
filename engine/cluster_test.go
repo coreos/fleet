@@ -147,9 +147,14 @@ func TestCandidates(t *testing.T) {
 			t.Fatalf("case %d: unable to create NewUnit: %v", i, err)
 		}
 		j := job.NewJob("foo", *u)
-		got := tt.c.Candidates(j)
-		if !reflect.DeepEqual(got, tt.want) {
-			t.Errorf("case %d: got %s, want %s", i, got, tt.want)
+		decs := tt.c.Decisions([]*job.Job{j})
+		if len(decs) < 1 {
+			t.Errorf("case %d: no decisions returned", i)
+		} else {
+			got := decs[0].Machine
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("case %d: got %s, want %s", i, got, tt.want)
+			}
 		}
 	}
 }
@@ -232,17 +237,17 @@ func newScheduledTestJobWithXFleet(t *testing.T, name, machine, metadata string)
 	return j
 }
 
-func TestAddJob(t *testing.T) {
+func TestTrackJob(t *testing.T) {
 	c := newEmptyTestCluster()
 	j1 := newScheduledTestJobWithXFleet(t, "j1", "m1", `XConditionMachineOf=j2`)
 	j2 := newScheduledTestJobWithXFleet(t, "j2", "m1", ``)
 	j3 := newScheduledTestJobWithXFleet(t, "j3", "m2", `XConflicts=j4`)
 	j4 := newScheduledTestJobWithXFleet(t, "j4", `m3`, ``)
 
-	c.AddJob(j1)
-	c.AddJob(j2)
-	c.AddJob(j3)
-	c.AddJob(j4)
+	c.TrackJob(j1)
+	c.TrackJob(j2)
+	c.TrackJob(j3)
+	c.TrackJob(j4)
 
 	wantm := map[string][]string{
 		"m1": []string{"j1", "j2"},
@@ -320,4 +325,24 @@ func TestResolvePeers(t *testing.T) {
 		}
 	}
 
+}
+
+func TestContains(t *testing.T) {
+	for i, tt := range []struct {
+		list []string
+		test string
+		want bool
+	}{
+		{[]string{"abc"}, "abc", true},
+		{[]string{"abc", "def"}, "abc", true},
+		{[]string{"foo", "bar"}, "bar", true},
+		{[]string{"foo", "bar"}, "baz", false},
+		{[]string{}, "something", false},
+		{[]string{}, "", false},
+	} {
+		got := contains(tt.list, tt.test)
+		if got != tt.want {
+			t.Errorf("case %d: got %t, want %t", i, got, tt.want)
+		}
+	}
 }
