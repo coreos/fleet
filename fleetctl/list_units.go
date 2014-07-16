@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	defaultListUnitsFields = "unit,state,load,active,sub,desc,machine"
+	defaultListUnitsFields = "unit,dstate,tmachine,state,machine,active"
 )
 
 var (
@@ -43,6 +43,9 @@ Or, choose the columns to display:
 				return string(*js)
 			}
 			return "-"
+		},
+		"dstate": func(j *job.Job, full bool) string {
+			return string(j.TargetState)
 		},
 		"load": func(j *job.Job, full bool) string {
 			us := j.UnitState
@@ -80,6 +83,16 @@ Or, choose the columns to display:
 			ms := cachedMachineState(us.MachineID)
 			if ms == nil {
 				ms = &machine.MachineState{ID: us.MachineID}
+			}
+			return machineFullLegend(*ms, full)
+		},
+		"tmachine": func(j *job.Job, full bool) string {
+			if j.TargetMachineID == "" {
+				return "-"
+			}
+			ms := cachedMachineState(j.TargetMachineID)
+			if ms == nil {
+				ms = &machine.MachineState{ID: j.TargetMachineID}
 			}
 			return machineFullLegend(*ms, full)
 		},
