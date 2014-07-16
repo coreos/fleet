@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"sort"
 	"strings"
 
 	"github.com/coreos/fleet/job"
@@ -129,7 +128,7 @@ func runListUnits(args []string) (exit int) {
 		}
 	}
 
-	jobs, sortable, err := findAllUnits()
+	jobs, err := cAPI.Jobs()
 
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error retrieving list of units from repository: %v\n", err)
@@ -140,9 +139,8 @@ func runListUnits(args []string) (exit int) {
 		fmt.Fprintln(out, strings.ToUpper(strings.Join(cols, "\t")))
 	}
 
-	for _, name := range sortable {
+	for _, j := range jobs {
 		var f []string
-		j := jobs[name]
 		for _, c := range cols {
 			f = append(f, listUnitsFields[c](&j, sharedFlags.Full))
 		}
@@ -150,26 +148,6 @@ func runListUnits(args []string) (exit int) {
 	}
 
 	out.Flush()
-	return
-}
-
-// findAllUnits returns a map describing all the Jobs in the Registry, and a
-// sort.StringSlice containing their names in sorted order.
-// It returns any error encountered in communicating with the Registry.
-func findAllUnits() (jobs map[string]job.Job, sortable sort.StringSlice, err error) {
-	jobs = make(map[string]job.Job, 0)
-	jj, err := cAPI.Jobs()
-	if err != nil {
-		return
-	}
-
-	for _, j := range jj {
-		jobs[j.Name] = j
-		sortable = append(sortable, j.Name)
-	}
-
-	sortable.Sort()
-
 	return
 }
 
