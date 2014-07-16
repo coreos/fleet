@@ -71,7 +71,7 @@ func runListMachines(args []string) (exit int) {
 		}
 	}
 
-	machines, sortable, err := findAllMachines()
+	machines, err := cAPI.Machines()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error retrieving list of active machines: %v\n", err)
 		return 1
@@ -81,9 +81,9 @@ func runListMachines(args []string) (exit int) {
 		fmt.Fprintln(out, strings.ToUpper(strings.Join(cols, "\t")))
 	}
 
-	for _, name := range sortable {
+	for _, ms := range machines {
+		ms := ms
 		var f []string
-		ms := machines[name]
 		for _, c := range cols {
 			f = append(f, listMachinesFields[c](&ms, sharedFlags.Full))
 		}
@@ -108,26 +108,6 @@ func formatMetadata(metadata map[string]string) string {
 		idx++
 	}
 	return strings.Join(pairs, ",")
-}
-
-// findAllMachines returns a map describing all the machines in the Registry, and a
-// sort.StringSlice indicating their sorted order (based on their respective
-// machine IDs). It returns any error encountered in communicating with the Registry.
-func findAllMachines() (machines map[string]machine.MachineState, sortable sort.StringSlice, err error) {
-	machines = make(map[string]machine.MachineState, 0)
-	mm, err := cAPI.Machines()
-	if err != nil {
-		return
-	}
-
-	for _, m := range mm {
-		machines[m.ID] = m
-		sortable = append(sortable, m.ID)
-	}
-
-	sortable.Sort()
-
-	return
 }
 
 func machineToFieldKeys(m map[string]machineToField) (keys []string) {

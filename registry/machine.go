@@ -16,6 +16,7 @@ const (
 func (r *EtcdRegistry) Machines() (machines []machine.MachineState, err error) {
 	req := etcd.Get{
 		Key:       path.Join(r.keyPrefix, machinePrefix),
+		Sorted:    true,
 		Recursive: true,
 	}
 
