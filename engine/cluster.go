@@ -36,7 +36,9 @@ type ClusterCache interface {
 	Decisions(jobs []*job.Job) []Decision
 }
 
-// Decision represents a scheduling Decision made by a Cluster Cache.
+// Decision represents a scheduling Decision made by a Cluster Cache, mapping a
+// Job to a Machine. A scheduling Decision is either successful (non-nil
+// Machine, nil Reason) or unsuccessful (nil Machine, non-nil Reason).
 type Decision struct {
 	// Job name
 	Name string
@@ -54,6 +56,26 @@ type cluster struct {
 	jobToMach    map[string]string
 	jobConflicts map[string][]string
 	jobPeers     map[string][]string
+}
+
+// pod represents a group of Jobs with Peer requirements, and aggregates the
+// conflicts and resources of the constituent jobs
+type pod struct {
+	jobs []*job.Job
+}
+
+func (p *pod) conflicts() (c []string) {
+	for _, j := range p.jobs {
+		c = append(c, j.Peers()...)
+	}
+	return
+}
+
+func (p *pod) resources() (r resource.ResourceTuple) {
+	for _, j := range p.jobs {
+		r = resource.Sum(r, j.Resources())
+	}
+	return
 }
 
 func newCluster() ClusterCache {
@@ -118,53 +140,29 @@ func (c *cluster) Decisions(jobs []*job.Job) (decs []Decision) {
 		jobMap[j.Name] = j
 	}
 
-	// Partition jobs into groups of peers (aka "pods")
-	pods := make([][]*job.Job, 0)
-	for jName, j := range jobMap {
-		pod := []*job.Job{j}
-		peers := c.resolvePeers(jName)
-
-		var dec *Decision
-		for _, p := range peers {
-			if contains(j.Conflicts(), p) {
-				dec = &Decision{
-					Name:   jName,
-					Reason: fmt.Errorf("unresolvable conflict: transitive peer %s in Conflicts", p),
-				}
-			}
-		}
-		if dec != nil {
-			decs = append(decs, *dec)
-			continue
-		}
-
-		for _, p := range peers {
-			pod = append(pod, jobMap[p])
-			delete(jobMap, p)
-		}
-
-		pods = append(pods, pod)
+	// Partition jobs into groups of peers (aka "pods").
+	pods, failures := c.partitionPods(jobMap)
+	for _, f := range failures {
+		decs = append(decs, f)
 	}
 
-	for _, pod := range pods {
-		if len(pod) > 0 {
+	for _, p := range pods {
+		if len(p.jobs) > 0 {
 		}
 		/*
-			if len(j.Conflicts()) > 0 {
-				// TODO(jonboulle): deal with this. including transitive conflicts.
-				return []string{}
+				if len(j.Conflicts()) > 0 {
+					// TODO(jonboulle): deal with this. including transitive conflicts.
+					return []string{}
+				}
+			var machineIDs []string
+			if j.Resources().Empty() {
+				machineIDs = c.kLeastLoaded(partitionSize)
+			} else {
+				machineIDs = c.sufficientResources(j.Resources())
 			}
+			sort.Strings(machineIDs)
 		*/
 	}
-	/*
-		var machineIDs []string
-		if j.Resources().Empty() {
-			machineIDs = c.kLeastLoaded(partitionSize)
-		} else {
-			machineIDs = c.sufficientResources(j.Resources())
-		}
-		sort.Strings(machineIDs)
-	*/
 	return
 }
 
@@ -265,6 +263,7 @@ func (c *cluster) trackJobPeers(jName string, peers []string) {
 // resolvePeers determines the transitive closure of all Peers of the
 // Job of a given Name, sorted lexicographically
 func (c *cluster) resolvePeers(jName string) []string {
+	// TODO(jonboulle): use pkg.Set once merged
 	seen := make(map[string]bool)
 	all := make([]string, 0)
 	c.resolve(jName, seen)
@@ -286,6 +285,7 @@ func (c *cluster) resolve(name string, seen map[string]bool) {
 	return
 }
 
+// contains checks if a slice of strings contains the given string
 func contains(list []string, str string) bool {
 	for _, s := range list {
 		if s == str {
@@ -293,4 +293,39 @@ func contains(list []string, str string) bool {
 		}
 	}
 	return false
+}
+
+// partitionPods separates the given set of Jobs into pods. Any Jobs resulting
+// in unresolvable pods (for example, where the set of Peers overlaps with the
+// set of Conflicts) are returned as failed scheduling decisions.
+func (c *cluster) partitionPods(jobMap map[string]*job.Job) (pods []*pod, decs []Decision) {
+	for jName, j := range jobMap {
+		peers := c.resolvePeers(jName)
+
+		var dec *Decision
+		for _, p := range peers {
+			if contains(j.Conflicts(), p) {
+				dec = &Decision{
+					Name:   jName,
+					Reason: fmt.Errorf("unresolvable conflict: transitive peer %s in Conflicts", p),
+				}
+			}
+		}
+		if dec != nil {
+			decs = append(decs, *dec)
+			continue
+		}
+
+		p := &pod{
+			jobs: []*job.Job{j},
+		}
+
+		for _, peer := range peers {
+			p.jobs = append(p.jobs, jobMap[peer])
+			delete(jobMap, peer)
+		}
+
+		pods = append(pods, p)
+	}
+	return
 }
