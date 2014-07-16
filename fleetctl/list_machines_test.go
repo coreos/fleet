@@ -21,25 +21,6 @@ func newTestRegistryForListMachines() registry.Registry {
 	return reg
 }
 
-func TestGetAllMachines(t *testing.T) {
-	cAPI = newTestRegistryForListMachines()
-	machines, sortable, err := findAllMachines()
-	if err != nil {
-		t.Fatalf("Unexpected error getting all machines: %v\n", err)
-	}
-	if len(machines) != 3 {
-		t.Fatalf("Expected to find three machines, got: %v\n", machines)
-	}
-
-	if sortable[0] != "abcdef" {
-		t.Errorf("Expected to find abcdef as the first machine, but it was %s\n", sortable[0])
-	}
-
-	if sortable[2] != "mnopqr" {
-		t.Errorf("Expected to find mnopqr as the last machine, but it was %s\n", sortable[2])
-	}
-}
-
 func TestListMachinesFieldsToStrings(t *testing.T) {
 	id := "4d389537d9d14bdabe8be54a9c29f68d"
 	ip := "192.0.2.1"
