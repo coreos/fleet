@@ -199,45 +199,6 @@ func TestNewSystemdUnitFileFromLegacyContents(t *testing.T) {
 	}
 }
 
-func TestDeserializeLine(t *testing.T) {
-	deserializeLineExamples := map[string][]string{
-		`key=foo=bar`:             {`foo=bar`},
-		`key="foo=bar"`:           {`foo=bar`},
-		`key="foo=bar" "baz=qux"`: {`foo=bar`, `baz=qux`},
-		`key="foo=bar baz"`:       {`foo=bar baz`},
-		`key="foo=bar" baz`:       {`"foo=bar" baz`},
-		`key=baz "foo=bar"`:       {`baz "foo=bar"`},
-		`key="foo=bar baz=qux"`:   {`foo=bar baz=qux`},
-	}
-
-	for q, w := range deserializeLineExamples {
-		k, g, err := deserializeUnitLine(q)
-		if err != nil {
-			t.Fatalf("Unexpected error testing %q: %v", q, err)
-		}
-		if k != "key" {
-			t.Fatalf("Unexpected key, got %q, want %q", k, "key")
-		}
-		if !reflect.DeepEqual(g, w) {
-			t.Errorf("Unexpected line parse for %q:\ngot %q\nwant %q", q, g, w)
-		}
-	}
-
-	// Any non-empty line without an '=' is bad
-	badLines := []string{
-		`<<<<<<<<<<<<<<<<<<<<<<<<`,
-		`asdjfkl;`,
-		`>>>>>>>>>>>>>>>>>>>>>>>>`,
-		`!@#$%^&&*`,
-	}
-	for _, l := range badLines {
-		_, _, err := deserializeUnitLine(l)
-		if err == nil {
-			t.Fatalf("Did not get expected error deserializing %q", l)
-		}
-	}
-}
-
 func TestBadUnitsFail(t *testing.T) {
 	bad := []string{
 		`
