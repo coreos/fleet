@@ -31,43 +31,6 @@ func newFakeRegistryForListUnits(t *testing.T, jobs []job.Job) registry.Registry
 	return reg
 }
 
-func TestJobs(t *testing.T) {
-	cAPI = newFakeRegistryForListUnits(t, []job.Job{*newNamedTestJobFromUnitContents(t, "pong.service", "")})
-
-	jobs, sortable, err := findAllUnits()
-	if err != nil {
-		t.Fatalf("Unexpected error getting all units: %v\n", err)
-	}
-	if len(jobs) != 1 {
-		t.Fatalf("Expected to find one unit: %v\n", jobs)
-	}
-
-	if sortable[0] != "pong.service" {
-		t.Errorf("Expected to find pong.service as the first name, but it was %s\n", sortable[0])
-	}
-}
-
-func TestJobDescription(t *testing.T) {
-	contents := `[Unit]
-Description=PING
-`
-	cAPI = newFakeRegistryForListUnits(t, []job.Job{
-		*newTestJobFromUnitContents(t, ""),
-		*newNamedTestJobFromUnitContents(t, "ping.service", contents),
-	})
-
-	jobs, _, _ := findAllUnits()
-	if len(jobs) != 2 {
-		t.Errorf("Expected to find two units: %v\n", jobs)
-	}
-
-	ping := jobs["ping.service"]
-	desc := ping.Unit.Description()
-	if desc != "PING" {
-		t.Errorf("Expected to have `PING` as a description, but it was %s\n", desc)
-	}
-}
-
 func assertEqual(t *testing.T, name string, want, got interface{}) {
 	if want != got {
 		t.Errorf("expected %q to be %q, got %q", name, want, got)
