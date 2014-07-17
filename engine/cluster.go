@@ -129,8 +129,11 @@ func (c *cluster) scheduleJob(machID string, j *job.Job) {
 func (c *cluster) Decisions(jobs []*job.Job) (decs []Decision) {
 	jobMap := make(map[string]*job.Job)
 	for _, j := range jobs {
+		j := j
+		// For jobs with specific targets, short-circuit the scheduling logic
+		// TODO(jonboulle): should we care about resource requirements and other restrictions in this case?
 		if machID, ok := j.RequiredTarget(); ok {
-			// TODO(jonboulle): should we care about resource requirements and other restrictions in this case?
+			c.scheduleJob(machID, j)
 			decs = append(decs, Decision{
 				Name:    j.Name,
 				Machine: machID,
@@ -140,7 +143,7 @@ func (c *cluster) Decisions(jobs []*job.Job) (decs []Decision) {
 		jobMap[j.Name] = j
 	}
 
-	// Partition jobs into groups of peers (aka "pods").
+	// Partition remaining to-be-scheduled jobs into groups of peers (aka "pods").
 	pods, failures := c.partitionPods(jobMap)
 	for _, f := range failures {
 		decs = append(decs, f)
@@ -302,13 +305,19 @@ func (c *cluster) partitionPods(jobMap map[string]*job.Job) (pods []*pod, decs [
 	for jName, j := range jobMap {
 		peers := c.resolvePeers(jName)
 
+		var conflicts []string
 		var dec *Decision
 		for _, p := range peers {
-			if contains(j.Conflicts(), p) {
+			// TODO(jonboulle): use pkg.Set once merged
+			conflicts = append(conflicts, jobMap[p].Conflicts()...)
+		}
+		for _, p := range peers {
+			if contains(conflicts, p) {
 				dec = &Decision{
 					Name:   jName,
-					Reason: fmt.Errorf("unresolvable conflict: transitive peer %s in Conflicts", p),
+					Reason: fmt.Errorf("unresolvable transitive conflict: Peer %s in Conflicts", p),
 				}
+				break
 			}
 		}
 		if dec != nil {

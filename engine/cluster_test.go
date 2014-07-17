@@ -212,7 +212,7 @@ func TestTrackJobConflicts(t *testing.T) {
 
 }
 
-func newScheduledTestJobWithXFleet(t *testing.T, name, machine, metadata string) *job.Job {
+func newTestJobWithXFleet(t *testing.T, name, machine, metadata string) *job.Job {
 	contents := fmt.Sprintf(`
 [X-Fleet]
 %s
@@ -225,16 +225,18 @@ func newScheduledTestJobWithXFleet(t *testing.T, name, machine, metadata string)
 	if j == nil {
 		t.Fatalf("error creating Job %q from %q", name, u)
 	}
-	j.TargetMachineID = machine
+	if machine != "" {
+		j.TargetMachineID = machine
+	}
 	return j
 }
 
 func TestTrackJob(t *testing.T) {
 	c := newEmptyTestCluster()
-	j1 := newScheduledTestJobWithXFleet(t, "j1", "m1", `XConditionMachineOf=j2`)
-	j2 := newScheduledTestJobWithXFleet(t, "j2", "m1", ``)
-	j3 := newScheduledTestJobWithXFleet(t, "j3", "m2", `XConflicts=j4`)
-	j4 := newScheduledTestJobWithXFleet(t, "j4", `m3`, ``)
+	j1 := newTestJobWithXFleet(t, "j1", "m1", `XConditionMachineOf=j2`)
+	j2 := newTestJobWithXFleet(t, "j2", "m1", ``)
+	j3 := newTestJobWithXFleet(t, "j3", "m2", `XConflicts=j4`)
+	j4 := newTestJobWithXFleet(t, "j4", `m3`, ``)
 
 	c.TrackJob(j1)
 	c.TrackJob(j2)
@@ -335,6 +337,56 @@ func TestContains(t *testing.T) {
 		got := contains(tt.list, tt.test)
 		if got != tt.want {
 			t.Errorf("case %d: got %t, want %t", i, got, tt.want)
+		}
+	}
+}
+
+func TestPartitionPods(t *testing.T) {
+	foo := newTestJobWithXFleet(t, "foo", "", "X-ConditionMachineOf=bar")
+	bar := newTestJobWithXFleet(t, "bar", "", "X-ConditionMachineOf=baz")
+	baz := newTestJobWithXFleet(t, "baz", "", "X-Conflicts=foo")
+	c := newEmptyTestCluster()
+	c.TrackJob(foo)
+	c.TrackJob(bar)
+	/*
+		c := &cluster{
+			jobPeers: map[string][]string{
+				"foo":   {"bar", "baz", "woof"},
+				"bar":   {"foo"},
+				"baz":   {"foo", "quack", "meow"},
+				"woof":  {"quack", "foo"},
+				"quack": {"woof", "baz"},
+				"meow":  {"baz"},
+				"bark":  {"yap"},
+				"yap":   {"bark"},
+			},
+		}
+	*/
+	for i, tt := range []struct {
+		jm   map[string]*job.Job
+		pods []*pod
+		decs []Decision
+	}{
+		{
+			map[string]*job.Job{"foo": foo, "bar": bar, "baz": baz},
+			nil,
+			[]Decision{Decision{Name: "foo"}, Decision{Name: "bar"}, Decision{Name: "baz"}},
+		},
+	} {
+		p, d := c.partitionPods(tt.jm)
+		if !reflect.DeepEqual(p, tt.pods) {
+			t.Errorf("case %d: bad pods returned - got %v, want %v", i, p, tt.pods)
+		}
+		for _, want := range tt.decs {
+			var found bool
+			for _, got := range d {
+				if got.Name == want.Name {
+					found = true
+				}
+			}
+			if !found {
+				t.Errorf("case %d: did not find expecte Decision for %v", i, want)
+			}
 		}
 	}
 }
