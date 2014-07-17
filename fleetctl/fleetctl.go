@@ -2,6 +2,8 @@ package main
 
 import (
 	"crypto/tls"
+	"crypto/x509"
+	"encoding/pem"
 	"flag"
 	"fmt"
 	"io"
@@ -55,6 +57,9 @@ var (
 		Version               bool
 		Endpoint              string
 		EtcdKeyPrefix         string
+		KeyFile               string
+		CertFile              string
+		CAFile                string
 		UseAPI                bool
 		KnownHostsFile        string
 		StrictHostKeyChecking bool
@@ -80,6 +85,9 @@ func init() {
 	globalFlagset.BoolVar(&globalFlags.Version, "version", false, "Print the version and exit")
 	globalFlagset.StringVar(&globalFlags.Endpoint, "endpoint", "http://127.0.0.1:4001", "etcd endpoint for fleet")
 	globalFlagset.StringVar(&globalFlags.EtcdKeyPrefix, "etcd-key-prefix", registry.DefaultKeyPrefix, "Keyspace for fleet data in etcd (development use only!)")
+	globalFlagset.StringVar(&globalFlags.KeyFile, "keyfile", "", "etcd key file authentication")
+	globalFlagset.StringVar(&globalFlags.CertFile, "certfile", "", "etcd cert file authentication")
+	globalFlagset.StringVar(&globalFlags.CAFile, "cafile", "", "etcd CA file authentication")
 	globalFlagset.BoolVar(&globalFlags.UseAPI, "experimental-api", false, "Use the experimental HTTP API. This flag will be removed when the API is no longer considered experimental.")
 	globalFlagset.StringVar(&globalFlags.KnownHostsFile, "known-hosts-file", ssh.DefaultKnownHostsFile, "File used to store remote machine fingerprints. Ignored if strict host key checking is disabled.")
 	globalFlagset.BoolVar(&globalFlags.StrictHostKeyChecking, "strict-host-key-checking", true, "Verify host keys presented by remote machines before initiating SSH connections.")
@@ -274,14 +282,63 @@ func getRegistryClient() (client.API, error) {
 		}
 	}
 
+	tlsConfig, err := tlsRegistryClientConfig()
+	if err != nil {
+		return nil, err
+	}
 	trans := http.Transport{
 		Dial: dial,
-		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: true,
-		},
+		TLSClientConfig: tlsConfig,
 	}
 
 	return client.NewRegistryClient(&trans, globalFlags.Endpoint, globalFlags.EtcdKeyPrefix)
+}
+
+func tlsRegistryClientConfig() (*tls.Config, error) {
+	if globalFlags.KeyFile == "" || globalFlags.CertFile == "" {
+		return &tls.Config{ InsecureSkipVerify: true }, nil
+	}
+
+	tlsCert, err := tls.LoadX509KeyPair(globalFlags.CertFile, globalFlags.KeyFile)
+	if err != nil {
+		return nil, err
+	}
+
+	cfg := tls.Config {
+		Certificates: []tls.Certificate{tlsCert},
+	}
+
+	if globalFlags.CAFile != "" {
+		cp, err := newCertPool(globalFlags.CAFile)
+		if err != nil {
+			return nil, err
+		}
+
+		cfg.RootCAs = cp
+	}
+
+	return &cfg, nil
+}
+
+func newCertPool(CAFile string) (*x509.CertPool, error) {
+	certPool := x509.NewCertPool()
+	pemByte, err := ioutil.ReadFile(CAFile)
+	if err != nil {
+		return nil, err
+	}
+
+	for {
+		var block *pem.Block
+		block, pemByte = pem.Decode(pemByte)
+		if block == nil {
+			return certPool, nil
+		}
+		cert, err := x509.ParseCertificate(block.Bytes)
+		if err != nil {
+			return nil, err
+		}
+		certPool.AddCert(cert)
+	}
 }
 
 // getChecker creates and returns a HostKeyChecker, or nil if any error is encountered

@@ -87,6 +87,9 @@ func TestFilterURL(t *testing.T) {
 		// hostname
 		{"http://example.com/", true},
 
+		// https scheme
+		{"https://192.0.2.3:4002/", true},
+
 		// no host info
 		{"http:///foo/bar", false},
 
@@ -104,9 +107,6 @@ func TestFilterURL(t *testing.T) {
 
 		// non-http scheme
 		{"boots://192.0.2.3:4002/", false},
-
-		// https scheme fails for now
-		{"https://192.0.2.3:4002/", false},
 
 		// no slash after scheme (url.URL.Opaque)
 		{"http:192.0.2.3/", false},

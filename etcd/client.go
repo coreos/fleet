@@ -69,8 +69,8 @@ func setDefaultPath(u *url.URL) {
 // filterURL raises an error if the provided url.URL has any
 // questionable attributes
 func filterURL(u *url.URL) error {
-	if u.Scheme != "http" {
-		return fmt.Errorf("unable to use endpoint scheme %s, http only", u.Scheme)
+	if !(u.Scheme == "http" || u.Scheme == "https") {
+		return fmt.Errorf("unable to use endpoint scheme %s, http/https only", u.Scheme)
 	}
 
 	if u.Path != "/" {
