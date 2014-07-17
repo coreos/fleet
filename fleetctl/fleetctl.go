@@ -1,7 +1,6 @@
 package main
 
 import (
-	"crypto/tls"
 	"flag"
 	"fmt"
 	"io"
@@ -18,6 +17,7 @@ import (
 	log "github.com/coreos/fleet/Godeps/_workspace/src/github.com/golang/glog"
 
 	"github.com/coreos/fleet/client"
+	"github.com/coreos/fleet/etcd"
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/registry"
@@ -55,6 +55,9 @@ var (
 		Version               bool
 		Endpoint              string
 		EtcdKeyPrefix         string
+		EtcdKeyFile           string
+		EtcdCertFile          string
+		EtcdCAFile            string
 		UseAPI                bool
 		KnownHostsFile        string
 		StrictHostKeyChecking bool
@@ -80,6 +83,9 @@ func init() {
 	globalFlagset.BoolVar(&globalFlags.Version, "version", false, "Print the version and exit")
 	globalFlagset.StringVar(&globalFlags.Endpoint, "endpoint", "http://127.0.0.1:4001", "etcd endpoint for fleet")
 	globalFlagset.StringVar(&globalFlags.EtcdKeyPrefix, "etcd-key-prefix", registry.DefaultKeyPrefix, "Keyspace for fleet data in etcd (development use only!)")
+	globalFlagset.StringVar(&globalFlags.EtcdKeyFile, "etcd-keyfile", "", "etcd key file authentication")
+	globalFlagset.StringVar(&globalFlags.EtcdCertFile, "etcd-certfile", "", "etcd cert file authentication")
+	globalFlagset.StringVar(&globalFlags.EtcdCAFile, "etcd-cafile", "", "etcd CA file authentication")
 	globalFlagset.BoolVar(&globalFlags.UseAPI, "experimental-api", false, "Use the experimental HTTP API. This flag will be removed when the API is no longer considered experimental.")
 	globalFlagset.StringVar(&globalFlags.KnownHostsFile, "known-hosts-file", ssh.DefaultKnownHostsFile, "File used to store remote machine fingerprints. Ignored if strict host key checking is disabled.")
 	globalFlagset.BoolVar(&globalFlags.StrictHostKeyChecking, "strict-host-key-checking", true, "Verify host keys presented by remote machines before initiating SSH connections.")
@@ -274,11 +280,13 @@ func getRegistryClient() (client.API, error) {
 		}
 	}
 
+	tlsConfig, err := etcd.TLSClientConfig(globalFlags.EtcdCAFile, globalFlags.EtcdCertFile, globalFlags.EtcdKeyFile)
+	if err != nil {
+		return nil, err
+	}
 	trans := http.Transport{
-		Dial: dial,
-		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: true,
-		},
+		Dial:            dial,
+		TLSClientConfig: tlsConfig,
 	}
 
 	return client.NewRegistryClient(&trans, globalFlags.Endpoint, globalFlags.EtcdKeyPrefix)

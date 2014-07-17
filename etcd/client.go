@@ -1,6 +1,9 @@
 package etcd
 
 import (
+	"crypto/tls"
+	"crypto/x509"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -69,8 +72,8 @@ func setDefaultPath(u *url.URL) {
 // filterURL raises an error if the provided url.URL has any
 // questionable attributes
 func filterURL(u *url.URL) error {
-	if u.Scheme != "http" {
-		return fmt.Errorf("unable to use endpoint scheme %s, http only", u.Scheme)
+	if !(u.Scheme == "http" || u.Scheme == "https") {
+		return fmt.Errorf("unable to use endpoint scheme %s, http/https only", u.Scheme)
 	}
 
 	if u.Path != "/" {
@@ -355,4 +358,49 @@ func (ar *actionResolver) one(req *http.Request, cancel <-chan bool) (resp *http
 
 	log.V(1).Infof("etcd: recv response from %s %s: %s", req.Method, req.URL, resp.Status)
 	return
+}
+
+func TLSClientConfig(cafile string, certfile string, keyfile string) (*tls.Config, error) {
+	if certfile == "" && keyfile == "" {
+		return &tls.Config{InsecureSkipVerify: true}, nil
+	}
+
+	tlsCert, err := tls.LoadX509KeyPair(certfile, keyfile)
+	if err != nil {
+		return nil, err
+	}
+
+	cfg := tls.Config{
+		Certificates: []tls.Certificate{tlsCert},
+	}
+
+	if cafile != "" {
+		cp, err := newCertPool(cafile)
+		if err != nil {
+			return nil, err
+		}
+		cfg.RootCAs = cp
+	}
+
+	return &cfg, nil
+}
+
+func newCertPool(cafile string) (*x509.CertPool, error) {
+	pemByte, err := ioutil.ReadFile(cafile)
+	if err != nil {
+		return nil, err
+	}
+	certPool := x509.NewCertPool()
+	for {
+		var block *pem.Block
+		block, pemByte = pem.Decode(pemByte)
+		if block == nil {
+			return certPool, nil
+		}
+		cert, err := x509.ParseCertificate(block.Bytes)
+		if err != nil {
+			return nil, err
+		}
+		certPool.AddCert(cert)
+	}
 }
