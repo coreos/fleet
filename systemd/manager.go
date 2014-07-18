@@ -10,6 +10,7 @@ import (
 	"github.com/coreos/fleet/Godeps/_workspace/src/github.com/coreos/go-systemd/dbus"
 	log "github.com/coreos/fleet/Godeps/_workspace/src/github.com/golang/glog"
 
+	"github.com/coreos/fleet/pkg"
 	"github.com/coreos/fleet/unit"
 )
 
@@ -155,6 +156,38 @@ func (m *SystemdUnitManager) Units() (units []string, err error) {
 		units = append(units, name)
 	}
 	return
+}
+
+func (m *SystemdUnitManager) GetUnitStates(filter pkg.Set) (map[string]*unit.UnitState, error) {
+	dbusStatuses, err := m.systemd.ListUnits()
+	if err != nil {
+		return nil, err
+	}
+
+	states := make(map[string]*unit.UnitState)
+	for _, dus := range dbusStatuses {
+		if !filter.Contains(dus.Name) {
+			continue
+		}
+
+		us := unit.NewUnitState(dus.LoadState, dus.ActiveState, dus.SubState, "")
+		states[dus.Name] = us
+	}
+
+	// grab data on subscribed units that didn't show up in ListUnits, most
+	// likely due to being inactive
+	for _, name := range filter.Values() {
+		if _, ok := states[name]; ok {
+			continue
+		}
+
+		states[name], err = m.GetUnitState(name)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return states, nil
 }
 
 func (m *SystemdUnitManager) writeUnit(name string, contents string) error {
