@@ -39,7 +39,7 @@ func (es *EventStream) Stream(idx uint64, sendFunc func(*event.Event), stop chan
 }
 
 func pipe(etcdchan chan *etcd.Result, filters []func(res *etcd.Result) *event.Event, sendFunc func(*event.Event), stop chan bool) {
-	for true {
+	for {
 		select {
 		case <-stop:
 			return
@@ -59,7 +59,7 @@ func pipe(etcdchan chan *etcd.Result, filters []func(res *etcd.Result) *event.Ev
 }
 
 func watch(client etcd.Client, idx uint64, etcdchan chan *etcd.Result, key string, stop chan bool) {
-	for true {
+	for {
 		select {
 		case <-stop:
 			log.V(1).Infof("Gracefully closing etcd watch loop: key=%s", key)
