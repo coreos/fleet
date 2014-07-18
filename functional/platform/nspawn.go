@@ -201,16 +201,6 @@ func (nc *nspawnCluster) CreateMember(name string, cfg MachineConfig) (err error
 		// set up directory for fleet service
 		fmt.Sprintf("mkdir -p %s/etc/systemd/system", fsdir),
 
-		// update-ca-certificates takes an inordinate amount of time, so simply mask it for now
-		// until https://github.com/coreos/coreos-overlay/pull/681 is integrated
-		fmt.Sprintf("ln -s /dev/null %s/etc/systemd/system/update-ca-certificates.service", fsdir),
-
-		// since we're in a container we lack initrd bootstrapping magic
-		// https://github.com/coreos/bootengine/blob/master/dracut/80setup-root/pre-pivot-setup-root.sh#L28
-		// so until this is fixed, manually copy nsswitch.conf so that systemd-tmpfiles.service can access users it needs
-		// https://github.com/coreos/init/pull/111/
-		fmt.Sprintf("cp /etc/nsswitch.conf %s/etc", fsdir),
-
 		// minimum requirements for running systemd/coreos in a container
 		fmt.Sprintf("mkdir -p %s/usr", fsdir),
 		fmt.Sprintf("cp /etc/os-release %s/etc", fsdir),
