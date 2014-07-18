@@ -5,7 +5,6 @@ import (
 
 	"github.com/coreos/fleet/event"
 	"github.com/coreos/fleet/job"
-	"github.com/coreos/fleet/unit"
 )
 
 type EventHandler struct {
@@ -84,17 +83,4 @@ func (eh *EventHandler) unloadJobEvent(ev event.Event) {
 
 	log.Infof("%s(%s): Job(%s) unscheduled, deciding what to do", ev.Type, jobName, jobName)
 	eh.agent.JobUnscheduled(jobName)
-}
-
-func (eh *EventHandler) HandleEventUnitStateUpdated(ev event.Event) {
-	jobName := ev.Context.(string)
-	state := ev.Payload.(*unit.UnitState)
-
-	if state == nil {
-		log.V(1).Infof("EventUnitStateUpdated(%s): received nil UnitState object, ignoring", jobName)
-		return
-	}
-
-	log.Infof("EventUnitStateUpdated(%s): reporting state to Registry", jobName)
-	eh.agent.ReportUnitState(jobName, state)
 }

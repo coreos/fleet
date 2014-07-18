@@ -33,9 +33,10 @@ const (
 
 type Server struct {
 	agent   *agent.Agent
+	usPub   *agent.UnitStatePublisher
+	usGen   *unit.UnitStateGenerator
 	engine  *engine.Engine
 	rStream *registry.EventStream
-	sStream *systemd.EventStream
 	eBus    *event.EventBus
 	mach    *machine.CoreOSMachine
 	hrt     heart.Heart
@@ -63,14 +64,15 @@ func New(cfg config.Config) (*Server, error) {
 
 	reg := registry.New(eClient, cfg.EtcdKeyPrefix)
 
-	a, err := newAgentFromConfig(mach, reg, cfg, mgr)
+	pub := agent.NewUnitStatePublisher(mgr, reg, mach)
+	gen := unit.NewUnitStateGenerator(mgr)
+
+	a, err := newAgentFromConfig(mach, reg, cfg, mgr, gen)
 	if err != nil {
 		return nil, err
 	}
 
 	e := engine.New(reg, mach)
-
-	sStream := systemd.NewEventStream(mgr)
 
 	rStream, err := registry.NewEventStream(eClient, reg)
 	if err != nil {
@@ -97,9 +99,10 @@ func New(cfg config.Config) (*Server, error) {
 
 	srv := Server{
 		agent:   a,
+		usGen:   gen,
+		usPub:   pub,
 		engine:  e,
 		rStream: rStream,
-		sStream: sStream,
 		eBus:    eBus,
 		mach:    mach,
 		hrt:     hrt,
@@ -140,7 +143,7 @@ func newMachineFromConfig(cfg config.Config, mgr *systemd.SystemdUnitManager) (*
 	return mach, nil
 }
 
-func newAgentFromConfig(mach machine.Machine, reg registry.Registry, cfg config.Config, mgr unit.UnitManager) (*agent.Agent, error) {
+func newAgentFromConfig(mach machine.Machine, reg registry.Registry, cfg config.Config, mgr unit.UnitManager, uGen *unit.UnitStateGenerator) (*agent.Agent, error) {
 	var verifier *sign.SignatureVerifier
 	if cfg.VerifyUnits {
 		var err error
@@ -151,7 +154,7 @@ func newAgentFromConfig(mach machine.Machine, reg registry.Registry, cfg config.
 		}
 	}
 
-	return agent.New(mgr, reg, mach, cfg.AgentTTL, verifier)
+	return agent.New(mgr, uGen, reg, mach, cfg.AgentTTL, verifier)
 }
 
 func (s *Server) Run() {
@@ -178,9 +181,12 @@ func (s *Server) Run() {
 	go s.api.Available(s.stop)
 	go s.mach.PeriodicRefresh(machineStateRefreshInterval, s.stop)
 	go s.rStream.Stream(idx, s.eBus.Dispatch, s.stop)
-	go s.sStream.Stream(s.eBus.Dispatch, s.stop)
 	go s.agent.Heartbeat(s.stop)
 	go s.engine.Run(s.stop)
+
+	beatchan := make(chan *unit.UnitStateHeartbeat)
+	go s.usGen.Run(beatchan, s.stop)
+	go s.usPub.Run(beatchan, s.stop)
 }
 
 // Monitor tracks the health of the Server. If the Server is ever deemed
