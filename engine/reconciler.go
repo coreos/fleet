@@ -199,8 +199,10 @@ func (r *wipReconciler) Reconcile() {
 
 	// Deal with remaining JobOffers that do not have a corresponding Job
 	for jName, _ := range oMap {
-		log.Infof("Removing extraneous JobOffer(%s) since corresponding Job does not exist", jName)
-		resolveJobOffer(jName)
+		if offerExists(j.Name) {
+			log.Infof("Removing extraneous JobOffer(%s) since corresponding Job does not exist", jName)
+			resolveJobOffer(jName)
+		}
 	}
 }
 
