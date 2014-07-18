@@ -53,9 +53,8 @@ func (a *Agent) MarshalJSON() ([]byte, error) {
 	return json.Marshal(data)
 }
 
-// Heartbeat updates the Registry periodically with this Agent's
-// presence information as well as an acknowledgement of the jobs
-// it is expected to be running.
+// Heartbeat updates the Registry periodically with an acknowledgement of the
+// Jobs this Agent is expected to be running.
 func (a *Agent) Heartbeat(stop chan bool) {
 	go a.heartbeatJobs(a.ttl, stop)
 }
