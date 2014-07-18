@@ -9,6 +9,7 @@ import (
 type Cluster interface {
 	CreateMember(string, MachineConfig) error
 	DestroyMember(string) error
+	PoweroffMember(string) error
 	Members() []string
 	MemberCommand(string, ...string) (string, error)
 	Destroy() error
