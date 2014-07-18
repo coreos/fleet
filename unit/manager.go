@@ -14,6 +14,4 @@ type UnitManager interface {
 	Units() ([]string, error)
 	GetUnitStates(pkg.Set) (map[string]*UnitState, error)
 	GetUnitState(string) (*UnitState, error)
-
-	MarshalJSON() ([]byte, error)
 }

@@ -1,7 +1,6 @@
 package systemd
 
 import (
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -21,8 +20,6 @@ const (
 type SystemdUnitManager struct {
 	systemd  *dbus.Conn
 	UnitsDir string
-
-	subscriptions *dbus.SubscriptionSet
 }
 
 func NewSystemdUnitManager(uDir string) (*SystemdUnitManager, error) {
@@ -35,17 +32,8 @@ func NewSystemdUnitManager(uDir string) (*SystemdUnitManager, error) {
 		return nil, err
 	}
 
-	mgr := SystemdUnitManager{systemd, uDir, systemd.NewSubscriptionSet()}
+	mgr := SystemdUnitManager{systemd, uDir}
 	return &mgr, nil
-}
-
-func (m *SystemdUnitManager) MarshalJSON() ([]byte, error) {
-	data := struct {
-		DBUSSubscriptions []string
-	}{
-		DBUSSubscriptions: m.subscriptions.Values(),
-	}
-	return json.Marshal(data)
 }
 
 // Load writes the given Unit to disk, subscribing to relevant dbus
@@ -56,14 +44,12 @@ func (m *SystemdUnitManager) Load(name string, u unit.Unit) error {
 		return err
 	}
 
-	m.subscriptions.Add(name)
 	return m.daemonReload()
 }
 
 // Unload removes the indicated unit from the filesystem, unsubscribing
 // from relevant dbus events.
 func (m *SystemdUnitManager) Unload(name string) {
-	m.subscriptions.Remove(name)
 	m.removeUnit(name)
 	m.daemonReload()
 }
