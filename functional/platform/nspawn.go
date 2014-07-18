@@ -201,16 +201,6 @@ func (nc *nspawnCluster) CreateMember(name string, cfg MachineConfig) (err error
 		// set up directory for fleet service
 		fmt.Sprintf("mkdir -p %s/etc/systemd/system", fsdir),
 
-		// update-ca-certificates takes an inordinate amount of time, so simply mask it for now
-		// until https://github.com/coreos/coreos-overlay/pull/681 is integrated
-		fmt.Sprintf("ln -s /dev/null %s/etc/systemd/system/update-ca-certificates.service", fsdir),
-
-		// since we're in a container we lack initrd bootstrapping magic
-		// https://github.com/coreos/bootengine/blob/master/dracut/80setup-root/pre-pivot-setup-root.sh#L28
-		// so until this is fixed, manually copy nsswitch.conf so that systemd-tmpfiles.service can access users it needs
-		// https://github.com/coreos/init/pull/111/
-		fmt.Sprintf("cp /etc/nsswitch.conf %s/etc", fsdir),
-
 		// minimum requirements for running systemd/coreos in a container
 		fmt.Sprintf("mkdir -p %s/usr", fsdir),
 		fmt.Sprintf("cp /etc/os-release %s/etc", fsdir),
@@ -224,6 +214,9 @@ func (nc *nspawnCluster) CreateMember(name string, cfg MachineConfig) (err error
 
 		// set up directory for machine-id (see below)
 		fmt.Sprintf("mkdir -p %s/var/lib/dbus", fsdir),
+
+		// set up directory for sshd_config (see below)
+		fmt.Sprintf("mkdir -p %s/etc/ssh", fsdir),
 	}
 
 	for _, cmd := range cmds {
@@ -241,6 +234,17 @@ func (nc *nspawnCluster) CreateMember(name string, cfg MachineConfig) (err error
 	uuid := fmt.Sprintf("0000000000000000000000000000000%s\n", name)
 	if err = ioutil.WriteFile(path.Join(fsdir, "/var/lib/dbus/machine-id"), []byte(uuid), 0755); err != nil {
 		log.Printf("Failed writing machine-id: %v", err)
+		return
+	}
+
+	sshd_config := `# Use most defaults for sshd configuration.
+UsePrivilegeSeparation sandbox
+Subsystem sftp internal-sftp
+UseDNS no
+`
+
+	if err = ioutil.WriteFile(path.Join(fsdir, "/etc/ssh/sshd_config"), []byte(sshd_config), 0644); err != nil {
+		log.Printf("Failed writing sshd_config: %v", err)
 		return
 	}
 
