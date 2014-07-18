@@ -117,7 +117,7 @@ loop:
 		case <-alarm:
 			return nil, fmt.Errorf("failed to find %d active units within %v (last found: %d)", count, timeout, nactive)
 		case <-ticker:
-			stdout, _, err := fleetctl("list-units", "--no-legend", "--full")
+			stdout, _, err := fleetctl("list-units", "--no-legend", "--full", "--fields", "unit,state,active,machine")
 			stdout = strings.TrimSpace(stdout)
 			if stdout == "" || err != nil {
 				continue
@@ -151,10 +151,10 @@ type UnitState struct {
 func parseUnitStates(units []string) map[string]UnitState {
 	states := make(map[string]UnitState)
 	for _, unit := range units {
-		cols := strings.SplitN(unit, "\t", 7)
-		if len(cols) == 7 {
-			machine := strings.SplitN(cols[6], "/", 2)[0]
-			states[cols[0]] = UnitState{cols[0], cols[2], cols[3], machine}
+		cols := strings.SplitN(unit, "\t", 4)
+		if len(cols) == 4 {
+			machine := strings.SplitN(cols[3], "/", 2)[0]
+			states[cols[0]] = UnitState{cols[0], cols[1], cols[2], machine}
 		}
 	}
 	return states
