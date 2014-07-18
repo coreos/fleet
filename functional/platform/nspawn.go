@@ -214,6 +214,9 @@ func (nc *nspawnCluster) CreateMember(name string, cfg MachineConfig) (err error
 
 		// set up directory for machine-id (see below)
 		fmt.Sprintf("mkdir -p %s/var/lib/dbus", fsdir),
+
+		// set up directory for sshd_config (see below)
+		fmt.Sprintf("mkdir -p %s/etc/ssh", fsdir),
 	}
 
 	for _, cmd := range cmds {
@@ -231,6 +234,17 @@ func (nc *nspawnCluster) CreateMember(name string, cfg MachineConfig) (err error
 	uuid := fmt.Sprintf("0000000000000000000000000000000%s\n", name)
 	if err = ioutil.WriteFile(path.Join(fsdir, "/var/lib/dbus/machine-id"), []byte(uuid), 0755); err != nil {
 		log.Printf("Failed writing machine-id: %v", err)
+		return
+	}
+
+	sshd_config := `# Use most defaults for sshd configuration.
+UsePrivilegeSeparation sandbox
+Subsystem sftp internal-sftp
+UseDNS no
+`
+
+	if err = ioutil.WriteFile(path.Join(fsdir, "/etc/ssh/sshd_config"), []byte(sshd_config), 0644); err != nil {
+		log.Printf("Failed writing sshd_config: %v", err)
 		return
 	}
 
