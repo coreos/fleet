@@ -41,29 +41,29 @@ func (eh *EventHandler) HandleEventJobScheduled(ev event.Event) {
 	}
 }
 
-func (eh *EventHandler) HandleCommandStartJob(ev event.Event) {
+func (eh *EventHandler) HandleJobTargetStateStarted(ev event.Event) {
 	jobName := ev.Payload.(string)
 	target := ev.Context.(string)
 
 	if target != eh.agent.Machine.State().ID {
-		log.V(1).Infof("CommandStartJob(%s): scheduled elsewhere, ignoring", jobName)
+		log.V(1).Infof("JobTargetStateStarted(%s): scheduled elsewhere, ignoring", jobName)
 		return
 	}
 
-	log.Infof("CommandStartJob(%s): instructing Agent to start Job", jobName)
+	log.Infof("JobTargetStateStarted(%s): instructing Agent to start Job", jobName)
 	eh.agent.StartJob(jobName)
 }
 
-func (eh *EventHandler) HandleCommandStopJob(ev event.Event) {
+func (eh *EventHandler) HandleJobTargetStateStopped(ev event.Event) {
 	jobName := ev.Payload.(string)
 	target := ev.Context.(string)
 
 	if target != eh.agent.Machine.State().ID {
-		log.V(1).Infof("CommandStopJob(%s): scheduled elsewhere, ignoring", jobName)
+		log.V(1).Infof("JobTargetStateStopped(%s): scheduled elsewhere, ignoring", jobName)
 		return
 	}
 
-	log.Infof("CommandStopJob(%s): instructing Agent to stop Job", jobName)
+	log.Infof("JobTargetStateStopped(%s): instructing Agent to stop Job", jobName)
 	eh.agent.StopJob(jobName)
 }
 
