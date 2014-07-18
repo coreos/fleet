@@ -140,9 +140,16 @@ func TestDynamicClusterMemberReboot(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	migrated := 0
 	for _, unit := range []string{"conflict.0.service", "conflict.1.service", "conflict.2.service"} {
 		if oldStates[unit].Machine != newStates[unit].Machine {
-			t.Fatalf("Unit %s migrated unexpectedly", unit)
+			migrated += 1
 		}
+	}
+
+	if migrated != 1 {
+		t.Errorf("Expected 1 unit to migrate, but found %d", migrated)
+		t.Logf("Initial state: %#v", oldStates)
+		t.Logf("Post-reboot state: %#v", newStates)
 	}
 }
