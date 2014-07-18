@@ -39,7 +39,14 @@ func TestKnownHostsVerification(t *testing.T) {
 		t.Errorf("Unable to SSH into fleet machine: \nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)
 	}
 
-	// Recreation of the cluster simulates a change in the server's host key
+	// Gracefully poweroff the machine to allow fleet to purge its state.
+	cluster.PoweroffMember("1")
+
+	machines, err = cluster.WaitForNMachines(0)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	cluster.DestroyMember("1")
 	cluster.CreateMember("1", platform.MachineConfig{})
 	machines, err = cluster.WaitForNMachines(1)

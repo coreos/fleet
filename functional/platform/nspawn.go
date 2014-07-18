@@ -338,6 +338,18 @@ func (nc *nspawnCluster) Destroy() error {
 	return nil
 }
 
+func (nc *nspawnCluster) PoweroffMember(name string) (err error) {
+	label := fmt.Sprintf("%s%s", nc.name, name)
+	// The `machinectl poweroff` command does not cleanly shut down
+	// the nspawn container, so we must use systemctl
+	cmd := fmt.Sprintf("systemctl -M %s poweroff", label)
+	_, _, err = run(cmd)
+	if err != nil {
+		log.Printf("Command '%s' failed: %v", cmd, err)
+	}
+	return
+}
+
 func (nc *nspawnCluster) DestroyMember(name string) error {
 	dir := path.Join(os.TempDir(), nc.name, name)
 	label := fmt.Sprintf("%s%s", nc.name, name)
