@@ -55,7 +55,7 @@ func (a *Agent) MarshalJSON() ([]byte, error) {
 // Heartbeat updates the Registry periodically with an acknowledgement of the
 // Jobs this Agent is expected to be running.
 func (a *Agent) Heartbeat(stop chan bool) {
-	go a.heartbeatJobs(a.ttl, stop)
+	a.heartbeatJobs(a.ttl, stop)
 }
 
 // Initialize prepares the Agent for normal operation by doing three things:
