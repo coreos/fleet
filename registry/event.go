@@ -18,7 +18,7 @@ type EventStream struct {
 func NewEventStream(client etcd.Client, registry Registry) (*EventStream, error) {
 	reg, ok := registry.(*EtcdRegistry)
 	if !ok {
-		return nil, errors.New("EventStream currently only works with EtcdRegistry")
+		return nil, errors.New("eventStream currently only works with EtcdRegistry")
 	}
 
 	return &EventStream{client, reg}, nil
