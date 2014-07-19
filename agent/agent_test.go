@@ -40,7 +40,7 @@ func TestAbleToRunConditionMachineID(t *testing.T) {
 	} {
 		job := newTestJobWithXFleetValues(t, "X-ConditionMachineID=XYZ")
 		mach := &machine.FakeMachine{machine.MachineState{ID: id}}
-		agent := Agent{Machine: mach, state: NewState()}
+		agent := Agent{Machine: mach, cache: NewCache()}
 		got := agent.ableToRun(job)
 		if got != want {
 			t.Errorf("Bad ableToRun for machineID %q: got %t, want %t", id, got, want)
@@ -57,11 +57,11 @@ func TestHasConflictMatches(t *testing.T) {
 		{"[X-Fleet]\nX-Conflicts=other.service", []string{}},
 		{"[X-Fleet]", []string{"example.service"}},
 	} {
-		state := NewState()
+		state := NewCache()
 		j := newTestJobFromUnitContents(t, "example.service", tt.contents)
 		state.TrackJob(j)
 		state.SetTargetState(j.Name, job.JobStateLoaded)
-		agent := Agent{state: state}
+		agent := Agent{cache: state}
 		matched, name := agent.HasConflict("other.service", []string{"example.service"})
 		if !matched {
 			t.Errorf("%d: Expected conflict with 'example.service', no conflict reported", i)
@@ -74,12 +74,12 @@ func TestHasConflictMatches(t *testing.T) {
 // Assert that existing jobs and potential jobs that do not conflict do not
 // trigger a match
 func TestHasConflictNoMatch(t *testing.T) {
-	state := NewState()
+	state := NewCache()
 	j := newTestJobFromUnitContents(t, "example.service", "[X-Fleet]")
 	state.TrackJob(j)
 	state.SetTargetState(j.Name, job.JobStateLoaded)
 
-	agent := Agent{state: state}
+	agent := Agent{cache: state}
 
 	matched, name := agent.HasConflict("other.service", []string{})
 	if matched {
@@ -89,13 +89,13 @@ func TestHasConflictNoMatch(t *testing.T) {
 
 // Assert that our glob-parser can handle relatively-complex matching
 func TestHasConflictComplexGlob(t *testing.T) {
-	state := NewState()
+	state := NewCache()
 
 	j := newTestJobWithXFleetValues(t, "X-Conflicts=*.[1-9].service")
 	state.TrackJob(j)
 	state.SetTargetState(j.Name, job.JobStateLoaded)
 
-	agent := Agent{state: state}
+	agent := Agent{cache: state}
 
 	for _, conflict := range []string{"other.2.service", "foo.1.service", ".9.service"} {
 		matched, name := agent.HasConflict(conflict, []string{})
@@ -108,13 +108,13 @@ func TestHasConflictComplexGlob(t *testing.T) {
 }
 
 func TestHasConflictIgnoresUnscheduledJobs(t *testing.T) {
-	state := NewState()
+	state := NewCache()
 	j := newTestJobWithXFleetValues(t, "X-Conflicts=other.service")
 	state.TrackJob(j)
 
 	state.SetTargetState(j.Name, job.JobStateInactive)
 
-	agent := Agent{state: state}
+	agent := Agent{cache: state}
 
 	matched, name := agent.HasConflict("other.service", []string{})
 	if matched {
@@ -123,13 +123,13 @@ func TestHasConflictIgnoresUnscheduledJobs(t *testing.T) {
 }
 
 func TestHasConflictIgnoresBids(t *testing.T) {
-	state := NewState()
+	state := NewCache()
 	j := newTestJobWithXFleetValues(t, "X-Conflicts=other.service")
 	state.TrackJob(j)
 
 	state.TrackBid(j.Name)
 
-	agent := Agent{state: state}
+	agent := Agent{cache: state}
 
 	matched, name := agent.HasConflict("other.service", []string{})
 	if matched {
@@ -159,7 +159,7 @@ X-ConditionMachineMetadata=region=us-west-1`, true},
 		"region": "us-west-1",
 	}
 	ms := machine.MachineState{Metadata: metadata}
-	agent := &Agent{Machine: &machine.FakeMachine{ms}, state: NewState()}
+	agent := &Agent{Machine: &machine.FakeMachine{ms}, cache: NewCache()}
 
 	for i, e := range metadataAbleToRunExamples {
 		job := newTestJobWithXFleetValues(t, e.C)

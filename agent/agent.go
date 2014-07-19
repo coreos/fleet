@@ -30,7 +30,7 @@ type Agent struct {
 	// A nil verifier implies that all Units are accepted.
 	verifier *sign.SignatureVerifier
 
-	state *AgentState
+	cache *AgentCache
 }
 
 func New(mgr unit.UnitManager, uGen *unit.UnitStateGenerator, reg registry.Registry, mach machine.Machine, ttl string, verifier *sign.SignatureVerifier) (*Agent, error) {
@@ -39,15 +39,15 @@ func New(mgr unit.UnitManager, uGen *unit.UnitStateGenerator, reg registry.Regis
 		return nil, err
 	}
 
-	a := &Agent{reg, mgr, uGen, mach, ttldur, verifier, NewState()}
+	a := &Agent{reg, mgr, uGen, mach, ttldur, verifier, NewCache()}
 	return a, nil
 }
 
 func (a *Agent) MarshalJSON() ([]byte, error) {
 	data := struct {
-		State *AgentState
+		Cache *AgentCache
 	}{
-		State: a.state,
+		Cache: a.cache,
 	}
 	return json.Marshal(data)
 }
@@ -65,10 +65,10 @@ func (a *Agent) Heartbeat(stop chan bool) {
 func (a *Agent) Initialize() {
 	log.Infof("Initializing Agent")
 
-	// Lock the state early so we can decide what the Agent needs to do
+	// Lock the cache early so we can decide what the Agent needs to do
 	// without the risk of conflicting with any of its other moving parts
-	a.state.Lock()
-	defer a.state.Unlock()
+	a.cache.Lock()
+	defer a.cache.Unlock()
 
 	machID := a.Machine.State().ID
 	loaded := map[string]job.Job{}
@@ -114,7 +114,7 @@ func (a *Agent) Initialize() {
 	}
 
 	for _, j := range loaded {
-		a.state.TrackJob(&j)
+		a.cache.TrackJob(&j)
 		a.loadJob(&j)
 
 		if _, ok := launched[j.Name]; !ok {
@@ -129,8 +129,8 @@ func (a *Agent) Initialize() {
 		// Everything we check against could change over time, so we track
 		// all offers starting here for future bidding even if we are
 		// currently unable to bid
-		a.state.TrackOffer(jo)
-		a.state.TrackJob(&jo.Job)
+		a.cache.TrackOffer(jo)
+		a.cache.TrackJob(&jo.Job)
 	}
 
 	a.bidForPossibleJobs()
@@ -138,9 +138,9 @@ func (a *Agent) Initialize() {
 
 // Purge removes the Agent's state from the Registry
 func (a *Agent) Purge() {
-	a.state.Lock()
-	scheduled := a.state.ScheduledJobs()
-	a.state.Unlock()
+	a.cache.Lock()
+	scheduled := a.cache.ScheduledJobs()
+	a.cache.Unlock()
 
 	machID := a.Machine.State().ID
 	for _, jobName := range scheduled {
@@ -160,7 +160,7 @@ func (a *Agent) Purge() {
 func (a *Agent) heartbeatJobs(ttl time.Duration, stop chan bool) {
 	heartbeat := func() {
 		machID := a.Machine.State().ID
-		launched := a.state.LaunchedJobs()
+		launched := a.cache.LaunchedJobs()
 		for _, j := range launched {
 			go a.registry.JobHeartbeat(j, machID, ttl)
 		}
@@ -181,10 +181,10 @@ func (a *Agent) heartbeatJobs(ttl time.Duration, stop chan bool) {
 }
 
 // loadJob hands the given Job to systemd without acquiring the
-// state mutex. The caller is responsible for acquiring it.
+// cache mutex. The caller is responsible for acquiring it.
 func (a *Agent) loadJob(j *job.Job) {
 	log.Infof("Loading Job(%s)", j.Name)
-	a.state.SetTargetState(j.Name, job.JobStateLoaded)
+	a.cache.SetTargetState(j.Name, job.JobStateLoaded)
 	a.uGen.Subscribe(j.Name)
 	err := a.um.Load(j.Name, j.Unit)
 	if err != nil {
@@ -193,18 +193,18 @@ func (a *Agent) loadJob(j *job.Job) {
 	}
 }
 
-// StartJob starts the indicated Job after first acquiring the state mutex
+// StartJob starts the indicated Job after first acquiring the cache mutex
 func (a *Agent) StartJob(jobName string) {
-	a.state.Lock()
-	defer a.state.Unlock()
+	a.cache.Lock()
+	defer a.cache.Unlock()
 
 	a.startJobUnlocked(jobName)
 }
 
-// startJobUnlocked starts the indicated Job without acquiring the state
+// startJobUnlocked starts the indicated Job without acquiring the cache
 // mutex. The caller is responsible for acquiring it.
 func (a *Agent) startJobUnlocked(jobName string) {
-	a.state.SetTargetState(jobName, job.JobStateLaunched)
+	a.cache.SetTargetState(jobName, job.JobStateLaunched)
 
 	machID := a.Machine.State().ID
 	a.registry.JobHeartbeat(jobName, machID, a.ttl)
@@ -214,17 +214,17 @@ func (a *Agent) startJobUnlocked(jobName string) {
 	}()
 }
 
-// StopJob stops the indicated Job after first acquiring the state mutex
+// StopJob stops the indicated Job after first acquiring the cache mutex
 func (a *Agent) StopJob(jobName string) {
-	a.state.Lock()
-	defer a.state.Unlock()
+	a.cache.Lock()
+	defer a.cache.Unlock()
 	a.stopJobUnlocked(jobName)
 }
 
-// stopJobUnlocked stops the indicated Job without acquiring the state
+// stopJobUnlocked stops the indicated Job without acquiring the cache
 // mutex. The caller is responsible for acquiring it.
 func (a *Agent) stopJobUnlocked(jobName string) {
-	a.state.SetTargetState(jobName, job.JobStateLoaded)
+	a.cache.SetTargetState(jobName, job.JobStateLoaded)
 	a.registry.ClearJobHeartbeat(jobName)
 
 	go func() {
@@ -233,7 +233,7 @@ func (a *Agent) stopJobUnlocked(jobName string) {
 }
 
 // unloadJob stops and expunges the indicated Job without acquiring the
-// state mutex. The caller is responsible for acquiring it.
+// cache mutex. The caller is responsible for acquiring it.
 func (a *Agent) unloadJob(jobName string) {
 	go func() {
 		a.um.Stop(jobName)
@@ -244,10 +244,10 @@ func (a *Agent) unloadJob(jobName string) {
 	a.registry.ClearJobHeartbeat(jobName)
 	a.registry.RemoveUnitState(jobName)
 
-	// Grab the peers of the Job before we destroy the state
-	reversePeers := a.state.GetJobsByPeer(jobName)
+	// Grab the peers of the Job before we destroy the cache
+	reversePeers := a.cache.GetJobsByPeer(jobName)
 
-	a.state.PurgeJob(jobName)
+	a.cache.PurgeJob(jobName)
 
 	// Trigger rescheduling of all the peers of the job that was just unloaded
 	machID := a.Machine.State().ID
@@ -260,8 +260,8 @@ func (a *Agent) unloadJob(jobName string) {
 	}
 }
 
-// ReportUnitState attaches the current state of the Agent's Machine to the given
-// unit.UnitState object, then persists that state in the Registry
+// ReportUnitState attaches the current cache of the Agent's Machine to the given
+// unit.UnitState object, then persists that cache in the Registry
 func (a *Agent) ReportUnitState(jobName string, us *unit.UnitState) {
 	if us == nil {
 		log.Infof("Job(%s): purging UnitState from Registry", jobName)
@@ -279,13 +279,13 @@ func (a *Agent) ReportUnitState(jobName string, us *unit.UnitState) {
 // MaybeBid bids for the given JobOffer only if the Agent determines that it is able
 // to run the JobOffer's Job
 func (a *Agent) MaybeBid(jo job.JobOffer) {
-	a.state.Lock()
-	defer a.state.Unlock()
+	a.cache.Lock()
+	defer a.cache.Unlock()
 
 	// Everything we check against could change over time, so we track all
 	// offers starting here for future bidding even if we can't bid now
-	a.state.TrackOffer(jo)
-	a.state.TrackJob(&jo.Job)
+	a.cache.TrackOffer(jo)
+	a.cache.TrackJob(&jo.Job)
 
 	if !a.ableToRun(&jo.Job) {
 		log.Infof("EventJobOffered(%s): not all criteria met, not bidding", jo.Job.Name)
@@ -299,7 +299,7 @@ func (a *Agent) MaybeBid(jo job.JobOffer) {
 // bidForPossibleJobs submits bids for all unresolved offers whose Jobs
 // can be run locally
 func (a *Agent) bidForPossibleJobs() {
-	offers := a.state.GetOffersWithoutBids()
+	offers := a.cache.GetOffersWithoutBids()
 
 	log.V(1).Infof("Checking %d unbade offers", len(offers))
 	for i := range offers {
@@ -318,7 +318,7 @@ func (a *Agent) bidForPossibleJobs() {
 func (a *Agent) bid(jobName string) {
 	log.Infof("Submitting JobBid for Job(%s)", jobName)
 	a.registry.SubmitJobBid(jobName, a.Machine.State().ID)
-	a.state.TrackBid(jobName)
+	a.cache.TrackBid(jobName)
 }
 
 // verifyJobSignature attempts to verify the integrity of the given Job by checking the
@@ -343,7 +343,7 @@ func (a *Agent) verifyJobSignature(j *job.Job) bool {
 // bidForPossiblePeers submits bids for all known peers of the provided job that can
 // be run locally
 func (a *Agent) bidForPossiblePeers(jobName string) {
-	peers := a.state.GetJobsByPeer(jobName)
+	peers := a.cache.GetJobsByPeer(jobName)
 
 	for _, peer := range peers {
 		log.V(1).Infof("Found unresolved offer for Peer(%s) of Job(%s)", peer, jobName)
@@ -445,8 +445,8 @@ func (a *Agent) peerScheduledHere(jobName, peerName string) bool {
 // HasConflict determines whether there are any known conflicts with the given argument
 func (a *Agent) HasConflict(potentialJobName string, potentialConflicts []string) (bool, string) {
 	// Iterate through each Job that is scheduled here, asserting two things
-	for existingJobName, existingConflicts := range a.state.Conflicts {
-		if !a.state.ScheduledHere(existingJobName) {
+	for existingJobName, existingConflicts := range a.cache.Conflicts {
+		if !a.cache.ScheduledHere(existingJobName) {
 			continue
 		}
 
@@ -471,14 +471,14 @@ func (a *Agent) HasConflict(potentialJobName string, potentialConflicts []string
 // JobScheduledElsewhere clears all state related to the indicated
 // job before bidding for all oustanding jobs that can be run locally.
 func (a *Agent) JobScheduledElsewhere(jobName string) {
-	a.state.Lock()
-	defer a.state.Unlock()
+	a.cache.Lock()
+	defer a.cache.Unlock()
 
 	log.Infof("Dropping offer and bid for Job(%s) from cache", jobName)
-	a.state.PurgeOffer(jobName)
+	a.cache.PurgeOffer(jobName)
 
 	log.Infof("Purging Job(%s) data from cache", jobName)
-	a.state.PurgeJob(jobName)
+	a.cache.PurgeJob(jobName)
 
 	log.Infof("Checking outstanding job offers")
 	a.bidForPossibleJobs()
@@ -489,11 +489,11 @@ func (a *Agent) JobScheduledElsewhere(jobName string) {
 // the job. The ability to run the job will be revalidated before
 // loading, and unscheduled if such validation fails.
 func (a *Agent) JobScheduledLocally(jobName string) {
-	a.state.Lock()
-	defer a.state.Unlock()
+	a.cache.Lock()
+	defer a.cache.Unlock()
 
 	log.Infof("Dropping offer and bid for Job(%s) from cache", jobName)
-	a.state.PurgeOffer(jobName)
+	a.cache.PurgeOffer(jobName)
 
 	j, err := a.registry.Job(jobName)
 	if err != nil {
@@ -509,7 +509,7 @@ func (a *Agent) JobScheduledLocally(jobName string) {
 	if !a.ableToRun(j) {
 		log.Infof("Unable to run locally-scheduled Job(%s), unscheduling", jobName)
 		a.registry.ClearJobTarget(jobName, a.Machine.State().ID)
-		a.state.PurgeJob(jobName)
+		a.cache.PurgeJob(jobName)
 		return
 	}
 
@@ -531,10 +531,10 @@ func (a *Agent) JobScheduledLocally(jobName string) {
 // the event is ignored. If unloading is necessary, all jobs
 // that can be run locally will also be bid upon.
 func (a *Agent) JobUnscheduled(jobName string) {
-	a.state.Lock()
-	defer a.state.Unlock()
+	a.cache.Lock()
+	defer a.cache.Unlock()
 
-	if !a.state.ScheduledHere(jobName) {
+	if !a.cache.ScheduledHere(jobName) {
 		log.V(1).Infof("Job(%s) not scheduled here, ignoring", jobName)
 		return
 	}
