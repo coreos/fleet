@@ -11,7 +11,7 @@ import (
 	"github.com/coreos/fleet/resource"
 )
 
-type AgentState struct {
+type AgentCache struct {
 	// used to lock the datastructure for multi-goroutine safety
 	mutex sync.Mutex
 
@@ -38,8 +38,8 @@ type AgentState struct {
 	resources map[string]resource.ResourceTuple
 }
 
-func NewState() *AgentState {
-	return &AgentState{
+func NewCache() *AgentCache {
+	return &AgentCache{
 		offers:       make(map[string]job.JobOffer),
 		bids:         make(map[string]bool),
 		peers:        make(map[string][]string),
@@ -49,19 +49,19 @@ func NewState() *AgentState {
 	}
 }
 
-func (as *AgentState) Lock() {
-	log.V(1).Infof("Attempting to lock AgentState")
+func (as *AgentCache) Lock() {
+	log.V(1).Infof("Attempting to lock AgentCache")
 	as.mutex.Lock()
-	log.V(1).Infof("AgentState locked")
+	log.V(1).Infof("AgentCache locked")
 }
 
-func (as *AgentState) Unlock() {
-	log.V(1).Infof("Attempting to unlock AgentState")
+func (as *AgentCache) Unlock() {
+	log.V(1).Infof("Attempting to unlock AgentCache")
 	as.mutex.Unlock()
-	log.V(1).Infof("AgentState unlocked")
+	log.V(1).Infof("AgentCache unlocked")
 }
 
-func (as *AgentState) MarshalJSON() ([]byte, error) {
+func (as *AgentCache) MarshalJSON() ([]byte, error) {
 	type ds struct {
 		Offers       map[string]job.JobOffer
 		Conflicts    map[string][]string
@@ -80,31 +80,31 @@ func (as *AgentState) MarshalJSON() ([]byte, error) {
 }
 
 // TrackJob extracts and stores information about the given job for later reference
-func (as *AgentState) TrackJob(j *job.Job) {
+func (as *AgentCache) TrackJob(j *job.Job) {
 	as.trackJobPeers(j.Name, j.Peers())
 	as.trackJobConflicts(j.Name, j.Conflicts())
 	as.trackJobResources(j.Name, j.Resources())
 }
 
 // PurgeJob removes all state tracked on behalf of a given job
-func (as *AgentState) PurgeJob(jobName string) {
+func (as *AgentCache) PurgeJob(jobName string) {
 	as.dropTargetState(jobName)
 	as.dropPeersJob(jobName)
 	as.dropJobConflicts(jobName)
 	as.dropJobResources(jobName)
 }
 
-func (as *AgentState) trackJobConflicts(jobName string, conflicts []string) {
+func (as *AgentCache) trackJobConflicts(jobName string, conflicts []string) {
 	as.Conflicts[jobName] = conflicts
 }
 
 // Purge all tracked conflicts for a given Job
-func (as *AgentState) dropJobConflicts(jobName string) {
+func (as *AgentCache) dropJobConflicts(jobName string) {
 	delete(as.Conflicts, jobName)
 }
 
 // Store a relation of 1 Job -> N Peers
-func (as *AgentState) trackJobPeers(jobName string, peers []string) {
+func (as *AgentCache) trackJobPeers(jobName string, peers []string) {
 	for _, peer := range peers {
 		_, ok := as.peers[peer]
 		if !ok {
@@ -114,16 +114,16 @@ func (as *AgentState) trackJobPeers(jobName string, peers []string) {
 	}
 }
 
-func (as *AgentState) trackJobResources(jobName string, res resource.ResourceTuple) {
+func (as *AgentCache) trackJobResources(jobName string, res resource.ResourceTuple) {
 	as.resources[jobName] = res
 }
 
-func (as *AgentState) dropJobResources(jobName string) {
+func (as *AgentCache) dropJobResources(jobName string) {
 	delete(as.resources, jobName)
 }
 
 // Retrieve all Jobs that share a given Peer
-func (as *AgentState) GetJobsByPeer(peerName string) []string {
+func (as *AgentCache) GetJobsByPeer(peerName string) []string {
 	peers, ok := as.peers[peerName]
 	if ok {
 		return peers
@@ -132,7 +132,7 @@ func (as *AgentState) GetJobsByPeer(peerName string) []string {
 }
 
 // Remove all references to a given Job from all Peer indexes
-func (as *AgentState) dropPeersJob(jobName string) {
+func (as *AgentCache) dropPeersJob(jobName string) {
 	for peer, peerIndex := range as.peers {
 		var idxs []int
 
@@ -155,13 +155,13 @@ func (as *AgentState) dropPeersJob(jobName string) {
 	}
 }
 
-func (as *AgentState) TrackOffer(offer job.JobOffer) {
+func (as *AgentCache) TrackOffer(offer job.JobOffer) {
 	as.offers[offer.Job.Name] = offer
 }
 
 // GetOffersWithoutBids returns all tracked JobOffers that have
-// no corresponding JobBid tracked in the same AgentState object.
-func (as *AgentState) GetOffersWithoutBids() []job.JobOffer {
+// no corresponding JobBid tracked in the same AgentCache object.
+func (as *AgentCache) GetOffersWithoutBids() []job.JobOffer {
 	offers := make([]job.JobOffer, 0)
 	for _, offer := range as.offers {
 		if !as.bids[offer.Job.Name] {
@@ -171,16 +171,16 @@ func (as *AgentState) GetOffersWithoutBids() []job.JobOffer {
 	return offers
 }
 
-func (as *AgentState) PurgeOffer(name string) {
+func (as *AgentCache) PurgeOffer(name string) {
 	delete(as.offers, name)
 	delete(as.bids, name)
 }
 
-func (as *AgentState) TrackBid(name string) {
+func (as *AgentCache) TrackBid(name string) {
 	as.bids[name] = true
 }
 
-func (as *AgentState) HasBid(name string) bool {
+func (as *AgentCache) HasBid(name string) bool {
 	return as.bids[name]
 }
 
@@ -192,15 +192,15 @@ func globMatches(pattern, target string) bool {
 	return matched
 }
 
-func (as *AgentState) SetTargetState(jobName string, state job.JobState) {
+func (as *AgentCache) SetTargetState(jobName string, state job.JobState) {
 	as.targetStates[jobName] = state
 }
 
-func (as *AgentState) dropTargetState(jobName string) {
+func (as *AgentCache) dropTargetState(jobName string) {
 	delete(as.targetStates, jobName)
 }
 
-func (as *AgentState) LaunchedJobs() []string {
+func (as *AgentCache) LaunchedJobs() []string {
 	jobs := make([]string, 0)
 	for j, ts := range as.targetStates {
 		if ts == job.JobStateLaunched {
@@ -210,7 +210,7 @@ func (as *AgentState) LaunchedJobs() []string {
 	return jobs
 }
 
-func (as *AgentState) ScheduledJobs() []string {
+func (as *AgentCache) ScheduledJobs() []string {
 	jobs := make([]string, 0)
 	for j, ts := range as.targetStates {
 		if ts == job.JobStateLoaded || ts == job.JobStateLaunched {
@@ -220,7 +220,7 @@ func (as *AgentState) ScheduledJobs() []string {
 	return jobs
 }
 
-func (as *AgentState) ScheduledHere(jobName string) bool {
+func (as *AgentCache) ScheduledHere(jobName string) bool {
 	ts := as.targetStates[jobName]
 	return ts == job.JobStateLoaded || ts == job.JobStateLaunched
 }

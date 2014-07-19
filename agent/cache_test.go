@@ -4,7 +4,7 @@ import "testing"
 
 // Assert that jobs and their peers are properly indexed
 func TestGetJobsByPeer(t *testing.T) {
-	state := NewState()
+	state := NewCache()
 
 	j1 := newNamedTestJobWithXFleetValues(t, "a", `
 X-ConditionMachineOf=b
@@ -30,7 +30,7 @@ X-ConditionMachineOf=c
 
 // Assert that no jobs are returned for unknown peers
 func TestGetJobsByPeerUnknown(t *testing.T) {
-	state := NewState()
+	state := NewCache()
 
 	j := newNamedTestJobWithXFleetValues(t, "a", `X-ConditionMachineOf=b`)
 	state.TrackJob(j)
@@ -44,7 +44,7 @@ func TestGetJobsByPeerUnknown(t *testing.T) {
 // Assert that peers indexes are properly cleared after
 // calling DropPeersJob
 func TestDropPeersJob(t *testing.T) {
-	state := NewState()
+	state := NewCache()
 
 	j1 := newNamedTestJobWithXFleetValues(t, "a", `[X-Fleet]
 X-ConditionMachineOf=b
