@@ -23,6 +23,7 @@ const (
 type Agent struct {
 	registry registry.Registry
 	um       unit.UnitManager
+	uGen     *unit.UnitStateGenerator
 	Machine  machine.Machine
 	ttl      time.Duration
 	// verifier is used to verify the contents of a job's Unit.
@@ -32,32 +33,29 @@ type Agent struct {
 	state *AgentState
 }
 
-func New(mgr unit.UnitManager, reg registry.Registry, mach machine.Machine, ttl string, verifier *sign.SignatureVerifier) (*Agent, error) {
+func New(mgr unit.UnitManager, uGen *unit.UnitStateGenerator, reg registry.Registry, mach machine.Machine, ttl string, verifier *sign.SignatureVerifier) (*Agent, error) {
 	ttldur, err := time.ParseDuration(ttl)
 	if err != nil {
 		return nil, err
 	}
 
-	a := &Agent{reg, mgr, mach, ttldur, verifier, NewState()}
+	a := &Agent{reg, mgr, uGen, mach, ttldur, verifier, NewState()}
 	return a, nil
 }
 
 func (a *Agent) MarshalJSON() ([]byte, error) {
 	data := struct {
-		UnitManager unit.UnitManager
-		State       *AgentState
+		State *AgentState
 	}{
-		UnitManager: a.um,
-		State:       a.state,
+		State: a.state,
 	}
 	return json.Marshal(data)
 }
 
-// Heartbeat updates the Registry periodically with this Agent's
-// presence information as well as an acknowledgement of the jobs
-// it is expected to be running.
+// Heartbeat updates the Registry periodically with an acknowledgement of the
+// Jobs this Agent is expected to be running.
 func (a *Agent) Heartbeat(stop chan bool) {
-	go a.heartbeatJobs(a.ttl, stop)
+	a.heartbeatJobs(a.ttl, stop)
 }
 
 // Initialize prepares the Agent for normal operation by doing three things:
@@ -148,6 +146,12 @@ func (a *Agent) Purge() {
 	for _, jobName := range scheduled {
 		log.Infof("Unloading Job(%s) from local machine", jobName)
 		a.unloadJob(jobName)
+
+		//TODO(bcwaldon): RemoveUnitState is unsafe and could destroy state
+		// published by another agent
+		log.Infof("Destroying Job(%s)'s state in Registry", jobName)
+		a.registry.RemoveUnitState(jobName)
+
 		log.Infof("Unscheduling Job(%s) from local machine", jobName)
 		a.registry.ClearJobTarget(jobName, machID)
 	}
@@ -186,21 +190,12 @@ func (a *Agent) heartbeatJobs(ttl time.Duration, stop chan bool) {
 func (a *Agent) loadJob(j *job.Job) {
 	log.Infof("Loading Job(%s)", j.Name)
 	a.state.SetTargetState(j.Name, job.JobStateLoaded)
+	a.uGen.Subscribe(j.Name)
 	err := a.um.Load(j.Name, j.Unit)
 	if err != nil {
 		log.Errorf("Failed loading Job(%s): %v", j.Name, err)
 		return
 	}
-
-	// We must explicitly refresh the payload state, as the dbus
-	// event listener does not send an event when we write a unit
-	// file to disk.
-	us, err := a.um.GetUnitState(j.Name)
-	if err != nil {
-		log.Errorf("Failed fetching state of Unit(%s): %v", j.Name, err)
-		return
-	}
-	a.ReportUnitState(j.Name, us)
 }
 
 // StartJob starts the indicated Job after first acquiring the state mutex
@@ -221,16 +216,6 @@ func (a *Agent) startJobUnlocked(jobName string) {
 
 	go func() {
 		a.um.Start(jobName)
-
-		// We explicitly refresh the payload state here as the dbus
-		// event listener does not send us an event if the job was
-		// already loaded.
-		us, err := a.um.GetUnitState(jobName)
-		if err != nil {
-			log.Errorf("Failed fetching state of Unit(%s): %v", jobName, err)
-			return
-		}
-		a.ReportUnitState(jobName, us)
 	}()
 }
 
@@ -249,15 +234,6 @@ func (a *Agent) stopJobUnlocked(jobName string) {
 
 	go func() {
 		a.um.Stop(jobName)
-
-		// We must explicitly refresh the payload state, as the dbus
-		// event listener sends a nil event when a unit deactivates.
-		us, err := a.um.GetUnitState(jobName)
-		if err != nil {
-			log.Errorf("Failed fetching state of Unit(%s): %v", jobName, err)
-			return
-		}
-		a.ReportUnitState(jobName, us)
 	}()
 }
 
@@ -266,6 +242,7 @@ func (a *Agent) stopJobUnlocked(jobName string) {
 func (a *Agent) unloadJob(jobName string) {
 	go func() {
 		a.um.Stop(jobName)
+		a.uGen.Unsubscribe(jobName)
 		a.um.Unload(jobName)
 	}()
 
