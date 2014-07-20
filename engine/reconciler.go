@@ -120,13 +120,13 @@ func (r *wipReconciler) Reconcile() {
 			return err
 		}
 
-		if len(bids) == 0 {
+		if bids.Length() == 0 {
 			log.Infof("No bids found for unresolved JobOffer(%s), unable to resolve", jName)
 			return nil
 		}
 
-		choice := bids[0]
-		return scheduleJob(jName, choice.MachineID)
+		choice := bids.Values()[0]
+		return scheduleJob(jName, choice)
 	}
 
 	// offerExists returns true if the referenced Job has a corresponding

@@ -29,12 +29,3 @@ func (jo *JobOffer) OfferedTo(machineID string) bool {
 	k := sort.SearchStrings(jo.MachineIDs, machineID)
 	return k < len(jo.MachineIDs) && jo.MachineIDs[k] == machineID
 }
-
-type JobBid struct {
-	JobName   string
-	MachineID string
-}
-
-func NewBid(jobName string, machID string) *JobBid {
-	return &JobBid{jobName, machID}
-}

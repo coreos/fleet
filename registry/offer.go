@@ -9,6 +9,7 @@ import (
 	"github.com/coreos/fleet/etcd"
 	"github.com/coreos/fleet/event"
 	"github.com/coreos/fleet/job"
+	"github.com/coreos/fleet/pkg"
 )
 
 const (
@@ -65,29 +66,30 @@ func (r *EtcdRegistry) getJobOfferFromJSON(val string) *job.JobOffer {
 	return &jo
 }
 
-// Bids returns a list of JobBids that have been submitted for the given JobOffer
-func (r *EtcdRegistry) Bids(jo *job.JobOffer) ([]job.JobBid, error) {
-	var bids []job.JobBid
+// Bids returns a list of machine IDs that have been bid for the given JobOffer
+func (r *EtcdRegistry) Bids(jo *job.JobOffer) (bids pkg.Set, err error) {
+	bids = pkg.NewUnsafeSet()
 
 	req := etcd.Get{
 		Key:       path.Join(r.keyPrefix, offerPrefix, jo.Job.Name, "bids"),
 		Recursive: true,
 	}
-	resp, err := r.etcd.Do(&req)
+
+	var resp *etcd.Result
+	resp, err = r.etcd.Do(&req)
 	if err != nil {
 		if isKeyNotFound(err) {
-			return bids, nil
+			err = nil
 		}
-		return nil, err
+		return
 	}
 
 	for _, node := range resp.Node.Nodes {
 		machID := path.Base(node.Key)
-		jb := job.NewBid(jo.Job.Name, machID)
-		bids = append(bids, *jb)
+		bids.Add(machID)
 	}
 
-	return bids, nil
+	return
 }
 
 // UnresolvedJobOffers returns a list of hydrated JobOffers from the Registry
@@ -143,9 +145,9 @@ func (r *EtcdRegistry) ResolveJobOffer(jobName string) error {
 	return nil
 }
 
-func (r *EtcdRegistry) SubmitJobBid(jb *job.JobBid) {
+func (r *EtcdRegistry) SubmitJobBid(jName, machID string) {
 	req := etcd.Set{
-		Key: path.Join(r.keyPrefix, offerPrefix, jb.JobName, "bids", jb.MachineID),
+		Key: path.Join(r.keyPrefix, offerPrefix, jName, "bids", machID),
 	}
 	r.etcd.Do(&req)
 }

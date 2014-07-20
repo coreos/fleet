@@ -7,12 +7,13 @@ import (
 
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/machine"
+	"github.com/coreos/fleet/pkg"
 	"github.com/coreos/fleet/sign"
 	"github.com/coreos/fleet/unit"
 )
 
 type Registry interface {
-	Bids(jb *job.JobOffer) ([]job.JobBid, error)
+	Bids(jb *job.JobOffer) (pkg.Set, error)
 	CheckJobPulse(jobName string) (string, bool)
 	ClearJobHeartbeat(jobName string)
 	ClearJobTarget(jobName, machID string) error
@@ -35,7 +36,7 @@ type Registry interface {
 	ScheduleJob(jobName string, machID string) error
 	SetJobTargetState(jobName string, state job.JobState) error
 	SetMachineState(ms machine.MachineState, ttl time.Duration) (uint64, error)
-	SubmitJobBid(jb *job.JobBid)
+	SubmitJobBid(jName, machID string)
 	UnresolvedJobOffers() ([]job.JobOffer, error)
 }
 
