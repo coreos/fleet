@@ -92,18 +92,18 @@ func (r *dumbReconciler) Reconcile() {
 		return
 	}
 
-	// maybeScheduleJob attempts to schedule the given Job only if one or more
+	// scheduleJob attempts to schedule the given Job only if one or more
 	// bids have been submitted
-	maybeScheduleJob := func(jName string) error {
+	scheduleJob := func(jName string) bool {
 		bids, err := r.registry.Bids(oMap[jName])
 		if err != nil {
 			log.Errorf("Failed determining open JobBids for JobOffer(%s): %v", jName, err)
-			return err
+			return false
 		}
 
 		if bids.Length() == 0 {
-			log.Infof("No bids found for unresolved JobOffer(%s), unable to resolve", jName)
-			return nil
+			log.V(1).Infof("No bids found for unresolved JobOffer(%s), unable to resolve", jName)
+			return false
 		}
 
 		choice := bids.Values()[0]
@@ -111,11 +111,11 @@ func (r *dumbReconciler) Reconcile() {
 		err = r.registry.ScheduleJob(jName, choice)
 		if err != nil {
 			log.Errorf("Failed scheduling Job(%s) to Machine(%s): %v", jName, choice, err)
-		} else {
-			log.Infof("Scheduled Job(%s) to Machine(%s)", jName, choice)
+			return false
 		}
 
-		return err
+		log.Infof("Scheduled Job(%s) to Machine(%s)", jName, choice)
+		return true
 	}
 
 	// offerExists returns true if the referenced Job has a corresponding
@@ -171,10 +171,10 @@ func (r *dumbReconciler) Reconcile() {
 			continue
 		}
 
-		log.Infof("Attempting to schedule Job(%s) since target state %s and Job not scheduled", j.Name, j.TargetState)
+		log.V(1).Infof("Attempting to schedule Job(%s) since target state %s and Job not scheduled", j.Name, j.TargetState)
 
-		err := maybeScheduleJob(j.Name)
-		if err != nil {
+		if !scheduleJob(j.Name) {
+			delete(oMap, j.Name)
 			continue
 		}
 
@@ -183,7 +183,7 @@ func (r *dumbReconciler) Reconcile() {
 
 	// Deal with remaining JobOffers that do not have a corresponding Job
 	for jName, _ := range oMap {
-		log.Infof("Removing extraneous JobOffer(%s) since corresponding Job does not exist", jName)
+		log.Infof("Destroying JobOffer(%s) since corresponding Job does not exist", jName)
 		resolveJobOffer(jName)
 	}
 }
