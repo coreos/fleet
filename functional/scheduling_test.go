@@ -197,6 +197,11 @@ func TestScheduleOneWayConflict(t *testing.T) {
 		t.Fatalf("Failed starting unit %s: %v", name, err)
 	}
 
+	states, err := cluster.WaitForNActiveUnits(1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	// Start a unit that has not defined conflicts
 	name = "fixtures/units/hello.service"
 	cluster.Fleetctl("start", "--no-block", name)
@@ -211,7 +216,7 @@ func TestScheduleOneWayConflict(t *testing.T) {
 	if len(units) != 2 {
 		t.Fatalf("Did not find two units in cluster: \n%s", stdout)
 	}
-	states, err := cluster.WaitForNActiveUnits(1)
+	states, err = cluster.WaitForNActiveUnits(1)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -2,10 +2,13 @@ package agent
 
 import (
 	"fmt"
+	"reflect"
 	"testing"
+	"time"
 
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/machine"
+	"github.com/coreos/fleet/registry"
 	"github.com/coreos/fleet/unit"
 )
 
@@ -33,139 +36,149 @@ func newTestJobWithXFleetValues(t *testing.T, metadata string) *job.Job {
 	return newNamedTestJobWithXFleetValues(t, "pong.service", metadata)
 }
 
-func TestAbleToRunConditionMachineID(t *testing.T) {
-	for id, want := range map[string]bool{
-		"XYZ": true,
-		"123": false,
-	} {
-		job := newTestJobWithXFleetValues(t, "X-ConditionMachineID=XYZ")
-		mach := &machine.FakeMachine{machine.MachineState{ID: id}}
-		agent := Agent{Machine: mach, cache: NewCache()}
-		got := agent.ableToRun(job)
-		if got != want {
-			t.Errorf("Bad ableToRun for machineID %q: got %t, want %t", id, got, want)
-		}
+func TestAgentLoadUnloadJob(t *testing.T) {
+	uManager := unit.NewFakeUnitManager()
+	usGenerator := unit.NewUnitStateGenerator(uManager)
+	fReg := registry.NewFakeRegistry()
+	mach := &machine.FakeMachine{machine.MachineState{ID: "XXX"}}
+	a, err := New(uManager, usGenerator, fReg, mach, DefaultTTL)
+	if err != nil {
+		t.Fatalf("Failed creating Agent: %v", err)
+	}
 
+	u, err := unit.NewUnit("")
+	if err != nil {
+		t.Fatalf("Failed creating Unit: %v", err)
+	}
+
+	j := job.NewJob("foo.service", *u)
+
+	err = a.loadJob(j)
+	if err != nil {
+		t.Fatalf("Failed calling Agent.loadJob: %v", err)
+	}
+
+	jobs, err := a.jobs()
+	if err != nil {
+		t.Fatalf("Failed calling Agent.jobs: %v", err)
+	}
+
+	jsLoaded := job.JobStateLoaded
+	expectJobs := map[string]*job.Job{
+		"foo.service": &job.Job{
+			Name: "foo.service",
+			UnitState: &unit.UnitState{
+				LoadState:   "loaded",
+				ActiveState: "active",
+				SubState:    "running",
+				MachineID:   "",
+			},
+			State: &jsLoaded,
+
+			Unit:            unit.Unit{},
+			TargetState:     job.JobState(""),
+			TargetMachineID: "",
+		},
+	}
+
+	if !reflect.DeepEqual(expectJobs, jobs) {
+		t.Fatalf("Received unexpected collection of Jobs: %#v\nExpected: %#v", jobs, expectJobs)
+	}
+
+	a.unloadJob("foo.service")
+
+	// This sucks, but we have to do it if Agent.unloadJob is going to spin
+	// of the real work that matters in a goroutine
+	time.Sleep(200)
+
+	jobs, err = a.jobs()
+	if err != nil {
+		t.Fatalf("Failed calling Agent.jobs: %v", err)
+	}
+
+	expectJobs = map[string]*job.Job{}
+	if !reflect.DeepEqual(expectJobs, jobs) {
+		t.Fatalf("Received unexpected collection of Jobs: %#v\nExpected: %#v", jobs, expectJobs)
 	}
 }
 
-func TestHasConflictMatches(t *testing.T) {
-	for i, tt := range []struct {
-		contents           string
-		potentialConflicts []string
-	}{
-		{"[X-Fleet]\nX-Conflicts=other.service", []string{}},
-		{"[X-Fleet]", []string{"example.service"}},
-	} {
-		state := NewCache()
-		j := newTestJobFromUnitContents(t, "example.service", tt.contents)
-		state.TrackJob(j)
-		state.SetTargetState(j.Name, job.JobStateLoaded)
-		agent := Agent{cache: state}
-		matched, name := agent.HasConflict("other.service", []string{"example.service"})
-		if !matched {
-			t.Errorf("%d: Expected conflict with 'example.service', no conflict reported", i)
-		} else if name != "example.service" {
-			t.Errorf("%d: Expected conflict with 'example.service', but conflict found with %s", i, name)
-		}
-	}
-}
-
-// Assert that existing jobs and potential jobs that do not conflict do not
-// trigger a match
-func TestHasConflictNoMatch(t *testing.T) {
-	state := NewCache()
-	j := newTestJobFromUnitContents(t, "example.service", "[X-Fleet]")
-	state.TrackJob(j)
-	state.SetTargetState(j.Name, job.JobStateLoaded)
-
-	agent := Agent{cache: state}
-
-	matched, name := agent.HasConflict("other.service", []string{})
-	if matched {
-		t.Errorf("Expected no match, but got conflict with %s", name)
-	}
-}
-
-// Assert that our glob-parser can handle relatively-complex matching
-func TestHasConflictComplexGlob(t *testing.T) {
-	state := NewCache()
-
-	j := newTestJobWithXFleetValues(t, "X-Conflicts=*.[1-9].service")
-	state.TrackJob(j)
-	state.SetTargetState(j.Name, job.JobStateLoaded)
-
-	agent := Agent{cache: state}
-
-	for _, conflict := range []string{"other.2.service", "foo.1.service", ".9.service"} {
-		matched, name := agent.HasConflict(conflict, []string{})
-		if !matched {
-			t.Errorf("Expected %q to have conflict with %q, but no conflict reported", conflict, j.Name)
-		} else if name != j.Name {
-			t.Errorf("Expected %q to have conflict with %q, but conflict found with %s", conflict, j.Name, name)
-		}
-	}
-}
-
-func TestHasConflictIgnoresUnscheduledJobs(t *testing.T) {
-	state := NewCache()
-	j := newTestJobWithXFleetValues(t, "X-Conflicts=other.service")
-	state.TrackJob(j)
-
-	state.SetTargetState(j.Name, job.JobStateInactive)
-
-	agent := Agent{cache: state}
-
-	matched, name := agent.HasConflict("other.service", []string{})
-	if matched {
-		t.Errorf("Expected no conflict, but got conflict with %s", name)
-	}
-}
-
-func TestHasConflictIgnoresBids(t *testing.T) {
-	state := NewCache()
-	j := newTestJobWithXFleetValues(t, "X-Conflicts=other.service")
-	state.TrackJob(j)
-
-	state.TrackBid(j.Name)
-
-	agent := Agent{cache: state}
-
-	matched, name := agent.HasConflict("other.service", []string{})
-	if matched {
-		t.Errorf("Expected no conflict, but got conflict with %s", name)
-	}
-}
-
-func TestAbleToRunWithConditionMachineMetadata(t *testing.T) {
-	metadataAbleToRunExamples := []struct {
-		C string
-		A bool
-	}{
-		// valid metadata
-		{`X-ConditionMachineMetadata=region=us-west-1`, true},
-		{`X-ConditionMachineMetadata= "region=us-east-1" "region=us-west-1"`, true},
-		{`X-ConditionMachineMetadata=region=us-east-1
-X-ConditionMachineMetadata=region=us-west-1`, true},
-		{`X-ConditionMachineMetadata=region=us-east-1`, false},
-
-		// ignored/invalid metadata
-		{`X-ConditionMachineMetadata=us-west-1`, true},
-		{`X-ConditionMachineMetadata==us-west-1`, true},
-		{`X-ConditionMachineMetadata=region=`, true},
+func TestAgentLoadStartStopJob(t *testing.T) {
+	uManager := unit.NewFakeUnitManager()
+	usGenerator := unit.NewUnitStateGenerator(uManager)
+	fReg := registry.NewFakeRegistry()
+	mach := &machine.FakeMachine{machine.MachineState{ID: "XXX"}}
+	a, err := New(uManager, usGenerator, fReg, mach, DefaultTTL)
+	if err != nil {
+		t.Fatalf("Failed creating Agent: %v", err)
 	}
 
-	metadata := map[string]string{
-		"region": "us-west-1",
+	u, err := unit.NewUnit("")
+	if err != nil {
+		t.Fatalf("Failed creating Unit: %v", err)
 	}
-	ms := machine.MachineState{Metadata: metadata}
-	agent := &Agent{Machine: &machine.FakeMachine{ms}, cache: NewCache()}
 
-	for i, e := range metadataAbleToRunExamples {
-		job := newTestJobWithXFleetValues(t, e.C)
-		g := agent.ableToRun(job)
-		if g != e.A {
-			t.Errorf("Unexpected output %d, content: %q\n\tgot %t, want %t\n", i, e.C, g, e.A)
-		}
+	j := job.NewJob("foo.service", *u)
+
+	err = a.loadJob(j)
+	if err != nil {
+		t.Fatalf("Failed calling Agent.loadJob: %v", err)
+	}
+
+	a.startJob("foo.service")
+
+	jobs, err := a.jobs()
+	if err != nil {
+		t.Fatalf("Failed calling Agent.jobs: %v", err)
+	}
+
+	jsLaunched := job.JobStateLaunched
+	expectJobs := map[string]*job.Job{
+		"foo.service": &job.Job{
+			Name: "foo.service",
+			UnitState: &unit.UnitState{
+				LoadState:   "loaded",
+				ActiveState: "active",
+				SubState:    "running",
+				MachineID:   "",
+			},
+			State: &jsLaunched,
+
+			Unit:            unit.Unit{},
+			TargetState:     job.JobState(""),
+			TargetMachineID: "",
+		},
+	}
+
+	if !reflect.DeepEqual(expectJobs, jobs) {
+		t.Fatalf("Received unexpected collection of Jobs: %#v\nExpected: %#v", jobs, expectJobs)
+	}
+
+	a.stopJob("foo.service")
+
+	jobs, err = a.jobs()
+	if err != nil {
+		t.Fatalf("Failed calling Agent.jobs: %v", err)
+	}
+
+	jsLoaded := job.JobStateLoaded
+	expectJobs = map[string]*job.Job{
+		"foo.service": &job.Job{
+			Name: "foo.service",
+			UnitState: &unit.UnitState{
+				LoadState:   "loaded",
+				ActiveState: "active",
+				SubState:    "running",
+				MachineID:   "",
+			},
+			State: &jsLoaded,
+
+			Unit:            unit.Unit{},
+			TargetState:     job.JobState(""),
+			TargetMachineID: "",
+		},
+	}
+
+	if !reflect.DeepEqual(expectJobs, jobs) {
+		t.Fatalf("Received unexpected collection of Jobs: %#v\nExpected: %#v", jobs, expectJobs)
 	}
 }
