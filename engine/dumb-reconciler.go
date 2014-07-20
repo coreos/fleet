@@ -101,18 +101,18 @@ func (r *dumbReconciler) Reconcile() {
 			return err
 		}
 
-		if len(bids) == 0 {
+		if bids.Length() == 0 {
 			log.Infof("No bids found for unresolved JobOffer(%s), unable to resolve", jName)
 			return nil
 		}
 
-		choice := bids[0]
+		choice := bids.Values()[0]
 
-		err = r.registry.ScheduleJob(jName, choice.MachineID)
+		err = r.registry.ScheduleJob(jName, choice)
 		if err != nil {
-			log.Errorf("Failed scheduling Job(%s) to Machine(%s): %v", choice.JobName, choice.MachineID, err)
+			log.Errorf("Failed scheduling Job(%s) to Machine(%s): %v", jName, choice, err)
 		} else {
-			log.Infof("Scheduled Job(%s) to Machine(%s)", jName, choice.MachineID)
+			log.Infof("Scheduled Job(%s) to Machine(%s)", jName, choice)
 		}
 
 		return err

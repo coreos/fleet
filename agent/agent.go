@@ -322,11 +322,8 @@ func (a *Agent) bidForPossibleJobs() {
 // Submit a bid for the given Job
 func (a *Agent) bid(jobName string) {
 	log.Infof("Submitting JobBid for Job(%s)", jobName)
-
-	jb := job.NewBid(jobName, a.Machine.State().ID)
-	a.registry.SubmitJobBid(jb)
-
-	a.state.TrackBid(jb.JobName)
+	a.registry.SubmitJobBid(jobName, a.Machine.State().ID)
+	a.state.TrackBid(jobName)
 }
 
 // verifyJobSignature attempts to verify the integrity of the given Job by checking the
