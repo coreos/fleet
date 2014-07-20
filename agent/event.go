@@ -1,86 +1,37 @@
 package agent
 
 import (
-	log "github.com/coreos/fleet/Godeps/_workspace/src/github.com/golang/glog"
-
 	"github.com/coreos/fleet/event"
-	"github.com/coreos/fleet/job"
 )
 
 type EventHandler struct {
-	agent *Agent
+	ar *AgentReconciler
 }
 
-func NewEventHandler(agent *Agent) *EventHandler {
-	return &EventHandler{agent}
+func NewEventHandler(ar *AgentReconciler) *EventHandler {
+	return &EventHandler{ar}
 }
 
 func (eh *EventHandler) HandleEventJobOffered(ev event.Event) {
-	jo := ev.Payload.(job.JobOffer)
-
-	if !jo.OfferedTo(eh.agent.Machine.State().ID) {
-		log.V(1).Infof("EventJobOffered(%s): not offered to this machine, ignoring", jo.Job.Name)
-		return
-	}
-
-	log.Infof("EventJobOffered(%s): deciding whether to bid or not", jo.Job.Name)
-	eh.agent.MaybeBid(jo)
+	eh.ar.Trigger()
 }
 
 func (eh *EventHandler) HandleEventJobScheduled(ev event.Event) {
-	jobName := ev.Payload.(string)
-	target := ev.Context.(string)
-
-	if target != eh.agent.Machine.State().ID {
-		log.Infof("EventJobScheduled(%s): Job scheduled to other Machine(%s), informing Agent", jobName, target)
-		eh.agent.JobScheduledElsewhere(jobName)
-	} else {
-		log.Infof("EventJobScheduled(%s): Job scheduled here, informing Agent", jobName)
-		eh.agent.JobScheduledLocally(jobName)
-	}
+	eh.ar.Trigger()
 }
 
 func (eh *EventHandler) HandleJobTargetStateStarted(ev event.Event) {
-	jobName := ev.Payload.(string)
-	target := ev.Context.(string)
-
-	if target != eh.agent.Machine.State().ID {
-		log.V(1).Infof("JobTargetStateStarted(%s): scheduled elsewhere, ignoring", jobName)
-		return
-	}
-
-	log.Infof("JobTargetStateStarted(%s): instructing Agent to start Job", jobName)
-	eh.agent.StartJob(jobName)
+	eh.ar.Trigger()
 }
 
 func (eh *EventHandler) HandleJobTargetStateStopped(ev event.Event) {
-	jobName := ev.Payload.(string)
-	target := ev.Context.(string)
-
-	if target != eh.agent.Machine.State().ID {
-		log.V(1).Infof("JobTargetStateStopped(%s): scheduled elsewhere, ignoring", jobName)
-		return
-	}
-
-	log.Infof("JobTargetStateStopped(%s): instructing Agent to stop Job", jobName)
-	eh.agent.StopJob(jobName)
+	eh.ar.Trigger()
 }
 
 func (eh *EventHandler) HandleEventJobUnscheduled(ev event.Event) {
-	eh.unloadJobEvent(ev)
+	eh.ar.Trigger()
 }
 
 func (eh *EventHandler) HandleEventJobDestroyed(ev event.Event) {
-	eh.unloadJobEvent(ev)
-}
-
-// unloadJobEvent handles an event by unloading the job to which it
-// refers. The event's payload must be a string representing the
-// name of a Job. If the Job is not scheduled locally, it will be
-// ignored.
-func (eh *EventHandler) unloadJobEvent(ev event.Event) {
-	jobName := ev.Payload.(string)
-
-	log.Infof("%s(%s): Job(%s) unscheduled, deciding what to do", ev.Type, jobName, jobName)
-	eh.agent.JobUnscheduled(jobName)
+	eh.ar.Trigger()
 }

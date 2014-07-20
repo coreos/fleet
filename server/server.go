@@ -32,16 +32,17 @@ const (
 )
 
 type Server struct {
-	agent   *agent.Agent
-	usPub   *agent.UnitStatePublisher
-	usGen   *unit.UnitStateGenerator
-	engine  *engine.Engine
-	rStream *registry.EventStream
-	eBus    *event.EventBus
-	mach    *machine.CoreOSMachine
-	hrt     heart.Heart
-	mon     *heart.Monitor
-	api     *api.Server
+	agent       *agent.Agent
+	aReconciler *agent.AgentReconciler
+	usPub       *agent.UnitStatePublisher
+	usGen       *unit.UnitStateGenerator
+	engine      *engine.Engine
+	rStream     *registry.EventStream
+	eBus        *event.EventBus
+	mach        *machine.CoreOSMachine
+	hrt         heart.Heart
+	mon         *heart.Monitor
+	api         *api.Server
 
 	stop chan bool
 }
@@ -72,6 +73,11 @@ func New(cfg config.Config) (*Server, error) {
 		return nil, err
 	}
 
+	ar, err := newAgentReconcilerFromConfig(reg, cfg)
+	if err != nil {
+		return nil, err
+	}
+
 	e := engine.New(reg, mach)
 
 	rStream, err := registry.NewEventStream(eClient, reg)
@@ -80,8 +86,8 @@ func New(cfg config.Config) (*Server, error) {
 	}
 
 	eBus := event.NewEventBus()
-	aHandler := agent.NewEventHandler(a)
-	eBus.AddListener("agent", aHandler)
+	arHandler := agent.NewEventHandler(ar)
+	eBus.AddListener("agent", arHandler)
 	eBus.AddListener("engine", e)
 
 	listeners, err := activation.Listeners(false)
@@ -98,17 +104,18 @@ func New(cfg config.Config) (*Server, error) {
 	apiServer.Serve()
 
 	srv := Server{
-		agent:   a,
-		usGen:   gen,
-		usPub:   pub,
-		engine:  e,
-		rStream: rStream,
-		eBus:    eBus,
-		mach:    mach,
-		hrt:     hrt,
-		mon:     mon,
-		api:     apiServer,
-		stop:    nil,
+		agent:       a,
+		aReconciler: ar,
+		usGen:       gen,
+		usPub:       pub,
+		engine:      e,
+		rStream:     rStream,
+		eBus:        eBus,
+		mach:        mach,
+		hrt:         hrt,
+		mon:         mon,
+		api:         apiServer,
+		stop:        nil,
 	}
 
 	return &srv, nil
@@ -144,17 +151,21 @@ func newMachineFromConfig(cfg config.Config, mgr unit.UnitManager) (*machine.Cor
 }
 
 func newAgentFromConfig(mach machine.Machine, reg registry.Registry, cfg config.Config, mgr unit.UnitManager, uGen *unit.UnitStateGenerator) (*agent.Agent, error) {
+	return agent.New(mgr, uGen, reg, mach, cfg.AgentTTL)
+}
+
+func newAgentReconcilerFromConfig(reg registry.Registry, cfg config.Config) (*agent.AgentReconciler, error) {
 	var verifier *sign.SignatureVerifier
 	if cfg.VerifyUnits {
 		var err error
 		verifier, err = sign.NewSignatureVerifierFromAuthorizedKeysFile(cfg.AuthorizedKeysFile)
 		if err != nil {
-			log.Errorln("Failed to get any key from authorized key file in verify_units mode:", err)
+			log.Errorf("Failed to get any key from authorized key file in verify_units mode: %v", err)
 			verifier = sign.NewSignatureVerifier()
 		}
 	}
 
-	return agent.New(mgr, uGen, reg, mach, cfg.AgentTTL, verifier)
+	return agent.NewReconciler(reg, verifier), nil
 }
 
 func (s *Server) Run() {
@@ -172,9 +183,6 @@ func (s *Server) Run() {
 
 	log.Infof("Starting server components")
 
-	//TODO(bcwaldon): initialize Agent at the index yielded by the first heartbeat
-	s.agent.Initialize()
-
 	s.stop = make(chan bool)
 
 	go s.Monitor()
@@ -182,6 +190,7 @@ func (s *Server) Run() {
 	go s.mach.PeriodicRefresh(machineStateRefreshInterval, s.stop)
 	go s.rStream.Stream(idx, s.eBus.Dispatch, s.stop)
 	go s.agent.Heartbeat(s.stop)
+	go s.aReconciler.Run(s.agent, s.stop)
 	go s.engine.Run(s.stop)
 
 	beatchan := make(chan *unit.UnitStateHeartbeat)
@@ -209,7 +218,7 @@ func (s *Server) Stop() {
 }
 
 func (s *Server) Purge() {
-	s.agent.Purge()
+	s.aReconciler.Purge(s.agent)
 	s.engine.Purge()
 	s.hrt.Clear()
 }
