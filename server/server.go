@@ -211,6 +211,7 @@ func (s *Server) Stop() {
 func (s *Server) Purge() {
 	s.agent.Purge()
 	s.engine.Purge()
+	s.hrt.Clear()
 }
 
 func (s *Server) MarshalJSON() ([]byte, error) {

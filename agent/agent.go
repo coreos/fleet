@@ -155,11 +155,6 @@ func (a *Agent) Purge() {
 		log.Infof("Unscheduling Job(%s) from local machine", jobName)
 		a.registry.ClearJobTarget(jobName, machID)
 	}
-
-	log.Info("Removing Agent from Registry")
-	if err := a.registry.RemoveMachineState(machID); err != nil {
-		log.Errorf("Failed to remove Machine %s from Registry: %s", machID, err.Error())
-	}
 }
 
 func (a *Agent) heartbeatJobs(ttl time.Duration, stop chan bool) {
