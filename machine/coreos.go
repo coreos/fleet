@@ -1,6 +1,7 @@
 package machine
 
 import (
+	"errors"
 	"io/ioutil"
 	"net"
 	"path/filepath"
@@ -10,8 +11,6 @@ import (
 
 	"github.com/coreos/fleet/Godeps/_workspace/src/github.com/docker/libcontainer/netlink"
 	log "github.com/coreos/fleet/Godeps/_workspace/src/github.com/golang/glog"
-
-	"github.com/coreos/fleet/resource"
 	"github.com/coreos/fleet/systemd"
 )
 
@@ -60,7 +59,12 @@ func (m *CoreOSMachine) Refresh() {
 	m.RLock()
 	defer m.RUnlock()
 
-	m.dynamicState = m.currentState()
+	cs := m.currentState()
+	if cs == nil {
+		log.Warning("Unable to refresh machine state")
+	} else {
+		m.dynamicState = cs
+	}
 }
 
 // PeriodicRefresh updates the current state of the CoreOSMachine at the
@@ -82,18 +86,21 @@ func (m *CoreOSMachine) PeriodicRefresh(interval time.Duration, stop chan bool) 
 // currentState generates a MachineState object with the values read from
 // the local system
 func (m *CoreOSMachine) currentState() *MachineState {
-	id := readLocalMachineID("/")
+	id, err := readLocalMachineID("/")
+	if err != nil {
+		log.Errorf("Error retrieving machineID: %v\n", err)
+		return nil
+	}
 	publicIP := getLocalIP()
-	// TODO(jonboulle): clarify failure behaviour when unable to retrieve resources/units
 	totalResources, err := readLocalResources()
 	if err != nil {
 		log.Errorf("Error retrieving local resources: %v\n", err)
-		totalResources = resource.ResourceTuple{}
+		return nil
 	}
 	units, err := m.systemd.Units()
 	if err != nil {
 		log.Errorf("Error retrieving local units: %v\n", err)
-		units = []string{}
+		return nil
 	}
 	return &MachineState{
 		ID:             id,
@@ -106,16 +113,21 @@ func (m *CoreOSMachine) currentState() *MachineState {
 
 // IsLocalMachineID returns whether the given machine ID is equal to that of the local machine
 func IsLocalMachineID(mID string) bool {
-	return mID == readLocalMachineID("/")
+	m, err := readLocalMachineID("/")
+	return err == nil && m == mID
 }
 
-func readLocalMachineID(root string) string {
+func readLocalMachineID(root string) (string, error) {
 	fullPath := filepath.Join(root, machineIDPath)
 	id, err := ioutil.ReadFile(fullPath)
 	if err != nil {
-		return ""
+		return "", err
 	}
-	return strings.TrimSpace(string(id))
+	mID := strings.TrimSpace(string(id))
+	if mID == "" {
+		return "", errors.New("found empty machineID")
+	}
+	return mID, nil
 }
 
 func getLocalIP() string {

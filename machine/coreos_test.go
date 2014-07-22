@@ -14,7 +14,11 @@ func TestReadLocalMachineIDMissing(t *testing.T) {
 	}
 	defer os.RemoveAll(dir)
 
-	if machID := readLocalMachineID(dir); machID != "" {
+	machID, err := readLocalMachineID(dir)
+	if err == nil {
+		t.Fatal("Expected error for missing machID, but got nil")
+	}
+	if machID != "" {
 		t.Fatalf("Received incorrect machID: %s", machID)
 	}
 }
@@ -37,7 +41,11 @@ func TestReadLocalMachineIDFound(t *testing.T) {
 		t.Fatalf("Failed writing fake mach ID file: %v", err)
 	}
 
-	if machID := readLocalMachineID(dir); machID != "pingpong" {
+	machID, err := readLocalMachineID(dir)
+	if err != nil {
+		t.Fatalf("Unexpected error reading machID: %v", err)
+	}
+	if machID != "pingpong" {
 		t.Fatalf("Received incorrect machID %q, expected 'pingpong'", machID)
 	}
 }
