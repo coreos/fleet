@@ -126,7 +126,7 @@ func newHeartMonitorFromConfig(mach machine.Machine, reg registry.Registry, cfg 
 	return
 }
 
-func newMachineFromConfig(cfg config.Config, mgr *systemd.SystemdUnitManager) (*machine.CoreOSMachine, error) {
+func newMachineFromConfig(cfg config.Config, mgr unit.UnitManager) (*machine.CoreOSMachine, error) {
 	state := machine.MachineState{
 		PublicIP: cfg.PublicIP,
 		Metadata: cfg.Metadata(),
