@@ -15,7 +15,7 @@ func TestThreadsafeSet(t *testing.T) {
 }
 
 // Check that two slices contents are equal; order is irrelevant
-func equals(a, b []string) bool {
+func equal(a, b []string) bool {
 	as := sort.StringSlice(a)
 	bs := sort.StringSlice(b)
 	as.Sort()
@@ -46,7 +46,7 @@ func driveSetTests(t *testing.T, s Set) {
 
 	eValues = []string{"foo", "bar", "baz"}
 	values = s.Values()
-	if !equals(values, eValues) {
+	if !equal(values, eValues) {
 		t.Fatalf("Expect values=%v got %v", eValues, values)
 	}
 
@@ -64,7 +64,7 @@ func driveSetTests(t *testing.T, s Set) {
 	s.Add("foo")
 
 	values = s.Values()
-	if !equals(values, eValues) {
+	if !equal(values, eValues) {
 		t.Fatalf("Expect values=%v got %v", eValues, values)
 	}
 	if l := s.Length(); l != 3 {
@@ -78,7 +78,7 @@ func driveSetTests(t *testing.T, s Set) {
 
 	eValues = []string{}
 	values = s.Values()
-	if !equals(values, eValues) {
+	if !equal(values, eValues) {
 		t.Fatalf("Expect values=%v got %v", eValues, values)
 	}
 
@@ -105,7 +105,7 @@ func driveSetTests(t *testing.T, s Set) {
 		{[]string{"foo", "bar"}, cp2.Values()},
 		{[]string{"bar"}, cp3.Values()},
 	} {
-		if !equals(tt.want, tt.got) {
+		if !equal(tt.want, tt.got) {
 			t.Fatalf("case %d: expect values=%v got %v", i, tt.want, tt.got)
 		}
 	}
@@ -143,7 +143,7 @@ func driveSetTests(t *testing.T, s Set) {
 		{[]string{"foo", "baz"}, sub1.Values()},
 		{[]string{}, sub2.Values()},
 	} {
-		if !equals(tt.want, tt.got) {
+		if !equal(tt.want, tt.got) {
 			t.Fatalf("case %d: expect values=%v got %v", i, tt.want, tt.got)
 		}
 	}
