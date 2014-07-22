@@ -32,7 +32,7 @@ else
 	FMT="$TEST"
 fi
 
-# split TEST into an array and prepent REPO_PATH to each local package
+# split TEST into an array and prepend REPO_PATH to each local package
 split=(${TEST// / })
 TEST=${split[@]/#/${REPO_PATH}/}
 
