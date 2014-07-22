@@ -42,6 +42,7 @@ ExecStart=/usr/bin/sleep 3000
 	if err != nil {
 		t.Fatalf("Invalid unit file: %v", err)
 	}
+	hash := uf.Hash().String()
 	j := job.NewJob(name, *uf)
 
 	if err := mgr.Load(j.Name, j.Unit); err != nil {
@@ -59,7 +60,7 @@ ExecStart=/usr/bin/sleep 3000
 
 	us, err := mgr.GetUnitState(name)
 	if err == nil {
-		expect := unit.UnitState{"loaded", "inactive", "dead", ""}
+		expect := unit.UnitState{"loaded", "inactive", "dead", "", hash}
 		if !reflect.DeepEqual(expect, *us) {
 			t.Errorf("Expected UnitState %v, got %v", expect, *us)
 		}
@@ -71,7 +72,7 @@ ExecStart=/usr/bin/sleep 3000
 
 	us, err = mgr.GetUnitState(name)
 	if err == nil {
-		expect := unit.UnitState{"loaded", "active", "running", ""}
+		expect := unit.UnitState{"loaded", "active", "running", "", hash}
 		if !reflect.DeepEqual(expect, *us) {
 			t.Errorf("Expected UnitState %v, got %v", expect, *us)
 		}
@@ -83,7 +84,7 @@ ExecStart=/usr/bin/sleep 3000
 
 	us, err = mgr.GetUnitState(name)
 	if err == nil {
-		expect := unit.UnitState{"loaded", "inactive", "dead", ""}
+		expect := unit.UnitState{"loaded", "inactive", "dead", "", hash}
 		if !reflect.DeepEqual(expect, *us) {
 			t.Errorf("Expected UnitState %v, got %v", expect, *us)
 		}

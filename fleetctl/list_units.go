@@ -96,10 +96,14 @@ Or, choose the columns to display:
 			return machineFullLegend(*ms, full)
 		},
 		"hash": func(j *job.Job, full bool) string {
-			if !full {
-				return j.Unit.Hash().Short()
+			us := j.UnitState
+			if us == nil || us.UnitHash == "" {
+				return "-"
 			}
-			return j.Unit.Hash().String()
+			if !full {
+				return us.UnitHash[:7]
+			}
+			return us.UnitHash
 		},
 	}
 )

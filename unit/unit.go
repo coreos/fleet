@@ -65,16 +65,23 @@ func (u *Unit) Hash() Hash {
 	return Hash(sha1.Sum([]byte(u.Raw)))
 }
 
-// UnitState encodes the current state of a unit loaded into systemd
+// UnitState encodes the current state of a unit loaded into a fleet agent
 type UnitState struct {
 	LoadState   string
 	ActiveState string
 	SubState    string
 	MachineID   string
+	UnitHash    string
 }
 
 func NewUnitState(loadState, activeState, subState, mID string) *UnitState {
-	return &UnitState{loadState, activeState, subState, mID}
+	return &UnitState{
+		loadState,
+		activeState,
+		subState,
+		mID,
+		"",
+	}
 }
 
 // UnitNameInfo exposes certain interesting items about a Unit based on its

@@ -13,8 +13,13 @@ import (
 )
 
 func NewUnitStatePublisher(mgr unit.UnitManager, reg registry.Registry, mach machine.Machine) *UnitStatePublisher {
-	cache := make(map[string]*unit.UnitState)
-	return &UnitStatePublisher{mgr, reg, mach, sync.RWMutex{}, cache}
+	return &UnitStatePublisher{
+		mgr:   mgr,
+		reg:   reg,
+		mach:  mach,
+		mutex: sync.RWMutex{},
+		cache: make(map[string]*unit.UnitState),
+	}
 }
 
 type UnitStatePublisher struct {
@@ -81,8 +86,15 @@ func (p *UnitStatePublisher) publishOne(name string, us *unit.UnitState) {
 			log.Errorf("Failed to destroy UnitState(%s) in Registry: %v", name, err)
 		}
 	} else {
-		log.Infof("Pushing UnitState(%s) to Registry: loadState=%s, activeState=%s, subState=%s", name, us.LoadState, us.ActiveState, us.SubState)
-		p.reg.SaveUnitState(name, us)
+		// Sanity check - don't want to publish incomplete UnitStates
+		// TODO(jonboulle): consider teasing apart a separate UnitState-like struct
+		// so we can rely on a UnitState always being fully hydrated?
+		if len(us.UnitHash) == 0 || len(us.MachineID) == 0 {
+			log.Infof("Refusing to push UnitState(%s): %#v", name, us)
+		} else {
+			log.Infof("Pushing UnitState(%s) to Registry: %#v", name, us)
+			p.reg.SaveUnitState(name, us)
+		}
 	}
 }
 

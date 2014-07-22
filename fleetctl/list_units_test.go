@@ -84,6 +84,7 @@ Description=some description`)
 	assertEqual(t, "machine", "other-id/1.2.3.4", ms)
 
 	uh := "f035b2f14edc4d23572e5f3d3d4cb4f78d0e53c3"
+	j.UnitState.UnitHash = uh
 	fuh := listUnitsFields["hash"](j, true)
 	suh := listUnitsFields["hash"](j, false)
 	assertEqual(t, "hash", uh, fuh)
