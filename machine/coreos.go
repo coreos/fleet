@@ -11,18 +11,18 @@ import (
 
 	"github.com/coreos/fleet/Godeps/_workspace/src/github.com/docker/libcontainer/netlink"
 	log "github.com/coreos/fleet/Godeps/_workspace/src/github.com/golang/glog"
-	"github.com/coreos/fleet/systemd"
+	"github.com/coreos/fleet/unit"
 )
 
 const (
 	machineIDPath = "/etc/machine-id"
 )
 
-func NewCoreOSMachine(static MachineState, sd *systemd.SystemdUnitManager) *CoreOSMachine {
+func NewCoreOSMachine(static MachineState, um unit.UnitManager) *CoreOSMachine {
 	log.V(1).Infof("Created CoreOSMachine with static state %s", static)
 	m := &CoreOSMachine{
 		staticState: static,
-		systemd:     sd,
+		um:          um,
 	}
 	return m
 }
@@ -30,7 +30,7 @@ func NewCoreOSMachine(static MachineState, sd *systemd.SystemdUnitManager) *Core
 type CoreOSMachine struct {
 	sync.RWMutex
 
-	systemd      *systemd.SystemdUnitManager
+	um           unit.UnitManager
 	staticState  MachineState
 	dynamicState *MachineState
 }
@@ -97,7 +97,7 @@ func (m *CoreOSMachine) currentState() *MachineState {
 		log.Errorf("Error retrieving local resources: %v\n", err)
 		return nil
 	}
-	units, err := m.systemd.Units()
+	units, err := m.um.Units()
 	if err != nil {
 		log.Errorf("Error retrieving local units: %v\n", err)
 		return nil
