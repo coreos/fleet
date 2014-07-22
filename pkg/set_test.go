@@ -2,6 +2,7 @@ package pkg
 
 import (
 	"reflect"
+	"sort"
 	"testing"
 )
 
@@ -13,11 +14,29 @@ func TestThreadsafeSet(t *testing.T) {
 	driveSetTests(t, NewThreadsafeSet())
 }
 
+// Check that two slices contents are equal; order is irrelevant
+func equals(a, b []string) bool {
+	as := sort.StringSlice(a)
+	bs := sort.StringSlice(b)
+	as.Sort()
+	bs.Sort()
+	return reflect.DeepEqual(as, bs)
+}
+
 func driveSetTests(t *testing.T, s Set) {
+	// Verify operations on an empty set
 	eValues := []string{}
 	values := s.Values()
 	if !reflect.DeepEqual(values, eValues) {
 		t.Fatalf("Expect values=%v got %v", eValues, values)
+	}
+	if l := s.Length(); l != 0 {
+		t.Fatalf("Expected length=0, got %d", l)
+	}
+	for _, v := range []string{"foo", "bar", "baz"} {
+		if s.Contains(v) {
+			t.Fatalf("Expect s.Contains(%q) to be fale, got true", v)
+		}
 	}
 
 	// Add three items, ensure they show up
@@ -27,7 +46,7 @@ func driveSetTests(t *testing.T, s Set) {
 
 	eValues = []string{"foo", "bar", "baz"}
 	values = s.Values()
-	if !reflect.DeepEqual(values, eValues) {
+	if !equals(values, eValues) {
 		t.Fatalf("Expect values=%v got %v", eValues, values)
 	}
 
@@ -45,8 +64,11 @@ func driveSetTests(t *testing.T, s Set) {
 	s.Add("foo")
 
 	values = s.Values()
-	if !reflect.DeepEqual(values, eValues) {
+	if !equals(values, eValues) {
 		t.Fatalf("Expect values=%v got %v", eValues, values)
+	}
+	if l := s.Length(); l != 3 {
+		t.Fatalf("Expected length=3, got %d", l)
 	}
 
 	// Remove all items, ensure they are gone
@@ -56,7 +78,7 @@ func driveSetTests(t *testing.T, s Set) {
 
 	eValues = []string{}
 	values = s.Values()
-	if !reflect.DeepEqual(values, eValues) {
+	if !equals(values, eValues) {
 		t.Fatalf("Expect values=%v got %v", eValues, values)
 	}
 
@@ -64,44 +86,65 @@ func driveSetTests(t *testing.T, s Set) {
 		t.Fatalf("Expected length=0, got %d", l)
 	}
 
-	// Create a copy, and ensure it is unlinked to the other Set
+	// Create new copies of the set, and ensure they are unlinked to the
+	// original Set by making modifications
 	s.Add("foo")
 	s.Add("bar")
-	cp := s.Copy()
+	cp1 := s.Copy()
+	cp2 := s.Copy()
 	s.Remove("foo")
-	cp.Add("baz")
+	cp3 := s.Copy()
+	cp1.Add("baz")
 
-	eValues = []string{"foo", "bar", "baz"}
-	values = cp.Values()
-	if !reflect.DeepEqual(values, eValues) {
-		t.Fatalf("Expect values=%v got %v", eValues, values)
+	for i, tt := range []struct {
+		want []string
+		got  []string
+	}{
+		{[]string{"bar"}, s.Values()},
+		{[]string{"foo", "bar", "baz"}, cp1.Values()},
+		{[]string{"foo", "bar"}, cp2.Values()},
+		{[]string{"bar"}, cp3.Values()},
+	} {
+		if !equals(tt.want, tt.got) {
+			t.Fatalf("case %d: expect values=%v got %v", i, tt.want, tt.got)
+		}
 	}
 
-	eValues = []string{"bar"}
-	values = s.Values()
-	if !reflect.DeepEqual(values, eValues) {
-		t.Fatalf("Expect values=%v got %v", eValues, values)
+	for i, tt := range []struct {
+		want bool
+		got  bool
+	}{
+		{true, s.Equals(cp3)},
+		{true, cp3.Equals(s)},
+		{false, s.Equals(cp2)},
+		{false, s.Equals(cp1)},
+		{false, cp1.Equals(s)},
+		{false, cp2.Equals(s)},
+		{false, cp2.Equals(cp1)},
+	} {
+		if tt.got != tt.want {
+			t.Fatalf("case %d: want %t, got %t", i, tt.want, tt.got)
+
+		}
 	}
 
 	// Subtract values from a Set, ensuring a new Set is created and
 	// the original Sets are unmodified
-	sub := cp.Sub(s)
+	sub1 := cp1.Sub(s)
+	sub2 := cp2.Sub(cp1)
 
-	eValues = []string{"foo", "bar", "baz"}
-	values = cp.Values()
-	if !reflect.DeepEqual(values, eValues) {
-		t.Fatalf("Expect values=%v got %v", eValues, values)
-	}
-
-	eValues = []string{"bar"}
-	values = s.Values()
-	if !reflect.DeepEqual(values, eValues) {
-		t.Fatalf("Expect values=%v got %v", eValues, values)
-	}
-
-	eValues = []string{"foo", "baz"}
-	values = sub.Values()
-	if !reflect.DeepEqual(values, eValues) {
-		t.Fatalf("Expect values=%v got %v", eValues, values)
+	for i, tt := range []struct {
+		want []string
+		got  []string
+	}{
+		{[]string{"foo", "bar", "baz"}, cp1.Values()},
+		{[]string{"foo", "bar"}, cp2.Values()},
+		{[]string{"bar"}, s.Values()},
+		{[]string{"foo", "baz"}, sub1.Values()},
+		{[]string{}, sub2.Values()},
+	} {
+		if !equals(tt.want, tt.got) {
+			t.Fatalf("case %d: expect values=%v got %v", i, tt.want, tt.got)
+		}
 	}
 }
