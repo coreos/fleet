@@ -2,6 +2,8 @@ package unit
 
 import (
 	"sync"
+
+	"github.com/coreos/fleet/pkg"
 )
 
 func NewFakeUnitManager() *FakeUnitManager {
@@ -50,6 +52,20 @@ func (fum *FakeUnitManager) GetUnitState(name string) (us *UnitState, err error)
 		us = &UnitState{"loaded", "active", "running", ""}
 	}
 	return
+}
+
+func (fum *FakeUnitManager) GetUnitStates(filter pkg.Set) (map[string]*UnitState, error) {
+	fum.RLock()
+	defer fum.RUnlock()
+
+	states := make(map[string]*UnitState)
+	for _, name := range filter.Values() {
+		if _, ok := fum.u[name]; ok {
+			states[name] = &UnitState{"loaded", "active", "running", ""}
+		}
+	}
+
+	return states, nil
 }
 
 func (fum *FakeUnitManager) MarshalJSON() ([]byte, error) {
