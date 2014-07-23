@@ -107,7 +107,7 @@ func WaitForNActiveUnits(fleetctl fleetfunc, count int) (map[string]UnitState, e
 	var nactive int
 	states := make(map[string]UnitState)
 
-	timeout := 10 * time.Second
+	timeout := 15 * time.Second
 	alarm := time.After(timeout)
 
 	ticker := time.Tick(250 * time.Millisecond)
