@@ -1,10 +1,12 @@
 package registry
 
 import (
+	"errors"
 	"reflect"
 	"testing"
 
 	"github.com/coreos/fleet/etcd"
+	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/unit"
 )
 
@@ -15,6 +17,7 @@ type action struct {
 }
 
 type testEtcdClient struct {
+	err     error
 	sets    []action
 	deletes []action
 }
@@ -25,10 +28,10 @@ func (t *testEtcdClient) Do(req etcd.Action) (*etcd.Result, error) {
 	} else if d, ok := req.(*etcd.Delete); ok {
 		t.deletes = append(t.deletes, action{key: d.Key, rec: d.Recursive})
 	}
-	return nil, nil
+	return nil, t.err
 }
 func (t *testEtcdClient) Wait(req etcd.Action, ch <-chan bool) (*etcd.Result, error) {
-	return nil, nil
+	return nil, t.err
 }
 
 func TestUnitStatePaths(t *testing.T) {
@@ -76,7 +79,10 @@ func TestRemoveUnitState(t *testing.T) {
 	e := &testEtcdClient{}
 	r := &EtcdRegistry{e, "/fleet/"}
 	j := "foo.service"
-	r.RemoveUnitState(j)
+	err := r.RemoveUnitState(j)
+	if err != nil {
+		t.Errorf("unexpected error from RemoveUnitState: %v", err)
+	}
 	want := []action{
 		action{key: "/fleet/state/foo.service", rec: false},
 		action{key: "/fleet/states/foo.service", rec: true},
@@ -87,5 +93,79 @@ func TestRemoveUnitState(t *testing.T) {
 	}
 	if e.sets != nil {
 		t.Errorf("unexpected sets during RemoveUnitState: %#v", e.sets)
+	}
+
+	e = &testEtcdClient{err: errors.New("some error")}
+	r = &EtcdRegistry{e, "/fleet/"}
+	err = r.RemoveUnitState("foo.service")
+	if err == nil {
+		t.Errorf("did not get expected error from RemoveUnitState")
+	}
+
+	e = &testEtcdClient{err: etcd.Error{ErrorCode: etcd.ErrorKeyNotFound}}
+	r = &EtcdRegistry{e, "/fleet/"}
+	err = r.RemoveUnitState("foo.service")
+	if err != nil {
+		t.Errorf("unexpected error from RemoveUnitState: %v", err)
+	}
+}
+
+func TestUnitStateToModel(t *testing.T) {
+	for i, tt := range []struct {
+		in   *unit.UnitState
+		want *unitStateModel
+	}{
+		{
+			in:   nil,
+			want: nil,
+		},
+		{
+			in:   &unit.UnitState{"foo", "bar", "baz", ""},
+			want: &unitStateModel{"foo", "bar", "baz", nil},
+		},
+		{
+			in:   &unit.UnitState{"foo", "bar", "baz", "woof"},
+			want: &unitStateModel{"foo", "bar", "baz", &machine.MachineState{ID: "woof"}},
+		},
+	} {
+		got := unitStateToModel(tt.in)
+		if !reflect.DeepEqual(got, tt.want) {
+			t.Errorf("case %d: got %#v, want %#v", i, got, tt.want)
+		}
+	}
+}
+
+func TestModelToUnitState(t *testing.T) {
+	for i, tt := range []struct {
+		in   *unitStateModel
+		want *unit.UnitState
+	}{
+		{
+			in:   nil,
+			want: nil,
+		},
+		{
+			in: &unitStateModel{"foo", "bar", "baz", nil},
+			want: &unit.UnitState{
+				LoadState:   "foo",
+				ActiveState: "bar",
+				SubState:    "baz",
+				MachineID:   "",
+			},
+		},
+		{
+			in: &unitStateModel{"z", "x", "y", &machine.MachineState{ID: "abcd"}},
+			want: &unit.UnitState{
+				LoadState:   "z",
+				ActiveState: "x",
+				SubState:    "y",
+				MachineID:   "abcd",
+			},
+		},
+	} {
+		got := modelToUnitState(tt.in)
+		if !reflect.DeepEqual(got, tt.want) {
+			t.Errorf("case %d: got %#v, want %#v", i, got, tt.want)
+		}
 	}
 }
