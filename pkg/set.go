@@ -17,12 +17,16 @@ type Set interface {
 	Sub(Set) Set
 }
 
-func NewUnsafeSet() *unsafeSet {
-	return &unsafeSet{make(map[string]struct{})}
+func NewUnsafeSet(values ...string) *unsafeSet {
+	set := &unsafeSet{make(map[string]struct{})}
+	for _, v := range values {
+		set.Add(v)
+	}
+	return set
 }
 
-func NewThreadsafeSet() *tsafeSet {
-	us := NewUnsafeSet()
+func NewThreadsafeSet(values ...string) *tsafeSet {
+	us := NewUnsafeSet(values...)
 	return &tsafeSet{us, sync.RWMutex{}}
 }
 
