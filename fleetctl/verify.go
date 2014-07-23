@@ -7,14 +7,17 @@ import (
 
 var cmdVerifyUnit = &Command{
 	Name:    "verify",
-	Summary: "Verify unit file signatures using local SSH identities",
+	Summary: "DEPRECATED - Verify unit file signatures using local SSH identities",
 	Usage:   "UNIT",
-	Description: `Outputs whether or not unit file fits its signature. Useful to secure
+	Description: `This command is deprecated - it is being removed from fleetctl.
+	
+Outputs whether or not unit file fits its signature. Useful to secure
 the data of a unit.`,
 	Run: runVerifyUnit,
 }
 
 func runVerifyUnit(args []string) (exit int) {
+	fmt.Fprintln(os.Stderr, "WARNING: The signed/verified units feature is DEPRECATED and should not be used. It will be completely removed from fleet and fleetctl.")
 
 	if len(args) != 1 {
 		fmt.Fprintln(os.Stderr, "One unit file must be provided.")
