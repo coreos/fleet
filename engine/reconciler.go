@@ -164,6 +164,8 @@ func (r *wipReconciler) Reconcile() {
 			if !offerExists(j.Name) {
 				log.Infof("Offering Job(%s) since target state %s and Job not scheduled", j.Name, j.TargetState)
 				r.offerJob(clust, j)
+			} else {
+				activeNotScheduled = append(activeNotScheduled, j)
 			}
 		}
 	}
