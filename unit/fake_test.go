@@ -3,6 +3,8 @@ package unit
 import (
 	"reflect"
 	"testing"
+
+	"github.com/coreos/fleet/pkg"
 )
 
 func TestFakeUnitManagerEmpty(t *testing.T) {
@@ -67,5 +69,31 @@ func TestFakeUnitManagerLoadUnload(t *testing.T) {
 
 	if us != nil {
 		t.Fatalf("Expected nil UnitState")
+	}
+}
+
+func TestFakeUnitManagerGetUnitStates(t *testing.T) {
+	fum := NewFakeUnitManager()
+
+	err := fum.Load("hello.service", Unit{})
+	if err != nil {
+		t.Fatalf("Expected no error from Load(), got %v", err)
+	}
+
+	states, err := fum.GetUnitStates(pkg.NewUnsafeSet("hello.service", "goodbye.service"))
+	if err != nil {
+		t.Fatalf("Failed calling GetUnitStates: %v", err)
+	}
+
+	expectStates := map[string]*UnitState{
+		"hello.service": &UnitState{
+			LoadState:   "loaded",
+			ActiveState: "active",
+			SubState:    "running",
+		},
+	}
+
+	if !reflect.DeepEqual(expectStates, states) {
+		t.Fatalf("Received unexpected collection of UnitStates: %#v\nExpected: %#v", states, expectStates)
 	}
 }
