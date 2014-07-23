@@ -4,6 +4,7 @@ import (
 	"errors"
 	"sort"
 	"sync"
+	"time"
 
 	"github.com/coreos/fleet/Godeps/_workspace/src/github.com/coreos/go-semver/semver"
 
@@ -193,9 +194,20 @@ func (f *FakeRegistry) SaveUnitState(jobName string, unitState *unit.UnitState) 
 	f.jobStates[jobName] = unitState
 }
 
+func (f *FakeRegistry) RemoveUnitState(jobName string) error {
+	delete(f.jobStates, jobName)
+	return nil
+}
+
 func (f *FakeRegistry) LatestVersion() (*semver.Version, error) {
 	f.RLock()
 	defer f.RUnlock()
 
 	return f.version, nil
 }
+
+func (f *FakeRegistry) JobHeartbeat(jobName, agentMachID string, ttl time.Duration) error {
+	return nil
+}
+
+func (f *FakeRegistry) ClearJobHeartbeat(string) {}
