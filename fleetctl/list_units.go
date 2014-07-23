@@ -17,9 +17,9 @@ var (
 	listUnitsFieldsFlag string
 	cmdListUnits        = &Command{
 		Name:    "list-units",
-		Summary: "Enumerate units loaded in the cluster",
-		Usage:   "[--no-legend] [-l|--full]",
-		Description: `Lists all units submitted or started on the cluster.
+		Summary: "List the current state of units in the cluster",
+		Usage:   "[--no-legend] [-l|--full] [--fields]",
+		Description: `Lists the state of all units in the cluster loaded onto a machine.
 
 For easily parsable output, you can remove the column headers:
 	fleetctl list-units --no-legend
@@ -152,7 +152,7 @@ func runListUnits(args []string) (exit int) {
 }
 
 func jobToFieldKeys(m map[string]jobToField) (keys []string) {
-	for k, _ := range m {
+	for k := range m {
 		keys = append(keys, k)
 	}
 	return
