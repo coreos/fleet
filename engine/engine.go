@@ -7,6 +7,7 @@ import (
 	log "github.com/coreos/fleet/Godeps/_workspace/src/github.com/golang/glog"
 
 	"github.com/coreos/fleet/event"
+	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/registry"
 )
@@ -31,7 +32,7 @@ type Engine struct {
 }
 
 func New(reg registry.Registry, mach machine.Machine) *Engine {
-	rec := &dumbReconciler{reg, mach}
+	rec := &dumbReconciler{}
 	return &Engine{rec, reg, mach, nil, make(chan struct{})}
 }
 
@@ -152,4 +153,62 @@ func (e *Engine) clusterState() (*clusterState, error) {
 	}
 
 	return newClusterState(jobs, offers, machines), nil
+}
+
+func (e *Engine) resolveJobOffer(jName string) (err error) {
+	err = e.registry.ResolveJobOffer(jName)
+	if err != nil {
+		log.Errorf("Failed resolving JobOffer(%s): %v", jName, err)
+	} else {
+		log.Infof("Resolved JobOffer(%s)", jName)
+	}
+	return
+}
+
+func (e *Engine) unscheduleJob(jName, machID string) (err error) {
+	err = e.registry.ClearJobTarget(jName, machID)
+	if err != nil {
+		log.Errorf("Failed clearing target Machine(%s) of Job(%s): %v", machID, jName, err)
+	} else {
+		log.Infof("Unscheduled Job(%s) from Machine(%s)", jName, machID)
+	}
+	return
+}
+
+// attemptScheduleJob accepts a bid for the given Job and persists the
+// decision to the registry, returning true on success. If no bids exist or
+// if any communication with the Registry fails, false is returned.
+func (e *Engine) attemptScheduleJob(jName string) bool {
+	bids, err := e.registry.Bids(jName)
+	if err != nil {
+		log.Errorf("Failed determining open JobBids for JobOffer(%s): %v", jName, err)
+		return false
+	}
+
+	if bids.Length() == 0 {
+		log.V(1).Infof("No bids found for unresolved JobOffer(%s), unable to resolve", jName)
+		return false
+	}
+
+	choice := bids.Values()[0]
+
+	err = e.registry.ScheduleJob(jName, choice)
+	if err != nil {
+		log.Errorf("Failed scheduling Job(%s) to Machine(%s): %v", jName, choice, err)
+		return false
+	}
+
+	log.Infof("Scheduled Job(%s) to Machine(%s)", jName, choice)
+	return true
+}
+
+func (e *Engine) offerJob(j *job.Job) (err error) {
+	offer := job.NewOfferFromJob(*j)
+	err = e.registry.CreateJobOffer(offer)
+	if err != nil {
+		log.Errorf("Failed publishing JobOffer(%s): %v", j.Name, err)
+	} else {
+		log.Infof("Published JobOffer(%s)", j.Name)
+	}
+	return
 }
