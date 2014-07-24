@@ -7,7 +7,6 @@ import (
 	log "github.com/coreos/fleet/Godeps/_workspace/src/github.com/golang/glog"
 
 	"github.com/coreos/fleet/job"
-	"github.com/coreos/fleet/resource"
 )
 
 type AgentCache struct {
@@ -16,17 +15,11 @@ type AgentCache struct {
 
 	// expected states of jobs scheduled to this agent
 	targetStates map[string]job.JobState
-
-	// resources by job
-	// TODO(uwedeportivo): this is temporary until we derive this from systemd
-	// systemd will give us useful info even for jobs that didn't declare resource reservations
-	resources map[string]resource.ResourceTuple
 }
 
 func NewCache() *AgentCache {
 	return &AgentCache{
 		targetStates: make(map[string]job.JobState),
-		resources:    make(map[string]resource.ResourceTuple),
 	}
 }
 
@@ -52,23 +45,10 @@ func (as *AgentCache) MarshalJSON() ([]byte, error) {
 	return json.Marshal(data)
 }
 
-// TrackJob extracts and stores information about the given job for later reference
-func (as *AgentCache) TrackJob(j *job.Job) {
-	as.trackJobResources(j.Name, j.Resources())
-}
 
 // PurgeJob removes all state tracked on behalf of a given job
 func (as *AgentCache) PurgeJob(jobName string) {
 	as.dropTargetState(jobName)
-	as.dropJobResources(jobName)
-}
-
-func (as *AgentCache) trackJobResources(jobName string, res resource.ResourceTuple) {
-	as.resources[jobName] = res
-}
-
-func (as *AgentCache) dropJobResources(jobName string) {
-	delete(as.resources, jobName)
 }
 
 func (as *AgentCache) SetTargetState(jobName string, state job.JobState) {
