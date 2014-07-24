@@ -37,7 +37,7 @@ func (p *UnitStatePublisher) Run(beatchan <-chan *unit.UnitStateHeartbeat, stop 
 			case <-stop:
 				return
 			case <-tick:
-				p.PublishAll()
+				p.publishAll()
 			}
 		}
 	}()
@@ -58,7 +58,7 @@ func (p *UnitStatePublisher) Run(beatchan <-chan *unit.UnitStateHeartbeat, stop 
 	}
 }
 
-func (p *UnitStatePublisher) PublishAll() {
+func (p *UnitStatePublisher) publishAll() {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 
