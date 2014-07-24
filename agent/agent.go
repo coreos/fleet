@@ -26,7 +26,7 @@ type Agent struct {
 	Machine  machine.Machine
 	ttl      time.Duration
 
-	cache *AgentCache
+	cache *agentCache
 }
 
 func New(mgr unit.UnitManager, uGen *unit.UnitStateGenerator, reg registry.Registry, mach machine.Machine, ttl string) (*Agent, error) {
@@ -35,13 +35,13 @@ func New(mgr unit.UnitManager, uGen *unit.UnitStateGenerator, reg registry.Regis
 		return nil, err
 	}
 
-	a := &Agent{reg, mgr, uGen, mach, ttldur, NewCache()}
+	a := &Agent{reg, mgr, uGen, mach, ttldur, &agentCache{}}
 	return a, nil
 }
 
 func (a *Agent) MarshalJSON() ([]byte, error) {
 	data := struct {
-		Cache *AgentCache
+		Cache *agentCache
 	}{
 		Cache: a.cache,
 	}
@@ -57,7 +57,7 @@ func (a *Agent) Heartbeat(stop chan bool) {
 func (a *Agent) heartbeatJobs(ttl time.Duration, stop chan bool) {
 	heartbeat := func() {
 		machID := a.Machine.State().ID
-		launched := a.cache.LaunchedJobs()
+		launched := a.cache.launchedJobs()
 		for _, j := range launched {
 			go a.registry.JobHeartbeat(j, machID, ttl)
 		}
@@ -78,7 +78,7 @@ func (a *Agent) heartbeatJobs(ttl time.Duration, stop chan bool) {
 }
 
 func (a *Agent) loadJob(j *job.Job) error {
-	a.cache.SetTargetState(j.Name, job.JobStateLoaded)
+	a.cache.setTargetState(j.Name, job.JobStateLoaded)
 	a.uGen.Subscribe(j.Name)
 	return a.um.Load(j.Name, j.Unit)
 }
@@ -92,11 +92,11 @@ func (a *Agent) unloadJob(jobName string) {
 
 	a.registry.ClearJobHeartbeat(jobName)
 	a.registry.RemoveUnitState(jobName)
-	a.cache.PurgeJob(jobName)
+	a.cache.dropTargetState(jobName)
 }
 
 func (a *Agent) startJob(jobName string) {
-	a.cache.SetTargetState(jobName, job.JobStateLaunched)
+	a.cache.setTargetState(jobName, job.JobStateLaunched)
 
 	machID := a.Machine.State().ID
 	a.registry.JobHeartbeat(jobName, machID, a.ttl)
@@ -107,7 +107,7 @@ func (a *Agent) startJob(jobName string) {
 }
 
 func (a *Agent) stopJob(jobName string) {
-	a.cache.SetTargetState(jobName, job.JobStateLoaded)
+	a.cache.setTargetState(jobName, job.JobStateLoaded)
 	a.registry.ClearJobHeartbeat(jobName)
 
 	go func() {
@@ -120,14 +120,12 @@ func (a *Agent) stopJob(jobName string) {
 // returned *job.Job objects are not properly hydrated.
 func (a *Agent) jobs() (map[string]*job.Job, error) {
 	launched := pkg.NewUnsafeSet()
-	a.cache.Lock()
-	for _, jName := range a.cache.LaunchedJobs() {
+	for _, jName := range a.cache.launchedJobs() {
 		launched.Add(jName)
 	}
 
 	units, err := a.um.Units()
 	if err != nil {
-		a.cache.Unlock()
 		return nil, fmt.Errorf("failed fetching loaded units from UnitManager: %v", err)
 	}
 
@@ -137,11 +135,8 @@ func (a *Agent) jobs() (map[string]*job.Job, error) {
 	}
 	states, err := a.um.GetUnitStates(filter)
 	if err != nil {
-		a.cache.Unlock()
 		return nil, fmt.Errorf("failed fetching unit states: %v", err)
 	}
-
-	a.cache.Unlock()
 
 	jobs := make(map[string]*job.Job)
 	for _, uName := range units {
