@@ -23,45 +23,45 @@ func NewCache() *AgentCache {
 	}
 }
 
-func (as *AgentCache) Lock() {
+func (ac *AgentCache) Lock() {
 	log.V(1).Infof("Attempting to lock AgentCache")
-	as.mutex.Lock()
+	ac.mutex.Lock()
 	log.V(1).Infof("AgentCache locked")
 }
 
-func (as *AgentCache) Unlock() {
+func (ac *AgentCache) Unlock() {
 	log.V(1).Infof("Attempting to unlock AgentCache")
-	as.mutex.Unlock()
+	ac.mutex.Unlock()
 	log.V(1).Infof("AgentCache unlocked")
 }
 
-func (as *AgentCache) MarshalJSON() ([]byte, error) {
+func (ac *AgentCache) MarshalJSON() ([]byte, error) {
 	type ds struct {
 		TargetStates map[string]job.JobState
 	}
 	data := ds{
-		TargetStates: as.targetStates,
+		TargetStates: ac.targetStates,
 	}
 	return json.Marshal(data)
 }
 
 
 // PurgeJob removes all state tracked on behalf of a given job
-func (as *AgentCache) PurgeJob(jobName string) {
-	as.dropTargetState(jobName)
+func (ac *AgentCache) PurgeJob(jobName string) {
+	ac.dropTargetState(jobName)
 }
 
-func (as *AgentCache) SetTargetState(jobName string, state job.JobState) {
-	as.targetStates[jobName] = state
+func (ac *AgentCache) SetTargetState(jobName string, state job.JobState) {
+	ac.targetStates[jobName] = state
 }
 
-func (as *AgentCache) dropTargetState(jobName string) {
-	delete(as.targetStates, jobName)
+func (ac *AgentCache) dropTargetState(jobName string) {
+	delete(ac.targetStates, jobName)
 }
 
-func (as *AgentCache) LaunchedJobs() []string {
+func (ac *AgentCache) LaunchedJobs() []string {
 	jobs := make([]string, 0)
-	for j, ts := range as.targetStates {
+	for j, ts := range ac.targetStates {
 		if ts == job.JobStateLaunched {
 			jobs = append(jobs, j)
 		}
@@ -69,9 +69,9 @@ func (as *AgentCache) LaunchedJobs() []string {
 	return jobs
 }
 
-func (as *AgentCache) ScheduledJobs() []string {
+func (ac *AgentCache) ScheduledJobs() []string {
 	jobs := make([]string, 0)
-	for j, ts := range as.targetStates {
+	for j, ts := range ac.targetStates {
 		if ts == job.JobStateLoaded || ts == job.JobStateLaunched {
 			jobs = append(jobs, j)
 		}
@@ -79,7 +79,7 @@ func (as *AgentCache) ScheduledJobs() []string {
 	return jobs
 }
 
-func (as *AgentCache) ScheduledHere(jobName string) bool {
-	ts := as.targetStates[jobName]
+func (ac *AgentCache) ScheduledHere(jobName string) bool {
+	ts := ac.targetStates[jobName]
 	return ts == job.JobStateLoaded || ts == job.JobStateLaunched
 }
