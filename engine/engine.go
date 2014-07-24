@@ -64,7 +64,7 @@ func (e *Engine) Run(stop chan bool) {
 		}
 
 		start := time.Now()
-		e.rec.Reconcile()
+		e.rec.Reconcile(e)
 		elapsed := time.Now().Sub(start)
 
 		msg := fmt.Sprintf("Engine completed reconciliation in %s", elapsed)
@@ -130,4 +130,26 @@ func ensureLeader(prev registry.Lease, reg registry.Registry, machID string) (cu
 // target state and triggers the engine's reconciliation loop
 func (e *Engine) HandleJobTargetStateChange(ev event.Event) {
 	e.trigger <- struct{}{}
+}
+
+func (e *Engine) clusterState() (*clusterState, error) {
+	jobs, err := e.registry.Jobs()
+	if err != nil {
+		log.Errorf("Failed fetching Jobs from Registry: %v", err)
+		return nil, err
+	}
+
+	offers, err := e.registry.UnresolvedJobOffers()
+	if err != nil {
+		log.Errorf("Failed fetching JobOffers from Registry: %v", err)
+		return nil, err
+	}
+
+	machines, err := e.registry.Machines()
+	if err != nil {
+		log.Errorf("Failed fetching Machines from Registry: %v", err)
+		return nil, err
+	}
+
+	return newClusterState(jobs, offers, machines), nil
 }

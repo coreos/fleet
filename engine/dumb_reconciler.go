@@ -13,63 +13,17 @@ type dumbReconciler struct {
 	machine  machine.Machine
 }
 
-func (r *dumbReconciler) Reconcile() {
+func (r *dumbReconciler) Reconcile(e *Engine) {
 	log.V(1).Infof("Polling Registry for actionable work")
 
-	jobs, err := r.registry.Jobs()
+	clust, err := e.clusterState()
 	if err != nil {
-		log.Errorf("Failed fetching Jobs from Registry: %v", err)
+		log.Errorf("Failed getting current cluster state: %v", err)
 		return
 	}
 
-	offers, err := r.registry.UnresolvedJobOffers()
-	if err != nil {
-		log.Errorf("Failed fetching JobOffers from Registry: %v", err)
-		return
-	}
-
-	machines, err := r.registry.Machines()
-	if err != nil {
-		log.Errorf("Failed fetching Machines from Registry: %v", err)
-		return
-	}
-
-	oMap := make(map[string]*job.JobOffer, len(offers))
-	for i := range offers {
-		o := offers[i]
-		oMap[o.Job.Name] = &o
-	}
-
-	mMap := make(map[string]*machine.MachineState, len(machines))
-	for i := range machines {
-		m := machines[i]
-		mMap[m.ID] = &m
-	}
-
-	// Jobs will be sorted into three categories:
-	// 1. Jobs where TargetState is inactive
-	inactive := make([]*job.Job, 0)
-	// 2. Jobs where TargetState is active, and the Job has been scheduled
-	activeScheduled := make([]*job.Job, 0)
-	// 3. Jobs where TargetState is active, and the Job has not been scheduled
-	activeNotScheduled := make([]*job.Job, 0)
-
-	for i := range jobs {
-		j := jobs[i]
-		if j.TargetState == job.JobStateInactive {
-			inactive = append(inactive, &j)
-		} else if j.Scheduled() {
-			activeScheduled = append(activeScheduled, &j)
-		} else {
-			activeNotScheduled = append(activeNotScheduled, &j)
-		}
-	}
-
-	// resolveJobOffer removes the referenced Job's corresponding
-	// JobOffer from the local cache before marking it as resolved
-	// in the Registry
 	resolveJobOffer := func(jName string) {
-		delete(oMap, jName)
+		clust.forgetOffer(jName)
 
 		err := r.registry.ResolveJobOffer(jName)
 		if err != nil {
@@ -118,19 +72,9 @@ func (r *dumbReconciler) Reconcile() {
 		return true
 	}
 
-	// offerExists returns true if the referenced Job has a corresponding
-	// offer in the local JobOffer cache
-	offerExists := func(jobName string) bool {
-		_, ok := oMap[jobName]
-		return ok
-	}
-
-	// machinePresent determines if the referenced Machine appears to be a
-	// current member of the cluster based on the local cache
-	machinePresent := func(machID string) bool {
-		_, ok := mMap[machID]
-		return ok
-	}
+	inactive := clust.inactiveJobs()
+	needScheduling := clust.unscheduledLoadedJobs()
+	loaded := clust.scheduledLoadedJobs()
 
 	for _, j := range inactive {
 		if j.Scheduled() {
@@ -138,16 +82,16 @@ func (r *dumbReconciler) Reconcile() {
 			unscheduleJob(j)
 		}
 
-		if offerExists(j.Name) {
+		if clust.offerExists(j.Name) {
 			log.Infof("Resolving extraneous JobOffer(%s) since target state is inactive", j.Name)
 			resolveJobOffer(j.Name)
 		}
 	}
 
-	for _, j := range activeScheduled {
-		if machinePresent(j.TargetMachineID) {
-			if offerExists(j.Name) {
-				log.Infof("Resolving extraneous JobOffer(%s) since Job is already scheduled", j.Name)
+	for _, j := range loaded {
+		if clust.machineExists(j.TargetMachineID) {
+			if clust.offerExists(j.Name) {
+				log.Infof("Resolving extraneous offer since Job(%s) is already scheduled", j.Name)
 				resolveJobOffer(j.Name)
 			}
 		} else {
@@ -157,15 +101,15 @@ func (r *dumbReconciler) Reconcile() {
 				continue
 			}
 
-			if !offerExists(j.Name) {
+			if !clust.offerExists(j.Name) {
 				log.Infof("Offering Job(%s) since target state %s and Job not scheduled", j.Name, j.TargetState)
 				r.offerJob(j)
 			}
 		}
 	}
 
-	for _, j := range activeNotScheduled {
-		if !offerExists(j.Name) {
+	for _, j := range needScheduling {
+		if !clust.offerExists(j.Name) {
 			log.Infof("Offering Job(%s) since target state %s and Job not scheduled", j.Name, j.TargetState)
 			r.offerJob(j)
 			continue
@@ -174,7 +118,7 @@ func (r *dumbReconciler) Reconcile() {
 		log.V(1).Infof("Attempting to schedule Job(%s) since target state %s and Job not scheduled", j.Name, j.TargetState)
 
 		if !scheduleJob(j.Name) {
-			delete(oMap, j.Name)
+			clust.forgetOffer(j.Name)
 			continue
 		}
 
@@ -182,7 +126,7 @@ func (r *dumbReconciler) Reconcile() {
 	}
 
 	// Deal with remaining JobOffers that do not have a corresponding Job
-	for jName, _ := range oMap {
+	for _, jName := range clust.unresolvedOffers() {
 		log.Infof("Destroying JobOffer(%s) since corresponding Job does not exist", jName)
 		resolveJobOffer(jName)
 	}
