@@ -54,10 +54,6 @@ type offer struct {
 
 type offerCache map[string]*offer
 
-func newOfferCache() *offerCache {
-	return &offerCache{}
-}
-
 func (oc *offerCache) add(name string, bids pkg.Set, j *job.Job) {
 	(*oc)[name] = &offer{
 		Bids: bids,
@@ -398,7 +394,7 @@ func (ar *AgentReconciler) currentOffers() (*offerCache, error) {
 		return nil, fmt.Errorf("failed fetching JobOffers from Registry: %v", err)
 	}
 
-	oCache := newOfferCache()
+	oCache := &offerCache{}
 	for _, offer := range uOffers {
 		bids, err := ar.reg.Bids(&offer)
 		if err != nil {
