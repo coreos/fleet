@@ -46,13 +46,7 @@ func TestAgentLoadUnloadJob(t *testing.T) {
 		t.Fatalf("Failed creating Agent: %v", err)
 	}
 
-	u, err := unit.NewUnit("")
-	if err != nil {
-		t.Fatalf("Failed creating Unit: %v", err)
-	}
-
-	j := job.NewJob("foo.service", *u)
-
+	j := newTestJobFromUnitContents(t, "foo.service", "")
 	err = a.loadJob(j)
 	if err != nil {
 		t.Fatalf("Failed calling Agent.loadJob: %v", err)
