@@ -99,11 +99,12 @@ func (m *systemdUnitManager) getUnitState(name string) (*unit.UnitState, error) 
 	if err != nil {
 		return nil, err
 	}
-	return &unit.UnitState{
+	us := unit.UnitState{
 		LoadState:   info["LoadState"].(string),
 		ActiveState: info["ActiveState"].(string),
 		SubState:    info["SubState"].(string),
-	}, nil
+	}
+	return &us, nil
 }
 
 func (m *systemdUnitManager) startUnit(name string) {
@@ -164,20 +165,15 @@ func (m *systemdUnitManager) Units() (units []string, err error) {
 	return
 }
 
-func copyMap(hashes map[string]unit.Hash) map[string]unit.Hash {
-	cp := make(map[string]unit.Hash)
-	for k, v := range hashes {
-		cp[k] = v
-	}
-	return cp
-}
-
 func (m *systemdUnitManager) GetUnitStates(filter pkg.Set) (map[string]*unit.UnitState, error) {
+	// Unfortunately we need to lock for the entire operation to ensure we
+	// have a consistent view of the hashes. Otherwise, Load/Unload
+	// operations could mutate the hashes before we've retrieved the state
+	// for every unit in the filter, since they won't necessarily all be
+	// present in the initial ListUnits() call.
 	m.mutex.Lock()
-	// Copy the hashes map so we don't need to hold the lock for the entire time
-	hashes := copyMap(m.hashes)
+	defer m.mutex.Unlock()
 	dbusStatuses, err := m.systemd.ListUnits()
-	m.mutex.Unlock()
 
 	if err != nil {
 		return nil, err
@@ -194,7 +190,7 @@ func (m *systemdUnitManager) GetUnitStates(filter pkg.Set) (map[string]*unit.Uni
 			ActiveState: dus.ActiveState,
 			SubState:    dus.SubState,
 		}
-		if h, ok := hashes[dus.Name]; ok {
+		if h, ok := m.hashes[dus.Name]; ok {
 			us.UnitHash = h.String()
 		}
 		states[dus.Name] = us
@@ -211,7 +207,7 @@ func (m *systemdUnitManager) GetUnitStates(filter pkg.Set) (map[string]*unit.Uni
 		if err != nil {
 			return nil, err
 		}
-		if h, ok := hashes[name]; ok {
+		if h, ok := m.hashes[name]; ok {
 			us.UnitHash = h.String()
 		}
 		states[name] = us

@@ -73,10 +73,9 @@ func (g *UnitStateGenerator) Generate() (<-chan *UnitStateHeartbeat, error) {
 			// last time Generate ran, but are now not part of that
 			// list, send nil-State heartbeats to signal removal
 			for _, name := range g.lastSubscribed.Sub(subscribed).Values() {
-				ush := &UnitStateHeartbeat{
+				beatchan <- &UnitStateHeartbeat{
 					Name: name,
 				}
-				beatchan <- ush
 			}
 		}
 
