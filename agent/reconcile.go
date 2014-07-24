@@ -134,7 +134,13 @@ func (ar *AgentReconciler) Trigger() {
 func (ar *AgentReconciler) Reconcile(a *Agent) {
 	ms := a.Machine.State()
 
-	dAgentState, err := ar.desiredAgentState(ms.ID)
+	jobs, err := ar.reg.Jobs()
+	if err != nil {
+		log.Errorf("Failed fetching Jobs from Registry: %v", err)
+		return
+	}
+
+	dAgentState, err := ar.desiredAgentState(jobs, ms.ID)
 	if err != nil {
 		log.Errorf("Unable to determine agent's desired state: %v", err)
 		return
@@ -154,7 +160,7 @@ func (ar *AgentReconciler) Reconcile(a *Agent) {
 		}
 	}
 
-	oCache, err := ar.currentOffers()
+	oCache, err := ar.currentOffers(jobs)
 	if err != nil {
 		log.Errorf("Unable to determine current state of offers: %v", err)
 		return
@@ -227,12 +233,7 @@ func (ar *AgentReconciler) unscheduleJob(jName, machID string) error {
 
 // desiredAgentState builds an *agentState object that represents what an
 // Agent identified by the provided machine ID should currently be doing.
-func (ar *AgentReconciler) desiredAgentState(machID string) (*agentState, error) {
-	jobs, err := ar.reg.Jobs()
-	if err != nil {
-		return nil, fmt.Errorf("failed fetching Jobs from Registry: %v", err)
-	}
-
+func (ar *AgentReconciler) desiredAgentState(jobs []job.Job, machID string) (*agentState, error) {
 	as := agentState{jobs: make(map[string]*job.Job)}
 	for _, j := range jobs {
 		j := j
@@ -378,11 +379,7 @@ func (ar *AgentReconciler) calculateTasksForJob(ms *machine.MachineState, dState
 	log.Errorf("Unable to determine how to reconcile Job(%s): desiredState=%#v currentState=%#V", jName, dJob, cJob)
 }
 
-func (ar *AgentReconciler) currentOffers() (*offerCache, error) {
-	jobs, err := ar.reg.Jobs()
-	if err != nil {
-		return nil, fmt.Errorf("failed fetching Jobs from Registry: %v", err)
-	}
+func (ar *AgentReconciler) currentOffers(jobs []job.Job) (*offerCache, error) {
 	jMap := make(map[string]*job.Job)
 	for _, j := range jobs {
 		j := j

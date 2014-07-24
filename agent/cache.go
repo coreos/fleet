@@ -45,7 +45,6 @@ func (ac *AgentCache) MarshalJSON() ([]byte, error) {
 	return json.Marshal(data)
 }
 
-
 // PurgeJob removes all state tracked on behalf of a given job
 func (ac *AgentCache) PurgeJob(jobName string) {
 	ac.dropTargetState(jobName)
