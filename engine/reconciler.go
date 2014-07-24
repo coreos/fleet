@@ -206,7 +206,7 @@ func (r *wipReconciler) Reconcile() {
 
 func (r *wipReconciler) offerJob(clust *cluster, j *job.Job) {
 	machineIDs := clust.partition(j)
-	offer := job.NewOfferFromJob(*j, machineIDs)
+	offer := job.NewOfferFromJob(*j)
 	err := r.reg.CreateJobOffer(offer)
 	if err != nil {
 		log.Errorf("Failed publishing JobOffer(%s): %v", j.Name, err)

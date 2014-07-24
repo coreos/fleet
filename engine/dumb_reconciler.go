@@ -189,7 +189,7 @@ func (r *dumbReconciler) Reconcile() {
 }
 
 func (r *dumbReconciler) offerJob(j *job.Job) {
-	offer := job.NewOfferFromJob(*j, nil)
+	offer := job.NewOfferFromJob(*j)
 	err := r.registry.CreateJobOffer(offer)
 	if err != nil {
 		log.Errorf("Failed publishing JobOffer(%s): %v", j.Name, err)

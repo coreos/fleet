@@ -393,7 +393,7 @@ func (ar *AgentReconciler) currentOffers(jobs []job.Job) (*offerCache, error) {
 
 	oCache := &offerCache{}
 	for _, offer := range uOffers {
-		bids, err := ar.reg.Bids(&offer)
+		bids, err := ar.reg.Bids(offer.Job.Name)
 		if err != nil {
 			return nil, err
 		}
