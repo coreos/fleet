@@ -252,7 +252,7 @@ func (ar *AgentReconciler) desiredAgentState(jobs []job.Job, machID string) (*ag
 }
 
 // currentAgentState builds an *agentState object that represents what an
-// Agent is currently be doing.
+// Agent is currently doing.
 func currentAgentState(a *Agent) (*agentState, error) {
 	jobs, err := a.jobs()
 	if err != nil {
