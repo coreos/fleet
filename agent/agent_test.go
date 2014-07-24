@@ -82,7 +82,7 @@ func TestAgentLoadUnloadJob(t *testing.T) {
 	a.unloadJob("foo.service")
 
 	// This sucks, but we have to do it if Agent.unloadJob is going to spin
-	// of the real work that matters in a goroutine
+	// off the real work that matters in a goroutine
 	time.Sleep(200)
 
 	jobs, err = a.jobs()
