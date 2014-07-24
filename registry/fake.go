@@ -137,11 +137,11 @@ func (f *FakeRegistry) DestroyJob(name string) error {
 	return nil
 }
 
-func (f *FakeRegistry) Bids(jo *job.JobOffer) (pkg.Set, error) {
+func (f *FakeRegistry) Bids(jName string) (pkg.Set, error) {
 	f.RLock()
 	defer f.RUnlock()
 
-	return f.bids[jo.Job.Name], nil
+	return f.bids[jName], nil
 }
 
 func (f *FakeRegistry) SubmitJobBid(jName, machID string) {

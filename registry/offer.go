@@ -66,12 +66,12 @@ func (r *EtcdRegistry) getJobOfferFromJSON(val string) *job.JobOffer {
 	return &jo
 }
 
-// Bids returns a list of machine IDs that have been bid for the given JobOffer
-func (r *EtcdRegistry) Bids(jo *job.JobOffer) (bids pkg.Set, err error) {
+// Bids returns a list of machine IDs that have bid for the referenced Job
+func (r *EtcdRegistry) Bids(jName string) (bids pkg.Set, err error) {
 	bids = pkg.NewUnsafeSet()
 
 	req := etcd.Get{
-		Key:       path.Join(r.keyPrefix, offerPrefix, jo.Job.Name, "bids"),
+		Key:       path.Join(r.keyPrefix, offerPrefix, jName, "bids"),
 		Recursive: true,
 	}
 

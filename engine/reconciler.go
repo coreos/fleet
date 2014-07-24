@@ -114,7 +114,7 @@ func (r *wipReconciler) Reconcile() {
 	// maybeScheduleOfferedJob attempts to schedule the given Job only if
 	// one or more bids have been submitted
 	maybeScheduleOfferedJob := func(jName string) error {
-		bids, err := r.reg.Bids(oMap[jName])
+		bids, err := r.reg.Bids(jName)
 		if err != nil {
 			log.Errorf("Failed determining open JobBids for JobOffer(%s): %v", jName, err)
 			return err

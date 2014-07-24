@@ -95,7 +95,7 @@ func (r *dumbReconciler) Reconcile() {
 	// scheduleJob attempts to schedule the given Job only if one or more
 	// bids have been submitted
 	scheduleJob := func(jName string) bool {
-		bids, err := r.registry.Bids(oMap[jName])
+		bids, err := r.registry.Bids(jName)
 		if err != nil {
 			log.Errorf("Failed determining open JobBids for JobOffer(%s): %v", jName, err)
 			return false
