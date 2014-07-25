@@ -2,46 +2,33 @@ package agent
 
 import (
 	"encoding/json"
-	"sync"
 
 	"github.com/coreos/fleet/job"
 )
 
-type AgentCache struct {
-	// used to lock the datastructure for multi-goroutine safety
-	mutex sync.Mutex
+type agentCache map[string]job.JobState
 
-	// expected states of jobs scheduled to this agent
-	targetStates map[string]job.JobState
-}
-
-func NewCache() *AgentCache {
-	return &AgentCache{
-		targetStates: make(map[string]job.JobState),
-	}
-}
-
-func (ac *AgentCache) MarshalJSON() ([]byte, error) {
+func (ac *agentCache) MarshalJSON() ([]byte, error) {
 	type ds struct {
 		TargetStates map[string]job.JobState
 	}
 	data := ds{
-		TargetStates: ac.targetStates,
+		TargetStates: map[string]job.JobState(*ac),
 	}
 	return json.Marshal(data)
 }
 
-func (ac *AgentCache) SetTargetState(jobName string, state job.JobState) {
-	ac.targetStates[jobName] = state
+func (ac *agentCache) setTargetState(jobName string, state job.JobState) {
+	(*ac)[jobName] = state
 }
 
-func (ac *AgentCache) dropTargetState(jobName string) {
-	delete(ac.targetStates, jobName)
+func (ac *agentCache) dropTargetState(jobName string) {
+	delete(*ac, jobName)
 }
 
-func (ac *AgentCache) LaunchedJobs() []string {
+func (ac *agentCache) launchedJobs() []string {
 	jobs := make([]string, 0)
-	for j, ts := range ac.targetStates {
+	for j, ts := range *ac {
 		if ts == job.JobStateLaunched {
 			jobs = append(jobs, j)
 		}
