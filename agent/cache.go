@@ -53,18 +53,3 @@ func (ac *AgentCache) LaunchedJobs() []string {
 	}
 	return jobs
 }
-
-func (ac *AgentCache) ScheduledJobs() []string {
-	jobs := make([]string, 0)
-	for j, ts := range ac.targetStates {
-		if ts == job.JobStateLoaded || ts == job.JobStateLaunched {
-			jobs = append(jobs, j)
-		}
-	}
-	return jobs
-}
-
-func (ac *AgentCache) ScheduledHere(jobName string) bool {
-	ts := ac.targetStates[jobName]
-	return ts == job.JobStateLoaded || ts == job.JobStateLaunched
-}
