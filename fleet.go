@@ -162,6 +162,10 @@ func getConfig(flagset *flag.FlagSet, userCfgFile string) (*config.Config, error
 		AuthorizedKeysFile: (*flagset.Lookup("authorized_keys_file")).Value.(flag.Getter).Get().(string),
 	}
 
+	if cfg.VerifyUnits {
+		log.Warning("WARNING: The signed/verified units feature is DEPRECATED and should not be used. It will be completely removed from fleet and fleetctl.")
+	}
+
 	config.UpdateLoggingFlagsFromConfig(flag.CommandLine, &cfg)
 
 	return &cfg, nil

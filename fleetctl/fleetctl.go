@@ -191,6 +191,10 @@ func main() {
 		os.Exit(2)
 	}
 
+	if sharedFlags.Sign {
+		fmt.Fprintln(os.Stderr, "WARNING: The signed/verified units feature is DEPRECATED and should not be used. It will be completely removed from fleet and fleetctl.")
+	}
+
 	if cmd.Name != "help" && cmd.Name != "version" {
 		var err error
 		cAPI, err = getClient()
