@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"sync"
 
-	log "github.com/coreos/fleet/Godeps/_workspace/src/github.com/golang/glog"
-
 	"github.com/coreos/fleet/job"
 )
 
@@ -21,18 +19,6 @@ func NewCache() *AgentCache {
 	return &AgentCache{
 		targetStates: make(map[string]job.JobState),
 	}
-}
-
-func (ac *AgentCache) Lock() {
-	log.V(1).Infof("Attempting to lock AgentCache")
-	ac.mutex.Lock()
-	log.V(1).Infof("AgentCache locked")
-}
-
-func (ac *AgentCache) Unlock() {
-	log.V(1).Infof("Attempting to unlock AgentCache")
-	ac.mutex.Unlock()
-	log.V(1).Infof("AgentCache unlocked")
 }
 
 func (ac *AgentCache) MarshalJSON() ([]byte, error) {

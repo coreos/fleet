@@ -120,14 +120,12 @@ func (a *Agent) stopJob(jobName string) {
 // returned *job.Job objects are not properly hydrated.
 func (a *Agent) jobs() (map[string]*job.Job, error) {
 	launched := pkg.NewUnsafeSet()
-	a.cache.Lock()
 	for _, jName := range a.cache.LaunchedJobs() {
 		launched.Add(jName)
 	}
 
 	units, err := a.um.Units()
 	if err != nil {
-		a.cache.Unlock()
 		return nil, fmt.Errorf("failed fetching loaded units from UnitManager: %v", err)
 	}
 
@@ -137,11 +135,8 @@ func (a *Agent) jobs() (map[string]*job.Job, error) {
 	}
 	states, err := a.um.GetUnitStates(filter)
 	if err != nil {
-		a.cache.Unlock()
 		return nil, fmt.Errorf("failed fetching unit states: %v", err)
 	}
-
-	a.cache.Unlock()
 
 	jobs := make(map[string]*job.Job)
 	for _, uName := range units {
