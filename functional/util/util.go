@@ -100,7 +100,7 @@ loop:
 	return machines, nil
 }
 
-// WaitForNActiveUnits polls fleet for up to 10s, exiting when N units are
+// WaitForNActiveUnits polls fleet for up to 15s, exiting when N units are
 // found to be in an active state. It returns a map of active units to
 // their target machines.
 func WaitForNActiveUnits(fleetctl fleetfunc, count int) (map[string]UnitState, error) {
