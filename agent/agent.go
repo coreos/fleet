@@ -92,7 +92,7 @@ func (a *Agent) unloadJob(jobName string) {
 
 	a.registry.ClearJobHeartbeat(jobName)
 	a.registry.RemoveUnitState(jobName)
-	a.cache.PurgeJob(jobName)
+	a.cache.dropTargetState(jobName)
 }
 
 func (a *Agent) startJob(jobName string) {
