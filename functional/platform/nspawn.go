@@ -254,7 +254,15 @@ UseDNS no
 		return
 	}
 
-	exec := fmt.Sprintf("/usr/bin/systemd-nspawn --bind-ro=/usr -b -M %s%s --network-bridge fleet0 -D %s", nc.name, name, fsdir)
+	exec := strings.Join([]string{
+		"/usr/bin/systemd-nspawn",
+		"--bind-ro=/usr",
+		"-b",
+		fmt.Sprintf("-M %s%s", nc.name, name),
+		"--capability=CAP_NET_BIND_SERVICE,CAP_SYS_TIME", // needed for ntpd
+		"--network-bridge fleet0",
+		fmt.Sprintf("-D %s", fsdir),
+	}, " ")
 	log.Printf("Creating nspawn container: %s", exec)
 	err = nc.systemd(fmt.Sprintf("%s%s.service", nc.name, name), exec)
 	if err != nil {
