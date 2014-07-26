@@ -199,16 +199,13 @@ func (s *Server) Run() {
 }
 
 // Monitor tracks the health of the Server. If the Server is ever deemed
-// unhealthy, the Server is stopped, purged, and started up again.
+// unhealthy, the Server is restarted.
 func (s *Server) Monitor() {
 	err := s.mon.Monitor(s.hrt, s.stop)
 	if err != nil {
 		log.Errorf("Server monitor triggered: %v", err)
 
-		log.Infof("Gracefully restarting")
 		s.Stop()
-		s.Purge()
-
 		s.Run()
 	}
 }
