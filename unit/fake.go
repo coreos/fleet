@@ -49,7 +49,11 @@ func (fum *FakeUnitManager) GetUnitState(name string) (us *UnitState, err error)
 	defer fum.RUnlock()
 
 	if _, ok := fum.u[name]; ok {
-		us = &UnitState{"loaded", "active", "running", ""}
+		us = &UnitState{
+			LoadState:   "loaded",
+			ActiveState: "active",
+			SubState:    "running",
+		}
 	}
 	return
 }
@@ -61,7 +65,7 @@ func (fum *FakeUnitManager) GetUnitStates(filter pkg.Set) (map[string]*UnitState
 	states := make(map[string]*UnitState)
 	for _, name := range filter.Values() {
 		if _, ok := fum.u[name]; ok {
-			states[name] = &UnitState{"loaded", "active", "running", ""}
+			states[name] = &UnitState{"loaded", "active", "running", "", ""}
 		}
 	}
 

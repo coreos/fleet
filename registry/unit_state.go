@@ -121,6 +121,7 @@ type unitStateModel struct {
 	ActiveState  string                `json:"activeState"`
 	SubState     string                `json:"subState"`
 	MachineState *machine.MachineState `json:"machineState"`
+	UnitHash     string                `json:"unitHash"`
 }
 
 func modelToUnitState(usm *unitStateModel) *unit.UnitState {
@@ -132,6 +133,7 @@ func modelToUnitState(usm *unitStateModel) *unit.UnitState {
 		LoadState:   usm.LoadState,
 		ActiveState: usm.ActiveState,
 		SubState:    usm.SubState,
+		UnitHash:    usm.UnitHash,
 	}
 
 	if usm.MachineState != nil {
@@ -155,6 +157,12 @@ func unitStateToModel(us *unit.UnitState) *unitStateModel {
 	if us.MachineID != "" {
 		usm.MachineState = &machine.MachineState{ID: us.MachineID}
 	}
+
+	// Refuse to create a UnitState without a Hash
+	if len(us.UnitHash) == 0 {
+		return nil
+	}
+	usm.UnitHash = us.UnitHash
 
 	return &usm
 }

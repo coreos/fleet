@@ -14,7 +14,10 @@ type UnitStateHeartbeat struct {
 }
 
 func NewUnitStateGenerator(mgr UnitManager) *UnitStateGenerator {
-	return &UnitStateGenerator{mgr, pkg.NewThreadsafeSet(), nil}
+	return &UnitStateGenerator{
+		mgr:        mgr,
+		subscribed: pkg.NewThreadsafeSet(),
+	}
 }
 
 type UnitStateGenerator struct {
@@ -39,8 +42,8 @@ func (g *UnitStateGenerator) Run(receiver chan<- *UnitStateHeartbeat, stop chan 
 				continue
 			}
 
-			for bt := range beatchan {
-				receiver <- bt
+			for ush := range beatchan {
+				receiver <- ush
 			}
 		}
 	}
@@ -59,15 +62,20 @@ func (g *UnitStateGenerator) Generate() (<-chan *UnitStateHeartbeat, error) {
 	go func() {
 		for name, us := range reportable {
 			us := us
-			beatchan <- &UnitStateHeartbeat{Name: name, State: us}
+			beatchan <- &UnitStateHeartbeat{
+				Name:  name,
+				State: us,
+			}
 		}
 
 		if g.lastSubscribed != nil {
 			// For all units that were part of the subscription list
 			// last time Generate ran, but are now not part of that
-			// list, send nil-State heartbeats
+			// list, send nil-State heartbeats to signal removal
 			for _, name := range g.lastSubscribed.Sub(subscribed).Values() {
-				beatchan <- &UnitStateHeartbeat{Name: name, State: nil}
+				beatchan <- &UnitStateHeartbeat{
+					Name: name,
+				}
 			}
 		}
 
