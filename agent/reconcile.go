@@ -44,7 +44,7 @@ func (t *task) String() string {
 	if t.Job != nil {
 		jName = t.Job.Name
 	}
-	return fmt.Sprintf("{Type:%s, Job:%s, Reason:%q}", t.Type, jName, t.Reason)
+	return fmt.Sprintf("{Type: %s, Job: %s, Reason: %q}", t.Type, jName, t.Reason)
 }
 
 type offer struct {
@@ -217,7 +217,7 @@ func (ar *AgentReconciler) doTask(a *Agent, t *task) (err error) {
 	}
 
 	if err == nil {
-		log.Infof("AgentReconciler completed task: task=%s", t)
+		log.Infof("AgentReconciler completed task: %s", t)
 	}
 
 	return
