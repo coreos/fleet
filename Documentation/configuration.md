@@ -29,6 +29,12 @@ Provide a custom set of etcd endpoints.
 
 Default: ["http://127.0.0.1:4001"]
 
+#### etcd_cafile, etcd_keyfile, etcd_certfile 
+
+Provide TLS configuration when SSL certificate authentication is enabled in etcd endpoints
+
+Default: ""
+
 #### public_ip
 
 IP address that should be published with the local Machine's state and any socket information.

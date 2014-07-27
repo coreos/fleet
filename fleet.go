@@ -47,6 +47,9 @@ func main() {
 	cfgset := flag.NewFlagSet("fleet", flag.ExitOnError)
 	cfgset.Int("verbosity", 0, "Logging level")
 	cfgset.Var(&stringSlice{}, "etcd_servers", "List of etcd endpoints")
+	cfgset.String("etcd_keyfile", "", "SSL key file used to secure etcd communication")
+	cfgset.String("etcd_certfile", "", "SSL certification file used to secure etcd communication")
+	cfgset.String("etcd_cafile", "", "SSL Certificate Authority file used to secure etcd communication")
 	cfgset.String("etcd_key_prefix", registry.DefaultKeyPrefix, "Keyspace for fleet data in etcd")
 	cfgset.String("public_ip", "", "IP address that fleet machine should publish")
 	cfgset.String("metadata", "", "List of key-value metadata to assign to the fleet machine")
@@ -155,6 +158,9 @@ func getConfig(flagset *flag.FlagSet, userCfgFile string) (*config.Config, error
 		Verbosity:          (*flagset.Lookup("verbosity")).Value.(flag.Getter).Get().(int),
 		EtcdServers:        (*flagset.Lookup("etcd_servers")).Value.(flag.Getter).Get().(stringSlice),
 		EtcdKeyPrefix:      (*flagset.Lookup("etcd_key_prefix")).Value.(flag.Getter).Get().(string),
+		EtcdKeyFile:        (*flagset.Lookup("etcd_keyfile")).Value.(flag.Getter).Get().(string),
+		EtcdCertFile:       (*flagset.Lookup("etcd_certfile")).Value.(flag.Getter).Get().(string),
+		EtcdCAFile:         (*flagset.Lookup("etcd_cafile")).Value.(flag.Getter).Get().(string),
 		PublicIP:           (*flagset.Lookup("public_ip")).Value.(flag.Getter).Get().(string),
 		RawMetadata:        (*flagset.Lookup("metadata")).Value.(flag.Getter).Get().(string),
 		AgentTTL:           (*flagset.Lookup("agent_ttl")).Value.(flag.Getter).Get().(string),
