@@ -80,7 +80,7 @@ func (p *UnitStatePublisher) publishAll() {
 
 func (p *UnitStatePublisher) publishOne(name string, us *unit.UnitState) {
 	if us == nil {
-		log.Infof("Destroying UnitState(%s) in Registry", name)
+		log.V(1).Infof("Destroying UnitState(%s) in Registry", name)
 		err := p.reg.RemoveUnitState(name)
 		if err != nil {
 			log.Errorf("Failed to destroy UnitState(%s) in Registry: %v", name, err)
@@ -89,10 +89,12 @@ func (p *UnitStatePublisher) publishOne(name string, us *unit.UnitState) {
 		// Sanity check - don't want to publish incomplete UnitStates
 		// TODO(jonboulle): consider teasing apart a separate UnitState-like struct
 		// so we can rely on a UnitState always being fully hydrated?
-		if len(us.UnitHash) == 0 || len(us.MachineID) == 0 {
-			log.Infof("Refusing to push UnitState(%s): %#v", name, us)
+		if len(us.UnitHash) == 0 {
+			log.Errorf("Refusing to push UnitState(%s), no UnitHash: %#v", name, us)
+		} else if len(us.MachineID) == 0 {
+			log.Errorf("Refusing to push UnitState(%s), no MachineID: %#v", name, us)
 		} else {
-			log.Infof("Pushing UnitState(%s) to Registry: %#v", name, us)
+			log.V(1).Infof("Pushing UnitState(%s) to Registry: %#v", name, us)
 			p.reg.SaveUnitState(name, us)
 		}
 	}
