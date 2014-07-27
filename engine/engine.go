@@ -6,7 +6,6 @@ import (
 
 	log "github.com/coreos/fleet/Godeps/_workspace/src/github.com/golang/glog"
 
-	"github.com/coreos/fleet/event"
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/registry"
@@ -127,9 +126,7 @@ func ensureLeader(prev registry.Lease, reg registry.Registry, machID string) (cu
 	return
 }
 
-// HandleJobTargetStateChange responds to changes in any Job's
-// target state and triggers the engine's reconciliation loop
-func (e *Engine) HandleJobTargetStateChange(ev event.Event) {
+func (e *Engine) Trigger() {
 	e.trigger <- struct{}{}
 }
 

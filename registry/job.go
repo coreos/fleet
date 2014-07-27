@@ -8,7 +8,6 @@ import (
 	log "github.com/coreos/fleet/Godeps/_workspace/src/github.com/golang/glog"
 
 	"github.com/coreos/fleet/etcd"
-	"github.com/coreos/fleet/event"
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/unit"
 )
@@ -270,53 +269,6 @@ func (r *EtcdRegistry) SetJobTargetState(jobName string, state job.JobState) err
 	return err
 }
 
-func (es *EventStream) filterJobTargetStateChanges(resp *etcd.Result) *event.Event {
-	if resp.Action != "set" {
-		return nil
-	}
-
-	dir, baseName := path.Split(resp.Node.Key)
-	if baseName != "target-state" {
-		return nil
-	}
-
-	dir = strings.TrimSuffix(dir, "/")
-	jobName := path.Base(dir)
-
-	ts, err := job.ParseJobState(resp.Node.Value)
-	if err != nil {
-		log.Errorf("Failed parsing JobState: %v", err)
-		return nil
-	}
-
-	cs := es.registry.determineJobState(jobName)
-	if cs == nil {
-		return nil
-	}
-	if *cs == ts {
-		// No state change has actually occurred
-		return nil
-	}
-
-	var cType string
-	switch {
-	case *cs == job.JobStateLoaded && ts == job.JobStateLaunched:
-		cType = "JobTargetStateStarted"
-	case *cs == job.JobStateLaunched && ts == job.JobStateLoaded:
-		cType = "JobTargetStateStopped"
-	default:
-		cType = "JobTargetStateChange"
-	}
-
-	agent, err := es.registry.jobTargetMachine(jobName)
-	if err != nil {
-		log.Errorf("Failed to look up target of Job(%s): %v", jobName, err)
-		return nil
-	}
-
-	return &event.Event{cType, jobName, agent}
-}
-
 func (r *EtcdRegistry) ScheduleJob(jobName string, machID string) error {
 	req := etcd.Create{
 		Key:   r.jobTargetAgentPath(jobName),
@@ -324,72 +276,6 @@ func (r *EtcdRegistry) ScheduleJob(jobName string, machID string) error {
 	}
 	_, err := r.etcd.Do(&req)
 	return err
-}
-
-func filterEventJobScheduled(resp *etcd.Result) *event.Event {
-	if resp.Action != "create" {
-		return nil
-	}
-
-	dir, baseName := path.Split(resp.Node.Key)
-	if baseName != "target" {
-		return nil
-	}
-
-	dir = strings.TrimSuffix(dir, "/")
-	dir, jobName := path.Split(dir)
-
-	dir = strings.TrimSuffix(dir, "/")
-	dir, prefixName := path.Split(dir)
-
-	if prefixName != jobPrefix {
-		return nil
-	}
-
-	return &event.Event{"EventJobScheduled", jobName, resp.Node.Value}
-}
-
-func filterEventJobUnscheduled(resp *etcd.Result) *event.Event {
-	if resp.Action != "delete" && resp.Action != "compareAndDelete" {
-		return nil
-	}
-
-	dir, baseName := path.Split(resp.Node.Key)
-	if baseName != "target" {
-		return nil
-	}
-
-	dir = strings.TrimSuffix(dir, "/")
-	dir, jobName := path.Split(dir)
-
-	dir = strings.TrimSuffix(dir, "/")
-	dir, prefixName := path.Split(dir)
-
-	if prefixName != jobPrefix {
-		return nil
-	}
-
-	if resp.PrevNode == nil {
-		return nil
-	}
-
-	return &event.Event{"EventJobUnscheduled", jobName, resp.PrevNode.Value}
-}
-
-func filterEventJobDestroyed(resp *etcd.Result) *event.Event {
-	if resp.Action != "delete" {
-		return nil
-	}
-
-	dir, jobName := path.Split(resp.Node.Key)
-	dir = strings.TrimSuffix(dir, "/")
-	dir, prefixName := path.Split(dir)
-
-	if prefixName != jobPrefix {
-		return nil
-	}
-
-	return &event.Event{"EventJobDestroyed", jobName, nil}
 }
 
 func (r *EtcdRegistry) jobTargetAgentPath(jobName string) string {

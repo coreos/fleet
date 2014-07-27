@@ -1,7 +1,8 @@
 package event
 
-type Event struct {
-	Type    string
-	Payload interface{}
-	Context interface{}
-}
+var (
+	GlobalEvent = Event("GlobalEvent")
+	JobEvent    = Event("JobEvent")
+)
+
+type Event string
