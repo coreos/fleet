@@ -244,7 +244,7 @@ func TestCalculateClusterTasks(t *testing.T) {
 			),
 			tasks: []*task{
 				&task{
-					Type:   taskTypeScheduleJob,
+					Type:   taskTypeAttemptScheduleJob,
 					Reason: "target state launched and Job not scheduled",
 					Job: &job.Job{
 						Name:        "foo.service",
