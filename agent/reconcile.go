@@ -28,6 +28,7 @@ const (
 	taskReasonScheduledButUnloaded       = "job scheduled here but not loaded"
 	taskReasonLoadedButNotScheduled      = "job loaded but not scheduled here"
 	taskReasonLoadedDesiredStateLaunched = "job currently loaded but desired state is launched"
+	taskReasonInactive                   = "job schedule locally but not loaded"
 	taskReasonLaunchedDesiredStateLoaded = "job currently launched but desired state is loaded"
 	taskReasonPurgingAgent               = "purging agent"
 	taskReasonAbleToResolveOffer         = "offer unresolved and able to run job"
@@ -237,9 +238,6 @@ func (ar *AgentReconciler) desiredAgentState(jobs []job.Job, machID string) (*ag
 	as := agentState{jobs: make(map[string]*job.Job)}
 	for _, j := range jobs {
 		j := j
-		if j.TargetState == job.JobStateInactive {
-			continue
-		}
 
 		if j.TargetMachineID == "" || j.TargetMachineID != machID {
 			continue
@@ -302,7 +300,7 @@ func (ar *AgentReconciler) calculateTasksForJob(ms *machine.MachineState, dState
 		return
 	}
 
-	if dJob == nil {
+	if dJob == nil || dJob.TargetState == job.JobStateInactive {
 		taskchan <- &task{
 			Type:   taskTypeUnloadJob,
 			Job:    cJob,
@@ -358,20 +356,28 @@ func (ar *AgentReconciler) calculateTasksForJob(ms *machine.MachineState, dState
 		return
 	}
 
+	if *cJob.State == job.JobStateInactive {
+		taskchan <- &task{
+			Type:   taskTypeLoadJob,
+			Job:    cJob,
+			Reason: taskReasonInactive,
+		}
+	}
+
+	if (*cJob.State == job.JobStateInactive || *cJob.State == job.JobStateLoaded) && dJob.TargetState == job.JobStateLaunched {
+		taskchan <- &task{
+			Type:   taskTypeStartJob,
+			Job:    cJob,
+			Reason: taskReasonLoadedDesiredStateLaunched,
+		}
+		return
+	}
+
 	if *cJob.State == job.JobStateLaunched && dJob.TargetState == job.JobStateLoaded {
 		taskchan <- &task{
 			Type:   taskTypeStopJob,
 			Job:    cJob,
 			Reason: taskReasonLaunchedDesiredStateLoaded,
-		}
-		return
-	}
-
-	if *cJob.State == job.JobStateLoaded && dJob.TargetState == job.JobStateLaunched {
-		taskchan <- &task{
-			Type:   taskTypeStartJob,
-			Job:    cJob,
-			Reason: taskReasonLoadedDesiredStateLaunched,
 		}
 		return
 	}

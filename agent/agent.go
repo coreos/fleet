@@ -124,6 +124,11 @@ func (a *Agent) jobs() (map[string]*job.Job, error) {
 		launched.Add(jName)
 	}
 
+	loaded := pkg.NewUnsafeSet()
+	for _, jName := range a.cache.loadedJobs() {
+		loaded.Add(jName)
+	}
+
 	units, err := a.um.Units()
 	if err != nil {
 		return nil, fmt.Errorf("failed fetching loaded units from UnitManager: %v", err)
@@ -152,8 +157,10 @@ func (a *Agent) jobs() (map[string]*job.Job, error) {
 			TargetMachineID: "",
 		}
 
-		js := job.JobStateLoaded
-		if launched.Contains(uName) {
+		js := job.JobStateInactive
+		if loaded.Contains(uName) {
+			js = job.JobStateLoaded
+		} else if launched.Contains(uName) {
 			js = job.JobStateLaunched
 		}
 		jobs[uName].State = &js

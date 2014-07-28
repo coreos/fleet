@@ -13,6 +13,7 @@ import (
 )
 
 var (
+	jsInactive = job.JobStateInactive
 	jsLoaded   = job.JobStateLoaded
 	jsLaunched = job.JobStateLaunched
 )
@@ -303,11 +304,35 @@ func TestCalculateTasksForJob(t *testing.T) {
 			},
 		},
 
+		// unload jobs that have an inactive target state
+		{
+			mState: &machine.MachineState{ID: "XXX"},
+			dState: &agentState{
+				jobs: map[string]*job.Job{
+					"foo.service": &job.Job{
+						TargetState: jsInactive,
+					},
+				},
+			},
+			cState: &agentState{
+				jobs: map[string]*job.Job{
+					"foo.service": &job.Job{State: &jsLoaded},
+				},
+			},
+			jName: "foo.service",
+			tasks: []task{
+				task{
+					Type:   taskTypeUnloadJob,
+					Job:    &job.Job{State: &jsLoaded},
+					Reason: taskReasonLoadedButNotScheduled,
+				},
+			},
+		},
+
 		// unschedule jobs that can not run locally
 		{
 			mState: &machine.MachineState{ID: "XXX"},
 			dState: &agentState{
-
 				jobs: map[string]*job.Job{
 					"foo.service": &job.Job{
 						TargetState: jsLaunched,
