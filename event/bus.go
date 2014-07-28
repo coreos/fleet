@@ -1,49 +1,39 @@
 package event
 
 import (
-	"fmt"
-	"reflect"
 	"sync"
-
-	log "github.com/coreos/fleet/Godeps/_workspace/src/github.com/golang/glog"
 )
 
+type listenerFunc func()
+
 type EventBus struct {
-	listeners map[string]interface{}
+	lFuncMap map[Event][]listenerFunc
 }
 
 func NewEventBus() *EventBus {
-	listeners := make(map[string]interface{}, 0)
-	return &EventBus{listeners}
+	return &EventBus{
+		lFuncMap: make(map[Event][]listenerFunc),
+	}
 }
 
-func (eb *EventBus) AddListener(name string, l interface{}) {
-	eb.listeners[name] = l
-}
-
-func (eb *EventBus) RemoveListener(name string) {
-	delete(eb.listeners, name)
-}
-
-// Distribute an Event to all listeners registered to Event.Type
-func (eb *EventBus) Dispatch(ev *Event) {
-	log.V(1).Infof("Dispatching %s to listeners", ev.Type)
-
-	wg := sync.WaitGroup{}
-
-	handlerFuncName := fmt.Sprintf("Handle%s", ev.Type)
-	for name, listener := range eb.listeners {
-		log.V(1).Infof("Looking for event handler func %s on listener %s", handlerFuncName, name)
-		handlerFunc := reflect.ValueOf(listener).MethodByName(handlerFuncName)
-		if handlerFunc.IsValid() {
-			log.V(1).Infof("Calling event handler for %s on listener %s", ev.Type, name)
-			wg.Add(1)
-			go func() {
-				handlerFunc.Call([]reflect.Value{reflect.ValueOf(*ev)})
-				wg.Done()
-			}()
-		}
+func (eb *EventBus) AddListener(eType Event, lFunc listenerFunc) {
+	lFuncs, ok := eb.lFuncMap[eType]
+	if !ok {
+		lFuncs = make([]listenerFunc, 0)
 	}
 
+	eb.lFuncMap[eType] = append(lFuncs, lFunc)
+}
+
+// Dispatch calls all listeners registered to the given Event
+func (eb *EventBus) Dispatch(ev *Event) {
+	wg := sync.WaitGroup{}
+	for _, lFunc := range eb.lFuncMap[*ev] {
+		wg.Add(1)
+		go func() {
+			lFunc()
+			wg.Done()
+		}()
+	}
 	wg.Wait()
 }

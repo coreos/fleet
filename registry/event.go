@@ -2,6 +2,8 @@ package registry
 
 import (
 	"errors"
+	"path"
+	"strings"
 	"time"
 
 	log "github.com/coreos/fleet/Godeps/_workspace/src/github.com/golang/glog"
@@ -25,35 +27,45 @@ func NewEventStream(client etcd.Client, registry Registry) (*EventStream, error)
 }
 
 func (es *EventStream) Stream(idx uint64, sendFunc func(*event.Event), stop chan bool) {
-	filters := []func(*etcd.Result) *event.Event{
-		filterEventJobDestroyed,
-		filterEventJobScheduled,
-		filterEventJobUnscheduled,
-		es.filterJobTargetStateChanges,
-		es.filterEventJobOffered,
-	}
-
 	etcdchan := make(chan *etcd.Result)
 	go watch(es.etcd, idx, etcdchan, es.registry.keyPrefix, stop)
-	go pipe(etcdchan, filters, sendFunc, stop)
+	go filter(etcdchan, es.registry.keyPrefix, sendFunc, stop)
 }
 
-func pipe(etcdchan chan *etcd.Result, filters []func(res *etcd.Result) *event.Event, sendFunc func(*event.Event), stop chan bool) {
+func filter(etcdchan chan *etcd.Result, prefix string, sendFunc func(*event.Event), stop chan bool) {
+	parse := func(res *etcd.Result) *event.Event {
+		if res == nil || res.Node == nil {
+			return nil
+		}
+
+		if !strings.HasPrefix(res.Node.Key, prefix) {
+			return nil
+		}
+
+		var ev event.Event
+		if strings.HasPrefix(res.Node.Key, path.Join(prefix, jobPrefix)) {
+			ev = event.JobEvent
+		} else {
+			ev = event.GlobalEvent
+		}
+
+		return &ev
+	}
+
 	for {
 		select {
 		case <-stop:
 			return
 		case res := <-etcdchan:
 			log.V(1).Infof("Received %v from etcd watch", res)
-			for _, f := range filters {
-				ev := f(res)
-				if ev == nil {
-					continue
-				}
 
-				log.V(1).Infof("Translated %v to Event(Type=%s)", res, ev.Type)
-				sendFunc(ev)
+			ev := parse(res)
+			if ev == nil {
+				continue
 			}
+
+			log.V(1).Infof("Translated %v to Event(Type=%s)", res, ev)
+			sendFunc(ev)
 		}
 	}
 }

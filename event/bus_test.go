@@ -5,53 +5,46 @@ import (
 )
 
 type TestListener struct {
-	evchan chan Event
+	evchan chan struct{}
 }
 
-func (l *TestListener) HandleEventTypeOne(ev Event) {
-	go func() { l.evchan <- ev }()
+func (l *TestListener) HandleEvent() {
+	go func() { l.evchan <- struct{}{} }()
 }
 
 func TestEventBus(t *testing.T) {
-	evchan := make(chan Event)
-
 	bus := NewEventBus()
-	bus.AddListener("test", &TestListener{evchan})
+	tl := &TestListener{make(chan struct{})}
+	ev := Event("TypeOne")
+	bus.AddListener(ev, tl.HandleEvent)
 
-	ev := Event{"EventTypeOne", "payload", "Y"}
 	bus.Dispatch(&ev)
 
 	select {
-	case recv := <-evchan:
-		if recv.Payload.(string) != "payload" {
-			t.Error("event payload is incorrect")
-		}
-		if recv.Context.(string) != "Y" {
-			t.Error("event context is incorrect")
-		}
+	case <-tl.evchan:
 	default:
 		t.Fatalf("Failed to dispatch event")
 	}
 }
 
 func TestEventBusNoDispatch(t *testing.T) {
-	evchan := make(chan Event)
-
 	bus := NewEventBus()
-	bus.AddListener("test", &TestListener{evchan})
+	tl := &TestListener{make(chan struct{}, 2)}
+	ev1 := Event("TypeOne")
+	ev2 := Event("TypeTwo")
+	bus.AddListener(ev1, tl.HandleEvent)
 
-	go func() {
-		ev := Event{"EventTypeTwo", "payload", "Y"}
-		bus.Dispatch(&ev)
-	}()
+	bus.Dispatch(&ev2)
+	bus.Dispatch(&ev1)
 
-	go func() {
-		ev := Event{"EventTypeOne", "payload", "Y"}
-		bus.Dispatch(&ev)
-	}()
+	close(tl.evchan)
 
-	recv := <-evchan
-	if recv.Type != "EventTypeOne" {
-		t.Fatalf("handler received unexpected event")
+	count := 0
+	for _ = range tl.evchan {
+		count++
+	}
+
+	if count != 1 {
+		t.Errorf("Expected a single event, got %d", count)
 	}
 }

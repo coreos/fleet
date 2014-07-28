@@ -7,7 +7,6 @@ import (
 	log "github.com/coreos/fleet/Godeps/_workspace/src/github.com/golang/glog"
 
 	"github.com/coreos/fleet/etcd"
-	"github.com/coreos/fleet/event"
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/pkg"
 )
@@ -150,30 +149,4 @@ func (r *EtcdRegistry) SubmitJobBid(jName, machID string) {
 		Key: path.Join(r.keyPrefix, offerPrefix, jName, "bids", machID),
 	}
 	r.etcd.Do(&req)
-}
-
-func (es *EventStream) filterEventJobOffered(resp *etcd.Result) *event.Event {
-	if resp.Action != "set" {
-		return nil
-	}
-
-	dir, base := path.Split(resp.Node.Key)
-
-	if base != "object" {
-		return nil
-	}
-
-	dir = path.Dir(strings.TrimSuffix(dir, "/"))
-	prefix := path.Base(strings.TrimSuffix(dir, "/"))
-
-	if prefix != offerPrefix {
-		return nil
-	}
-
-	jo := es.registry.getJobOfferFromJSON(resp.Node.Value)
-	if jo == nil {
-		return nil
-	}
-
-	return &event.Event{"EventJobOffered", *jo, nil}
 }
