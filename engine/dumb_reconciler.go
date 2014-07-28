@@ -9,10 +9,10 @@ import (
 )
 
 const (
-	taskTypeOfferJob      = "OfferJob"
-	taskTypeResolveOffer  = "ResolveOffer"
-	taskTypeUnscheduleJob = "UnscheduleJob"
-	taskTypeScheduleJob   = "ScheduleJob"
+	taskTypeOfferJob           = "OfferJob"
+	taskTypeResolveOffer       = "ResolveOffer"
+	taskTypeUnscheduleJob      = "UnscheduleJob"
+	taskTypeAttemptScheduleJob = "AttemptScheduleJob"
 )
 
 type task struct {
@@ -98,7 +98,7 @@ func calculateClusterTasks(taskchan chan *task, clust *clusterState) {
 			continue
 		}
 
-		taskchan <- newTask(taskTypeScheduleJob, reason, j)
+		taskchan <- newTask(taskTypeAttemptScheduleJob, reason, j)
 		clust.forgetOffer(j.Name)
 	}
 
@@ -118,7 +118,7 @@ func doTask(t *task, e *Engine) (err error) {
 		err = e.resolveJobOffer(t.Job.Name)
 	case taskTypeUnscheduleJob:
 		err = e.unscheduleJob(t.Job.Name, t.Job.TargetMachineID)
-	case taskTypeScheduleJob:
+	case taskTypeAttemptScheduleJob:
 		if e.attemptScheduleJob(t.Job.Name) {
 			err = e.resolveJobOffer(t.Job.Name)
 		}
