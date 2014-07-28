@@ -63,7 +63,8 @@ func New(cfg config.Config) (*Server, error) {
 		return nil, err
 	}
 
-	eClient, err := etcd.NewClient(cfg.EtcdServers, http.Transport{TLSClientConfig: tlsConfig})
+	eTrans := http.Transport{TLSClientConfig: tlsConfig}
+	eClient, err := etcd.NewClient(cfg.EtcdServers, eTrans, etcd.DefaultActionTimeout)
 	if err != nil {
 		return nil, err
 	}

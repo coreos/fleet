@@ -294,7 +294,7 @@ func getRegistryClient() (client.API, error) {
 		TLSClientConfig: tlsConfig,
 	}
 
-	return client.NewRegistryClient(&trans, globalFlags.Endpoint, globalFlags.EtcdKeyPrefix)
+	return client.NewRegistryClient(&trans, globalFlags.Endpoint, globalFlags.EtcdKeyPrefix, etcd.DefaultActionTimeout)
 }
 
 // getChecker creates and returns a HostKeyChecker, or nil if any error is encountered
