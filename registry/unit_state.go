@@ -148,21 +148,22 @@ func unitStateToModel(us *unit.UnitState) *unitStateModel {
 		return nil
 	}
 
+	// Refuse to create a UnitState without a Hash
+	// See https://github.com/coreos/fleet/issues/720
+	//if len(us.UnitHash) == 0 {
+	//	return nil
+	//}
+
 	usm := unitStateModel{
 		LoadState:   us.LoadState,
 		ActiveState: us.ActiveState,
 		SubState:    us.SubState,
+		UnitHash:    us.UnitHash,
 	}
 
 	if us.MachineID != "" {
 		usm.MachineState = &machine.MachineState{ID: us.MachineID}
 	}
-
-	// Refuse to create a UnitState without a Hash
-	if len(us.UnitHash) == 0 {
-		return nil
-	}
-	usm.UnitHash = us.UnitHash
 
 	return &usm
 }
