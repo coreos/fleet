@@ -35,3 +35,13 @@ func (ac *agentCache) launchedJobs() []string {
 	}
 	return jobs
 }
+
+func (ac *agentCache) loadedJobs() []string {
+	jobs := make([]string, 0)
+	for j, ts := range *ac {
+		if ts == job.JobStateLoaded {
+			jobs = append(jobs, j)
+		}
+	}
+	return jobs
+}
