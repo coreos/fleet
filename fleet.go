@@ -51,6 +51,7 @@ func main() {
 	cfgset.String("etcd_certfile", "", "SSL certification file used to secure etcd communication")
 	cfgset.String("etcd_cafile", "", "SSL Certificate Authority file used to secure etcd communication")
 	cfgset.String("etcd_key_prefix", registry.DefaultKeyPrefix, "Keyspace for fleet data in etcd")
+	cfgset.Float64("etcd_request_timeout", 1.0, "Amount of time in seconds to allow a single etcd request before considering it failed.")
 	cfgset.String("public_ip", "", "IP address that fleet machine should publish")
 	cfgset.String("metadata", "", "List of key-value metadata to assign to the fleet machine")
 	cfgset.String("agent_ttl", agent.DefaultTTL, "TTL in seconds of fleet machine state in etcd")
@@ -161,6 +162,7 @@ func getConfig(flagset *flag.FlagSet, userCfgFile string) (*config.Config, error
 		EtcdKeyFile:        (*flagset.Lookup("etcd_keyfile")).Value.(flag.Getter).Get().(string),
 		EtcdCertFile:       (*flagset.Lookup("etcd_certfile")).Value.(flag.Getter).Get().(string),
 		EtcdCAFile:         (*flagset.Lookup("etcd_cafile")).Value.(flag.Getter).Get().(string),
+		EtcdRequestTimeout: (*flagset.Lookup("etcd_request_timeout")).Value.(flag.Getter).Get().(float64),
 		PublicIP:           (*flagset.Lookup("public_ip")).Value.(flag.Getter).Get().(string),
 		RawMetadata:        (*flagset.Lookup("metadata")).Value.(flag.Getter).Get().(string),
 		AgentTTL:           (*flagset.Lookup("agent_ttl")).Value.(flag.Getter).Get().(string),

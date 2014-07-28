@@ -15,9 +15,8 @@ import (
 )
 
 const (
-	defaultEndpoint      = "http://localhost:4001"
-	redirectMax          = 10
-	DefaultActionTimeout = time.Second
+	defaultEndpoint = "http://localhost:4001"
+	redirectMax     = 10
 )
 
 type Client interface {
