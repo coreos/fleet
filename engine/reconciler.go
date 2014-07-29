@@ -29,7 +29,15 @@ func (t *task) String() string {
 	return fmt.Sprintf("{Type: %s, Job: %s, Reason: %q}", t.Type, jName, t.Reason)
 }
 
-type Reconciler struct{}
+func NewReconciler() *Reconciler {
+	return &Reconciler{
+		sched: &dumbScheduler{},
+	}
+}
+
+type Reconciler struct {
+	sched Scheduler
+}
 
 func (r *Reconciler) Reconcile(e *Engine, stop chan struct{}) {
 	log.V(1).Infof("Polling Registry for actionable work")
@@ -40,7 +48,7 @@ func (r *Reconciler) Reconcile(e *Engine, stop chan struct{}) {
 		return
 	}
 
-	for t := range calculateClusterTasks(clust, stop) {
+	for t := range r.calculateClusterTasks(clust, stop) {
 		err = doTask(t, e)
 		if err != nil {
 			log.Errorf("Failed resolving task: task=%s err=%v", t, err)
@@ -48,7 +56,7 @@ func (r *Reconciler) Reconcile(e *Engine, stop chan struct{}) {
 	}
 }
 
-func calculateClusterTasks(clust *clusterState, stopchan chan struct{}) (taskchan chan *task) {
+func (r *Reconciler) calculateClusterTasks(clust *clusterState, stopchan chan struct{}) (taskchan chan *task) {
 	taskchan = make(chan *task)
 
 	send := func(typ, reason string, j *job.Job) bool {
@@ -117,6 +125,14 @@ func calculateClusterTasks(clust *clusterState, stopchan chan struct{}) (taskcha
 				continue
 			}
 
+			dec, err := r.sched.Decide(clust, j)
+			if err != nil {
+				log.Infof("Unable to schedule Job(%s): %v", err)
+				continue
+			}
+
+			j.TargetMachineID = dec.machineID
+
 			if !send(taskTypeAttemptScheduleJob, reason, j) {
 				return
 			}
@@ -124,7 +140,7 @@ func calculateClusterTasks(clust *clusterState, stopchan chan struct{}) (taskcha
 		}
 
 		// Deal with remaining JobOffers that do not have a corresponding Job
-		for _, jName := range clust.unresolvedOffers() {
+		for jName := range clust.offers {
 			if !resolveJobOffer(jName, "job does not exist") {
 				return
 			}
@@ -143,7 +159,7 @@ func doTask(t *task, e *Engine) (err error) {
 	case taskTypeUnscheduleJob:
 		err = e.unscheduleJob(t.Job.Name, t.Job.TargetMachineID)
 	case taskTypeAttemptScheduleJob:
-		if e.attemptScheduleJob(t.Job.Name) {
+		if e.attemptScheduleJob(t.Job.Name, t.Job.TargetMachineID) {
 			err = e.resolveJobOffer(t.Job.Name)
 		}
 	default:

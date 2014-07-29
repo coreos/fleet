@@ -8,16 +8,11 @@ import (
 
 type clusterState struct {
 	jobs     []job.Job
-	offers   pkg.Set
+	offers   map[string]pkg.Set
 	machines pkg.Set
 }
 
-func newClusterState(jobs []job.Job, unresolved []job.JobOffer, machines []machine.MachineState) *clusterState {
-	oSet := pkg.NewUnsafeSet()
-	for _, offer := range unresolved {
-		oSet.Add(offer.Job.Name)
-	}
-
+func newClusterState(jobs []job.Job, offers map[string]pkg.Set, machines []machine.MachineState) *clusterState {
 	mSet := pkg.NewUnsafeSet()
 	for _, m := range machines {
 		mSet.Add(m.ID)
@@ -25,7 +20,7 @@ func newClusterState(jobs []job.Job, unresolved []job.JobOffer, machines []machi
 
 	return &clusterState{
 		jobs:     jobs,
-		offers:   oSet,
+		offers:   offers,
 		machines: mSet,
 	}
 }
@@ -69,24 +64,16 @@ func (cs *clusterState) scheduledLoadedJobs() []*job.Job {
 	return jobs
 }
 
-func (cs *clusterState) unresolvedOffers() (offers []string) {
-	offers = make([]string, cs.offers.Length())
-	for i, offer := range cs.offers.Values() {
-		offer := offer
-		offers[i] = offer
-	}
-	return
-}
-
 // forgetOffer removes a JobOffer from the clusterState
 func (cs *clusterState) forgetOffer(jName string) {
-	cs.offers.Remove(jName)
+	delete(cs.offers, jName)
 }
 
 // offerExists returns true if the referenced JobOffer appears
 // in the clusterState's collection of unresolved offers
 func (cs *clusterState) offerExists(jName string) bool {
-	return cs.offers.Contains(jName)
+	_, ok := cs.offers[jName]
+	return ok
 }
 
 func (cs *clusterState) machineExists(machID string) bool {

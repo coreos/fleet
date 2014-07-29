@@ -6,7 +6,17 @@ import (
 
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/machine"
+	"github.com/coreos/fleet/pkg"
 )
+
+type fakeScheduler struct{}
+
+func (fs *fakeScheduler) Decide(cs *clusterState, j *job.Job) (*decision, error) {
+	dec := decision{
+		machineID: "XXX",
+	}
+	return &dec, nil
+}
 
 func TestCalculateClusterTasks(t *testing.T) {
 	jsInactive := job.JobStateInactive
@@ -17,7 +27,7 @@ func TestCalculateClusterTasks(t *testing.T) {
 		tasks []*task
 	}{
 		{
-			clust: newClusterState([]job.Job{}, []job.JobOffer{}, []machine.MachineState{}),
+			clust: newClusterState([]job.Job{}, map[string]pkg.Set{}, []machine.MachineState{}),
 			tasks: []*task{},
 		},
 
@@ -32,7 +42,7 @@ func TestCalculateClusterTasks(t *testing.T) {
 						TargetMachineID: "XXX",
 					},
 				},
-				[]job.JobOffer{},
+				map[string]pkg.Set{},
 				[]machine.MachineState{
 					machine.MachineState{ID: "XXX"},
 				},
@@ -51,10 +61,8 @@ func TestCalculateClusterTasks(t *testing.T) {
 						TargetMachineID: "XXX",
 					},
 				},
-				[]job.JobOffer{
-					job.JobOffer{
-						Job: job.Job{Name: "foo.service"},
-					},
+				map[string]pkg.Set{
+					"foo.service": pkg.NewUnsafeSet(),
 				},
 				[]machine.MachineState{
 					machine.MachineState{ID: "XXX"},
@@ -82,7 +90,7 @@ func TestCalculateClusterTasks(t *testing.T) {
 						TargetMachineID: "XXX",
 					},
 				},
-				[]job.JobOffer{},
+				map[string]pkg.Set{},
 				[]machine.MachineState{
 					machine.MachineState{ID: "YYY"},
 				},
@@ -122,7 +130,7 @@ func TestCalculateClusterTasks(t *testing.T) {
 						TargetMachineID: "XXX",
 					},
 				},
-				[]job.JobOffer{},
+				map[string]pkg.Set{},
 				[]machine.MachineState{
 					machine.MachineState{ID: "XXX"},
 				},
@@ -151,10 +159,8 @@ func TestCalculateClusterTasks(t *testing.T) {
 						State:       &jsLaunched,
 					},
 				},
-				[]job.JobOffer{
-					job.JobOffer{
-						Job: job.Job{Name: "foo.service"},
-					},
+				map[string]pkg.Set{
+					"foo.service": pkg.NewUnsafeSet(),
 				},
 				[]machine.MachineState{
 					machine.MachineState{ID: "XXX"},
@@ -175,10 +181,8 @@ func TestCalculateClusterTasks(t *testing.T) {
 		{
 			clust: newClusterState(
 				[]job.Job{},
-				[]job.JobOffer{
-					job.JobOffer{
-						Job: job.Job{Name: "foo.service"},
-					},
+				map[string]pkg.Set{
+					"foo.service": pkg.NewUnsafeSet(),
 				},
 				[]machine.MachineState{
 					machine.MachineState{ID: "XXX"},
@@ -205,7 +209,7 @@ func TestCalculateClusterTasks(t *testing.T) {
 						State:       &jsInactive,
 					},
 				},
-				[]job.JobOffer{},
+				map[string]pkg.Set{},
 				[]machine.MachineState{
 					machine.MachineState{ID: "XXX"},
 				},
@@ -223,20 +227,19 @@ func TestCalculateClusterTasks(t *testing.T) {
 			},
 		},
 
-		// attempt to schedule a Job if an offer already exists
+		// attempt to schedule a Job if an offer exists
 		{
 			clust: newClusterState(
 				[]job.Job{
 					job.Job{
-						Name:        "foo.service",
-						TargetState: job.JobStateLaunched,
-						State:       &jsInactive,
+						Name:            "foo.service",
+						TargetState:     job.JobStateLaunched,
+						State:           &jsInactive,
+						TargetMachineID: "",
 					},
 				},
-				[]job.JobOffer{
-					job.JobOffer{
-						Job: job.Job{Name: "foo.service"},
-					},
+				map[string]pkg.Set{
+					"foo.service": pkg.NewUnsafeSet("XXX"),
 				},
 				[]machine.MachineState{
 					machine.MachineState{ID: "XXX"},
@@ -247,9 +250,10 @@ func TestCalculateClusterTasks(t *testing.T) {
 					Type:   taskTypeAttemptScheduleJob,
 					Reason: "target state launched and Job not scheduled",
 					Job: &job.Job{
-						Name:        "foo.service",
-						TargetState: job.JobStateLaunched,
-						State:       &jsInactive,
+						Name:            "foo.service",
+						TargetState:     job.JobStateLaunched,
+						State:           &jsInactive,
+						TargetMachineID: "XXX",
 					},
 				},
 			},
@@ -257,8 +261,9 @@ func TestCalculateClusterTasks(t *testing.T) {
 	}
 
 	for i, tt := range tests {
+		r := NewReconciler()
 		tasks := make([]*task, 0)
-		for tsk := range calculateClusterTasks(tt.clust, make(chan struct{})) {
+		for tsk := range r.calculateClusterTasks(tt.clust, make(chan struct{})) {
 			tasks = append(tasks, tsk)
 		}
 
