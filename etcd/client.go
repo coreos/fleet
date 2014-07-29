@@ -17,7 +17,6 @@ import (
 const (
 	defaultEndpoint = "http://localhost:4001"
 	redirectMax     = 10
-	actionTimeout   = time.Second
 )
 
 type Client interface {
@@ -33,7 +32,7 @@ type transport interface {
 	CancelRequest(req *http.Request)
 }
 
-func NewClient(endpoints []string, transport http.Transport) (*client, error) {
+func NewClient(endpoints []string, transport http.Transport, actionTimeout time.Duration) (*client, error) {
 	if len(endpoints) == 0 {
 		endpoints = []string{defaultEndpoint}
 	}
@@ -55,8 +54,9 @@ func NewClient(endpoints []string, transport http.Transport) (*client, error) {
 	}
 
 	return &client{
-		endpoints: parsed,
-		transport: &transport,
+		endpoints:     parsed,
+		transport:     &transport,
+		actionTimeout: actionTimeout,
 	}, nil
 }
 
@@ -100,8 +100,9 @@ func filterURL(u *url.URL) error {
 }
 
 type client struct {
-	endpoints []url.URL
-	transport transport
+	endpoints     []url.URL
+	transport     transport
+	actionTimeout time.Duration
 }
 
 // a requestFunc must never return a nil *http.Response and a nil error together
@@ -232,7 +233,7 @@ func (c *client) Do(act Action) (*Result, error) {
 	}()
 
 	select {
-	case <-time.After(actionTimeout):
+	case <-time.After(c.actionTimeout):
 		close(cancel)
 		return nil, errors.New("timeout reached")
 	case r := <-result:

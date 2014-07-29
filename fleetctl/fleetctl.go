@@ -62,6 +62,7 @@ var (
 		KnownHostsFile        string
 		StrictHostKeyChecking bool
 		Tunnel                string
+		RequestTimeout        float64
 	}{}
 
 	// flags used by multiple commands
@@ -90,6 +91,7 @@ func init() {
 	globalFlagset.StringVar(&globalFlags.KnownHostsFile, "known-hosts-file", ssh.DefaultKnownHostsFile, "File used to store remote machine fingerprints. Ignored if strict host key checking is disabled.")
 	globalFlagset.BoolVar(&globalFlags.StrictHostKeyChecking, "strict-host-key-checking", true, "Verify host keys presented by remote machines before initiating SSH connections.")
 	globalFlagset.StringVar(&globalFlags.Tunnel, "tunnel", "", "Establish an SSH tunnel through the provided address for communication with fleet and etcd.")
+	globalFlagset.Float64Var(&globalFlags.RequestTimeout, "request-timeout", 1.0, "Amount of time in seconds to allow a single request before considering it failed.")
 }
 
 type Command struct {
@@ -294,7 +296,8 @@ func getRegistryClient() (client.API, error) {
 		TLSClientConfig: tlsConfig,
 	}
 
-	return client.NewRegistryClient(&trans, globalFlags.Endpoint, globalFlags.EtcdKeyPrefix)
+	timeout := time.Duration(globalFlags.RequestTimeout*1000) * time.Millisecond
+	return client.NewRegistryClient(&trans, globalFlags.Endpoint, globalFlags.EtcdKeyPrefix, timeout)
 }
 
 // getChecker creates and returns a HostKeyChecker, or nil if any error is encountered

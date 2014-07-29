@@ -14,6 +14,7 @@ type Config struct {
 	EtcdKeyFile        string
 	EtcdCertFile       string
 	EtcdCAFile         string
+	EtcdRequestTimeout float64
 	PublicIP           string
 	Verbosity          int
 	RawMetadata        string
