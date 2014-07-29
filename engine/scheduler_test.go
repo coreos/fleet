@@ -6,7 +6,6 @@ import (
 
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/machine"
-	"github.com/coreos/fleet/pkg"
 )
 
 func TestSchedulerDecisions(t *testing.T) {
@@ -15,23 +14,16 @@ func TestSchedulerDecisions(t *testing.T) {
 		job   *job.Job
 		dec   *decision
 	}{
-		// job has no offer
+		// no machines to receive job
 		{
-			clust: newClusterState([]job.Job{}, map[string]pkg.Set{}, []machine.MachineState{}),
+			clust: newClusterState([]job.Job{}, []machine.MachineState{}),
 			job:   &job.Job{Name: "foo.service"},
 			dec:   nil,
 		},
 
-		// job has offer, but no bids
+		// multiple machines, pick the first one
 		{
-			clust: newClusterState([]job.Job{}, map[string]pkg.Set{"foo.service": pkg.NewUnsafeSet()}, []machine.MachineState{}),
-			job:   &job.Job{Name: "foo.service"},
-			dec:   nil,
-		},
-
-		// job has offer and many bids, pick the first one
-		{
-			clust: newClusterState([]job.Job{}, map[string]pkg.Set{"foo.service": pkg.NewUnsafeSet("XXX", "YYY", "ZZZ")}, []machine.MachineState{}),
+			clust: newClusterState([]job.Job{}, []machine.MachineState{machine.MachineState{ID: "XXX"}, machine.MachineState{ID: "YYY"}}),
 			job:   &job.Job{Name: "foo.service"},
 			dec: &decision{
 				machineID: "XXX",

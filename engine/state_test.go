@@ -6,7 +6,6 @@ import (
 
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/machine"
-	"github.com/coreos/fleet/pkg"
 )
 
 func TestClusterStateJobs(t *testing.T) {
@@ -17,7 +16,7 @@ func TestClusterStateJobs(t *testing.T) {
 		job.Job{Name: "4.service", TargetState: job.JobStateLoaded, TargetMachineID: "XXX"},
 		job.Job{Name: "5.service", TargetState: job.JobStateLaunched, TargetMachineID: "YYY"},
 	}
-	cs := newClusterState(jobs, map[string]pkg.Set{}, []machine.MachineState{})
+	cs := newClusterState(jobs, []machine.MachineState{})
 
 	actual := cs.inactiveJobs()
 	expect := []*job.Job{
@@ -47,60 +46,11 @@ func TestClusterStateJobs(t *testing.T) {
 
 }
 
-func TestClusterStateOfferExists(t *testing.T) {
-	offers := map[string]pkg.Set{
-		"foo.service": pkg.NewUnsafeSet(),
-		"bar.service": pkg.NewUnsafeSet(),
-	}
-	cs := newClusterState([]job.Job{}, offers, []machine.MachineState{})
-
-	expect := map[string]pkg.Set{
-		"foo.service": pkg.NewUnsafeSet(),
-		"bar.service": pkg.NewUnsafeSet(),
-	}
-	if !reflect.DeepEqual(expect, cs.offers) {
-		t.Fatalf("Expected %v, got %v", expect, cs.offers)
-	}
-
-	if !cs.offerExists("foo.service") {
-		t.Fatalf("Offer for foo.service does not exist")
-	}
-
-	if !cs.offerExists("bar.service") {
-		t.Fatalf("Offer for bar.service does not exist")
-	}
-
-	if cs.offerExists("not-found") {
-		t.Fatalf("Offer for not-found exists")
-	}
-
-	cs.forgetOffer("foo.service")
-
-	expect = map[string]pkg.Set{
-		"bar.service": pkg.NewUnsafeSet(),
-	}
-	if !reflect.DeepEqual(expect, cs.offers) {
-		t.Fatalf("Expected %v, got %v", expect, cs.offers)
-	}
-
-	if cs.offerExists("foo.service") {
-		t.Fatalf("Offer for foo.service still exists")
-	}
-
-	if !cs.offerExists("bar.service") {
-		t.Fatalf("Offer for bar.service does not exist")
-	}
-
-	if cs.offerExists("not-found") {
-		t.Fatalf("Offer for not-found exists")
-	}
-}
-
 func TestClusterStateMachineExists(t *testing.T) {
 	machines := []machine.MachineState{
 		machine.MachineState{ID: "XXX"},
 	}
-	cs := newClusterState([]job.Job{}, map[string]pkg.Set{}, machines)
+	cs := newClusterState([]job.Job{}, machines)
 
 	if !cs.machineExists("XXX") {
 		t.Fatalf("Machine XXX does not exist")

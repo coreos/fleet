@@ -11,8 +11,8 @@ import (
 )
 
 type AgentState struct {
-	ms   *machine.MachineState
-	jobs map[string]*job.Job
+	MState *machine.MachineState
+	Jobs   map[string]*job.Job
 
 	// This is used to assert that the Agent is able to
 	// run a given job based on its signature. This feature
@@ -22,18 +22,18 @@ type AgentState struct {
 
 func NewAgentState(ms *machine.MachineState) *AgentState {
 	return &AgentState{
-		ms:   ms,
-		jobs: make(map[string]*job.Job),
+		MState: ms,
+		Jobs:   make(map[string]*job.Job),
 	}
 }
 
 func (as *AgentState) jobScheduled(jName string) bool {
-	return as.jobs[jName] != nil
+	return as.Jobs[jName] != nil
 }
 
 // hasConflict determines whether there are any known conflicts with the given Job
 func (as *AgentState) hasConflict(pJobName string, pConflicts []string) (found bool, conflict string) {
-	for _, eJob := range as.jobs {
+	for _, eJob := range as.Jobs {
 		if pJobName == eJob.Name {
 			continue
 		}
@@ -75,8 +75,8 @@ func globMatches(pattern, target string) bool {
 //   - Agent must have all required Peers of the Job scheduled locally (if any)
 //   - Job must not conflict with any other Jobs scheduled to the agent
 func (as *AgentState) AbleToRun(j *job.Job) (bool, string) {
-	if tgt, ok := j.RequiredTarget(); ok && !as.ms.MatchID(tgt) {
-		return false, fmt.Sprintf("agent ID %q does not match required %q", as.ms.ID, tgt)
+	if tgt, ok := j.RequiredTarget(); ok && !as.MState.MatchID(tgt) {
+		return false, fmt.Sprintf("agent ID %q does not match required %q", as.MState.ID, tgt)
 	}
 
 	if as.verifyFunc != nil && !as.verifyFunc(j) {
@@ -85,7 +85,7 @@ func (as *AgentState) AbleToRun(j *job.Job) (bool, string) {
 
 	metadata := j.RequiredTargetMetadata()
 	if len(metadata) != 0 {
-		if !machine.HasMetadata(as.ms, metadata) {
+		if !machine.HasMetadata(as.MState, metadata) {
 			return false, "local Machine metadata insufficient"
 		}
 	}

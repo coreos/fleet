@@ -7,7 +7,6 @@ import (
 
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/machine"
-	"github.com/coreos/fleet/pkg"
 	"github.com/coreos/fleet/registry"
 	"github.com/coreos/fleet/unit"
 )
@@ -83,8 +82,8 @@ func TestAbleToRun(t *testing.T) {
 		// peer scheduled locally
 		{
 			dState: &AgentState{
-				ms: &machine.MachineState{ID: "123"},
-				jobs: map[string]*job.Job{
+				MState: &machine.MachineState{ID: "123"},
+				Jobs: map[string]*job.Job{
 					"pong.service": &job.Job{Name: "pong.service"},
 				},
 			},
@@ -95,8 +94,8 @@ func TestAbleToRun(t *testing.T) {
 		// multiple peers scheduled locally
 		{
 			dState: &AgentState{
-				ms: &machine.MachineState{ID: "123"},
-				jobs: map[string]*job.Job{
+				MState: &machine.MachineState{ID: "123"},
+				Jobs: map[string]*job.Job{
 					"ping.service": &job.Job{Name: "ping.service"},
 					"pong.service": &job.Job{Name: "pong.service"},
 				},
@@ -115,8 +114,8 @@ func TestAbleToRun(t *testing.T) {
 		// one of multiple peers not scheduled locally
 		{
 			dState: &AgentState{
-				ms: &machine.MachineState{ID: "123"},
-				jobs: map[string]*job.Job{
+				MState: &machine.MachineState{ID: "123"},
+				Jobs: map[string]*job.Job{
 					"ping.service": &job.Job{Name: "ping.service"},
 				},
 			},
@@ -127,8 +126,8 @@ func TestAbleToRun(t *testing.T) {
 		// no conflicts found
 		{
 			dState: &AgentState{
-				ms: &machine.MachineState{ID: "123"},
-				jobs: map[string]*job.Job{
+				MState: &machine.MachineState{ID: "123"},
+				Jobs: map[string]*job.Job{
 					"ping.service": &job.Job{Name: "ping.service"},
 				},
 			},
@@ -139,8 +138,8 @@ func TestAbleToRun(t *testing.T) {
 		// conflicts found
 		{
 			dState: &AgentState{
-				ms: &machine.MachineState{ID: "123"},
-				jobs: map[string]*job.Job{
+				MState: &machine.MachineState{ID: "123"},
+				Jobs: map[string]*job.Job{
 					"ping.service": &job.Job{Name: "ping.service"},
 				},
 			},
@@ -185,14 +184,14 @@ func TestCalculateTasksForJob(t *testing.T) {
 		// no work needs to be done when target state == desired state
 		{
 			dState: &AgentState{
-				ms: &machine.MachineState{ID: "XXX"},
-				jobs: map[string]*job.Job{
+				MState: &machine.MachineState{ID: "XXX"},
+				Jobs: map[string]*job.Job{
 					"foo.service": &job.Job{TargetState: jsLoaded},
 				},
 			},
 			cState: &AgentState{
-				ms: &machine.MachineState{ID: "XXX"},
-				jobs: map[string]*job.Job{
+				MState: &machine.MachineState{ID: "XXX"},
+				Jobs: map[string]*job.Job{
 					"foo.service": &job.Job{State: &jsLoaded},
 				},
 			},
@@ -203,14 +202,14 @@ func TestCalculateTasksForJob(t *testing.T) {
 		// no work needs to be done when target state == desired state
 		{
 			dState: &AgentState{
-				ms: &machine.MachineState{ID: "XXX"},
-				jobs: map[string]*job.Job{
+				MState: &machine.MachineState{ID: "XXX"},
+				Jobs: map[string]*job.Job{
 					"foo.service": &job.Job{TargetState: jsLaunched},
 				},
 			},
 			cState: &AgentState{
-				ms: &machine.MachineState{ID: "XXX"},
-				jobs: map[string]*job.Job{
+				MState: &machine.MachineState{ID: "XXX"},
+				Jobs: map[string]*job.Job{
 					"foo.service": &job.Job{State: &jsLaunched},
 				},
 			},
@@ -221,8 +220,8 @@ func TestCalculateTasksForJob(t *testing.T) {
 		// load jobs that have a loaded desired state
 		{
 			dState: &AgentState{
-				ms: &machine.MachineState{ID: "XXX"},
-				jobs: map[string]*job.Job{
+				MState: &machine.MachineState{ID: "XXX"},
+				Jobs: map[string]*job.Job{
 					"foo.service": &job.Job{TargetState: jsLoaded},
 				},
 			},
@@ -240,8 +239,8 @@ func TestCalculateTasksForJob(t *testing.T) {
 		// load jobs that have a launched desired state
 		{
 			dState: &AgentState{
-				ms: &machine.MachineState{ID: "XXX"},
-				jobs: map[string]*job.Job{
+				MState: &machine.MachineState{ID: "XXX"},
+				Jobs: map[string]*job.Job{
 					"foo.service": &job.Job{TargetState: jsLaunched},
 				},
 			},
@@ -260,8 +259,8 @@ func TestCalculateTasksForJob(t *testing.T) {
 		{
 			dState: NewAgentState(&machine.MachineState{ID: "XXX"}),
 			cState: &AgentState{
-				ms: &machine.MachineState{ID: "XXX"},
-				jobs: map[string]*job.Job{
+				MState: &machine.MachineState{ID: "XXX"},
+				Jobs: map[string]*job.Job{
 					"foo.service": &job.Job{State: &jsLoaded},
 				},
 			},
@@ -279,8 +278,8 @@ func TestCalculateTasksForJob(t *testing.T) {
 		{
 			dState: NewAgentState(&machine.MachineState{ID: "XXX"}),
 			cState: &AgentState{
-				ms: &machine.MachineState{ID: "XXX"},
-				jobs: map[string]*job.Job{
+				MState: &machine.MachineState{ID: "XXX"},
+				Jobs: map[string]*job.Job{
 					"foo.service": &job.Job{State: &jsLaunched},
 				},
 			},
@@ -297,16 +296,16 @@ func TestCalculateTasksForJob(t *testing.T) {
 		// unload jobs that have an inactive target state
 		{
 			dState: &AgentState{
-				ms: &machine.MachineState{ID: "XXX"},
-				jobs: map[string]*job.Job{
+				MState: &machine.MachineState{ID: "XXX"},
+				Jobs: map[string]*job.Job{
 					"foo.service": &job.Job{
 						TargetState: jsInactive,
 					},
 				},
 			},
 			cState: &AgentState{
-				ms: &machine.MachineState{ID: "XXX"},
-				jobs: map[string]*job.Job{
+				MState: &machine.MachineState{ID: "XXX"},
+				Jobs: map[string]*job.Job{
 					"foo.service": &job.Job{State: &jsLoaded},
 				},
 			},
@@ -323,8 +322,8 @@ func TestCalculateTasksForJob(t *testing.T) {
 		// unschedule jobs that can not run locally
 		{
 			dState: &AgentState{
-				ms: &machine.MachineState{ID: "XXX"},
-				jobs: map[string]*job.Job{
+				MState: &machine.MachineState{ID: "XXX"},
+				Jobs: map[string]*job.Job{
 					"foo.service": &job.Job{
 						TargetState: jsLaunched,
 						Unit:        fleetUnit(t, "X-ConditionMachineID=YYY"),
@@ -360,79 +359,6 @@ func TestCalculateTasksForJob(t *testing.T) {
 		tasks := []task{}
 		go func() {
 			ar.calculateTasksForJob(tt.dState, tt.cState, tt.jName, taskchan)
-			close(taskchan)
-		}()
-
-		for t := range taskchan {
-			tasks = append(tasks, *t)
-		}
-
-		if !reflect.DeepEqual(tt.tasks, tasks) {
-			t.Errorf("case %d: calculated incorrect list of tasks\nexpected=%v\nreceived=%v\n", i, tt.tasks, tasks)
-		}
-	}
-}
-
-func TestCalculateTasksForOffer(t *testing.T) {
-	tests := []struct {
-		dState *AgentState
-		job    *job.Job
-		bids   pkg.Set
-
-		tasks []task
-	}{
-		// no bid submitted yet and able to run
-		{
-			dState: NewAgentState(&machine.MachineState{ID: "XXX"}),
-			job: &job.Job{
-				Name:        "foo.service",
-				TargetState: jsLaunched,
-				Unit:        fleetUnit(t),
-			},
-			bids: pkg.NewUnsafeSet(),
-			tasks: []task{
-				task{
-					Type: taskTypeSubmitBid,
-					Job: &job.Job{
-						Name:        "foo.service",
-						TargetState: jsLaunched,
-						Unit:        fleetUnit(t),
-					},
-					Reason: taskReasonAbleToResolveOffer,
-				},
-			},
-		},
-
-		// no bid submitted but unable to run
-		{
-			dState: NewAgentState(&machine.MachineState{ID: "XXX"}),
-			job: &job.Job{
-				Name:        "foo.service",
-				TargetState: jsLaunched,
-				Unit:        fleetUnit(t, "X-ConditionMachineID=YYY"),
-			},
-			bids:  pkg.NewUnsafeSet(),
-			tasks: []task{},
-		},
-
-		// bid already submitted
-		{
-			dState: NewAgentState(&machine.MachineState{ID: "XXX"}),
-			job: &job.Job{
-				TargetState: jsLaunched,
-				Unit:        fleetUnit(t),
-			},
-			bids:  pkg.NewUnsafeSet("XXX"),
-			tasks: []task{},
-		},
-	}
-
-	for i, tt := range tests {
-		ar := NewReconciler(registry.NewFakeRegistry(), nil)
-		taskchan := make(chan *task)
-		tasks := []task{}
-		go func() {
-			ar.calculateTasksForOffer(tt.dState, tt.job, tt.bids, taskchan)
 			close(taskchan)
 		}()
 

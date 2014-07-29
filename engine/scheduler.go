@@ -2,8 +2,10 @@ package engine
 
 import (
 	"fmt"
+	"sort"
 
 	"github.com/coreos/fleet/job"
+	"github.com/coreos/fleet/pkg"
 )
 
 type decision struct {
@@ -17,13 +19,28 @@ type Scheduler interface {
 type dumbScheduler struct{}
 
 func (ds *dumbScheduler) Decide(clust *clusterState, j *job.Job) (*decision, error) {
-	bids, ok := clust.offers[j.Name]
-	if !ok || bids.Length() == 0 {
-		return nil, fmt.Errorf("no bids found, unable to decide")
+	if len(clust.agents) == 0 {
+		return nil, fmt.Errorf("zero agents available")
 	}
 
+	able := pkg.NewUnsafeSet()
+	for machID, as := range clust.agents {
+		if ok, _ := as.AbleToRun(j); !ok {
+			continue
+		}
+
+		able.Add(machID)
+	}
+
+	if able.Length() == 0 {
+		return nil, fmt.Errorf("no agents able to run job")
+	}
+
+	sorted := able.Values()
+	sort.Strings(sorted)
+
 	dec := decision{
-		machineID: bids.Values()[0],
+		machineID: sorted[0],
 	}
 
 	return &dec, nil

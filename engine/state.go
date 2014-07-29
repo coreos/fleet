@@ -1,27 +1,41 @@
 package engine
 
 import (
+	"github.com/coreos/fleet/agent"
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/machine"
-	"github.com/coreos/fleet/pkg"
 )
 
 type clusterState struct {
-	jobs     []job.Job
-	offers   map[string]pkg.Set
-	machines pkg.Set
+	jobs   []job.Job
+	agents map[string]*agent.AgentState
 }
 
-func newClusterState(jobs []job.Job, offers map[string]pkg.Set, machines []machine.MachineState) *clusterState {
-	mSet := pkg.NewUnsafeSet()
-	for _, m := range machines {
-		mSet.Add(m.ID)
+func newClusterState(jobs []job.Job, machines []machine.MachineState) *clusterState {
+	agents := make(map[string]*agent.AgentState, len(machines))
+	for _, ms := range machines {
+		ms := ms
+		agents[ms.ID] = agent.NewAgentState(&ms)
+	}
+
+	for _, j := range jobs {
+		j := j
+
+		if !j.Scheduled() {
+			continue
+		}
+
+		as := agents[j.TargetMachineID]
+		if as == nil {
+			continue
+		}
+
+		as.Jobs[j.Name] = &j
 	}
 
 	return &clusterState{
-		jobs:     jobs,
-		offers:   offers,
-		machines: mSet,
+		jobs:   jobs,
+		agents: agents,
 	}
 }
 
@@ -64,18 +78,7 @@ func (cs *clusterState) scheduledLoadedJobs() []*job.Job {
 	return jobs
 }
 
-// forgetOffer removes a JobOffer from the clusterState
-func (cs *clusterState) forgetOffer(jName string) {
-	delete(cs.offers, jName)
-}
-
-// offerExists returns true if the referenced JobOffer appears
-// in the clusterState's collection of unresolved offers
-func (cs *clusterState) offerExists(jName string) bool {
-	_, ok := cs.offers[jName]
-	return ok
-}
-
 func (cs *clusterState) machineExists(machID string) bool {
-	return cs.machines.Contains(machID)
+	_, ok := cs.agents[machID]
+	return ok
 }

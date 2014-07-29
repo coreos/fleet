@@ -4,29 +4,22 @@ import (
 	"fmt"
 
 	log "github.com/coreos/fleet/Godeps/_workspace/src/github.com/golang/glog"
-
-	"github.com/coreos/fleet/job"
 )
 
 const (
-	taskTypeOfferJob           = "OfferJob"
-	taskTypeResolveOffer       = "ResolveOffer"
 	taskTypeUnscheduleJob      = "UnscheduleJob"
 	taskTypeAttemptScheduleJob = "AttemptScheduleJob"
 )
 
 type task struct {
-	Type   string
-	Reason string
-	Job    *job.Job
+	Type      string
+	Reason    string
+	JobName   string
+	MachineID string
 }
 
 func (t *task) String() string {
-	var jName string
-	if t.Job != nil {
-		jName = t.Job.Name
-	}
-	return fmt.Sprintf("{Type: %s, Job: %s, Reason: %q}", t.Type, jName, t.Reason)
+	return fmt.Sprintf("{Type: %s, JobName: %s, MachineID: %s, Reason: %q}", t.Type, t.JobName, t.MachineID, t.Reason)
 }
 
 func NewReconciler() *Reconciler {
@@ -59,20 +52,15 @@ func (r *Reconciler) Reconcile(e *Engine, stop chan struct{}) {
 func (r *Reconciler) calculateClusterTasks(clust *clusterState, stopchan chan struct{}) (taskchan chan *task) {
 	taskchan = make(chan *task)
 
-	send := func(typ, reason string, j *job.Job) bool {
+	send := func(typ, reason, jName, machID string) bool {
 		select {
 		case <-stopchan:
 			return false
 		default:
 		}
 
-		taskchan <- &task{Type: typ, Reason: reason, Job: j}
+		taskchan <- &task{Type: typ, Reason: reason, JobName: jName, MachineID: machID}
 		return true
-	}
-
-	resolveJobOffer := func(jName, reason string) bool {
-		clust.forgetOffer(jName)
-		return send(taskTypeResolveOffer, reason, &job.Job{Name: jName})
 	}
 
 	go func() {
@@ -84,28 +72,16 @@ func (r *Reconciler) calculateClusterTasks(clust *clusterState, stopchan chan st
 
 		for _, j := range inactive {
 			if j.Scheduled() {
-				if !send(taskTypeUnscheduleJob, "target state inactive", j) {
-					return
-				}
-			}
-
-			if clust.offerExists(j.Name) {
-				if !resolveJobOffer(j.Name, "target state inactive") {
+				if !send(taskTypeUnscheduleJob, "target state inactive", j.Name, j.TargetMachineID) {
 					return
 				}
 			}
 		}
 
 		for _, j := range loaded {
-			if clust.machineExists(j.TargetMachineID) {
-				if clust.offerExists(j.Name) {
-					if !resolveJobOffer(j.Name, "already scheduled") {
-						return
-					}
-				}
-			} else {
+			if !clust.machineExists(j.TargetMachineID) {
 				reason := fmt.Sprintf("target Machine(%s) went away", j.TargetMachineID)
-				if !send(taskTypeUnscheduleJob, reason, j) {
+				if !send(taskTypeUnscheduleJob, reason, j.Name, j.TargetMachineID) {
 					return
 				}
 
@@ -116,15 +92,6 @@ func (r *Reconciler) calculateClusterTasks(clust *clusterState, stopchan chan st
 		for _, j := range needScheduling {
 			reason := fmt.Sprintf("target state %s and Job not scheduled", j.TargetState)
 
-			if !clust.offerExists(j.Name) {
-				if !send(taskTypeOfferJob, reason, j) {
-					return
-				}
-
-				// wait for the next reconciliation attempt to resolve this offer
-				continue
-			}
-
 			dec, err := r.sched.Decide(clust, j)
 			if err != nil {
 				log.Infof("Unable to schedule Job(%s): %v", err)
@@ -133,15 +100,7 @@ func (r *Reconciler) calculateClusterTasks(clust *clusterState, stopchan chan st
 
 			j.TargetMachineID = dec.machineID
 
-			if !send(taskTypeAttemptScheduleJob, reason, j) {
-				return
-			}
-			clust.forgetOffer(j.Name)
-		}
-
-		// Deal with remaining JobOffers that do not have a corresponding Job
-		for jName := range clust.offers {
-			if !resolveJobOffer(jName, "job does not exist") {
+			if !send(taskTypeAttemptScheduleJob, reason, j.Name, dec.machineID) {
 				return
 			}
 		}
@@ -152,16 +111,10 @@ func (r *Reconciler) calculateClusterTasks(clust *clusterState, stopchan chan st
 
 func doTask(t *task, e *Engine) (err error) {
 	switch t.Type {
-	case taskTypeOfferJob:
-		err = e.offerJob(t.Job)
-	case taskTypeResolveOffer:
-		err = e.resolveJobOffer(t.Job.Name)
 	case taskTypeUnscheduleJob:
-		err = e.unscheduleJob(t.Job.Name, t.Job.TargetMachineID)
+		err = e.unscheduleJob(t.JobName, t.MachineID)
 	case taskTypeAttemptScheduleJob:
-		if e.attemptScheduleJob(t.Job.Name, t.Job.TargetMachineID) {
-			err = e.resolveJobOffer(t.Job.Name)
-		}
+		e.attemptScheduleJob(t.JobName, t.MachineID)
 	default:
 		err = fmt.Errorf("unrecognized task type %q", t.Type)
 	}

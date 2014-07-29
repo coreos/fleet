@@ -6,17 +6,7 @@ import (
 
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/machine"
-	"github.com/coreos/fleet/pkg"
 )
-
-type fakeScheduler struct{}
-
-func (fs *fakeScheduler) Decide(cs *clusterState, j *job.Job) (*decision, error) {
-	dec := decision{
-		machineID: "XXX",
-	}
-	return &dec, nil
-}
 
 func TestCalculateClusterTasks(t *testing.T) {
 	jsInactive := job.JobStateInactive
@@ -26,8 +16,9 @@ func TestCalculateClusterTasks(t *testing.T) {
 		clust *clusterState
 		tasks []*task
 	}{
+		// no work to do
 		{
-			clust: newClusterState([]job.Job{}, map[string]pkg.Set{}, []machine.MachineState{}),
+			clust: newClusterState([]job.Job{}, []machine.MachineState{}),
 			tasks: []*task{},
 		},
 
@@ -42,41 +33,11 @@ func TestCalculateClusterTasks(t *testing.T) {
 						TargetMachineID: "XXX",
 					},
 				},
-				map[string]pkg.Set{},
 				[]machine.MachineState{
 					machine.MachineState{ID: "XXX"},
 				},
 			),
 			tasks: []*task{},
-		},
-
-		// clean up job offers if Job is healthy
-		{
-			clust: newClusterState(
-				[]job.Job{
-					job.Job{
-						Name:            "foo.service",
-						TargetState:     job.JobStateLaunched,
-						State:           &jsLaunched,
-						TargetMachineID: "XXX",
-					},
-				},
-				map[string]pkg.Set{
-					"foo.service": pkg.NewUnsafeSet(),
-				},
-				[]machine.MachineState{
-					machine.MachineState{ID: "XXX"},
-				},
-			),
-			tasks: []*task{
-				&task{
-					Type:   taskTypeResolveOffer,
-					Reason: "already scheduled",
-					Job: &job.Job{
-						Name: "foo.service",
-					},
-				},
-			},
 		},
 
 		// reschedule if Job's target machine is gone
@@ -87,34 +48,25 @@ func TestCalculateClusterTasks(t *testing.T) {
 						Name:            "foo.service",
 						TargetState:     job.JobStateLaunched,
 						State:           &jsLaunched,
-						TargetMachineID: "XXX",
+						TargetMachineID: "ZZZ",
 					},
 				},
-				map[string]pkg.Set{},
 				[]machine.MachineState{
-					machine.MachineState{ID: "YYY"},
+					machine.MachineState{ID: "XXX"},
 				},
 			),
 			tasks: []*task{
 				&task{
-					Type:   taskTypeUnscheduleJob,
-					Reason: "target Machine(XXX) went away",
-					Job: &job.Job{
-						Name:            "foo.service",
-						TargetState:     job.JobStateLaunched,
-						State:           &jsLaunched,
-						TargetMachineID: "XXX",
-					},
+					Type:      taskTypeUnscheduleJob,
+					Reason:    "target Machine(ZZZ) went away",
+					JobName:   "foo.service",
+					MachineID: "ZZZ",
 				},
 				&task{
-					Type:   taskTypeOfferJob,
-					Reason: "target state launched and Job not scheduled",
-					Job: &job.Job{
-						Name:            "foo.service",
-						TargetState:     job.JobStateLaunched,
-						State:           &jsLaunched,
-						TargetMachineID: "XXX",
-					},
+					Type:      taskTypeAttemptScheduleJob,
+					Reason:    "target state launched and Job not scheduled",
+					JobName:   "foo.service",
+					MachineID: "XXX",
 				},
 			},
 		},
@@ -130,104 +82,21 @@ func TestCalculateClusterTasks(t *testing.T) {
 						TargetMachineID: "XXX",
 					},
 				},
-				map[string]pkg.Set{},
 				[]machine.MachineState{
 					machine.MachineState{ID: "XXX"},
 				},
 			),
 			tasks: []*task{
 				&task{
-					Type:   taskTypeUnscheduleJob,
-					Reason: "target state inactive",
-					Job: &job.Job{
-						Name:            "foo.service",
-						TargetState:     job.JobStateInactive,
-						State:           &jsLaunched,
-						TargetMachineID: "XXX",
-					},
+					Type:      taskTypeUnscheduleJob,
+					Reason:    "target state inactive",
+					JobName:   "foo.service",
+					MachineID: "XXX",
 				},
 			},
 		},
 
-		// remove offer if target state inactive
-		{
-			clust: newClusterState(
-				[]job.Job{
-					job.Job{
-						Name:        "foo.service",
-						TargetState: job.JobStateInactive,
-						State:       &jsLaunched,
-					},
-				},
-				map[string]pkg.Set{
-					"foo.service": pkg.NewUnsafeSet(),
-				},
-				[]machine.MachineState{
-					machine.MachineState{ID: "XXX"},
-				},
-			),
-			tasks: []*task{
-				&task{
-					Type:   taskTypeResolveOffer,
-					Reason: "target state inactive",
-					Job: &job.Job{
-						Name: "foo.service",
-					},
-				},
-			},
-		},
-
-		// remove offer if corresponding job does not exist
-		{
-			clust: newClusterState(
-				[]job.Job{},
-				map[string]pkg.Set{
-					"foo.service": pkg.NewUnsafeSet(),
-				},
-				[]machine.MachineState{
-					machine.MachineState{ID: "XXX"},
-				},
-			),
-			tasks: []*task{
-				&task{
-					Type:   taskTypeResolveOffer,
-					Reason: "job does not exist",
-					Job: &job.Job{
-						Name: "foo.service",
-					},
-				},
-			},
-		},
-
-		// offer a Job where TargetState != State and no offer exists
-		{
-			clust: newClusterState(
-				[]job.Job{
-					job.Job{
-						Name:        "foo.service",
-						TargetState: job.JobStateLaunched,
-						State:       &jsInactive,
-					},
-				},
-				map[string]pkg.Set{},
-				[]machine.MachineState{
-					machine.MachineState{ID: "XXX"},
-				},
-			),
-			tasks: []*task{
-				&task{
-					Type:   taskTypeOfferJob,
-					Reason: "target state launched and Job not scheduled",
-					Job: &job.Job{
-						Name:        "foo.service",
-						TargetState: job.JobStateLaunched,
-						State:       &jsInactive,
-					},
-				},
-			},
-		},
-
-		// attempt to schedule a Job if an offer exists
+		// attempt to schedule a Job if a machine exists
 		{
 			clust: newClusterState(
 				[]job.Job{
@@ -238,23 +107,16 @@ func TestCalculateClusterTasks(t *testing.T) {
 						TargetMachineID: "",
 					},
 				},
-				map[string]pkg.Set{
-					"foo.service": pkg.NewUnsafeSet("XXX"),
-				},
 				[]machine.MachineState{
 					machine.MachineState{ID: "XXX"},
 				},
 			),
 			tasks: []*task{
 				&task{
-					Type:   taskTypeAttemptScheduleJob,
-					Reason: "target state launched and Job not scheduled",
-					Job: &job.Job{
-						Name:            "foo.service",
-						TargetState:     job.JobStateLaunched,
-						State:           &jsInactive,
-						TargetMachineID: "XXX",
-					},
+					Type:      taskTypeAttemptScheduleJob,
+					Reason:    "target state launched and Job not scheduled",
+					JobName:   "foo.service",
+					MachineID: "XXX",
 				},
 			},
 		},

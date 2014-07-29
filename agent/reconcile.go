@@ -22,7 +22,6 @@ const (
 	taskTypeStartJob      = "StartJob"
 	taskTypeStopJob       = "StopJob"
 	taskTypeUnscheduleJob = "UnscheduleJob"
-	taskTypeSubmitBid     = "SubmitBid"
 
 	taskReasonScheduledButNotRunnable    = "job scheduled locally but unable to run"
 	taskReasonScheduledButUnloaded       = "job scheduled here but not loaded"
@@ -30,7 +29,6 @@ const (
 	taskReasonLoadedDesiredStateLaunched = "job currently loaded but desired state is launched"
 	taskReasonLaunchedDesiredStateLoaded = "job currently launched but desired state is loaded"
 	taskReasonPurgingAgent               = "purging agent"
-	taskReasonAbleToResolveOffer         = "offer unresolved and able to run job"
 )
 
 type task struct {
@@ -45,20 +43,6 @@ func (t *task) String() string {
 		jName = t.Job.Name
 	}
 	return fmt.Sprintf("{Type: %s, Job: %s, Reason: %q}", t.Type, jName, t.Reason)
-}
-
-type offer struct {
-	Bids pkg.Set
-	Job  *job.Job
-}
-
-type offerCache map[string]*offer
-
-func (oc *offerCache) add(name string, bids pkg.Set, j *job.Job) {
-	(*oc)[name] = &offer{
-		Bids: bids,
-		Job:  j,
-	}
 }
 
 func NewReconciler(reg registry.Registry, verifier *sign.SignatureVerifier) *AgentReconciler {
@@ -129,8 +113,7 @@ func (ar *AgentReconciler) Trigger() {
 }
 
 // Reconcile drives the local Agent's state towards the desired state
-// stored in the Registry. Reconcile also attempts to bid for any
-// outstanding job offers that the local Agent can run.
+// stored in the Registry.
 func (ar *AgentReconciler) Reconcile(a *Agent) {
 	ms := a.Machine.State()
 
@@ -159,20 +142,6 @@ func (ar *AgentReconciler) Reconcile(a *Agent) {
 			return
 		}
 	}
-
-	oCache, err := ar.currentOffers(jobs)
-	if err != nil {
-		log.Errorf("Unable to determine current state of offers: %v", err)
-		return
-	}
-
-	for t := range ar.calculateTasksForOffers(oCache, dAgentState) {
-		err := ar.doTask(a, t)
-		if err != nil {
-			log.Errorf("Failed resolving task, halting reconciliation: task=%s err=%q", t, err)
-			return
-		}
-	}
 }
 
 // Purge attempts to unload all Jobs that have been loaded locally
@@ -183,7 +152,7 @@ func (ar *AgentReconciler) Purge(a *Agent) {
 		return
 	}
 
-	for _, cJob := range cAgentState.jobs {
+	for _, cJob := range cAgentState.Jobs {
 		t := task{
 			Type:   taskTypeUnloadJob,
 			Job:    cJob,
@@ -208,8 +177,6 @@ func (ar *AgentReconciler) doTask(a *Agent, t *task) (err error) {
 		a.startJob(t.Job.Name)
 	case taskTypeStopJob:
 		a.stopJob(t.Job.Name)
-	case taskTypeSubmitBid:
-		ar.submitBid(t.Job.Name, a.Machine.State().ID)
 	case taskTypeUnscheduleJob:
 		err = ar.unscheduleJob(t.Job.Name, a.Machine.State().ID)
 	default:
@@ -223,10 +190,6 @@ func (ar *AgentReconciler) doTask(a *Agent, t *task) (err error) {
 	return
 }
 
-func (ar *AgentReconciler) submitBid(jName, machID string) {
-	ar.reg.SubmitJobBid(jName, machID)
-}
-
 func (ar *AgentReconciler) unscheduleJob(jName, machID string) error {
 	return ar.reg.ClearJobTarget(jName, machID)
 }
@@ -235,8 +198,8 @@ func (ar *AgentReconciler) unscheduleJob(jName, machID string) error {
 // Agent identified by the provided machine ID should currently be doing.
 func (ar *AgentReconciler) desiredAgentState(jobs []job.Job, ms *machine.MachineState) (*AgentState, error) {
 	as := AgentState{
-		ms:         ms,
-		jobs:       make(map[string]*job.Job),
+		MState:     ms,
+		Jobs:       make(map[string]*job.Job),
 		verifyFunc: ar.verifyJobSignature,
 	}
 
@@ -247,7 +210,7 @@ func (ar *AgentReconciler) desiredAgentState(jobs []job.Job, ms *machine.Machine
 			continue
 		}
 
-		as.jobs[j.Name] = &j
+		as.Jobs[j.Name] = &j
 	}
 
 	return &as, nil
@@ -263,8 +226,8 @@ func (ar *AgentReconciler) currentAgentState(a *Agent) (*AgentState, error) {
 
 	ms := a.Machine.State()
 	as := AgentState{
-		ms:         &ms,
-		jobs:       jobs,
+		MState:     &ms,
+		Jobs:       jobs,
 		verifyFunc: ar.verifyJobSignature,
 	}
 
@@ -278,11 +241,11 @@ func (ar *AgentReconciler) calculateTasksForJobs(dState, cState *AgentState) <-c
 	taskchan := make(chan *task)
 	go func() {
 		jobs := pkg.NewUnsafeSet()
-		for cName := range cState.jobs {
+		for cName := range cState.Jobs {
 			jobs.Add(cName)
 		}
 
-		for dName := range dState.jobs {
+		for dName := range dState.Jobs {
 			jobs.Add(dName)
 		}
 
@@ -299,10 +262,10 @@ func (ar *AgentReconciler) calculateTasksForJobs(dState, cState *AgentState) <-c
 func (ar *AgentReconciler) calculateTasksForJob(dState, cState *AgentState, jName string, taskchan chan *task) {
 	var dJob, cJob *job.Job
 	if dState != nil {
-		dJob = dState.jobs[jName]
+		dJob = dState.Jobs[jName]
 	}
 	if cState != nil {
-		cJob = cState.jobs[jName]
+		cJob = cState.Jobs[jName]
 	}
 
 	if dJob == nil && cJob == nil {
@@ -317,7 +280,7 @@ func (ar *AgentReconciler) calculateTasksForJob(dState, cState *AgentState, jNam
 			Reason: taskReasonLoadedButNotScheduled,
 		}
 
-		delete(cState.jobs, jName)
+		delete(cState.Jobs, jName)
 		return
 	}
 
@@ -329,14 +292,14 @@ func (ar *AgentReconciler) calculateTasksForJob(dState, cState *AgentState, jNam
 			Job:    dJob,
 			Reason: taskReasonScheduledButNotRunnable,
 		}
-		delete(dState.jobs, jName)
+		delete(dState.Jobs, jName)
 
 		taskchan <- &task{
 			Type:   taskTypeUnloadJob,
 			Job:    dJob,
 			Reason: taskReasonScheduledButNotRunnable,
 		}
-		delete(cState.jobs, jName)
+		delete(cState.Jobs, jName)
 
 		return
 	}
@@ -393,69 +356,6 @@ func (ar *AgentReconciler) calculateTasksForJob(dState, cState *AgentState, jNam
 	}
 
 	log.Errorf("Unable to determine how to reconcile Job(%s): desiredState=%#v currentState=%#V", jName, dJob, cJob)
-}
-
-func (ar *AgentReconciler) currentOffers(jobs []job.Job) (*offerCache, error) {
-	jMap := make(map[string]*job.Job)
-	for _, j := range jobs {
-		j := j
-		jMap[j.Name] = &j
-	}
-
-	uOffers, err := ar.reg.UnresolvedJobOffers()
-	if err != nil {
-		return nil, fmt.Errorf("failed fetching JobOffers from Registry: %v", err)
-	}
-
-	oCache := &offerCache{}
-	for _, offer := range uOffers {
-		bids, err := ar.reg.Bids(offer.Job.Name)
-		if err != nil {
-			return nil, err
-		}
-
-		oCache.add(offer.Job.Name, bids, jMap[offer.Job.Name])
-	}
-
-	return oCache, nil
-}
-
-// calculateTasksForOffers compares the unresolved job offers and desired state
-// of an Agent. The generated tasks represent which offers upon which the Agent
-// should bid.
-func (ar *AgentReconciler) calculateTasksForOffers(oCache *offerCache, dState *AgentState) <-chan *task {
-	taskchan := make(chan *task)
-	go func() {
-		for oName, cache := range *oCache {
-			if cache.Job == nil {
-				log.Errorf("Unable to determine what to do about JobOffer(%s), Job is nil", oName)
-				continue
-			}
-			ar.calculateTasksForOffer(dState, cache.Job, cache.Bids, taskchan)
-		}
-
-		close(taskchan)
-	}()
-
-	return taskchan
-}
-
-func (ar *AgentReconciler) calculateTasksForOffer(dState *AgentState, j *job.Job, bids pkg.Set, taskchan chan *task) {
-	if bids.Contains(dState.ms.ID) {
-		log.V(1).Infof("Bid already submitted for unresolved JobOffer(%s)", j.Name)
-		return
-	}
-
-	if able, reason := dState.AbleToRun(j); !able {
-		log.V(1).Infof("Not bidding on Job(%s): %s", j.Name, reason)
-		return
-	}
-
-	taskchan <- &task{
-		Type:   taskTypeSubmitBid,
-		Job:    j,
-		Reason: taskReasonAbleToResolveOffer,
-	}
 }
 
 // verifyJobSignature attempts to verify the integrity of the given Job by checking the

@@ -8,7 +8,6 @@ import (
 
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/machine"
-	"github.com/coreos/fleet/pkg"
 	"github.com/coreos/fleet/registry"
 )
 
@@ -154,29 +153,13 @@ func (e *Engine) clusterState() (*clusterState, error) {
 		return nil, err
 	}
 
-	offers, err := e.registry.UnresolvedJobOffers()
-	if err != nil {
-		log.Errorf("Failed fetching JobOffers from Registry: %v", err)
-		return nil, err
-	}
-
-	oMap := make(map[string]pkg.Set, len(offers))
-	for _, offer := range offers {
-		bids, err := e.registry.Bids(offer.Job.Name)
-		if err != nil {
-			log.Errorf("Failed fetching bids for JobOffer(%s) from Registry: %v", offer.Job.Name, err)
-			return nil, err
-		}
-		oMap[offer.Job.Name] = bids
-	}
-
 	machines, err := e.registry.Machines()
 	if err != nil {
 		log.Errorf("Failed fetching Machines from Registry: %v", err)
 		return nil, err
 	}
 
-	return newClusterState(jobs, oMap, machines), nil
+	return newClusterState(jobs, machines), nil
 }
 
 func (e *Engine) resolveJobOffer(jName string) (err error) {
