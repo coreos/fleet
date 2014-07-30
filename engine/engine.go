@@ -106,21 +106,22 @@ func ensureLeader(prev registry.Lease, reg registry.Registry, machID string) (cu
 	if prev != nil {
 		err := prev.Renew(engineRoleLeasePeriod)
 		if err == nil {
+			log.V(1).Infof("Engine leadership renewed")
 			cur = prev
 			return
 		} else {
-			log.Errorf("Engine leadership could not be renewed: %v", err)
+			log.Errorf("Engine leadership lost, renewal failed: %v", err)
 		}
 	}
 
 	var err error
 	cur, err = reg.LeaseRole(engineRoleName, machID, engineRoleLeasePeriod)
 	if err != nil {
-		log.Errorf("Failed acquiring engine leadership: %v", err)
+		log.Errorf("Engine leadership acquisition failed: %v", err)
 	} else if cur == nil {
 		log.V(1).Infof("Unable to acquire engine leadership")
 	} else {
-		log.Infof("Acquired engine leadership")
+		log.Infof("Engine leadership acquired")
 	}
 
 	return
