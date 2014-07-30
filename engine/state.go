@@ -7,21 +7,38 @@ import (
 )
 
 type clusterState struct {
-	jobs   []job.Job
-	agents map[string]*agent.AgentState
+	jobs     map[string]*job.Job
+	machines map[string]*machine.MachineState
 }
 
 func newClusterState(jobs []job.Job, machines []machine.MachineState) *clusterState {
-	agents := make(map[string]*agent.AgentState, len(machines))
-	for _, ms := range machines {
-		ms := ms
-		agents[ms.ID] = agent.NewAgentState(&ms)
-	}
-
+	jMap := make(map[string]*job.Job, len(jobs))
 	for _, j := range jobs {
 		j := j
+		jMap[j.Name] = &j
+	}
 
-		if !j.Scheduled() {
+	mMap := make(map[string]*machine.MachineState, len(machines))
+	for _, ms := range machines {
+		ms := ms
+		mMap[ms.ID] = &ms
+	}
+
+	return &clusterState{
+		jobs:     jMap,
+		machines: mMap,
+	}
+}
+
+func (cs *clusterState) agents() map[string]*agent.AgentState {
+	agents := make(map[string]*agent.AgentState, len(cs.machines))
+	for _, ms := range cs.machines {
+		ms := ms
+		agents[ms.ID] = agent.NewAgentState(ms)
+	}
+
+	for _, j := range cs.jobs {
+		if !j.Scheduled() || j.TargetState == job.JobStateInactive {
 			continue
 		}
 
@@ -30,55 +47,25 @@ func newClusterState(jobs []job.Job, machines []machine.MachineState) *clusterSt
 			continue
 		}
 
-		as.Jobs[j.Name] = &j
+		j := j
+		as.Jobs[j.Name] = j
 	}
 
-	return &clusterState{
-		jobs:   jobs,
-		agents: agents,
-	}
+	return agents
 }
 
-// inactiveJobs returns a collection of Jobs that have a target
-// state of "inactive"
-func (cs *clusterState) inactiveJobs() []*job.Job {
-	jobs := make([]*job.Job, 0)
-	for i := range cs.jobs {
-		j := cs.jobs[i]
-		if j.TargetState == job.JobStateInactive {
-			jobs = append(jobs, &j)
-		}
+func (cs *clusterState) schedule(jobName, targetMachineID string) {
+	j := cs.jobs[jobName]
+	if j == nil {
+		return
 	}
-	return jobs
+	j.TargetMachineID = targetMachineID
 }
 
-// unscheduledLoadedJobs returns a collection of Jobs that have a
-// target state other than "inactive", but have not been scheduled
-func (cs *clusterState) unscheduledLoadedJobs() []*job.Job {
-	jobs := make([]*job.Job, 0)
-	for i := range cs.jobs {
-		j := cs.jobs[i]
-		if j.TargetState != job.JobStateInactive && !j.Scheduled() {
-			jobs = append(jobs, &j)
-		}
+func (cs *clusterState) unschedule(jobName string) {
+	j := cs.jobs[jobName]
+	if j == nil {
+		return
 	}
-	return jobs
-}
-
-// scheduledLoadedJobs returns a collection of Jobs that have a
-// target state other than "inactive" and been scheduled
-func (cs *clusterState) scheduledLoadedJobs() []*job.Job {
-	jobs := make([]*job.Job, 0)
-	for i := range cs.jobs {
-		j := cs.jobs[i]
-		if j.TargetState != job.JobStateInactive && j.Scheduled() {
-			jobs = append(jobs, &j)
-		}
-	}
-	return jobs
-}
-
-func (cs *clusterState) machineExists(machID string) bool {
-	_, ok := cs.agents[machID]
-	return ok
+	j.TargetMachineID = ""
 }

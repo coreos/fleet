@@ -4,6 +4,8 @@ import (
 	"fmt"
 
 	log "github.com/coreos/fleet/Godeps/_workspace/src/github.com/golang/glog"
+
+	"github.com/coreos/fleet/job"
 )
 
 const (
@@ -66,43 +68,45 @@ func (r *Reconciler) calculateClusterTasks(clust *clusterState, stopchan chan st
 	go func() {
 		defer close(taskchan)
 
-		inactive := clust.inactiveJobs()
-		needScheduling := clust.unscheduledLoadedJobs()
-		loaded := clust.scheduledLoadedJobs()
-
-		for _, j := range inactive {
-			if j.Scheduled() {
-				if !send(taskTypeUnscheduleJob, "target state inactive", j.Name, j.TargetMachineID) {
-					return
-				}
-			}
-		}
-
-		for _, j := range loaded {
-			if !clust.machineExists(j.TargetMachineID) {
-				reason := fmt.Sprintf("target Machine(%s) went away", j.TargetMachineID)
-				if !send(taskTypeUnscheduleJob, reason, j.Name, j.TargetMachineID) {
-					return
-				}
-
-				needScheduling = append(needScheduling, j)
-			}
-		}
-
-		for _, j := range needScheduling {
-			reason := fmt.Sprintf("target state %s and Job not scheduled", j.TargetState)
-
-			dec, err := r.sched.Decide(clust, j)
-			if err != nil {
-				log.Infof("Unable to schedule Job(%s): %v", err)
+		for _, j := range clust.jobs {
+			if !j.Scheduled() {
 				continue
 			}
 
-			j.TargetMachineID = dec.machineID
+			var reason string
+			if j.TargetState == job.JobStateInactive {
+				reason = "target state inactive"
+			} else if _, ok := clust.machines[j.TargetMachineID]; !ok {
+				reason = fmt.Sprintf("target Machine(%s) went away", j.TargetMachineID)
+			} else {
+				// Job is scheduled and its machine is alive, all is good
+				continue
+			}
 
+			if !send(taskTypeUnscheduleJob, reason, j.Name, j.TargetMachineID) {
+				return
+			}
+
+			clust.unschedule(j.Name)
+		}
+
+		for _, j := range clust.jobs {
+			if j.Scheduled() || j.TargetState == job.JobStateInactive {
+				continue
+			}
+
+			dec, err := r.sched.Decide(clust, j)
+			if err != nil {
+				log.V(1).Infof("Unable to schedule Job(%s): %v", j.Name, err)
+				continue
+			}
+
+			reason := fmt.Sprintf("target state %s and Job not scheduled", j.TargetState)
 			if !send(taskTypeAttemptScheduleJob, reason, j.Name, dec.machineID) {
 				return
 			}
+
+			clust.schedule(j.Name, dec.machineID)
 		}
 	}()
 

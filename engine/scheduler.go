@@ -19,12 +19,14 @@ type Scheduler interface {
 type dumbScheduler struct{}
 
 func (ds *dumbScheduler) Decide(clust *clusterState, j *job.Job) (*decision, error) {
-	if len(clust.agents) == 0 {
+	agents := clust.agents()
+
+	if len(agents) == 0 {
 		return nil, fmt.Errorf("zero agents available")
 	}
 
 	able := pkg.NewUnsafeSet()
-	for machID, as := range clust.agents {
+	for machID, as := range agents {
 		if ok, _ := as.AbleToRun(j); !ok {
 			continue
 		}
