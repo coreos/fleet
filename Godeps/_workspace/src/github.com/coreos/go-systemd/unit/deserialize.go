@@ -10,16 +10,6 @@ import (
 	"unicode"
 )
 
-type UnitOption struct {
-	Section string
-	Name    string
-	Value   string
-}
-
-func (uo *UnitOption) String() string {
-	return fmt.Sprintf("{Section: %q, Name: %q, Value: %q}", uo.Section, uo.Name, uo.Value)
-}
-
 // Deserialize parses a systemd unit file into a list of UnitOption objects.
 func Deserialize(f io.Reader) (opts []*UnitOption, err error) {
 	lexer, optchan, errchan := newLexer(f)
@@ -189,7 +179,7 @@ func (l *lexer) lexOptionValueFunc(section, name string) lexStep {
 
 			// lack of continuation means this value has been exhausted
 			idx := bytes.LastIndex(line, []byte{'\\'})
-			if idx == -1 {
+			if idx == -1 || idx != (len(line)-1) {
 				partial.Write(line)
 				break
 			}
