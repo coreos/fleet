@@ -26,7 +26,7 @@ func (t *task) String() string {
 
 func NewReconciler() *Reconciler {
 	return &Reconciler{
-		sched: &dumbScheduler{},
+		sched: &leastLoadedScheduler{},
 	}
 }
 
