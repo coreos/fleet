@@ -18,7 +18,11 @@ const (
 )
 
 func (r *EtcdRegistry) storeOrGetUnit(u unit.Unit) (err error) {
-	json, err := marshal(u)
+	um := unitModel{
+		Raw: u.String(),
+	}
+
+	json, err := marshal(um)
 	if err != nil {
 		return err
 	}
@@ -75,12 +79,19 @@ func (r *EtcdRegistry) getUnitByHash(hash unit.Hash) *unit.Unit {
 		}
 		return nil
 	}
-	var u unit.Unit
-	if err := unmarshal(resp.Node.Value, &u); err != nil {
+	var um unitModel
+	if err := unmarshal(resp.Node.Value, &um); err != nil {
 		log.Errorf("error unmarshaling Unit(%s): %v", hash, err)
 		return nil
 	}
-	return &u
+
+	u, err := unit.NewUnit(um.Raw)
+	if err != nil {
+		log.Errorf("error parsing Unit(%s): %v", hash, err)
+		return nil
+	}
+
+	return u
 }
 
 func (r *EtcdRegistry) hashedUnitPath(hash unit.Hash) string {
@@ -120,11 +131,12 @@ func (ljp *LegacyJobPayload) UnmarshalJSON(data []byte) error {
 // legacyJobPayloadModel is an abstraction to deal with serialized LegacyJobPayloads
 type legacyJobPayloadModel struct {
 	Name string
-	Unit unitFileModel
+	Unit struct {
+		Contents map[string]map[string]string
+		Raw      string
+	}
 }
 
-// unitFileModel is an abstraction to deal with serialized LegacyJobPayloads
-type unitFileModel struct {
-	Contents map[string]map[string]string
-	Raw      string
+type unitModel struct {
+	Raw string
 }
