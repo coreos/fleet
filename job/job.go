@@ -77,22 +77,6 @@ func NewJob(name string, unit unit.Unit) *Job {
 	}
 }
 
-// IsOneshot identifies whether the Job is intended to execute once, and, on
-// completion, not be migrated around the cluster. This is determined by
-// whether the unit file associated with the Job is a Service of type "oneshot".
-func (j *Job) IsOneshot() bool {
-	s, ok := j.Unit.Contents["Service"]
-	if !ok {
-		return false
-	}
-	t, ok := s["Type"]
-	if !ok || len(t) == 0 {
-		return false
-	}
-	// If multiple Types are defined, systemd uses the last
-	return t[len(t)-1] == "oneshot"
-}
-
 // Requirements returns all relevant options from the [X-Fleet] section of a unit file.
 // Relevant options are identified with a `X-` prefix in the unit.
 // This prefix is stripped from relevant options before being returned.
