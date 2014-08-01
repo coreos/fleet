@@ -199,7 +199,14 @@ func (r *EtcdRegistry) DestroyJob(jobName string) error {
 		Recursive: true,
 	}
 
-	r.etcd.Do(&req)
+	_, err := r.etcd.Do(&req)
+	if err != nil {
+		if isKeyNotFound(err) {
+			err = errors.New("job does not exist")
+		}
+
+		return err
+	}
 
 	// TODO(jonboulle): add unit reference counting and actually destroying Units
 	r.destroyLegacyPayload(jobName)
