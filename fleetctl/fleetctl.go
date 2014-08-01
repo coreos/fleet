@@ -287,10 +287,11 @@ func getRegistryClient() (client.API, error) {
 		}
 	}
 
-	tlsConfig, err := etcd.TLSClientConfig(globalFlags.EtcdCAFile, globalFlags.EtcdCertFile, globalFlags.EtcdKeyFile)
+	tlsConfig, err := etcd.ReadTLSConfigFiles(globalFlags.EtcdCAFile, globalFlags.EtcdCertFile, globalFlags.EtcdKeyFile)
 	if err != nil {
 		return nil, err
 	}
+
 	trans := http.Transport{
 		Dial:            dial,
 		TLSClientConfig: tlsConfig,
