@@ -52,8 +52,8 @@ func (r *EtcdRegistry) getJobOfferFromJSON(val string) *job.JobOffer {
 		return nil
 	}
 
-	j := r.getJobFromModel(jom.Job)
-	if j == nil {
+	j, err := r.Job(jom.Job.Name)
+	if j == nil || err != nil {
 		return nil
 	}
 
