@@ -29,7 +29,7 @@ func (r *EtcdRegistry) determineJobState(jobName string) *job.JobState {
 
 	state = job.JobStateLoaded
 
-	agent, pulse := r.CheckJobPulse(jobName)
+	agent, pulse := r.checkJobPulse(jobName)
 	if !pulse || agent != tgt {
 		return &state
 	}
@@ -48,7 +48,7 @@ func (r *EtcdRegistry) JobHeartbeat(jobName, agentMachID string, ttl time.Durati
 	return err
 }
 
-func (r *EtcdRegistry) CheckJobPulse(jobName string) (string, bool) {
+func (r *EtcdRegistry) checkJobPulse(jobName string) (string, bool) {
 	req := etcd.Get{
 		Key: r.jobHeartbeatPath(jobName),
 	}
