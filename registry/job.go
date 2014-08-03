@@ -3,7 +3,6 @@ package registry
 import (
 	"errors"
 	"path"
-	"strings"
 
 	log "github.com/coreos/fleet/Godeps/_workspace/src/github.com/golang/glog"
 
@@ -35,24 +34,32 @@ func (r *EtcdRegistry) Jobs() ([]job.Job, error) {
 	}
 
 	for _, dir := range resp.Node.Nodes {
+		objKey := path.Join(dir.Key, "object")
+		var obj *etcd.Node
 		for _, node := range dir.Nodes {
-			if !strings.HasSuffix(node.Key, "object") {
+			if node.Key != objKey {
 				continue
 			}
-
-			j, err := r.getJobFromObjectNode(&node)
-			if j == nil || err != nil {
-				log.Infof("Unable to parse Job in Registry at key %s", node.Key)
-				continue
-			}
-
-			if err = r.hydrateJob(j); err != nil {
-				log.Errorf("Failed to hydrate Job(%s) model", j.Name)
-				continue
-			}
-
-			jobs = append(jobs, *j)
+			node := node
+			obj = &node
 		}
+
+		if obj == nil {
+			continue
+		}
+
+		j, err := r.getJobFromObjectNode(obj)
+		if j == nil || err != nil {
+			log.Infof("Unable to parse Job in Registry at key %s", obj.Key)
+			continue
+		}
+
+		if err = r.parseJobDir(j, &dir); err != nil {
+			log.Errorf("Failed to parse Job(%s) model: %v", j.Name, err)
+			continue
+		}
+
+		jobs = append(jobs, *j)
 	}
 
 	return jobs, nil
@@ -97,7 +104,8 @@ func (r *EtcdRegistry) ClearJobTarget(jobName, machID string) error {
 // hydrated Job on success, or nil on any kind of failure.
 func (r *EtcdRegistry) Job(jobName string) (*job.Job, error) {
 	req := etcd.Get{
-		Key: path.Join(r.keyPrefix, jobPrefix, jobName, "object"),
+		Key:       path.Join(r.keyPrefix, jobPrefix, jobName),
+		Recursive: true,
 	}
 
 	resp, err := r.etcd.Do(&req)
@@ -108,36 +116,54 @@ func (r *EtcdRegistry) Job(jobName string) (*job.Job, error) {
 		return nil, err
 	}
 
-	var j *job.Job
-	j, err = r.getJobFromObjectNode(resp.Node)
+	objKey := path.Join(req.Key, "object")
+	var obj *etcd.Node
+	for _, node := range resp.Node.Nodes {
+		if node.Key != objKey {
+			continue
+		}
+		node := node
+		obj = &node
+	}
+
+	if obj == nil {
+		return nil, nil
+	}
+
+	j, err := r.getJobFromObjectNode(obj)
 	if j == nil || err != nil {
 		return nil, err
 	}
 
-	if err = r.hydrateJob(j); err != nil {
+	if err = r.parseJobDir(j, resp.Node); err != nil {
 		return nil, err
 	}
 
 	return j, nil
 }
 
-func (r *EtcdRegistry) hydrateJob(j *job.Job) error {
-	tgt, err := r.jobTargetState(j.Name)
-	if err != nil {
-		return err
-	}
-
-	j.TargetState = tgt
-
-	j.TargetMachineID, err = r.jobTargetMachine(j.Name)
-	if err != nil {
-		return err
+func (r *EtcdRegistry) parseJobDir(j *job.Job, dir *etcd.Node) (err error) {
+	var heartbeat string
+	for _, node := range dir.Nodes {
+		switch node.Key {
+		case r.jobTargetStatePath(j.Name):
+			j.TargetState, err = job.ParseJobState(node.Value)
+			if err != nil {
+				return
+			}
+		case r.jobTargetAgentPath(j.Name):
+			j.TargetMachineID = node.Value
+		case r.jobHeartbeatPath(j.Name):
+			heartbeat = node.Value
+		}
 	}
 
 	j.UnitState = r.getUnitState(j.Name)
-	j.State = r.determineJobState(j)
 
-	return nil
+	js := determineJobState(j, heartbeat)
+	j.State = &js
+
+	return
 }
 
 func (r *EtcdRegistry) getJobFromObjectNode(node *etcd.Node) (*job.Job, error) {

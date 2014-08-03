@@ -8,26 +8,25 @@ import (
 	"github.com/coreos/fleet/job"
 )
 
-func (r *EtcdRegistry) determineJobState(j *job.Job) *job.JobState {
-	state := job.JobStateInactive
+// determineJobState decides what the State field of a Job object should
+// be. The value of heartbeat should be the machine ID that is known to
+// have recently heartbeaten (see JobHeartbeat) the Job. All fields of the
+// Job (except for State) must be available - no partial representations.
+func determineJobState(j *job.Job, heartbeat string) (state job.JobState) {
+	state = job.JobStateInactive
 
-	if j.TargetMachineID == "" {
-		return &state
-	}
-
-	if j.UnitState == nil {
-		return &state
+	if j.TargetMachineID == "" || j.UnitState == nil {
+		return
 	}
 
 	state = job.JobStateLoaded
 
-	agent, pulse := r.checkJobPulse(j.Name)
-	if !pulse || agent != j.TargetMachineID {
-		return &state
+	if heartbeat != j.TargetMachineID {
+		return
 	}
 
 	state = job.JobStateLaunched
-	return &state
+	return
 }
 
 func (r *EtcdRegistry) JobHeartbeat(jobName, agentMachID string, ttl time.Duration) error {
@@ -38,18 +37,6 @@ func (r *EtcdRegistry) JobHeartbeat(jobName, agentMachID string, ttl time.Durati
 	}
 	_, err := r.etcd.Do(&req)
 	return err
-}
-
-func (r *EtcdRegistry) checkJobPulse(jobName string) (string, bool) {
-	req := etcd.Get{
-		Key: r.jobHeartbeatPath(jobName),
-	}
-	resp, err := r.etcd.Do(&req)
-	if err != nil {
-		return "", false
-	}
-
-	return resp.Node.Value, true
 }
 
 func (r *EtcdRegistry) ClearJobHeartbeat(jobName string) {
