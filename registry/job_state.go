@@ -4,33 +4,25 @@ import (
 	"path"
 	"time"
 
-	log "github.com/coreos/fleet/Godeps/_workspace/src/github.com/golang/glog"
-
 	"github.com/coreos/fleet/etcd"
 	"github.com/coreos/fleet/job"
 )
 
-func (r *EtcdRegistry) determineJobState(jobName string) *job.JobState {
+func (r *EtcdRegistry) determineJobState(j *job.Job) *job.JobState {
 	state := job.JobStateInactive
 
-	tgt, err := r.jobTargetMachine(jobName)
-	if err != nil {
-		log.Errorf("Unable to determine target of Job(%s): %v", jobName, err)
-		return nil
-	}
-
-	if tgt == "" {
+	if j.TargetMachineID == "" {
 		return &state
 	}
 
-	if r.getUnitState(jobName) == nil {
+	if j.UnitState == nil {
 		return &state
 	}
 
 	state = job.JobStateLoaded
 
-	agent, pulse := r.checkJobPulse(jobName)
-	if !pulse || agent != tgt {
+	agent, pulse := r.checkJobPulse(j.Name)
+	if !pulse || agent != j.TargetMachineID {
 		return &state
 	}
 

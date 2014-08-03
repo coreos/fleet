@@ -135,7 +135,7 @@ func (r *EtcdRegistry) hydrateJob(j *job.Job) error {
 	}
 
 	j.UnitState = r.getUnitState(j.Name)
-	j.State = r.determineJobState(j.Name)
+	j.State = r.determineJobState(j)
 
 	return nil
 }
