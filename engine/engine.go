@@ -12,13 +12,8 @@ import (
 )
 
 const (
-	// time between triggering reconciliation routine
-	reconcileInterval = 2 * time.Second
-
 	// name of role that represents the lead engine in a cluster
 	engineRoleName = "engine-leader"
-	// time the role will be leased before the lease must be renewed
-	engineRoleLeasePeriod = 10 * time.Second
 )
 
 type Engine struct {
@@ -35,8 +30,9 @@ func New(reg registry.Registry, mach machine.Machine) *Engine {
 	return &Engine{rec, reg, mach, nil, make(chan struct{})}
 }
 
-func (e *Engine) Run(stop chan bool) {
-	ticker := time.Tick(reconcileInterval)
+func (e *Engine) Run(ival time.Duration, stop chan bool) {
+	leaseTTL := ival * 5
+	ticker := time.Tick(ival)
 	machID := e.machine.State().ID
 
 	reconcile := func() {
@@ -58,7 +54,7 @@ func (e *Engine) Run(stop chan bool) {
 			}
 		}()
 
-		e.lease = ensureLeader(e.lease, e.registry, machID)
+		e.lease = ensureLeader(e.lease, e.registry, machID, leaseTTL)
 		if e.lease == nil {
 			return
 		}
@@ -74,7 +70,7 @@ func (e *Engine) Run(stop chan bool) {
 			select {
 			case <-monitor:
 				return
-			case <-time.After(reconcileInterval):
+			case <-time.After(leaseTTL):
 				close(abort)
 			case <-stop:
 				close(abort)
@@ -87,7 +83,7 @@ func (e *Engine) Run(stop chan bool) {
 		elapsed := time.Now().Sub(start)
 
 		msg := fmt.Sprintf("Engine completed reconciliation in %s", elapsed)
-		if elapsed > reconcileInterval {
+		if elapsed > ival {
 			log.Warning(msg)
 		} else {
 			log.V(1).Info(msg)
@@ -121,9 +117,9 @@ func (e *Engine) Purge() {
 
 // ensureLeader will attempt to renew a non-nil Lease, falling back to
 // acquiring a new Lease on the lead engine role.
-func ensureLeader(prev registry.Lease, reg registry.Registry, machID string) (cur registry.Lease) {
+func ensureLeader(prev registry.Lease, reg registry.Registry, machID string, ttl time.Duration) (cur registry.Lease) {
 	if prev != nil {
-		err := prev.Renew(engineRoleLeasePeriod)
+		err := prev.Renew(ttl)
 		if err == nil {
 			log.V(1).Infof("Engine leadership renewed")
 			cur = prev
@@ -134,7 +130,7 @@ func ensureLeader(prev registry.Lease, reg registry.Registry, machID string) (cu
 	}
 
 	var err error
-	cur, err = reg.LeaseRole(engineRoleName, machID, engineRoleLeasePeriod)
+	cur, err = reg.LeaseRole(engineRoleName, machID, ttl)
 	if err != nil {
 		log.Errorf("Engine leadership acquisition failed: %v", err)
 	} else if cur == nil {

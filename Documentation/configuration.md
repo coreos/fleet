@@ -72,4 +72,10 @@ Default: false
 
 File containing public SSH keys that should be used to verify payload signatures.
 
-Default: "~/.ssh/authorized_keys""
+Default: "~/.ssh/authorized_keys"
+
+#### engine_reconcile_interval
+
+Interval at which the engine should reconcile the cluster schedule in etcd.
+
+Default: 2
