@@ -359,7 +359,7 @@ func (ar *AgentReconciler) calculateTasksForJob(ms *machine.MachineState, dState
 	if *cJob.State == job.JobStateInactive {
 		taskchan <- &task{
 			Type:   taskTypeLoadJob,
-			Job:    cJob,
+			Job:    dJob,
 			Reason: taskReasonInactive,
 		}
 	}
