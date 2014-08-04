@@ -217,10 +217,11 @@ func (m *systemdUnitManager) GetUnitStates(filter pkg.Set) (map[string]*unit.Uni
 }
 
 func (m *systemdUnitManager) writeUnit(name string, contents string) error {
-	log.Infof("Writing systemd unit %s", name)
+	bContents := []byte(contents)
+	log.Infof("Writing systemd unit %s (%db)", name, len(bContents))
 
 	ufPath := m.getUnitFilePath(name)
-	err := ioutil.WriteFile(ufPath, []byte(contents), os.FileMode(0644))
+	err := ioutil.WriteFile(ufPath, bContents, os.FileMode(0644))
 	if err != nil {
 		return err
 	}
