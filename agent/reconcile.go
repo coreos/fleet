@@ -28,7 +28,6 @@ const (
 	taskReasonScheduledButUnloaded       = "job scheduled here but not loaded"
 	taskReasonLoadedButNotScheduled      = "job loaded but not scheduled here"
 	taskReasonLoadedDesiredStateLaunched = "job currently loaded but desired state is launched"
-	taskReasonInactive                   = "job schedule locally but not loaded"
 	taskReasonLaunchedDesiredStateLoaded = "job currently launched but desired state is loaded"
 	taskReasonPurgingAgent               = "purging agent"
 	taskReasonAbleToResolveOffer         = "offer unresolved and able to run job"
@@ -360,7 +359,7 @@ func (ar *AgentReconciler) calculateTasksForJob(ms *machine.MachineState, dState
 		taskchan <- &task{
 			Type:   taskTypeLoadJob,
 			Job:    dJob,
-			Reason: taskReasonInactive,
+			Reason: taskReasonScheduledButUnloaded,
 		}
 	}
 
