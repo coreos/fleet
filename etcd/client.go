@@ -361,12 +361,12 @@ func (ar *actionResolver) one(req *http.Request, cancel <-chan bool) (resp *http
 	return
 }
 
-func TLSClientConfig(cafile string, certfile string, keyfile string) (*tls.Config, error) {
-	if certfile == "" && keyfile == "" {
+func buildTLSClientConfig(ca, cert, key []byte) (*tls.Config, error) {
+	if len(cert) == 0 && len(key) == 0 {
 		return &tls.Config{InsecureSkipVerify: true}, nil
 	}
 
-	tlsCert, err := tls.LoadX509KeyPair(certfile, keyfile)
+	tlsCert, err := tls.X509KeyPair(cert, key)
 	if err != nil {
 		return nil, err
 	}
@@ -375,8 +375,8 @@ func TLSClientConfig(cafile string, certfile string, keyfile string) (*tls.Confi
 		Certificates: []tls.Certificate{tlsCert},
 	}
 
-	if cafile != "" {
-		cp, err := newCertPool(cafile)
+	if len(ca) != 0 {
+		cp, err := newCertPool(ca)
 		if err != nil {
 			return nil, err
 		}
@@ -386,17 +386,13 @@ func TLSClientConfig(cafile string, certfile string, keyfile string) (*tls.Confi
 	return &cfg, nil
 }
 
-func newCertPool(cafile string) (*x509.CertPool, error) {
-	pemByte, err := ioutil.ReadFile(cafile)
-	if err != nil {
-		return nil, err
-	}
+func newCertPool(ca []byte) (*x509.CertPool, error) {
 	certPool := x509.NewCertPool()
 	for {
 		var block *pem.Block
-		block, pemByte = pem.Decode(pemByte)
+		block, ca = pem.Decode(ca)
 		if block == nil {
-			return certPool, nil
+			break
 		}
 		cert, err := x509.ParseCertificate(block.Bytes)
 		if err != nil {
@@ -404,4 +400,34 @@ func newCertPool(cafile string) (*x509.CertPool, error) {
 		}
 		certPool.AddCert(cert)
 	}
+	return certPool, nil
+}
+
+func ReadTLSConfigFiles(cafile, certfile, keyfile string) (cfg *tls.Config, err error) {
+	var ca, cert, key []byte
+
+	if certfile != "" {
+		cert, err = ioutil.ReadFile(certfile)
+		if err != nil {
+			return
+		}
+	}
+
+	if keyfile != "" {
+		key, err = ioutil.ReadFile(keyfile)
+		if err != nil {
+			return
+		}
+	}
+
+	if cafile != "" {
+		ca, err = ioutil.ReadFile(cafile)
+		if err != nil {
+			return
+		}
+	}
+
+	cfg, err = buildTLSClientConfig(ca, cert, key)
+
+	return
 }
