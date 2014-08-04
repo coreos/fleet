@@ -40,7 +40,7 @@ func (r *EtcdRegistry) Jobs() ([]job.Job, error) {
 				continue
 			}
 
-			j, err := r.getJobFromJSON(node.Value)
+			j, err := r.getJobFromObjectNode(&node)
 			if j == nil || err != nil {
 				log.Infof("Unable to parse Job in Registry at key %s", node.Key)
 				continue
@@ -109,7 +109,7 @@ func (r *EtcdRegistry) Job(jobName string) (*job.Job, error) {
 	}
 
 	var j *job.Job
-	j, err = r.getJobFromJSON(resp.Node.Value)
+	j, err = r.getJobFromObjectNode(resp.Node)
 	if j == nil || err != nil {
 		return nil, err
 	}
@@ -140,17 +140,13 @@ func (r *EtcdRegistry) hydrateJob(j *job.Job) error {
 	return nil
 }
 
-func (r *EtcdRegistry) getJobFromJSON(val string) (*job.Job, error) {
+func (r *EtcdRegistry) getJobFromObjectNode(node *etcd.Node) (*job.Job, error) {
+	var err error
 	var jm jobModel
-	if err := unmarshal(val, &jm); err != nil {
+	if err = unmarshal(node.Value, &jm); err != nil {
 		return nil, err
 	}
 
-	return r.getJobFromModel(jm), nil
-}
-
-func (r *EtcdRegistry) getJobFromModel(jm jobModel) *job.Job {
-	var err error
 	var unit *unit.Unit
 
 	// New-style Jobs should have a populated UnitHash, and the contents of the Unit are stored separately in the Registry
@@ -158,30 +154,36 @@ func (r *EtcdRegistry) getJobFromModel(jm jobModel) *job.Job {
 		unit = r.getUnitByHash(jm.UnitHash)
 		if unit == nil {
 			log.Warningf("No Unit found in Registry for Job(%s)", jm.Name)
-			return nil
+			return nil, nil
 		}
 		if unit.Hash() != jm.UnitHash {
 			log.Errorf("Unit Hash %s does not match expected %s for Job(%s)!", unit.Hash(), jm.UnitHash, jm.Name)
-			return nil
+			return nil, nil
 		}
 	} else {
 		// Old-style Jobs had "Payloads" instead of Units, also stored separately in the Registry
 		unit, err = r.getUnitFromLegacyPayload(jm.Name)
 		if err != nil {
 			log.Errorf("Error retrieving legacy payload for Job(%s)", jm.Name)
-			return nil
+			return nil, nil
 		} else if unit == nil {
 			log.Warningf("No Payload found in Registry for Job(%s)", jm.Name)
-			return nil
+			return nil, nil
 		}
 
 		log.Infof("Migrating legacy Payload(%s)", jm.Name)
 		if err := r.storeOrGetUnit(*unit); err != nil {
 			log.Warningf("Unable to migrate legacy Payload: %v", err)
 		}
+
+		jm.UnitHash = unit.Hash()
+		log.Infof("Updating Job(%s) with legacy payload Hash(%s)", jm.Name, jm.UnitHash)
+		if err := r.updateJobObjectNode(&jm, node.ModifiedIndex); err != nil {
+			log.Warningf("Unable to update Job(%s) with legacy payload Hash(%s): %v", jm.Name, jm.UnitHash, err)
+		}
 	}
 
-	return job.NewJob(jm.Name, *unit)
+	return job.NewJob(jm.Name, *unit), nil
 }
 
 // jobModel is used for serializing and deserializing Jobs stored in the Registry
@@ -242,6 +244,22 @@ func (r *EtcdRegistry) CreateJob(j *job.Job) (err error) {
 		err = errors.New("job already exists")
 	}
 
+	return
+}
+
+func (r *EtcdRegistry) updateJobObjectNode(jm *jobModel, idx uint64) (err error) {
+	json, err := marshal(jm)
+	if err != nil {
+		return
+	}
+
+	req := etcd.Set{
+		Key:           path.Join(r.keyPrefix, jobPrefix, jm.Name, "object"),
+		Value:         json,
+		PreviousIndex: idx,
+	}
+
+	_, err = r.etcd.Do(&req)
 	return
 }
 
