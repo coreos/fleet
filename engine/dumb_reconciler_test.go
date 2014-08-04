@@ -257,10 +257,8 @@ func TestCalculateClusterTasks(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		taskchan := make(chan *task)
-		go calculateClusterTasks(taskchan, tt.clust)
 		tasks := make([]*task, 0)
-		for tsk := range taskchan {
+		for tsk := range calculateClusterTasks(tt.clust, make(chan struct{})) {
 			tasks = append(tasks, tsk)
 		}
 

@@ -63,8 +63,27 @@ func (e *Engine) Run(stop chan bool) {
 			return
 		}
 
+		// abort is closed when reconciliation must stop prematurely, either
+		// by a local timeout or the fleet server shutting down
+		abort := make(chan struct{})
+
+		// monitor is used to shut down the following goroutine
+		monitor := make(chan struct{})
+
+		go func() {
+			select {
+			case <-monitor:
+				return
+			case <-time.After(reconcileInterval):
+				close(abort)
+			case <-stop:
+				close(abort)
+			}
+		}()
+
 		start := time.Now()
-		e.rec.Reconcile(e)
+		e.rec.Reconcile(e, abort)
+		close(monitor)
 		elapsed := time.Now().Sub(start)
 
 		msg := fmt.Sprintf("Engine completed reconciliation in %s", elapsed)
