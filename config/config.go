@@ -9,18 +9,19 @@ import (
 )
 
 type Config struct {
-	EtcdServers        []string
-	EtcdKeyPrefix      string
-	EtcdKeyFile        string
-	EtcdCertFile       string
-	EtcdCAFile         string
-	EtcdRequestTimeout float64
-	PublicIP           string
-	Verbosity          int
-	RawMetadata        string
-	AgentTTL           string
-	VerifyUnits        bool
-	AuthorizedKeysFile string
+	EtcdServers             []string
+	EtcdKeyPrefix           string
+	EtcdKeyFile             string
+	EtcdCertFile            string
+	EtcdCAFile              string
+	EtcdRequestTimeout      float64
+	EngineReconcileInterval float64
+	PublicIP                string
+	Verbosity               int
+	RawMetadata             string
+	AgentTTL                string
+	VerifyUnits             bool
+	AuthorizedKeysFile      string
 }
 
 func (c *Config) Metadata() map[string]string {

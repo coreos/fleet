@@ -52,6 +52,7 @@ func main() {
 	cfgset.String("etcd_cafile", "", "SSL Certificate Authority file used to secure etcd communication")
 	cfgset.String("etcd_key_prefix", registry.DefaultKeyPrefix, "Keyspace for fleet data in etcd")
 	cfgset.Float64("etcd_request_timeout", 1.0, "Amount of time in seconds to allow a single etcd request before considering it failed.")
+	cfgset.Float64("engine_reconcile_interval", 2.0, "Interval at which the engine should reconcile the cluster schedule in etcd.")
 	cfgset.String("public_ip", "", "IP address that fleet machine should publish")
 	cfgset.String("metadata", "", "List of key-value metadata to assign to the fleet machine")
 	cfgset.String("agent_ttl", agent.DefaultTTL, "TTL in seconds of fleet machine state in etcd")
@@ -156,18 +157,19 @@ func getConfig(flagset *flag.FlagSet, userCfgFile string) (*config.Config, error
 	gconf.ParseSet("", flagset)
 
 	cfg := config.Config{
-		Verbosity:          (*flagset.Lookup("verbosity")).Value.(flag.Getter).Get().(int),
-		EtcdServers:        (*flagset.Lookup("etcd_servers")).Value.(flag.Getter).Get().(stringSlice),
-		EtcdKeyPrefix:      (*flagset.Lookup("etcd_key_prefix")).Value.(flag.Getter).Get().(string),
-		EtcdKeyFile:        (*flagset.Lookup("etcd_keyfile")).Value.(flag.Getter).Get().(string),
-		EtcdCertFile:       (*flagset.Lookup("etcd_certfile")).Value.(flag.Getter).Get().(string),
-		EtcdCAFile:         (*flagset.Lookup("etcd_cafile")).Value.(flag.Getter).Get().(string),
-		EtcdRequestTimeout: (*flagset.Lookup("etcd_request_timeout")).Value.(flag.Getter).Get().(float64),
-		PublicIP:           (*flagset.Lookup("public_ip")).Value.(flag.Getter).Get().(string),
-		RawMetadata:        (*flagset.Lookup("metadata")).Value.(flag.Getter).Get().(string),
-		AgentTTL:           (*flagset.Lookup("agent_ttl")).Value.(flag.Getter).Get().(string),
-		VerifyUnits:        (*flagset.Lookup("verify_units")).Value.(flag.Getter).Get().(bool),
-		AuthorizedKeysFile: (*flagset.Lookup("authorized_keys_file")).Value.(flag.Getter).Get().(string),
+		Verbosity:               (*flagset.Lookup("verbosity")).Value.(flag.Getter).Get().(int),
+		EtcdServers:             (*flagset.Lookup("etcd_servers")).Value.(flag.Getter).Get().(stringSlice),
+		EtcdKeyPrefix:           (*flagset.Lookup("etcd_key_prefix")).Value.(flag.Getter).Get().(string),
+		EtcdKeyFile:             (*flagset.Lookup("etcd_keyfile")).Value.(flag.Getter).Get().(string),
+		EtcdCertFile:            (*flagset.Lookup("etcd_certfile")).Value.(flag.Getter).Get().(string),
+		EtcdCAFile:              (*flagset.Lookup("etcd_cafile")).Value.(flag.Getter).Get().(string),
+		EtcdRequestTimeout:      (*flagset.Lookup("etcd_request_timeout")).Value.(flag.Getter).Get().(float64),
+		EngineReconcileInterval: (*flagset.Lookup("engine_reconcile_interval")).Value.(flag.Getter).Get().(float64),
+		PublicIP:                (*flagset.Lookup("public_ip")).Value.(flag.Getter).Get().(string),
+		RawMetadata:             (*flagset.Lookup("metadata")).Value.(flag.Getter).Get().(string),
+		AgentTTL:                (*flagset.Lookup("agent_ttl")).Value.(flag.Getter).Get().(string),
+		VerifyUnits:             (*flagset.Lookup("verify_units")).Value.(flag.Getter).Get().(bool),
+		AuthorizedKeysFile:      (*flagset.Lookup("authorized_keys_file")).Value.(flag.Getter).Get().(string),
 	}
 
 	if cfg.VerifyUnits {

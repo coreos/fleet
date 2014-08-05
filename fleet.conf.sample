@@ -29,3 +29,6 @@
 # communicate with the Registry. The agent will attempt a heartbeat at half
 # of this value.
 # agent_ttl="30s"
+
+# Interval at which the engine should reconcile the cluster schedule in etcd.
+# engine_reconcile_interval=2

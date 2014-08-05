@@ -44,6 +44,8 @@ type Server struct {
 	mon         *heart.Monitor
 	api         *api.Server
 
+	engineReconcileInterval time.Duration
+
 	stop chan bool
 }
 
@@ -109,6 +111,8 @@ func New(cfg config.Config) (*Server, error) {
 	apiServer := api.NewServer(listeners, api.NewServeMux(reg))
 	apiServer.Serve()
 
+	eIval := time.Duration(cfg.EngineReconcileInterval*1000) * time.Millisecond
+
 	srv := Server{
 		agent:       a,
 		aReconciler: ar,
@@ -122,6 +126,7 @@ func New(cfg config.Config) (*Server, error) {
 		mon:         mon,
 		api:         apiServer,
 		stop:        nil,
+		engineReconcileInterval: eIval,
 	}
 
 	return &srv, nil
@@ -197,7 +202,7 @@ func (s *Server) Run() {
 	go s.rStream.Stream(idx, s.eBus.Dispatch, s.stop)
 	go s.agent.Heartbeat(s.stop)
 	go s.aReconciler.Run(s.agent, s.stop)
-	go s.engine.Run(s.stop)
+	go s.engine.Run(s.engineReconcileInterval, s.stop)
 
 	beatchan := make(chan *unit.UnitStateHeartbeat)
 	go s.usGen.Run(beatchan, s.stop)
