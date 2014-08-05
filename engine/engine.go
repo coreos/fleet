@@ -17,7 +17,7 @@ const (
 )
 
 type Engine struct {
-	rec      Reconciler
+	rec      *Reconciler
 	registry registry.Registry
 	machine  machine.Machine
 
@@ -26,7 +26,7 @@ type Engine struct {
 }
 
 func New(reg registry.Registry, mach machine.Machine) *Engine {
-	rec := &dumbReconciler{}
+	rec := &Reconciler{}
 	return &Engine{rec, reg, mach, nil, make(chan struct{})}
 }
 
