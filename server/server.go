@@ -95,8 +95,9 @@ func New(cfg config.Config) (*Server, error) {
 	}
 
 	eBus := event.NewEventBus()
-	eBus.AddListener(event.JobEvent, ar.Trigger)
-	eBus.AddListener(event.JobTargetStateSetEvent, e.Trigger)
+	eBus.AddListener(event.JobTargetChangeEvent, ar.Trigger)
+	eBus.AddListener(event.JobTargetStateChangeEvent, ar.Trigger)
+	eBus.AddListener(event.JobTargetStateChangeEvent, e.Trigger)
 
 	listeners, err := activation.Listeners(false)
 	if err != nil {

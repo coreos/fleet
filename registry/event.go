@@ -33,12 +33,8 @@ func (es *EventStream) Stream(idx uint64, sendFunc func(event.Event), stop chan 
 }
 
 func filter(etcdchan chan *etcd.Result, prefix string, sendFunc func(event.Event), stop chan bool) {
-	parse := func(res *etcd.Result) (events []event.Event) {
+	parse := func(res *etcd.Result) (ev event.Event, ok bool) {
 		if res == nil || res.Node == nil {
-			return
-		}
-
-		if !strings.HasPrefix(res.Node.Key, prefix) {
 			return
 		}
 
@@ -47,13 +43,16 @@ func filter(etcdchan chan *etcd.Result, prefix string, sendFunc func(event.Event
 			return
 		}
 
-		events = append(events, event.JobEvent)
-
 		_, baseName := path.Split(res.Node.Key)
-		if res.Action == "set" && baseName == "target-state" {
-			events = append(events, event.JobTargetStateSetEvent)
+		switch baseName {
+		case "target-state":
+			ev = event.JobTargetStateChangeEvent
+			ok = true
+		case "target":
+			ev = event.JobTargetChangeEvent
+			ok = true
+		default:
 		}
-
 		return
 	}
 
@@ -63,7 +62,7 @@ func filter(etcdchan chan *etcd.Result, prefix string, sendFunc func(event.Event
 			return
 		case res := <-etcdchan:
 			log.V(1).Infof("Received %v from etcd watch", res)
-			for _, ev := range parse(res) {
+			if ev, ok := parse(res); ok {
 				log.V(1).Infof("Translated %v to Event(Type=%s)", res, ev)
 				sendFunc(ev)
 			}

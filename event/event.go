@@ -1,10 +1,10 @@
 package event
 
 var (
-	// Occurs on any action in the Job namespace
-	JobEvent = Event("JobEvent")
-	// Occurs when any Job's target state is set
-	JobTargetStateSetEvent = Event("JobTargetStateSetEvent")
+	// Occurs when any Job's target is touched
+	JobTargetChangeEvent = Event("JobTargetChangeEvent")
+	// Occurs when any Job's target state is touched
+	JobTargetStateChangeEvent = Event("JobTargetStateChangeEvent")
 )
 
 type Event string
