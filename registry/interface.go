@@ -14,7 +14,6 @@ import (
 
 type Registry interface {
 	Bids(jobName string) (pkg.Set, error)
-	CheckJobPulse(jobName string) (string, bool)
 	ClearJobHeartbeat(jobName string)
 	ClearJobTarget(jobName, machID string) error
 	CreateJob(j *job.Job) (err error)

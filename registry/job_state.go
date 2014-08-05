@@ -4,38 +4,29 @@ import (
 	"path"
 	"time"
 
-	log "github.com/coreos/fleet/Godeps/_workspace/src/github.com/golang/glog"
-
 	"github.com/coreos/fleet/etcd"
 	"github.com/coreos/fleet/job"
 )
 
-func (r *EtcdRegistry) determineJobState(jobName string) *job.JobState {
-	state := job.JobStateInactive
+// determineJobState decides what the State field of a Job object should
+// be. The value of heartbeat should be the machine ID that is known to
+// have recently heartbeaten (see JobHeartbeat) the Job. All fields of the
+// Job (except for State) must be available - no partial representations.
+func determineJobState(j *job.Job, heartbeat string) (state job.JobState) {
+	state = job.JobStateInactive
 
-	tgt, err := r.jobTargetMachine(jobName)
-	if err != nil {
-		log.Errorf("Unable to determine target of Job(%s): %v", jobName, err)
-		return nil
-	}
-
-	if tgt == "" {
-		return &state
-	}
-
-	if r.getUnitState(jobName) == nil {
-		return &state
+	if j.TargetMachineID == "" || j.UnitState == nil {
+		return
 	}
 
 	state = job.JobStateLoaded
 
-	agent, pulse := r.CheckJobPulse(jobName)
-	if !pulse || agent != tgt {
-		return &state
+	if heartbeat != j.TargetMachineID {
+		return
 	}
 
 	state = job.JobStateLaunched
-	return &state
+	return
 }
 
 func (r *EtcdRegistry) JobHeartbeat(jobName, agentMachID string, ttl time.Duration) error {
@@ -46,18 +37,6 @@ func (r *EtcdRegistry) JobHeartbeat(jobName, agentMachID string, ttl time.Durati
 	}
 	_, err := r.etcd.Do(&req)
 	return err
-}
-
-func (r *EtcdRegistry) CheckJobPulse(jobName string) (string, bool) {
-	req := etcd.Get{
-		Key: r.jobHeartbeatPath(jobName),
-	}
-	resp, err := r.etcd.Do(&req)
-	if err != nil {
-		return "", false
-	}
-
-	return resp.Node.Value, true
 }
 
 func (r *EtcdRegistry) ClearJobHeartbeat(jobName string) {
