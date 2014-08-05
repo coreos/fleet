@@ -26,9 +26,9 @@ func (eb *EventBus) AddListener(eType Event, lFunc listenerFunc) {
 }
 
 // Dispatch calls all listeners registered to the given Event
-func (eb *EventBus) Dispatch(ev *Event) {
+func (eb *EventBus) Dispatch(ev Event) {
 	wg := sync.WaitGroup{}
-	for _, lFunc := range eb.lFuncMap[*ev] {
+	for _, lFunc := range eb.lFuncMap[ev] {
 		wg.Add(1)
 		go func() {
 			lFunc()

@@ -26,30 +26,35 @@ func NewEventStream(client etcd.Client, registry Registry) (*EventStream, error)
 	return &EventStream{client, reg}, nil
 }
 
-func (es *EventStream) Stream(idx uint64, sendFunc func(*event.Event), stop chan bool) {
+func (es *EventStream) Stream(idx uint64, sendFunc func(event.Event), stop chan bool) {
 	etcdchan := make(chan *etcd.Result)
 	go watch(es.etcd, idx, etcdchan, es.registry.keyPrefix, stop)
 	go filter(etcdchan, es.registry.keyPrefix, sendFunc, stop)
 }
 
-func filter(etcdchan chan *etcd.Result, prefix string, sendFunc func(*event.Event), stop chan bool) {
-	parse := func(res *etcd.Result) *event.Event {
+func filter(etcdchan chan *etcd.Result, prefix string, sendFunc func(event.Event), stop chan bool) {
+	parse := func(res *etcd.Result) (events []event.Event) {
 		if res == nil || res.Node == nil {
-			return nil
+			return
 		}
 
 		if !strings.HasPrefix(res.Node.Key, prefix) {
-			return nil
+			return
 		}
 
-		var ev event.Event
-		if strings.HasPrefix(res.Node.Key, path.Join(prefix, jobPrefix)) {
-			ev = event.JobEvent
-		} else {
-			ev = event.GlobalEvent
+		// ignore everything but the job namespace
+		if !strings.HasPrefix(res.Node.Key, path.Join(prefix, jobPrefix)) {
+			return
 		}
 
-		return &ev
+		events = append(events, event.JobEvent)
+
+		_, baseName := path.Split(res.Node.Key)
+		if res.Action == "set" && baseName == "target-state" {
+			events = append(events, event.JobTargetStateSetEvent)
+		}
+
+		return
 	}
 
 	for {
@@ -58,14 +63,10 @@ func filter(etcdchan chan *etcd.Result, prefix string, sendFunc func(*event.Even
 			return
 		case res := <-etcdchan:
 			log.V(1).Infof("Received %v from etcd watch", res)
-
-			ev := parse(res)
-			if ev == nil {
-				continue
+			for _, ev := range parse(res) {
+				log.V(1).Infof("Translated %v to Event(Type=%s)", res, ev)
+				sendFunc(ev)
 			}
-
-			log.V(1).Infof("Translated %v to Event(Type=%s)", res, ev)
-			sendFunc(ev)
 		}
 	}
 }

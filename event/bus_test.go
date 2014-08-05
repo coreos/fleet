@@ -18,7 +18,7 @@ func TestEventBus(t *testing.T) {
 	ev := Event("TypeOne")
 	bus.AddListener(ev, tl.HandleEvent)
 
-	bus.Dispatch(&ev)
+	bus.Dispatch(ev)
 
 	select {
 	case <-tl.evchan:
@@ -34,8 +34,8 @@ func TestEventBusNoDispatch(t *testing.T) {
 	ev2 := Event("TypeTwo")
 	bus.AddListener(ev1, tl.HandleEvent)
 
-	bus.Dispatch(&ev2)
-	bus.Dispatch(&ev1)
+	bus.Dispatch(ev2)
+	bus.Dispatch(ev1)
 
 	close(tl.evchan)
 

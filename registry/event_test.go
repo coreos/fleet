@@ -11,23 +11,27 @@ import (
 func TestFilterEtcdEvents(t *testing.T) {
 	tests := []struct {
 		in *etcd.Result
-		ev *event.Event
+		ev []event.Event
 	}{
 		{
 			in: nil,
-			ev: nil,
+			ev: []event.Event{},
 		},
 		{
 			in: &etcd.Result{Node: &etcd.Node{Key: "/"}},
-			ev: nil,
+			ev: []event.Event{},
 		},
 		{
 			in: &etcd.Result{Node: &etcd.Node{Key: "/fleet"}},
-			ev: &event.GlobalEvent,
+			ev: []event.Event{},
 		},
 		{
 			in: &etcd.Result{Node: &etcd.Node{Key: "/fleet/job"}},
-			ev: &event.JobEvent,
+			ev: []event.Event{event.JobEvent},
+		},
+		{
+			in: &etcd.Result{Node: &etcd.Node{Key: "/fleet/job/asdf/target-state"}, Action: "set"},
+			ev: []event.Event{event.JobEvent, event.JobTargetStateSetEvent},
 		},
 	}
 
@@ -36,15 +40,19 @@ func TestFilterEtcdEvents(t *testing.T) {
 		stopchan := make(chan bool)
 		prefix := "/fleet"
 
-		send := func(ev *event.Event) {
-			if !reflect.DeepEqual(tt.ev, ev) {
-				t.Errorf("case %d: received incorrect event\nexpected %#v\ngot %#v", i, tt.ev, ev)
-			}
+		got := make([]event.Event, 0)
+		send := func(ev event.Event) {
+			got = append(got, ev)
 		}
 
 		go filter(etcdchan, prefix, send, stopchan)
 
 		etcdchan <- tt.in
+
+		if !reflect.DeepEqual(tt.ev, got) {
+			t.Errorf("case %d: received incorrect event\nexpected %#v\ngot %#v", i, tt.ev, got)
+		}
+
 		close(stopchan)
 	}
 }
