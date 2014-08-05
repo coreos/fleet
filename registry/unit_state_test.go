@@ -327,7 +327,10 @@ func TestStates(t *testing.T) {
 		res: res,
 	}
 	r := &EtcdRegistry{e, "/fleet/"}
-	got := r.States()
+	got, err := r.States()
+	if err != nil {
+		t.Errorf("unexpected error calling States(): %v", err)
+	}
 	want := []*unit.UnitState{
 		&fus1,
 		&fus2,
@@ -340,7 +343,20 @@ func TestStates(t *testing.T) {
 
 	e = &testEtcdClient{err: etcd.Error{ErrorCode: etcd.ErrorKeyNotFound}}
 	r = &EtcdRegistry{e, "/fleet"}
-	got = r.States()
+	got, err = r.States()
+	if err != nil {
+		t.Errorf("unexpected error calling States(): %v", err)
+	}
+	if len(got) != 0 {
+		t.Errorf("States() returned unexpected non-empty result on error: %v", got)
+	}
+
+	e = &testEtcdClient{err: errors.New("ur registry don't work")}
+	r = &EtcdRegistry{e, "/fleet"}
+	got, err = r.States()
+	if err == nil {
+		t.Errorf("expected error calling States() but got none!")
+	}
 	if len(got) != 0 {
 		t.Errorf("States() returned unexpected non-empty result on error: %v", got)
 	}
