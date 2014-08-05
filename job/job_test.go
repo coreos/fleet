@@ -270,34 +270,6 @@ X-ConditionMachineID=456
 	}
 }
 
-func TestOneshotJob(t *testing.T) {
-	ej := NewJob("foo.service", *newUnit(t, ""))
-	if ej.IsOneshot() {
-		t.Error("IsOneshot() on job without Service section returned true unexpectedly")
-	}
-
-	j := NewJob("bar.service", *newUnit(t, `
-[Service]
-ExecStart=/bin/false`))
-	if j.IsOneshot() {
-		t.Error("IsOneshot() on Service job with no Type returned true unexpectedly")
-	}
-
-	sj := NewJob("bar.service", *newUnit(t, `
-[Service]
-Type=simple`))
-	if sj.IsOneshot() {
-		t.Error("IsOneshot() on simple job returned true unexpectedly")
-	}
-
-	bj := NewJob("bar.service", *newUnit(t, `
-[Service]
-Type=oneshot`))
-	if !bj.IsOneshot() {
-		t.Error("IsOneshot() on oneshot job returned false unexpectedly")
-	}
-}
-
 func TestInstanceUnitPrintf(t *testing.T) {
 	u := unit.NewUnitNameInfo("foo@bar.waldo")
 	if u == nil {

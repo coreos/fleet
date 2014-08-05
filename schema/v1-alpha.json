@@ -2,7 +2,7 @@
   "kind": "discovery#restDescription",
   "discoveryVersion": "v1-alpha",
   "id": "fleet:v1-alpha",
-  "name": "fleet",
+  "name": "schema",
   "version": "v1-alpha",
   "title": "Fleet API",
   "description": "",
