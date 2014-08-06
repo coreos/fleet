@@ -81,7 +81,7 @@ func TestSaveUnitState(t *testing.T) {
 	us.UnitHash = "quickbrownfox"
 	r.SaveUnitState(j, us)
 
-	json := `{"loadState":"abc","activeState":"def","subState":"ghi","machineState":{"ID":"mymachine","PublicIP":"","Metadata":null,"Version":"","TotalResources":{"Cores":0,"Memory":0,"Disk":0},"FreeResources":{"Cores":0,"Memory":0,"Disk":0},"LoadedUnits":0},"unitHash":"quickbrownfox"}`
+	json := `{"loadState":"abc","activeState":"def","subState":"ghi","machineState":{"ID":"mymachine","PublicIP":"","Metadata":null,"Version":"","TotalResources":{"Cores":0,"Memory":0,"Disk":0},"FreeResources":{"Cores":0,"Memory":0,"Disk":0}},"unitHash":"quickbrownfox"}`
 	p1 := "/fleet/state/foo.service"
 	p2 := "/fleet/states/foo.service/mymachine"
 	want := []action{
@@ -223,13 +223,13 @@ func TestGetUnitState(t *testing.T) {
 	}{
 		{
 			// Unit state with no UnitHash should be OK
-			res: makeResult(`{"loadState":"abc","activeState":"def","subState":"ghi","machineState":{"ID":"mymachine","PublicIP":"","Metadata":null,"Version":"","TotalResources":{"Cores":0,"Memory":0,"Disk":0},"FreeResources":{"Cores":0,"Memory":0,"Disk":0},"LoadedUnits":0}}`),
+			res: makeResult(`{"loadState":"abc","activeState":"def","subState":"ghi","machineState":{"ID":"mymachine","PublicIP":"","Metadata":null,"Version":"","TotalResources":{"Cores":0,"Memory":0,"Disk":0},"FreeResources":{"Cores":0,"Memory":0,"Disk":0}}}`),
 			err: nil,
 			us:  unit.NewUnitState("abc", "def", "ghi", "mymachine"),
 		},
 		{
 			// Unit state with UnitHash should be OK
-			res: makeResult(`{"loadState":"abc","activeState":"def","subState":"ghi","machineState":{"ID":"mymachine","PublicIP":"","Metadata":null,"Version":"","TotalResources":{"Cores":0,"Memory":0,"Disk":0},"FreeResources":{"Cores":0,"Memory":0,"Disk":0},"LoadedUnits":0},"unitHash":"quickbrownfox"}`),
+			res: makeResult(`{"loadState":"abc","activeState":"def","subState":"ghi","machineState":{"ID":"mymachine","PublicIP":"","Metadata":null,"Version":"","TotalResources":{"Cores":0,"Memory":0,"Disk":0},"FreeResources":{"Cores":0,"Memory":0,"Disk":0}},"unitHash":"quickbrownfox"}`),
 			err: nil,
 			us:  &unit.UnitState{"abc", "def", "ghi", "mymachine", "quickbrownfox"},
 		},

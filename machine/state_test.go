@@ -83,7 +83,6 @@ var shortIDTests = []struct {
 			"",
 			resource.ResourceTuple{},
 			resource.ResourceTuple{},
-			0,
 		},
 		s: "595989bb",
 		l: "595989bb-cbb7-49ce-8726-722d6e157b4e",

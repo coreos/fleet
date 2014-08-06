@@ -97,17 +97,11 @@ func (m *CoreOSMachine) currentState() *MachineState {
 		log.Errorf("Error retrieving local resources: %v\n", err)
 		return nil
 	}
-	units, err := m.um.Units()
-	if err != nil {
-		log.Errorf("Error retrieving local units: %v\n", err)
-		return nil
-	}
 	return &MachineState{
 		ID:             id,
 		PublicIP:       publicIP,
 		Metadata:       make(map[string]string, 0),
 		TotalResources: totalResources,
-		LoadedUnits:    len(units),
 	}
 }
 
