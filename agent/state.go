@@ -14,8 +14,8 @@ type AgentState struct {
 	ms   *machine.MachineState
 	jobs map[string]*job.Job
 
-	// This is used to check verify the Agent is able to
-	// run a given job basd on its signature. This feature
+	// This is used to assert that the Agent is able to
+	// run a given job based on its signature. This feature
 	// is currently deprecated, so expect this to go away.
 	verifyFunc func(j *job.Job) bool
 }
