@@ -183,10 +183,9 @@ func newAgentReconcilerFromConfig(reg registry.Registry, cfg config.Config) (*ag
 func (s *Server) Run() {
 	log.Infof("Establishing etcd connectivity")
 
-	var idx uint64
 	var err error
 	for sleep := time.Second; ; sleep = pkg.ExpBackoff(sleep, time.Minute) {
-		idx, err = s.hrt.Beat(s.mon.TTL)
+		_, err = s.hrt.Beat(s.mon.TTL)
 		if err == nil {
 			break
 		}
@@ -200,7 +199,7 @@ func (s *Server) Run() {
 	go s.Monitor()
 	go s.api.Available(s.stop)
 	go s.mach.PeriodicRefresh(machineStateRefreshInterval, s.stop)
-	go s.rStream.Stream(idx, s.eBus.Dispatch, s.stop)
+	go s.rStream.Stream(s.eBus.Dispatch, s.stop)
 	go s.agent.Heartbeat(s.stop)
 	go s.aReconciler.Run(s.agent, s.stop)
 	go s.engine.Run(s.engineReconcileInterval, s.stop)
