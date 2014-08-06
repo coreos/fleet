@@ -99,6 +99,17 @@ func TestAbleToRun(t *testing.T) {
 			want:   true,
 		},
 
+		{
+			dState: &agentState{
+				jobs: map[string]*job.Job{
+					"ping.pong.service": &job.Job{Name: "ping.pong.service"},
+				},
+			},
+			mState: &machine.MachineState{ID: "123"},
+			job:    newTestJobWithXFleetValues(t, "X-ConditionMachineOf=ping.*.service"),
+			want:   true,
+		},
+
 		// multiple peers scheduled locally
 		{
 			dState: &agentState{

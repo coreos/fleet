@@ -16,8 +16,13 @@ func newAgentState() *agentState {
 	return &agentState{jobs: make(map[string]*job.Job)}
 }
 
-func (as *agentState) jobScheduled(jName string) bool {
-	return as.jobs[jName] != nil
+func (as *agentState) jobScheduled(pJobName string) bool {
+	for jName, _ := range as.jobs {
+		if globMatches(pJobName, jName) {
+			return true
+		}
+	}
+	return false
 }
 
 // hasConflict determines whether there are any known conflicts with the given Job
