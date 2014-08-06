@@ -1,94 +1,71 @@
 package engine
 
 import (
+	"github.com/coreos/fleet/agent"
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/machine"
-	"github.com/coreos/fleet/pkg"
 )
 
 type clusterState struct {
-	jobs     []job.Job
-	offers   pkg.Set
-	machines pkg.Set
+	jobs     map[string]*job.Job
+	machines map[string]*machine.MachineState
 }
 
-func newClusterState(jobs []job.Job, unresolved []job.JobOffer, machines []machine.MachineState) *clusterState {
-	oSet := pkg.NewUnsafeSet()
-	for _, offer := range unresolved {
-		oSet.Add(offer.Job.Name)
+func newClusterState(jobs []job.Job, machines []machine.MachineState) *clusterState {
+	jMap := make(map[string]*job.Job, len(jobs))
+	for _, j := range jobs {
+		j := j
+		jMap[j.Name] = &j
 	}
 
-	mSet := pkg.NewUnsafeSet()
-	for _, m := range machines {
-		mSet.Add(m.ID)
+	mMap := make(map[string]*machine.MachineState, len(machines))
+	for _, ms := range machines {
+		ms := ms
+		mMap[ms.ID] = &ms
 	}
 
 	return &clusterState{
-		jobs:     jobs,
-		offers:   oSet,
-		machines: mSet,
+		jobs:     jMap,
+		machines: mMap,
 	}
 }
 
-// inactiveJobs returns a collection of Jobs that have a target
-// state of "inactive"
-func (cs *clusterState) inactiveJobs() []*job.Job {
-	jobs := make([]*job.Job, 0)
-	for i := range cs.jobs {
-		j := cs.jobs[i]
-		if j.TargetState == job.JobStateInactive {
-			jobs = append(jobs, &j)
+func (cs *clusterState) agents() map[string]*agent.AgentState {
+	agents := make(map[string]*agent.AgentState, len(cs.machines))
+	for _, ms := range cs.machines {
+		ms := ms
+		agents[ms.ID] = agent.NewAgentState(ms)
+	}
+
+	for _, j := range cs.jobs {
+		if !j.Scheduled() || j.TargetState == job.JobStateInactive {
+			continue
 		}
-	}
-	return jobs
-}
 
-// unscheduledLoadedJobs returns a collection of Jobs that have a
-// target state other than "inactive", but have not been scheduled
-func (cs *clusterState) unscheduledLoadedJobs() []*job.Job {
-	jobs := make([]*job.Job, 0)
-	for i := range cs.jobs {
-		j := cs.jobs[i]
-		if j.TargetState != job.JobStateInactive && !j.Scheduled() {
-			jobs = append(jobs, &j)
+		as := agents[j.TargetMachineID]
+		if as == nil {
+			continue
 		}
+
+		j := j
+		as.Jobs[j.Name] = j
 	}
-	return jobs
+
+	return agents
 }
 
-// scheduledLoadedJobs returns a collection of Jobs that have a
-// target state other than "inactive" and been scheduled
-func (cs *clusterState) scheduledLoadedJobs() []*job.Job {
-	jobs := make([]*job.Job, 0)
-	for i := range cs.jobs {
-		j := cs.jobs[i]
-		if j.TargetState != job.JobStateInactive && j.Scheduled() {
-			jobs = append(jobs, &j)
-		}
+func (cs *clusterState) schedule(jobName, targetMachineID string) {
+	j := cs.jobs[jobName]
+	if j == nil {
+		return
 	}
-	return jobs
+	j.TargetMachineID = targetMachineID
 }
 
-func (cs *clusterState) unresolvedOffers() (offers []string) {
-	offers = make([]string, cs.offers.Length())
-	for i, offer := range cs.offers.Values() {
-		offer := offer
-		offers[i] = offer
+func (cs *clusterState) unschedule(jobName string) {
+	j := cs.jobs[jobName]
+	if j == nil {
+		return
 	}
-	return
-}
-
-// forgetOffer removes a JobOffer from the clusterState
-func (cs *clusterState) forgetOffer(jName string) {
-	cs.offers.Remove(jName)
-}
-
-// offerExists returns true if the referenced JobOffer appears
-// in the clusterState's collection of unresolved offers
-func (cs *clusterState) offerExists(jName string) bool {
-	return cs.offers.Contains(jName)
-}
-
-func (cs *clusterState) machineExists(machID string) bool {
-	return cs.machines.Contains(machID)
+	j.TargetMachineID = ""
 }

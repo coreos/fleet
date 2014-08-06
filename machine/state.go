@@ -19,9 +19,6 @@ type MachineState struct {
 
 	// The resoures considered available for scheduling by fleet
 	FreeResources resource.ResourceTuple
-
-	// Number of Units loaded into the fleet agent
-	LoadedUnits int
 }
 
 // UpdateFreeResources populates the FreeResources of a MachineState, given a

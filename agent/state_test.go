@@ -5,27 +5,29 @@ import (
 	"testing"
 
 	"github.com/coreos/fleet/job"
+	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/unit"
 )
 
 func TestHasConflicts(t *testing.T) {
 	tests := []struct {
-		cState   *agentState
+		cState   *AgentState
 		job      *job.Job
 		want     bool
 		conflict string
 	}{
 		// empty current state causes no conflicts
 		{
-			cState: newAgentState(),
+			cState: NewAgentState(&machine.MachineState{ID: "XXX"}),
 			job:    &job.Job{Name: "foo.service", Unit: fleetUnit(t, "X-Conflicts=bar.service")},
 			want:   false,
 		},
 
 		// existing Job has conflict with new Job
 		{
-			cState: &agentState{
-				jobs: map[string]*job.Job{
+			cState: &AgentState{
+				MState: &machine.MachineState{ID: "XXX"},
+				Jobs: map[string]*job.Job{
 					"bar.service": &job.Job{
 						Name: "bar.service",
 						Unit: fleetUnit(t, "X-Conflicts=foo.service"),
@@ -39,8 +41,9 @@ func TestHasConflicts(t *testing.T) {
 
 		// new Job has conflict with existing job
 		{
-			cState: &agentState{
-				jobs: map[string]*job.Job{
+			cState: &AgentState{
+				MState: &machine.MachineState{ID: "XXX"},
+				Jobs: map[string]*job.Job{
 					"bar.service": &job.Job{
 						Name: "bar.service",
 						Unit: unit.Unit{},

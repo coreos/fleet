@@ -17,7 +17,7 @@ const (
 )
 
 type Engine struct {
-	rec      Reconciler
+	rec      *Reconciler
 	registry registry.Registry
 	machine  machine.Machine
 
@@ -26,7 +26,7 @@ type Engine struct {
 }
 
 func New(reg registry.Registry, mach machine.Machine) *Engine {
-	rec := &dumbReconciler{}
+	rec := NewReconciler()
 	return &Engine{rec, reg, mach, nil, make(chan struct{})}
 }
 
@@ -153,19 +153,13 @@ func (e *Engine) clusterState() (*clusterState, error) {
 		return nil, err
 	}
 
-	offers, err := e.registry.UnresolvedJobOffers()
-	if err != nil {
-		log.Errorf("Failed fetching JobOffers from Registry: %v", err)
-		return nil, err
-	}
-
 	machines, err := e.registry.Machines()
 	if err != nil {
 		log.Errorf("Failed fetching Machines from Registry: %v", err)
 		return nil, err
 	}
 
-	return newClusterState(jobs, offers, machines), nil
+	return newClusterState(jobs, machines), nil
 }
 
 func (e *Engine) resolveJobOffer(jName string) (err error) {
@@ -191,27 +185,14 @@ func (e *Engine) unscheduleJob(jName, machID string) (err error) {
 // attemptScheduleJob accepts a bid for the given Job and persists the
 // decision to the registry, returning true on success. If no bids exist or
 // if any communication with the Registry fails, false is returned.
-func (e *Engine) attemptScheduleJob(jName string) bool {
-	bids, err := e.registry.Bids(jName)
+func (e *Engine) attemptScheduleJob(jName, machID string) bool {
+	err := e.registry.ScheduleJob(jName, machID)
 	if err != nil {
-		log.Errorf("Failed determining open JobBids for JobOffer(%s): %v", jName, err)
+		log.Errorf("Failed scheduling Job(%s) to Machine(%s): %v", jName, machID, err)
 		return false
 	}
 
-	if bids.Length() == 0 {
-		log.V(1).Infof("No bids found for unresolved JobOffer(%s), unable to resolve", jName)
-		return false
-	}
-
-	choice := bids.Values()[0]
-
-	err = e.registry.ScheduleJob(jName, choice)
-	if err != nil {
-		log.Errorf("Failed scheduling Job(%s) to Machine(%s): %v", jName, choice, err)
-		return false
-	}
-
-	log.Infof("Scheduled Job(%s) to Machine(%s)", jName, choice)
+	log.Infof("Scheduled Job(%s) to Machine(%s)", jName, machID)
 	return true
 }
 

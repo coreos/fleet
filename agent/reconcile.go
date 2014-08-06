@@ -22,7 +22,6 @@ const (
 	taskTypeStartJob      = "StartJob"
 	taskTypeStopJob       = "StopJob"
 	taskTypeUnscheduleJob = "UnscheduleJob"
-	taskTypeSubmitBid     = "SubmitBid"
 
 	taskReasonScheduledButNotRunnable    = "job scheduled locally but unable to run"
 	taskReasonScheduledButUnloaded       = "job scheduled here but not loaded"
@@ -30,7 +29,6 @@ const (
 	taskReasonLoadedDesiredStateLaunched = "job currently loaded but desired state is launched"
 	taskReasonLaunchedDesiredStateLoaded = "job currently launched but desired state is loaded"
 	taskReasonPurgingAgent               = "purging agent"
-	taskReasonAbleToResolveOffer         = "offer unresolved and able to run job"
 )
 
 type task struct {
@@ -45,20 +43,6 @@ func (t *task) String() string {
 		jName = t.Job.Name
 	}
 	return fmt.Sprintf("{Type: %s, Job: %s, Reason: %q}", t.Type, jName, t.Reason)
-}
-
-type offer struct {
-	Bids pkg.Set
-	Job  *job.Job
-}
-
-type offerCache map[string]*offer
-
-func (oc *offerCache) add(name string, bids pkg.Set, j *job.Job) {
-	(*oc)[name] = &offer{
-		Bids: bids,
-		Job:  j,
-	}
 }
 
 func NewReconciler(reg registry.Registry, verifier *sign.SignatureVerifier) *AgentReconciler {
@@ -129,8 +113,7 @@ func (ar *AgentReconciler) Trigger() {
 }
 
 // Reconcile drives the local Agent's state towards the desired state
-// stored in the Registry. Reconcile also attempts to bid for any
-// outstanding job offers that the local Agent can run.
+// stored in the Registry.
 func (ar *AgentReconciler) Reconcile(a *Agent) {
 	ms := a.Machine.State()
 
@@ -140,33 +123,19 @@ func (ar *AgentReconciler) Reconcile(a *Agent) {
 		return
 	}
 
-	dAgentState, err := ar.desiredAgentState(jobs, ms.ID)
+	dAgentState, err := ar.desiredAgentState(jobs, &ms)
 	if err != nil {
 		log.Errorf("Unable to determine agent's desired state: %v", err)
 		return
 	}
 
-	cAgentState, err := currentAgentState(a)
+	cAgentState, err := ar.currentAgentState(a)
 	if err != nil {
 		log.Errorf("Unable to determine agent's current state: %v", err)
 		return
 	}
 
-	for t := range ar.calculateTasksForJobs(&ms, dAgentState, cAgentState) {
-		err := ar.doTask(a, t)
-		if err != nil {
-			log.Errorf("Failed resolving task, halting reconciliation: task=%s err=%q", t, err)
-			return
-		}
-	}
-
-	oCache, err := ar.currentOffers(jobs)
-	if err != nil {
-		log.Errorf("Unable to determine current state of offers: %v", err)
-		return
-	}
-
-	for t := range ar.calculateTasksForOffers(oCache, dAgentState, &ms) {
+	for t := range ar.calculateTasksForJobs(dAgentState, cAgentState) {
 		err := ar.doTask(a, t)
 		if err != nil {
 			log.Errorf("Failed resolving task, halting reconciliation: task=%s err=%q", t, err)
@@ -177,13 +146,13 @@ func (ar *AgentReconciler) Reconcile(a *Agent) {
 
 // Purge attempts to unload all Jobs that have been loaded locally
 func (ar *AgentReconciler) Purge(a *Agent) {
-	cAgentState, err := currentAgentState(a)
+	cAgentState, err := ar.currentAgentState(a)
 	if err != nil {
 		log.Errorf("Unable to determine agent's current state: %v", err)
 		return
 	}
 
-	for _, cJob := range cAgentState.jobs {
+	for _, cJob := range cAgentState.Jobs {
 		t := task{
 			Type:   taskTypeUnloadJob,
 			Job:    cJob,
@@ -208,8 +177,6 @@ func (ar *AgentReconciler) doTask(a *Agent, t *task) (err error) {
 		a.startJob(t.Job.Name)
 	case taskTypeStopJob:
 		a.stopJob(t.Job.Name)
-	case taskTypeSubmitBid:
-		ar.submitBid(t.Job.Name, a.Machine.State().ID)
 	case taskTypeUnscheduleJob:
 		err = ar.unscheduleJob(t.Job.Name, a.Machine.State().ID)
 	default:
@@ -223,60 +190,67 @@ func (ar *AgentReconciler) doTask(a *Agent, t *task) (err error) {
 	return
 }
 
-func (ar *AgentReconciler) submitBid(jName, machID string) {
-	ar.reg.SubmitJobBid(jName, machID)
-}
-
 func (ar *AgentReconciler) unscheduleJob(jName, machID string) error {
 	return ar.reg.ClearJobTarget(jName, machID)
 }
 
-// desiredAgentState builds an *agentState object that represents what an
+// desiredAgentState builds an *AgentState object that represents what an
 // Agent identified by the provided machine ID should currently be doing.
-func (ar *AgentReconciler) desiredAgentState(jobs []job.Job, machID string) (*agentState, error) {
-	as := agentState{jobs: make(map[string]*job.Job)}
+func (ar *AgentReconciler) desiredAgentState(jobs []job.Job, ms *machine.MachineState) (*AgentState, error) {
+	as := AgentState{
+		MState:     ms,
+		Jobs:       make(map[string]*job.Job),
+		verifyFunc: ar.verifyJobSignature,
+	}
+
 	for _, j := range jobs {
 		j := j
 
-		if j.TargetMachineID == "" || j.TargetMachineID != machID {
+		if j.TargetMachineID == "" || j.TargetMachineID != ms.ID {
 			continue
 		}
 
-		as.jobs[j.Name] = &j
+		as.Jobs[j.Name] = &j
 	}
 
 	return &as, nil
 }
 
-// currentAgentState builds an *agentState object that represents what an
+// currentAgentState builds an *AgentState object that represents what an
 // Agent is currently doing.
-func currentAgentState(a *Agent) (*agentState, error) {
+func (ar *AgentReconciler) currentAgentState(a *Agent) (*AgentState, error) {
 	jobs, err := a.jobs()
 	if err != nil {
 		return nil, err
 	}
 
-	as := agentState{jobs: jobs}
+	ms := a.Machine.State()
+	as := AgentState{
+		MState:     &ms,
+		Jobs:       jobs,
+		verifyFunc: ar.verifyJobSignature,
+	}
+
 	return &as, nil
 }
 
 // calculateTasksForJobs compares the desired and current state of an Agent.
 // The generateed tasks represent what should be done to make the desired
 // state match the current state.
-func (ar *AgentReconciler) calculateTasksForJobs(ms *machine.MachineState, dState, cState *agentState) <-chan *task {
+func (ar *AgentReconciler) calculateTasksForJobs(dState, cState *AgentState) <-chan *task {
 	taskchan := make(chan *task)
 	go func() {
 		jobs := pkg.NewUnsafeSet()
-		for cName := range cState.jobs {
+		for cName := range cState.Jobs {
 			jobs.Add(cName)
 		}
 
-		for dName := range dState.jobs {
+		for dName := range dState.Jobs {
 			jobs.Add(dName)
 		}
 
 		for _, name := range jobs.Values() {
-			ar.calculateTasksForJob(ms, dState, cState, name, taskchan)
+			ar.calculateTasksForJob(dState, cState, name, taskchan)
 		}
 
 		close(taskchan)
@@ -285,13 +259,13 @@ func (ar *AgentReconciler) calculateTasksForJobs(ms *machine.MachineState, dStat
 	return taskchan
 }
 
-func (ar *AgentReconciler) calculateTasksForJob(ms *machine.MachineState, dState, cState *agentState, jName string, taskchan chan *task) {
+func (ar *AgentReconciler) calculateTasksForJob(dState, cState *AgentState, jName string, taskchan chan *task) {
 	var dJob, cJob *job.Job
 	if dState != nil {
-		dJob = dState.jobs[jName]
+		dJob = dState.Jobs[jName]
 	}
 	if cState != nil {
-		cJob = cState.jobs[jName]
+		cJob = cState.Jobs[jName]
 	}
 
 	if dJob == nil && cJob == nil {
@@ -306,11 +280,11 @@ func (ar *AgentReconciler) calculateTasksForJob(ms *machine.MachineState, dState
 			Reason: taskReasonLoadedButNotScheduled,
 		}
 
-		delete(cState.jobs, jName)
+		delete(cState.Jobs, jName)
 		return
 	}
 
-	if able, reason := ar.ableToRun(cState, ms, dJob); !able {
+	if able, reason := cState.AbleToRun(dJob); !able {
 		log.Errorf("Unable to run locally-scheduled Job(%s): %s", jName, reason)
 
 		taskchan <- &task{
@@ -318,14 +292,14 @@ func (ar *AgentReconciler) calculateTasksForJob(ms *machine.MachineState, dState
 			Job:    dJob,
 			Reason: taskReasonScheduledButNotRunnable,
 		}
-		delete(dState.jobs, jName)
+		delete(dState.Jobs, jName)
 
 		taskchan <- &task{
 			Type:   taskTypeUnloadJob,
 			Job:    dJob,
 			Reason: taskReasonScheduledButNotRunnable,
 		}
-		delete(cState.jobs, jName)
+		delete(cState.Jobs, jName)
 
 		return
 	}
@@ -382,120 +356,6 @@ func (ar *AgentReconciler) calculateTasksForJob(ms *machine.MachineState, dState
 	}
 
 	log.Errorf("Unable to determine how to reconcile Job(%s): desiredState=%#v currentState=%#V", jName, dJob, cJob)
-}
-
-func (ar *AgentReconciler) currentOffers(jobs []job.Job) (*offerCache, error) {
-	jMap := make(map[string]*job.Job)
-	for _, j := range jobs {
-		j := j
-		jMap[j.Name] = &j
-	}
-
-	uOffers, err := ar.reg.UnresolvedJobOffers()
-	if err != nil {
-		return nil, fmt.Errorf("failed fetching JobOffers from Registry: %v", err)
-	}
-
-	oCache := &offerCache{}
-	for _, offer := range uOffers {
-		bids, err := ar.reg.Bids(offer.Job.Name)
-		if err != nil {
-			return nil, err
-		}
-
-		oCache.add(offer.Job.Name, bids, jMap[offer.Job.Name])
-	}
-
-	return oCache, nil
-}
-
-// calculateTasksForOffers compares the unresolved job offers and desired state
-// of an Agent. The generated tasks represent which offers upon which the Agent
-// should bid.
-func (ar *AgentReconciler) calculateTasksForOffers(oCache *offerCache, dState *agentState, ms *machine.MachineState) <-chan *task {
-	taskchan := make(chan *task)
-	go func() {
-		for oName, cache := range *oCache {
-			if cache.Job == nil {
-				log.Errorf("Unable to determine what to do about JobOffer(%s), Job is nil", oName)
-				continue
-			}
-			ar.calculateTasksForOffer(dState, ms, cache.Job, cache.Bids, taskchan)
-		}
-
-		close(taskchan)
-	}()
-
-	return taskchan
-}
-
-func (ar *AgentReconciler) calculateTasksForOffer(dState *agentState, ms *machine.MachineState, j *job.Job, bids pkg.Set, taskchan chan *task) {
-	if bids.Contains(ms.ID) {
-		log.V(1).Infof("Bid already submitted for unresolved JobOffer(%s)", j.Name)
-		return
-	}
-
-	if able, reason := ar.ableToRun(dState, ms, j); !able {
-		log.V(1).Infof("Not bidding on Job(%s): %s", j.Name, reason)
-		return
-	}
-
-	taskchan <- &task{
-		Type:   taskTypeSubmitBid,
-		Job:    j,
-		Reason: taskReasonAbleToResolveOffer,
-	}
-}
-
-// ableToRun determines if the Agent can run the provided Job based on
-// the Agent's desired state. A boolean indicating whether this is the
-// case or not is returned. The following criteria is used:
-//   - Agent must meet the Job's machine target requirement (if any)
-//   - Job must pass signature verification
-//   - Agent must have all of the Job's required metadata (if any)
-//   - Agent must have all required Peers of the Job scheduled locally (if any)
-//   - Job must not conflict with any other Jobs scheduled to the agent
-func (ar *AgentReconciler) ableToRun(as *agentState, ms *machine.MachineState, j *job.Job) (bool, string) {
-	log.V(1).Infof("Attempting to determine if able to run Job(%s)", j.Name)
-
-	if tgt, ok := j.RequiredTarget(); ok && !ms.MatchID(tgt) {
-		return false, fmt.Sprintf("Agent ID %q does not match required %q", ms.ID, tgt)
-	}
-
-	if !ar.verifyJobSignature(j) {
-		return false, "unable to verify signature"
-	}
-
-	log.V(1).Infof("Job(%s) has requirements: %s", j.Name, j.Requirements())
-
-	metadata := j.RequiredTargetMetadata()
-	if len(metadata) == 0 {
-		log.V(1).Infof("Job(%s) has no required machine metadata", j.Name)
-	} else {
-		log.V(1).Infof("Job(%s) requires machine metadata: %v", j.Name, metadata)
-		if !machine.HasMetadata(ms, metadata) {
-			return false, "local Machine metadata insufficient"
-		}
-	}
-
-	peers := j.Peers()
-	if len(peers) == 0 {
-		log.V(1).Infof("Job(%s) has no required peers", j.Name)
-	} else {
-		log.V(1).Infof("Job(%s) requires peers: %v", j.Name, peers)
-		for _, peer := range peers {
-			if !as.jobScheduled(peer) {
-				return false, fmt.Sprintf("required peer Job(%s) is not scheduled locally", peer)
-			}
-		}
-	}
-
-	if cExists, cJobName := as.hasConflict(j.Name, j.Conflicts()); cExists {
-		return false, fmt.Sprintf("found conflict with locally-scheduled Job(%s)", cJobName)
-	}
-
-	log.V(1).Infof("Determined local Agent is able to run Job(%s)", j.Name)
-	return true, ""
 }
 
 // verifyJobSignature attempts to verify the integrity of the given Job by checking the

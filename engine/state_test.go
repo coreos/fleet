@@ -4,105 +4,173 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/coreos/fleet/agent"
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/machine"
 )
 
-func TestClusterStateJobs(t *testing.T) {
-	jobs := []job.Job{
-		job.Job{Name: "1.service", TargetState: job.JobStateInactive, TargetMachineID: ""},
-		job.Job{Name: "2.service", TargetState: job.JobStateLoaded, TargetMachineID: ""},
-		job.Job{Name: "3.service", TargetState: job.JobStateLaunched, TargetMachineID: ""},
-		job.Job{Name: "4.service", TargetState: job.JobStateLoaded, TargetMachineID: "XXX"},
-		job.Job{Name: "5.service", TargetState: job.JobStateLaunched, TargetMachineID: "YYY"},
-	}
-	cs := newClusterState(jobs, []job.JobOffer{}, []machine.MachineState{})
+func TestClusterStateAgents(t *testing.T) {
+	tests := []struct {
+		clust  *clusterState
+		agents map[string]*agent.AgentState
+	}{
+		// no data, no agents
+		{
+			clust: &clusterState{
+				jobs:     map[string]*job.Job{},
+				machines: map[string]*machine.MachineState{},
+			},
+			agents: map[string]*agent.AgentState{},
+		},
 
-	actual := cs.inactiveJobs()
-	expect := []*job.Job{
-		&job.Job{Name: "1.service", TargetState: job.JobStateInactive, TargetMachineID: ""},
-	}
-	if !reflect.DeepEqual(expect, actual) {
-		t.Errorf("Expected inactiveJobs() = %v, got %v", expect, actual)
+		// job ignored if machine does not exist
+		{
+			clust: &clusterState{
+				jobs: map[string]*job.Job{
+					"foo.service": &job.Job{
+						TargetState:     job.JobStateLaunched,
+						TargetMachineID: "XXX",
+					},
+				},
+				machines: map[string]*machine.MachineState{},
+			},
+			agents: map[string]*agent.AgentState{},
+		},
+
+		// agentState record exists even without jobs
+		{
+			clust: &clusterState{
+				jobs: map[string]*job.Job{},
+				machines: map[string]*machine.MachineState{
+					"XXX": &machine.MachineState{ID: "XXX"},
+				},
+			},
+			agents: map[string]*agent.AgentState{
+				"XXX": &agent.AgentState{
+					MState: &machine.MachineState{ID: "XXX"},
+					Jobs:   map[string]*job.Job{},
+				},
+			},
+		},
+
+		// only inactive jobs ignored
+		{
+			clust: &clusterState{
+				jobs: map[string]*job.Job{
+					"foo.service": &job.Job{
+						Name:            "foo.service",
+						TargetState:     job.JobStateInactive,
+						TargetMachineID: "XXX",
+					},
+					"bar.service": &job.Job{
+						Name:            "bar.service",
+						TargetState:     job.JobStateLoaded,
+						TargetMachineID: "XXX",
+					},
+					"baz.service": &job.Job{
+						Name:            "baz.service",
+						TargetState:     job.JobStateLaunched,
+						TargetMachineID: "XXX",
+					},
+				},
+				machines: map[string]*machine.MachineState{
+					"XXX": &machine.MachineState{ID: "XXX"},
+				},
+			},
+			agents: map[string]*agent.AgentState{
+				"XXX": &agent.AgentState{
+					MState: &machine.MachineState{ID: "XXX"},
+					Jobs: map[string]*job.Job{
+						"bar.service": &job.Job{
+							Name:            "bar.service",
+							TargetState:     job.JobStateLoaded,
+							TargetMachineID: "XXX",
+						},
+						"baz.service": &job.Job{
+							Name:            "baz.service",
+							TargetState:     job.JobStateLaunched,
+							TargetMachineID: "XXX",
+						},
+					},
+				},
+			},
+		},
+
+		// multiple jobs, multiple agents
+		{
+			clust: &clusterState{
+				jobs: map[string]*job.Job{
+					"foo.service": &job.Job{
+						Name:            "foo.service",
+						TargetState:     job.JobStateLaunched,
+						TargetMachineID: "XXX",
+					},
+					"bar.service": &job.Job{
+						Name:            "bar.service",
+						TargetState:     job.JobStateLaunched,
+						TargetMachineID: "ZZZ",
+					},
+					"ping.service": &job.Job{
+						Name:            "ping.service",
+						TargetState:     job.JobStateLaunched,
+						TargetMachineID: "XXX",
+					},
+					"pong.service": &job.Job{
+						Name:            "pong.service",
+						TargetState:     job.JobStateLaunched,
+						TargetMachineID: "YYY",
+					},
+				},
+				machines: map[string]*machine.MachineState{
+					"XXX": &machine.MachineState{ID: "XXX"},
+					"YYY": &machine.MachineState{ID: "YYY"},
+					"ZZZ": &machine.MachineState{ID: "ZZZ"},
+				},
+			},
+			agents: map[string]*agent.AgentState{
+				"XXX": &agent.AgentState{
+					MState: &machine.MachineState{ID: "XXX"},
+					Jobs: map[string]*job.Job{
+						"foo.service": &job.Job{
+							Name:            "foo.service",
+							TargetState:     job.JobStateLaunched,
+							TargetMachineID: "XXX",
+						},
+						"ping.service": &job.Job{
+							Name:            "ping.service",
+							TargetState:     job.JobStateLaunched,
+							TargetMachineID: "XXX",
+						},
+					},
+				},
+				"YYY": &agent.AgentState{
+					MState: &machine.MachineState{ID: "YYY"},
+					Jobs: map[string]*job.Job{
+						"pong.service": &job.Job{
+							Name:            "pong.service",
+							TargetState:     job.JobStateLaunched,
+							TargetMachineID: "YYY",
+						},
+					},
+				},
+				"ZZZ": &agent.AgentState{
+					MState: &machine.MachineState{ID: "ZZZ"},
+					Jobs: map[string]*job.Job{
+						"bar.service": &job.Job{
+							Name:            "bar.service",
+							TargetState:     job.JobStateLaunched,
+							TargetMachineID: "ZZZ",
+						},
+					},
+				},
+			},
+		},
 	}
 
-	actual = cs.unscheduledLoadedJobs()
-	expect = []*job.Job{
-		&job.Job{Name: "2.service", TargetState: job.JobStateLoaded, TargetMachineID: ""},
-		&job.Job{Name: "3.service", TargetState: job.JobStateLaunched, TargetMachineID: ""},
-	}
-	if !reflect.DeepEqual(expect, actual) {
-		t.Errorf("Expected unscheduledLoadedJobs() = %v, got %v", expect, actual)
-	}
-
-	actual = cs.scheduledLoadedJobs()
-	expect = []*job.Job{
-		&job.Job{Name: "4.service", TargetState: job.JobStateLoaded, TargetMachineID: "XXX"},
-		&job.Job{Name: "5.service", TargetState: job.JobStateLaunched, TargetMachineID: "YYY"},
-	}
-	if !reflect.DeepEqual(expect, actual) {
-		t.Errorf("Expected scheduledLoadedJobs() = %v, got %v", expect, actual)
-	}
-
-}
-
-func TestClusterStateOfferExists(t *testing.T) {
-	offers := []job.JobOffer{
-		job.JobOffer{Job: job.Job{Name: "foo.service"}},
-		job.JobOffer{Job: job.Job{Name: "bar.service"}},
-	}
-	cs := newClusterState([]job.Job{}, offers, []machine.MachineState{})
-
-	expect := []string{"foo.service", "bar.service"}
-	actual := cs.unresolvedOffers()
-	if !reflect.DeepEqual(expect, actual) {
-		t.Fatalf("Expected %v, got %v", expect, actual)
-	}
-
-	if !cs.offerExists("foo.service") {
-		t.Fatalf("Offer for foo.service does not exist")
-	}
-
-	if !cs.offerExists("bar.service") {
-		t.Fatalf("Offer for bar.service does not exist")
-	}
-
-	if cs.offerExists("not-found") {
-		t.Fatalf("Offer for not-found exists")
-	}
-
-	cs.forgetOffer("foo.service")
-
-	expect = []string{"bar.service"}
-	actual = cs.unresolvedOffers()
-	if !reflect.DeepEqual(expect, actual) {
-		t.Fatalf("Expected %v, got %v", expect, actual)
-	}
-
-	if cs.offerExists("foo.service") {
-		t.Fatalf("Offer for foo.service still exists")
-	}
-
-	if !cs.offerExists("bar.service") {
-		t.Fatalf("Offer for bar.service does not exist")
-	}
-
-	if cs.offerExists("not-found") {
-		t.Fatalf("Offer for not-found exists")
-	}
-}
-
-func TestClusterStateMachineExists(t *testing.T) {
-	machines := []machine.MachineState{
-		machine.MachineState{ID: "XXX"},
-	}
-	cs := newClusterState([]job.Job{}, []job.JobOffer{}, machines)
-
-	if !cs.machineExists("XXX") {
-		t.Fatalf("Machine XXX does not exist")
-	}
-
-	if cs.machineExists("YYY") {
-		t.Fatalf("Machine YYY exists")
+	for i, tt := range tests {
+		agents := tt.clust.agents()
+		if !reflect.DeepEqual(tt.agents, agents) {
+			t.Errorf("case %d: incorrect agents", i)
+		}
 	}
 }
