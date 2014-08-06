@@ -36,6 +36,37 @@ func (r *EtcdRegistry) unitStatePath(machID, jobName string) string {
 	return path.Join(r.unitStatesNamespace(jobName), machID)
 }
 
+// States returns a list of all UnitStates stored in the registry
+func (r *EtcdRegistry) States() (states []*unit.UnitState, err error) {
+	req := etcd.Get{
+		Key:       path.Join(r.keyPrefix, statesPrefix),
+		Recursive: true,
+	}
+	res, err := r.etcd.Do(&req)
+	if err != nil {
+		if isKeyNotFound(err) {
+			err = nil
+		}
+		return
+	}
+	for _, dir := range res.Node.Nodes {
+		_, name := path.Split(dir.Key)
+		for _, node := range dir.Nodes {
+			_, machID := path.Split(node.Key)
+			var usm unitStateModel
+			if err := unmarshal(node.Value, &usm); err != nil {
+				log.Errorf("Error unmarshalling UnitState(%s) from Machine(%s): %v", name, machID, err)
+				continue
+			}
+			us := modelToUnitState(&usm)
+			if us != nil {
+				states = append(states, us)
+			}
+		}
+	}
+	return
+}
+
 // getUnitState retrieves the current UnitState of the provided Job's Unit
 func (r *EtcdRegistry) getUnitState(jobName string) *unit.UnitState {
 	// TODO(jonboulle): deal with multiple UnitStates
@@ -44,7 +75,7 @@ func (r *EtcdRegistry) getUnitState(jobName string) *unit.UnitState {
 		Key:       legacyKey,
 		Recursive: true,
 	}
-	resp, err := r.etcd.Do(&req)
+	res, err := r.etcd.Do(&req)
 
 	if err != nil {
 		if !isKeyNotFound(err) {
@@ -54,7 +85,7 @@ func (r *EtcdRegistry) getUnitState(jobName string) *unit.UnitState {
 	}
 
 	var usm unitStateModel
-	if err := unmarshal(resp.Node.Value, &usm); err != nil {
+	if err := unmarshal(res.Node.Value, &usm); err != nil {
 		log.Errorf("Error unmarshalling UnitState(%s): %v", jobName, err)
 		return nil
 	}

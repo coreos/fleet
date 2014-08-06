@@ -39,6 +39,10 @@ type Registry interface {
 	UnresolvedJobOffers() ([]job.JobOffer, error)
 }
 
+type UnitStateRegistry interface {
+	States() ([]*unit.UnitState, error)
+}
+
 type Lease interface {
 	Renew(time.Duration) error
 	Release() error

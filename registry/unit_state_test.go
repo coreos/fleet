@@ -61,6 +61,14 @@ func TestSaveUnitState(t *testing.T) {
 	mID := "mymachine"
 	us := unit.NewUnitState("abc", "def", "ghi", mID)
 
+	// Saving nil unit state should fail
+	r.SaveUnitState(j, nil)
+	if e.sets != nil || e.deletes != nil {
+		t.Logf("sets: %#v", e.sets)
+		t.Logf("deletes: %#v", e.deletes)
+		t.Fatalf("SaveUnitState of nil state should fail but acted unexpectedly!")
+	}
+
 	// Saving unit state with no hash should succeed for now, but should fail
 	// in the future. See https://github.com/coreos/fleet/issues/720.
 	//r.SaveUnitState(j, us)
@@ -205,7 +213,6 @@ func makeResult(val string) *etcd.Result {
 			Value: val,
 		},
 	}
-
 }
 
 func TestGetUnitState(t *testing.T) {
@@ -268,5 +275,89 @@ func TestGetUnitState(t *testing.T) {
 		if !reflect.DeepEqual(us, tt.us) {
 			t.Errorf("case %d: bad UnitState:\ngot\n%#v\nwant\n%#v", i, us, tt.us)
 		}
+	}
+}
+
+func usToJson(t *testing.T, us *unit.UnitState) string {
+	json, err := marshal(unitStateToModel(us))
+	if err != nil {
+		t.Fatalf("error marshalling unit: %v", err)
+	}
+	return json
+}
+
+func TestStates(t *testing.T) {
+	fus1 := unit.UnitState{"abc", "def", "ghi", "mID1", "xyz"}
+	fusn1 := etcd.Node{
+		Key:   "/fleet/states/foo/mID1",
+		Value: usToJson(t, &fus1),
+	}
+	fus2 := unit.UnitState{"abc", "def", "ghi", "mID2", "xyz"}
+	fusn2 := etcd.Node{
+		Key:   "/fleet/states/foo/mID2",
+		Value: usToJson(t, &fus2),
+	}
+	foo := etcd.Node{
+		Key: "/fleet/states/foo",
+		Nodes: []etcd.Node{
+			fusn1,
+			fusn2,
+		},
+	}
+	bar1 := etcd.Node{
+		Key:   "/fleet/states/bar/asdf",
+		Value: ``,
+	}
+	bar := etcd.Node{
+		Key: "/fleet/states/bar",
+		Nodes: []etcd.Node{
+			bar1,
+		},
+	}
+	res := &etcd.Result{
+		Node: &etcd.Node{
+			Key: "/fleet/states",
+			Nodes: []etcd.Node{
+				foo,
+				bar,
+			},
+		},
+	}
+	e := &testEtcdClient{
+		res: res,
+	}
+	r := &EtcdRegistry{e, "/fleet/"}
+	got, err := r.States()
+	if err != nil {
+		t.Errorf("unexpected error calling States(): %v", err)
+	}
+	want := []*unit.UnitState{
+		&fus1,
+		&fus2,
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("States() returned unexpected result")
+		t.Logf("got:\n%#v", got)
+		t.Logf("want:\n%#v", want)
+	}
+
+	e = &testEtcdClient{err: etcd.Error{ErrorCode: etcd.ErrorKeyNotFound}}
+	r = &EtcdRegistry{e, "/fleet"}
+	got, err = r.States()
+	if err != nil {
+		t.Errorf("unexpected error calling States(): %v", err)
+	}
+	if len(got) != 0 {
+		t.Errorf("States() returned unexpected non-empty result on error: %v", got)
+	}
+
+	e = &testEtcdClient{err: errors.New("ur registry don't work")}
+	r = &EtcdRegistry{e, "/fleet"}
+	got, err = r.States()
+	if err == nil {
+		t.Errorf("expected error calling States() but got none!")
+	}
+	if len(got) != 0 {
+		t.Errorf("States() returned unexpected non-empty result on error: %v", got)
 	}
 }
