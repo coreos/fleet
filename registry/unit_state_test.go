@@ -34,7 +34,8 @@ func (t *testEtcdClient) Do(req etcd.Action) (*etcd.Result, error) {
 	}
 	return t.res, t.err
 }
-func (t *testEtcdClient) Wait(req etcd.Action, ch <-chan bool) (*etcd.Result, error) {
+
+func (t *testEtcdClient) Wait(req etcd.Action, ch <-chan struct{}) (*etcd.Result, error) {
 	return t.res, t.err
 }
 

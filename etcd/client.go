@@ -21,7 +21,7 @@ const (
 
 type Client interface {
 	Do(Action) (*Result, error)
-	Wait(Action, <-chan bool) (*Result, error)
+	Wait(Action, <-chan struct{}) (*Result, error)
 }
 
 // transport mimics http.Transport to provide an interface which can be
@@ -106,7 +106,7 @@ type client struct {
 }
 
 // a requestFunc must never return a nil *http.Response and a nil error together
-type requestFunc func(*http.Request, <-chan bool) (*http.Response, []byte, error)
+type requestFunc func(*http.Request, <-chan struct{}) (*http.Response, []byte, error)
 
 // reqResp encapsulates a response/error retrieved asynchronously
 type reqResp struct {
@@ -119,7 +119,7 @@ type reqResp struct {
 // fails, an error is returned. If the provided channel is ever closed, the
 // in-flight request will be cancelled asynchronously and an error returned
 // immediately.
-func (c *client) requestHTTP(req *http.Request, cancel <-chan bool) (resp *http.Response, body []byte, err error) {
+func (c *client) requestHTTP(req *http.Request, cancel <-chan struct{}) (resp *http.Response, body []byte, err error) {
 	respchan := make(chan reqResp, 1)
 
 	// Spawn a goroutine to perform the actual request. This routine is
@@ -163,7 +163,7 @@ func (c *client) requestHTTP(req *http.Request, cancel <-chan bool) (resp *http.
 // - up to 10 redirects are followed per endpoint per attempt
 // If the provided channel is closed before a Result can be
 // retrieved, a nil object is returned.
-func (c *client) resolve(act Action, rf requestFunc, cancel <-chan bool) (*Result, error) {
+func (c *client) resolve(act Action, rf requestFunc, cancel <-chan struct{}) (*Result, error) {
 	requests := func() (res *Result, err error) {
 		for eIndex := 0; eIndex < len(c.endpoints); eIndex++ {
 			endpoint := c.endpoints[eIndex]
@@ -224,7 +224,7 @@ func (c *client) Do(act Action) (*Result, error) {
 		res *Result
 		err error
 	}
-	cancel := make(chan bool)
+	cancel := make(chan struct{})
 	result := make(chan re)
 
 	go func() {
@@ -244,7 +244,7 @@ func (c *client) Do(act Action) (*Result, error) {
 // Make any necessary HTTP requests to resolve the given Action, returning
 // a Result if one can be acquired. If the provided channel is ever closed,
 // all in-flight HTTP requests will be aborted and an error will be returned.
-func (c *client) Wait(act Action, cancel <-chan bool) (*Result, error) {
+func (c *client) Wait(act Action, cancel <-chan struct{}) (*Result, error) {
 	return c.resolve(act, c.requestHTTP, cancel)
 }
 
@@ -272,7 +272,7 @@ func newActionResolver(act Action, ep *url.URL, rf requestFunc) *actionResolver 
 
 // Resolve attempts to yield a result from the configured action and endpoint. If a usable
 // Result or error was not attained, nil values are returned.
-func (ar *actionResolver) Resolve(cancel <-chan bool) (*Result, error) {
+func (ar *actionResolver) Resolve(cancel <-chan struct{}) (*Result, error) {
 	resp, body, err := ar.exhaust(cancel)
 	if err != nil {
 		log.Infof("Failed getting response from %v: %v", ar.endpoint, err)
@@ -288,7 +288,7 @@ func (ar *actionResolver) Resolve(cancel <-chan bool) (*Result, error) {
 	return hdlr(resp, body)
 }
 
-func (ar *actionResolver) exhaust(cancel <-chan bool) (resp *http.Response, body []byte, err error) {
+func (ar *actionResolver) exhaust(cancel <-chan struct{}) (resp *http.Response, body []byte, err error) {
 	var req *http.Request
 
 	req, err = ar.first()
@@ -349,7 +349,7 @@ func (ar *actionResolver) next(resp *http.Response) (*http.Request, error) {
 	return req, nil
 }
 
-func (ar *actionResolver) one(req *http.Request, cancel <-chan bool) (resp *http.Response, body []byte, err error) {
+func (ar *actionResolver) one(req *http.Request, cancel <-chan struct{}) (resp *http.Response, body []byte, err error) {
 	log.V(1).Infof("etcd: sending HTTP request %s %s", req.Method, req.URL)
 	resp, body, err = ar.requestFunc(req, cancel)
 	if err != nil {

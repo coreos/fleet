@@ -45,15 +45,15 @@ func (t *task) String() string {
 	return fmt.Sprintf("{Type: %s, Job: %s, Reason: %q}", t.Type, jName, t.Reason)
 }
 
-func NewReconciler(reg registry.Registry, verifier *sign.SignatureVerifier) *AgentReconciler {
-	return &AgentReconciler{reg, verifier, make(chan struct{})}
+func NewReconciler(reg registry.Registry, rStream registry.EventStream, verifier *sign.SignatureVerifier) (*AgentReconciler, error) {
+	ar := AgentReconciler{reg, rStream, verifier}
+	return &ar, nil
 }
 
 type AgentReconciler struct {
 	reg      registry.Registry
+	rStream  registry.EventStream
 	verifier *sign.SignatureVerifier
-
-	rTrigger chan struct{}
 }
 
 // Run periodically attempts to reconcile the provided Agent until the stop
@@ -63,24 +63,6 @@ func (ar *AgentReconciler) Run(a *Agent, stop chan bool) {
 	ticker := time.Tick(reconcileInterval)
 
 	reconcile := func() {
-		done := make(chan struct{})
-		defer close(done)
-		// While the reconciliation is running, flush the trigger channel in the background
-		go func() {
-			for {
-				select {
-				case <-done:
-					return
-				default:
-					select {
-					case <-ar.rTrigger:
-					case <-done:
-						return
-					}
-				}
-			}
-		}()
-
 		start := time.Now()
 		ar.Reconcile(a)
 		elapsed := time.Now().Sub(start)
@@ -93,6 +75,17 @@ func (ar *AgentReconciler) Run(a *Agent, stop chan bool) {
 		}
 	}
 
+	trigger := make(chan struct{})
+	go func() {
+		abort := make(chan struct{})
+		select {
+		case <-stop:
+			close(abort)
+		case <-ar.rStream.Next(abort):
+			trigger <- struct{}{}
+		}
+	}()
+
 	for {
 		select {
 		case <-stop:
@@ -100,16 +93,10 @@ func (ar *AgentReconciler) Run(a *Agent, stop chan bool) {
 			return
 		case <-ticker:
 			reconcile()
-		case <-ar.rTrigger:
+		case <-trigger:
 			reconcile()
 		}
 	}
-}
-
-// Trigger causes Reconcile to run if the Agent is running but is
-// not currently reconciling.
-func (ar *AgentReconciler) Trigger() {
-	ar.rTrigger <- struct{}{}
 }
 
 // Reconcile drives the local Agent's state towards the desired state
