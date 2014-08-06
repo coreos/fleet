@@ -262,18 +262,18 @@ func TestClientCancel(t *testing.T) {
 		t.Fatalf("Failed building Client: %v", err)
 	}
 
-	cancel := make(chan bool)
-	sentinel := make(chan bool, 2)
+	cancel := make(chan struct{})
+	sentinel := make(chan struct{}, 2)
 
-	rf := func(req *http.Request, cancel <-chan bool) (*http.Response, []byte, error) {
+	rf := func(req *http.Request, cancel <-chan struct{}) (*http.Response, []byte, error) {
 		<-cancel
-		sentinel <- true
+		sentinel <- struct{}{}
 		return nil, nil, errors.New("Cancelled")
 	}
 
 	go func() {
 		c.resolve(&act, rf, cancel)
-		sentinel <- true
+		sentinel <- struct{}{}
 	}()
 
 	select {
@@ -302,7 +302,7 @@ type clientStep struct {
 
 func assertClientSteps(t *testing.T, c *client, act Action, steps []clientStep, expectSuccess bool) {
 	idx := 0
-	rf := func(req *http.Request, cancel <-chan bool) (*http.Response, []byte, error) {
+	rf := func(req *http.Request, cancel <-chan struct{}) (*http.Response, []byte, error) {
 		if idx >= len(steps) {
 			t.Fatalf("Received too many requests")
 		}
@@ -329,7 +329,7 @@ func assertClientSteps(t *testing.T, c *client, act Action, steps []clientStep, 
 		return &step.resp, body, nil
 	}
 
-	_, err := c.resolve(act, rf, make(chan bool))
+	_, err := c.resolve(act, rf, make(chan struct{}))
 	if expectSuccess != (err == nil) {
 		t.Fatalf("expected to pass=%t, err=%v", expectSuccess, err)
 	}
@@ -414,7 +414,7 @@ func TestClientRedirectsAndAlternateEndpoints(t *testing.T) {
 
 func TestClientRedirectOverLimit(t *testing.T) {
 	reqCount := 0
-	rf := func(req *http.Request, cancel <-chan bool) (*http.Response, []byte, error) {
+	rf := func(req *http.Request, cancel <-chan struct{}) (*http.Response, []byte, error) {
 		reqCount = reqCount + 1
 
 		if reqCount > 10 {
@@ -439,7 +439,7 @@ func TestClientRedirectOverLimit(t *testing.T) {
 	act := &Get{Key: "/foo"}
 	ar := newActionResolver(act, endpoint, rf)
 
-	req, err := ar.Resolve(make(chan bool))
+	req, err := ar.Resolve(make(chan struct{}))
 	if req != nil || err != nil {
 		t.Errorf("Expected nil resp and nil err, got resp=%v and err=%v", req, err)
 	}
@@ -451,7 +451,7 @@ func TestClientRedirectOverLimit(t *testing.T) {
 
 func TestClientRedirectMax(t *testing.T) {
 	count := 0
-	rf := func(req *http.Request, cancel <-chan bool) (*http.Response, []byte, error) {
+	rf := func(req *http.Request, cancel <-chan struct{}) (*http.Response, []byte, error) {
 		var resp http.Response
 		var body []byte
 
@@ -485,14 +485,14 @@ func TestClientRedirectMax(t *testing.T) {
 	act := &Get{Key: "/foo"}
 	ar := newActionResolver(act, endpoint, rf)
 
-	req, err := ar.Resolve(make(chan bool))
+	req, err := ar.Resolve(make(chan struct{}))
 	if req == nil || err != nil {
 		t.Errorf("Expected non-nil resp and nil err, got resp=%v and err=%v", req, err)
 	}
 }
 
 func TestClientRequestFuncError(t *testing.T) {
-	rf := func(req *http.Request, cancel <-chan bool) (*http.Response, []byte, error) {
+	rf := func(req *http.Request, cancel <-chan struct{}) (*http.Response, []byte, error) {
 		return nil, nil, errors.New("bogus error")
 	}
 
@@ -504,7 +504,7 @@ func TestClientRequestFuncError(t *testing.T) {
 	act := &Get{Key: "/foo"}
 	ar := newActionResolver(act, endpoint, rf)
 
-	req, err := ar.Resolve(make(chan bool))
+	req, err := ar.Resolve(make(chan struct{}))
 	if req != nil {
 		t.Errorf("Expected req=nil, got %v", nil)
 	}
@@ -514,7 +514,7 @@ func TestClientRequestFuncError(t *testing.T) {
 }
 
 func TestClientRedirectNowhere(t *testing.T) {
-	rf := func(req *http.Request, cancel <-chan bool) (*http.Response, []byte, error) {
+	rf := func(req *http.Request, cancel <-chan struct{}) (*http.Response, []byte, error) {
 		resp := http.Response{StatusCode: http.StatusTemporaryRedirect}
 		return &resp, []byte{}, nil
 	}
@@ -527,7 +527,7 @@ func TestClientRedirectNowhere(t *testing.T) {
 	act := &Get{Key: "/foo"}
 	ar := newActionResolver(act, endpoint, rf)
 
-	req, err := ar.Resolve(make(chan bool))
+	req, err := ar.Resolve(make(chan struct{}))
 	if req != nil {
 		t.Errorf("Expected req=nil, got %v", nil)
 	}
@@ -555,7 +555,7 @@ func TestGoodRequestHTTP(t *testing.T) {
 	})
 	c, req := newTestingRequestAndClient(t, h)
 
-	cancel := make(chan bool)
+	cancel := make(chan struct{})
 	resp, body, err := c.requestHTTP(req, cancel)
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
@@ -586,7 +586,7 @@ func (n *nilNilTransport) CancelRequest(req *http.Request) {}
 // Ensure that any request that somehow returns (nil, nil) propagates an actual error
 func TestNilNilRequestHTTP(t *testing.T) {
 	c := &client{[]url.URL{}, &nilNilTransport{}, time.Second}
-	cancel := make(chan bool)
+	cancel := make(chan struct{})
 	resp, body, err := c.requestHTTP(nil, cancel)
 	if err == nil {
 		t.Error("unexpected nil error")
@@ -620,7 +620,7 @@ func (r *respAndErrTransport) CancelRequest(req *http.Request) {}
 // Ensure that the body of a response is closed even when an error is returned
 func TestRespAndErrRequestHTTP(t *testing.T) {
 	c := &client{[]url.URL{}, &respAndErrTransport{}, time.Second}
-	cancel := make(chan bool)
+	cancel := make(chan struct{})
 	resp, body, err := c.requestHTTP(nil, cancel)
 	if err == nil {
 		t.Error("unexpected nil error")
@@ -641,7 +641,7 @@ func TestCancelledRequestHTTP(t *testing.T) {
 	})
 	c, req := newTestingRequestAndClient(t, h)
 
-	cancel := make(chan bool)
+	cancel := make(chan struct{})
 	close(cancel)
 	resp, body, err := c.requestHTTP(req, cancel)
 	if err == nil {

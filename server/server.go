@@ -14,7 +14,6 @@ import (
 	"github.com/coreos/fleet/config"
 	"github.com/coreos/fleet/engine"
 	"github.com/coreos/fleet/etcd"
-	"github.com/coreos/fleet/event"
 	"github.com/coreos/fleet/heart"
 	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/pkg"
@@ -37,8 +36,6 @@ type Server struct {
 	usPub       *agent.UnitStatePublisher
 	usGen       *unit.UnitStateGenerator
 	engine      *engine.Engine
-	rStream     *registry.EventStream
-	eBus        *event.EventBus
 	mach        *machine.CoreOSMachine
 	hrt         heart.Heart
 	mon         *heart.Monitor
@@ -82,22 +79,15 @@ func New(cfg config.Config) (*Server, error) {
 		return nil, err
 	}
 
-	ar, err := newAgentReconcilerFromConfig(reg, cfg)
+	ar, err := newAgentReconcilerFromConfig(reg, eClient, cfg)
 	if err != nil {
 		return nil, err
 	}
 
-	e := engine.New(reg, mach)
-
-	rStream, err := registry.NewEventStream(eClient, reg)
+	e, err := newEngineFromConfig(reg, eClient, mach, cfg)
 	if err != nil {
 		return nil, err
 	}
-
-	eBus := event.NewEventBus()
-	eBus.AddListener(event.JobTargetChangeEvent, ar.Trigger)
-	eBus.AddListener(event.JobTargetStateChangeEvent, ar.Trigger)
-	eBus.AddListener(event.JobTargetStateChangeEvent, e.Trigger)
 
 	listeners, err := activation.Listeners(false)
 	if err != nil {
@@ -120,8 +110,6 @@ func New(cfg config.Config) (*Server, error) {
 		usGen:       gen,
 		usPub:       pub,
 		engine:      e,
-		rStream:     rStream,
-		eBus:        eBus,
 		mach:        mach,
 		hrt:         hrt,
 		mon:         mon,
@@ -162,11 +150,22 @@ func newMachineFromConfig(cfg config.Config, mgr unit.UnitManager) (*machine.Cor
 	return mach, nil
 }
 
+func newEngineFromConfig(reg registry.Registry, eClient etcd.Client, mach machine.Machine, cfg config.Config) (*engine.Engine, error) {
+	listen := []registry.Event{registry.JobTargetChangeEvent, registry.JobTargetStateChangeEvent}
+	rStream, err := registry.NewEtcdEventStream(eClient, cfg.EtcdKeyPrefix, listen)
+	if err != nil {
+		return nil, err
+	}
+
+	e := engine.New(reg, rStream, mach)
+	return e, nil
+}
+
 func newAgentFromConfig(mach machine.Machine, reg registry.Registry, cfg config.Config, mgr unit.UnitManager, uGen *unit.UnitStateGenerator) (*agent.Agent, error) {
 	return agent.New(mgr, uGen, reg, mach, cfg.AgentTTL)
 }
 
-func newAgentReconcilerFromConfig(reg registry.Registry, cfg config.Config) (*agent.AgentReconciler, error) {
+func newAgentReconcilerFromConfig(reg registry.Registry, eClient etcd.Client, cfg config.Config) (*agent.AgentReconciler, error) {
 	var verifier *sign.SignatureVerifier
 	if cfg.VerifyUnits {
 		var err error
@@ -177,16 +176,21 @@ func newAgentReconcilerFromConfig(reg registry.Registry, cfg config.Config) (*ag
 		}
 	}
 
-	return agent.NewReconciler(reg, verifier), nil
+	listen := []registry.Event{registry.JobTargetChangeEvent}
+	rStream, err := registry.NewEtcdEventStream(eClient, cfg.EtcdKeyPrefix, listen)
+	if err != nil {
+		return nil, err
+	}
+
+	return agent.NewReconciler(reg, rStream, verifier)
 }
 
 func (s *Server) Run() {
 	log.Infof("Establishing etcd connectivity")
 
-	var idx uint64
 	var err error
 	for sleep := time.Second; ; sleep = pkg.ExpBackoff(sleep, time.Minute) {
-		idx, err = s.hrt.Beat(s.mon.TTL)
+		_, err = s.hrt.Beat(s.mon.TTL)
 		if err == nil {
 			break
 		}
@@ -200,7 +204,6 @@ func (s *Server) Run() {
 	go s.Monitor()
 	go s.api.Available(s.stop)
 	go s.mach.PeriodicRefresh(machineStateRefreshInterval, s.stop)
-	go s.rStream.Stream(idx, s.eBus.Dispatch, s.stop)
 	go s.agent.Heartbeat(s.stop)
 	go s.aReconciler.Run(s.agent, s.stop)
 	go s.engine.Run(s.engineReconcileInterval, s.stop)

@@ -354,7 +354,12 @@ func TestCalculateTasksForJob(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		ar := NewReconciler(registry.NewFakeRegistry(), nil)
+		ar, err := NewReconciler(registry.NewFakeRegistry(), nil, nil)
+		if err != nil {
+			t.Errorf("case %d: unexpected error from NewReconciler: %v", i, err)
+			continue
+		}
+
 		taskchan := make(chan *task)
 		tasks := []task{}
 		go func() {

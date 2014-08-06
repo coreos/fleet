@@ -1,7 +1,6 @@
 package registry
 
 import (
-	"errors"
 	"path"
 	"strings"
 	"time"
@@ -9,69 +8,93 @@ import (
 	log "github.com/coreos/fleet/Godeps/_workspace/src/github.com/golang/glog"
 
 	"github.com/coreos/fleet/etcd"
-	"github.com/coreos/fleet/event"
+	"github.com/coreos/fleet/pkg"
 )
 
-type EventStream struct {
-	etcd     etcd.Client
-	registry *EtcdRegistry
+var (
+	// Occurs when any Job's target is touched
+	JobTargetChangeEvent = Event("JobTargetChangeEvent")
+	// Occurs when any Job's target state is touched
+	JobTargetStateChangeEvent = Event("JobTargetStateChangeEvent")
+)
+
+type EventStream interface {
+	Next(chan struct{}) chan Event
 }
 
-func NewEventStream(client etcd.Client, registry Registry) (*EventStream, error) {
-	reg, ok := registry.(*EtcdRegistry)
-	if !ok {
-		return nil, errors.New("EventStream currently only works with EtcdRegistry")
+type Event string
+
+type EtcdEventStream struct {
+	etcd       etcd.Client
+	rootPrefix string
+	listen     pkg.Set
+}
+
+func NewEtcdEventStream(client etcd.Client, rootPrefix string, listen []Event) (*EtcdEventStream, error) {
+	lSet := pkg.NewUnsafeSet()
+	for _, e := range listen {
+		lSet.Add(string(e))
 	}
 
-	return &EventStream{client, reg}, nil
+	return &EtcdEventStream{client, rootPrefix, lSet}, nil
 }
 
-func (es *EventStream) Stream(idx uint64, sendFunc func(event.Event), stop chan bool) {
-	etcdchan := make(chan *etcd.Result)
-	go watch(es.etcd, idx, etcdchan, es.registry.keyPrefix, stop)
-	go filter(etcdchan, es.registry.keyPrefix, sendFunc, stop)
+func (es *EtcdEventStream) Next(stop chan struct{}) chan Event {
+	evchan := make(chan Event)
+	go func() {
+		for {
+			select {
+			case <-stop:
+				return
+			default:
+			}
+
+			res := watch(es.etcd, path.Join(es.rootPrefix, jobPrefix), stop)
+			ev, ok := parse(res, es.rootPrefix)
+			if !ok {
+				continue
+			}
+
+			if !es.filter(ev) {
+				continue
+			}
+
+			evchan <- ev
+			break
+		}
+
+	}()
+
+	return evchan
 }
 
-func filter(etcdchan chan *etcd.Result, prefix string, sendFunc func(event.Event), stop chan bool) {
-	parse := func(res *etcd.Result) (ev event.Event, ok bool) {
-		if res == nil || res.Node == nil {
-			return
-		}
+func (es *EtcdEventStream) filter(ev Event) bool {
+	return es.listen.Contains(string(ev))
+}
 
-		// ignore everything but the job namespace
-		if !strings.HasPrefix(res.Node.Key, path.Join(prefix, jobPrefix)) {
-			return
-		}
-
-		_, baseName := path.Split(res.Node.Key)
-		switch baseName {
-		case "target-state":
-			ev = event.JobTargetStateChangeEvent
-			ok = true
-		case "target":
-			ev = event.JobTargetChangeEvent
-			ok = true
-		default:
-		}
+func parse(res *etcd.Result, prefix string) (ev Event, ok bool) {
+	if res == nil || res.Node == nil {
 		return
 	}
 
-	for {
-		select {
-		case <-stop:
-			return
-		case res := <-etcdchan:
-			log.V(1).Infof("Received %v from etcd watch", res)
-			if ev, ok := parse(res); ok {
-				log.V(1).Infof("Translated %v to Event(Type=%s)", res, ev)
-				sendFunc(ev)
-			}
-		}
+	if !strings.HasPrefix(res.Node.Key, path.Join(prefix, jobPrefix)) {
+		return
 	}
+
+	switch path.Base(res.Node.Key) {
+	case "target-state":
+		ev = JobTargetStateChangeEvent
+		ok = true
+	case "target":
+		ev = JobTargetChangeEvent
+		ok = true
+	}
+
+	return
 }
 
-func watch(client etcd.Client, idx uint64, etcdchan chan *etcd.Result, key string, stop chan bool) {
-	for {
+func watch(client etcd.Client, key string, stop chan struct{}) (res *etcd.Result) {
+	for res == nil {
 		select {
 		case <-stop:
 			log.V(1).Infof("Gracefully closing etcd watch loop: key=%s", key)
@@ -79,42 +102,23 @@ func watch(client etcd.Client, idx uint64, etcdchan chan *etcd.Result, key strin
 		default:
 			req := &etcd.Watch{
 				Key:       key,
-				WaitIndex: idx,
+				WaitIndex: 0,
 				Recursive: true,
 			}
 
 			log.V(1).Infof("Creating etcd watcher: %v", req)
 
-			resp, err := client.Wait(req, stop)
-			if err == nil {
-				if resp.Node != nil {
-					idx = resp.Node.ModifiedIndex + 1
-				}
-				etcdchan <- resp
-				continue
-			}
-
-			log.Errorf("etcd watcher %v returned error: %v", req, err)
-
-			etcdError, ok := err.(etcd.Error)
-			if !ok {
-				// Let's not slam the etcd server in the event that we know
-				// an unexpected error occurred.
-				time.Sleep(time.Second)
-				continue
-			}
-
-			switch etcdError.ErrorCode {
-			case etcd.ErrorEventIndexCleared:
-				// This is racy, but adding one to the last known index
-				// will help get this watcher back into the range of
-				// etcd's internal event history
-				idx = idx + 1
-			default:
-				// Let's not slam the etcd server in the event that we know
-				// an unexpected error occurred.
-				time.Sleep(time.Second)
+			var err error
+			res, err = client.Wait(req, stop)
+			if err != nil {
+				log.Errorf("etcd watcher %v returned error: %v", req, err)
 			}
 		}
+
+		// Let's not slam the etcd server in the event that we know
+		// an unexpected error occurred.
+		time.Sleep(time.Second)
 	}
+
+	return
 }

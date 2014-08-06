@@ -19,15 +19,16 @@ const (
 type Engine struct {
 	rec      *Reconciler
 	registry registry.Registry
+	rStream  registry.EventStream
 	machine  machine.Machine
 
 	lease   registry.Lease
 	trigger chan struct{}
 }
 
-func New(reg registry.Registry, mach machine.Machine) *Engine {
+func New(reg registry.Registry, rStream registry.EventStream, mach machine.Machine) *Engine {
 	rec := NewReconciler()
-	return &Engine{rec, reg, mach, nil, make(chan struct{})}
+	return &Engine{rec, reg, rStream, mach, nil, make(chan struct{})}
 }
 
 func (e *Engine) Run(ival time.Duration, stop chan bool) {
@@ -36,24 +37,6 @@ func (e *Engine) Run(ival time.Duration, stop chan bool) {
 	machID := e.machine.State().ID
 
 	reconcile := func() {
-		done := make(chan struct{})
-		defer func() { close(done) }()
-		// While the reconciliation is running, flush the trigger channel in the background
-		go func() {
-			for {
-				select {
-				case <-done:
-					return
-				default:
-					select {
-					case <-e.trigger:
-					case <-done:
-						return
-					}
-				}
-			}
-		}()
-
 		e.lease = ensureLeader(e.lease, e.registry, machID, leaseTTL)
 		if e.lease == nil {
 			return
@@ -90,6 +73,17 @@ func (e *Engine) Run(ival time.Duration, stop chan bool) {
 		}
 	}
 
+	trigger := make(chan struct{})
+	go func() {
+		abort := make(chan struct{})
+		select {
+		case <-stop:
+			close(abort)
+		case <-e.rStream.Next(abort):
+			trigger <- struct{}{}
+		}
+	}()
+
 	for {
 		select {
 		case <-stop:
@@ -98,7 +92,7 @@ func (e *Engine) Run(ival time.Duration, stop chan bool) {
 		case <-ticker:
 			log.V(1).Info("Engine tick")
 			reconcile()
-		case <-e.trigger:
+		case <-trigger:
 			log.V(1).Info("Engine reconcilation triggered by job state change")
 			reconcile()
 		}

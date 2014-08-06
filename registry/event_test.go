@@ -5,86 +5,74 @@ import (
 	"testing"
 
 	"github.com/coreos/fleet/etcd"
-	"github.com/coreos/fleet/event"
 )
 
 func TestFilterEtcdEvents(t *testing.T) {
 	tests := []struct {
 		in string
-		ev []event.Event
+		ev Event
+		ok bool
 	}{
 		{
 			in: "",
-			ev: []event.Event{},
+			ok: false,
 		},
 		{
 			in: "/",
-			ev: []event.Event{},
+			ok: false,
 		},
 		{
 			in: "/fleet",
-			ev: []event.Event{},
+			ok: false,
 		},
 		{
 			in: "/fleet/job",
-			ev: []event.Event{},
+			ok: false,
 		},
 		{
 			in: "/fleet/job/foo/object",
-			ev: []event.Event{},
+			ok: false,
 		},
 		{
 			in: "/fleet/machine/asdf",
-			ev: []event.Event{},
+			ok: false,
 		},
 		{
 			in: "/fleet/state/asdf",
-			ev: []event.Event{},
-		},
-		{
-			in: "/fleet/job/asdf/target-state",
-			ev: []event.Event{event.JobTargetStateChangeEvent},
+			ok: false,
 		},
 		{
 			in: "/fleet/job/foobarbaz/target-state",
-			ev: []event.Event{event.JobTargetStateChangeEvent},
+			ev: JobTargetStateChangeEvent,
+			ok: true,
 		},
 		{
 			in: "/fleet/job/asdf/target",
-			ev: []event.Event{event.JobTargetChangeEvent},
+			ev: JobTargetChangeEvent,
+			ok: true,
 		},
 	}
 
 	for i, tt := range tests {
 		for _, action := range []string{"set", "update", "create", "delete"} {
-			etcdchan := make(chan *etcd.Result)
-			stopchan := make(chan bool)
 			prefix := "/fleet"
 
-			got := make([]event.Event, 0)
-			send := func(ev event.Event) {
-				got = append(got, ev)
+			res := &etcd.Result{
+				Node: &etcd.Node{
+					Key: tt.in,
+				},
+				Action: action,
+			}
+			ev, ok := parse(res, prefix)
+			if ok != tt.ok {
+				t.Errorf("case %d: expected ok=%t, got %t", i, tt.ok, ok)
+				continue
 			}
 
-			go filter(etcdchan, prefix, send, stopchan)
-
-			var res *etcd.Result
-			if tt.in != "" {
-				res = &etcd.Result{
-					Node: &etcd.Node{
-						Key: tt.in,
-					},
-					Action: action,
-				}
-			}
-			etcdchan <- res
-
-			if !reflect.DeepEqual(tt.ev, got) {
-				t.Errorf("case %d: received incorrect event\nexpected %#v\ngot %#v", i, tt.ev, got)
+			if !reflect.DeepEqual(tt.ev, ev) {
+				t.Errorf("case %d: received incorrect event\nexpected %#v\ngot %#v", i, tt.ev, ev)
 				t.Logf("action: %v", action)
 			}
-
-			close(stopchan)
 		}
 	}
 }
