@@ -25,18 +25,18 @@ type EventStream interface {
 type Event string
 
 type EtcdEventStream struct {
-	etcd      etcd.Client
-	keyPrefix string
-	listen    pkg.Set
+	etcd       etcd.Client
+	rootPrefix string
+	listen     pkg.Set
 }
 
-func NewEtcdEventStream(client etcd.Client, keyPrefix string, listen []Event) (*EtcdEventStream, error) {
+func NewEtcdEventStream(client etcd.Client, rootPrefix string, listen []Event) (*EtcdEventStream, error) {
 	lSet := pkg.NewUnsafeSet()
 	for _, e := range listen {
 		lSet.Add(string(e))
 	}
 
-	return &EtcdEventStream{client, keyPrefix, lSet}, nil
+	return &EtcdEventStream{client, rootPrefix, lSet}, nil
 }
 
 func (es *EtcdEventStream) Next(stop chan struct{}) chan Event {
@@ -49,8 +49,8 @@ func (es *EtcdEventStream) Next(stop chan struct{}) chan Event {
 			default:
 			}
 
-			res := watch(es.etcd, es.keyPrefix, stop)
-			ev, ok := parse(res, es.keyPrefix)
+			res := watch(es.etcd, path.Join(es.rootPrefix, jobPrefix), stop)
+			ev, ok := parse(res, es.rootPrefix)
 			if !ok {
 				continue
 			}
