@@ -318,39 +318,6 @@ func TestCalculateTasksForJob(t *testing.T) {
 				},
 			},
 		},
-
-		// unschedule jobs that can not run locally
-		{
-			dState: &AgentState{
-				MState: &machine.MachineState{ID: "XXX"},
-				Jobs: map[string]*job.Job{
-					"foo.service": &job.Job{
-						TargetState: jsLaunched,
-						Unit:        fleetUnit(t, "X-ConditionMachineID=YYY"),
-					},
-				},
-			},
-			cState: NewAgentState(&machine.MachineState{ID: "XXX"}),
-			jName:  "foo.service",
-			tasks: []task{
-				task{
-					Type: taskTypeUnscheduleJob,
-					Job: &job.Job{
-						TargetState: jsLaunched,
-						Unit:        fleetUnit(t, "X-ConditionMachineID=YYY"),
-					},
-					Reason: taskReasonScheduledButNotRunnable,
-				},
-				task{
-					Type: taskTypeUnloadJob,
-					Job: &job.Job{
-						TargetState: jsLaunched,
-						Unit:        fleetUnit(t, "X-ConditionMachineID=YYY"),
-					},
-					Reason: taskReasonScheduledButNotRunnable,
-				},
-			},
-		},
 	}
 
 	for i, tt := range tests {
