@@ -13,11 +13,6 @@ import (
 type AgentState struct {
 	MState *machine.MachineState
 	Jobs   map[string]*job.Job
-
-	// This is used to assert that the Agent is able to
-	// run a given job based on its signature. This feature
-	// is currently deprecated, so expect this to go away.
-	verifyFunc func(j *job.Job) bool
 }
 
 func NewAgentState(ms *machine.MachineState) *AgentState {
@@ -70,17 +65,12 @@ func globMatches(pattern, target string) bool {
 // the Agent's current state. A boolean indicating whether this is the
 // case or not is returned. The following criteria is used:
 //   - Agent must meet the Job's machine target requirement (if any)
-//   - Job must pass signature verification
 //   - Agent must have all of the Job's required metadata (if any)
 //   - Agent must have all required Peers of the Job scheduled locally (if any)
 //   - Job must not conflict with any other Jobs scheduled to the agent
 func (as *AgentState) AbleToRun(j *job.Job) (bool, string) {
 	if tgt, ok := j.RequiredTarget(); ok && !as.MState.MatchID(tgt) {
 		return false, fmt.Sprintf("agent ID %q does not match required %q", as.MState.ID, tgt)
-	}
-
-	if as.verifyFunc != nil && !as.verifyFunc(j) {
-		return false, "unable to verify signature"
 	}
 
 	metadata := j.RequiredTargetMetadata()
