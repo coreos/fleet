@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	defaultListUnitsFields = "unit,machine,active,hash"
+	defaultListUnitsFields = "unit,machine,active,sub"
 )
 
 var (
