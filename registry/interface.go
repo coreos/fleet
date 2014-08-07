@@ -37,6 +37,8 @@ type Registry interface {
 	SetMachineState(ms machine.MachineState, ttl time.Duration) (uint64, error)
 	SubmitJobBid(jName, machID string)
 	UnresolvedJobOffers() ([]job.JobOffer, error)
+
+	UnitStateRegistry
 }
 
 type UnitStateRegistry interface {

@@ -36,6 +36,11 @@ func (r *EtcdRegistry) unitStatePath(machID, jobName string) string {
 	return path.Join(r.unitStatesNamespace(jobName), machID)
 }
 
+type musKey struct {
+	machID string
+	name   string
+}
+
 // States returns a list of all UnitStates stored in the registry
 func (r *EtcdRegistry) States() (states []*unit.UnitState, err error) {
 	req := etcd.Get{
@@ -43,27 +48,62 @@ func (r *EtcdRegistry) States() (states []*unit.UnitState, err error) {
 		Recursive: true,
 	}
 	res, err := r.etcd.Do(&req)
+	if err != nil && !isKeyNotFound(err) {
+		return
+	}
+
+	mus := make(map[musKey]*unit.UnitState)
+
+	if res != nil {
+		for _, dir := range res.Node.Nodes {
+			_, name := path.Split(dir.Key)
+			for _, node := range dir.Nodes {
+				_, machID := path.Split(node.Key)
+				var usm unitStateModel
+				if err := unmarshal(node.Value, &usm); err != nil {
+					log.Errorf("Error unmarshalling UnitState(%s) from Machine(%s): %v", name, machID, err)
+					continue
+				}
+				us := modelToUnitState(&usm, name)
+				if us != nil {
+					key := musKey{name, machID}
+					mus[key] = us
+				}
+			}
+		}
+	}
+
+	// For backwards compatibility, retrieve any states stored in the old
+	// format and overlay them
+	req = etcd.Get{
+		Key:       path.Join(r.keyPrefix, statePrefix),
+		Recursive: true,
+	}
+	res, err = r.etcd.Do(&req)
 	if err != nil {
 		if isKeyNotFound(err) {
 			err = nil
 		}
 		return
 	}
-	for _, dir := range res.Node.Nodes {
-		_, name := path.Split(dir.Key)
-		for _, node := range dir.Nodes {
-			_, machID := path.Split(node.Key)
-			var usm unitStateModel
-			if err := unmarshal(node.Value, &usm); err != nil {
-				log.Errorf("Error unmarshalling UnitState(%s) from Machine(%s): %v", name, machID, err)
-				continue
-			}
-			us := modelToUnitState(&usm)
-			if us != nil {
-				states = append(states, us)
-			}
+	for _, node := range res.Node.Nodes {
+		_, name := path.Split(node.Key)
+		var usm unitStateModel
+		if err := unmarshal(node.Value, &usm); err != nil {
+			log.Errorf("Error unmarshalling UnitState(%s): %v", name, err)
+			continue
+		}
+		us := modelToUnitState(&usm, name)
+		if us != nil {
+			key := musKey{name, us.MachineID}
+			mus[key] = us
 		}
 	}
+
+	for _, us := range mus {
+		states = append(states, us)
+	}
+
 	return
 }
 
@@ -90,7 +130,7 @@ func (r *EtcdRegistry) getUnitState(jobName string) *unit.UnitState {
 		return nil
 	}
 
-	return modelToUnitState(&usm)
+	return modelToUnitState(&usm, jobName)
 }
 
 // SaveUnitState persists the given UnitState to the Registry
@@ -155,7 +195,7 @@ type unitStateModel struct {
 	UnitHash     string                `json:"unitHash"`
 }
 
-func modelToUnitState(usm *unitStateModel) *unit.UnitState {
+func modelToUnitState(usm *unitStateModel, name string) *unit.UnitState {
 	if usm == nil {
 		return nil
 	}
@@ -165,6 +205,7 @@ func modelToUnitState(usm *unitStateModel) *unit.UnitState {
 		ActiveState: usm.ActiveState,
 		SubState:    usm.SubState,
 		UnitHash:    usm.UnitHash,
+		UnitName:    name,
 	}
 
 	if usm.MachineState != nil {

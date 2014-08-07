@@ -151,16 +151,16 @@ func TestUnitStateToModel(t *testing.T) {
 		{
 			// Unit state with no hash and no machineID is OK
 			// See https://github.com/coreos/fleet/issues/720
-			in:   &unit.UnitState{"foo", "bar", "baz", "", ""},
+			in:   &unit.UnitState{"foo", "bar", "baz", "", "", "name"},
 			want: &unitStateModel{"foo", "bar", "baz", nil, ""},
 		},
 		{
 			// Unit state with hash but no machineID is OK
-			in:   &unit.UnitState{"foo", "bar", "baz", "", "heh"},
+			in:   &unit.UnitState{"foo", "bar", "baz", "", "heh", "name"},
 			want: &unitStateModel{"foo", "bar", "baz", nil, "heh"},
 		},
 		{
-			in:   &unit.UnitState{"foo", "bar", "baz", "woof", "miaow"},
+			in:   &unit.UnitState{"foo", "bar", "baz", "woof", "miaow", "name"},
 			want: &unitStateModel{"foo", "bar", "baz", &machine.MachineState{ID: "woof"}, "miaow"},
 		},
 	} {
@@ -188,6 +188,7 @@ func TestModelToUnitState(t *testing.T) {
 				SubState:    "baz",
 				MachineID:   "",
 				UnitHash:    "",
+				UnitName:    "name",
 			},
 		},
 		{
@@ -198,10 +199,11 @@ func TestModelToUnitState(t *testing.T) {
 				SubState:    "y",
 				MachineID:   "abcd",
 				UnitHash:    "",
+				UnitName:    "name",
 			},
 		},
 	} {
-		got := modelToUnitState(tt.in)
+		got := modelToUnitState(tt.in, "name")
 		if !reflect.DeepEqual(got, tt.want) {
 			t.Errorf("case %d: got %#v, want %#v", i, got, tt.want)
 		}
@@ -226,19 +228,19 @@ func TestGetUnitState(t *testing.T) {
 			// Unit state with no UnitHash should be OK
 			res: makeResult(`{"loadState":"abc","activeState":"def","subState":"ghi","machineState":{"ID":"mymachine","PublicIP":"","Metadata":null,"Version":"","TotalResources":{"Cores":0,"Memory":0,"Disk":0},"FreeResources":{"Cores":0,"Memory":0,"Disk":0}}}`),
 			err: nil,
-			us:  unit.NewUnitState("abc", "def", "ghi", "mymachine"),
+			us:  &unit.UnitState{"abc", "def", "ghi", "mymachine", "", "foo.service"},
 		},
 		{
 			// Unit state with UnitHash should be OK
 			res: makeResult(`{"loadState":"abc","activeState":"def","subState":"ghi","machineState":{"ID":"mymachine","PublicIP":"","Metadata":null,"Version":"","TotalResources":{"Cores":0,"Memory":0,"Disk":0},"FreeResources":{"Cores":0,"Memory":0,"Disk":0}},"unitHash":"quickbrownfox"}`),
 			err: nil,
-			us:  &unit.UnitState{"abc", "def", "ghi", "mymachine", "quickbrownfox"},
+			us:  &unit.UnitState{"abc", "def", "ghi", "mymachine", "quickbrownfox", "foo.service"},
 		},
 		{
 			// Unit state with no MachineState should be OK
 			res: makeResult(`{"loadState":"abc","activeState":"def","subState":"ghi"}`),
 			err: nil,
-			us:  &unit.UnitState{"abc", "def", "ghi", "", ""},
+			us:  &unit.UnitState{"abc", "def", "ghi", "", "", "foo.service"},
 		},
 		{
 			// Bad unit state object should simply result in nil returned
@@ -288,12 +290,12 @@ func usToJson(t *testing.T, us *unit.UnitState) string {
 }
 
 func TestStates(t *testing.T) {
-	fus1 := unit.UnitState{"abc", "def", "ghi", "mID1", "xyz"}
+	fus1 := unit.UnitState{"abc", "def", "ghi", "mID1", "xyz", "foo"}
 	fusn1 := etcd.Node{
 		Key:   "/fleet/states/foo/mID1",
 		Value: usToJson(t, &fus1),
 	}
-	fus2 := unit.UnitState{"abc", "def", "ghi", "mID2", "xyz"}
+	fus2 := unit.UnitState{"abc", "def", "ghi", "mID2", "xyz", "foo"}
 	fusn2 := etcd.Node{
 		Key:   "/fleet/states/foo/mID2",
 		Value: usToJson(t, &fus2),
@@ -338,8 +340,14 @@ func TestStates(t *testing.T) {
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("States() returned unexpected result")
-		t.Logf("got:\n%#v", got)
-		t.Logf("want:\n%#v", want)
+		t.Log("got:\n")
+		for _, i := range got {
+			t.Logf("#v", i)
+		}
+		t.Log("want:\n")
+		for _, i := range want {
+			t.Logf("#v", i)
+		}
 	}
 
 	e = &testEtcdClient{err: etcd.Error{ErrorCode: etcd.ErrorKeyNotFound}}

@@ -66,6 +66,7 @@ func TestAgentLoadUnloadJob(t *testing.T) {
 				ActiveState: "active",
 				SubState:    "running",
 				MachineID:   "",
+				UnitName:    "foo.service",
 			},
 			State: &jsLoaded,
 
@@ -134,6 +135,7 @@ func TestAgentLoadStartStopJob(t *testing.T) {
 				ActiveState: "active",
 				SubState:    "running",
 				MachineID:   "",
+				UnitName:    "foo.service",
 			},
 			State: &jsLaunched,
 
@@ -163,6 +165,7 @@ func TestAgentLoadStartStopJob(t *testing.T) {
 				ActiveState: "active",
 				SubState:    "running",
 				MachineID:   "",
+				UnitName:    "foo.service",
 			},
 			State: &jsLoaded,
 

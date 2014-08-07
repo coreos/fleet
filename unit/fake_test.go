@@ -90,6 +90,7 @@ func TestFakeUnitManagerGetUnitStates(t *testing.T) {
 			LoadState:   "loaded",
 			ActiveState: "active",
 			SubState:    "running",
+			UnitName:    "hello.service",
 		},
 	}
 

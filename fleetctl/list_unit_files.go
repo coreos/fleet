@@ -6,10 +6,11 @@ import (
 	"strings"
 
 	"github.com/coreos/fleet/job"
+	"github.com/coreos/fleet/machine"
 )
 
 const (
-	defaultListUnitFilesFields = "unit,hash,dstate"
+	defaultListUnitFilesFields = "unit,hash,dstate,state,tmachine"
 )
 
 var (
@@ -34,8 +35,35 @@ var (
 			}
 			return j.Unit.Hash().String()
 		},
+		"desc": func(j *job.Job, full bool) string {
+			d := j.Unit.Description()
+			if d == "" {
+				return "-"
+			}
+			return d
+		},
+		"tmachine": func(j *job.Job, full bool) string {
+			if j.TargetMachineID == "" {
+				return "-"
+			}
+			ms := cachedMachineState(j.TargetMachineID)
+			if ms == nil {
+				ms = &machine.MachineState{ID: j.TargetMachineID}
+			}
+
+			return machineFullLegend(*ms, full)
+		},
+		"state": func(j *job.Job, full bool) string {
+			js := j.State
+			if js != nil {
+				return string(*js)
+			}
+			return "-"
+		},
 	}
 )
+
+type jobToField func(j *job.Job, full bool) string
 
 func init() {
 	cmdListUnitFiles.Flags.BoolVar(&sharedFlags.Full, "full", false, "Do not ellipsize fields on output")
@@ -77,5 +105,12 @@ func runListUnitFiles(args []string) (exit int) {
 	}
 
 	out.Flush()
+	return
+}
+
+func jobToFieldKeys(m map[string]jobToField) (keys []string) {
+	for k := range m {
+		keys = append(keys, k)
+	}
 	return
 }
