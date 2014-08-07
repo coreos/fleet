@@ -45,20 +45,6 @@ func mapOptions(opts []*unit.UnitOption) map[string]map[string][]string {
 	return contents
 }
 
-// NewUnitFromLegacyContents creates a Unit object from an obsolete unit
-// file datastructure. This should only be used to remain backwards-compatible where necessary.
-func NewUnitFromLegacyContents(contents map[string]map[string]string) (*Unit, error) {
-	var serialized string
-	for section, keyMap := range contents {
-		serialized += fmt.Sprintf("[%s]\n", section)
-		for key, value := range keyMap {
-			serialized += fmt.Sprintf("%s=%s\n", key, value)
-		}
-		serialized += "\n"
-	}
-	return NewUnit(serialized)
-}
-
 // Description returns the first Description option found in the [Unit] section.
 // If the option is not defined, an empty string is returned.
 func (u *Unit) Description() string {
