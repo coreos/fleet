@@ -7,7 +7,6 @@ import (
 	log "github.com/coreos/fleet/Godeps/_workspace/src/github.com/golang/glog"
 
 	"github.com/coreos/fleet/job"
-	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/pkg"
 	"github.com/coreos/fleet/registry"
 )
@@ -99,21 +98,7 @@ func (ar *AgentReconciler) Run(a *Agent, stop chan bool) {
 // Reconcile drives the local Agent's state towards the desired state
 // stored in the Registry.
 func (ar *AgentReconciler) Reconcile(a *Agent) {
-	ms := a.Machine.State()
-
-	units, err := ar.reg.Units()
-	if err != nil {
-		log.Errorf("Failed fetching Units from Registry: %v", err)
-		return
-	}
-
-	sUnits, err := ar.reg.Schedule()
-	if err != nil {
-		log.Errorf("Failed fetching schedule from Registry: %v", err)
-		return
-	}
-
-	dAgentState, err := ar.desiredAgentState(units, sUnits, &ms)
+	dAgentState, err := ar.desiredAgentState(a, ar.reg)
 	if err != nil {
 		log.Errorf("Unable to determine agent's desired state: %v", err)
 		return
@@ -178,12 +163,25 @@ func (ar *AgentReconciler) doTask(a *Agent, t *task) (err error) {
 	return
 }
 
-// desiredAgentState builds an *AgentState object that represents what an
-// Agent identified by the provided machine ID should currently be doing.
-func (ar *AgentReconciler) desiredAgentState(units []job.Unit, sUnits []job.ScheduledUnit, ms *machine.MachineState) (*AgentState, error) {
+// desiredAgentState builds an *AgentState object that represents what the
+// provided Agent should currently be doing.
+func (ar *AgentReconciler) desiredAgentState(a *Agent, reg registry.Registry) (*AgentState, error) {
+	units, err := reg.Units()
+	if err != nil {
+		log.Errorf("Failed fetching Units from Registry: %v", err)
+		return nil, err
+	}
+
+	sUnits, err := reg.Schedule()
+	if err != nil {
+		log.Errorf("Failed fetching schedule from Registry: %v", err)
+		return nil, err
+	}
+
+	ms := a.Machine.State()
 	as := AgentState{
-		MState: ms,
-		Jobs:   make(map[string]*job.Job),
+		MState:     &ms,
+		Jobs:       make(map[string]*job.Job),
 	}
 
 	sUnitMap := make(map[string]*job.ScheduledUnit)
