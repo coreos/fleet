@@ -68,18 +68,39 @@ func (r *Reconciler) calculateClusterTasks(clust *clusterState, stopchan chan st
 	go func() {
 		defer close(taskchan)
 
+		agents := clust.agents()
+
 		for _, j := range clust.jobs {
 			if !j.Scheduled() {
 				continue
 			}
 
-			var reason string
-			if j.TargetState == job.JobStateInactive {
-				reason = "target state inactive"
-			} else if _, ok := clust.machines[j.TargetMachineID]; !ok {
-				reason = fmt.Sprintf("target Machine(%s) went away", j.TargetMachineID)
-			} else {
-				// Job is scheduled and its machine is alive, all is good
+			decide := func() (unschedule bool, reason string) {
+				if j.TargetState == job.JobStateInactive {
+					unschedule = true
+					reason = "target state inactive"
+					return
+				}
+
+				as, ok := agents[j.TargetMachineID]
+				if !ok {
+					unschedule = true
+					reason = fmt.Sprintf("target Machine(%s) went away", j.TargetMachineID)
+					return
+				}
+
+				var able bool
+				if able, reason = as.AbleToRun(j); !able {
+					unschedule = true
+					reason = fmt.Sprintf("target Machine(%s) unable to run job")
+					return
+				}
+
+				return
+			}
+
+			unschedule, reason := decide()
+			if !unschedule {
 				continue
 			}
 
