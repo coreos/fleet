@@ -115,6 +115,7 @@ func init() {
 		cmdJournal,
 		cmdListMachines,
 		cmdListUnitFiles,
+		cmdListUnitSchedule,
 		cmdListUnits,
 		cmdLoadUnits,
 		cmdSSH,

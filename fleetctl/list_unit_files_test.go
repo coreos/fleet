@@ -26,11 +26,8 @@ func newTestJobFromUnitContents(t *testing.T, contents string) *job.Job {
 func TestListUnitFilesFieldsToStrings(t *testing.T) {
 	j := newTestJobFromUnitContents(t, "")
 	for k, v := range map[string]string{
-		"dstate":   "inactive",
-		"hash":     "da39a3e",
-		"tmachine": "-",
-		"state":    "-",
-		"desc":     "-",
+		"hash": "da39a3e",
+		"desc": "-",
 	} {
 		f := listUnitFilesFields[k](j, false)
 		assertEqual(t, k, v, f)
@@ -43,12 +40,6 @@ func TestListUnitFilesFieldsToStrings(t *testing.T) {
 Description=some description`)
 	d := listUnitFilesFields["desc"](j, false)
 	assertEqual(t, "desc", "some description", d)
-
-	for _, state := range []job.JobState{job.JobStateLoaded, job.JobStateInactive, job.JobStateLaunched} {
-		j.State = &state
-		f := listUnitFilesFields["state"](j, false)
-		assertEqual(t, "state", string(state), f)
-	}
 
 	uh := "f035b2f14edc4d23572e5f3d3d4cb4f78d0e53c3"
 	fuh := listUnitFilesFields["hash"](j, true)

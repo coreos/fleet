@@ -6,11 +6,10 @@ import (
 	"strings"
 
 	"github.com/coreos/fleet/job"
-	"github.com/coreos/fleet/machine"
 )
 
 const (
-	defaultListUnitFilesFields = "unit,hash,dstate,state,tmachine"
+	defaultListUnitFilesFields = "unit,hash,desc"
 )
 
 var (
@@ -26,9 +25,6 @@ var (
 		"unit": func(j *job.Job, full bool) string {
 			return j.Name
 		},
-		"dstate": func(j *job.Job, full bool) string {
-			return string(j.TargetState)
-		},
 		"hash": func(j *job.Job, full bool) string {
 			if !full {
 				return j.Unit.Hash().Short()
@@ -41,24 +37,6 @@ var (
 				return "-"
 			}
 			return d
-		},
-		"tmachine": func(j *job.Job, full bool) string {
-			if j.TargetMachineID == "" {
-				return "-"
-			}
-			ms := cachedMachineState(j.TargetMachineID)
-			if ms == nil {
-				ms = &machine.MachineState{ID: j.TargetMachineID}
-			}
-
-			return machineFullLegend(*ms, full)
-		},
-		"state": func(j *job.Job, full bool) string {
-			js := j.State
-			if js != nil {
-				return string(*js)
-			}
-			return "-"
 		},
 	}
 )
