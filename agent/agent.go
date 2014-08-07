@@ -84,15 +84,14 @@ func (a *Agent) loadJob(j *job.Job) error {
 }
 
 func (a *Agent) unloadJob(jobName string) {
-	go func() {
-		a.um.Stop(jobName)
-		a.uGen.Unsubscribe(jobName)
-		a.um.Unload(jobName)
-	}()
-
 	a.registry.ClearUnitHeartbeat(jobName)
-	a.registry.RemoveUnitState(jobName)
 	a.cache.dropTargetState(jobName)
+
+	a.um.Stop(jobName)
+
+	a.uGen.Unsubscribe(jobName)
+
+	a.um.Unload(jobName)
 }
 
 func (a *Agent) startJob(jobName string) {
@@ -101,18 +100,14 @@ func (a *Agent) startJob(jobName string) {
 	machID := a.Machine.State().ID
 	a.registry.UnitHeartbeat(jobName, machID, a.ttl)
 
-	go func() {
-		a.um.Start(jobName)
-	}()
+	a.um.Start(jobName)
 }
 
 func (a *Agent) stopJob(jobName string) {
 	a.cache.setTargetState(jobName, job.JobStateLoaded)
 	a.registry.ClearUnitHeartbeat(jobName)
 
-	go func() {
-		a.um.Stop(jobName)
-	}()
+	a.um.Stop(jobName)
 }
 
 // jobs returns a collection of all Jobs that the Agent has either loaded
