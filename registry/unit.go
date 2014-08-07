@@ -1,8 +1,6 @@
 package registry
 
 import (
-	"encoding/json"
-	"fmt"
 	"path"
 
 	log "github.com/coreos/fleet/Godeps/_workspace/src/github.com/golang/glog"

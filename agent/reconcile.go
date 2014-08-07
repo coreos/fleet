@@ -10,7 +10,6 @@ import (
 	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/pkg"
 	"github.com/coreos/fleet/registry"
-	"github.com/coreos/fleet/sign"
 )
 
 const (
@@ -45,15 +44,14 @@ func (t *task) String() string {
 	return fmt.Sprintf("{Type: %s, Job: %s, Reason: %q}", t.Type, jName, t.Reason)
 }
 
-func NewReconciler(reg registry.Registry, rStream registry.EventStream, verifier *sign.SignatureVerifier) (*AgentReconciler, error) {
-	ar := AgentReconciler{reg, rStream, verifier}
+func NewReconciler(reg registry.Registry, rStream registry.EventStream) (*AgentReconciler, error) {
+	ar := AgentReconciler{reg, rStream}
 	return &ar, nil
 }
 
 type AgentReconciler struct {
-	reg      registry.Registry
-	rStream  registry.EventStream
-	verifier *sign.SignatureVerifier
+	reg     registry.Registry
+	rStream registry.EventStream
 }
 
 // Run periodically attempts to reconcile the provided Agent until the stop
@@ -185,9 +183,8 @@ func (ar *AgentReconciler) unscheduleJob(jName, machID string) error {
 // Agent identified by the provided machine ID should currently be doing.
 func (ar *AgentReconciler) desiredAgentState(jobs []job.Job, ms *machine.MachineState) (*AgentState, error) {
 	as := AgentState{
-		MState:     ms,
-		Jobs:       make(map[string]*job.Job),
-		verifyFunc: ar.verifyJobSignature,
+		MState: ms,
+		Jobs:   make(map[string]*job.Job),
 	}
 
 	for _, j := range jobs {
@@ -213,9 +210,8 @@ func (ar *AgentReconciler) currentAgentState(a *Agent) (*AgentState, error) {
 
 	ms := a.Machine.State()
 	as := AgentState{
-		MState:     &ms,
-		Jobs:       jobs,
-		verifyFunc: ar.verifyJobSignature,
+		MState: &ms,
+		Jobs:   jobs,
 	}
 
 	return &as, nil
@@ -343,23 +339,4 @@ func (ar *AgentReconciler) calculateTasksForJob(dState, cState *AgentState, jNam
 	}
 
 	log.Errorf("Unable to determine how to reconcile Job(%s): desiredState=%#v currentState=%#V", jName, dJob, cJob)
-}
-
-// verifyJobSignature attempts to verify the integrity of the given Job by checking the
-// signature against a SignatureSet stored in the Registry
-func (ar *AgentReconciler) verifyJobSignature(j *job.Job) bool {
-	if ar.verifier == nil {
-		return true
-	}
-	ss, _ := ar.reg.JobSignatureSet(j.Name)
-	ok, err := ar.verifier.VerifyJob(j, ss)
-	if err != nil {
-		log.V(1).Infof("Error verifying signature of Job(%s): %v", j.Name, err)
-		return false
-	} else if !ok {
-		log.V(1).Infof("Job(%s) does not match signature", j.Name)
-		return false
-	}
-
-	return true
 }

@@ -18,7 +18,6 @@ import (
 	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/pkg"
 	"github.com/coreos/fleet/registry"
-	"github.com/coreos/fleet/sign"
 	"github.com/coreos/fleet/systemd"
 	"github.com/coreos/fleet/unit"
 	"github.com/coreos/fleet/version"
@@ -166,23 +165,13 @@ func newAgentFromConfig(mach machine.Machine, reg registry.Registry, cfg config.
 }
 
 func newAgentReconcilerFromConfig(reg registry.Registry, eClient etcd.Client, cfg config.Config) (*agent.AgentReconciler, error) {
-	var verifier *sign.SignatureVerifier
-	if cfg.VerifyUnits {
-		var err error
-		verifier, err = sign.NewSignatureVerifierFromAuthorizedKeysFile(cfg.AuthorizedKeysFile)
-		if err != nil {
-			log.Errorf("Failed to get any key from authorized key file in verify_units mode: %v", err)
-			verifier = sign.NewSignatureVerifier()
-		}
-	}
-
 	listen := []registry.Event{registry.JobTargetChangeEvent}
 	rStream, err := registry.NewEtcdEventStream(eClient, cfg.EtcdKeyPrefix, listen)
 	if err != nil {
 		return nil, err
 	}
 
-	return agent.NewReconciler(reg, rStream, verifier)
+	return agent.NewReconciler(reg, rStream)
 }
 
 func (s *Server) Run() {

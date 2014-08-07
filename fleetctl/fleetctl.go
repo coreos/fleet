@@ -21,7 +21,6 @@ import (
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/registry"
-	"github.com/coreos/fleet/sign"
 	"github.com/coreos/fleet/ssh"
 	"github.com/coreos/fleet/unit"
 	"github.com/coreos/fleet/version"
@@ -67,7 +66,6 @@ var (
 
 	// flags used by multiple commands
 	sharedFlags = struct {
-		Sign          bool
 		Full          bool
 		NoLegend      bool
 		NoBlock       bool
@@ -123,7 +121,6 @@ func init() {
 		cmdStopUnit,
 		cmdSubmitUnit,
 		cmdUnloadUnit,
-		cmdVerifyUnit,
 		cmdVersion,
 	}
 }
@@ -197,10 +194,6 @@ func main() {
 		fmt.Printf("%v: unknown subcommand: %q\n", cliName, args[0])
 		fmt.Printf("Run '%v help' for usage.\n", cliName)
 		os.Exit(2)
-	}
-
-	if sharedFlags.Sign {
-		fmt.Fprintln(os.Stderr, "WARNING: The signed/verified units feature is DEPRECATED and should not be used. It will be completely removed from fleet and fleetctl.")
 	}
 
 	if cmd.Name != "help" && cmd.Name != "version" {
@@ -378,51 +371,6 @@ func createJob(jobName string, unit *unit.Unit) (*job.Job, error) {
 	return j, nil
 }
 
-// signJob signs the Unit of a Job using the public keys in the local SSH
-// agent, and pushes the resulting SignatureSet to the Registry
-func signJob(j *job.Job) error {
-	sc, err := sign.NewSignatureCreatorFromSSHAgent()
-	if err != nil {
-		return fmt.Errorf("failed creating SignatureCreator: %v", err)
-	}
-
-	ss, err := sc.SignJob(j)
-	if err != nil {
-		return fmt.Errorf("failed signing Job(%s): %v", j.Name, err)
-	}
-
-	err = cAPI.CreateSignatureSet(ss)
-	if err != nil {
-		return fmt.Errorf("failed storing Job signature in registry: %v", err)
-	}
-
-	log.V(1).Infof("Signed Job(%s)", j.Name)
-	return nil
-}
-
-// verifyJob attempts to verify the signature of the provided Job's unit using
-// the public keys in the local SSH agent
-func verifyJob(j *job.Job) error {
-	sv, err := sign.NewSignatureVerifierFromSSHAgent()
-	if err != nil {
-		return fmt.Errorf("failed creating SignatureVerifier: %v", err)
-	}
-
-	ss, err := cAPI.JobSignatureSet(j.Name)
-	if err != nil {
-		return fmt.Errorf("failed attempting to retrieve SignatureSet of Job(%s): %v", j.Name, err)
-	}
-	verified, err := sv.VerifyJob(j, ss)
-	if err != nil {
-		return fmt.Errorf("failed attempting to verify Job(%s): %v", j.Name, err)
-	} else if !verified {
-		return fmt.Errorf("unable to verify Job(%s)", j.Name)
-	}
-
-	log.V(1).Infof("Verified signature of Job(%s)", j.Name)
-	return nil
-}
-
 // lazyCreateJobs iterates over a set of Job names and, for each, attempts to
 // ensure that a Job by that name exists in the Registry, by checking a number
 // of conditions and acting on the first one that succeeds, in order of:
@@ -433,9 +381,7 @@ func verifyJob(j *job.Job) error {
 // Any error encountered during these steps is returned immediately (i.e.
 // subsequent Jobs are not acted on). An error is also returned if none of the
 // above conditions match a given Job.
-// If signAndVerify is true, the Job will be signed (if it is created), or have
-// its signature verified if it already exists in the Registry.
-func lazyCreateJobs(args []string, signAndVerify bool) error {
+func lazyCreateJobs(args []string) error {
 	for _, arg := range args {
 		// TODO(jonboulle): this loop is getting too unwieldy; factor it out
 
@@ -449,11 +395,6 @@ func lazyCreateJobs(args []string, signAndVerify bool) error {
 		if j != nil {
 			log.V(1).Infof("Found Job(%s) in Registry, no need to recreate it", jobName)
 			warnOnDifferentLocalUnit(arg, j)
-			if signAndVerify {
-				if err := verifyJob(j); err != nil {
-					return err
-				}
-			}
 			continue
 		}
 
@@ -467,11 +408,7 @@ func lazyCreateJobs(args []string, signAndVerify bool) error {
 			if err != nil {
 				return err
 			}
-			if signAndVerify {
-				if err := signJob(j); err != nil {
-					return err
-				}
-			}
+
 			continue
 		}
 
@@ -509,11 +446,6 @@ func lazyCreateJobs(args []string, signAndVerify bool) error {
 		j, err = createJob(jobName, u)
 		if err != nil {
 			return err
-		}
-		if signAndVerify {
-			if err := signJob(j); err != nil {
-				return err
-			}
 		}
 	}
 	return nil

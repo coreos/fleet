@@ -23,12 +23,8 @@ Submit a directory of units with glob matching:
 	Run: runSubmitUnits,
 }
 
-func init() {
-	cmdSubmitUnit.Flags.BoolVar(&sharedFlags.Sign, "sign", false, "Sign unit files units using local SSH identities")
-}
-
 func runSubmitUnits(args []string) (exit int) {
-	if err := lazyCreateJobs(args, sharedFlags.Sign); err != nil {
+	if err := lazyCreateJobs(args); err != nil {
 		fmt.Fprintf(os.Stderr, "Error creating jobs: %v\n", err)
 		exit = 1
 	}

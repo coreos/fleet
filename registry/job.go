@@ -2,6 +2,7 @@ package registry
 
 import (
 	"errors"
+	"fmt"
 	"path"
 
 	log "github.com/coreos/fleet/Godeps/_workspace/src/github.com/golang/glog"
@@ -196,7 +197,7 @@ type jobModel struct {
 	UnitHash unit.Hash
 }
 
-// DestroyJob removes a Job object from the repository along with any SignatureSets.
+// DestroyJob removes a Job object from the repository.
 // It does not yet remove underlying Units from the repository.
 func (r *EtcdRegistry) DestroyJob(jobName string) error {
 	req := etcd.Delete{
@@ -214,9 +215,6 @@ func (r *EtcdRegistry) DestroyJob(jobName string) error {
 	}
 
 	// TODO(jonboulle): add unit reference counting and actually destroying Units
-
-	r.destroySignatureSetOfJob(jobName)
-	// TODO(jonboulle): handle errors
 
 	return nil
 }

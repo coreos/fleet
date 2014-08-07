@@ -2,7 +2,6 @@ package unit
 
 import (
 	"bytes"
-	"fmt"
 	"strings"
 
 	"github.com/coreos/fleet/Godeps/_workspace/src/github.com/coreos/go-systemd/unit"
