@@ -17,11 +17,10 @@ const (
 	// time between triggering reconciliation routine
 	reconcileInterval = 5 * time.Second
 
-	taskTypeLoadJob       = "LoadJob"
-	taskTypeUnloadJob     = "UnloadJob"
-	taskTypeStartJob      = "StartJob"
-	taskTypeStopJob       = "StopJob"
-	taskTypeUnscheduleJob = "UnscheduleJob"
+	taskTypeLoadJob   = "LoadJob"
+	taskTypeUnloadJob = "UnloadJob"
+	taskTypeStartJob  = "StartJob"
+	taskTypeStopJob   = "StopJob"
 
 	taskReasonScheduledButNotRunnable    = "job scheduled locally but unable to run"
 	taskReasonScheduledButUnloaded       = "job scheduled here but not loaded"
@@ -164,8 +163,6 @@ func (ar *AgentReconciler) doTask(a *Agent, t *task) (err error) {
 		a.startJob(t.Job.Name)
 	case taskTypeStopJob:
 		a.stopJob(t.Job.Name)
-	case taskTypeUnscheduleJob:
-		err = ar.unscheduleJob(t.Job.Name, a.Machine.State().ID)
 	default:
 		err = fmt.Errorf("unrecognized task type %q", t.Type)
 	}
@@ -175,10 +172,6 @@ func (ar *AgentReconciler) doTask(a *Agent, t *task) (err error) {
 	}
 
 	return
-}
-
-func (ar *AgentReconciler) unscheduleJob(jName, machID string) error {
-	return ar.reg.ClearJobTarget(jName, machID)
 }
 
 // desiredAgentState builds an *AgentState object that represents what an
@@ -268,26 +261,6 @@ func (ar *AgentReconciler) calculateTasksForJob(dState, cState *AgentState, jNam
 		}
 
 		delete(cState.Jobs, jName)
-		return
-	}
-
-	if able, reason := cState.AbleToRun(dJob); !able {
-		log.Errorf("Unable to run locally-scheduled Job(%s): %s", jName, reason)
-
-		taskchan <- &task{
-			Type:   taskTypeUnscheduleJob,
-			Job:    dJob,
-			Reason: taskReasonScheduledButNotRunnable,
-		}
-		delete(dState.Jobs, jName)
-
-		taskchan <- &task{
-			Type:   taskTypeUnloadJob,
-			Job:    dJob,
-			Reason: taskReasonScheduledButNotRunnable,
-		}
-		delete(cState.Jobs, jName)
-
 		return
 	}
 
