@@ -36,24 +36,64 @@ func (r *EtcdRegistry) unitStatePath(machID, jobName string) string {
 	return path.Join(r.unitStatesNamespace(jobName), machID)
 }
 
-type musKey struct {
+// States returns a list of all UnitStates stored in the registry
+func (r *EtcdRegistry) States() (states []*unit.UnitState, err error) {
+	var mus map[MUSKey]*unit.UnitState
+	mus, err = r.statesByMUSKey()
+	if err != nil {
+		return
+	}
+	for _, us := range mus {
+		states = append(states, us)
+	}
+	return
+}
+
+// MUSKey is used to index UnitStates by machine ID + unit name
+type MUSKey struct {
 	machID string
 	name   string
 }
 
-// States returns a list of all UnitStates stored in the registry
-func (r *EtcdRegistry) States() (states []*unit.UnitState, err error) {
+// statesByMUSKey returns a map of all UnitStates stored in the registry index by MUSKey
+func (r *EtcdRegistry) statesByMUSKey() (map[MUSKey]*unit.UnitState, error) {
+	mus := make(map[MUSKey]*unit.UnitState)
+
+	// For backwards compatibility, first retrieve any states stored in the
+	// old format
 	req := etcd.Get{
-		Key:       path.Join(r.keyPrefix, statesPrefix),
+		Key:       path.Join(r.keyPrefix, statePrefix),
 		Recursive: true,
 	}
 	res, err := r.etcd.Do(&req)
 	if err != nil && !isKeyNotFound(err) {
-		return
+		return nil, err
+	}
+	if res != nil {
+		for _, node := range res.Node.Nodes {
+			_, name := path.Split(node.Key)
+			var usm unitStateModel
+			if err := unmarshal(node.Value, &usm); err != nil {
+				log.Errorf("Error unmarshalling UnitState(%s): %v", name, err)
+				continue
+			}
+			us := modelToUnitState(&usm, name)
+			if us != nil {
+				key := MUSKey{name, us.MachineID}
+				mus[key] = us
+			}
+		}
 	}
 
-	mus := make(map[musKey]*unit.UnitState)
-
+	// Now retrieve states stored in the new format and overlay them
+	req = etcd.Get{
+		Key:       path.Join(r.keyPrefix, statesPrefix),
+		Recursive: true,
+	}
+	res, err = r.etcd.Do(&req)
+	if err != nil && !isKeyNotFound(err) {
+		return nil, err
+	}
 	if res != nil {
 		for _, dir := range res.Node.Nodes {
 			_, name := path.Split(dir.Key)
@@ -66,50 +106,17 @@ func (r *EtcdRegistry) States() (states []*unit.UnitState, err error) {
 				}
 				us := modelToUnitState(&usm, name)
 				if us != nil {
-					key := musKey{name, machID}
+					key := MUSKey{name, machID}
 					mus[key] = us
 				}
 			}
 		}
 	}
-
-	// For backwards compatibility, retrieve any states stored in the old
-	// format and overlay them
-	req = etcd.Get{
-		Key:       path.Join(r.keyPrefix, statePrefix),
-		Recursive: true,
-	}
-	res, err = r.etcd.Do(&req)
-	if err != nil {
-		if isKeyNotFound(err) {
-			err = nil
-		}
-		return
-	}
-	for _, node := range res.Node.Nodes {
-		_, name := path.Split(node.Key)
-		var usm unitStateModel
-		if err := unmarshal(node.Value, &usm); err != nil {
-			log.Errorf("Error unmarshalling UnitState(%s): %v", name, err)
-			continue
-		}
-		us := modelToUnitState(&usm, name)
-		if us != nil {
-			key := musKey{name, us.MachineID}
-			mus[key] = us
-		}
-	}
-
-	for _, us := range mus {
-		states = append(states, us)
-	}
-
-	return
+	return mus, nil
 }
 
 // getUnitState retrieves the current UnitState of the provided Job's Unit
 func (r *EtcdRegistry) getUnitState(jobName string) *unit.UnitState {
-	// TODO(jonboulle): deal with multiple UnitStates
 	legacyKey := r.legacyUnitStatePath(jobName)
 	req := etcd.Get{
 		Key:       legacyKey,
