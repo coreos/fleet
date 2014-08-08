@@ -19,5 +19,8 @@ type API interface {
 	LatestVersion() (*semver.Version, error)
 	Machines() ([]machine.MachineState, error)
 	SetJobTargetState(string, job.JobState) error
-	States() ([]*unit.UnitState, error)
+
+	JobUnits() ([]job.JobUnit, error)
+	ScheduledUnits() ([]job.ScheduledUnit, error)
+	UnitStates() ([]*unit.UnitState, error)
 }

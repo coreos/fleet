@@ -7,24 +7,23 @@ import (
 	"github.com/coreos/fleet/unit"
 )
 
-func newNamedTestJobFromUnitContents(t *testing.T, name, contents string) *job.Job {
+func newNamedTestJobUnitFromUnitContents(t *testing.T, name, contents string) job.JobUnit {
 	u, err := unit.NewUnit(contents)
 	if err != nil {
 		t.Fatalf("error creating Unit from %q: %v", contents, err)
 	}
-	j := job.NewJob(name, *u)
-	if j == nil {
-		t.Fatalf("error creating Job %q from %q", name, u)
+	return job.JobUnit{
+		Name: name,
+		Unit: *u,
 	}
-	return j
 }
 
-func newTestJobFromUnitContents(t *testing.T, contents string) *job.Job {
-	return newNamedTestJobFromUnitContents(t, "foo.service", contents)
+func newTestJobUnitFromUnitContents(t *testing.T, contents string) job.JobUnit {
+	return newNamedTestJobUnitFromUnitContents(t, "foo.service", contents)
 }
 
 func TestListUnitFilesFieldsToStrings(t *testing.T) {
-	j := newTestJobFromUnitContents(t, "")
+	j := newTestJobUnitFromUnitContents(t, "")
 	for k, v := range map[string]string{
 		"hash": "da39a3e",
 		"desc": "-",
@@ -36,7 +35,7 @@ func TestListUnitFilesFieldsToStrings(t *testing.T) {
 	f := listUnitFilesFields["unit"](j, false)
 	assertEqual(t, "unit", j.Name, f)
 
-	j = newTestJobFromUnitContents(t, `[Unit]
+	j = newTestJobUnitFromUnitContents(t, `[Unit]
 Description=some description`)
 	d := listUnitFilesFields["desc"](j, false)
 	assertEqual(t, "desc", "some description", d)

@@ -103,7 +103,7 @@ func runListUnits(args []string) (exit int) {
 		}
 	}
 
-	states, err := cAPI.States()
+	states, err := cAPI.UnitStates()
 
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error retrieving list of units from repository: %v\n", err)

@@ -38,11 +38,13 @@ type Registry interface {
 	SubmitJobBid(jName, machID string)
 	UnresolvedJobOffers() ([]job.JobOffer, error)
 
-	UnitStateRegistry
+	UnitRegistry
 }
 
-type UnitStateRegistry interface {
-	States() ([]*unit.UnitState, error)
+type UnitRegistry interface {
+	JobUnits() ([]job.JobUnit, error)
+	ScheduledUnits() ([]job.ScheduledUnit, error)
+	UnitStates() ([]*unit.UnitState, error)
 }
 
 type Lease interface {

@@ -22,21 +22,21 @@ var (
 		Description: `Display the current scheduling of units in the cluster.`,
 		Run:         runListUnitSchedule,
 	}
-	listUnitScheduleFields = map[string]jobToField{
-		"unit": func(j *job.Job, full bool) string {
+	listUnitScheduleFields = map[string]schedUnitToField{
+		"unit": func(j job.ScheduledUnit, full bool) string {
 			return j.Name
 		},
-		"dstate": func(j *job.Job, full bool) string {
+		"dstate": func(j job.ScheduledUnit, full bool) string {
 			return string(j.TargetState)
 		},
-		"state": func(j *job.Job, full bool) string {
+		"state": func(j job.ScheduledUnit, full bool) string {
 			js := j.State
 			if js != nil {
 				return string(*js)
 			}
 			return "-"
 		},
-		"tmachine": func(j *job.Job, full bool) string {
+		"tmachine": func(j job.ScheduledUnit, full bool) string {
 			if j.TargetMachineID == "" {
 				return "-"
 			}
@@ -50,10 +50,12 @@ var (
 	}
 )
 
+type schedUnitToField func(j job.ScheduledUnit, full bool) string
+
 func init() {
 	cmdListUnitSchedule.Flags.BoolVar(&sharedFlags.Full, "full", false, "Do not ellipsize fields on output")
 	cmdListUnitSchedule.Flags.BoolVar(&sharedFlags.NoLegend, "no-legend", false, "Do not print a legend (column headers)")
-	cmdListUnitSchedule.Flags.StringVar(&listUnitScheduleFieldsFlag, "fields", defaultListUnitScheduleFields, fmt.Sprintf("Columns to print for each Unit file. Valid fields are %q", strings.Join(jobToFieldKeys(listUnitScheduleFields), ",")))
+	cmdListUnitSchedule.Flags.StringVar(&listUnitScheduleFieldsFlag, "fields", defaultListUnitScheduleFields, fmt.Sprintf("Columns to print for each Unit file. Valid fields are %q", strings.Join(schedUnitToFieldKeys(listUnitScheduleFields), ",")))
 }
 
 func runListUnitSchedule(args []string) (exit int) {
@@ -70,7 +72,7 @@ func runListUnitSchedule(args []string) (exit int) {
 		}
 	}
 
-	jobs, err := cAPI.Jobs()
+	units, err := cAPI.ScheduledUnits()
 
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error retrieving list of units from repository: %v\n", err)
@@ -80,15 +82,21 @@ func runListUnitSchedule(args []string) (exit int) {
 		fmt.Fprintln(out, strings.ToUpper(strings.Join(cols, "\t")))
 	}
 
-	for _, j := range jobs {
-		j := j
+	for _, u := range units {
 		var f []string
 		for _, c := range cols {
-			f = append(f, listUnitScheduleFields[c](&j, sharedFlags.Full))
+			f = append(f, listUnitScheduleFields[c](u, sharedFlags.Full))
 		}
 		fmt.Fprintln(out, strings.Join(f, "\t"))
 	}
 
 	out.Flush()
+	return
+}
+
+func schedUnitToFieldKeys(m map[string]schedUnitToField) (keys []string) {
+	for k := range m {
+		keys = append(keys, k)
+	}
 	return
 }

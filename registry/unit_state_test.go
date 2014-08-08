@@ -289,7 +289,7 @@ func usToJson(t *testing.T, us *unit.UnitState) string {
 	return json
 }
 
-func TestStates(t *testing.T) {
+func TestUnitStates(t *testing.T) {
 	fus1 := unit.UnitState{"abc", "def", "ghi", "mID1", "xyz", "foo"}
 	fusn1 := etcd.Node{
 		Key:   "/fleet/states/foo/mID1",
@@ -330,16 +330,16 @@ func TestStates(t *testing.T) {
 		res: res,
 	}
 	r := &EtcdRegistry{e, "/fleet/"}
-	got, err := r.States()
+	got, err := r.UnitStates()
 	if err != nil {
-		t.Errorf("unexpected error calling States(): %v", err)
+		t.Errorf("unexpected error calling UnitStates(): %v", err)
 	}
 	want := []*unit.UnitState{
 		&fus1,
 		&fus2,
 	}
 	if !reflect.DeepEqual(got, want) {
-		t.Errorf("States() returned unexpected result")
+		t.Errorf("UnitStates() returned unexpected result")
 		t.Log("got:\n")
 		for _, i := range got {
 			t.Logf("#v", i)
@@ -352,21 +352,21 @@ func TestStates(t *testing.T) {
 
 	e = &testEtcdClient{err: etcd.Error{ErrorCode: etcd.ErrorKeyNotFound}}
 	r = &EtcdRegistry{e, "/fleet"}
-	got, err = r.States()
+	got, err = r.UnitStates()
 	if err != nil {
-		t.Errorf("unexpected error calling States(): %v", err)
+		t.Errorf("unexpected error calling UnitStates(): %v", err)
 	}
 	if len(got) != 0 {
-		t.Errorf("States() returned unexpected non-empty result on error: %v", got)
+		t.Errorf("UnitStates() returned unexpected non-empty result on error: %v", got)
 	}
 
 	e = &testEtcdClient{err: errors.New("ur registry don't work")}
 	r = &EtcdRegistry{e, "/fleet"}
-	got, err = r.States()
+	got, err = r.UnitStates()
 	if err == nil {
-		t.Errorf("expected error calling States() but got none!")
+		t.Errorf("expected error calling UnitStates() but got none!")
 	}
 	if len(got) != 0 {
-		t.Errorf("States() returned unexpected non-empty result on error: %v", got)
+		t.Errorf("UnitStates() returned unexpected non-empty result on error: %v", got)
 	}
 }

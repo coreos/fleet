@@ -8,41 +8,39 @@ import (
 )
 
 func TestListUnitScheduleFieldsToStrings(t *testing.T) {
-	j := newTestJobFromUnitContents(t, "")
+	su := job.ScheduledUnit{
+		Name: "foo.service",
+	}
 	for k, v := range map[string]string{
 		"unit":     "foo.service",
-		"dstate":   "inactive",
 		"tmachine": "-",
 		"state":    "-",
 	} {
-		f := listUnitScheduleFields[k](j, false)
+		f := listUnitScheduleFields[k](su, false)
 		assertEqual(t, k, v, f)
 	}
 
-	f := listUnitScheduleFields["unit"](j, false)
-	assertEqual(t, "unit", j.Name, f)
-
-	j = newTestJobFromUnitContents(t, `[Unit]
-Description=some description`)
+	f := listUnitScheduleFields["unit"](su, false)
+	assertEqual(t, "unit", su.Name, f)
 
 	for _, state := range []job.JobState{job.JobStateLoaded, job.JobStateInactive, job.JobStateLaunched} {
-		j.State = &state
-		f := listUnitScheduleFields["state"](j, false)
+		su.State = &state
+		f := listUnitScheduleFields["state"](su, false)
 		assertEqual(t, "state", string(state), f)
 	}
 
-	j.TargetMachineID = "some-id"
-	ms := listUnitScheduleFields["tmachine"](j, true)
+	su.TargetMachineID = "some-id"
+	ms := listUnitScheduleFields["tmachine"](su, true)
 	assertEqual(t, "machine", "some-id", ms)
 
-	j.TargetMachineID = "other-id"
+	su.TargetMachineID = "other-id"
 	machineStates = map[string]*machine.MachineState{
 		"other-id": &machine.MachineState{
 			ID:       "other-id",
 			PublicIP: "1.2.3.4",
 		},
 	}
-	ms = listUnitScheduleFields["tmachine"](j, true)
+	ms = listUnitScheduleFields["tmachine"](su, true)
 	assertEqual(t, "machine", "other-id/1.2.3.4", ms)
 
 }

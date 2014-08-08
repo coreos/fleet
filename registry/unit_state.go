@@ -36,8 +36,8 @@ func (r *EtcdRegistry) unitStatePath(machID, jobName string) string {
 	return path.Join(r.unitStatesNamespace(jobName), machID)
 }
 
-// States returns a list of all UnitStates stored in the registry
-func (r *EtcdRegistry) States() (states []*unit.UnitState, err error) {
+// UnitStates returns a list of all UnitStates stored in the registry
+func (r *EtcdRegistry) UnitStates() (states []*unit.UnitState, err error) {
 	var mus map[MUSKey]*unit.UnitState
 	mus, err = r.statesByMUSKey()
 	if err != nil {
