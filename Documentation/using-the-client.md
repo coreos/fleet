@@ -42,7 +42,11 @@ For information about the additional unit file parameters fleet will interact wi
 
 ### Explore existing units
 
-List all units in the fleet cluster with `fleetctl list-units`. This will describe all units the fleet cluster knows about, running or not:
+List the unit files that the fleet cluster knows about with `fleetctl list-unit-files`:
+
+See what the current state of scheduling is with `fleetctl show-schedule`:
+
+Finally, see the latest status of active units in the cluster (those loaded into a machine) with `fleetctl list-units`:
 
 ```
 $ fleetctl list-units

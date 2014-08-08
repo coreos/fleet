@@ -10,19 +10,19 @@ import (
 )
 
 const (
-	defaultListUnitScheduleFields = "unit,dstate,state,tmachine"
+	defaultShowScheduleFields = "unit,dstate,state,tmachine"
 )
 
 var (
-	listUnitScheduleFieldsFlag string
-	cmdListUnitSchedule        = &Command{
-		Name:        "list-unit-schedule",
-		Summary:     "List the scheduling of units that exist in the cluster.",
+	showScheduleFieldsFlag string
+	cmdShowSchedule        = &Command{
+		Name:        "show-schedule",
+		Summary:     "Display the scheduling of units that exist in the cluster.",
 		Usage:       "[--fields]",
 		Description: `Display the current scheduling of units in the cluster.`,
-		Run:         runListUnitSchedule,
+		Run:         runShowSchedule,
 	}
-	listUnitScheduleFields = map[string]schedUnitToField{
+	showScheduleFields = map[string]schedUnitToField{
 		"unit": func(j job.ScheduledUnit, full bool) string {
 			return j.Name
 		},
@@ -53,26 +53,26 @@ var (
 type schedUnitToField func(j job.ScheduledUnit, full bool) string
 
 func init() {
-	cmdListUnitSchedule.Flags.BoolVar(&sharedFlags.Full, "full", false, "Do not ellipsize fields on output")
-	cmdListUnitSchedule.Flags.BoolVar(&sharedFlags.NoLegend, "no-legend", false, "Do not print a legend (column headers)")
-	cmdListUnitSchedule.Flags.StringVar(&listUnitScheduleFieldsFlag, "fields", defaultListUnitScheduleFields, fmt.Sprintf("Columns to print for each Unit file. Valid fields are %q", strings.Join(schedUnitToFieldKeys(listUnitScheduleFields), ",")))
+	cmdShowSchedule.Flags.BoolVar(&sharedFlags.Full, "full", false, "Do not ellipsize fields on output")
+	cmdShowSchedule.Flags.BoolVar(&sharedFlags.NoLegend, "no-legend", false, "Do not print a legend (column headers)")
+	cmdShowSchedule.Flags.StringVar(&showScheduleFieldsFlag, "fields", defaultShowScheduleFields, fmt.Sprintf("Columns to print for each Unit file. Valid fields are %q", strings.Join(schedUnitToFieldKeys(showScheduleFields), ",")))
 }
 
-func runListUnitSchedule(args []string) (exit int) {
-	if listUnitScheduleFieldsFlag == "" {
+func runShowSchedule(args []string) (exit int) {
+	if showScheduleFieldsFlag == "" {
 		fmt.Fprintf(os.Stderr, "Must define output format\n")
 		return 1
 	}
 
-	cols := strings.Split(listUnitScheduleFieldsFlag, ",")
+	cols := strings.Split(showScheduleFieldsFlag, ",")
 	for _, s := range cols {
-		if _, ok := listUnitScheduleFields[s]; !ok {
+		if _, ok := showScheduleFields[s]; !ok {
 			fmt.Fprintf(os.Stderr, "Invalid key in output format: %q\n", s)
 			return 1
 		}
 	}
 
-	units, err := cAPI.ScheduledUnits()
+	units, err := cAPI.Schedule()
 
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error retrieving list of units from repository: %v\n", err)
@@ -85,7 +85,7 @@ func runListUnitSchedule(args []string) (exit int) {
 	for _, u := range units {
 		var f []string
 		for _, c := range cols {
-			f = append(f, listUnitScheduleFields[c](u, sharedFlags.Full))
+			f = append(f, showScheduleFields[c](u, sharedFlags.Full))
 		}
 		fmt.Fprintln(out, strings.Join(f, "\t"))
 	}

@@ -66,8 +66,8 @@ func (r *EtcdRegistry) Jobs() ([]job.Job, error) {
 	return jobs, nil
 }
 
-// ScheduledUnits returns all ScheduledUnits known by fleet, ordered by name
-func (r *EtcdRegistry) ScheduledUnits() ([]job.ScheduledUnit, error) {
+// Schedule returns all ScheduledUnits known by fleet, ordered by name
+func (r *EtcdRegistry) Schedule() ([]job.ScheduledUnit, error) {
 	req := etcd.Get{
 		Key:       path.Join(r.keyPrefix, jobPrefix),
 		Sorted:    true,

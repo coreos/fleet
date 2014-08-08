@@ -21,6 +21,6 @@ type API interface {
 	SetJobTargetState(string, job.JobState) error
 
 	JobUnits() ([]job.JobUnit, error)
-	ScheduledUnits() ([]job.ScheduledUnit, error)
+	Schedule() ([]job.ScheduledUnit, error)
 	UnitStates() ([]*unit.UnitState, error)
 }

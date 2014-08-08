@@ -7,7 +7,7 @@ import (
 	"github.com/coreos/fleet/machine"
 )
 
-func TestListUnitScheduleFieldsToStrings(t *testing.T) {
+func TestShowScheduleFieldsToStrings(t *testing.T) {
 	su := job.ScheduledUnit{
 		Name: "foo.service",
 	}
@@ -16,21 +16,21 @@ func TestListUnitScheduleFieldsToStrings(t *testing.T) {
 		"tmachine": "-",
 		"state":    "-",
 	} {
-		f := listUnitScheduleFields[k](su, false)
+		f := showScheduleFields[k](su, false)
 		assertEqual(t, k, v, f)
 	}
 
-	f := listUnitScheduleFields["unit"](su, false)
+	f := showScheduleFields["unit"](su, false)
 	assertEqual(t, "unit", su.Name, f)
 
 	for _, state := range []job.JobState{job.JobStateLoaded, job.JobStateInactive, job.JobStateLaunched} {
 		su.State = &state
-		f := listUnitScheduleFields["state"](su, false)
+		f := showScheduleFields["state"](su, false)
 		assertEqual(t, "state", string(state), f)
 	}
 
 	su.TargetMachineID = "some-id"
-	ms := listUnitScheduleFields["tmachine"](su, true)
+	ms := showScheduleFields["tmachine"](su, true)
 	assertEqual(t, "machine", "some-id", ms)
 
 	su.TargetMachineID = "other-id"
@@ -40,7 +40,7 @@ func TestListUnitScheduleFieldsToStrings(t *testing.T) {
 			PublicIP: "1.2.3.4",
 		},
 	}
-	ms = listUnitScheduleFields["tmachine"](su, true)
+	ms = showScheduleFields["tmachine"](su, true)
 	assertEqual(t, "machine", "other-id/1.2.3.4", ms)
 
 }
