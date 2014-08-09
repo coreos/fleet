@@ -3,6 +3,7 @@ package registry
 import (
 	"errors"
 	"reflect"
+	"sort"
 	"testing"
 
 	"github.com/coreos/fleet/etcd"
@@ -20,11 +21,13 @@ type testEtcdClient struct {
 	gets    []action
 	sets    []action
 	deletes []action
-	res     *etcd.Result
-	err     error
+	res     []*etcd.Result // errors returned from subsequent calls to etcd
+	ri      int
+	err     []error // results returned from subsequent calls to etcd
+	ei      int
 }
 
-func (t *testEtcdClient) Do(req etcd.Action) (*etcd.Result, error) {
+func (t *testEtcdClient) Do(req etcd.Action) (r *etcd.Result, e error) {
 	if s, ok := req.(*etcd.Set); ok {
 		t.sets = append(t.sets, action{key: s.Key, val: s.Value})
 	} else if d, ok := req.(*etcd.Delete); ok {
@@ -32,11 +35,19 @@ func (t *testEtcdClient) Do(req etcd.Action) (*etcd.Result, error) {
 	} else if g, ok := req.(*etcd.Get); ok {
 		t.gets = append(t.gets, action{key: g.Key, rec: g.Recursive})
 	}
-	return t.res, t.err
+	if t.ri < len(t.res) {
+		r = t.res[t.ri]
+		t.ri++
+	}
+	if t.ei < len(t.err) {
+		e = t.err[t.ei]
+		t.ei++
+	}
+	return r, e
 }
 
 func (t *testEtcdClient) Wait(req etcd.Action, ch <-chan struct{}) (*etcd.Result, error) {
-	return t.res, t.err
+	return t.Do(req)
 }
 
 func TestUnitStatePaths(t *testing.T) {
@@ -97,7 +108,7 @@ func TestSaveUnitState(t *testing.T) {
 		t.Errorf("unexpected deletes during SaveUnitState: %#v", e.deletes)
 	}
 	if e.gets != nil {
-		t.Errorf("unexpected gets during RemoveUnitState: %#v", e.gets)
+		t.Errorf("unexpected gets during SaveUnitState: %#v", e.gets)
 	}
 }
 
@@ -124,18 +135,23 @@ func TestRemoveUnitState(t *testing.T) {
 		t.Errorf("unexpected gets during RemoveUnitState: %#v", e.gets)
 	}
 
-	e = &testEtcdClient{err: errors.New("some error")}
-	r = &EtcdRegistry{e, "/fleet/"}
-	err = r.RemoveUnitState("foo.service")
-	if err == nil {
-		t.Errorf("did not get expected error from RemoveUnitState")
-	}
-
-	e = &testEtcdClient{err: etcd.Error{ErrorCode: etcd.ErrorKeyNotFound}}
-	r = &EtcdRegistry{e, "/fleet/"}
-	err = r.RemoveUnitState("foo.service")
-	if err != nil {
-		t.Errorf("unexpected error from RemoveUnitState: %v", err)
+	// Ensure RemoveUnitState handles different error scenarios appropriately
+	for i, tt := range []struct {
+		errs []error
+		fail bool
+	}{
+		{[]error{etcd.Error{ErrorCode: etcd.ErrorKeyNotFound}}, false},
+		{[]error{nil, etcd.Error{ErrorCode: etcd.ErrorKeyNotFound}}, false},
+		{[]error{nil, nil}, false}, // No errors, no responses should succeed
+		{[]error{errors.New("ur registry don't work")}, true},
+		{[]error{nil, errors.New("ur registry don't work")}, true},
+	} {
+		e = &testEtcdClient{err: tt.errs}
+		r = &EtcdRegistry{e, "/fleet"}
+		err = r.RemoveUnitState("foo.service")
+		if (err != nil) != tt.fail {
+			t.Errorf("case %d: unexpected error state calling UnitStates(): got %v, want %v", i, err, tt.fail)
+		}
 	}
 }
 
@@ -262,8 +278,8 @@ func TestGetUnitState(t *testing.T) {
 		},
 	} {
 		e := &testEtcdClient{
-			res: tt.res,
-			err: tt.err,
+			res: []*etcd.Result{tt.res},
+			err: []error{tt.err},
 		}
 		r := &EtcdRegistry{e, "/fleet/"}
 		j := "foo.service"
@@ -290,83 +306,134 @@ func usToJson(t *testing.T, us *unit.UnitState) string {
 }
 
 func TestUnitStates(t *testing.T) {
-	fus1 := unit.UnitState{"abc", "def", "ghi", "mID1", "xyz", "foo"}
-	fusn1 := etcd.Node{
-		Key:   "/fleet/states/foo/mID1",
-		Value: usToJson(t, &fus1),
-	}
-	fus2 := unit.UnitState{"abc", "def", "ghi", "mID2", "xyz", "foo"}
-	fusn2 := etcd.Node{
-		Key:   "/fleet/states/foo/mID2",
-		Value: usToJson(t, &fus2),
-	}
+	fus1 := unit.UnitState{"abc", "def", "ghi", "mID1", "zzz", "foo"}
+	fus2 := unit.UnitState{"cat", "dog", "cow", "mID2", "xxx", "foo"}
+	// Multiple new unit states reported for the same unit
 	foo := etcd.Node{
 		Key: "/fleet/states/foo",
 		Nodes: []etcd.Node{
-			fusn1,
-			fusn2,
-		},
-	}
-	bar1 := etcd.Node{
-		Key:   "/fleet/states/bar/asdf",
-		Value: ``,
-	}
-	bar := etcd.Node{
-		Key: "/fleet/states/bar",
-		Nodes: []etcd.Node{
-			bar1,
-		},
-	}
-	res := &etcd.Result{
-		Node: &etcd.Node{
-			Key: "/fleet/states",
-			Nodes: []etcd.Node{
-				foo,
-				bar,
+			etcd.Node{
+				Key:   "/fleet/states/foo/mID1",
+				Value: usToJson(t, &fus1),
+			},
+			etcd.Node{
+				Key:   "/fleet/states/foo/mID2",
+				Value: usToJson(t, &fus2),
 			},
 		},
 	}
+	// Bogus new unit state which we won't expect to see in results
+	bar := etcd.Node{
+		Key: "/fleet/states/bar",
+		Nodes: []etcd.Node{
+			etcd.Node{
+				Key:   "/fleet/states/bar/asdf",
+				Value: `total garbage`,
+			},
+		},
+	}
+	// Legacy unit state which we expect to be overridden by fus1 (from the
+	// same machine ID)
+	fus3 := unit.UnitState{"cba", "fed", "ihg", "mID1", "zzz", "foo"}
+	bfoo := etcd.Node{
+		Key:   "/fleet/state/foo",
+		Value: usToJson(t, &fus3),
+	}
+	// Legacy unit state which we expect to see in the results
+	bus := unit.UnitState{"111", "222", "333", "mID3", "aaa", "bar"}
+	baz := etcd.Node{
+		Key:   "/fleet/state/bar",
+		Value: usToJson(t, &bus),
+	}
+
+	// Result from crawling the legacy "state" namespace
+	res1 := &etcd.Result{
+		Node: &etcd.Node{
+			Key:   "/fleet/state",
+			Nodes: []etcd.Node{bfoo, baz},
+		},
+	}
+	// Result from crawling the new "states" namespace
+	res2 := &etcd.Result{
+		Node: &etcd.Node{
+			Key:   "/fleet/states",
+			Nodes: []etcd.Node{foo, bar},
+		},
+	}
 	e := &testEtcdClient{
-		res: res,
+		res: []*etcd.Result{res1, res2},
 	}
 	r := &EtcdRegistry{e, "/fleet/"}
+
 	got, err := r.UnitStates()
 	if err != nil {
 		t.Errorf("unexpected error calling UnitStates(): %v", err)
 	}
+
 	want := []*unit.UnitState{
+		&bus,
 		&fus1,
 		&fus2,
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("UnitStates() returned unexpected result")
-		t.Log("got:\n")
+		t.Log("got:")
 		for _, i := range got {
-			t.Logf("#v", i)
+			t.Logf("%#v", i)
 		}
-		t.Log("want:\n")
+		t.Log("want:")
 		for _, i := range want {
-			t.Logf("#v", i)
+			t.Logf("%#v", i)
 		}
 	}
 
-	e = &testEtcdClient{err: etcd.Error{ErrorCode: etcd.ErrorKeyNotFound}}
-	r = &EtcdRegistry{e, "/fleet"}
-	got, err = r.UnitStates()
-	if err != nil {
-		t.Errorf("unexpected error calling UnitStates(): %v", err)
+	// Ensure UnitState handles different error scenarios appropriately
+	for i, tt := range []struct {
+		errs []error
+		fail bool
+	}{
+		{[]error{etcd.Error{ErrorCode: etcd.ErrorKeyNotFound}}, false},
+		{[]error{nil, etcd.Error{ErrorCode: etcd.ErrorKeyNotFound}}, false},
+		{[]error{nil, nil}, false}, // No errors, no responses should succeed
+		{[]error{errors.New("ur registry don't work")}, true},
+		{[]error{nil, errors.New("ur registry don't work")}, true},
+	} {
+		e = &testEtcdClient{err: tt.errs}
+		r = &EtcdRegistry{e, "/fleet"}
+		got, err = r.UnitStates()
+		if (err != nil) != tt.fail {
+			t.Errorf("case %d: unexpected error state calling UnitStates(): got %v, want %v", i, err, tt.fail)
+		}
+		if len(got) != 0 {
+			t.Errorf("case %d: UnitStates() returned unexpected non-empty result on error: %v", i, got)
+		}
 	}
-	if len(got) != 0 {
-		t.Errorf("UnitStates() returned unexpected non-empty result on error: %v", got)
-	}
+}
 
-	e = &testEtcdClient{err: errors.New("ur registry don't work")}
-	r = &EtcdRegistry{e, "/fleet"}
-	got, err = r.UnitStates()
-	if err == nil {
-		t.Errorf("expected error calling UnitStates() but got none!")
+func TestMUSKeys(t *testing.T) {
+	equal := func(a MUSKeys, b []MUSKey) bool {
+		if len(a) != len(b) {
+			return false
+		}
+		for i, m := range a {
+			if m != b[i] {
+				return false
+			}
+		}
+		return true
 	}
-	if len(got) != 0 {
-		t.Errorf("UnitStates() returned unexpected non-empty result on error: %v", got)
+	k1 := MUSKey{name: "abc", machID: "aaa"}
+	k2 := MUSKey{name: "abc", machID: "zzz"}
+	k3 := MUSKey{name: "def", machID: "bbb"}
+	k4 := MUSKey{name: "ppp", machID: "zzz"}
+	k5 := MUSKey{name: "xxx", machID: "aaa"}
+	want := []MUSKey{k1, k2, k3, k4, k5}
+	ms := MUSKeys{k3, k4, k5, k2, k1}
+	if equal(ms, want) {
+		t.Fatalf("this should never happen!")
+	}
+	sort.Sort(ms)
+	if !equal(ms, want) {
+		t.Errorf("bad result after sort: got\n%#v, want\n%#v", ms, want)
 	}
 }

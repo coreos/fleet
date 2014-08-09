@@ -26,7 +26,7 @@ func (r *EtcdRegistry) Jobs() ([]job.Job, error) {
 		Recursive: true,
 	}
 
-	resp, err := r.etcd.Do(&req)
+	res, err := r.etcd.Do(&req)
 	if err != nil {
 		if isKeyNotFound(err) {
 			err = nil
@@ -34,7 +34,7 @@ func (r *EtcdRegistry) Jobs() ([]job.Job, error) {
 		return jobs, err
 	}
 
-	for _, dir := range resp.Node.Nodes {
+	for _, dir := range res.Node.Nodes {
 		objKey := path.Join(dir.Key, "object")
 		var obj *etcd.Node
 		for _, node := range dir.Nodes {
@@ -74,7 +74,7 @@ func (r *EtcdRegistry) Schedule() ([]job.ScheduledUnit, error) {
 		Recursive: true,
 	}
 
-	resp, err := r.etcd.Do(&req)
+	res, err := r.etcd.Do(&req)
 	if err != nil {
 		if isKeyNotFound(err) {
 			err = nil
@@ -83,9 +83,9 @@ func (r *EtcdRegistry) Schedule() ([]job.ScheduledUnit, error) {
 	}
 
 	heartbeats := make(map[string]string)
-	jobs := make(map[string]*job.ScheduledUnit)
+	units := make(map[string]*job.ScheduledUnit)
 
-	for _, dir := range resp.Node.Nodes {
+	for _, dir := range res.Node.Nodes {
 		_, name := path.Split(dir.Key)
 		j := &job.ScheduledUnit{
 			Name: name,
@@ -96,7 +96,7 @@ func (r *EtcdRegistry) Schedule() ([]job.ScheduledUnit, error) {
 			continue
 		}
 		heartbeats[name] = heartbeat
-		jobs[name] = j
+		units[name] = j
 	}
 
 	states, err := r.statesByMUSKey()
@@ -105,8 +105,9 @@ func (r *EtcdRegistry) Schedule() ([]job.ScheduledUnit, error) {
 	}
 
 	var sortable sort.StringSlice
+
 	// Determine the JobState of each ScheduledUnit
-	for jName, job := range jobs {
+	for jName, job := range units {
 		sortable = append(sortable, jName)
 		key := MUSKey{
 			machID: job.TargetMachineID,
@@ -120,13 +121,12 @@ func (r *EtcdRegistry) Schedule() ([]job.ScheduledUnit, error) {
 
 	var sortedJobs []job.ScheduledUnit
 	for _, jName := range sortable {
-		sortedJobs = append(sortedJobs, *jobs[jName])
+		sortedJobs = append(sortedJobs, *units[jName])
 	}
 	return sortedJobs, nil
 }
 
 // JobUnits lists all JobUnits known by the Registry, ordered by job name
-// (fleetctl list-unit-files)
 func (r *EtcdRegistry) JobUnits() ([]job.JobUnit, error) {
 	var jobs []job.JobUnit
 
@@ -136,7 +136,7 @@ func (r *EtcdRegistry) JobUnits() ([]job.JobUnit, error) {
 		Recursive: true,
 	}
 
-	resp, err := r.etcd.Do(&req)
+	res, err := r.etcd.Do(&req)
 	if err != nil {
 		if isKeyNotFound(err) {
 			err = nil
@@ -144,7 +144,7 @@ func (r *EtcdRegistry) JobUnits() ([]job.JobUnit, error) {
 		return jobs, err
 	}
 
-	for _, dir := range resp.Node.Nodes {
+	for _, dir := range res.Node.Nodes {
 		objKey := path.Join(dir.Key, "object")
 		var obj *etcd.Node
 		for _, node := range dir.Nodes {
@@ -193,7 +193,7 @@ func (r *EtcdRegistry) Job(jobName string) (*job.Job, error) {
 		Recursive: true,
 	}
 
-	resp, err := r.etcd.Do(&req)
+	res, err := r.etcd.Do(&req)
 	if err != nil {
 		if isKeyNotFound(err) {
 			err = nil
@@ -203,7 +203,7 @@ func (r *EtcdRegistry) Job(jobName string) (*job.Job, error) {
 
 	objKey := path.Join(req.Key, "object")
 	var obj *etcd.Node
-	for _, node := range resp.Node.Nodes {
+	for _, node := range res.Node.Nodes {
 		if node.Key != objKey {
 			continue
 		}
@@ -220,7 +220,7 @@ func (r *EtcdRegistry) Job(jobName string) (*job.Job, error) {
 		return nil, err
 	}
 
-	if err = r.hydrateJobFromDir(j, resp.Node); err != nil {
+	if err = r.hydrateJobFromDir(j, res.Node); err != nil {
 		return nil, err
 	}
 
@@ -415,7 +415,7 @@ func (r *EtcdRegistry) jobTargetState(jobName string) (job.JobState, error) {
 	req := etcd.Get{
 		Key: r.jobTargetStatePath(jobName),
 	}
-	resp, err := r.etcd.Do(&req)
+	res, err := r.etcd.Do(&req)
 	if err != nil {
 		if isKeyNotFound(err) {
 			err = nil
@@ -423,7 +423,7 @@ func (r *EtcdRegistry) jobTargetState(jobName string) (job.JobState, error) {
 		return job.JobStateInactive, err
 	}
 
-	return job.ParseJobState(resp.Node.Value)
+	return job.ParseJobState(res.Node.Value)
 }
 
 func (r *EtcdRegistry) SetJobTargetState(jobName string, state job.JobState) error {
