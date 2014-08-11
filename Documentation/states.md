@@ -1,6 +1,6 @@
 ## Job states
 
-There are currently three cluster-level "fleet" states for a job:
+There are currently three cluster-level states for a job:
 
 - `inactive`: known by fleet, but not assigned to a machine
 - `loaded`: assigned to a machine and loaded into systemd there, but not started

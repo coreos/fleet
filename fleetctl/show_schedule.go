@@ -19,7 +19,7 @@ var (
 		Name:        "show-schedule",
 		Summary:     "Display the scheduling of units that exist in the cluster.",
 		Usage:       "[--fields]",
-		Description: `Display the current scheduling of units in the cluster.`,
+		Description: `Display the scheduling of units that exist in the cluster.`,
 		Run:         runShowSchedule,
 	}
 	showScheduleFields = map[string]schedUnitToField{
@@ -73,7 +73,6 @@ func runShowSchedule(args []string) (exit int) {
 	}
 
 	units, err := cAPI.Schedule()
-
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error retrieving list of units from repository: %v\n", err)
 		return 1

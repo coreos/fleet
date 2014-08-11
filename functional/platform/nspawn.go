@@ -30,6 +30,14 @@ func init() {
 		fmt.Printf("%v\n", err)
 		os.Exit(1)
 	}
+	// sanity check etcd availability
+	cmd := exec.Command("etcdctl", "ls")
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		fmt.Printf("Unable to access etcd: %v\n", err)
+		fmt.Println(string(out))
+		os.Exit(1)
+	}
 }
 
 type member struct {

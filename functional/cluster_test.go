@@ -126,7 +126,7 @@ func TestDynamicClusterMemberReboot(t *testing.T) {
 	if _, err = cluster.WaitForNMachines(2); err != nil {
 		t.Fatal(err)
 	}
-	if _, err = cluster.WaitForNActiveUnits(2); err != nil {
+	if _, err := cluster.WaitForNActiveUnits(2); err != nil {
 		t.Fatal(err)
 	}
 	if err = cluster.CreateMember(member, platform.MachineConfig{}); err != nil {
