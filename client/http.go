@@ -5,7 +5,6 @@ import (
 
 	"github.com/coreos/fleet/Godeps/_workspace/src/code.google.com/p/google-api-go-client/googleapi"
 	"github.com/coreos/fleet/Godeps/_workspace/src/github.com/coreos/go-semver/semver"
-	gsunit "github.com/coreos/fleet/Godeps/_workspace/src/github.com/coreos/go-systemd/unit"
 
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/machine"
@@ -38,7 +37,7 @@ func (c *HTTPClient) Machines() ([]machine.MachineState, error) {
 			return nil, err
 		}
 
-		machines = append(machines, mapMachinePageToMachineStates(page.Machines)...)
+		machines = append(machines, schema.MapSchemaToMachineStates(page.Machines)...)
 
 		if len(page.NextPageToken) > 0 {
 			call = c.svc.Machines.List()
@@ -72,17 +71,6 @@ func mapMachinePageToMachineStates(entities []*schema.Machine) []machine.Machine
 }
 
 func (c *HTTPClient) jobs() ([]job.Job, error) {
-	machines, err := c.Machines()
-	if err != nil {
-		return nil, err
-	}
-
-	mm := make(map[string]*machine.MachineState, len(machines))
-	for i, _ := range machines {
-		m := machines[i]
-		mm[m.ID] = &m
-	}
-
 	var jobs []job.Job
 	call := c.svc.Units.List()
 	for call != nil {
@@ -91,7 +79,7 @@ func (c *HTTPClient) jobs() ([]job.Job, error) {
 			return nil, err
 		}
 
-		units, err := mapUnitPageToJobs(page.Units, mm)
+		units, err := schema.MapSchemaToJobs(page.Units)
 		if err != nil {
 			return nil, err
 		}
@@ -179,70 +167,7 @@ func (c *HTTPClient) job(name string) (*job.Job, error) {
 		return nil, nil
 	}
 
-	machines, err := c.Machines()
-	if err != nil {
-		return nil, err
-	}
-
-	mm := make(map[string]*machine.MachineState, len(machines))
-	for i, _ := range machines {
-		m := machines[i]
-		mm[m.ID] = &m
-	}
-
-	return mapUnitToJob(u, mm)
-}
-
-func mapUnitPageToJobs(entities []*schema.Unit, mm map[string]*machine.MachineState) ([]job.Job, error) {
-	jobs := make([]job.Job, len(entities))
-	for i, _ := range entities {
-		entity := entities[i]
-		j, err := mapUnitToJob(entity, mm)
-		if err != nil {
-			return nil, err
-		}
-		if j != nil {
-			jobs[i] = *j
-		}
-	}
-
-	return jobs, nil
-}
-
-func mapUnitToJob(entity *schema.Unit, mm map[string]*machine.MachineState) (*job.Job, error) {
-	opts := make([]*gsunit.UnitOption, len(entity.Options))
-	for i, eopt := range entity.Options {
-		opts[i] = &gsunit.UnitOption{
-			Section: eopt.Section,
-			Name:    eopt.Name,
-			Value:   eopt.Value,
-		}
-	}
-	u := unit.NewUnitFromOptions(opts)
-	js := job.JobState(entity.CurrentState)
-	ts := job.JobState(entity.DesiredState)
-	j := job.Job{
-		Name:        entity.Name,
-		State:       &js,
-		TargetState: ts,
-		Unit:        *u,
-	}
-
-	// populate a UnitState object only if the entity
-	// is actually reporting relevant data
-	if entity.Systemd != nil {
-		j.UnitState = &unit.UnitState{
-			LoadState:   entity.Systemd.LoadState,
-			ActiveState: entity.Systemd.ActiveState,
-			SubState:    entity.Systemd.SubState,
-			UnitName:    j.Name,
-		}
-		if len(entity.Systemd.MachineID) > 0 {
-			j.UnitState.MachineID = entity.Systemd.MachineID
-		}
-	}
-
-	return &j, nil
+	return schema.MapSchemaToJob(u)
 }
 
 func (c *HTTPClient) DestroyUnit(name string) error {

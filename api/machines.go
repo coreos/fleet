@@ -92,21 +92,7 @@ func newMachinePage(items []machine.MachineState, tok *PageToken) *schema.Machin
 	}
 
 	for _, sm := range items {
-		smp.Machines = append(smp.Machines, mapMachineStateToSchema(&sm))
+		smp.Machines = append(smp.Machines, schema.MapMachineStateToSchema(&sm))
 	}
 	return &smp
-}
-
-func mapMachineStateToSchema(ms *machine.MachineState) *schema.Machine {
-	sm := schema.Machine{
-		Id:        ms.ID,
-		PrimaryIP: ms.PublicIP,
-	}
-
-	sm.Metadata = make(map[string]string, len(ms.Metadata))
-	for k, v := range ms.Metadata {
-		sm.Metadata[k] = v
-	}
-
-	return &sm
 }

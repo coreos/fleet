@@ -163,57 +163,6 @@ func TestExtractUnitPage(t *testing.T) {
 	}
 }
 
-func TestMapJobToSchema(t *testing.T) {
-	loaded := job.JobStateLoaded
-
-	tests := []struct {
-		input  job.Job
-		expect schema.Unit
-	}{
-		{
-			job.Job{
-				Name:            "XXX",
-				State:           &loaded,
-				TargetState:     job.JobStateLaunched,
-				TargetMachineID: "ZZZ",
-				Unit:            newUnit(t, "[Service]\nExecStart=/usr/bin/sleep 3000\n"),
-				UnitState: &unit.UnitState{
-					LoadState:   "loaded",
-					ActiveState: "active",
-					SubState:    "running",
-					MachineID:   "YYY",
-				},
-			},
-			schema.Unit{
-				Name:            "XXX",
-				CurrentState:    "loaded",
-				DesiredState:    "launched",
-				TargetMachineID: "ZZZ",
-				Systemd: &schema.SystemdState{
-					LoadState:   "loaded",
-					ActiveState: "active",
-					SubState:    "running",
-					MachineID:   "YYY",
-				},
-				Options: []*schema.UnitOption{
-					&schema.UnitOption{Section: "Service", Name: "ExecStart", Value: "/usr/bin/sleep 3000"},
-				},
-			},
-		},
-	}
-
-	for i, tt := range tests {
-		output, err := mapJobToSchema(&tt.input)
-		if err != nil {
-			t.Errorf("case %d: call to mapJobToSchema failed: %v", i, err)
-			continue
-		}
-		if !reflect.DeepEqual(tt.expect, *output) {
-			t.Errorf("case %d: expect=%v, got=%v", i, tt.expect, *output)
-		}
-	}
-}
-
 func TestUnitGet(t *testing.T) {
 	tests := []struct {
 		item string

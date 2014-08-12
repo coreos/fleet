@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"path"
 
-	gsunit "github.com/coreos/fleet/Godeps/_workspace/src/github.com/coreos/go-systemd/unit"
 	log "github.com/coreos/fleet/Godeps/_workspace/src/github.com/golang/glog"
 
 	"github.com/coreos/fleet/job"
@@ -75,7 +74,7 @@ func (ur *unitsResource) set(rw http.ResponseWriter, req *http.Request, item str
 
 	var uf *unit.UnitFile
 	if len(dus.Options) > 0 {
-		uf = mapSchemaToUnit(dus.Options)
+		uf = schema.MapSchemaToUnitFile(dus.Options)
 	}
 
 	// TODO(bcwaldon): Assert value of DesiredState is launched, loaded or inactive
@@ -172,7 +171,7 @@ func (ur *unitsResource) get(rw http.ResponseWriter, req *http.Request, item str
 		j.TargetMachineID = su.TargetMachineID
 	}
 
-	s, err := mapJobToSchema(&j)
+	s, err := schema.MapJobToSchema(&j)
 	if err != nil {
 		log.Errorf("Failed mapping Job(%s) to schema: %v", item, err)
 		sendError(rw, http.StatusInternalServerError, nil)
@@ -278,62 +277,11 @@ func newUnitPage(reg registry.Registry, items []job.Job, tok *PageToken) (*schem
 	}
 
 	for _, j := range items {
-		u, err := mapJobToSchema(&j)
+		u, err := schema.MapJobToSchema(&j)
 		if err != nil {
 			return nil, err
 		}
 		sup.Units = append(sup.Units, u)
 	}
 	return &sup, nil
-}
-
-func mapJobToSchema(j *job.Job) (*schema.Unit, error) {
-	su := schema.Unit{
-		Name:            j.Name,
-		Options:         mapUnitToSchema(&j.Unit),
-		TargetMachineID: j.TargetMachineID,
-		DesiredState:    string(j.TargetState),
-	}
-
-	if j.State != nil {
-		su.CurrentState = string(*(j.State))
-	}
-
-	if j.UnitState != nil {
-		su.Systemd = &schema.SystemdState{
-			LoadState:   j.UnitState.LoadState,
-			ActiveState: j.UnitState.ActiveState,
-			SubState:    j.UnitState.SubState,
-		}
-		if j.UnitState.MachineID != "" {
-			su.Systemd.MachineID = j.UnitState.MachineID
-		}
-	}
-
-	return &su, nil
-}
-
-func mapUnitToSchema(u *unit.UnitFile) []*schema.UnitOption {
-	sopts := make([]*schema.UnitOption, len(u.Options))
-	for i, opt := range u.Options {
-		sopts[i] = &schema.UnitOption{
-			Section: opt.Section,
-			Name:    opt.Name,
-			Value:   opt.Value,
-		}
-	}
-	return sopts
-}
-
-func mapSchemaToUnit(sopts []*schema.UnitOption) *unit.UnitFile {
-	opts := make([]*gsunit.UnitOption, len(sopts))
-	for i, sopt := range sopts {
-		opts[i] = &gsunit.UnitOption{
-			Section: sopt.Section,
-			Name:    sopt.Name,
-			Value:   sopt.Value,
-		}
-	}
-
-	return unit.NewUnitFromOptions(opts)
 }
