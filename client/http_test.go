@@ -10,6 +10,14 @@ import (
 	"github.com/coreos/fleet/unit"
 )
 
+func newUnit(t *testing.T, str string) unit.Unit {
+	u, err := unit.NewUnit(str)
+	if err != nil {
+		t.Fatalf("Unexpected error creating unit from %q: %v", str, err)
+	}
+	return *u
+}
+
 func TestMapUnitEntityToJob(t *testing.T) {
 	loaded := job.JobStateLoaded
 	inactive := job.JobStateInactive
@@ -35,14 +43,7 @@ func TestMapUnitEntityToJob(t *testing.T) {
 				Name:        "XXX",
 				State:       &loaded,
 				TargetState: inactive,
-				Unit: unit.Unit{
-					Raw: "[Service]\nExecStart=/usr/bin/sleep 3000\n",
-					Contents: map[string]map[string][]string{
-						"Service": map[string][]string{
-							"ExecStart": []string{"/usr/bin/sleep 3000"},
-						},
-					},
-				},
+				Unit:        newUnit(t, "[Service]\nExecStart=/usr/bin/sleep 3000\n"),
 				UnitState: &unit.UnitState{
 					UnitName:    "XXX",
 					LoadState:   "loaded",
@@ -65,14 +66,7 @@ func TestMapUnitEntityToJob(t *testing.T) {
 				Name:        "XXX",
 				State:       &loaded,
 				TargetState: loaded,
-				Unit: unit.Unit{
-					Raw: "[Service]\nExecStart=/usr/bin/sleep 3000\n",
-					Contents: map[string]map[string][]string{
-						"Service": map[string][]string{
-							"ExecStart": []string{"/usr/bin/sleep 3000"},
-						},
-					},
-				},
+				Unit:        newUnit(t, "[Service]\nExecStart=/usr/bin/sleep 3000\n"),
 			},
 		},
 	}

@@ -176,7 +176,7 @@ func TestMapJobToSchema(t *testing.T) {
 				State:           &loaded,
 				TargetState:     job.JobStateLaunched,
 				TargetMachineID: "ZZZ",
-				Unit:            unit.Unit{Raw: "[Service]\nExecStart=/usr/bin/sleep 3000\n"},
+				Unit:            newUnit(t, "[Service]\nExecStart=/usr/bin/sleep 3000\n"),
 				UnitState: &unit.UnitState{
 					LoadState:   "loaded",
 					ActiveState: "active",
@@ -335,7 +335,7 @@ func TestUnitsSetDesiredState(t *testing.T) {
 	}{
 		// Modify the DesiredState of an existing Job
 		{
-			initJobs:    []job.Job{job.Job{Name: "XXX", Unit: unit.Unit{Raw: "FOO"}}},
+			initJobs:    []job.Job{job.Job{Name: "XXX", Unit: newUnit(t, "")}},
 			initStates:  map[string]job.JobState{"XXX": "inactive"},
 			arg:         schema.DesiredUnitState{Name: "XXX", DesiredState: "launched"},
 			code:        http.StatusNoContent,
@@ -358,7 +358,7 @@ func TestUnitsSetDesiredState(t *testing.T) {
 		},
 		// Modifying a Job with garbage fileContents should fail
 		{
-			initJobs:    []job.Job{job.Job{Name: "XXX", Unit: unit.Unit{Raw: "FOO"}}},
+			initJobs:    []job.Job{job.Job{Name: "XXX", Unit: newUnit(t, "")}},
 			initStates:  map[string]job.JobState{"XXX": job.JobStateInactive},
 			arg:         schema.DesiredUnitState{Name: "YYY", DesiredState: "loaded", FileContents: "*"},
 			code:        http.StatusBadRequest,
