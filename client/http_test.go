@@ -12,6 +12,7 @@ import (
 
 func TestMapUnitEntityToJob(t *testing.T) {
 	loaded := job.JobStateLoaded
+	inactive := job.JobStateInactive
 
 	tests := []struct {
 		input  schema.Unit
@@ -21,6 +22,7 @@ func TestMapUnitEntityToJob(t *testing.T) {
 			schema.Unit{
 				Name:         "XXX",
 				CurrentState: "loaded",
+				DesiredState: "inactive",
 				Systemd: &schema.SystemdState{
 					LoadState:   "loaded",
 					ActiveState: "active",
@@ -30,8 +32,9 @@ func TestMapUnitEntityToJob(t *testing.T) {
 				FileHash:     "248b997d6becee1b835b7ec7d9c8e68d7dd24623",
 			},
 			&job.Job{
-				Name:  "XXX",
-				State: &loaded,
+				Name:        "XXX",
+				State:       &loaded,
+				TargetState: inactive,
 				Unit: unit.Unit{
 					Raw: "[Service]\nExecStart=/usr/bin/sleep 3000\n",
 					Contents: map[string]map[string][]string{
@@ -41,6 +44,7 @@ func TestMapUnitEntityToJob(t *testing.T) {
 					},
 				},
 				UnitState: &unit.UnitState{
+					UnitName:    "XXX",
 					LoadState:   "loaded",
 					ActiveState: "active",
 					SubState:    "running",
@@ -53,12 +57,14 @@ func TestMapUnitEntityToJob(t *testing.T) {
 			schema.Unit{
 				Name:         "XXX",
 				CurrentState: "loaded",
+				DesiredState: "loaded",
 				FileContents: "W1NlcnZpY2VdCkV4ZWNTdGFydD0vdXNyL2Jpbi9zbGVlcCAzMDAwCg==",
 				FileHash:     "248b997d6becee1b835b7ec7d9c8e68d7dd24623",
 			},
 			&job.Job{
-				Name:  "XXX",
-				State: &loaded,
+				Name:        "XXX",
+				State:       &loaded,
+				TargetState: loaded,
 				Unit: unit.Unit{
 					Raw: "[Service]\nExecStart=/usr/bin/sleep 3000\n",
 					Contents: map[string]map[string][]string{

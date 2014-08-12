@@ -108,6 +108,52 @@ func (c *HTTPClient) Jobs() ([]job.Job, error) {
 	return jobs, nil
 }
 
+func (c *HTTPClient) JobUnits() ([]job.JobUnit, error) {
+	jobs, err := c.Jobs()
+	if err != nil {
+		return nil, err
+	}
+	var jus []job.JobUnit
+	for _, j := range jobs {
+		ju := job.JobUnit{
+			Name: j.Name,
+			Unit: j.Unit,
+		}
+		jus = append(jus, ju)
+	}
+	return jus, nil
+}
+
+func (c *HTTPClient) Schedule() ([]job.ScheduledUnit, error) {
+	jobs, err := c.Jobs()
+	if err != nil {
+		return nil, err
+	}
+	var sched []job.ScheduledUnit
+	for _, j := range jobs {
+		su := job.ScheduledUnit{
+			Name:            j.Name,
+			State:           j.State,
+			TargetState:     j.TargetState,
+			TargetMachineID: j.TargetMachineID,
+		}
+		sched = append(sched, su)
+	}
+	return sched, nil
+}
+
+func (c *HTTPClient) UnitStates() ([]*unit.UnitState, error) {
+	jobs, err := c.Jobs()
+	if err != nil {
+		return nil, err
+	}
+	var states []*unit.UnitState
+	for _, j := range jobs {
+		states = append(states, j.UnitState)
+	}
+	return states, nil
+}
+
 func (c *HTTPClient) Job(name string) (*job.Job, error) {
 	u, err := c.svc.Units.Get(name).Do()
 	if err != nil {
@@ -162,10 +208,12 @@ func mapUnitToJob(entity *schema.Unit, mm map[string]*machine.MachineState) (*jo
 	}
 
 	js := job.JobState(entity.CurrentState)
+	ts := job.JobState(entity.DesiredState)
 	j := job.Job{
-		Name:  entity.Name,
-		State: &js,
-		Unit:  *u,
+		Name:        entity.Name,
+		State:       &js,
+		TargetState: ts,
+		Unit:        *u,
 	}
 
 	// populate a UnitState object only if the entity
@@ -175,6 +223,7 @@ func mapUnitToJob(entity *schema.Unit, mm map[string]*machine.MachineState) (*jo
 			LoadState:   entity.Systemd.LoadState,
 			ActiveState: entity.Systemd.ActiveState,
 			SubState:    entity.Systemd.SubState,
+			UnitName:    j.Name,
 		}
 		if len(entity.Systemd.MachineID) > 0 {
 			j.UnitState.MachineID = entity.Systemd.MachineID
