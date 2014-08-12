@@ -10,7 +10,6 @@ import (
 
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/machine"
-	"github.com/coreos/fleet/pkg"
 	"github.com/coreos/fleet/unit"
 )
 
@@ -21,7 +20,6 @@ func NewFakeRegistry() *FakeRegistry {
 		jobs:      map[string]job.Job{},
 		units:     []unit.Unit{},
 		version:   nil,
-		bids:      map[string]pkg.Set{},
 	}
 }
 
@@ -37,7 +35,6 @@ type FakeRegistry struct {
 	jobs      map[string]job.Job
 	units     []unit.Unit
 	version   *semver.Version
-	bids      map[string]pkg.Set
 }
 
 func (f *FakeRegistry) SetMachines(machines []machine.MachineState) {
@@ -135,24 +132,6 @@ func (f *FakeRegistry) DestroyJob(name string) error {
 
 	delete(f.jobs, name)
 	return nil
-}
-
-func (f *FakeRegistry) Bids(jName string) (pkg.Set, error) {
-	f.RLock()
-	defer f.RUnlock()
-
-	return f.bids[jName], nil
-}
-
-func (f *FakeRegistry) SubmitJobBid(jName, machID string) {
-	f.Lock()
-	defer f.Unlock()
-
-	_, ok := f.bids[jName]
-	if !ok {
-		f.bids[jName] = pkg.NewUnsafeSet()
-	}
-	f.bids[jName].Add(machID)
 }
 
 func (f *FakeRegistry) SetJobTargetState(name string, target job.JobState) error {

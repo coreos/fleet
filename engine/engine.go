@@ -6,7 +6,6 @@ import (
 
 	log "github.com/coreos/fleet/Godeps/_workspace/src/github.com/golang/glog"
 
-	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/registry"
 )
@@ -156,16 +155,6 @@ func (e *Engine) clusterState() (*clusterState, error) {
 	return newClusterState(jobs, machines), nil
 }
 
-func (e *Engine) resolveJobOffer(jName string) (err error) {
-	err = e.registry.ResolveJobOffer(jName)
-	if err != nil {
-		log.Errorf("Failed resolving JobOffer(%s): %v", jName, err)
-	} else {
-		log.Infof("Resolved JobOffer(%s)", jName)
-	}
-	return
-}
-
 func (e *Engine) unscheduleJob(jName, machID string) (err error) {
 	err = e.registry.ClearJobTarget(jName, machID)
 	if err != nil {
@@ -176,9 +165,9 @@ func (e *Engine) unscheduleJob(jName, machID string) (err error) {
 	return
 }
 
-// attemptScheduleJob accepts a bid for the given Job and persists the
-// decision to the registry, returning true on success. If no bids exist or
-// if any communication with the Registry fails, false is returned.
+// attemptScheduleJob tries to persist a scheduling decision in the
+// Registry, returning true on success. If any communication with the
+// Registry fails, false is returned.
 func (e *Engine) attemptScheduleJob(jName, machID string) bool {
 	err := e.registry.ScheduleJob(jName, machID)
 	if err != nil {
@@ -188,15 +177,4 @@ func (e *Engine) attemptScheduleJob(jName, machID string) bool {
 
 	log.Infof("Scheduled Job(%s) to Machine(%s)", jName, machID)
 	return true
-}
-
-func (e *Engine) offerJob(j *job.Job) (err error) {
-	offer := job.NewOfferFromJob(*j)
-	err = e.registry.CreateJobOffer(offer)
-	if err != nil {
-		log.Errorf("Failed publishing JobOffer(%s): %v", j.Name, err)
-	} else {
-		log.Infof("Published JobOffer(%s)", j.Name)
-	}
-	return
 }
