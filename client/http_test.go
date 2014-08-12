@@ -10,6 +10,14 @@ import (
 	"github.com/coreos/fleet/unit"
 )
 
+func newUnit(t *testing.T, str string) unit.Unit {
+	u, err := unit.NewUnit(str)
+	if err != nil {
+		t.Fatalf("Unexpected error creating unit from %q: %v", str, err)
+	}
+	return *u
+}
+
 func TestMapUnitEntityToJob(t *testing.T) {
 	loaded := job.JobStateLoaded
 	inactive := job.JobStateInactive
@@ -28,21 +36,15 @@ func TestMapUnitEntityToJob(t *testing.T) {
 					ActiveState: "active",
 					SubState:    "running",
 				},
-				FileContents: "W1NlcnZpY2VdCkV4ZWNTdGFydD0vdXNyL2Jpbi9zbGVlcCAzMDAwCg==",
-				FileHash:     "248b997d6becee1b835b7ec7d9c8e68d7dd24623",
+				Options: []*schema.UnitOption{
+					&schema.UnitOption{Section: "Service", Name: "ExecStart", Value: "/usr/bin/sleep 3000"},
+				},
 			},
 			&job.Job{
 				Name:        "XXX",
 				State:       &loaded,
 				TargetState: inactive,
-				Unit: unit.Unit{
-					Raw: "[Service]\nExecStart=/usr/bin/sleep 3000\n",
-					Contents: map[string]map[string][]string{
-						"Service": map[string][]string{
-							"ExecStart": []string{"/usr/bin/sleep 3000"},
-						},
-					},
-				},
+				Unit:        newUnit(t, "[Service]\nExecStart=/usr/bin/sleep 3000\n"),
 				UnitState: &unit.UnitState{
 					UnitName:    "XXX",
 					LoadState:   "loaded",
@@ -58,21 +60,15 @@ func TestMapUnitEntityToJob(t *testing.T) {
 				Name:         "XXX",
 				CurrentState: "loaded",
 				DesiredState: "loaded",
-				FileContents: "W1NlcnZpY2VdCkV4ZWNTdGFydD0vdXNyL2Jpbi9zbGVlcCAzMDAwCg==",
-				FileHash:     "248b997d6becee1b835b7ec7d9c8e68d7dd24623",
+				Options: []*schema.UnitOption{
+					&schema.UnitOption{Section: "Service", Name: "ExecStart", Value: "/usr/bin/sleep 3000"},
+				},
 			},
 			&job.Job{
 				Name:        "XXX",
 				State:       &loaded,
 				TargetState: loaded,
-				Unit: unit.Unit{
-					Raw: "[Service]\nExecStart=/usr/bin/sleep 3000\n",
-					Contents: map[string]map[string][]string{
-						"Service": map[string][]string{
-							"ExecStart": []string{"/usr/bin/sleep 3000"},
-						},
-					},
-				},
+				Unit:        newUnit(t, "[Service]\nExecStart=/usr/bin/sleep 3000\n"),
 			},
 		},
 	}
@@ -85,34 +81,6 @@ func TestMapUnitEntityToJob(t *testing.T) {
 		}
 		if !reflect.DeepEqual(tt.expect, output) {
 			t.Errorf("case %d: expect=%v, got=%v", i, tt.expect, *output)
-		}
-	}
-}
-
-func TestMapUnitEntityToJobFailure(t *testing.T) {
-	units := []schema.Unit{
-		// Poorly-formatted FileContents should result in an error
-		schema.Unit{
-			Name:         "XXX",
-			CurrentState: "loaded",
-			Systemd: &schema.SystemdState{
-				LoadState:   "loaded",
-				ActiveState: "active",
-				SubState:    "running",
-				MachineID:   "YYY",
-			},
-			FileContents: "XXX",
-			FileHash:     "248b997d6becee1b835b7ec7d9c8e68d7dd24623",
-		},
-	}
-
-	for i, u := range units {
-		output, err := mapUnitToJob(&u, nil)
-		if err == nil {
-			t.Errorf("case %d: expected non-nil error", i)
-		}
-		if output != nil {
-			t.Errorf("case %d: expected nil Job, got %v", i, output)
 		}
 	}
 }

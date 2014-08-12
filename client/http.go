@@ -1,11 +1,11 @@
 package client
 
 import (
-	"encoding/base64"
 	"net/http"
 
 	"github.com/coreos/fleet/Godeps/_workspace/src/code.google.com/p/google-api-go-client/googleapi"
 	"github.com/coreos/fleet/Godeps/_workspace/src/github.com/coreos/go-semver/semver"
+	gsunit "github.com/coreos/fleet/Godeps/_workspace/src/github.com/coreos/go-systemd/unit"
 
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/machine"
@@ -198,15 +198,15 @@ func mapUnitPageToJobs(entities []*schema.Unit, mm map[string]*machine.MachineSt
 }
 
 func mapUnitToJob(entity *schema.Unit, mm map[string]*machine.MachineState) (*job.Job, error) {
-	contents, err := base64.StdEncoding.DecodeString(entity.FileContents)
-	if err != nil {
-		return nil, err
+	opts := make([]*gsunit.UnitOption, len(entity.Options))
+	for i, eopt := range entity.Options {
+		opts[i] = &gsunit.UnitOption{
+			Section: eopt.Section,
+			Name:    eopt.Name,
+			Value:   eopt.Value,
+		}
 	}
-	u, err := unit.NewUnit(string(contents))
-	if err != nil {
-		return nil, err
-	}
-
+	u := unit.NewUnitFromOptions(opts)
 	js := job.JobState(entity.CurrentState)
 	ts := job.JobState(entity.DesiredState)
 	j := job.Job{
@@ -238,10 +238,18 @@ func (c *HTTPClient) DestroyJob(name string) error {
 }
 
 func (c *HTTPClient) CreateJob(j *job.Job) error {
+	opts := make([]*schema.UnitOption, len(j.Unit.Options))
+	for i, opt := range j.Unit.Options {
+		opts[i] = &schema.UnitOption{
+			Section: opt.Section,
+			Name:    opt.Name,
+			Value:   opt.Value,
+		}
+	}
 	req := schema.DesiredUnitState{
 		Name:         j.Name,
 		DesiredState: string(job.JobStateInactive),
-		FileContents: base64.StdEncoding.EncodeToString([]byte(j.Unit.Raw)),
+		Options:      opts,
 	}
 	return c.svc.Units.Set(j.Name, &req).Do()
 }
@@ -257,10 +265,6 @@ func (c *HTTPClient) SetJobTargetState(name string, state job.JobState) error {
 //NOTE(bcwaldon): This is only temporary until a better version negotiation mechanism is in place
 func (c *HTTPClient) LatestVersion() (*semver.Version, error) {
 	return semver.NewVersion("0.0.0")
-}
-
-func encodeUnitContents(u *unit.Unit) string {
-	return base64.StdEncoding.EncodeToString([]byte(u.Raw))
 }
 
 func is404(err error) bool {

@@ -80,9 +80,9 @@ type UnitsService struct {
 type DesiredUnitState struct {
 	DesiredState string `json:"desiredState,omitempty"`
 
-	FileContents string `json:"fileContents,omitempty"`
-
 	Name string `json:"name,omitempty"`
+
+	Options []*UnitOption `json:"options,omitempty"`
 }
 
 type Machine struct {
@@ -114,15 +114,21 @@ type Unit struct {
 
 	DesiredState string `json:"desiredState,omitempty"`
 
-	FileContents string `json:"fileContents,omitempty"`
-
-	FileHash string `json:"fileHash,omitempty"`
-
 	Name string `json:"name,omitempty"`
+
+	Options []*UnitOption `json:"options,omitempty"`
 
 	Systemd *SystemdState `json:"systemd,omitempty"`
 
 	TargetMachineID string `json:"targetMachineID,omitempty"`
+}
+
+type UnitOption struct {
+	Name string `json:"name,omitempty"`
+
+	Section string `json:"section,omitempty"`
+
+	Value string `json:"value,omitempty"`
 }
 
 type UnitPage struct {

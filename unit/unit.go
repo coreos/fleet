@@ -1,10 +1,125 @@
 package unit
 
 import (
+	"bytes"
 	"crypto/sha1"
 	"fmt"
+	"io/ioutil"
 	"strings"
+
+	"github.com/coreos/fleet/Godeps/_workspace/src/github.com/coreos/go-systemd/unit"
 )
+
+func NewUnit(raw string) (*Unit, error) {
+	reader := strings.NewReader(raw)
+	opts, err := unit.Deserialize(reader)
+	if err != nil {
+		return nil, err
+	}
+
+	return NewUnitFromOptions(opts), nil
+}
+
+func NewUnitFromOptions(opts []*unit.UnitOption) *Unit {
+	return &Unit{mapOptions(opts), opts}
+}
+
+func mapOptions(opts []*unit.UnitOption) map[string]map[string][]string {
+	contents := make(map[string]map[string][]string)
+	for _, opt := range opts {
+		if _, ok := contents[opt.Section]; !ok {
+			contents[opt.Section] = make(map[string][]string)
+		}
+
+		if _, ok := contents[opt.Section][opt.Name]; !ok {
+			contents[opt.Section][opt.Name] = make([]string, 0)
+		}
+
+		var vals []string
+		if opt.Section == "X-Fleet" {
+			// The go-systemd parser does not know that our X-Fleet options support
+			// multivalue options, so we have to manually parse them here
+			vals = parseMultivalueLine(opt.Value)
+		} else {
+			vals = []string{opt.Value}
+		}
+
+		contents[opt.Section][opt.Name] = append(contents[opt.Section][opt.Name], vals...)
+	}
+
+	return contents
+}
+
+// parseMultivalueLine parses a line that includes several quoted values separated by whitespaces.
+// Example: MachineMetadata="foo=bar" "baz=qux"
+// If the provided line is not a multivalue string, the line is returned as the sole value.
+func parseMultivalueLine(line string) (values []string) {
+	if !strings.HasPrefix(line, `"`) || !strings.HasSuffix(line, `"`) {
+		return []string{line}
+	}
+
+	var v bytes.Buffer
+	w := false // check whether we're within quotes or not
+	for _, e := range []byte(line) {
+		// ignore quotes
+		if e == '"' {
+			w = !w
+			continue
+		}
+
+		if e == ' ' {
+			if !w { // between quoted values, keep the previous value and reset.
+				values = append(values, v.String())
+				v.Reset()
+				continue
+			}
+		}
+
+		v.WriteByte(e)
+	}
+
+	values = append(values, v.String())
+
+	return
+}
+
+// A Unit represents a systemd configuration which encodes information about any of the unit
+// types that fleet supports (as defined in SupportedUnitTypes()).
+// Units are linked to Jobs by the Hash of their contents.
+// Similar to systemd, a Unit configuration has no inherent name, but is rather
+// named through the reference to it; in the case of systemd, the reference is
+// the filename, and in the case of fleet, the reference is the name of the job
+// that references this Unit.
+type Unit struct {
+	// Contents represents the parsed unit file.
+	// This field must be considered readonly.
+	Contents map[string]map[string][]string
+
+	Options []*unit.UnitOption
+}
+
+// Description returns the first Description option found in the [Unit] section.
+// If the option is not defined, an empty string is returned.
+func (u *Unit) Description() string {
+	if values := u.Contents["Unit"]["Description"]; len(values) > 0 {
+		return values[0]
+	}
+	return ""
+}
+
+func (u *Unit) Bytes() []byte {
+	b, _ := ioutil.ReadAll(unit.Serialize(u.Options))
+	return b
+}
+
+func (u *Unit) String() string {
+	return string(u.Bytes())
+}
+
+// Hash returns the SHA1 hash of the raw contents of the Unit
+func (u *Unit) Hash() Hash {
+	return Hash(sha1.Sum(u.Bytes()))
+}
 
 // RecognizedUnitType determines whether or not the given unit name represents
 // a recognized unit type.
@@ -38,31 +153,6 @@ func (h Hash) Short() string {
 
 func (h *Hash) Empty() bool {
 	return *h == Hash{}
-}
-
-// A Unit represents a systemd configuration which encodes information about any of the unit
-// types that fleet supports (as defined in SupportedUnitTypes()).
-// Units are linked to Jobs by the Hash of their contents.
-// Similar to systemd, a Unit configuration has no inherent name, but is rather
-// named through the reference to it; in the case of systemd, the reference is
-// the filename, and in the case of fleet, the reference is the name of the job
-// that references this Unit.
-type Unit struct {
-	// Contents represents the parsed unit file.
-	// This field must be considered readonly.
-	Contents map[string]map[string][]string
-
-	// Raw represents the entire contents of the unit file.
-	Raw string
-}
-
-func (u *Unit) String() string {
-	return u.Raw
-}
-
-// Hash returns the SHA1 hash of the raw contents of the Unit
-func (u *Unit) Hash() Hash {
-	return Hash(sha1.Sum([]byte(u.Raw)))
 }
 
 // UnitState encodes the current state of a unit loaded into a fleet agent

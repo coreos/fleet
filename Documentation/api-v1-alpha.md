@@ -80,8 +80,7 @@ Content-Length: 80
 
 - **name**: unique identifier of entity
 - **desiredState**: state the user wishes the Unit to be in (inactive, loaded, or launched)
-- **fileContents**: base64-encoded contents of the Unit's file
-- **fileHash**: SHA1 hash of the Unit's file contents
+- **options**: list of UnitOption entities
 - **currentState**: last known state of the Unit (inactive, loaded, or launched)
 - **targetMachineID**: identifier of the Machine to which this Unit is currently scheduled
 - **sytemd**:
@@ -90,6 +89,11 @@ Content-Length: 80
   - **subState**: SUB state of the underlying systemd unit
   - **machineID**: identifier of the Machine that published this systemd state
 
+A UnitOption represents a single option in a systemd unit file.
+
+- **section**: name of section that contains the option (e.g. "Unit", "Service", "Socket")
+- **name**: name of option (e.g. "BindsTo", "After", "ExecStart")
+- **value**: value of option (e.g. "/usr/bin/docker run busybox /bin/sleep 1000")
 
 ### Create or Modify Unit
 
@@ -100,13 +104,13 @@ PUT /units/<name> HTTP/1.1
 #### Request
 
 A request is comprised of a partial Unit entity.
-If creating a new Unit, supply the desiredState and fileContents fields.
+If creating a new Unit, supply the desiredState and a list of options.
 To modify an existing Unit, only the desiredState field is required.
 
 The base datastructure looks like this:
 
 ```
-{"desiredState": <state>, "fileContents": <encoded-contents>}
+{"desiredState": <state>, "options": [<option>, ...]}
 ```
 
 For example, launching a new unit "foo.service" could be done like so: 
@@ -116,7 +120,7 @@ PUT /units/foo.service HTTP/1.1
 
 {
   "desiredState": "launched",
-  "fileContents": "W1NlcnZpY2VdCkV4ZWNTdGFydD0vdXNyL2Jpbi9zbGVlcCAzMDAwCg=="
+  "options": [{"section": "Service", "name": "ExecStart", "value": "/usr/bin/sleep 3000"}]
 }
 ```
 

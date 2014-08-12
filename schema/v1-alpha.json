@@ -66,13 +66,11 @@
           "type": "string",
           "required": true
         },
-        "fileHash": {
-          "type": "string",
-          "required": true
-        },
-        "fileContents": {
-          "type": "string",
-          "format": "byte"
+        "options": {
+          "type": "array",
+          "items": {
+            "$ref": "UnitOption"
+          }
         },
         "desiredState": {
           "type": "string",
@@ -151,9 +149,11 @@
             "launched"
           ]
         },
-        "fileContents": {
-          "type": "string",
-          "format": "byte"
+        "options": {
+          "type": "array",
+          "items": {
+            "$ref": "UnitOption"
+          }
         }
       }
     }
