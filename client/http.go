@@ -241,7 +241,7 @@ func (c *HTTPClient) CreateJob(j *job.Job) error {
 	req := schema.DesiredUnitState{
 		Name:         j.Name,
 		DesiredState: string(job.JobStateInactive),
-		FileContents: base64.StdEncoding.EncodeToString([]byte(j.Unit.Raw)),
+		FileContents: base64.StdEncoding.EncodeToString(j.Unit.Bytes()),
 	}
 	return c.svc.Units.Set(j.Name, &req).Do()
 }
@@ -260,7 +260,7 @@ func (c *HTTPClient) LatestVersion() (*semver.Version, error) {
 }
 
 func encodeUnitContents(u *unit.Unit) string {
-	return base64.StdEncoding.EncodeToString([]byte(u.Raw))
+	return base64.StdEncoding.EncodeToString(u.Bytes())
 }
 
 func is404(err error) bool {

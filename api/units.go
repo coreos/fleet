@@ -276,7 +276,7 @@ func mapJobToSchema(j *job.Job) (*schema.Unit, error) {
 }
 
 func encodeUnitContents(u *unit.Unit) string {
-	return base64.StdEncoding.EncodeToString([]byte(u.Raw))
+	return base64.StdEncoding.EncodeToString(u.Bytes())
 }
 
 func decodeUnitContents(c string) (*unit.Unit, error) {

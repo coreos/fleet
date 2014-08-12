@@ -52,17 +52,21 @@ type Unit struct {
 	// This field must be considered readonly.
 	Contents map[string]map[string][]string
 
-	// Raw represents the entire contents of the unit file.
-	Raw string
+	// raw represents the entire contents of the unit file.
+	raw string
+}
+
+func (u *Unit) Bytes() []byte {
+	return []byte(u.raw)
 }
 
 func (u *Unit) String() string {
-	return u.Raw
+	return u.raw
 }
 
 // Hash returns the SHA1 hash of the raw contents of the Unit
 func (u *Unit) Hash() Hash {
-	return Hash(sha1.Sum([]byte(u.Raw)))
+	return Hash(sha1.Sum(u.Bytes()))
 }
 
 // UnitState encodes the current state of a unit loaded into a fleet agent
