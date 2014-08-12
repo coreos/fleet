@@ -6,22 +6,25 @@ import (
 
 	"github.com/coreos/fleet/etcd"
 	"github.com/coreos/fleet/job"
+	"github.com/coreos/fleet/unit"
 )
 
 // determineJobState decides what the State field of a Job object should
-// be. The value of heartbeat should be the machine ID that is known to
-// have recently heartbeaten (see JobHeartbeat) the Job. All fields of the
-// Job (except for State) must be available - no partial representations.
-func determineJobState(j *job.Job, heartbeat string) (state job.JobState) {
+// be, based on three parameters:
+//  - heartbeat should be the machine ID that is known to have recently
+//    heartbeaten (see JobHeartbeat) the Job.
+//  - tgt should be the machine ID to which the Job is currently scheduled
+//  - us should be the most recent UnitState
+func determineJobState(heartbeat, tgt string, us *unit.UnitState) (state job.JobState) {
 	state = job.JobStateInactive
 
-	if j.TargetMachineID == "" || j.UnitState == nil {
+	if tgt == "" || us == nil {
 		return
 	}
 
 	state = job.JobStateLoaded
 
-	if heartbeat != j.TargetMachineID {
+	if heartbeat != tgt {
 		return
 	}
 

@@ -5,12 +5,12 @@ import (
 	"os"
 	"strings"
 
-	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/machine"
+	"github.com/coreos/fleet/unit"
 )
 
 const (
-	defaultListUnitsFields = "unit,dstate,tmachine,state,machine,active"
+	defaultListUnitsFields = "unit,machine,active,sub"
 )
 
 var (
@@ -32,50 +32,32 @@ Or, choose the columns to display:
 		Run: runListUnits,
 	}
 
-	listUnitsFields = map[string]jobToField{
-		"unit": func(j *job.Job, full bool) string {
-			return j.Name
-		},
-		"state": func(j *job.Job, full bool) string {
-			js := j.State
-			if js != nil {
-				return string(*js)
+	listUnitsFields = map[string]usToField{
+		"unit": func(us *unit.UnitState, full bool) string {
+			if us == nil {
+				return "-"
 			}
-			return "-"
+			return us.UnitName
 		},
-		"dstate": func(j *job.Job, full bool) string {
-			return string(j.TargetState)
-		},
-		"load": func(j *job.Job, full bool) string {
-			us := j.UnitState
+		"load": func(us *unit.UnitState, full bool) string {
 			if us == nil {
 				return "-"
 			}
 			return us.LoadState
 		},
-		"active": func(j *job.Job, full bool) string {
-			us := j.UnitState
+		"active": func(us *unit.UnitState, full bool) string {
 			if us == nil {
 				return "-"
 			}
 			return us.ActiveState
 		},
-		"sub": func(j *job.Job, full bool) string {
-			us := j.UnitState
+		"sub": func(us *unit.UnitState, full bool) string {
 			if us == nil {
 				return "-"
 			}
 			return us.SubState
 		},
-		"desc": func(j *job.Job, full bool) string {
-			d := j.Unit.Description()
-			if d == "" {
-				return "-"
-			}
-			return d
-		},
-		"machine": func(j *job.Job, full bool) string {
-			us := j.UnitState
+		"machine": func(us *unit.UnitState, full bool) string {
 			if us == nil || us.MachineID == "" {
 				return "-"
 			}
@@ -85,18 +67,7 @@ Or, choose the columns to display:
 			}
 			return machineFullLegend(*ms, full)
 		},
-		"tmachine": func(j *job.Job, full bool) string {
-			if j.TargetMachineID == "" {
-				return "-"
-			}
-			ms := cachedMachineState(j.TargetMachineID)
-			if ms == nil {
-				ms = &machine.MachineState{ID: j.TargetMachineID}
-			}
-			return machineFullLegend(*ms, full)
-		},
-		"hash": func(j *job.Job, full bool) string {
-			us := j.UnitState
+		"hash": func(us *unit.UnitState, full bool) string {
 			if us == nil || us.UnitHash == "" {
 				return "-"
 			}
@@ -108,13 +79,13 @@ Or, choose the columns to display:
 	}
 )
 
-type jobToField func(j *job.Job, full bool) string
+type usToField func(us *unit.UnitState, full bool) string
 
 func init() {
 	cmdListUnits.Flags.BoolVar(&sharedFlags.Full, "full", false, "Do not ellipsize fields on output")
 	cmdListUnits.Flags.BoolVar(&sharedFlags.Full, "l", false, "Shorthand for --full")
 	cmdListUnits.Flags.BoolVar(&sharedFlags.NoLegend, "no-legend", false, "Do not print a legend (column headers)")
-	cmdListUnits.Flags.StringVar(&listUnitsFieldsFlag, "fields", defaultListUnitsFields, fmt.Sprintf("Columns to print for each Unit. Valid fields are %q", strings.Join(jobToFieldKeys(listUnitsFields), ",")))
+	cmdListUnits.Flags.StringVar(&listUnitsFieldsFlag, "fields", defaultListUnitsFields, fmt.Sprintf("Columns to print for each Unit. Valid fields are %q", strings.Join(usToFieldKeys(listUnitsFields), ",")))
 }
 
 func runListUnits(args []string) (exit int) {
@@ -132,7 +103,7 @@ func runListUnits(args []string) (exit int) {
 		}
 	}
 
-	jobs, err := cAPI.Jobs()
+	states, err := cAPI.UnitStates()
 
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error retrieving list of units from repository: %v\n", err)
@@ -143,10 +114,10 @@ func runListUnits(args []string) (exit int) {
 		fmt.Fprintln(out, strings.ToUpper(strings.Join(cols, "\t")))
 	}
 
-	for _, j := range jobs {
+	for _, us := range states {
 		var f []string
 		for _, c := range cols {
-			f = append(f, listUnitsFields[c](&j, sharedFlags.Full))
+			f = append(f, listUnitsFields[c](us, sharedFlags.Full))
 		}
 		fmt.Fprintln(out, strings.Join(f, "\t"))
 	}
@@ -155,7 +126,7 @@ func runListUnits(args []string) (exit int) {
 	return
 }
 
-func jobToFieldKeys(m map[string]jobToField) (keys []string) {
+func usToFieldKeys(m map[string]usToField) (keys []string) {
 	for k := range m {
 		keys = append(keys, k)
 	}

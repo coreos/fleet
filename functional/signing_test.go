@@ -34,8 +34,7 @@ func TestSignedRequests(t *testing.T) {
 		t.Fatalf("Failed calling load on hello.service: %v", err)
 	}
 
-	_, _, err = cluster.Fleetctl("start", "--no-block", "--sign=true", "fixtures/units/goodbye.service")
-	if err != nil {
+	if _, _, err = cluster.Fleetctl("start", "--no-block", "--sign=true", "fixtures/units/goodbye.service"); err != nil {
 		t.Fatalf("Failed starting goodbye.service: %v", err)
 	}
 

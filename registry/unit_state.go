@@ -2,6 +2,7 @@ package registry
 
 import (
 	"path"
+	"sort"
 
 	log "github.com/coreos/fleet/Godeps/_workspace/src/github.com/golang/glog"
 
@@ -36,40 +37,107 @@ func (r *EtcdRegistry) unitStatePath(machID, jobName string) string {
 	return path.Join(r.unitStatesNamespace(jobName), machID)
 }
 
-// States returns a list of all UnitStates stored in the registry
-func (r *EtcdRegistry) States() (states []*unit.UnitState, err error) {
+// UnitStates returns a list of all UnitStates stored in the registry, sorted
+// by unit name and then machine ID.
+func (r *EtcdRegistry) UnitStates() (states []*unit.UnitState, err error) {
+	var mus map[MUSKey]*unit.UnitState
+	mus, err = r.statesByMUSKey()
+	if err != nil {
+		return
+	}
+
+	var sorted MUSKeys
+	for key, _ := range mus {
+		sorted = append(sorted, key)
+	}
+	sort.Sort(sorted)
+
+	for _, key := range sorted {
+		states = append(states, mus[key])
+	}
+
+	return
+}
+
+// MUSKey is used to index UnitStates by name + machineID
+type MUSKey struct {
+	name   string
+	machID string
+}
+
+// MUSKeys provides for sorting of UnitStates by their MUSKey
+type MUSKeys []MUSKey
+
+func (mk MUSKeys) Len() int { return len(mk) }
+func (mk MUSKeys) Less(i, j int) bool {
+	mi := mk[i]
+	mj := mk[j]
+	return mi.name < mj.name || (mi.name == mj.name && mi.machID < mj.machID)
+}
+func (mk MUSKeys) Swap(i, j int) { mk[i], mk[j] = mk[j], mk[i] }
+
+// statesByMUSKey returns a map of all UnitStates stored in the registry indexed by MUSKey
+func (r *EtcdRegistry) statesByMUSKey() (map[MUSKey]*unit.UnitState, error) {
+	mus := make(map[MUSKey]*unit.UnitState)
+
+	// For backwards compatibility, first retrieve any states stored in the
+	// old format
 	req := etcd.Get{
-		Key:       path.Join(r.keyPrefix, statesPrefix),
+		Key:       path.Join(r.keyPrefix, statePrefix),
 		Recursive: true,
 	}
 	res, err := r.etcd.Do(&req)
-	if err != nil {
-		if isKeyNotFound(err) {
-			err = nil
-		}
-		return
+	if err != nil && !isKeyNotFound(err) {
+		return nil, err
 	}
-	for _, dir := range res.Node.Nodes {
-		_, name := path.Split(dir.Key)
-		for _, node := range dir.Nodes {
-			_, machID := path.Split(node.Key)
+	if res != nil {
+		for _, node := range res.Node.Nodes {
+			_, name := path.Split(node.Key)
 			var usm unitStateModel
 			if err := unmarshal(node.Value, &usm); err != nil {
-				log.Errorf("Error unmarshalling UnitState(%s) from Machine(%s): %v", name, machID, err)
+				log.Errorf("Error unmarshalling UnitState(%s): %v", name, err)
 				continue
 			}
-			us := modelToUnitState(&usm)
+			us := modelToUnitState(&usm, name)
 			if us != nil {
-				states = append(states, us)
+				key := MUSKey{name, us.MachineID}
+				mus[key] = us
 			}
 		}
 	}
-	return
+
+	// Now retrieve states stored in the new format and overlay them
+	req = etcd.Get{
+		Key:       path.Join(r.keyPrefix, statesPrefix),
+		Recursive: true,
+	}
+	res, err = r.etcd.Do(&req)
+	if err != nil && !isKeyNotFound(err) {
+		return nil, err
+	}
+	if res != nil {
+		for _, dir := range res.Node.Nodes {
+			_, name := path.Split(dir.Key)
+			for _, node := range dir.Nodes {
+				_, machID := path.Split(node.Key)
+				var usm unitStateModel
+				if err := unmarshal(node.Value, &usm); err != nil {
+					log.Errorf("Error unmarshalling UnitState(%s) from Machine(%s): %v", name, machID, err)
+					continue
+				}
+				us := modelToUnitState(&usm, name)
+				if us != nil {
+					key := MUSKey{name, machID}
+					mus[key] = us
+				}
+			}
+		}
+	}
+	return mus, nil
 }
 
 // getUnitState retrieves the current UnitState of the provided Job's Unit
 func (r *EtcdRegistry) getUnitState(jobName string) *unit.UnitState {
-	// TODO(jonboulle): deal with multiple UnitStates
 	legacyKey := r.legacyUnitStatePath(jobName)
 	req := etcd.Get{
 		Key:       legacyKey,
@@ -90,7 +158,7 @@ func (r *EtcdRegistry) getUnitState(jobName string) *unit.UnitState {
 		return nil
 	}
 
-	return modelToUnitState(&usm)
+	return modelToUnitState(&usm, jobName)
 }
 
 // SaveUnitState persists the given UnitState to the Registry
@@ -155,7 +223,7 @@ type unitStateModel struct {
 	UnitHash     string                `json:"unitHash"`
 }
 
-func modelToUnitState(usm *unitStateModel) *unit.UnitState {
+func modelToUnitState(usm *unitStateModel, name string) *unit.UnitState {
 	if usm == nil {
 		return nil
 	}
@@ -165,6 +233,7 @@ func modelToUnitState(usm *unitStateModel) *unit.UnitState {
 		ActiveState: usm.ActiveState,
 		SubState:    usm.SubState,
 		UnitHash:    usm.UnitHash,
+		UnitName:    name,
 	}
 
 	if usm.MachineState != nil {

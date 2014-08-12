@@ -65,7 +65,7 @@ func (fum *FakeUnitManager) GetUnitStates(filter pkg.Set) (map[string]*UnitState
 	states := make(map[string]*UnitState)
 	for _, name := range filter.Values() {
 		if _, ok := fum.u[name]; ok {
-			states[name] = &UnitState{"loaded", "active", "running", "", ""}
+			states[name] = &UnitState{"loaded", "active", "running", "", "", name}
 		}
 	}
 

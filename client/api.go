@@ -6,6 +6,7 @@ import (
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/sign"
+	"github.com/coreos/fleet/unit"
 )
 
 type API interface {
@@ -18,4 +19,8 @@ type API interface {
 	LatestVersion() (*semver.Version, error)
 	Machines() ([]machine.MachineState, error)
 	SetJobTargetState(string, job.JobState) error
+
+	JobUnits() ([]job.JobUnit, error)
+	Schedule() ([]job.ScheduledUnit, error)
+	UnitStates() ([]*unit.UnitState, error)
 }

@@ -11,10 +11,10 @@ The `fleetctl` binary is included in all CoreOS distributions, so it is as simpl
 fleetctl requires direct communication with the etcd cluster that your fleet machines are configured to use. Use the `--endpoint` flag to override the default of `http://127.0.0.1:4001`:
 
     fleetctl --endpoint http://<IP:PORT> list-units
-    
+
 Alternatively, `--endpoint` can be provided through the `FLEETCTL_ENDPOINT` environment variable:
 
-	FLEETCTL_ENDPOINT=http://<IP:[PORT]> fleetctl list-units
+    FLEETCTL_ENDPOINT=http://<IP:[PORT]> fleetctl list-units
 
 ### From an External Host
 
@@ -24,7 +24,7 @@ If you prefer to execute fleetctl from an external host (i.e. your laptop), the 
 
 One can also provide `--tunnel` through the environment variable `FLEETCTL_TUNNEL`:
 
-	FLEETCTL_TUNNEL=<IP[:PORT]> fleetctl list-units
+    FLEETCTL_TUNNEL=<IP[:PORT]> fleetctl list-units
 
 When using `--tunnel` and `--endpoint` together, it is important to note that all etcd requests will be made through the SSH tunnel. The address in the `--endpoint` flag must be routable from the server hosting the tunnel.
 
@@ -42,14 +42,33 @@ For information about the additional unit file parameters fleet will interact wi
 
 ### Explore existing units
 
-List all units in the fleet cluster with `fleetctl list-units`. This will describe all units the fleet cluster knows about, running or not:
+List the unit files that the fleet cluster knows about with `fleetctl list-unit-files`:
+
+```
+$ fleetctl list-unit-files
+UNIT		HASH	DESC
+foo.service	c18207c	This is my first service
+hello.service	ac91312	-
+slow.service	895350e	-
+```
+
+See what the current state of scheduling is with `fleetctl show-schedule`:
+
+```
+$ fleetctl  show-schedule
+UNIT		DSTATE		STATE		TMACHINE
+foo.service			inactive	-
+hello.service	loaded		inactive	16e8b2b9.../172.17.8.102
+slow.service	launched	inactive	16e8b2b9.../172.17.8.102
+```
+
+Finally, see the latest status of active units in the cluster (those loaded into a machine) with `fleetctl list-units`:
 
 ```
 $ fleetctl list-units
-UNIT			DSTATE 		TMACHINE				STATE		MACHINE					ACTIVE
-hello.service	launched 	148a18ff.../192.0.2.13	launched	148a18ff.../192.0.2.13	active
-ping.service	inactive	-						-			-						-
-pong.service	inactive	-						-			-						-
+UNIT		MACHINE				ACTIVE		SUB
+hello.service	16e8b2b9.../172.17.8.102	inactive	dead
+slow.service	16e8b2b9.../172.17.8.102	failed		failed
 ```
 
 ### Push units into the cluster
@@ -67,7 +86,7 @@ hello.service	ping.service	pong.service
 $ fleetctl submit examples/*
 ```
 
-Submission of units to a fleet cluster does not cause them to be scheduled out to specific hosts. The unit should be visible in a `fleetctl list-units` command, but have no reported state.
+Submission of units to a fleet cluster does not cause them to be scheduled out to specific hosts. The unit should be visible in a `fleetctl list-unit-files` command, but have no reported state, and hence not listed in `fleetctl list-units`.
 
 ### Remove units from the cluster
 
@@ -79,7 +98,7 @@ $ fleetctl destroy hello.service
 
 The `destroy` command does two things:
 
-1. Instruct systemd on the host machine to stop the unit, deferring to systemd completely for any custom stop directives (i.e. ExecStop option in the unit file).
+1. Instruct systemd on the host machine to stop the unit, deferring to systemd completely for any custom stop directives (i.e. `ExecStop` option in the unit file).
 2. Remove the unit file from the cluster, making it impossible to start again until it has been re-submitted.
 
 ### View unit contents

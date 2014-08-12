@@ -72,15 +72,15 @@ type UnitState struct {
 	SubState    string
 	MachineID   string
 	UnitHash    string
+	UnitName    string
 }
 
 func NewUnitState(loadState, activeState, subState, mID string) *UnitState {
 	return &UnitState{
-		loadState,
-		activeState,
-		subState,
-		mID,
-		"",
+		LoadState:   loadState,
+		ActiveState: activeState,
+		SubState:    subState,
+		MachineID:   mID,
 	}
 }
 

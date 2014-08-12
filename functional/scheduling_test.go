@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/coreos/fleet/functional/platform"
 	"github.com/coreos/fleet/functional/util"
@@ -48,9 +49,9 @@ func TestScheduleConditionMachineOf(t *testing.T) {
 
 	// All 6 services should be visible immediately and become ACTIVE
 	// shortly thereafter
-	stdout, _, err := cluster.Fleetctl("list-units", "--no-legend")
+	stdout, _, err := cluster.Fleetctl("show-schedule", "--no-legend")
 	if err != nil {
-		t.Fatalf("Failed to run list-units: %v", err)
+		t.Fatalf("Failed to run show-schedule: %v", err)
 	}
 	units := strings.Split(strings.TrimSpace(stdout), "\n")
 	if len(units) != 6 {
@@ -148,9 +149,9 @@ func TestScheduleGlobalConflicts(t *testing.T) {
 
 	// All 5 services should be visible immediately and 3 should become
 	// ACTIVE shortly thereafter
-	stdout, _, err := cluster.Fleetctl("list-units", "--no-legend")
+	stdout, _, err := cluster.Fleetctl("show-schedule", "--no-legend")
 	if err != nil {
-		t.Fatalf("Failed to run list-units: %v", err)
+		t.Fatalf("Failed to run show-schedule: %v", err)
 	}
 	units := strings.Split(strings.TrimSpace(stdout), "\n")
 	if len(units) != 5 {
@@ -208,9 +209,9 @@ func TestScheduleOneWayConflict(t *testing.T) {
 
 	// Both units should show up, but only conflicts-with-hello.service
 	// should report ACTIVE
-	stdout, _, err := cluster.Fleetctl("list-units", "--no-legend")
+	stdout, _, err := cluster.Fleetctl("show-schedule", "--no-legend")
 	if err != nil {
-		t.Fatalf("Failed to run list-units: %v", err)
+		t.Fatalf("Failed to run show-schedule: %v", err)
 	}
 	units := strings.Split(strings.TrimSpace(stdout), "\n")
 	if len(units) != 2 {
@@ -232,6 +233,11 @@ func TestScheduleOneWayConflict(t *testing.T) {
 	if _, _, err := cluster.Fleetctl("destroy", name); err != nil {
 		t.Fatalf("Failed destroying %s", name)
 	}
+	// TODO(jonboulle): fix this race. Since we no longer immediately
+	// remove unit state on unit destruction (and instead wait for
+	// UnitStateGenerator/UnitStatePublisher to clean up), the old unit
+	// shows up as active for quite some time.
+	time.Sleep(5 * time.Second)
 	stdout, _, err = cluster.Fleetctl("list-units", "--no-legend")
 	if err != nil {
 		t.Fatalf("Failed to run list-units: %v", err)
