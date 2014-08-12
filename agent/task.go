@@ -22,18 +22,30 @@ const (
 	taskReasonPurgingAgent               = "purging agent"
 )
 
-type task struct {
-	Type   string
-	Job    *job.Job
-	Reason string
+type taskChain struct {
+	job   *job.Job
+	tasks []task
 }
 
-func (t *task) String() string {
-	var jName string
-	if t.Job != nil {
-		jName = t.Job.Name
+func newTaskChain(j *job.Job, t ...task) taskChain {
+	return taskChain{
+		job:   j,
+		tasks: t,
 	}
-	return fmt.Sprintf("{Type: %s, Job: %s, Reason: %q}", t.Type, jName, t.Reason)
+}
+
+func (tc *taskChain) Add(t task) {
+	tc.tasks = append(tc.tasks, t)
+}
+
+type task struct {
+	typ    string
+	reason string
+}
+
+type taskResult struct {
+	task task
+	err  error
 }
 
 type taskManager struct {
@@ -54,54 +66,57 @@ func newTaskManager() *taskManager {
 // error channel will be non-nil only if the task could be attempted. The
 // channel will be closed when the task completes. If the task failed, an
 // error will be sent to the channel. Do is not threadsafe.
-func (tm *taskManager) Do(t *task, a *Agent) (chan error, error) {
-	if t == nil {
-		return nil, errors.New("unable to handle nil task")
-	}
-
-	if t.Job == nil {
+func (tm *taskManager) Do(tc taskChain, a *Agent) (chan taskResult, error) {
+	if tc.job == nil {
 		return nil, errors.New("unable to handle task with nil Job")
 	}
 
-	if tm.processing.Contains(t.Job.Name) {
+	if tm.processing.Contains(tc.job.Name) {
 		return nil, errors.New("task already in flight")
 	}
 
-	taskFunc, err := tm.mapper(t, a)
-	if err != nil {
-		return nil, err
-	}
+	// Do is not threadsafe due to the race between Contains and Add
+	tm.processing.Add(tc.job.Name)
 
-	tm.processing.Add(t.Job.Name)
-
-	errchan := make(chan error)
-
+	reschan := make(chan taskResult, len(tc.tasks))
 	go func() {
-		defer tm.processing.Remove(t.Job.Name)
-		err := taskFunc()
-		if err != nil {
-			errchan <- err
+		defer tm.processing.Remove(tc.job.Name)
+		for _, t := range tc.tasks {
+			t := t
+			res := taskResult{
+				task: t,
+			}
+
+			taskFunc, err := tm.mapper(t, tc.job, a)
+			if err != nil {
+				res.err = err
+			} else {
+				res.err = taskFunc()
+			}
+
+			reschan <- res
 		}
-		close(errchan)
+
+		close(reschan)
 	}()
 
-	return errchan, nil
+	return reschan, nil
 }
 
-type taskMapperFunc func(t *task, a *Agent) (func() error, error)
+type taskMapperFunc func(t task, j *job.Job, a *Agent) (func() error, error)
 
-func mapTaskToFunc(t *task, a *Agent) (fn func() error, err error) {
-	switch t.Type {
+func mapTaskToFunc(t task, j *job.Job, a *Agent) (fn func() error, err error) {
+	switch t.typ {
 	case taskTypeLoadJob:
-		fn = func() error { return a.loadJob(t.Job) }
+		fn = func() error { return a.loadJob(j) }
 	case taskTypeUnloadJob:
-		fn = func() error { a.unloadJob(t.Job.Name); return nil }
+		fn = func() error { a.unloadJob(j.Name); return nil }
 	case taskTypeStartJob:
-		fn = func() error { a.startJob(t.Job.Name); return nil }
+		fn = func() error { a.startJob(j.Name); return nil }
 	case taskTypeStopJob:
-		fn = func() error { a.stopJob(t.Job.Name); return nil }
+		fn = func() error { a.stopJob(j.Name); return nil }
 	default:
-		err = fmt.Errorf("unrecognized task type %q", t.Type)
+		err = fmt.Errorf("unrecognized task type %q", t.typ)
 	}
 
 	return
