@@ -86,7 +86,7 @@ func (ur *unitsResource) set(rw http.ResponseWriter, req *http.Request, item str
 	ds := job.JobState(dus.DesiredState)
 
 	if j != nil {
-		ur.update(rw, j, ds, u)
+		ur.update(rw, j, ds)
 	} else if u != nil {
 		ur.create(rw, item, ds, u)
 	} else {
@@ -112,13 +112,8 @@ func (ur *unitsResource) create(rw http.ResponseWriter, item string, ds job.JobS
 	rw.WriteHeader(http.StatusNoContent)
 }
 
-func (ur *unitsResource) update(rw http.ResponseWriter, j *job.Job, ds job.JobState, cmp *unit.Unit) {
+func (ur *unitsResource) update(rw http.ResponseWriter, j *job.Job, ds job.JobState) {
 	// Assert that the Job's Unit matches the Unit in the request, if provided
-	if cmp != nil && cmp.Hash() != j.Unit.Hash() {
-		sendError(rw, http.StatusConflict, errors.New("hash of provided fileContents does not match that of existing unit"))
-		return
-	}
-
 	err := ur.reg.SetJobTargetState(j.Name, ds)
 	if err != nil {
 		log.Errorf("Failed setting target state of Job(%s): %v", j.Name, err)
@@ -130,28 +125,6 @@ func (ur *unitsResource) update(rw http.ResponseWriter, j *job.Job, ds job.JobSt
 }
 
 func (ur *unitsResource) destroy(rw http.ResponseWriter, req *http.Request, item string) {
-	if validateContentType(req) != nil {
-		sendError(rw, http.StatusNotAcceptable, errors.New("application/json is only supported Content-Type"))
-		return
-	}
-
-	var du schema.DeletableUnit
-	dec := json.NewDecoder(req.Body)
-	err := dec.Decode(&du)
-	if err != nil {
-		sendError(rw, http.StatusBadRequest, fmt.Errorf("unable to decode body: %v", err))
-		return
-	}
-
-	var u *unit.Unit
-	if len(du.FileContents) > 0 {
-		u, err = decodeUnitContents(du.FileContents)
-		if err != nil {
-			sendError(rw, http.StatusBadRequest, fmt.Errorf("invalid fileContents: %v", err))
-			return
-		}
-	}
-
 	j, err := ur.reg.Job(item)
 	if err != nil {
 		log.Errorf("Failed fetching Job(%s): %v", item, err)
@@ -161,11 +134,6 @@ func (ur *unitsResource) destroy(rw http.ResponseWriter, req *http.Request, item
 
 	if j == nil {
 		sendError(rw, http.StatusNotFound, errors.New("unit does not exist"))
-		return
-	}
-
-	if u != nil && u.Hash() != j.Unit.Hash() {
-		sendError(rw, http.StatusConflict, errors.New("hash of provided fileContents does not match that of existing unit"))
 		return
 	}
 

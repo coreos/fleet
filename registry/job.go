@@ -297,10 +297,6 @@ func (r *EtcdRegistry) getJobFromObjectNode(node *etcd.Node) (*job.Job, error) {
 			log.Warningf("No Unit found in Registry for Job(%s)", jm.Name)
 			return nil, nil
 		}
-		if unit.Hash() != jm.UnitHash {
-			log.Errorf("Unit Hash %s does not match expected %s for Job(%s)!", unit.Hash(), jm.UnitHash, jm.Name)
-			return nil, nil
-		}
 	} else {
 		// Old-style Jobs had "Payloads" instead of Units, also stored separately in the Registry
 		unit, err = r.getUnitFromLegacyPayload(jm.Name)

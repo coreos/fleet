@@ -3,6 +3,7 @@ package unit
 import (
 	"bytes"
 	"fmt"
+	"io/ioutil"
 	"strings"
 
 	"github.com/coreos/fleet/Godeps/_workspace/src/github.com/coreos/go-systemd/unit"
@@ -15,8 +16,18 @@ func NewUnit(raw string) (*Unit, error) {
 		return nil, err
 	}
 
+	return newFromOptions(opts)
+}
+
+func newFromOptions(opts []*unit.UnitOption) (*Unit, error) {
 	contents := mapOptions(opts)
-	return &Unit{contents, raw}, nil
+
+	rBytes, err := ioutil.ReadAll(unit.Serialize(opts))
+	if err != nil {
+		return nil, err
+	}
+
+	return &Unit{contents, string(rBytes)}, nil
 }
 
 func mapOptions(opts []*unit.UnitOption) map[string]map[string][]string {

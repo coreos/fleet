@@ -17,6 +17,14 @@ import (
 	"github.com/coreos/fleet/unit"
 )
 
+func newUnit(t *testing.T, str string) unit.Unit {
+	u, err := unit.NewUnit(str)
+	if err != nil {
+		t.Fatalf("Unexpected error creating unit from %q: %v", str, err)
+	}
+	return *u
+}
+
 func TestUnitsSubResourceNotFound(t *testing.T) {
 	fr := registry.NewFakeRegistry()
 	ur := &unitsResource{fr, "/units"}
@@ -248,53 +256,25 @@ func TestUnitsDestroy(t *testing.T) {
 	tests := []struct {
 		// initial state of registry
 		init []job.Job
-		// which Job to attempt to delete
-		arg schema.DeletableUnit
+		// name of unit to delete
+		arg string
 		// expected HTTP status code
 		code int
 		// expected state of registry after deletion attempt
 		remaining []string
 	}{
-		// Unsafe deletion of an existing unit should succeed
+		// Deletion of an existing unit should succeed
 		{
-			init:      []job.Job{job.Job{Name: "XXX", Unit: unit.Unit{Raw: "FOO"}}},
-			arg:       schema.DeletableUnit{Name: "XXX"},
+			init:      []job.Job{job.Job{Name: "XXX", Unit: newUnit(t, "[Service]\nFoo=Bar")}},
+			arg:       "XXX",
 			code:      http.StatusNoContent,
 			remaining: []string{},
 		},
-		// Safe deletion of an existing unit should succeed
+		// Deletion of a nonexistent unit should fail
 		{
-			init:      []job.Job{job.Job{Name: "XXX", Unit: unit.Unit{Raw: "FOO"}}},
-			arg:       schema.DeletableUnit{Name: "XXX", FileContents: "Rk9P"},
-			code:      http.StatusNoContent,
-			remaining: []string{},
-		},
-		// Unsafe deletion of a nonexistent unit should fail
-		{
-			init:      []job.Job{job.Job{Name: "XXX", Unit: unit.Unit{Raw: "FOO"}}},
-			arg:       schema.DeletableUnit{Name: "YYY"},
+			init:      []job.Job{job.Job{Name: "XXX", Unit: newUnit(t, "[Service]\nFoo=Bar")}},
+			arg:       "YYY",
 			code:      http.StatusNotFound,
-			remaining: []string{"XXX"},
-		},
-		// Safe deletion of a nonexistent unit should fail
-		{
-			init:      []job.Job{},
-			arg:       schema.DeletableUnit{Name: "XXX", FileContents: "Rk9P"},
-			code:      http.StatusNotFound,
-			remaining: []string{},
-		},
-		// Safe deletion of a unit with the wrong contents should fail
-		{
-			init:      []job.Job{job.Job{Name: "XXX", Unit: unit.Unit{Raw: "FOO"}}},
-			arg:       schema.DeletableUnit{Name: "XXX", FileContents: "QkFS"},
-			code:      http.StatusConflict,
-			remaining: []string{"XXX"},
-		},
-		// Safe deletion of a unit with the malformed contents should fail
-		{
-			init:      []job.Job{job.Job{Name: "XXX", Unit: unit.Unit{Raw: "FOO"}}},
-			arg:       schema.DeletableUnit{Name: "XXX", FileContents: "*"},
-			code:      http.StatusBadRequest,
 			remaining: []string{"XXX"},
 		},
 	}
@@ -303,23 +283,15 @@ func TestUnitsDestroy(t *testing.T) {
 		fr := registry.NewFakeRegistry()
 		fr.SetJobs(tt.init)
 
-		req, err := http.NewRequest("DELETE", fmt.Sprintf("http://example.com/units/%s", tt.arg.Name), nil)
+		req, err := http.NewRequest("DELETE", fmt.Sprintf("http://example.com/units/%s", tt.arg), nil)
 		if err != nil {
 			t.Errorf("case %d: failed creating http.Request: %v", i, err)
 			continue
 		}
 
-		enc, err := json.Marshal(tt.arg)
-		if err != nil {
-			t.Errorf("case %d: unable to JSON-encode request: %v", i, err)
-			continue
-		}
-		req.Body = ioutil.NopCloser(bytes.NewBuffer(enc))
-		req.Header.Set("Content-Type", "application/json")
-
 		resource := &unitsResource{fr, "/units"}
 		rw := httptest.NewRecorder()
-		resource.destroy(rw, req, tt.arg.Name)
+		resource.destroy(rw, req, tt.arg)
 
 		if tt.code/100 == 2 {
 			if tt.code != rw.Code {
@@ -399,14 +371,6 @@ func TestUnitsSetDesiredState(t *testing.T) {
 			arg:         schema.DesiredUnitState{Name: "YYY", DesiredState: "loaded"},
 			code:        http.StatusConflict,
 			finalStates: map[string]job.JobState{},
-		},
-		// Modifying a Job with the incorrect fileContents should fail
-		{
-			initJobs:    []job.Job{job.Job{Name: "XXX", Unit: unit.Unit{Raw: "FOO"}}},
-			initStates:  map[string]job.JobState{"XXX": "inactive"},
-			arg:         schema.DesiredUnitState{Name: "XXX", DesiredState: "loaded", FileContents: "ZWxyb3kNCg=="},
-			code:        http.StatusConflict,
-			finalStates: map[string]job.JobState{"XXX": "inactive"},
 		},
 	}
 
