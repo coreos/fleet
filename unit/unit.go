@@ -17,10 +17,10 @@ func NewUnit(raw string) (*Unit, error) {
 		return nil, err
 	}
 
-	return newFromOptions(opts), nil
+	return NewUnitFromOptions(opts), nil
 }
 
-func newFromOptions(opts []*unit.UnitOption) *Unit {
+func NewUnitFromOptions(opts []*unit.UnitOption) *Unit {
 	return &Unit{mapOptions(opts), opts}
 }
 
@@ -95,7 +95,7 @@ type Unit struct {
 	// This field must be considered readonly.
 	Contents map[string]map[string][]string
 
-	opts []*unit.UnitOption
+	Options []*unit.UnitOption
 }
 
 // Description returns the first Description option found in the [Unit] section.
@@ -108,7 +108,7 @@ func (u *Unit) Description() string {
 }
 
 func (u *Unit) Bytes() []byte {
-	b, _ := ioutil.ReadAll(unit.Serialize(u.opts))
+	b, _ := ioutil.ReadAll(unit.Serialize(u.Options))
 	return b
 }
 

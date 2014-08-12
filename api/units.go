@@ -1,13 +1,13 @@
 package api
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
 	"path"
 
+	gsunit "github.com/coreos/fleet/Godeps/_workspace/src/github.com/coreos/go-systemd/unit"
 	log "github.com/coreos/fleet/Godeps/_workspace/src/github.com/golang/glog"
 
 	"github.com/coreos/fleet/job"
@@ -74,12 +74,8 @@ func (ur *unitsResource) set(rw http.ResponseWriter, req *http.Request, item str
 	}
 
 	var u *unit.Unit
-	if len(dus.FileContents) > 0 {
-		u, err = decodeUnitContents(dus.FileContents)
-		if err != nil {
-			sendError(rw, http.StatusBadRequest, fmt.Errorf("invalid fileContents: %v", err))
-			return
-		}
+	if len(dus.Options) > 0 {
+		u = mapSchemaToUnit(dus.Options)
 	}
 
 	// TODO(bcwaldon): Assert value of DesiredState is launched, loaded or inactive
@@ -251,8 +247,7 @@ func newUnitPage(reg registry.Registry, items []job.Job, tok *PageToken) (*schem
 func mapJobToSchema(j *job.Job) (*schema.Unit, error) {
 	su := schema.Unit{
 		Name:            j.Name,
-		FileHash:        j.Unit.Hash().String(),
-		FileContents:    encodeUnitContents(&j.Unit),
+		Options:         mapUnitToSchema(&j.Unit),
 		TargetMachineID: j.TargetMachineID,
 		DesiredState:    string(j.TargetState),
 	}
@@ -275,15 +270,27 @@ func mapJobToSchema(j *job.Job) (*schema.Unit, error) {
 	return &su, nil
 }
 
-func encodeUnitContents(u *unit.Unit) string {
-	return base64.StdEncoding.EncodeToString(u.Bytes())
+func mapUnitToSchema(u *unit.Unit) []*schema.UnitOption {
+	sopts := make([]*schema.UnitOption, len(u.Options))
+	for i, opt := range u.Options {
+		sopts[i] = &schema.UnitOption{
+			Section: opt.Section,
+			Name:    opt.Name,
+			Value:   opt.Value,
+		}
+	}
+	return sopts
 }
 
-func decodeUnitContents(c string) (*unit.Unit, error) {
-	dec, err := base64.StdEncoding.DecodeString(c)
-	if err != nil {
-		return nil, err
+func mapSchemaToUnit(sopts []*schema.UnitOption) *unit.Unit {
+	opts := make([]*gsunit.UnitOption, len(sopts))
+	for i, sopt := range sopts {
+		opts[i] = &gsunit.UnitOption{
+			Section: sopt.Section,
+			Name:    sopt.Name,
+			Value:   sopt.Value,
+		}
 	}
 
-	return unit.NewUnit(string(dec))
+	return unit.NewUnitFromOptions(opts)
 }
