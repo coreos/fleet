@@ -17,6 +17,14 @@ import (
 	"github.com/coreos/fleet/unit"
 )
 
+func newUnit(t *testing.T, str string) unit.Unit {
+	u, err := unit.NewUnit(str)
+	if err != nil {
+		t.Fatalf("Unexpected error creating unit from %q: %v", str, err)
+	}
+	return *u
+}
+
 func TestUnitsSubResourceNotFound(t *testing.T) {
 	fr := registry.NewFakeRegistry()
 	ur := &unitsResource{fr, "/units"}
@@ -257,21 +265,21 @@ func TestUnitsDestroy(t *testing.T) {
 	}{
 		// Unsafe deletion of an existing unit should succeed
 		{
-			init:      []job.Job{job.Job{Name: "XXX", Unit: unit.Unit{Raw: "FOO"}}},
+			init:      []job.Job{job.Job{Name: "XXX", Unit: newUnit(t, "[Service]\nFoo=Bar")}},
 			arg:       schema.DeletableUnit{Name: "XXX"},
 			code:      http.StatusNoContent,
 			remaining: []string{},
 		},
 		// Safe deletion of an existing unit should succeed
 		{
-			init:      []job.Job{job.Job{Name: "XXX", Unit: unit.Unit{Raw: "FOO"}}},
-			arg:       schema.DeletableUnit{Name: "XXX", FileContents: "Rk9P"},
+			init:      []job.Job{job.Job{Name: "XXX", Unit: newUnit(t, "[Service]\nFoo=Bar")}},
+			arg:       schema.DeletableUnit{Name: "XXX", FileContents: "W1NlcnZpY2VdCkZvbz1CYXIK"},
 			code:      http.StatusNoContent,
 			remaining: []string{},
 		},
 		// Unsafe deletion of a nonexistent unit should fail
 		{
-			init:      []job.Job{job.Job{Name: "XXX", Unit: unit.Unit{Raw: "FOO"}}},
+			init:      []job.Job{job.Job{Name: "XXX", Unit: newUnit(t, "[Service]\nFoo=Bar")}},
 			arg:       schema.DeletableUnit{Name: "YYY"},
 			code:      http.StatusNotFound,
 			remaining: []string{"XXX"},
@@ -279,20 +287,20 @@ func TestUnitsDestroy(t *testing.T) {
 		// Safe deletion of a nonexistent unit should fail
 		{
 			init:      []job.Job{},
-			arg:       schema.DeletableUnit{Name: "XXX", FileContents: "Rk9P"},
+			arg:       schema.DeletableUnit{Name: "XXX", FileContents: "W1NlcnZpY2VdCkZvbz1CYXIK"},
 			code:      http.StatusNotFound,
 			remaining: []string{},
 		},
 		// Safe deletion of a unit with the wrong contents should fail
 		{
-			init:      []job.Job{job.Job{Name: "XXX", Unit: unit.Unit{Raw: "FOO"}}},
+			init:      []job.Job{job.Job{Name: "XXX", Unit: newUnit(t, "[Service]\nFoo=Bar")}},
 			arg:       schema.DeletableUnit{Name: "XXX", FileContents: "QkFS"},
 			code:      http.StatusConflict,
 			remaining: []string{"XXX"},
 		},
 		// Safe deletion of a unit with the malformed contents should fail
 		{
-			init:      []job.Job{job.Job{Name: "XXX", Unit: unit.Unit{Raw: "FOO"}}},
+			init:      []job.Job{job.Job{Name: "XXX", Unit: newUnit(t, "[Service]\nFoo=Bar")}},
 			arg:       schema.DeletableUnit{Name: "XXX", FileContents: "*"},
 			code:      http.StatusBadRequest,
 			remaining: []string{"XXX"},
