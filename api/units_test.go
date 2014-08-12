@@ -372,14 +372,6 @@ func TestUnitsSetDesiredState(t *testing.T) {
 			code:        http.StatusConflict,
 			finalStates: map[string]job.JobState{},
 		},
-		// Modifying a Job with the incorrect fileContents should fail
-		{
-			initJobs:    []job.Job{job.Job{Name: "XXX", Unit: unit.Unit{Raw: "FOO"}}},
-			initStates:  map[string]job.JobState{"XXX": "inactive"},
-			arg:         schema.DesiredUnitState{Name: "XXX", DesiredState: "loaded", FileContents: "ZWxyb3kNCg=="},
-			code:        http.StatusConflict,
-			finalStates: map[string]job.JobState{"XXX": "inactive"},
-		},
 	}
 
 	for i, tt := range tests {

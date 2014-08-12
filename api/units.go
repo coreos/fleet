@@ -86,7 +86,7 @@ func (ur *unitsResource) set(rw http.ResponseWriter, req *http.Request, item str
 	ds := job.JobState(dus.DesiredState)
 
 	if j != nil {
-		ur.update(rw, j, ds, u)
+		ur.update(rw, j, ds)
 	} else if u != nil {
 		ur.create(rw, item, ds, u)
 	} else {
@@ -112,13 +112,8 @@ func (ur *unitsResource) create(rw http.ResponseWriter, item string, ds job.JobS
 	rw.WriteHeader(http.StatusNoContent)
 }
 
-func (ur *unitsResource) update(rw http.ResponseWriter, j *job.Job, ds job.JobState, cmp *unit.Unit) {
+func (ur *unitsResource) update(rw http.ResponseWriter, j *job.Job, ds job.JobState) {
 	// Assert that the Job's Unit matches the Unit in the request, if provided
-	if cmp != nil && cmp.Hash() != j.Unit.Hash() {
-		sendError(rw, http.StatusConflict, errors.New("hash of provided fileContents does not match that of existing unit"))
-		return
-	}
-
 	err := ur.reg.SetJobTargetState(j.Name, ds)
 	if err != nil {
 		log.Errorf("Failed setting target state of Job(%s): %v", j.Name, err)
