@@ -191,18 +191,12 @@ Destroy an existing Unit entity.
 DELETE /units/<name> HTTP/1.1
 ```
 
-The provided request body may contain a single optional field: "fileContents".
-If the fileContents field is provided, the server will ensure the contents match the existing unit before making any changes.
-
-```
-{"fileContents": <encoded-contents>}
-```
+The request must not have a body.
 
 #### Response
 
 A successful response will not contain a body or any additional headers.
 If the indicated Unit does not exist, a `404 Not Found` will be returned.
-Conflicts between fileContents values are indicated with a `409 Conflict` response.
 
 ## Machines
 

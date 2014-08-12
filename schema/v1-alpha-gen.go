@@ -77,12 +77,6 @@ type UnitsService struct {
 	s *Service
 }
 
-type DeletableUnit struct {
-	FileContents string `json:"fileContents,omitempty"`
-
-	Name string `json:"name,omitempty"`
-}
-
 type DesiredUnitState struct {
 	DesiredState string `json:"desiredState,omitempty"`
 
@@ -202,27 +196,20 @@ func (c *MachinesListCall) Do() (*MachinePage, error) {
 // method id "fleet.Unit.Delete":
 
 type UnitsDeleteCall struct {
-	s             *Service
-	name          string
-	deletableunit *DeletableUnit
-	opt_          map[string]interface{}
+	s    *Service
+	name string
+	opt_ map[string]interface{}
 }
 
 // Delete: Delete the referenced Unit objects.
-func (r *UnitsService) Delete(name string, deletableunit *DeletableUnit) *UnitsDeleteCall {
+func (r *UnitsService) Delete(name string) *UnitsDeleteCall {
 	c := &UnitsDeleteCall{s: r.s, opt_: make(map[string]interface{})}
 	c.name = name
-	c.deletableunit = deletableunit
 	return c
 }
 
 func (c *UnitsDeleteCall) Do() error {
 	var body io.Reader = nil
-	body, err := googleapi.WithoutDataWrapper.JSONReader(c.deletableunit)
-	if err != nil {
-		return err
-	}
-	ctype := "application/json"
 	params := make(url.Values)
 	params.Set("alt", "json")
 	urls := googleapi.ResolveRelative(c.s.BasePath, "units/{name}")
@@ -230,7 +217,6 @@ func (c *UnitsDeleteCall) Do() error {
 	req, _ := http.NewRequest("DELETE", urls, body)
 	req.URL.Path = strings.Replace(req.URL.Path, "{name}", url.QueryEscape(c.name), 1)
 	googleapi.SetOpaque(req.URL)
-	req.Header.Set("Content-Type", ctype)
 	req.Header.Set("User-Agent", "google-api-go-client/0.5")
 	res, err := c.s.client.Do(req)
 	if err != nil {
@@ -255,10 +241,7 @@ func (c *UnitsDeleteCall) Do() error {
 	//       "type": "string"
 	//     }
 	//   },
-	//   "path": "units/{name}",
-	//   "request": {
-	//     "$ref": "DeletableUnit"
-	//   }
+	//   "path": "units/{name}"
 	// }
 
 }

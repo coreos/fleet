@@ -130,28 +130,6 @@ func (ur *unitsResource) update(rw http.ResponseWriter, j *job.Job, ds job.JobSt
 }
 
 func (ur *unitsResource) destroy(rw http.ResponseWriter, req *http.Request, item string) {
-	if validateContentType(req) != nil {
-		sendError(rw, http.StatusNotAcceptable, errors.New("application/json is only supported Content-Type"))
-		return
-	}
-
-	var du schema.DeletableUnit
-	dec := json.NewDecoder(req.Body)
-	err := dec.Decode(&du)
-	if err != nil {
-		sendError(rw, http.StatusBadRequest, fmt.Errorf("unable to decode body: %v", err))
-		return
-	}
-
-	var u *unit.Unit
-	if len(du.FileContents) > 0 {
-		u, err = decodeUnitContents(du.FileContents)
-		if err != nil {
-			sendError(rw, http.StatusBadRequest, fmt.Errorf("invalid fileContents: %v", err))
-			return
-		}
-	}
-
 	j, err := ur.reg.Job(item)
 	if err != nil {
 		log.Errorf("Failed fetching Job(%s): %v", item, err)
@@ -161,11 +139,6 @@ func (ur *unitsResource) destroy(rw http.ResponseWriter, req *http.Request, item
 
 	if j == nil {
 		sendError(rw, http.StatusNotFound, errors.New("unit does not exist"))
-		return
-	}
-
-	if u != nil && u.Hash() != j.Unit.Hash() {
-		sendError(rw, http.StatusConflict, errors.New("hash of provided fileContents does not match that of existing unit"))
 		return
 	}
 
