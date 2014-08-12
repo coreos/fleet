@@ -55,7 +55,7 @@ func TestListUnitsFieldsToStrings(t *testing.T) {
 	ms = listUnitsFields["machine"](us, true)
 	assertEqual(t, "machine", "other-id/1.2.3.4", ms)
 
-	uh := "f035b2f14edc4d23572e5f3d3d4cb4f78d0e53c3"
+	uh := "a0f275d46bc6ee0eca06be7c339913c07d99c0c7"
 	us.UnitHash = uh
 	fuh := listUnitsFields["hash"](us, true)
 	suh := listUnitsFields["hash"](us, false)

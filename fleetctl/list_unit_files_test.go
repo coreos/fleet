@@ -40,7 +40,7 @@ Description=some description`)
 	d := listUnitFilesFields["desc"](j, false)
 	assertEqual(t, "desc", "some description", d)
 
-	uh := "f035b2f14edc4d23572e5f3d3d4cb4f78d0e53c3"
+	uh := "a0f275d46bc6ee0eca06be7c339913c07d99c0c7"
 	fuh := listUnitFilesFields["hash"](j, true)
 	suh := listUnitFilesFields["hash"](j, false)
 	assertEqual(t, "hash", uh, fuh)

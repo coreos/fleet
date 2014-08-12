@@ -5,26 +5,23 @@ import (
 	"testing"
 )
 
-const (
-	// $ echo -n "foo" | sha1sum
-	// 0beec7b5ea3f0fdbc95d0dd47f3c5bc275da8a33 -
-	testData      = "foo"
-	testShaString = "0beec7b5ea3f0fdbc95d0dd47f3c5bc275da8a33"
-	testShaShort  = "0beec7b"
-)
-
 func TestUnitHash(t *testing.T) {
-	u, err := NewUnit(testData)
+	u, err := NewUnit("[Service]\nExecStart=/bin/sleep 100\n")
 	if err != nil {
 		t.Fatalf("Unexpected error encountered creating unit: %v", err)
 	}
-	h := u.Hash()
-	if h.String() != testShaString {
-		t.Fatalf("Unit Hash (%s) does not match expected (%s)", h.String(), testShaString)
+
+	gotHash := u.Hash()
+	gotHashString := gotHash.String()
+	expectHashString := "1c6fb6f3684bafb0c173d8b8b957ceff031180c1"
+	if gotHashString != expectHashString {
+		t.Fatalf("Unit Hash (%s) does not match expected (%s)", gotHashString, expectHashString)
 	}
 
-	if h.Short() != testShaShort {
-		t.Fatalf("Unit Hash short (%s) does not match expected (%s)", h.Short(), testShaShort)
+	expectHashShort := "1c6fb6f"
+	gotHashShort := gotHash.Short()
+	if gotHashShort != expectHashShort {
+		t.Fatalf("Unit Hash short (%s) does not match expected (%s)", gotHashShort, expectHashShort)
 	}
 
 	eh := &Hash{}
