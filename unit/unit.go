@@ -3,7 +3,10 @@ package unit
 import (
 	"crypto/sha1"
 	"fmt"
+	"io/ioutil"
 	"strings"
+
+	"github.com/coreos/fleet/Godeps/_workspace/src/github.com/coreos/go-systemd/unit"
 )
 
 // RecognizedUnitType determines whether or not the given unit name represents
@@ -52,16 +55,16 @@ type Unit struct {
 	// This field must be considered readonly.
 	Contents map[string]map[string][]string
 
-	// raw represents the entire contents of the unit file.
-	raw string
+	opts []*unit.UnitOption
 }
 
 func (u *Unit) Bytes() []byte {
-	return []byte(u.raw)
+	b, _ := ioutil.ReadAll(unit.Serialize(u.opts))
+	return b
 }
 
 func (u *Unit) String() string {
-	return u.raw
+	return string(u.Bytes())
 }
 
 // Hash returns the SHA1 hash of the raw contents of the Unit
