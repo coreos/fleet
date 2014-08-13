@@ -65,19 +65,18 @@ type Job struct {
 }
 
 // ScheduledUnit represents a Unit known by fleet and encapsulates its current scheduling state
-// (list-unit-schedule)
 type ScheduledUnit struct {
 	Name            string
 	State           *JobState
-	TargetState     JobState
 	TargetMachineID string
 }
 
 // Unit represents a Unit that has been submitted to fleet
 // (list-unit-files)
 type Unit struct {
-	Name string
-	Unit unit.UnitFile
+	Name        string
+	Unit        unit.UnitFile
+	TargetState JobState
 }
 
 // NewJob creates a new Job based on the given name and Unit.
