@@ -134,7 +134,6 @@ func (c *HTTPClient) Schedule() ([]job.ScheduledUnit, error) {
 		su := job.ScheduledUnit{
 			Name:            j.Name,
 			State:           j.State,
-			TargetState:     j.TargetState,
 			TargetMachineID: j.TargetMachineID,
 		}
 		sched = append(sched, su)
