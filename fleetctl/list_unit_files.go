@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 
 	"github.com/coreos/fleet/job"
@@ -90,5 +91,6 @@ func jobUnitToFieldKeys(m map[string]jobUnitToField) (keys []string) {
 	for k := range m {
 		keys = append(keys, k)
 	}
+	sort.Strings(keys)
 	return
 }
