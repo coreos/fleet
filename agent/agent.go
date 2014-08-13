@@ -152,7 +152,7 @@ func (a *Agent) jobs() (map[string]*job.Job, error) {
 
 			// The following fields are not properly populated
 			// and should not be used in the calling code
-			Unit:            unit.Unit{},
+			Unit:            unit.UnitFile{},
 			TargetState:     job.JobState(""),
 			TargetMachineID: "",
 		}

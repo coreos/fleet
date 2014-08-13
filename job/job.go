@@ -60,7 +60,7 @@ type Job struct {
 	State           *JobState
 	TargetState     JobState
 	TargetMachineID string
-	Unit            unit.Unit
+	Unit            unit.UnitFile
 	UnitState       *unit.UnitState
 }
 
@@ -73,17 +73,17 @@ type ScheduledUnit struct {
 	TargetMachineID string
 }
 
-// JobUnit represents a Unit that has been submitted to fleet
+// Unit represents a Unit that has been submitted to fleet
 // (list-unit-files)
-type JobUnit struct {
+type Unit struct {
 	Name string
-	Unit unit.Unit
+	Unit unit.UnitFile
 }
 
 // NewJob creates a new Job based on the given name and Unit.
 // The returned Job has a populated UnitHash and empty JobState and
 // UnitState. nil is returned on failure.
-func NewJob(name string, unit unit.Unit) *Job {
+func NewJob(name string, unit unit.UnitFile) *Job {
 	return &Job{
 		Name:            name,
 		State:           nil,

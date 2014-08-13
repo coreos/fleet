@@ -13,7 +13,7 @@ func TestLegacyPayload(t *testing.T) {
 ExecStart=/bin/sleep 30000
 `[1:]
 	legacyPayloadContents := `{"Name":"sleep.service","Unit":{"Contents":{"Service":{"ExecStart":"/bin/sleep 30000"}},"Raw":"[Service]\nExecStart=/bin/sleep 30000\n"}}`
-	want, err := unit.NewUnit(contents)
+	want, err := unit.NewUnitFile(contents)
 	if err != nil {
 		t.Fatalf("unexpected error creating unit from %q: %v", contents, err)
 	}

@@ -5,7 +5,7 @@ import (
 )
 
 type UnitManager interface {
-	Load(string, Unit) error
+	Load(string, UnitFile) error
 	Unload(string)
 
 	Start(string)

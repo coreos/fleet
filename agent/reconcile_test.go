@@ -17,13 +17,13 @@ var (
 	jsLaunched = job.JobStateLaunched
 )
 
-func fleetUnit(t *testing.T, opts ...string) unit.Unit {
+func fleetUnit(t *testing.T, opts ...string) unit.UnitFile {
 	contents := "[X-Fleet]"
 	for _, v := range opts {
 		contents = fmt.Sprintf("%s\n%s", contents, v)
 	}
 
-	u, err := unit.NewUnit(contents)
+	u, err := unit.NewUnitFile(contents)
 	if u == nil || err != nil {
 		t.Fatalf("Failed creating test unit: unit=%v, err=%v", u, err)
 	}
@@ -40,7 +40,7 @@ func TestAbleToRun(t *testing.T) {
 		// nothing to worry about
 		{
 			dState: NewAgentState(&machine.MachineState{ID: "123"}),
-			job:    &job.Job{Name: "easy-street.service", Unit: unit.Unit{}},
+			job:    &job.Job{Name: "easy-street.service", Unit: unit.UnitFile{}},
 			want:   true,
 		},
 
@@ -68,7 +68,7 @@ func TestAbleToRun(t *testing.T) {
 		// Machine metadata ignored when no X-ConditionMachineMetadata in Job
 		{
 			dState: NewAgentState(&machine.MachineState{ID: "123", Metadata: map[string]string{"region": "us-west"}}),
-			job:    &job.Job{Name: "easy-street.service", Unit: unit.Unit{}},
+			job:    &job.Job{Name: "easy-street.service", Unit: unit.UnitFile{}},
 			want:   true,
 		},
 

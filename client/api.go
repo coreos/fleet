@@ -20,7 +20,7 @@ type API interface {
 	Machines() ([]machine.MachineState, error)
 	SetJobTargetState(string, job.JobState) error
 
-	JobUnits() ([]job.JobUnit, error)
+	Units() ([]job.Unit, error)
 	Schedule() ([]job.ScheduledUnit, error)
 	UnitStates() ([]*unit.UnitState, error)
 }

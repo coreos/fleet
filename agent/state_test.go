@@ -34,7 +34,7 @@ func TestHasConflicts(t *testing.T) {
 					},
 				},
 			},
-			job:      &job.Job{Name: "foo.service", Unit: unit.Unit{}},
+			job:      &job.Job{Name: "foo.service", Unit: unit.UnitFile{}},
 			want:     true,
 			conflict: "bar.service",
 		},
@@ -46,7 +46,7 @@ func TestHasConflicts(t *testing.T) {
 				Jobs: map[string]*job.Job{
 					"bar.service": &job.Job{
 						Name: "bar.service",
-						Unit: unit.Unit{},
+						Unit: unit.UnitFile{},
 					},
 				},
 			},

@@ -17,7 +17,7 @@ const (
 	payloadPrefix = "/payload/"
 )
 
-func (r *EtcdRegistry) storeOrGetUnit(u unit.Unit) (err error) {
+func (r *EtcdRegistry) storeOrGetUnit(u unit.UnitFile) (err error) {
 	um := unitModel{
 		Raw: u.String(),
 	}
@@ -41,7 +41,7 @@ func (r *EtcdRegistry) storeOrGetUnit(u unit.Unit) (err error) {
 }
 
 // getUnitFromLegacyPayload tries to extract a Unit from a legacy JobPayload of the given name
-func (r *EtcdRegistry) getUnitFromLegacyPayload(name string) (*unit.Unit, error) {
+func (r *EtcdRegistry) getUnitFromLegacyPayload(name string) (*unit.UnitFile, error) {
 	req := etcd.Get{
 		Key:       path.Join(r.keyPrefix, payloadPrefix, name),
 		Recursive: true,
@@ -67,7 +67,7 @@ func (r *EtcdRegistry) getUnitFromLegacyPayload(name string) (*unit.Unit, error)
 }
 
 // getUnitByHash retrieves from the Registry the Unit associated with the given Hash
-func (r *EtcdRegistry) getUnitByHash(hash unit.Hash) *unit.Unit {
+func (r *EtcdRegistry) getUnitByHash(hash unit.Hash) *unit.UnitFile {
 	req := etcd.Get{
 		Key:       r.hashedUnitPath(hash),
 		Recursive: true,
@@ -85,7 +85,7 @@ func (r *EtcdRegistry) getUnitByHash(hash unit.Hash) *unit.Unit {
 		return nil
 	}
 
-	u, err := unit.NewUnit(um.Raw)
+	u, err := unit.NewUnitFile(um.Raw)
 	if err != nil {
 		log.Errorf("error parsing Unit(%s): %v", hash, err)
 		return nil
@@ -102,7 +102,7 @@ func (r *EtcdRegistry) hashedUnitPath(hash unit.Hash) string {
 // The associated marshaling/unmarshaling methods deal with Payloads encoded in this legacy format.
 type LegacyJobPayload struct {
 	Name string
-	Unit unit.Unit
+	Unit unit.UnitFile
 }
 
 func (ljp *LegacyJobPayload) UnmarshalJSON(data []byte) error {
@@ -112,9 +112,9 @@ func (ljp *LegacyJobPayload) UnmarshalJSON(data []byte) error {
 		return fmt.Errorf("unable to JSON-deserialize object: %s", err)
 	}
 
-	var u *unit.Unit
+	var u *unit.UnitFile
 	if len(ljpm.Unit.Raw) > 0 {
-		u, err = unit.NewUnit(ljpm.Unit.Raw)
+		u, err = unit.NewUnitFile(ljpm.Unit.Raw)
 	} else {
 		u, err = unit.NewUnitFromLegacyContents(ljpm.Unit.Contents)
 	}

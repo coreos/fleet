@@ -15,7 +15,7 @@ type FakeUnitManager struct {
 	u map[string]bool
 }
 
-func (fum *FakeUnitManager) Load(name string, u Unit) error {
+func (fum *FakeUnitManager) Load(name string, u UnitFile) error {
 	fum.Lock()
 	defer fum.Unlock()
 

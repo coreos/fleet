@@ -73,7 +73,7 @@ func (ur *unitsResource) set(rw http.ResponseWriter, req *http.Request, item str
 		return
 	}
 
-	var u *unit.Unit
+	var u *unit.UnitFile
 	if len(dus.Options) > 0 {
 		u = mapSchemaToUnit(dus.Options)
 	}
@@ -90,7 +90,7 @@ func (ur *unitsResource) set(rw http.ResponseWriter, req *http.Request, item str
 	}
 }
 
-func (ur *unitsResource) create(rw http.ResponseWriter, item string, ds job.JobState, u *unit.Unit) {
+func (ur *unitsResource) create(rw http.ResponseWriter, item string, ds job.JobState, u *unit.UnitFile) {
 	j := job.NewJob(item, *u)
 
 	if err := ur.reg.CreateJob(j); err != nil {
@@ -270,7 +270,7 @@ func mapJobToSchema(j *job.Job) (*schema.Unit, error) {
 	return &su, nil
 }
 
-func mapUnitToSchema(u *unit.Unit) []*schema.UnitOption {
+func mapUnitToSchema(u *unit.UnitFile) []*schema.UnitOption {
 	sopts := make([]*schema.UnitOption, len(u.Options))
 	for i, opt := range u.Options {
 		sopts[i] = &schema.UnitOption{
@@ -282,7 +282,7 @@ func mapUnitToSchema(u *unit.Unit) []*schema.UnitOption {
 	return sopts
 }
 
-func mapSchemaToUnit(sopts []*schema.UnitOption) *unit.Unit {
+func mapSchemaToUnit(sopts []*schema.UnitOption) *unit.UnitFile {
 	opts := make([]*gsunit.UnitOption, len(sopts))
 	for i, sopt := range sopts {
 		opts[i] = &gsunit.UnitOption{

@@ -6,7 +6,7 @@ import (
 )
 
 func TestUnitHash(t *testing.T) {
-	u, err := NewUnit("[Service]\nExecStart=/bin/sleep 100\n")
+	u, err := NewUnitFile("[Service]\nExecStart=/bin/sleep 100\n")
 	if err != nil {
 		t.Fatalf("Unexpected error encountered creating unit: %v", err)
 	}
@@ -177,7 +177,7 @@ X-ConditionMachineMetadata=baz=qux
 		},
 	}
 
-	unitFile, err := NewUnit(contents)
+	unitFile, err := NewUnitFile(contents)
 	if err != nil {
 		t.Fatalf("Unexpected error parsing unit %q: %v", contents, err)
 	}
@@ -201,7 +201,7 @@ ExecStart=jim
 			"<<<<<<<<<<<": {"bar"},
 		},
 	}
-	unitFile, err := NewUnit(contents)
+	unitFile, err := NewUnitFile(contents)
 	if err != nil {
 		t.Fatalf("Unexpected error parsing unit %q: %v", contents, err)
 	}
@@ -235,7 +235,7 @@ pung
 			"ExecStopPost": {`echo #peng pung`},
 		},
 	}
-	unitFile, err := NewUnit(contents)
+	unitFile, err := NewUnitFile(contents)
 	if err != nil {
 		t.Fatalf("Unexpected error parsing unit %q: %v", contents, err)
 	}
@@ -250,7 +250,7 @@ func TestSerializeDeserialize(t *testing.T) {
 [Unit]
 Description = Foo
 `
-	deserialized, err := NewUnit(contents)
+	deserialized, err := NewUnitFile(contents)
 	if err != nil {
 		t.Fatalf("Unexpected error parsing unit %q: %v", contents, err)
 	}
@@ -260,7 +260,7 @@ Description = Foo
 	}
 
 	serialized := deserialized.String()
-	deserialized, err = NewUnit(serialized)
+	deserialized, err = NewUnitFile(serialized)
 	if err != nil {
 		t.Fatalf("Unexpected error parsing unit %q: %v", serialized, err)
 	}
@@ -281,7 +281,7 @@ ExecStart=echo "ping";
 ExecStop=echo "pong";
 `
 
-	unitFile, err := NewUnit(contents)
+	unitFile, err := NewUnitFile(contents)
 	if err != nil {
 		t.Fatalf("Unexpected error parsing unit %q: %v", contents, err)
 	}
@@ -299,7 +299,7 @@ ExecStart=echo "ping";
 ExecStop=echo "pong";
 `
 
-	unitFile, err := NewUnit(contents)
+	unitFile, err := NewUnitFile(contents)
 	if err != nil {
 		t.Fatalf("Unexpected error parsing unit %q: %v", contents, err)
 	}
@@ -322,7 +322,7 @@ nonsense upon stilts
 `,
 	}
 	for _, tt := range bad {
-		if _, err := NewUnit(tt); err == nil {
+		if _, err := NewUnitFile(tt); err == nil {
 			t.Fatalf("Did not get expected error creating Unit from %q", tt)
 		}
 	}

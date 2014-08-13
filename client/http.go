@@ -108,14 +108,14 @@ func (c *HTTPClient) Jobs() ([]job.Job, error) {
 	return jobs, nil
 }
 
-func (c *HTTPClient) JobUnits() ([]job.JobUnit, error) {
+func (c *HTTPClient) Units() ([]job.Unit, error) {
 	jobs, err := c.Jobs()
 	if err != nil {
 		return nil, err
 	}
-	var jus []job.JobUnit
+	var jus []job.Unit
 	for _, j := range jobs {
-		ju := job.JobUnit{
+		ju := job.Unit{
 			Name: j.Name,
 			Unit: j.Unit,
 		}

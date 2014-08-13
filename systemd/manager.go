@@ -48,7 +48,7 @@ func NewSystemdUnitManager(uDir string) (*systemdUnitManager, error) {
 // Load writes the given Unit to disk, subscribing to relevant dbus
 // events, caching the Unit's Hash, and, if necessary, instructing the systemd
 // daemon to reload.
-func (m *systemdUnitManager) Load(name string, u unit.Unit) error {
+func (m *systemdUnitManager) Load(name string, u unit.UnitFile) error {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 	err := m.writeUnit(name, u.String())

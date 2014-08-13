@@ -13,7 +13,7 @@ import (
 func TestSignJob(t *testing.T) {
 	c, _ := initSign(t)
 
-	u, err := unit.NewUnit("Echo")
+	u, err := unit.NewUnitFile("Echo")
 	if err != nil {
 		t.Fatalf("unexpected error creating new unit: %v", err)
 	}
@@ -48,7 +48,7 @@ func TestSignJob(t *testing.T) {
 func TestVerifyJob(t *testing.T) {
 	c, v := initSign(t)
 
-	u, err := unit.NewUnit("Echo")
+	u, err := unit.NewUnitFile("Echo")
 	if err != nil {
 		t.Fatalf("unexpected error creating new unit: %v", err)
 	}

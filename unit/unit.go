@@ -10,7 +10,7 @@ import (
 	"github.com/coreos/fleet/Godeps/_workspace/src/github.com/coreos/go-systemd/unit"
 )
 
-func NewUnit(raw string) (*Unit, error) {
+func NewUnitFile(raw string) (*UnitFile, error) {
 	reader := strings.NewReader(raw)
 	opts, err := unit.Deserialize(reader)
 	if err != nil {
@@ -20,8 +20,8 @@ func NewUnit(raw string) (*Unit, error) {
 	return NewUnitFromOptions(opts), nil
 }
 
-func NewUnitFromOptions(opts []*unit.UnitOption) *Unit {
-	return &Unit{mapOptions(opts), opts}
+func NewUnitFromOptions(opts []*unit.UnitOption) *UnitFile {
+	return &UnitFile{mapOptions(opts), opts}
 }
 
 func mapOptions(opts []*unit.UnitOption) map[string]map[string][]string {
@@ -83,14 +83,14 @@ func parseMultivalueLine(line string) (values []string) {
 	return
 }
 
-// A Unit represents a systemd configuration which encodes information about any of the unit
+// A UnitFile represents a systemd configuration which encodes information about any of the unit
 // types that fleet supports (as defined in SupportedUnitTypes()).
-// Units are linked to Jobs by the Hash of their contents.
-// Similar to systemd, a Unit configuration has no inherent name, but is rather
+// UnitFiles are linked to Units by the Hash of their contents.
+// Similar to systemd, a UnitFile configuration has no inherent name, but is rather
 // named through the reference to it; in the case of systemd, the reference is
-// the filename, and in the case of fleet, the reference is the name of the job
-// that references this Unit.
-type Unit struct {
+// the filename, and in the case of fleet, the reference is the name of the Unit
+// that references this UnitFile.
+type UnitFile struct {
 	// Contents represents the parsed unit file.
 	// This field must be considered readonly.
 	Contents map[string]map[string][]string
@@ -100,24 +100,24 @@ type Unit struct {
 
 // Description returns the first Description option found in the [Unit] section.
 // If the option is not defined, an empty string is returned.
-func (u *Unit) Description() string {
+func (u *UnitFile) Description() string {
 	if values := u.Contents["Unit"]["Description"]; len(values) > 0 {
 		return values[0]
 	}
 	return ""
 }
 
-func (u *Unit) Bytes() []byte {
+func (u *UnitFile) Bytes() []byte {
 	b, _ := ioutil.ReadAll(unit.Serialize(u.Options))
 	return b
 }
 
-func (u *Unit) String() string {
+func (u *UnitFile) String() string {
 	return string(u.Bytes())
 }
 
 // Hash returns the SHA1 hash of the raw contents of the Unit
-func (u *Unit) Hash() Hash {
+func (u *UnitFile) Hash() Hash {
 	return Hash(sha1.Sum(u.Bytes()))
 }
 
