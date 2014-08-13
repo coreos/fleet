@@ -101,12 +101,10 @@ func TestUnitsListBadNextPageToken(t *testing.T) {
 }
 
 func TestExtractUnitPage(t *testing.T) {
-	fr := registry.NewFakeRegistry()
-
-	all := make([]job.Job, 103)
+	all := make([]job.Unit, 103)
 	for i := 0; i < 103; i++ {
 		name := strconv.FormatInt(int64(i), 10)
-		all[i] = job.Job{Name: name}
+		all[i] = job.Unit{Name: name}
 	}
 
 	tests := []struct {
@@ -120,40 +118,30 @@ func TestExtractUnitPage(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		page, err := extractUnitPage(fr, all, tt.token)
-		if err != nil {
-			t.Errorf("case %d: call to extractUnitPage failed: %v", i, err)
-			continue
-		}
+		items, next := extractUnitPageData(all, tt.token)
 		expectCount := (tt.idxEnd - tt.idxStart + 1)
-		if len(page.Units) != expectCount {
-			t.Errorf("case %d: expected page of %d, got %d", i, expectCount, len(page.Units))
+		if len(items) != expectCount {
+			t.Errorf("case %d: expected page of %d, got %d", i, expectCount, len(items))
 			continue
 		}
 
-		first := page.Units[0].Name
+		first := items[0].Name
 		if first != strconv.FormatInt(int64(tt.idxStart), 10) {
-			t.Errorf("case %d: irst element in first page should have ID %d, got %d", i, tt.idxStart, first)
+			t.Errorf("case %d: first element in first page should have ID %d, got %d", i, tt.idxStart, first)
 		}
 
-		last := page.Units[len(page.Units)-1].Name
+		last := items[len(items)-1].Name
 		if last != strconv.FormatInt(int64(tt.idxEnd), 10) {
 			t.Errorf("case %d: first element in first page should have ID %d, got %d", i, tt.idxEnd, last)
 		}
 
-		if tt.next == nil && page.NextPageToken != "" {
+		if tt.next == nil && next != nil {
 			t.Errorf("case %d: did not expect NextPageToken", i)
 			continue
-		} else if page.NextPageToken == "" {
+		} else if next == nil {
 			if tt.next != nil {
 				t.Errorf("case %d: did not receive expected NextPageToken", i)
 			}
-			continue
-		}
-
-		next, err := decodePageToken(page.NextPageToken)
-		if err != nil {
-			t.Errorf("case %d: unable to parse NextPageToken: %v", i, err)
 			continue
 		}
 
@@ -277,17 +265,17 @@ func TestUnitsSetDesiredState(t *testing.T) {
 		initJobs   []job.Job
 		initStates map[string]job.JobState
 		// which Job to attempt to delete
-		arg schema.DesiredUnitState
+		arg schema.Unit
 		// expected HTTP status code
 		code int
 		// expected state of registry after request
 		finalStates map[string]job.JobState
 	}{
-		// Modify the DesiredState of an existing Job
+		// Modify the desired State of an existing Job
 		{
 			initJobs:    []job.Job{job.Job{Name: "XXX", Unit: newUnit(t, "[Service]\nFoo=Bar")}},
 			initStates:  map[string]job.JobState{"XXX": "inactive"},
-			arg:         schema.DesiredUnitState{Name: "XXX", DesiredState: "launched"},
+			arg:         schema.Unit{Name: "XXX", DesiredState: "launched"},
 			code:        http.StatusNoContent,
 			finalStates: map[string]job.JobState{"XXX": "launched"},
 		},
@@ -295,7 +283,7 @@ func TestUnitsSetDesiredState(t *testing.T) {
 		{
 			initJobs:   []job.Job{},
 			initStates: map[string]job.JobState{},
-			arg: schema.DesiredUnitState{
+			arg: schema.Unit{
 				Name:         "YYY",
 				DesiredState: "loaded",
 				Options: []*schema.UnitOption{
@@ -309,7 +297,7 @@ func TestUnitsSetDesiredState(t *testing.T) {
 		{
 			initJobs:   []job.Job{},
 			initStates: map[string]job.JobState{},
-			arg: schema.DesiredUnitState{
+			arg: schema.Unit{
 				Name:         "YYY",
 				DesiredState: "loaded",
 				Options:      []*schema.UnitOption{},
@@ -321,7 +309,7 @@ func TestUnitsSetDesiredState(t *testing.T) {
 		{
 			initJobs:    []job.Job{},
 			initStates:  map[string]job.JobState{},
-			arg:         schema.DesiredUnitState{Name: "YYY", DesiredState: "loaded"},
+			arg:         schema.Unit{Name: "YYY", DesiredState: "loaded"},
 			code:        http.StatusConflict,
 			finalStates: map[string]job.JobState{},
 		},

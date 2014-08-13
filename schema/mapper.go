@@ -8,9 +8,9 @@ import (
 	"github.com/coreos/fleet/unit"
 )
 
-func MapUnitFileToSchema(u *unit.UnitFile) []*UnitOption {
-	sopts := make([]*UnitOption, len(u.Options))
-	for i, opt := range u.Options {
+func MapUnitFileToSchemaUnitOptions(uf *unit.UnitFile) []*UnitOption {
+	sopts := make([]*UnitOption, len(uf.Options))
+	for i, opt := range uf.Options {
 		sopts[i] = &UnitOption{
 			Section: opt.Section,
 			Name:    opt.Name,
@@ -20,7 +20,7 @@ func MapUnitFileToSchema(u *unit.UnitFile) []*UnitOption {
 	return sopts
 }
 
-func MapSchemaToUnitFile(sopts []*UnitOption) *unit.UnitFile {
+func MapSchemaUnitOptionsToUnitFile(sopts []*UnitOption) *unit.UnitFile {
 	opts := make([]*gsunit.UnitOption, len(sopts))
 	for i, sopt := range sopts {
 		opts[i] = &gsunit.UnitOption{
@@ -33,81 +33,40 @@ func MapSchemaToUnitFile(sopts []*UnitOption) *unit.UnitFile {
 	return unit.NewUnitFromOptions(opts)
 }
 
-func MapJobToSchema(j *job.Job) (*Unit, error) {
-	su := Unit{
-		Name:            j.Name,
-		Options:         MapUnitFileToSchema(&j.Unit),
-		TargetMachineID: j.TargetMachineID,
-		DesiredState:    string(j.TargetState),
+func MapSchemaUnitToUnit(entity *Unit) *job.Unit {
+	uf := MapSchemaUnitOptionsToUnitFile(entity.Options)
+	j := job.Unit{
+		Name: entity.Name,
+		Unit: *uf,
 	}
-
-	if j.State != nil {
-		su.CurrentState = string(*(j.State))
-	}
-
-	if j.UnitState != nil {
-		su.Systemd = &SystemdState{
-			LoadState:   j.UnitState.LoadState,
-			ActiveState: j.UnitState.ActiveState,
-			SubState:    j.UnitState.SubState,
-		}
-		if j.UnitState.MachineID != "" {
-			su.Systemd.MachineID = j.UnitState.MachineID
-		}
-	}
-
-	return &su, nil
+	return &j
 }
 
-func MapSchemaToJob(entity *Unit) (*job.Job, error) {
-	opts := make([]*gsunit.UnitOption, len(entity.Options))
-	for i, eopt := range entity.Options {
-		opts[i] = &gsunit.UnitOption{
-			Section: eopt.Section,
-			Name:    eopt.Name,
-			Value:   eopt.Value,
-		}
-	}
-	u := unit.NewUnitFromOptions(opts)
-	js := job.JobState(entity.CurrentState)
-	ts := job.JobState(entity.DesiredState)
-	j := job.Job{
-		Name:  entity.Name,
-		TargetState: ts,
-		State: &js,
-		Unit:  *u,
+func MapUnitToSchemaUnit(u *job.Unit, su *job.ScheduledUnit) *Unit {
+	s := Unit{
+		Name:         u.Name,
+		Options:      MapUnitFileToSchemaUnitOptions(&(u.Unit)),
+		DesiredState: string(u.TargetState),
 	}
 
-	// populate a UnitState object only if the entity
-	// is actually reporting relevant data
-	if entity.Systemd != nil {
-		j.UnitState = &unit.UnitState{
-			LoadState:   entity.Systemd.LoadState,
-			ActiveState: entity.Systemd.ActiveState,
-			SubState:    entity.Systemd.SubState,
-		}
-		if len(entity.Systemd.MachineID) > 0 {
-			j.UnitState.MachineID = entity.Systemd.MachineID
+	if su != nil {
+		s.Machine = su.TargetMachineID
+		if su.State != nil {
+			s.CurrentState = string(*su.State)
 		}
 	}
 
-	return &j, nil
+	return &s
 }
 
-func MapSchemaToJobs(entities []*Unit) ([]job.Job, error) {
-	jobs := make([]job.Job, len(entities))
+func MapSchemaUnitsToUnits(entities []*Unit) []job.Unit {
+	units := make([]job.Unit, len(entities))
 	for i, _ := range entities {
 		entity := entities[i]
-		j, err := MapSchemaToJob(entity)
-		if err != nil {
-			return nil, err
-		}
-		if j != nil {
-			jobs[i] = *j
-		}
+		units[i] = *(MapSchemaUnitToUnit(entity))
 	}
 
-	return jobs, nil
+	return units
 }
 
 func MapMachineStateToSchema(ms *machine.MachineState) *Machine {
@@ -143,4 +102,54 @@ func MapSchemaToMachineStates(entities []*Machine) []machine.MachineState {
 	}
 
 	return machines
+}
+
+func MapUnitStatesToSchemaUnitStates(entities []*unit.UnitState) []*UnitState {
+	sus := make([]*UnitState, len(entities))
+	for i, us := range entities {
+		sus[i] = &UnitState{
+			Name:               us.UnitName,
+			Hash:               us.UnitHash,
+			MachineID:          us.MachineID,
+			SystemdLoadState:   us.LoadState,
+			SystemdActiveState: us.ActiveState,
+			SystemdSubState:    us.SubState,
+		}
+	}
+
+	return sus
+}
+
+func MapSchemaUnitStatesToUnitStates(entities []*UnitState) []*unit.UnitState {
+	us := make([]*unit.UnitState, len(entities))
+	for i, e := range entities {
+		us[i] = &unit.UnitState{
+			UnitName:    e.Name,
+			UnitHash:    e.Hash,
+			MachineID:   e.MachineID,
+			LoadState:   e.SystemdLoadState,
+			ActiveState: e.SystemdActiveState,
+			SubState:    e.SystemdSubState,
+		}
+	}
+
+	return us
+}
+
+func MapSchemaUnitToScheduledUnit(entity *Unit) *job.ScheduledUnit {
+	cs := job.JobState(entity.CurrentState)
+	return &job.ScheduledUnit{
+		Name:            entity.Name,
+		State:           &cs,
+		TargetMachineID: entity.Machine,
+	}
+}
+
+func MapSchemaUnitsToScheduledUnits(entities []*Unit) []job.ScheduledUnit {
+	su := make([]job.ScheduledUnit, len(entities))
+	for i, e := range entities {
+		su[i] = *MapSchemaUnitToScheduledUnit(e)
+	}
+
+	return su
 }

@@ -46,6 +46,7 @@ func New(client *http.Client) (*Service, error) {
 	}
 	s := &Service{client: client, BasePath: basePath}
 	s.Machines = NewMachinesService(s)
+	s.UnitState = NewUnitStateService(s)
 	s.Units = NewUnitsService(s)
 	return s, nil
 }
@@ -55,6 +56,8 @@ type Service struct {
 	BasePath string // API endpoint base URL
 
 	Machines *MachinesService
+
+	UnitState *UnitStateService
 
 	Units *UnitsService
 }
@@ -68,6 +71,15 @@ type MachinesService struct {
 	s *Service
 }
 
+func NewUnitStateService(s *Service) *UnitStateService {
+	rs := &UnitStateService{s: s}
+	return rs
+}
+
+type UnitStateService struct {
+	s *Service
+}
+
 func NewUnitsService(s *Service) *UnitsService {
 	rs := &UnitsService{s: s}
 	return rs
@@ -75,14 +87,6 @@ func NewUnitsService(s *Service) *UnitsService {
 
 type UnitsService struct {
 	s *Service
-}
-
-type DesiredUnitState struct {
-	DesiredState string `json:"desiredState,omitempty"`
-
-	Name string `json:"name,omitempty"`
-
-	Options []*UnitOption `json:"options,omitempty"`
 }
 
 type Machine struct {
@@ -99,28 +103,16 @@ type MachinePage struct {
 	NextPageToken string `json:"nextPageToken,omitempty"`
 }
 
-type SystemdState struct {
-	ActiveState string `json:"activeState,omitempty"`
-
-	LoadState string `json:"loadState,omitempty"`
-
-	MachineID string `json:"machineID,omitempty"`
-
-	SubState string `json:"subState,omitempty"`
-}
-
 type Unit struct {
 	CurrentState string `json:"currentState,omitempty"`
 
 	DesiredState string `json:"desiredState,omitempty"`
 
+	Machine string `json:"machine,omitempty"`
+
 	Name string `json:"name,omitempty"`
 
 	Options []*UnitOption `json:"options,omitempty"`
-
-	Systemd *SystemdState `json:"systemd,omitempty"`
-
-	TargetMachineID string `json:"targetMachineID,omitempty"`
 }
 
 type UnitOption struct {
@@ -135,6 +127,26 @@ type UnitPage struct {
 	NextPageToken string `json:"nextPageToken,omitempty"`
 
 	Units []*Unit `json:"units,omitempty"`
+}
+
+type UnitState struct {
+	Hash string `json:"hash,omitempty"`
+
+	MachineID string `json:"machineID,omitempty"`
+
+	Name string `json:"name,omitempty"`
+
+	SystemdActiveState string `json:"systemdActiveState,omitempty"`
+
+	SystemdLoadState string `json:"systemdLoadState,omitempty"`
+
+	SystemdSubState string `json:"systemdSubState,omitempty"`
+}
+
+type UnitStatePage struct {
+	NextPageToken string `json:"nextPageToken,omitempty"`
+
+	States []*UnitState `json:"states,omitempty"`
 }
 
 // method id "fleet.Machine.List":
@@ -199,18 +211,106 @@ func (c *MachinesListCall) Do() (*MachinePage, error) {
 
 }
 
-// method id "fleet.Unit.Delete":
+// method id "fleet.UnitState.List":
 
-type UnitsDeleteCall struct {
+type UnitStateListCall struct {
 	s    *Service
-	name string
 	opt_ map[string]interface{}
 }
 
-// Delete: Delete the referenced Unit objects.
-func (r *UnitsService) Delete(name string) *UnitsDeleteCall {
+// List: Retrieve a page of UnitState objects.
+func (r *UnitStateService) List() *UnitStateListCall {
+	c := &UnitStateListCall{s: r.s, opt_: make(map[string]interface{})}
+	return c
+}
+
+// MachineID sets the optional parameter "machineID":
+func (c *UnitStateListCall) MachineID(machineID string) *UnitStateListCall {
+	c.opt_["machineID"] = machineID
+	return c
+}
+
+// NextPageToken sets the optional parameter "nextPageToken":
+func (c *UnitStateListCall) NextPageToken(nextPageToken string) *UnitStateListCall {
+	c.opt_["nextPageToken"] = nextPageToken
+	return c
+}
+
+// UnitName sets the optional parameter "unitName":
+func (c *UnitStateListCall) UnitName(unitName string) *UnitStateListCall {
+	c.opt_["unitName"] = unitName
+	return c
+}
+
+func (c *UnitStateListCall) Do() (*UnitStatePage, error) {
+	var body io.Reader = nil
+	params := make(url.Values)
+	params.Set("alt", "json")
+	if v, ok := c.opt_["machineID"]; ok {
+		params.Set("machineID", fmt.Sprintf("%v", v))
+	}
+	if v, ok := c.opt_["nextPageToken"]; ok {
+		params.Set("nextPageToken", fmt.Sprintf("%v", v))
+	}
+	if v, ok := c.opt_["unitName"]; ok {
+		params.Set("unitName", fmt.Sprintf("%v", v))
+	}
+	urls := googleapi.ResolveRelative(c.s.BasePath, "state")
+	urls += "?" + params.Encode()
+	req, _ := http.NewRequest("GET", urls, body)
+	googleapi.SetOpaque(req.URL)
+	req.Header.Set("User-Agent", "google-api-go-client/0.5")
+	res, err := c.s.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer googleapi.CloseBody(res)
+	if err := googleapi.CheckResponse(res); err != nil {
+		return nil, err
+	}
+	var ret *UnitStatePage
+	if err := json.NewDecoder(res.Body).Decode(&ret); err != nil {
+		return nil, err
+	}
+	return ret, nil
+	// {
+	//   "description": "Retrieve a page of UnitState objects.",
+	//   "httpMethod": "GET",
+	//   "id": "fleet.UnitState.List",
+	//   "parameters": {
+	//     "machineID": {
+	//       "location": "query",
+	//       "type": "string"
+	//     },
+	//     "nextPageToken": {
+	//       "location": "query",
+	//       "type": "string"
+	//     },
+	//     "unitName": {
+	//       "location": "query",
+	//       "type": "string"
+	//     }
+	//   },
+	//   "path": "state",
+	//   "response": {
+	//     "$ref": "UnitStatePage"
+	//   }
+	// }
+
+}
+
+// method id "fleet.DesiredState.Delete":
+
+type UnitsDeleteCall struct {
+	s        *Service
+	unitName string
+	opt_     map[string]interface{}
+}
+
+// Delete: Delete the referenced Unit object.
+func (r *UnitsService) Delete(unitName string) *UnitsDeleteCall {
 	c := &UnitsDeleteCall{s: r.s, opt_: make(map[string]interface{})}
-	c.name = name
+	c.unitName = unitName
 	return c
 }
 
@@ -218,10 +318,10 @@ func (c *UnitsDeleteCall) Do() error {
 	var body io.Reader = nil
 	params := make(url.Values)
 	params.Set("alt", "json")
-	urls := googleapi.ResolveRelative(c.s.BasePath, "units/{name}")
+	urls := googleapi.ResolveRelative(c.s.BasePath, "units/{unitName}")
 	urls += "?" + params.Encode()
 	req, _ := http.NewRequest("DELETE", urls, body)
-	req.URL.Path = strings.Replace(req.URL.Path, "{name}", url.QueryEscape(c.name), 1)
+	req.URL.Path = strings.Replace(req.URL.Path, "{unitName}", url.QueryEscape(c.unitName), 1)
 	googleapi.SetOpaque(req.URL)
 	req.Header.Set("User-Agent", "google-api-go-client/0.5")
 	res, err := c.s.client.Do(req)
@@ -234,20 +334,20 @@ func (c *UnitsDeleteCall) Do() error {
 	}
 	return nil
 	// {
-	//   "description": "Delete the referenced Unit objects.",
+	//   "description": "Delete the referenced Unit object.",
 	//   "httpMethod": "DELETE",
-	//   "id": "fleet.Unit.Delete",
+	//   "id": "fleet.DesiredState.Delete",
 	//   "parameterOrder": [
-	//     "name"
+	//     "unitName"
 	//   ],
 	//   "parameters": {
-	//     "name": {
+	//     "unitName": {
 	//       "location": "path",
 	//       "required": true,
 	//       "type": "string"
 	//     }
 	//   },
-	//   "path": "units/{name}"
+	//   "path": "units/{unitName}"
 	// }
 
 }
@@ -255,15 +355,15 @@ func (c *UnitsDeleteCall) Do() error {
 // method id "fleet.Unit.Get":
 
 type UnitsGetCall struct {
-	s    *Service
-	name string
-	opt_ map[string]interface{}
+	s        *Service
+	unitName string
+	opt_     map[string]interface{}
 }
 
 // Get: Retrieve a single Unit object.
-func (r *UnitsService) Get(name string) *UnitsGetCall {
+func (r *UnitsService) Get(unitName string) *UnitsGetCall {
 	c := &UnitsGetCall{s: r.s, opt_: make(map[string]interface{})}
-	c.name = name
+	c.unitName = unitName
 	return c
 }
 
@@ -271,10 +371,10 @@ func (c *UnitsGetCall) Do() (*Unit, error) {
 	var body io.Reader = nil
 	params := make(url.Values)
 	params.Set("alt", "json")
-	urls := googleapi.ResolveRelative(c.s.BasePath, "units/{name}")
+	urls := googleapi.ResolveRelative(c.s.BasePath, "units/{unitName}")
 	urls += "?" + params.Encode()
 	req, _ := http.NewRequest("GET", urls, body)
-	req.URL.Path = strings.Replace(req.URL.Path, "{name}", url.QueryEscape(c.name), 1)
+	req.URL.Path = strings.Replace(req.URL.Path, "{unitName}", url.QueryEscape(c.unitName), 1)
 	googleapi.SetOpaque(req.URL)
 	req.Header.Set("User-Agent", "google-api-go-client/0.5")
 	res, err := c.s.client.Do(req)
@@ -295,16 +395,16 @@ func (c *UnitsGetCall) Do() (*Unit, error) {
 	//   "httpMethod": "GET",
 	//   "id": "fleet.Unit.Get",
 	//   "parameterOrder": [
-	//     "name"
+	//     "unitName"
 	//   ],
 	//   "parameters": {
-	//     "name": {
+	//     "unitName": {
 	//       "location": "path",
 	//       "required": true,
 	//       "type": "string"
 	//     }
 	//   },
-	//   "path": "units/{name}",
+	//   "path": "units/{unitName}",
 	//   "response": {
 	//     "$ref": "Unit"
 	//   }
@@ -377,33 +477,33 @@ func (c *UnitsListCall) Do() (*UnitPage, error) {
 // method id "fleet.Unit.Set":
 
 type UnitsSetCall struct {
-	s                *Service
-	name             string
-	desiredunitstate *DesiredUnitState
-	opt_             map[string]interface{}
+	s        *Service
+	unitName string
+	unit     *Unit
+	opt_     map[string]interface{}
 }
 
-// Set: Set the desired state of a Unit.
-func (r *UnitsService) Set(name string, desiredunitstate *DesiredUnitState) *UnitsSetCall {
+// Set: Create or update a Unit.
+func (r *UnitsService) Set(unitName string, unit *Unit) *UnitsSetCall {
 	c := &UnitsSetCall{s: r.s, opt_: make(map[string]interface{})}
-	c.name = name
-	c.desiredunitstate = desiredunitstate
+	c.unitName = unitName
+	c.unit = unit
 	return c
 }
 
 func (c *UnitsSetCall) Do() error {
 	var body io.Reader = nil
-	body, err := googleapi.WithoutDataWrapper.JSONReader(c.desiredunitstate)
+	body, err := googleapi.WithoutDataWrapper.JSONReader(c.unit)
 	if err != nil {
 		return err
 	}
 	ctype := "application/json"
 	params := make(url.Values)
 	params.Set("alt", "json")
-	urls := googleapi.ResolveRelative(c.s.BasePath, "units/{name}")
+	urls := googleapi.ResolveRelative(c.s.BasePath, "units/{unitName}")
 	urls += "?" + params.Encode()
 	req, _ := http.NewRequest("PUT", urls, body)
-	req.URL.Path = strings.Replace(req.URL.Path, "{name}", url.QueryEscape(c.name), 1)
+	req.URL.Path = strings.Replace(req.URL.Path, "{unitName}", url.QueryEscape(c.unitName), 1)
 	googleapi.SetOpaque(req.URL)
 	req.Header.Set("Content-Type", ctype)
 	req.Header.Set("User-Agent", "google-api-go-client/0.5")
@@ -417,22 +517,22 @@ func (c *UnitsSetCall) Do() error {
 	}
 	return nil
 	// {
-	//   "description": "Set the desired state of a Unit.",
+	//   "description": "Create or update a Unit.",
 	//   "httpMethod": "PUT",
 	//   "id": "fleet.Unit.Set",
 	//   "parameterOrder": [
-	//     "name"
+	//     "unitName"
 	//   ],
 	//   "parameters": {
-	//     "name": {
+	//     "unitName": {
 	//       "location": "path",
 	//       "required": true,
 	//       "type": "string"
 	//     }
 	//   },
-	//   "path": "units/{name}",
+	//   "path": "units/{unitName}",
 	//   "request": {
-	//     "$ref": "DesiredUnitState"
+	//     "$ref": "Unit"
 	//   }
 	// }
 
