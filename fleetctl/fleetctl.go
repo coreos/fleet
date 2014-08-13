@@ -118,7 +118,6 @@ func init() {
 		cmdListUnits,
 		cmdLoadUnits,
 		cmdSSH,
-		cmdShowSchedule,
 		cmdStartUnit,
 		cmdStatusUnits,
 		cmdStopUnit,
