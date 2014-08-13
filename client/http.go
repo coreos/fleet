@@ -124,6 +124,19 @@ func (c *HTTPClient) Units() ([]job.Unit, error) {
 	return jus, nil
 }
 
+func (c *HTTPClient) ScheduledUnit(name string) (*job.ScheduledUnit, error) {
+	j, err := c.Job(name)
+	if err != nil || j == nil {
+		return nil, err
+	}
+	su := job.ScheduledUnit{
+		Name:            j.Name,
+		State:           j.State,
+		TargetMachineID: j.TargetMachineID,
+	}
+	return &su, err
+}
+
 func (c *HTTPClient) Schedule() ([]job.ScheduledUnit, error) {
 	jobs, err := c.Jobs()
 	if err != nil {

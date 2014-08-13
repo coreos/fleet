@@ -143,6 +143,32 @@ func (r *EtcdRegistry) Units() ([]job.Unit, error) {
 	return units, nil
 }
 
+func (r *EtcdRegistry) Unit(name string) (*job.Unit, error) {
+	j, err := r.Job(name)
+	if err != nil || j == nil {
+		return nil, err
+	}
+	u := job.Unit{
+		Name:        j.Name,
+		Unit:        j.Unit,
+		TargetState: j.TargetState,
+	}
+	return &u, nil
+}
+
+func (r *EtcdRegistry) ScheduledUnit(name string) (*job.ScheduledUnit, error) {
+	j, err := r.Job(name)
+	if err != nil || j == nil {
+		return nil, err
+	}
+	su := job.ScheduledUnit{
+		Name:            j.Name,
+		State:           j.State,
+		TargetMachineID: j.TargetMachineID,
+	}
+	return &su, nil
+}
+
 func (r *EtcdRegistry) ClearJobTarget(jobName, machID string) error {
 	req := etcd.Delete{
 		Key:           r.jobTargetAgentPath(jobName),

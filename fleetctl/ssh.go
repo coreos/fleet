@@ -9,7 +9,6 @@ import (
 	"syscall"
 
 	log "github.com/coreos/fleet/Godeps/_workspace/src/github.com/golang/glog"
-
 	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/pkg"
 	"github.com/coreos/fleet/ssh"
@@ -165,14 +164,14 @@ func findAddressInMachineList(lookup string) (string, bool) {
 
 func findAddressInRunningUnits(jobName string) (string, bool) {
 	name := unitNameMangle(jobName)
-	j, err := cAPI.Job(name)
+	su, err := cAPI.ScheduledUnit(name)
 	if err != nil {
-		log.V(1).Infof("Unable to retrieve Job(%s) from Repository: %v", name, err)
+		log.V(1).Infof("Unable to retrieve Unit(%s) from Repository: %v", name, err)
 	}
-	if j == nil || j.UnitState == nil {
+	if su == nil {
 		return "", false
 	}
-	m := cachedMachineState(j.UnitState.MachineID)
+	m := cachedMachineState(su.TargetMachineID)
 	if m != nil && m.PublicIP != "" {
 		return m.PublicIP, true
 	}
