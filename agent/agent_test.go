@@ -13,7 +13,7 @@ import (
 )
 
 func newTestJobFromUnitContents(t *testing.T, name, contents string) *job.Job {
-	u, err := unit.NewUnit(contents)
+	u, err := unit.NewUnitFile(contents)
 	if err != nil {
 		t.Fatalf("error creating Unit from %q: %v", contents, err)
 	}
@@ -70,7 +70,7 @@ func TestAgentLoadUnloadJob(t *testing.T) {
 			},
 			State: &jsLoaded,
 
-			Unit:            unit.Unit{},
+			Unit:            unit.UnitFile{},
 			TargetState:     job.JobState(""),
 			TargetMachineID: "",
 		},
@@ -107,7 +107,7 @@ func TestAgentLoadStartStopJob(t *testing.T) {
 		t.Fatalf("Failed creating Agent: %v", err)
 	}
 
-	u, err := unit.NewUnit("")
+	u, err := unit.NewUnitFile("")
 	if err != nil {
 		t.Fatalf("Failed creating Unit: %v", err)
 	}
@@ -139,7 +139,7 @@ func TestAgentLoadStartStopJob(t *testing.T) {
 			},
 			State: &jsLaunched,
 
-			Unit:            unit.Unit{},
+			Unit:            unit.UnitFile{},
 			TargetState:     job.JobState(""),
 			TargetMachineID: "",
 		},
@@ -169,7 +169,7 @@ func TestAgentLoadStartStopJob(t *testing.T) {
 			},
 			State: &jsLoaded,
 
-			Unit:            unit.Unit{},
+			Unit:            unit.UnitFile{},
 			TargetState:     job.JobState(""),
 			TargetMachineID: "",
 		},

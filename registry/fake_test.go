@@ -19,7 +19,7 @@ func TestFakeRegistryJobLifecycle(t *testing.T) {
 		t.Fatalf("Expected no jobs, got %v", jobs)
 	}
 
-	u, _ := unit.NewUnit("")
+	u, _ := unit.NewUnitFile("")
 	j1 := job.NewJob("job1.service", *u)
 	err = reg.CreateJob(j1)
 	if err != nil {

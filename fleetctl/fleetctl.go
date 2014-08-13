@@ -314,7 +314,7 @@ func getChecker() *ssh.HostKeyChecker {
 
 // getUnitFromFile attempts to load a Unit from a given filename
 // It returns the Unit or nil, and any error encountered
-func getUnitFromFile(file string) (*unit.Unit, error) {
+func getUnitFromFile(file string) (*unit.UnitFile, error) {
 	out, err := ioutil.ReadFile(file)
 	if err != nil {
 		return nil, err
@@ -323,7 +323,7 @@ func getUnitFromFile(file string) (*unit.Unit, error) {
 	unitName := path.Base(file)
 	log.V(1).Infof("Unit(%s) found in local filesystem", unitName)
 
-	return unit.NewUnit(string(out))
+	return unit.NewUnitFile(string(out))
 }
 
 func getTunnelFlag() string {
@@ -367,7 +367,7 @@ func findJobs(args []string) (jobs []job.Job, err error) {
 	return jobs, nil
 }
 
-func createJob(jobName string, unit *unit.Unit) (*job.Job, error) {
+func createJob(jobName string, unit *unit.UnitFile) (*job.Job, error) {
 	j := job.NewJob(jobName, *unit)
 
 	if err := cAPI.CreateJob(j); err != nil {
@@ -490,7 +490,7 @@ func lazyCreateJobs(args []string, signAndVerify bool) error {
 		}
 
 		// Finally, if we could not find a template unit in the Registry, check the local disk for one instead
-		var u *unit.Unit
+		var u *unit.UnitFile
 		if tmpl == nil {
 			file := path.Join(path.Dir(arg), uni.Template)
 			if _, err := os.Stat(file); os.IsNotExist(err) {

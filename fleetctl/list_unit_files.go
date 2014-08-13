@@ -22,16 +22,16 @@ var (
 		Run:         runListUnitFiles,
 	}
 	listUnitFilesFields = map[string]jobUnitToField{
-		"unit": func(j job.JobUnit, full bool) string {
+		"unit": func(j job.Unit, full bool) string {
 			return j.Name
 		},
-		"hash": func(j job.JobUnit, full bool) string {
+		"hash": func(j job.Unit, full bool) string {
 			if !full {
 				return j.Unit.Hash().Short()
 			}
 			return j.Unit.Hash().String()
 		},
-		"desc": func(j job.JobUnit, full bool) string {
+		"desc": func(j job.Unit, full bool) string {
 			d := j.Unit.Description()
 			if d == "" {
 				return "-"
@@ -41,7 +41,7 @@ var (
 	}
 )
 
-type jobUnitToField func(j job.JobUnit, full bool) string
+type jobUnitToField func(j job.Unit, full bool) string
 
 func init() {
 	cmdListUnitFiles.Flags.BoolVar(&sharedFlags.Full, "full", false, "Do not ellipsize fields on output")
@@ -63,7 +63,7 @@ func runListUnitFiles(args []string) (exit int) {
 		}
 	}
 
-	jobs, err := cAPI.JobUnits()
+	jobs, err := cAPI.Units()
 
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error retrieving list of units from repository: %v\n", err)

@@ -23,7 +23,7 @@ func TestFakeUnitManagerEmpty(t *testing.T) {
 func TestFakeUnitManagerLoadUnload(t *testing.T) {
 	fum := NewFakeUnitManager()
 
-	err := fum.Load("hello.service", Unit{})
+	err := fum.Load("hello.service", UnitFile{})
 	if err != nil {
 		t.Fatalf("Expected no error from Load(), got %v", err)
 	}
@@ -75,7 +75,7 @@ func TestFakeUnitManagerLoadUnload(t *testing.T) {
 func TestFakeUnitManagerGetUnitStates(t *testing.T) {
 	fum := NewFakeUnitManager()
 
-	err := fum.Load("hello.service", Unit{})
+	err := fum.Load("hello.service", UnitFile{})
 	if err != nil {
 		t.Fatalf("Expected no error from Load(), got %v", err)
 	}

@@ -38,7 +38,7 @@ func TestSystemdUnitFlow(t *testing.T) {
 ExecStart=/usr/bin/sleep 3000
 `
 	name := fmt.Sprintf("fleet-unit-%d.service", rand.Int63())
-	uf, err := unit.NewUnit(contents)
+	uf, err := unit.NewUnitFile(contents)
 	if err != nil {
 		t.Fatalf("Invalid unit file: %v", err)
 	}

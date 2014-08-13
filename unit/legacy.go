@@ -6,7 +6,7 @@ import (
 
 // NewUnitFromLegacyContents creates a Unit object from an obsolete unit
 // file datastructure. This should only be used to remain backwards-compatible where necessary.
-func NewUnitFromLegacyContents(contents map[string]map[string]string) (*Unit, error) {
+func NewUnitFromLegacyContents(contents map[string]map[string]string) (*UnitFile, error) {
 	var serialized string
 	for section, keyMap := range contents {
 		serialized += fmt.Sprintf("[%s]\n", section)
@@ -15,5 +15,5 @@ func NewUnitFromLegacyContents(contents map[string]map[string]string) (*Unit, er
 		}
 		serialized += "\n"
 	}
-	return NewUnit(serialized)
+	return NewUnitFile(serialized)
 }

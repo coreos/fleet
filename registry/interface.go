@@ -36,7 +36,7 @@ type Registry interface {
 }
 
 type UnitRegistry interface {
-	JobUnits() ([]job.JobUnit, error)
+	Units() ([]job.Unit, error)
 	Schedule() ([]job.ScheduledUnit, error)
 	UnitStates() ([]*unit.UnitState, error)
 }

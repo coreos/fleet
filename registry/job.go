@@ -126,9 +126,9 @@ func (r *EtcdRegistry) Schedule() ([]job.ScheduledUnit, error) {
 	return sortedJobs, nil
 }
 
-// JobUnits lists all JobUnits known by the Registry, ordered by job name
-func (r *EtcdRegistry) JobUnits() ([]job.JobUnit, error) {
-	var jobs []job.JobUnit
+// Units lists all Units known by the Registry, ordered by job name
+func (r *EtcdRegistry) Units() ([]job.Unit, error) {
+	var jobs []job.Unit
 
 	req := etcd.Get{
 		Key:       path.Join(r.keyPrefix, jobPrefix),
@@ -159,7 +159,7 @@ func (r *EtcdRegistry) JobUnits() ([]job.JobUnit, error) {
 			continue
 		}
 
-		j, err := r.getJobUnitFromObjectNode(obj)
+		j, err := r.getUnitFromObjectNode(obj)
 		if j == nil || err != nil {
 			log.Infof("Unable to parse Job in Registry at key %s", obj.Key)
 			continue
@@ -269,12 +269,12 @@ func (r *EtcdRegistry) parseJobDir(su *job.ScheduledUnit, dir *etcd.Node) (heart
 	return heartbeat, err
 }
 
-func (r *EtcdRegistry) getJobUnitFromObjectNode(node *etcd.Node) (*job.JobUnit, error) {
+func (r *EtcdRegistry) getUnitFromObjectNode(node *etcd.Node) (*job.Unit, error) {
 	j, err := r.getJobFromObjectNode(node)
 	if err != nil {
 		return nil, err
 	}
-	ju := &job.JobUnit{
+	ju := &job.Unit{
 		Name: j.Name,
 		Unit: j.Unit,
 	}
@@ -288,7 +288,7 @@ func (r *EtcdRegistry) getJobFromObjectNode(node *etcd.Node) (*job.Job, error) {
 		return nil, err
 	}
 
-	var unit *unit.Unit
+	var unit *unit.UnitFile
 
 	// New-style Jobs should have a populated UnitHash, and the contents of the Unit are stored separately in the Registry
 	if !jm.UnitHash.Empty() {

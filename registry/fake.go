@@ -18,7 +18,7 @@ func NewFakeRegistry() *FakeRegistry {
 		machines:  []machine.MachineState{},
 		jobStates: map[string]*unit.UnitState{},
 		jobs:      map[string]job.Job{},
-		units:     []unit.Unit{},
+		units:     []unit.UnitFile{},
 		version:   nil,
 	}
 }
@@ -33,7 +33,7 @@ type FakeRegistry struct {
 	machines  []machine.MachineState
 	jobStates map[string]*unit.UnitState
 	jobs      map[string]job.Job
-	units     []unit.Unit
+	units     []unit.UnitFile
 	version   *semver.Version
 }
 
@@ -61,7 +61,7 @@ func (f *FakeRegistry) SetUnitStates(jobStates map[string]*unit.UnitState) {
 	f.jobStates = jobStates
 }
 
-func (f *FakeRegistry) SetUnits(units []unit.Unit) {
+func (f *FakeRegistry) SetUnits(units []unit.UnitFile) {
 	f.Lock()
 	defer f.Unlock()
 

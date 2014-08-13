@@ -17,8 +17,8 @@ import (
 	"github.com/coreos/fleet/unit"
 )
 
-func newUnit(t *testing.T, str string) unit.Unit {
-	u, err := unit.NewUnit(str)
+func newUnit(t *testing.T, str string) unit.UnitFile {
+	u, err := unit.NewUnitFile(str)
 	if err != nil {
 		t.Fatalf("Unexpected error creating unit from %q: %v", str, err)
 	}
