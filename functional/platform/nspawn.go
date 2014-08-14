@@ -140,10 +140,9 @@ func (nc *nspawnCluster) prepFleet(dir, ip, sshKeySrc, fleetBinSrc string, cfg M
 etcd_servers=["http://172.17.0.1:4001"]	
 etcd_key_prefix=%s
 public_ip=%s
-verify_units=%s
 authorized_keys_file=%s
 `
-	cfgContents := fmt.Sprintf(cfgTmpl, nc.keyspace(), ip, strconv.FormatBool(cfg.VerifyUnits), relSSHKeyDst)
+	cfgContents := fmt.Sprintf(cfgTmpl, nc.keyspace(), ip, relSSHKeyDst)
 	cfgPath := path.Join(dir, "opt", "fleet", "fleet.conf")
 	if err := ioutil.WriteFile(cfgPath, []byte(cfgContents), 0644); err != nil {
 		return err

@@ -16,7 +16,6 @@ import (
 	"github.com/coreos/fleet/config"
 	"github.com/coreos/fleet/registry"
 	"github.com/coreos/fleet/server"
-	"github.com/coreos/fleet/sign"
 	"github.com/coreos/fleet/version"
 )
 
@@ -56,8 +55,8 @@ func main() {
 	cfgset.String("public_ip", "", "IP address that fleet machine should publish")
 	cfgset.String("metadata", "", "List of key-value metadata to assign to the fleet machine")
 	cfgset.String("agent_ttl", agent.DefaultTTL, "TTL in seconds of fleet machine state in etcd")
-	cfgset.Bool("verify_units", false, "Verify unit file signatures using local SSH identities")
-	cfgset.String("authorized_keys_file", sign.DefaultAuthorizedKeysFile, "File containing public SSH keys to be used for signature verification")
+	cfgset.Bool("verify_units", false, "DEPRECATED - This option is ignored")
+	cfgset.String("authorized_keys_file", "", "DEPRECATED - This option is ignored")
 
 	globalconf.Register("", cfgset)
 	cfg, err := getConfig(cfgset, *cfgPath)
@@ -173,7 +172,10 @@ func getConfig(flagset *flag.FlagSet, userCfgFile string) (*config.Config, error
 	}
 
 	if cfg.VerifyUnits {
-		log.Warning("WARNING: The signed/verified units feature is DEPRECATED and should not be used. It will be completely removed from fleet and fleetctl.")
+		log.Error("Config option verify_units is no longer supported - ignoring")
+	}
+	if len(cfg.AuthorizedKeysFile) > 0 {
+		log.Error("Config option authorized_keys_file is no longer supported - ignoring")
 	}
 
 	config.UpdateLoggingFlagsFromConfig(flag.CommandLine, &cfg)

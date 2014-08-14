@@ -7,18 +7,14 @@ import (
 
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/machine"
-	"github.com/coreos/fleet/sign"
 	"github.com/coreos/fleet/unit"
 )
 
 type Registry interface {
 	ClearUnitHeartbeat(name string)
 	CreateUnit(*job.Unit) error
-	CreateSignatureSet(ss *sign.SignatureSet) error
 	DestroyUnit(string) error
-	DestroySignatureSet(tag string)
 	UnitHeartbeat(name, machID string, ttl time.Duration) error
-	JobSignatureSet(name string) (*sign.SignatureSet, error)
 	LatestVersion() (*semver.Version, error)
 	LeaseRole(role, machID string, period time.Duration) (Lease, error)
 	Machines() ([]machine.MachineState, error)

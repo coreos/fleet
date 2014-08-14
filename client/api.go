@@ -3,13 +3,9 @@ package client
 import (
 	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/schema"
-	"github.com/coreos/fleet/sign"
 )
 
 type API interface {
-	CreateSignatureSet(*sign.SignatureSet) error
-	JobSignatureSet(string) (*sign.SignatureSet, error)
-
 	Machines() ([]machine.MachineState, error)
 
 	Unit(string) (*schema.Unit, error)

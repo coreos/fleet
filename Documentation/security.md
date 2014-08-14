@@ -4,10 +4,6 @@
 
 The default deployment of the preview release of fleet doesn't currently perform any authentication or authorization for submitted units. This means that any client that can access your etcd cluster can potentially run arbitrary code on many of your machines very easily.
 
-## Job Signing
-
-Version 0.2.0 of fleet added the ability to add signatures to Jobs to provide authorization and integrity checking to units submitted to the cluster. For more details on how it works and how to use it, see the [Signed Units](signed-units.md) documentation.
-
 ## Securing the Registry
 
 You should avoid public access to the registry (i.e etcd) and instead run fleet [from your local laptop](using-the-client.md#get-up-and-running) with the `--tunnel` flag to run commands over an SSH tunnel. You can alias this flag for easier usage: `alias fleetctl=fleetctl --tunnel 10.10.10.10` - or use the environment variable `FLEETCTL_TUNNEL`.

@@ -23,7 +23,6 @@ import (
 	"github.com/coreos/fleet/pkg"
 	"github.com/coreos/fleet/registry"
 	"github.com/coreos/fleet/schema"
-	"github.com/coreos/fleet/sign"
 	"github.com/coreos/fleet/ssh"
 	"github.com/coreos/fleet/unit"
 	"github.com/coreos/fleet/version"
@@ -202,7 +201,8 @@ func main() {
 	}
 
 	if sharedFlags.Sign {
-		fmt.Fprintln(os.Stderr, "WARNING: The signed/verified units feature is DEPRECATED and should not be used. It will be completely removed from fleet and fleetctl.")
+		fmt.Fprintln(os.Stderr, "WARNING: The signed/verified units feature is DEPRECATED and cannot be used.")
+		os.Exit(2)
 	}
 
 	if cmd.Name != "help" && cmd.Name != "version" {
@@ -424,59 +424,6 @@ func createUnit(name string, uf *unit.UnitFile) (*schema.Unit, error) {
 	return &u, nil
 }
 
-// signUnit signs the Unit of a Job using the public keys in the local SSH
-// agent, and pushes the resulting SignatureSet to the Registry
-func signUnit(u *schema.Unit) error {
-	sc, err := sign.NewSignatureCreatorFromSSHAgent()
-	if err != nil {
-		return fmt.Errorf("failed creating SignatureCreator: %v", err)
-	}
-
-	j := job.Job{
-		Name: u.Name,
-		Unit: *schema.MapSchemaUnitOptionsToUnitFile(u.Options),
-	}
-	ss, err := sc.SignJob(&j)
-	if err != nil {
-		return fmt.Errorf("failed signing Job(%s): %v", j.Name, err)
-	}
-
-	err = cAPI.CreateSignatureSet(ss)
-	if err != nil {
-		return fmt.Errorf("failed storing Job signature in registry: %v", err)
-	}
-
-	log.V(1).Infof("Signed Job(%s)", j.Name)
-	return nil
-}
-
-// verifyUnit attempts to verify the signature of the provided Unit's unit file using
-// the public keys in the local SSH agent
-func verifyUnit(u *schema.Unit) error {
-	sv, err := sign.NewSignatureVerifierFromSSHAgent()
-	if err != nil {
-		return fmt.Errorf("failed creating SignatureVerifier: %v", err)
-	}
-
-	ss, err := cAPI.JobSignatureSet(u.Name)
-	if err != nil {
-		return fmt.Errorf("failed attempting to retrieve SignatureSet of Job(%s): %v", u.Name, err)
-	}
-	j := &job.Job{
-		Name: u.Name,
-		Unit: *schema.MapSchemaUnitOptionsToUnitFile(u.Options),
-	}
-	verified, err := sv.VerifyJob(j, ss)
-	if err != nil {
-		return fmt.Errorf("failed attempting to verify Job(%s): %v", u.Name, err)
-	} else if !verified {
-		return fmt.Errorf("unable to verify Job(%s)", u.Name)
-	}
-
-	log.V(1).Infof("Verified signature of Job(%s)", u.Name)
-	return nil
-}
-
 // lazyCreateUnits iterates over a set of unit names and, for each, attempts to
 // ensure that a unit by that name exists in the Registry, by checking a number
 // of conditions and acting on the first one that succeeds, in order of:
@@ -485,11 +432,9 @@ func verifyUnit(u *schema.Unit) error {
 //  3. a corresponding unit template (if applicable) existing in the Registry
 //  4. a corresponding unit template (if applicable) existing on disk
 // Any error encountered during these steps is returned immediately (i.e.
-// subsequent units are not acted on). An error is also returned if none of the
-// above conditions match a given unit.
-// If signAndVerify is true, the unit will be signed (if it is created), or have
-// its signature verified if it already exists in the Registry.
-func lazyCreateUnits(args []string, signAndVerify bool) error {
+// subsequent Jobs are not acted on). An error is also returned if none of the
+// above conditions match a given Job.
+func lazyCreateUnits(args []string) error {
 	for _, arg := range args {
 		// TODO(jonboulle): this loop is getting too unwieldy; factor it out
 
@@ -503,11 +448,6 @@ func lazyCreateUnits(args []string, signAndVerify bool) error {
 		if u != nil {
 			log.V(1).Infof("Found Unit(%s) in Registry, no need to recreate it", name)
 			warnOnDifferentLocalUnit(arg, u)
-			if signAndVerify {
-				if err := verifyUnit(u); err != nil {
-					return err
-				}
-			}
 			continue
 		}
 
@@ -520,11 +460,6 @@ func lazyCreateUnits(args []string, signAndVerify bool) error {
 			u, err = createUnit(name, unit)
 			if err != nil {
 				return err
-			}
-			if signAndVerify {
-				if err := signUnit(u); err != nil {
-					return err
-				}
 			}
 			continue
 		}
@@ -563,11 +498,6 @@ func lazyCreateUnits(args []string, signAndVerify bool) error {
 		u, err = createUnit(name, uf)
 		if err != nil {
 			return err
-		}
-		if signAndVerify {
-			if err := signUnit(u); err != nil {
-				return err
-			}
 		}
 	}
 	return nil
