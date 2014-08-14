@@ -366,7 +366,7 @@ func findScheduledUnits(args []string) (sus []job.ScheduledUnit, err error) {
 	return sus, nil
 }
 
-func createJob(name string, uf unit.UnitFile) (*job.Unit, error) {
+func createUnit(name string, uf unit.UnitFile) (*job.Unit, error) {
 	u := job.Unit{Name: name, Unit: uf}
 	if err := cAPI.CreateUnit(&u); err != nil {
 		return nil, fmt.Errorf("failed creating unit %s: %v", u.Name, err)
@@ -429,31 +429,31 @@ func verifyUnit(u *job.Unit) error {
 	return nil
 }
 
-// lazyCreateJobs iterates over a set of Job names and, for each, attempts to
-// ensure that a Job by that name exists in the Registry, by checking a number
+// lazyCreateUnits iterates over a set of unit names and, for each, attempts to
+// ensure that a unit by that name exists in the Registry, by checking a number
 // of conditions and acting on the first one that succeeds, in order of:
-//  1. a Job by that name already existing in the Registry
+//  1. a unit by that name already existing in the Registry
 //  2. a unit file by that name existing on disk
 //  3. a corresponding unit template (if applicable) existing in the Registry
 //  4. a corresponding unit template (if applicable) existing on disk
 // Any error encountered during these steps is returned immediately (i.e.
-// subsequent Jobs are not acted on). An error is also returned if none of the
-// above conditions match a given Job.
-// If signAndVerify is true, the Job will be signed (if it is created), or have
+// subsequent units are not acted on). An error is also returned if none of the
+// above conditions match a given unit.
+// If signAndVerify is true, the unit will be signed (if it is created), or have
 // its signature verified if it already exists in the Registry.
-func lazyCreateJobs(args []string, signAndVerify bool) error {
+func lazyCreateUnits(args []string, signAndVerify bool) error {
 	for _, arg := range args {
 		// TODO(jonboulle): this loop is getting too unwieldy; factor it out
 
-		jobName := unitNameMangle(arg)
+		name := unitNameMangle(arg)
 
 		// First, check if there already exists a Unit by the given name in the Registry
-		u, err := cAPI.Unit(jobName)
+		u, err := cAPI.Unit(name)
 		if err != nil {
-			return fmt.Errorf("error retrieving Unit(%s) from Registry: %v", jobName, err)
+			return fmt.Errorf("error retrieving Unit(%s) from Registry: %v", name, err)
 		}
 		if u != nil {
-			log.V(1).Infof("Found Unit(%s) in Registry, no need to recreate it", jobName)
+			log.V(1).Infof("Found Unit(%s) in Registry, no need to recreate it", name)
 			warnOnDifferentLocalUnit(arg, u)
 			if signAndVerify {
 				if err := verifyUnit(u); err != nil {
@@ -467,9 +467,9 @@ func lazyCreateJobs(args []string, signAndVerify bool) error {
 		if _, err := os.Stat(arg); !os.IsNotExist(err) {
 			unit, err := getUnitFromFile(arg)
 			if err != nil {
-				return fmt.Errorf("failed getting Unit(%s) from file: %v", jobName, err)
+				return fmt.Errorf("failed getting Unit(%s) from file: %v", name, err)
 			}
-			u, err = createJob(jobName, *unit)
+			u, err = createUnit(name, *unit)
 			if err != nil {
 				return err
 			}
@@ -483,11 +483,11 @@ func lazyCreateJobs(args []string, signAndVerify bool) error {
 
 		// Otherwise (if the unit file does not exist), check if the name appears to be an instance unit,
 		// and if so, check for a corresponding template unit in the Registry
-		uni := unit.NewUnitNameInfo(jobName)
+		uni := unit.NewUnitNameInfo(name)
 		if uni == nil {
-			return fmt.Errorf("error extracting information from unit name %s", jobName)
+			return fmt.Errorf("error extracting information from unit name %s", name)
 		} else if !uni.IsInstance() {
-			return fmt.Errorf("unable to find Unit(%s) in Registry or on filesystem", jobName)
+			return fmt.Errorf("unable to find Unit(%s) in Registry or on filesystem", name)
 		}
 		tmpl, err := cAPI.Unit(uni.Template)
 		if err != nil {
@@ -499,7 +499,7 @@ func lazyCreateJobs(args []string, signAndVerify bool) error {
 		if tmpl == nil {
 			file := path.Join(path.Dir(arg), uni.Template)
 			if _, err := os.Stat(file); os.IsNotExist(err) {
-				return fmt.Errorf("unable to find Unit(%s) or template Unit(%s) in Registry or on filesystem", jobName, uni.Template)
+				return fmt.Errorf("unable to find Unit(%s) or template Unit(%s) in Registry or on filesystem", name, uni.Template)
 			}
 			uf, err = getUnitFromFile(file)
 			if err != nil {
@@ -510,9 +510,9 @@ func lazyCreateJobs(args []string, signAndVerify bool) error {
 			uf = &tmpl.Unit
 		}
 
-		// If we found a template Unit or Job, create a near-identical instance Job in
-		// the Registry - same Unit as the template, but different name
-		u, err = createJob(jobName, *uf)
+		// If we found a template unit, create a near-identical instance unit in
+		// the Registry - same unit file as the template, but different name
+		u, err = createUnit(name, *uf)
 		if err != nil {
 			return err
 		}
@@ -529,7 +529,7 @@ func warnOnDifferentLocalUnit(name string, u *job.Unit) {
 	if _, err := os.Stat(name); !os.IsNotExist(err) {
 		unit, err := getUnitFromFile(name)
 		if err == nil && unit.Hash() != u.Unit.Hash() {
-			fmt.Fprintf(os.Stderr, "WARNING: Job(%s) in Registry differs from local Unit(%s)\n", u.Name, name)
+			fmt.Fprintf(os.Stderr, "WARNING: Unit %s in registry differs from local unit file %s\n", u.Name, name)
 			return
 		}
 	}
@@ -538,26 +538,26 @@ func warnOnDifferentLocalUnit(name string, u *job.Unit) {
 		if _, err := os.Stat(file); !os.IsNotExist(err) {
 			tmpl, err := getUnitFromFile(file)
 			if err == nil && tmpl.Hash() != u.Unit.Hash() {
-				fmt.Fprintf(os.Stderr, "WARNING: Job(%s) in Registry differs from local template Unit(%s)\n", u.Name, uni.Template)
+				fmt.Fprintf(os.Stderr, "WARNING: Unit %s in registry differs from local template unit file %s\n", u.Name, uni.Template)
 			}
 		}
 	}
 }
 
-func lazyLoadJobs(args []string) ([]string, error) {
-	jobs := make([]string, 0, len(args))
+func lazyLoadUnits(args []string) ([]string, error) {
+	units := make([]string, 0, len(args))
 	for _, j := range args {
-		jobs = append(jobs, unitNameMangle(j))
+		units = append(units, unitNameMangle(j))
 	}
-	return setTargetStateOfUnits(jobs, job.JobStateLoaded)
+	return setTargetStateOfUnits(units, job.JobStateLoaded)
 }
 
-func lazyStartJobs(args []string) ([]string, error) {
-	jobs := make([]string, 0, len(args))
+func lazyStartUnits(args []string) ([]string, error) {
+	units := make([]string, 0, len(args))
 	for _, j := range args {
-		jobs = append(jobs, unitNameMangle(j))
+		units = append(units, unitNameMangle(j))
 	}
-	return setTargetStateOfUnits(jobs, job.JobStateLaunched)
+	return setTargetStateOfUnits(units, job.JobStateLaunched)
 }
 
 // setTargetStateOfUnits ensures that the target state for the given Units is set
@@ -569,17 +569,17 @@ func setTargetStateOfUnits(units []string, state job.JobState) ([]string, error)
 	for _, name := range units {
 		su, err := cAPI.ScheduledUnit(name)
 		if err != nil {
-			return nil, fmt.Errorf("error retrieving Job(%s) from Registry: %v", name, err)
+			return nil, fmt.Errorf("error retrieving unit %s from registry: %v", name, err)
 		} else if su == nil {
-			return nil, fmt.Errorf("unable to find Job(%s)", name)
+			return nil, fmt.Errorf("unable to find unit %s", name)
 		} else if su.State == nil {
-			return nil, fmt.Errorf("unable to determine current state of Job")
+			return nil, fmt.Errorf("unable to determine current state of unit")
 		} else if *(su.State) == state {
-			log.V(1).Infof("Job(%s) already %s, skipping.", su.Name, *(su.State))
+			log.V(1).Infof("Unit(%s) already %s, skipping.", su.Name, *(su.State))
 			continue
 		}
 
-		log.V(1).Infof("Setting Job(%s) target state to %s", su.Name, state)
+		log.V(1).Infof("Setting Unit(%s) target state to %s", su.Name, state)
 		cAPI.SetUnitTargetState(su.Name, state)
 		triggered = append(triggered, su.Name)
 	}
@@ -587,19 +587,19 @@ func setTargetStateOfUnits(units []string, state job.JobState) ([]string, error)
 	return triggered, nil
 }
 
-// waitForJobStates polls each of the indicated jobs until each of their
+// waitForUnitStates polls each of the indicated units until each of their
 // states is equal to that which the caller indicates, or until the
-// polling operation times out. waitForJobStates will retry forever, or
+// polling operation times out. waitForUnitStates will retry forever, or
 // up to maxAttempts times before timing out if maxAttempts is greater
 // than zero. Returned is an error channel used to communicate when
 // timeouts occur. The returned error channel will be closed after all
 // polling operation is complete.
-func waitForJobStates(jobs []string, js job.JobState, maxAttempts int, out io.Writer) chan error {
+func waitForUnitStates(units []string, js job.JobState, maxAttempts int, out io.Writer) chan error {
 	errchan := make(chan error)
 	var wg sync.WaitGroup
-	for _, name := range jobs {
+	for _, name := range units {
 		wg.Add(1)
-		go checkJobState(name, js, maxAttempts, out, &wg, errchan)
+		go checkUnitState(name, js, maxAttempts, out, &wg, errchan)
 	}
 
 	go func() {
@@ -610,33 +610,33 @@ func waitForJobStates(jobs []string, js job.JobState, maxAttempts int, out io.Wr
 	return errchan
 }
 
-func checkJobState(jobName string, js job.JobState, maxAttempts int, out io.Writer, wg *sync.WaitGroup, errchan chan error) {
+func checkUnitState(name string, js job.JobState, maxAttempts int, out io.Writer, wg *sync.WaitGroup, errchan chan error) {
 	defer wg.Done()
 
 	sleep := 100 * time.Millisecond
 
 	if maxAttempts < 1 {
 		for {
-			if assertJobState(jobName, js, out) {
+			if assertUnitState(name, js, out) {
 				return
 			}
 			time.Sleep(sleep)
 		}
 	} else {
 		for attempt := 0; attempt < maxAttempts; attempt++ {
-			if assertJobState(jobName, js, out) {
+			if assertUnitState(name, js, out) {
 				return
 			}
 			time.Sleep(sleep)
 		}
-		errchan <- fmt.Errorf("timed out waiting for job %s to report state %s", jobName, js)
+		errchan <- fmt.Errorf("timed out waiting for unit %s to report state %s", name, js)
 	}
 }
 
-func assertJobState(name string, js job.JobState, out io.Writer) (ret bool) {
+func assertUnitState(name string, js job.JobState, out io.Writer) (ret bool) {
 	su, err := cAPI.ScheduledUnit(name)
 	if err != nil {
-		log.Warningf("Error retrieving Job(%s) from Registry: %v", name, err)
+		log.Warningf("Error retrieving Unit(%s) from Registry: %v", name, err)
 		return
 	}
 	if su == nil || su.State == nil || *(su.State) != js {
@@ -644,7 +644,7 @@ func assertJobState(name string, js job.JobState, out io.Writer) (ret bool) {
 	}
 
 	ret = true
-	msg := fmt.Sprintf("Job %s %s", name, *(su.State))
+	msg := fmt.Sprintf("Unit %s %s", name, *(su.State))
 
 	if su.TargetMachineID == "" {
 		return

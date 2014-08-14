@@ -23,19 +23,19 @@ func init() {
 }
 
 func runLoadUnits(args []string) (exit int) {
-	if err := lazyCreateJobs(args, sharedFlags.Sign); err != nil {
+	if err := lazyCreateUnits(args, sharedFlags.Sign); err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		return 1
 	}
 
-	triggered, err := lazyLoadJobs(args)
+	triggered, err := lazyLoadUnits(args)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		return 1
 	}
 
 	if !sharedFlags.NoBlock {
-		errchan := waitForJobStates(triggered, job.JobStateLoaded, sharedFlags.BlockAttempts, os.Stdout)
+		errchan := waitForUnitStates(triggered, job.JobStateLoaded, sharedFlags.BlockAttempts, os.Stdout)
 		for err := range errchan {
 			fmt.Fprintf(os.Stderr, "%v\n", err)
 			exit = 1
