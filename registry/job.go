@@ -421,9 +421,9 @@ func (r *EtcdRegistry) jobTargetState(jobName string) (job.JobState, error) {
 	return job.ParseJobState(res.Node.Value)
 }
 
-func (r *EtcdRegistry) SetJobTargetState(jobName string, state job.JobState) error {
+func (r *EtcdRegistry) SetUnitTargetState(name string, state job.JobState) error {
 	req := etcd.Set{
-		Key:   r.jobTargetStatePath(jobName),
+		Key:   r.jobTargetStatePath(name),
 		Value: string(state),
 	}
 	_, err := r.etcd.Do(&req)

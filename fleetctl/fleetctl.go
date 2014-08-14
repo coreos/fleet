@@ -580,7 +580,7 @@ func setTargetStateOfUnits(units []string, state job.JobState) ([]string, error)
 		}
 
 		log.V(1).Infof("Setting Job(%s) target state to %s", su.Name, state)
-		cAPI.SetJobTargetState(su.Name, state)
+		cAPI.SetUnitTargetState(su.Name, state)
 		triggered = append(triggered, su.Name)
 	}
 

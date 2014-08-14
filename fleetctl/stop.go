@@ -55,7 +55,7 @@ func runStopUnit(args []string) (exit int) {
 			continue
 		}
 
-		cAPI.SetJobTargetState(j.Name, job.JobStateLoaded)
+		cAPI.SetUnitTargetState(j.Name, job.JobStateLoaded)
 		stopping = append(stopping, j.Name)
 	}
 

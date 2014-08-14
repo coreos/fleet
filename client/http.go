@@ -266,7 +266,7 @@ func (c *HTTPClient) CreateUnit(u *job.Unit) error {
 	return c.svc.Units.Set(u.Name, &req).Do()
 }
 
-func (c *HTTPClient) SetJobTargetState(name string, state job.JobState) error {
+func (c *HTTPClient) SetUnitTargetState(name string, state job.JobState) error {
 	req := schema.DesiredUnitState{
 		Name:         name,
 		DesiredState: string(state),

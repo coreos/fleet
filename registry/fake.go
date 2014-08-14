@@ -191,7 +191,7 @@ func (f *FakeRegistry) DestroyUnit(name string) error {
 	return nil
 }
 
-func (f *FakeRegistry) SetJobTargetState(name string, target job.JobState) error {
+func (f *FakeRegistry) SetUnitTargetState(name string, target job.JobState) error {
 	f.Lock()
 	defer f.Unlock()
 

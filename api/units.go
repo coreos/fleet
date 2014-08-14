@@ -98,7 +98,7 @@ func (ur *unitsResource) create(rw http.ResponseWriter, item string, ds job.JobS
 		return
 	}
 
-	if err := ur.reg.SetJobTargetState(u.Name, ds); err != nil {
+	if err := ur.reg.SetUnitTargetState(u.Name, ds); err != nil {
 		log.Errorf("Failed setting target state of Unit(%s): %v", u.Name, err)
 		sendError(rw, http.StatusInternalServerError, nil)
 		return
@@ -108,8 +108,7 @@ func (ur *unitsResource) create(rw http.ResponseWriter, item string, ds job.JobS
 }
 
 func (ur *unitsResource) update(rw http.ResponseWriter, u *job.Unit, ds job.JobState) {
-	// Assert that the Job's Unit matches the Unit in the request, if provided
-	err := ur.reg.SetJobTargetState(u.Name, ds)
+	err := ur.reg.SetUnitTargetState(u.Name, ds)
 	if err != nil {
 		log.Errorf("Failed setting target state of Unit(%s): %v", u.Name, err)
 		sendError(rw, http.StatusInternalServerError, nil)

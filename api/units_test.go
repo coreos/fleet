@@ -385,9 +385,9 @@ func TestUnitsSetDesiredState(t *testing.T) {
 		fr := registry.NewFakeRegistry()
 		fr.SetJobs(tt.initJobs)
 		for j, s := range tt.initStates {
-			err := fr.SetJobTargetState(j, s)
+			err := fr.SetUnitTargetState(j, s)
 			if err != nil {
-				t.Errorf("case %d: failed initializing Job target state: %v", i, err)
+				t.Errorf("case %d: failed initializing unit's target state: %v", i, err)
 			}
 		}
 

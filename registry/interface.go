@@ -26,7 +26,7 @@ type Registry interface {
 	RemoveUnitState(jobName string) error
 	SaveUnitState(jobName string, unitState *unit.UnitState)
 	ScheduleUnit(name, machID string) error
-	SetJobTargetState(jobName string, state job.JobState) error
+	SetUnitTargetState(name string, state job.JobState) error
 	SetMachineState(ms machine.MachineState, ttl time.Duration) (uint64, error)
 	UnscheduleUnit(name, machID string) error
 
