@@ -97,10 +97,12 @@ func (ur *unitsResource) create(rw http.ResponseWriter, item string, ds job.JobS
 		return
 	}
 
-	if err := ur.reg.SetUnitTargetState(u.Name, ds); err != nil {
-		log.Errorf("Failed setting target state of Unit(%s): %v", u.Name, err)
-		sendError(rw, http.StatusInternalServerError, nil)
-		return
+	if len(ds) > 0 {
+		if err := ur.reg.SetUnitTargetState(u.Name, ds); err != nil {
+			log.Errorf("Failed setting target state of Unit(%s): %v", u.Name, err)
+			sendError(rw, http.StatusInternalServerError, nil)
+			return
+		}
 	}
 
 	rw.WriteHeader(http.StatusNoContent)
