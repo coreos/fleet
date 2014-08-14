@@ -14,7 +14,7 @@ type BlockedFakeRegistry struct {
 	registry.FakeRegistry
 }
 
-func (b BlockedFakeRegistry) Job(name string) (*job.Job, error) {
+func (b BlockedFakeRegistry) Unit(name string) (*job.Unit, error) {
 	if name == "hello.service" {
 		time.Sleep(500 * time.Millisecond)
 	}
@@ -26,7 +26,7 @@ func (b BlockedFakeRegistry) Job(name string) (*job.Job, error) {
 		}
 	}
 
-	return b.FakeRegistry.Job(name)
+	return b.FakeRegistry.Unit(name)
 }
 
 func setupRegistryForStart(echoAttempts int) {

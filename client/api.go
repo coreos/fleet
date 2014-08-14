@@ -10,13 +10,13 @@ import (
 )
 
 type API interface {
-	CreateJob(*job.Job) error
+	CreateUnit(*job.Unit) error
+	DestroyUnit(string) error
 	CreateSignatureSet(*sign.SignatureSet) error
-	DestroyJob(string) error
 	JobSignatureSet(string) (*sign.SignatureSet, error)
 	LatestVersion() (*semver.Version, error)
 	Machines() ([]machine.MachineState, error)
-	SetJobTargetState(string, job.JobState) error
+	SetUnitTargetState(name string, target job.JobState) error
 
 	Schedule() ([]job.ScheduledUnit, error)
 	ScheduledUnit(name string) (*job.ScheduledUnit, error)

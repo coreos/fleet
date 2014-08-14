@@ -17,7 +17,7 @@ const (
 	payloadPrefix = "/payload/"
 )
 
-func (r *EtcdRegistry) storeOrGetUnit(u unit.UnitFile) (err error) {
+func (r *EtcdRegistry) storeOrGetUnitFile(u unit.UnitFile) (err error) {
 	um := unitModel{
 		Raw: u.String(),
 	}

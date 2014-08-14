@@ -82,7 +82,7 @@ func (f *FakeRegistry) Machines() ([]machine.MachineState, error) {
 	return f.machines, nil
 }
 
-func (f *FakeRegistry) Jobs() ([]job.Job, error) {
+func (f *FakeRegistry) Units() ([]job.Unit, error) {
 	f.RLock()
 	defer f.RUnlock()
 
@@ -92,15 +92,45 @@ func (f *FakeRegistry) Jobs() ([]job.Job, error) {
 	}
 	sorted.Sort()
 
-	jobs := make([]job.Job, 0, len(f.jobs))
+	units := make([]job.Unit, 0, len(f.jobs))
 	for _, jName := range sorted {
-		jobs = append(jobs, f.jobs[jName])
+		j := f.jobs[jName]
+		u := job.Unit{
+			Name:        j.Name,
+			Unit:        j.Unit,
+			TargetState: j.TargetState,
+		}
+		units = append(units, u)
 	}
 
-	return jobs, nil
+	return units, nil
 }
 
-func (f *FakeRegistry) Job(name string) (*job.Job, error) {
+func (f *FakeRegistry) Schedule() ([]job.ScheduledUnit, error) {
+	f.RLock()
+	defer f.RUnlock()
+
+	var sorted sort.StringSlice
+	for _, j := range f.jobs {
+		sorted = append(sorted, j.Name)
+	}
+	sorted.Sort()
+
+	sUnits := make([]job.ScheduledUnit, 0, len(f.jobs))
+	for _, jName := range sorted {
+		j := f.jobs[jName]
+		su := job.ScheduledUnit{
+			Name:            j.Name,
+			State:           j.State,
+			TargetMachineID: j.TargetMachineID,
+		}
+		sUnits = append(sUnits, su)
+	}
+
+	return sUnits, nil
+}
+
+func (f *FakeRegistry) Unit(name string) (*job.Unit, error) {
 	f.RLock()
 	defer f.RUnlock()
 
@@ -109,8 +139,12 @@ func (f *FakeRegistry) Job(name string) (*job.Job, error) {
 		return nil, nil
 	}
 
-	j.UnitState = f.jobStates[name]
-	return &j, nil
+	u := job.Unit{
+		Name:        j.Name,
+		Unit:        j.Unit,
+		TargetState: j.TargetState,
+	}
+	return &u, nil
 }
 
 func (f *FakeRegistry) ScheduledUnit(name string) (*job.ScheduledUnit, error) {
@@ -124,29 +158,32 @@ func (f *FakeRegistry) ScheduledUnit(name string) (*job.ScheduledUnit, error) {
 
 	j.UnitState = f.jobStates[name]
 	su := job.ScheduledUnit{
-		Name:  j.Name,
-		State: j.State,
-	}
-	if us, ok := f.jobStates[j.Name]; ok {
-		su.TargetMachineID = us.MachineID
+		Name:            j.Name,
+		State:           j.State,
+		TargetMachineID: j.TargetMachineID,
 	}
 	return &su, nil
 }
 
-func (f *FakeRegistry) CreateJob(j *job.Job) error {
+func (f *FakeRegistry) CreateUnit(u *job.Unit) error {
 	f.Lock()
 	defer f.Unlock()
 
-	_, ok := f.jobs[j.Name]
+	_, ok := f.jobs[u.Name]
 	if ok {
-		return errors.New("Job already exists")
+		return errors.New("unit already exists")
 	}
 
-	f.jobs[j.Name] = *j
+	j := job.Job{
+		Name: u.Name,
+		Unit: u.Unit,
+	}
+
+	f.jobs[u.Name] = j
 	return nil
 }
 
-func (f *FakeRegistry) DestroyJob(name string) error {
+func (f *FakeRegistry) DestroyUnit(name string) error {
 	f.Lock()
 	defer f.Unlock()
 
@@ -154,7 +191,7 @@ func (f *FakeRegistry) DestroyJob(name string) error {
 	return nil
 }
 
-func (f *FakeRegistry) SetJobTargetState(name string, target job.JobState) error {
+func (f *FakeRegistry) SetUnitTargetState(name string, target job.JobState) error {
 	f.Lock()
 	defer f.Unlock()
 
@@ -170,14 +207,14 @@ func (f *FakeRegistry) SetJobTargetState(name string, target job.JobState) error
 	return nil
 }
 
-func (f *FakeRegistry) ScheduleJob(name string, machID string) error {
+func (f *FakeRegistry) ScheduleUnit(name string, machID string) error {
 	f.Lock()
 	defer f.Unlock()
 
 	j, ok := f.jobs[name]
 
 	if !ok {
-		return errors.New("job does not exist")
+		return errors.New("unit does not exist")
 	}
 
 	j.TargetMachineID = machID
@@ -205,8 +242,8 @@ func (f *FakeRegistry) LatestVersion() (*semver.Version, error) {
 	return f.version, nil
 }
 
-func (f *FakeRegistry) JobHeartbeat(jobName, agentMachID string, ttl time.Duration) error {
+func (f *FakeRegistry) UnitHeartbeat(name, machID string, ttl time.Duration) error {
 	return nil
 }
 
-func (f *FakeRegistry) ClearJobHeartbeat(string) {}
+func (f *FakeRegistry) ClearUnitHeartbeat(string) {}

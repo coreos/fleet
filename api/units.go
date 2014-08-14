@@ -66,41 +66,40 @@ func (ur *unitsResource) set(rw http.ResponseWriter, req *http.Request, item str
 		return
 	}
 
-	j, err := ur.reg.Job(item)
+	u, err := ur.reg.Unit(item)
 	if err != nil {
-		log.Errorf("Failed fetching Job(%s) from Registry: %v", item, err)
+		log.Errorf("Failed fetching Unit(%s) from Registry: %v", item, err)
 		sendError(rw, http.StatusInternalServerError, nil)
 		return
 	}
 
-	var u *unit.UnitFile
+	var uf *unit.UnitFile
 	if len(dus.Options) > 0 {
-		u = mapSchemaToUnit(dus.Options)
+		uf = mapSchemaToUnit(dus.Options)
 	}
 
 	// TODO(bcwaldon): Assert value of DesiredState is launched, loaded or inactive
 	ds := job.JobState(dus.DesiredState)
 
-	if j != nil {
-		ur.update(rw, j, ds)
-	} else if u != nil {
-		ur.create(rw, item, ds, u)
+	if u != nil {
+		ur.update(rw, u, ds)
+	} else if uf != nil {
+		ur.create(rw, item, ds, uf)
 	} else {
 		sendError(rw, http.StatusConflict, errors.New("unit does not exist and no fileContents provided"))
 	}
 }
 
-func (ur *unitsResource) create(rw http.ResponseWriter, item string, ds job.JobState, u *unit.UnitFile) {
-	j := job.NewJob(item, *u)
-
-	if err := ur.reg.CreateJob(j); err != nil {
-		log.Errorf("Failed creating Job(%s) in Registry: %v", j.Name, err)
+func (ur *unitsResource) create(rw http.ResponseWriter, item string, ds job.JobState, uf *unit.UnitFile) {
+	u := job.Unit{Name: item, Unit: *uf}
+	if err := ur.reg.CreateUnit(&u); err != nil {
+		log.Errorf("Failed creating Unit(%s) in Registry: %v", u.Name, err)
 		sendError(rw, http.StatusInternalServerError, nil)
 		return
 	}
 
-	if err := ur.reg.SetJobTargetState(j.Name, ds); err != nil {
-		log.Errorf("Failed setting target state of Job(%s): %v", j.Name, err)
+	if err := ur.reg.SetUnitTargetState(u.Name, ds); err != nil {
+		log.Errorf("Failed setting target state of Unit(%s): %v", u.Name, err)
 		sendError(rw, http.StatusInternalServerError, nil)
 		return
 	}
@@ -108,11 +107,10 @@ func (ur *unitsResource) create(rw http.ResponseWriter, item string, ds job.JobS
 	rw.WriteHeader(http.StatusNoContent)
 }
 
-func (ur *unitsResource) update(rw http.ResponseWriter, j *job.Job, ds job.JobState) {
-	// Assert that the Job's Unit matches the Unit in the request, if provided
-	err := ur.reg.SetJobTargetState(j.Name, ds)
+func (ur *unitsResource) update(rw http.ResponseWriter, u *job.Unit, ds job.JobState) {
+	err := ur.reg.SetUnitTargetState(u.Name, ds)
 	if err != nil {
-		log.Errorf("Failed setting target state of Job(%s): %v", j.Name, err)
+		log.Errorf("Failed setting target state of Unit(%s): %v", u.Name, err)
 		sendError(rw, http.StatusInternalServerError, nil)
 		return
 	}
@@ -121,19 +119,19 @@ func (ur *unitsResource) update(rw http.ResponseWriter, j *job.Job, ds job.JobSt
 }
 
 func (ur *unitsResource) destroy(rw http.ResponseWriter, req *http.Request, item string) {
-	j, err := ur.reg.Job(item)
+	u, err := ur.reg.Unit(item)
 	if err != nil {
-		log.Errorf("Failed fetching Job(%s): %v", item, err)
+		log.Errorf("Failed fetching Unit(%s): %v", item, err)
 		sendError(rw, http.StatusInternalServerError, nil)
 		return
 	}
 
-	if j == nil {
+	if u == nil {
 		sendError(rw, http.StatusNotFound, errors.New("unit does not exist"))
 		return
 	}
 
-	err = ur.reg.DestroyJob(item)
+	err = ur.reg.DestroyUnit(item)
 	if err != nil {
 		log.Errorf("Failed destroying Job(%s): %v", item, err)
 		sendError(rw, http.StatusInternalServerError, nil)
@@ -144,26 +142,44 @@ func (ur *unitsResource) destroy(rw http.ResponseWriter, req *http.Request, item
 }
 
 func (ur *unitsResource) get(rw http.ResponseWriter, req *http.Request, item string) {
-	j, err := ur.reg.Job(item)
+	u, err := ur.reg.Unit(item)
 	if err != nil {
-		log.Errorf("Failed fetching Job(%s) from Registry: %v", item, err)
+		log.Errorf("Failed fetching Unit(%s) from Registry: %v", item, err)
 		sendError(rw, http.StatusInternalServerError, nil)
 		return
 	}
 
-	if j == nil {
+	if u == nil {
 		sendError(rw, http.StatusNotFound, errors.New("unit does not exist"))
 		return
 	}
 
-	u, err := mapJobToSchema(j)
+	j := job.Job{
+		Name:        u.Name,
+		Unit:        u.Unit,
+		TargetState: u.TargetState,
+	}
+
+	su, err := ur.reg.ScheduledUnit(item)
+	if err != nil {
+		log.Errorf("Failed fetching ScheduledUnit(%s) from Registry: %v", item, err)
+		sendError(rw, http.StatusInternalServerError, nil)
+		return
+	}
+
+	if su != nil {
+		j.State = su.State
+		j.TargetMachineID = su.TargetMachineID
+	}
+
+	s, err := mapJobToSchema(&j)
 	if err != nil {
 		log.Errorf("Failed mapping Job(%s) to schema: %v", item, err)
 		sendError(rw, http.StatusInternalServerError, nil)
 		return
 	}
 
-	sendResponse(rw, http.StatusOK, *u)
+	sendResponse(rw, http.StatusOK, *s)
 }
 
 func (ur *unitsResource) list(rw http.ResponseWriter, req *http.Request) {
@@ -189,12 +205,39 @@ func (ur *unitsResource) list(rw http.ResponseWriter, req *http.Request) {
 }
 
 func getUnitPage(reg registry.Registry, tok PageToken) (*schema.UnitPage, error) {
-	all, err := reg.Jobs()
+	units, err := reg.Units()
 	if err != nil {
 		return nil, err
 	}
 
-	page, err := extractUnitPage(reg, all, tok)
+	sUnits, err := reg.Schedule()
+	if err != nil {
+		return nil, err
+	}
+
+	sUnitMap := make(map[string]*job.ScheduledUnit)
+	for _, sUnit := range sUnits {
+		sUnit := sUnit
+		sUnitMap[sUnit.Name] = &sUnit
+	}
+
+	jobs := make([]job.Job, len(units))
+	for i, u := range units {
+		j := job.Job{
+			Name:        u.Name,
+			Unit:        u.Unit,
+			TargetState: u.TargetState,
+		}
+
+		if sUnit, ok := sUnitMap[u.Name]; ok {
+			j.TargetMachineID = sUnit.TargetMachineID
+			j.State = sUnit.State
+		}
+
+		jobs[i] = j
+	}
+
+	page, err := extractUnitPage(reg, jobs, tok)
 	if err != nil {
 		return nil, err
 	}

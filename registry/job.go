@@ -17,7 +17,7 @@ const (
 )
 
 // Jobs lists all Jobs known by the Registry, ordered by job name
-func (r *EtcdRegistry) Jobs() ([]job.Job, error) {
+func (r *EtcdRegistry) jobs() ([]job.Job, error) {
 	var jobs []job.Job
 
 	req := etcd.Get{
@@ -128,7 +128,7 @@ func (r *EtcdRegistry) Schedule() ([]job.ScheduledUnit, error) {
 
 // Units lists all Units known by the Registry, ordered by job name
 func (r *EtcdRegistry) Units() ([]job.Unit, error) {
-	jobs, err := r.Jobs()
+	jobs, err := r.jobs()
 	if err != nil {
 		return nil, err
 	}
@@ -144,7 +144,7 @@ func (r *EtcdRegistry) Units() ([]job.Unit, error) {
 }
 
 func (r *EtcdRegistry) Unit(name string) (*job.Unit, error) {
-	j, err := r.Job(name)
+	j, err := r.job(name)
 	if err != nil || j == nil {
 		return nil, err
 	}
@@ -157,7 +157,7 @@ func (r *EtcdRegistry) Unit(name string) (*job.Unit, error) {
 }
 
 func (r *EtcdRegistry) ScheduledUnit(name string) (*job.ScheduledUnit, error) {
-	j, err := r.Job(name)
+	j, err := r.job(name)
 	if err != nil || j == nil {
 		return nil, err
 	}
@@ -169,9 +169,9 @@ func (r *EtcdRegistry) ScheduledUnit(name string) (*job.ScheduledUnit, error) {
 	return &su, nil
 }
 
-func (r *EtcdRegistry) ClearJobTarget(jobName, machID string) error {
+func (r *EtcdRegistry) UnscheduleUnit(name, machID string) error {
 	req := etcd.Delete{
-		Key:           r.jobTargetAgentPath(jobName),
+		Key:           r.jobTargetAgentPath(name),
 		PreviousValue: machID,
 	}
 
@@ -185,7 +185,7 @@ func (r *EtcdRegistry) ClearJobTarget(jobName, machID string) error {
 
 // Job looks for a Job of the given name in the Registry. It returns a fully
 // hydrated Job on success, or nil on any kind of failure.
-func (r *EtcdRegistry) Job(jobName string) (*job.Job, error) {
+func (r *EtcdRegistry) job(jobName string) (*job.Job, error) {
 	req := etcd.Get{
 		Key:       path.Join(r.keyPrefix, jobPrefix, jobName),
 		Recursive: true,
@@ -308,7 +308,7 @@ func (r *EtcdRegistry) getJobFromObjectNode(node *etcd.Node) (*job.Job, error) {
 		}
 
 		log.Infof("Migrating legacy Payload(%s)", jm.Name)
-		if err := r.storeOrGetUnit(*unit); err != nil {
+		if err := r.storeOrGetUnitFile(*unit); err != nil {
 			log.Warningf("Unable to migrate legacy Payload: %v", err)
 		}
 
@@ -328,12 +328,12 @@ type jobModel struct {
 	UnitHash unit.Hash
 }
 
-// DestroyJob removes a Job object from the repository, along with any legacy
+// DestroyUnit removes a Job object from the repository, along with any legacy
 // associated Payload and SignatureSet. It does not yet remove underlying
 // Units from the repository.
-func (r *EtcdRegistry) DestroyJob(jobName string) error {
+func (r *EtcdRegistry) DestroyUnit(name string) error {
 	req := etcd.Delete{
-		Key:       path.Join(r.keyPrefix, jobPrefix, jobName),
+		Key:       path.Join(r.keyPrefix, jobPrefix, name),
 		Recursive: true,
 	}
 
@@ -347,8 +347,8 @@ func (r *EtcdRegistry) DestroyJob(jobName string) error {
 	}
 
 	// TODO(jonboulle): add unit reference counting and actually destroying Units
-	r.destroyLegacyPayload(jobName)
-	r.destroySignatureSetOfJob(jobName)
+	r.destroyLegacyPayload(name)
+	r.destroySignatureSetOfJob(name)
 	// TODO(jonboulle): handle errors
 
 	return nil
@@ -362,15 +362,15 @@ func (r *EtcdRegistry) destroyLegacyPayload(payloadName string) {
 	r.etcd.Do(&req)
 }
 
-// CreateJob attempts to store a Job and its associated Unit in the registry
-func (r *EtcdRegistry) CreateJob(j *job.Job) (err error) {
-	if err := r.storeOrGetUnit(j.Unit); err != nil {
+// CreateUnit attempts to store a Unit and its associated unit file in the registry
+func (r *EtcdRegistry) CreateUnit(u *job.Unit) (err error) {
+	if err := r.storeOrGetUnitFile(u.Unit); err != nil {
 		return err
 	}
 
 	jm := jobModel{
-		Name:     j.Name,
-		UnitHash: j.Unit.Hash(),
+		Name:     u.Name,
+		UnitHash: u.Unit.Hash(),
 	}
 	json, err := marshal(jm)
 	if err != nil {
@@ -378,7 +378,7 @@ func (r *EtcdRegistry) CreateJob(j *job.Job) (err error) {
 	}
 
 	req := etcd.Create{
-		Key:   path.Join(r.keyPrefix, jobPrefix, j.Name, "object"),
+		Key:   path.Join(r.keyPrefix, jobPrefix, u.Name, "object"),
 		Value: json,
 	}
 
@@ -421,18 +421,18 @@ func (r *EtcdRegistry) jobTargetState(jobName string) (job.JobState, error) {
 	return job.ParseJobState(res.Node.Value)
 }
 
-func (r *EtcdRegistry) SetJobTargetState(jobName string, state job.JobState) error {
+func (r *EtcdRegistry) SetUnitTargetState(name string, state job.JobState) error {
 	req := etcd.Set{
-		Key:   r.jobTargetStatePath(jobName),
+		Key:   r.jobTargetStatePath(name),
 		Value: string(state),
 	}
 	_, err := r.etcd.Do(&req)
 	return err
 }
 
-func (r *EtcdRegistry) ScheduleJob(jobName string, machID string) error {
+func (r *EtcdRegistry) ScheduleUnit(name string, machID string) error {
 	req := etcd.Create{
-		Key:   r.jobTargetAgentPath(jobName),
+		Key:   r.jobTargetAgentPath(name),
 		Value: machID,
 	}
 	_, err := r.etcd.Do(&req)

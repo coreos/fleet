@@ -71,7 +71,7 @@ func mapMachinePageToMachineStates(entities []*schema.Machine) []machine.Machine
 	return machines
 }
 
-func (c *HTTPClient) Jobs() ([]job.Job, error) {
+func (c *HTTPClient) jobs() ([]job.Job, error) {
 	machines, err := c.Machines()
 	if err != nil {
 		return nil, err
@@ -109,7 +109,7 @@ func (c *HTTPClient) Jobs() ([]job.Job, error) {
 }
 
 func (c *HTTPClient) Units() ([]job.Unit, error) {
-	jobs, err := c.Jobs()
+	jobs, err := c.jobs()
 	if err != nil {
 		return nil, err
 	}
@@ -125,7 +125,7 @@ func (c *HTTPClient) Units() ([]job.Unit, error) {
 }
 
 func (c *HTTPClient) ScheduledUnit(name string) (*job.ScheduledUnit, error) {
-	j, err := c.Job(name)
+	j, err := c.job(name)
 	if err != nil || j == nil {
 		return nil, err
 	}
@@ -138,7 +138,7 @@ func (c *HTTPClient) ScheduledUnit(name string) (*job.ScheduledUnit, error) {
 }
 
 func (c *HTTPClient) Schedule() ([]job.ScheduledUnit, error) {
-	jobs, err := c.Jobs()
+	jobs, err := c.jobs()
 	if err != nil {
 		return nil, err
 	}
@@ -155,7 +155,7 @@ func (c *HTTPClient) Schedule() ([]job.ScheduledUnit, error) {
 }
 
 func (c *HTTPClient) UnitStates() ([]*unit.UnitState, error) {
-	jobs, err := c.Jobs()
+	jobs, err := c.jobs()
 	if err != nil {
 		return nil, err
 	}
@@ -166,7 +166,7 @@ func (c *HTTPClient) UnitStates() ([]*unit.UnitState, error) {
 	return states, nil
 }
 
-func (c *HTTPClient) Job(name string) (*job.Job, error) {
+func (c *HTTPClient) job(name string) (*job.Job, error) {
 	u, err := c.svc.Units.Get(name).Do()
 	if err != nil {
 		if is404(err) {
@@ -245,13 +245,13 @@ func mapUnitToJob(entity *schema.Unit, mm map[string]*machine.MachineState) (*jo
 	return &j, nil
 }
 
-func (c *HTTPClient) DestroyJob(name string) error {
+func (c *HTTPClient) DestroyUnit(name string) error {
 	return c.svc.Units.Delete(name).Do()
 }
 
-func (c *HTTPClient) CreateJob(j *job.Job) error {
-	opts := make([]*schema.UnitOption, len(j.Unit.Options))
-	for i, opt := range j.Unit.Options {
+func (c *HTTPClient) CreateUnit(u *job.Unit) error {
+	opts := make([]*schema.UnitOption, len(u.Unit.Options))
+	for i, opt := range u.Unit.Options {
 		opts[i] = &schema.UnitOption{
 			Section: opt.Section,
 			Name:    opt.Name,
@@ -259,14 +259,14 @@ func (c *HTTPClient) CreateJob(j *job.Job) error {
 		}
 	}
 	req := schema.DesiredUnitState{
-		Name:         j.Name,
+		Name:         u.Name,
 		DesiredState: string(job.JobStateInactive),
 		Options:      opts,
 	}
-	return c.svc.Units.Set(j.Name, &req).Do()
+	return c.svc.Units.Set(u.Name, &req).Do()
 }
 
-func (c *HTTPClient) SetJobTargetState(name string, state job.JobState) error {
+func (c *HTTPClient) SetUnitTargetState(name string, state job.JobState) error {
 	req := schema.DesiredUnitState{
 		Name:         name,
 		DesiredState: string(state),

@@ -27,9 +27,9 @@ func newFakeRegistryForSsh() registry.Registry {
 	}
 
 	jobs := []job.Job{
-		*job.NewJob("j1.service", unit.UnitFile{}),
-		*job.NewJob("j2.service", unit.UnitFile{}),
-		*job.NewJob("hello.service", unit.UnitFile{}),
+		job.Job{Name: "j1.service", Unit: unit.UnitFile{}, TargetMachineID: machines[0].ID},
+		job.Job{Name: "j2.service", Unit: unit.UnitFile{}, TargetMachineID: machines[1].ID},
+		job.Job{Name: "hello.service", Unit: unit.UnitFile{}, TargetMachineID: machines[2].ID},
 	}
 
 	states := map[string]*unit.UnitState{
@@ -64,16 +64,16 @@ func TestSshFindMachine(t *testing.T) {
 	}
 }
 
-func TestSshFindMachineByUnknownJobName(t *testing.T) {
+func TestSshFindMachineByUnknownUnitName(t *testing.T) {
 	cAPI = newFakeRegistryForSsh()
 
 	_, ok := findAddressInRunningUnits("asdf")
 	if ok {
-		t.Error("Expected to not find any machine with the job name `asdf`")
+		t.Error("Expected to not find any machine with the unit name `asdf`")
 	}
 }
 
-func TestSshFindMachineByJobName(t *testing.T) {
+func TestSshFindMachineByUnitName(t *testing.T) {
 	cAPI = newFakeRegistryForSsh()
 
 	ip, _ := findAddressInRunningUnits("j1")
@@ -108,7 +108,7 @@ func TestGlobalLookupByMachineID(t *testing.T) {
 	}
 }
 
-func TestGlobalLookupByJobName(t *testing.T) {
+func TestGlobalLookupByUnitName(t *testing.T) {
 	cAPI = newFakeRegistryForSsh()
 
 	ip, err := globalMachineLookup([]string{"j1"})

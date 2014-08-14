@@ -11,10 +11,26 @@ type clusterState struct {
 	machines map[string]*machine.MachineState
 }
 
-func newClusterState(jobs []job.Job, machines []machine.MachineState) *clusterState {
-	jMap := make(map[string]*job.Job, len(jobs))
-	for _, j := range jobs {
-		j := j
+func newClusterState(units []job.Unit, sUnits []job.ScheduledUnit, machines []machine.MachineState) *clusterState {
+	sUnitMap := make(map[string]*job.ScheduledUnit)
+	for _, sUnit := range sUnits {
+		sUnit := sUnit
+		sUnitMap[sUnit.Name] = &sUnit
+	}
+
+	jMap := make(map[string]*job.Job, len(units))
+	for _, u := range units {
+		j := job.Job{
+			Name:        u.Name,
+			Unit:        u.Unit,
+			TargetState: u.TargetState,
+		}
+
+		if sUnit, ok := sUnitMap[u.Name]; ok {
+			j.TargetMachineID = sUnit.TargetMachineID
+			j.State = sUnit.State
+		}
+
 		jMap[j.Name] = &j
 	}
 

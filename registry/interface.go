@@ -12,15 +12,12 @@ import (
 )
 
 type Registry interface {
-	ClearJobHeartbeat(jobName string)
-	ClearJobTarget(jobName, machID string) error
-	CreateJob(j *job.Job) (err error)
+	ClearUnitHeartbeat(name string)
+	CreateUnit(*job.Unit) error
 	CreateSignatureSet(ss *sign.SignatureSet) error
-	DestroyJob(jobName string) error
+	DestroyUnit(string) error
 	DestroySignatureSet(tag string)
-	Job(jobName string) (j *job.Job, err error)
-	JobHeartbeat(jobName, agentMachID string, ttl time.Duration) error
-	Jobs() ([]job.Job, error)
+	UnitHeartbeat(name, machID string, ttl time.Duration) error
 	JobSignatureSet(name string) (*sign.SignatureSet, error)
 	LatestVersion() (*semver.Version, error)
 	LeaseRole(role, machID string, period time.Duration) (Lease, error)
@@ -28,9 +25,10 @@ type Registry interface {
 	RemoveMachineState(machID string) error
 	RemoveUnitState(jobName string) error
 	SaveUnitState(jobName string, unitState *unit.UnitState)
-	ScheduleJob(jobName string, machID string) error
-	SetJobTargetState(jobName string, state job.JobState) error
+	ScheduleUnit(name, machID string) error
+	SetUnitTargetState(name string, state job.JobState) error
 	SetMachineState(ms machine.MachineState, ttl time.Duration) (uint64, error)
+	UnscheduleUnit(name, machID string) error
 
 	UnitRegistry
 }

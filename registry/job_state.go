@@ -12,7 +12,7 @@ import (
 // determineJobState decides what the State field of a Job object should
 // be, based on three parameters:
 //  - heartbeat should be the machine ID that is known to have recently
-//    heartbeaten (see JobHeartbeat) the Job.
+//    heartbeaten (see UnitHeartbeat) the Unit.
 //  - tgt should be the machine ID to which the Job is currently scheduled
 //  - us should be the most recent UnitState
 func determineJobState(heartbeat, tgt string, us *unit.UnitState) (state job.JobState) {
@@ -32,19 +32,19 @@ func determineJobState(heartbeat, tgt string, us *unit.UnitState) (state job.Job
 	return
 }
 
-func (r *EtcdRegistry) JobHeartbeat(jobName, agentMachID string, ttl time.Duration) error {
+func (r *EtcdRegistry) UnitHeartbeat(name, machID string, ttl time.Duration) error {
 	req := etcd.Set{
-		Key:   r.jobHeartbeatPath(jobName),
-		Value: agentMachID,
+		Key:   r.jobHeartbeatPath(name),
+		Value: machID,
 		TTL:   ttl,
 	}
 	_, err := r.etcd.Do(&req)
 	return err
 }
 
-func (r *EtcdRegistry) ClearJobHeartbeat(jobName string) {
+func (r *EtcdRegistry) ClearUnitHeartbeat(name string) {
 	req := etcd.Delete{
-		Key: r.jobHeartbeatPath(jobName),
+		Key: r.jobHeartbeatPath(name),
 	}
 	r.etcd.Do(&req)
 }

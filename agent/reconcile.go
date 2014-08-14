@@ -103,13 +103,19 @@ func (ar *AgentReconciler) Run(a *Agent, stop chan bool) {
 func (ar *AgentReconciler) Reconcile(a *Agent) {
 	ms := a.Machine.State()
 
-	jobs, err := ar.reg.Jobs()
+	units, err := ar.reg.Units()
 	if err != nil {
-		log.Errorf("Failed fetching Jobs from Registry: %v", err)
+		log.Errorf("Failed fetching Units from Registry: %v", err)
 		return
 	}
 
-	dAgentState, err := ar.desiredAgentState(jobs, &ms)
+	sUnits, err := ar.reg.Schedule()
+	if err != nil {
+		log.Errorf("Failed fetching schedule from Registry: %v", err)
+		return
+	}
+
+	dAgentState, err := ar.desiredAgentState(units, sUnits, &ms)
 	if err != nil {
 		log.Errorf("Unable to determine agent's desired state: %v", err)
 		return
@@ -176,21 +182,32 @@ func (ar *AgentReconciler) doTask(a *Agent, t *task) (err error) {
 
 // desiredAgentState builds an *AgentState object that represents what an
 // Agent identified by the provided machine ID should currently be doing.
-func (ar *AgentReconciler) desiredAgentState(jobs []job.Job, ms *machine.MachineState) (*AgentState, error) {
+func (ar *AgentReconciler) desiredAgentState(units []job.Unit, sUnits []job.ScheduledUnit, ms *machine.MachineState) (*AgentState, error) {
 	as := AgentState{
 		MState:     ms,
 		Jobs:       make(map[string]*job.Job),
 		verifyFunc: ar.verifyJobSignature,
 	}
 
-	for _, j := range jobs {
-		j := j
+	sUnitMap := make(map[string]*job.ScheduledUnit)
+	for _, sUnit := range sUnits {
+		sUnit := sUnit
+		sUnitMap[sUnit.Name] = &sUnit
+	}
 
-		if j.TargetMachineID == "" || j.TargetMachineID != ms.ID {
+	for _, u := range units {
+		sUnit, ok := sUnitMap[u.Name]
+		if !ok || sUnit.TargetMachineID == "" || sUnit.TargetMachineID != ms.ID {
 			continue
 		}
 
-		as.Jobs[j.Name] = &j
+		as.Jobs[u.Name] = &job.Job{
+			Name:            u.Name,
+			Unit:            u.Unit,
+			TargetState:     u.TargetState,
+			TargetMachineID: sUnit.TargetMachineID,
+			State:           sUnit.State,
+		}
 	}
 
 	return &as, nil

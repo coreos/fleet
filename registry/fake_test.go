@@ -8,58 +8,58 @@ import (
 	"github.com/coreos/fleet/unit"
 )
 
-func TestFakeRegistryJobLifecycle(t *testing.T) {
+func TestFakeRegistryUnitLifecycle(t *testing.T) {
 	reg := NewFakeRegistry()
 
-	jobs, err := reg.Jobs()
+	units, err := reg.Units()
 	if err != nil {
 		t.Fatalf("Received error while calling Jobs: %v", err)
 	}
-	if !reflect.DeepEqual([]job.Job{}, jobs) {
-		t.Fatalf("Expected no jobs, got %v", jobs)
+	if !reflect.DeepEqual([]job.Unit{}, units) {
+		t.Fatalf("Expected no units, got %v", units)
 	}
 
-	u, _ := unit.NewUnitFile("")
-	j1 := job.NewJob("job1.service", *u)
-	err = reg.CreateJob(j1)
+	uf, _ := unit.NewUnitFile("")
+	u1 := job.Unit{Name: "u1.service", Unit: *uf}
+	err = reg.CreateUnit(&u1)
 	if err != nil {
-		t.Fatalf("Received error while calling CreateJob: %v", err)
+		t.Fatalf("Received error while calling CreateUnit: %v", err)
 	}
 
-	jobs, err = reg.Jobs()
+	units, err = reg.Units()
 	if err != nil {
-		t.Fatalf("Received error while calling Jobs: %v", err)
+		t.Fatalf("Received error while calling Units: %v", err)
 	}
-	if len(jobs) != 1 {
-		t.Fatalf("Expected 1 Job, got %v", jobs)
+	if len(units) != 1 {
+		t.Fatalf("Expected 1 Unit, got %v", units)
 	}
-	if jobs[0].Name != "job1.service" {
-		t.Fatalf("Expected Job with name \"job1.service\", got %q", jobs[0].Name)
+	if units[0].Name != "u1.service" {
+		t.Fatalf("Expected Job with name \"u1.service\", got %q", units[0].Name)
 	}
 
-	err = reg.ScheduleJob("job1.service", "XXX")
+	err = reg.ScheduleUnit("u1.service", "XXX")
 	if err != nil {
-		t.Fatalf("Received error while calling ScheduleJob: %v", err)
+		t.Fatalf("Received error while calling ScheduleUnit: %v", err)
 	}
 
-	j, err := reg.Job("job1.service")
+	su, err := reg.ScheduledUnit("u1.service")
 	if err != nil {
-		t.Fatalf("Received error while calling JobTarget: %v", err)
+		t.Fatalf("Received error while calling ScheduledUnit: %v", err)
 	}
-	if j.TargetMachineID != "XXX" {
-		t.Fatalf("Job should be scheduled to XXX, got %v", j.TargetMachineID)
+	if su.TargetMachineID != "XXX" {
+		t.Fatalf("Unit should be scheduled to XXX, got %v", su.TargetMachineID)
 	}
 
-	err = reg.DestroyJob("job1.service")
+	err = reg.DestroyUnit("u1.service")
 	if err != nil {
-		t.Fatalf("Received error while calling DestroyJob: %v", err)
+		t.Fatalf("Received error while calling DestroyUnit: %v", err)
 	}
 
-	jobs, err = reg.Jobs()
+	units, err = reg.Units()
 	if err != nil {
-		t.Fatalf("Received error while calling Jobs: %v", err)
+		t.Fatalf("Received error while calling Units: %v", err)
 	}
-	if !reflect.DeepEqual([]job.Job{}, jobs) {
-		t.Fatalf("Expected no jobs, got %v", jobs)
+	if !reflect.DeepEqual([]job.Unit{}, units) {
+		t.Fatalf("Expected no units, got %v", units)
 	}
 }

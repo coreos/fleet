@@ -30,31 +30,31 @@ Machine metadata is located in the fleet configuration file.`,
 
 func init() {
 	cmdStartUnit.Flags.BoolVar(&sharedFlags.Sign, "sign", false, "Sign unit file signatures using local SSH identities.")
-	cmdStartUnit.Flags.IntVar(&sharedFlags.BlockAttempts, "block-attempts", 0, "Wait until the jobs are launched, performing up to N attempts before giving up. A value of 0 indicates no limit.")
-	cmdStartUnit.Flags.BoolVar(&sharedFlags.NoBlock, "no-block", false, "Do not wait until the jobs have been launched before exiting.")
+	cmdStartUnit.Flags.IntVar(&sharedFlags.BlockAttempts, "block-attempts", 0, "Wait until the units are launched, performing up to N attempts before giving up. A value of 0 indicates no limit.")
+	cmdStartUnit.Flags.BoolVar(&sharedFlags.NoBlock, "no-block", false, "Do not wait until the units have been launched before exiting.")
 }
 
 func runStartUnit(args []string) (exit int) {
-	if err := lazyCreateJobs(args, sharedFlags.Sign); err != nil {
-		fmt.Fprintf(os.Stderr, "Error creating jobs: %v\n", err)
+	if err := lazyCreateUnits(args, sharedFlags.Sign); err != nil {
+		fmt.Fprintf(os.Stderr, "Error creating units: %v\n", err)
 		return 1
 	}
 
-	triggered, err := lazyStartJobs(args)
+	triggered, err := lazyStartUnits(args)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error starting jobs: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error starting units: %v\n", err)
 		return 1
 	}
 
 	if !sharedFlags.NoBlock {
-		errchan := waitForJobStates(triggered, job.JobStateLaunched, sharedFlags.BlockAttempts, os.Stdout)
+		errchan := waitForUnitStates(triggered, job.JobStateLaunched, sharedFlags.BlockAttempts, os.Stdout)
 		for err := range errchan {
-			fmt.Fprintf(os.Stderr, "Error waiting for jobs: %v\n", err)
+			fmt.Fprintf(os.Stderr, "Error waiting for units: %v\n", err)
 			exit = 1
 		}
 	} else {
-		for _, jobName := range triggered {
-			fmt.Printf("Triggered job %s start\n", jobName)
+		for _, name := range triggered {
+			fmt.Printf("Triggered unit %s start\n", name)
 		}
 	}
 

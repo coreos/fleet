@@ -140,9 +140,15 @@ func (e *Engine) Trigger() {
 }
 
 func (e *Engine) clusterState() (*clusterState, error) {
-	jobs, err := e.registry.Jobs()
+	units, err := e.registry.Units()
 	if err != nil {
-		log.Errorf("Failed fetching Jobs from Registry: %v", err)
+		log.Errorf("Failed fetching Units from Registry: %v", err)
+		return nil, err
+	}
+
+	sUnits, err := e.registry.Schedule()
+	if err != nil {
+		log.Errorf("Failed fetching schedule from Registry: %v", err)
 		return nil, err
 	}
 
@@ -152,29 +158,29 @@ func (e *Engine) clusterState() (*clusterState, error) {
 		return nil, err
 	}
 
-	return newClusterState(jobs, machines), nil
+	return newClusterState(units, sUnits, machines), nil
 }
 
-func (e *Engine) unscheduleJob(jName, machID string) (err error) {
-	err = e.registry.ClearJobTarget(jName, machID)
+func (e *Engine) unscheduleUnit(name, machID string) (err error) {
+	err = e.registry.UnscheduleUnit(name, machID)
 	if err != nil {
-		log.Errorf("Failed clearing target Machine(%s) of Job(%s): %v", machID, jName, err)
+		log.Errorf("Failed unscheduling Unit(%s) from Machine(%s): %v", name, machID, err)
 	} else {
-		log.Infof("Unscheduled Job(%s) from Machine(%s)", jName, machID)
+		log.Infof("Unscheduled Job(%s) from Machine(%s)", name, machID)
 	}
 	return
 }
 
-// attemptScheduleJob tries to persist a scheduling decision in the
+// attemptScheduleUnit tries to persist a scheduling decision in the
 // Registry, returning true on success. If any communication with the
 // Registry fails, false is returned.
-func (e *Engine) attemptScheduleJob(jName, machID string) bool {
-	err := e.registry.ScheduleJob(jName, machID)
+func (e *Engine) attemptScheduleUnit(name, machID string) bool {
+	err := e.registry.ScheduleUnit(name, machID)
 	if err != nil {
-		log.Errorf("Failed scheduling Job(%s) to Machine(%s): %v", jName, machID, err)
+		log.Errorf("Failed scheduling Unit(%s) to Machine(%s): %v", name, machID, err)
 		return false
 	}
 
-	log.Infof("Scheduled Job(%s) to Machine(%s)", jName, machID)
+	log.Infof("Scheduled Unit(%s) to Machine(%s)", name, machID)
 	return true
 }
