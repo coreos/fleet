@@ -17,7 +17,7 @@ const (
 )
 
 // Jobs lists all Jobs known by the Registry, ordered by job name
-func (r *EtcdRegistry) Jobs() ([]job.Job, error) {
+func (r *EtcdRegistry) jobs() ([]job.Job, error) {
 	var jobs []job.Job
 
 	req := etcd.Get{
@@ -128,7 +128,7 @@ func (r *EtcdRegistry) Schedule() ([]job.ScheduledUnit, error) {
 
 // Units lists all Units known by the Registry, ordered by job name
 func (r *EtcdRegistry) Units() ([]job.Unit, error) {
-	jobs, err := r.Jobs()
+	jobs, err := r.jobs()
 	if err != nil {
 		return nil, err
 	}
@@ -144,7 +144,7 @@ func (r *EtcdRegistry) Units() ([]job.Unit, error) {
 }
 
 func (r *EtcdRegistry) Unit(name string) (*job.Unit, error) {
-	j, err := r.Job(name)
+	j, err := r.job(name)
 	if err != nil || j == nil {
 		return nil, err
 	}
@@ -157,7 +157,7 @@ func (r *EtcdRegistry) Unit(name string) (*job.Unit, error) {
 }
 
 func (r *EtcdRegistry) ScheduledUnit(name string) (*job.ScheduledUnit, error) {
-	j, err := r.Job(name)
+	j, err := r.job(name)
 	if err != nil || j == nil {
 		return nil, err
 	}
@@ -185,7 +185,7 @@ func (r *EtcdRegistry) ClearJobTarget(jobName, machID string) error {
 
 // Job looks for a Job of the given name in the Registry. It returns a fully
 // hydrated Job on success, or nil on any kind of failure.
-func (r *EtcdRegistry) Job(jobName string) (*job.Job, error) {
+func (r *EtcdRegistry) job(jobName string) (*job.Job, error) {
 	req := etcd.Get{
 		Key:       path.Join(r.keyPrefix, jobPrefix, jobName),
 		Recursive: true,

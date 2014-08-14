@@ -18,14 +18,14 @@ func TestSchedulerDecisions(t *testing.T) {
 	}{
 		// no machines to receive job
 		{
-			clust: newClusterState([]job.Job{}, []machine.MachineState{}),
+			clust: newClusterState([]job.Unit{}, []job.ScheduledUnit{}, []machine.MachineState{}),
 			job:   &job.Job{Name: "foo.service"},
 			dec:   nil,
 		},
 
 		// multiple machines, pick the first one
 		{
-			clust: newClusterState([]job.Job{}, []machine.MachineState{machine.MachineState{ID: "XXX"}, machine.MachineState{ID: "YYY"}}),
+			clust: newClusterState([]job.Unit{}, []job.ScheduledUnit{}, []machine.MachineState{machine.MachineState{ID: "XXX"}, machine.MachineState{ID: "YYY"}}),
 			job:   &job.Job{Name: "foo.service"},
 			dec: &decision{
 				machineID: "XXX",

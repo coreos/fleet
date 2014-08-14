@@ -18,17 +18,22 @@ func TestCalculateClusterTasks(t *testing.T) {
 	}{
 		// no work to do
 		{
-			clust: newClusterState([]job.Job{}, []machine.MachineState{}),
+			clust: newClusterState([]job.Unit{}, []job.ScheduledUnit{}, []machine.MachineState{}),
 			tasks: []*task{},
 		},
 
 		// do nothing if Job is shcheduled and target machine exists
 		{
 			clust: newClusterState(
-				[]job.Job{
-					job.Job{
+				[]job.Unit{
+					job.Unit{
+						Name:        "foo.service",
+						TargetState: job.JobStateLaunched,
+					},
+				},
+				[]job.ScheduledUnit{
+					job.ScheduledUnit{
 						Name:            "foo.service",
-						TargetState:     job.JobStateLaunched,
 						State:           &jsLaunched,
 						TargetMachineID: "XXX",
 					},
@@ -43,10 +48,15 @@ func TestCalculateClusterTasks(t *testing.T) {
 		// reschedule if Job's target machine is gone
 		{
 			clust: newClusterState(
-				[]job.Job{
-					job.Job{
+				[]job.Unit{
+					job.Unit{
+						Name:        "foo.service",
+						TargetState: job.JobStateLaunched,
+					},
+				},
+				[]job.ScheduledUnit{
+					job.ScheduledUnit{
 						Name:            "foo.service",
-						TargetState:     job.JobStateLaunched,
 						State:           &jsLaunched,
 						TargetMachineID: "ZZZ",
 					},
@@ -74,10 +84,15 @@ func TestCalculateClusterTasks(t *testing.T) {
 		// unschedule if Job's target state inactive and is scheduled
 		{
 			clust: newClusterState(
-				[]job.Job{
-					job.Job{
+				[]job.Unit{
+					job.Unit{
+						Name:        "foo.service",
+						TargetState: job.JobStateInactive,
+					},
+				},
+				[]job.ScheduledUnit{
+					job.ScheduledUnit{
 						Name:            "foo.service",
-						TargetState:     job.JobStateInactive,
 						State:           &jsLaunched,
 						TargetMachineID: "XXX",
 					},
@@ -99,10 +114,15 @@ func TestCalculateClusterTasks(t *testing.T) {
 		// attempt to schedule a Job if a machine exists
 		{
 			clust: newClusterState(
-				[]job.Job{
-					job.Job{
+				[]job.Unit{
+					job.Unit{
+						Name:        "foo.service",
+						TargetState: job.JobStateLaunched,
+					},
+				},
+				[]job.ScheduledUnit{
+					job.ScheduledUnit{
 						Name:            "foo.service",
-						TargetState:     job.JobStateLaunched,
 						State:           &jsInactive,
 						TargetMachineID: "",
 					},

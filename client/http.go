@@ -71,7 +71,7 @@ func mapMachinePageToMachineStates(entities []*schema.Machine) []machine.Machine
 	return machines
 }
 
-func (c *HTTPClient) Jobs() ([]job.Job, error) {
+func (c *HTTPClient) jobs() ([]job.Job, error) {
 	machines, err := c.Machines()
 	if err != nil {
 		return nil, err
@@ -109,7 +109,7 @@ func (c *HTTPClient) Jobs() ([]job.Job, error) {
 }
 
 func (c *HTTPClient) Units() ([]job.Unit, error) {
-	jobs, err := c.Jobs()
+	jobs, err := c.jobs()
 	if err != nil {
 		return nil, err
 	}
@@ -125,7 +125,7 @@ func (c *HTTPClient) Units() ([]job.Unit, error) {
 }
 
 func (c *HTTPClient) ScheduledUnit(name string) (*job.ScheduledUnit, error) {
-	j, err := c.Job(name)
+	j, err := c.job(name)
 	if err != nil || j == nil {
 		return nil, err
 	}
@@ -138,7 +138,7 @@ func (c *HTTPClient) ScheduledUnit(name string) (*job.ScheduledUnit, error) {
 }
 
 func (c *HTTPClient) Schedule() ([]job.ScheduledUnit, error) {
-	jobs, err := c.Jobs()
+	jobs, err := c.jobs()
 	if err != nil {
 		return nil, err
 	}
@@ -155,7 +155,7 @@ func (c *HTTPClient) Schedule() ([]job.ScheduledUnit, error) {
 }
 
 func (c *HTTPClient) UnitStates() ([]*unit.UnitState, error) {
-	jobs, err := c.Jobs()
+	jobs, err := c.jobs()
 	if err != nil {
 		return nil, err
 	}
@@ -166,7 +166,7 @@ func (c *HTTPClient) UnitStates() ([]*unit.UnitState, error) {
 	return states, nil
 }
 
-func (c *HTTPClient) Job(name string) (*job.Job, error) {
+func (c *HTTPClient) job(name string) (*job.Job, error) {
 	u, err := c.svc.Units.Get(name).Do()
 	if err != nil {
 		if is404(err) {

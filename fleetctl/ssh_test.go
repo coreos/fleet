@@ -27,9 +27,9 @@ func newFakeRegistryForSsh() registry.Registry {
 	}
 
 	jobs := []job.Job{
-		*job.NewJob("j1.service", unit.UnitFile{}),
-		*job.NewJob("j2.service", unit.UnitFile{}),
-		*job.NewJob("hello.service", unit.UnitFile{}),
+		job.Job{Name: "j1.service", Unit: unit.UnitFile{}, TargetMachineID: machines[0].ID},
+		job.Job{Name: "j2.service", Unit: unit.UnitFile{}, TargetMachineID: machines[1].ID},
+		job.Job{Name: "hello.service", Unit: unit.UnitFile{}, TargetMachineID: machines[2].ID},
 	}
 
 	states := map[string]*unit.UnitState{

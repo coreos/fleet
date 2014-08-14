@@ -140,9 +140,15 @@ func (e *Engine) Trigger() {
 }
 
 func (e *Engine) clusterState() (*clusterState, error) {
-	jobs, err := e.registry.Jobs()
+	units, err := e.registry.Units()
 	if err != nil {
-		log.Errorf("Failed fetching Jobs from Registry: %v", err)
+		log.Errorf("Failed fetching Units from Registry: %v", err)
+		return nil, err
+	}
+
+	sUnits, err := e.registry.Schedule()
+	if err != nil {
+		log.Errorf("Failed fetching schedule from Registry: %v", err)
 		return nil, err
 	}
 
@@ -152,7 +158,7 @@ func (e *Engine) clusterState() (*clusterState, error) {
 		return nil, err
 	}
 
-	return newClusterState(jobs, machines), nil
+	return newClusterState(units, sUnits, machines), nil
 }
 
 func (e *Engine) unscheduleJob(jName, machID string) (err error) {
