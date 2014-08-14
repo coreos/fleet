@@ -17,7 +17,7 @@ type Registry interface {
 	CreateSignatureSet(ss *sign.SignatureSet) error
 	DestroyUnit(string) error
 	DestroySignatureSet(tag string)
-	JobHeartbeat(jobName, agentMachID string, ttl time.Duration) error
+	UnitHeartbeat(name, machID string, ttl time.Duration) error
 	JobSignatureSet(name string) (*sign.SignatureSet, error)
 	LatestVersion() (*semver.Version, error)
 	LeaseRole(role, machID string, period time.Duration) (Lease, error)

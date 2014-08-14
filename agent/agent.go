@@ -59,7 +59,7 @@ func (a *Agent) heartbeatJobs(ttl time.Duration, stop chan bool) {
 		machID := a.Machine.State().ID
 		launched := a.cache.launchedJobs()
 		for _, j := range launched {
-			go a.registry.JobHeartbeat(j, machID, ttl)
+			go a.registry.UnitHeartbeat(j, machID, ttl)
 		}
 	}
 
@@ -99,7 +99,7 @@ func (a *Agent) startJob(jobName string) {
 	a.cache.setTargetState(jobName, job.JobStateLaunched)
 
 	machID := a.Machine.State().ID
-	a.registry.JobHeartbeat(jobName, machID, a.ttl)
+	a.registry.UnitHeartbeat(jobName, machID, a.ttl)
 
 	go func() {
 		a.um.Start(jobName)

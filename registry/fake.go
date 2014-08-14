@@ -242,7 +242,7 @@ func (f *FakeRegistry) LatestVersion() (*semver.Version, error) {
 	return f.version, nil
 }
 
-func (f *FakeRegistry) JobHeartbeat(jobName, agentMachID string, ttl time.Duration) error {
+func (f *FakeRegistry) UnitHeartbeat(name, machID string, ttl time.Duration) error {
 	return nil
 }
 
