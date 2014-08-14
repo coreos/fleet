@@ -132,7 +132,7 @@ func (ur *unitsResource) destroy(rw http.ResponseWriter, req *http.Request, item
 		return
 	}
 
-	err = ur.reg.DestroyJob(item)
+	err = ur.reg.DestroyUnit(item)
 	if err != nil {
 		log.Errorf("Failed destroying Job(%s): %v", item, err)
 		sendError(rw, http.StatusInternalServerError, nil)

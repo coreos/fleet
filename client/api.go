@@ -11,8 +11,8 @@ import (
 
 type API interface {
 	CreateUnit(*job.Unit) error
+	DestroyUnit(string) error
 	CreateSignatureSet(*sign.SignatureSet) error
-	DestroyJob(string) error
 	JobSignatureSet(string) (*sign.SignatureSet, error)
 	LatestVersion() (*semver.Version, error)
 	Machines() ([]machine.MachineState, error)

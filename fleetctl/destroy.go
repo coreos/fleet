@@ -21,7 +21,7 @@ Destroyed units are impossible to start unless re-submitted.`,
 func runDestroyUnits(args []string) (exit int) {
 	for _, v := range args {
 		name := unitNameMangle(v)
-		err := cAPI.DestroyJob(name)
+		err := cAPI.DestroyUnit(name)
 		if err != nil {
 			continue
 		}

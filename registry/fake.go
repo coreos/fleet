@@ -183,7 +183,7 @@ func (f *FakeRegistry) CreateUnit(u *job.Unit) error {
 	return nil
 }
 
-func (f *FakeRegistry) DestroyJob(name string) error {
+func (f *FakeRegistry) DestroyUnit(name string) error {
 	f.Lock()
 	defer f.Unlock()
 

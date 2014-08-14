@@ -16,7 +16,7 @@ type Registry interface {
 	ClearJobTarget(jobName, machID string) error
 	CreateUnit(*job.Unit) error
 	CreateSignatureSet(ss *sign.SignatureSet) error
-	DestroyJob(jobName string) error
+	DestroyUnit(string) error
 	DestroySignatureSet(tag string)
 	JobHeartbeat(jobName, agentMachID string, ttl time.Duration) error
 	JobSignatureSet(name string) (*sign.SignatureSet, error)

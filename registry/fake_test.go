@@ -50,9 +50,9 @@ func TestFakeRegistryUnitLifecycle(t *testing.T) {
 		t.Fatalf("Unit should be scheduled to XXX, got %v", su.TargetMachineID)
 	}
 
-	err = reg.DestroyJob("u1.service")
+	err = reg.DestroyUnit("u1.service")
 	if err != nil {
-		t.Fatalf("Received error while calling DestroyJob: %v", err)
+		t.Fatalf("Received error while calling DestroyUnit: %v", err)
 	}
 
 	units, err = reg.Units()

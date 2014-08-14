@@ -328,12 +328,12 @@ type jobModel struct {
 	UnitHash unit.Hash
 }
 
-// DestroyJob removes a Job object from the repository, along with any legacy
+// DestroyUnit removes a Job object from the repository, along with any legacy
 // associated Payload and SignatureSet. It does not yet remove underlying
 // Units from the repository.
-func (r *EtcdRegistry) DestroyJob(jobName string) error {
+func (r *EtcdRegistry) DestroyUnit(name string) error {
 	req := etcd.Delete{
-		Key:       path.Join(r.keyPrefix, jobPrefix, jobName),
+		Key:       path.Join(r.keyPrefix, jobPrefix, name),
 		Recursive: true,
 	}
 
@@ -347,8 +347,8 @@ func (r *EtcdRegistry) DestroyJob(jobName string) error {
 	}
 
 	// TODO(jonboulle): add unit reference counting and actually destroying Units
-	r.destroyLegacyPayload(jobName)
-	r.destroySignatureSetOfJob(jobName)
+	r.destroyLegacyPayload(name)
+	r.destroySignatureSetOfJob(name)
 	// TODO(jonboulle): handle errors
 
 	return nil

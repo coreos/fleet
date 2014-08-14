@@ -245,7 +245,7 @@ func mapUnitToJob(entity *schema.Unit, mm map[string]*machine.MachineState) (*jo
 	return &j, nil
 }
 
-func (c *HTTPClient) DestroyJob(name string) error {
+func (c *HTTPClient) DestroyUnit(name string) error {
 	return c.svc.Units.Delete(name).Do()
 }
 
