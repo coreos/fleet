@@ -24,11 +24,11 @@ Submit a directory of units with glob matching:
 }
 
 func init() {
-	cmdSubmitUnit.Flags.BoolVar(&sharedFlags.Sign, "sign", false, "Sign unit files units using local SSH identities")
+	cmdSubmitUnit.Flags.BoolVar(&sharedFlags.Sign, "sign", false, "DEPRECATED - this option cannot be used")
 }
 
 func runSubmitUnits(args []string) (exit int) {
-	if err := lazyCreateJobs(args, sharedFlags.Sign); err != nil {
+	if err := lazyCreateJobs(args); err != nil {
 		fmt.Fprintf(os.Stderr, "Error creating jobs: %v\n", err)
 		exit = 1
 	}

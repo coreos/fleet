@@ -5,15 +5,12 @@ import (
 
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/machine"
-	"github.com/coreos/fleet/sign"
 	"github.com/coreos/fleet/unit"
 )
 
 type API interface {
 	CreateJob(*job.Job) error
-	CreateSignatureSet(*sign.SignatureSet) error
 	DestroyJob(string) error
-	JobSignatureSet(string) (*sign.SignatureSet, error)
 	LatestVersion() (*semver.Version, error)
 	Machines() ([]machine.MachineState, error)
 	SetJobTargetState(string, job.JobState) error

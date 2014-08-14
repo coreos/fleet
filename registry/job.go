@@ -348,7 +348,6 @@ func (r *EtcdRegistry) DestroyJob(jobName string) error {
 
 	// TODO(jonboulle): add unit reference counting and actually destroying Units
 	r.destroyLegacyPayload(jobName)
-	r.destroySignatureSetOfJob(jobName)
 	// TODO(jonboulle): handle errors
 
 	return nil
