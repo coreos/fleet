@@ -16,7 +16,6 @@ import (
 	"github.com/coreos/fleet/config"
 	"github.com/coreos/fleet/registry"
 	"github.com/coreos/fleet/server"
-	"github.com/coreos/fleet/sign"
 	"github.com/coreos/fleet/version"
 )
 
@@ -56,8 +55,8 @@ func main() {
 	cfgset.String("public_ip", "", "IP address that fleet machine should publish")
 	cfgset.String("metadata", "", "List of key-value metadata to assign to the fleet machine")
 	cfgset.String("agent_ttl", agent.DefaultTTL, "TTL in seconds of fleet machine state in etcd")
-	cfgset.Bool("verify_units", false, "Verify unit file signatures using local SSH identities")
-	cfgset.String("authorized_keys_file", sign.DefaultAuthorizedKeysFile, "File containing public SSH keys to be used for signature verification")
+	cfgset.Bool("verify_units", false, "DEPRECATED - This option is ignored")
+	cfgset.String("authorized_keys_file", "", "DEPRECATED - This option is ignored")
 
 	globalconf.Register("", cfgset)
 	cfg, err := getConfig(cfgset, *cfgPath)
