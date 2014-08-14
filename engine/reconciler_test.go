@@ -73,8 +73,8 @@ func TestCalculateClusterTasks(t *testing.T) {
 					MachineID: "ZZZ",
 				},
 				&task{
-					Type:      taskTypeAttemptScheduleJob,
-					Reason:    "target state launched and Job not scheduled",
+					Type:      taskTypeAttemptScheduleUnit,
+					Reason:    "target state launched and unit not scheduled",
 					JobName:   "foo.service",
 					MachineID: "XXX",
 				},
@@ -133,8 +133,8 @@ func TestCalculateClusterTasks(t *testing.T) {
 			),
 			tasks: []*task{
 				&task{
-					Type:      taskTypeAttemptScheduleJob,
-					Reason:    "target state launched and Job not scheduled",
+					Type:      taskTypeAttemptScheduleUnit,
+					Reason:    "target state launched and unit not scheduled",
 					JobName:   "foo.service",
 					MachineID: "XXX",
 				},

@@ -9,8 +9,8 @@ import (
 )
 
 const (
-	taskTypeUnscheduleJob      = "UnscheduleJob"
-	taskTypeAttemptScheduleJob = "AttemptScheduleJob"
+	taskTypeUnscheduleJob       = "UnscheduleJob"
+	taskTypeAttemptScheduleUnit = "AttemptScheduleUnit"
 )
 
 type task struct {
@@ -122,8 +122,8 @@ func (r *Reconciler) calculateClusterTasks(clust *clusterState, stopchan chan st
 				continue
 			}
 
-			reason := fmt.Sprintf("target state %s and Job not scheduled", j.TargetState)
-			if !send(taskTypeAttemptScheduleJob, reason, j.Name, dec.machineID) {
+			reason := fmt.Sprintf("target state %s and unit not scheduled", j.TargetState)
+			if !send(taskTypeAttemptScheduleUnit, reason, j.Name, dec.machineID) {
 				return
 			}
 
@@ -138,8 +138,8 @@ func doTask(t *task, e *Engine) (err error) {
 	switch t.Type {
 	case taskTypeUnscheduleJob:
 		err = e.unscheduleJob(t.JobName, t.MachineID)
-	case taskTypeAttemptScheduleJob:
-		e.attemptScheduleJob(t.JobName, t.MachineID)
+	case taskTypeAttemptScheduleUnit:
+		e.attemptScheduleUnit(t.JobName, t.MachineID)
 	default:
 		err = fmt.Errorf("unrecognized task type %q", t.Type)
 	}

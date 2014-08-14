@@ -37,9 +37,9 @@ func TestFakeRegistryUnitLifecycle(t *testing.T) {
 		t.Fatalf("Expected Job with name \"u1.service\", got %q", units[0].Name)
 	}
 
-	err = reg.ScheduleJob("u1.service", "XXX")
+	err = reg.ScheduleUnit("u1.service", "XXX")
 	if err != nil {
-		t.Fatalf("Received error while calling ScheduleJob: %v", err)
+		t.Fatalf("Received error while calling ScheduleUnit: %v", err)
 	}
 
 	su, err := reg.ScheduledUnit("u1.service")

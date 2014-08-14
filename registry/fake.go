@@ -207,14 +207,14 @@ func (f *FakeRegistry) SetJobTargetState(name string, target job.JobState) error
 	return nil
 }
 
-func (f *FakeRegistry) ScheduleJob(name string, machID string) error {
+func (f *FakeRegistry) ScheduleUnit(name string, machID string) error {
 	f.Lock()
 	defer f.Unlock()
 
 	j, ok := f.jobs[name]
 
 	if !ok {
-		return errors.New("job does not exist")
+		return errors.New("unit does not exist")
 	}
 
 	j.TargetMachineID = machID

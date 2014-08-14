@@ -430,9 +430,9 @@ func (r *EtcdRegistry) SetJobTargetState(jobName string, state job.JobState) err
 	return err
 }
 
-func (r *EtcdRegistry) ScheduleJob(jobName string, machID string) error {
+func (r *EtcdRegistry) ScheduleUnit(name string, machID string) error {
 	req := etcd.Create{
-		Key:   r.jobTargetAgentPath(jobName),
+		Key:   r.jobTargetAgentPath(name),
 		Value: machID,
 	}
 	_, err := r.etcd.Do(&req)
