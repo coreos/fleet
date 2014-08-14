@@ -24,27 +24,22 @@ func init() {
 }
 
 func runUnloadUnit(args []string) (exit int) {
-	sUnits, err := findScheduledUnits(args)
+	units, err := findUnits(args)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		return 1
 	}
 
 	wait := make([]string, 0)
-	for _, su := range sUnits {
-		if su.State == nil {
-			fmt.Fprintf(os.Stderr, "Unable to determine state of unit %q\n", su.Name)
-			return 1
-		}
-
-		if *(su.State) == job.JobStateInactive {
-			log.V(1).Infof("Unit(%s) already %s, skipping.", su.Name, job.JobStateInactive)
+	for _, s := range units {
+		if job.JobState(s.CurrentState) == job.JobStateInactive {
+			log.V(1).Infof("Unit(%s) already %s, skipping.", s.Name, job.JobStateInactive)
 			continue
 		}
 
-		log.V(1).Infof("Setting target state of Unit(%s) to %s", su.Name, job.JobStateInactive)
-		cAPI.SetUnitTargetState(su.Name, job.JobStateInactive)
-		wait = append(wait, su.Name)
+		log.V(1).Infof("Setting target state of Unit(%s) to %s", s.Name, job.JobStateInactive)
+		cAPI.SetUnitTargetState(s.Name, string(job.JobStateInactive))
+		wait = append(wait, s.Name)
 	}
 
 	if !sharedFlags.NoBlock {

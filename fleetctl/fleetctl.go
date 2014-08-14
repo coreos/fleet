@@ -21,6 +21,7 @@ import (
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/registry"
+	"github.com/coreos/fleet/schema"
 	"github.com/coreos/fleet/sign"
 	"github.com/coreos/fleet/ssh"
 	"github.com/coreos/fleet/unit"
@@ -349,36 +350,48 @@ func machineFullLegend(ms machine.MachineState, full bool) string {
 	return legend
 }
 
-func findScheduledUnits(args []string) (sus []job.ScheduledUnit, err error) {
-	sus = make([]job.ScheduledUnit, len(args))
-	for i, v := range args {
-		name := unitNameMangle(v)
-		su, err := cAPI.ScheduledUnit(name)
-		if err != nil {
-			return nil, fmt.Errorf("error retrieving Unit(%s) from Registry: %v", name, err)
-		} else if su == nil {
-			return nil, fmt.Errorf("could not find Unit(%s)", name)
-		}
-
-		sus[i] = *su
+func findUnits(args []string) (sus []schema.Unit, err error) {
+	units, err := cAPI.Units()
+	if err != nil {
+		return nil, err
 	}
 
-	return sus, nil
+	uMap := make(map[string]*schema.Unit, len(units))
+	for _, u := range units {
+		u := u
+		uMap[u.Name] = u
+	}
+
+	filtered := make([]schema.Unit, 0)
+	for _, v := range args {
+		v = unitNameMangle(v)
+		u, ok := uMap[v]
+		if !ok {
+			continue
+		}
+		filtered = append(filtered, *u)
+	}
+
+	return filtered, nil
 }
 
-func createUnit(name string, uf unit.UnitFile) (*job.Unit, error) {
-	u := job.Unit{Name: name, Unit: uf}
-	if err := cAPI.CreateUnit(&u); err != nil {
-		return nil, fmt.Errorf("failed creating unit %s: %v", u.Name, err)
+func createUnit(name string, uf *unit.UnitFile) (*schema.Unit, error) {
+	u := schema.Unit{
+		Name:    name,
+		Options: schema.MapUnitFileToSchemaUnitOptions(uf),
+	}
+	err := cAPI.CreateUnit(&u)
+	if err != nil {
+		return nil, fmt.Errorf("failed creating unit %s: %v", name, err)
 	}
 
-	log.V(1).Infof("Created Unit(%s) in Registry", u.Name)
+	log.V(1).Infof("Created Unit(%s) in Registry", name)
 	return &u, nil
 }
 
 // signUnit signs the Unit of a Job using the public keys in the local SSH
 // agent, and pushes the resulting SignatureSet to the Registry
-func signUnit(u *job.Unit) error {
+func signUnit(u *schema.Unit) error {
 	sc, err := sign.NewSignatureCreatorFromSSHAgent()
 	if err != nil {
 		return fmt.Errorf("failed creating SignatureCreator: %v", err)
@@ -386,7 +399,7 @@ func signUnit(u *job.Unit) error {
 
 	j := job.Job{
 		Name: u.Name,
-		Unit: u.Unit,
+		Unit: *schema.MapSchemaUnitOptionsToUnitFile(u.Options),
 	}
 	ss, err := sc.SignJob(&j)
 	if err != nil {
@@ -404,7 +417,7 @@ func signUnit(u *job.Unit) error {
 
 // verifyUnit attempts to verify the signature of the provided Unit's unit file using
 // the public keys in the local SSH agent
-func verifyUnit(u *job.Unit) error {
+func verifyUnit(u *schema.Unit) error {
 	sv, err := sign.NewSignatureVerifierFromSSHAgent()
 	if err != nil {
 		return fmt.Errorf("failed creating SignatureVerifier: %v", err)
@@ -416,7 +429,7 @@ func verifyUnit(u *job.Unit) error {
 	}
 	j := &job.Job{
 		Name: u.Name,
-		Unit: u.Unit,
+		Unit: *schema.MapSchemaUnitOptionsToUnitFile(u.Options),
 	}
 	verified, err := sv.VerifyJob(j, ss)
 	if err != nil {
@@ -469,7 +482,7 @@ func lazyCreateUnits(args []string, signAndVerify bool) error {
 			if err != nil {
 				return fmt.Errorf("failed getting Unit(%s) from file: %v", name, err)
 			}
-			u, err = createUnit(name, *unit)
+			u, err = createUnit(name, unit)
 			if err != nil {
 				return err
 			}
@@ -507,12 +520,12 @@ func lazyCreateUnits(args []string, signAndVerify bool) error {
 			}
 		} else {
 			warnOnDifferentLocalUnit(arg, tmpl)
-			uf = &tmpl.Unit
+			uf = schema.MapSchemaUnitOptionsToUnitFile(tmpl.Options)
 		}
 
 		// If we found a template unit, create a near-identical instance unit in
 		// the Registry - same unit file as the template, but different name
-		u, err = createUnit(name, *uf)
+		u, err = createUnit(name, uf)
 		if err != nil {
 			return err
 		}
@@ -525,11 +538,12 @@ func lazyCreateUnits(args []string, signAndVerify bool) error {
 	return nil
 }
 
-func warnOnDifferentLocalUnit(name string, u *job.Unit) {
+func warnOnDifferentLocalUnit(name string, su *schema.Unit) {
+	suf := schema.MapSchemaUnitOptionsToUnitFile(su.Options)
 	if _, err := os.Stat(name); !os.IsNotExist(err) {
-		unit, err := getUnitFromFile(name)
-		if err == nil && unit.Hash() != u.Unit.Hash() {
-			fmt.Fprintf(os.Stderr, "WARNING: Unit %s in registry differs from local unit file %s\n", u.Name, name)
+		luf, err := getUnitFromFile(name)
+		if err == nil && luf.Hash() != suf.Hash() {
+			fmt.Fprintf(os.Stderr, "WARNING: Unit %s in registry differs from local unit file %s\n", su.Name, name)
 			return
 		}
 	}
@@ -537,8 +551,8 @@ func warnOnDifferentLocalUnit(name string, u *job.Unit) {
 		file := path.Join(path.Dir(name), uni.Template)
 		if _, err := os.Stat(file); !os.IsNotExist(err) {
 			tmpl, err := getUnitFromFile(file)
-			if err == nil && tmpl.Hash() != u.Unit.Hash() {
-				fmt.Fprintf(os.Stderr, "WARNING: Unit %s in registry differs from local template unit file %s\n", u.Name, uni.Template)
+			if err == nil && tmpl.Hash() != suf.Hash() {
+				fmt.Fprintf(os.Stderr, "WARNING: Unit %s in registry differs from local template unit file %s\n", su.Name, uni.Template)
 			}
 		}
 	}
@@ -567,21 +581,19 @@ func lazyStartUnits(args []string) ([]string, error) {
 func setTargetStateOfUnits(units []string, state job.JobState) ([]string, error) {
 	triggered := make([]string, 0)
 	for _, name := range units {
-		su, err := cAPI.ScheduledUnit(name)
+		u, err := cAPI.Unit(name)
 		if err != nil {
 			return nil, fmt.Errorf("error retrieving unit %s from registry: %v", name, err)
-		} else if su == nil {
+		} else if u == nil {
 			return nil, fmt.Errorf("unable to find unit %s", name)
-		} else if su.State == nil {
-			return nil, fmt.Errorf("unable to determine current state of unit")
-		} else if *(su.State) == state {
-			log.V(1).Infof("Unit(%s) already %s, skipping.", su.Name, *(su.State))
+		} else if job.JobState(u.CurrentState) == state {
+			log.V(1).Infof("Unit(%s) already %s, skipping.", u.Name, u.CurrentState)
 			continue
 		}
 
-		log.V(1).Infof("Setting Unit(%s) target state to %s", su.Name, state)
-		cAPI.SetUnitTargetState(su.Name, state)
-		triggered = append(triggered, su.Name)
+		log.V(1).Infof("Setting Unit(%s) target state to %s", u.Name, state)
+		cAPI.SetUnitTargetState(u.Name, string(state))
+		triggered = append(triggered, u.Name)
 	}
 
 	return triggered, nil
@@ -634,23 +646,23 @@ func checkUnitState(name string, js job.JobState, maxAttempts int, out io.Writer
 }
 
 func assertUnitState(name string, js job.JobState, out io.Writer) (ret bool) {
-	su, err := cAPI.ScheduledUnit(name)
+	u, err := cAPI.Unit(name)
 	if err != nil {
 		log.Warningf("Error retrieving Unit(%s) from Registry: %v", name, err)
 		return
 	}
-	if su == nil || su.State == nil || *(su.State) != js {
+	if u == nil || job.JobState(u.CurrentState) != js {
 		return
 	}
 
 	ret = true
-	msg := fmt.Sprintf("Unit %s %s", name, *(su.State))
+	msg := fmt.Sprintf("Unit %s %s", name, u.CurrentState)
 
-	if su.TargetMachineID == "" {
+	if u.Machine == "" {
 		return
 	}
 
-	ms := cachedMachineState(su.TargetMachineID)
+	ms := cachedMachineState(u.Machine)
 	if ms != nil {
 		msg = fmt.Sprintf("%s on %s", msg, machineFullLegend(*ms, false))
 	}

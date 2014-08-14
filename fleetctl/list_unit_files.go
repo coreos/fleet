@@ -6,8 +6,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/machine"
+	"github.com/coreos/fleet/schema"
 )
 
 const (
@@ -23,41 +23,43 @@ var (
 		Description: `Lists all unit files that exist in the cluster (whether or not they are loaded onto a machine).`,
 		Run:         runListUnitFiles,
 	}
-	listUnitFilesFields = map[string]jobUnitToField{
-		"unit": func(u job.Unit, su *job.ScheduledUnit, full bool) string {
+	listUnitFilesFields = map[string]unitToField{
+		"unit": func(u schema.Unit, full bool) string {
 			return u.Name
 		},
-		"dstate": func(u job.Unit, su *job.ScheduledUnit, full bool) string {
-			if u.TargetState == "" {
+		"dstate": func(u schema.Unit, full bool) string {
+			if u.DesiredState == "" {
 				return "-"
 			}
-			return string(u.TargetState)
+			return u.DesiredState
 		},
-		"tmachine": func(u job.Unit, su *job.ScheduledUnit, full bool) string {
-			if su == nil || su.TargetMachineID == "" {
+		"tmachine": func(u schema.Unit, full bool) string {
+			if u.Machine == "" {
 				return "-"
 			}
-			ms := cachedMachineState(su.TargetMachineID)
+			ms := cachedMachineState(u.Machine)
 			if ms == nil {
-				ms = &machine.MachineState{ID: su.TargetMachineID}
+				ms = &machine.MachineState{ID: u.Machine}
 			}
 
 			return machineFullLegend(*ms, full)
 		},
-		"state": func(u job.Unit, su *job.ScheduledUnit, full bool) string {
-			if su == nil || su.State == nil {
+		"state": func(u schema.Unit, full bool) string {
+			if u.CurrentState == "" {
 				return "-"
 			}
-			return string(*su.State)
+			return u.CurrentState
 		},
-		"hash": func(u job.Unit, su *job.ScheduledUnit, full bool) string {
+		"hash": func(u schema.Unit, full bool) string {
+			uf := schema.MapSchemaUnitOptionsToUnitFile(u.Options)
 			if !full {
-				return u.Unit.Hash().Short()
+				return uf.Hash().Short()
 			}
-			return u.Unit.Hash().String()
+			return uf.Hash().String()
 		},
-		"desc": func(u job.Unit, su *job.ScheduledUnit, full bool) string {
-			d := u.Unit.Description()
+		"desc": func(u schema.Unit, full bool) string {
+			uf := schema.MapSchemaUnitOptionsToUnitFile(u.Options)
+			d := uf.Description()
 			if d == "" {
 				return "-"
 			}
@@ -66,12 +68,12 @@ var (
 	}
 )
 
-type jobUnitToField func(j job.Unit, su *job.ScheduledUnit, full bool) string
+type unitToField func(u schema.Unit, full bool) string
 
 func init() {
 	cmdListUnitFiles.Flags.BoolVar(&sharedFlags.Full, "full", false, "Do not ellipsize fields on output")
 	cmdListUnitFiles.Flags.BoolVar(&sharedFlags.NoLegend, "no-legend", false, "Do not print a legend (column headers)")
-	cmdListUnitFiles.Flags.StringVar(&listUnitFilesFieldsFlag, "fields", defaultListUnitFilesFields, fmt.Sprintf("Columns to print for each Unit file. Valid fields are %q", strings.Join(jobUnitToFieldKeys(listUnitFilesFields), ",")))
+	cmdListUnitFiles.Flags.StringVar(&listUnitFilesFieldsFlag, "fields", defaultListUnitFilesFields, fmt.Sprintf("Columns to print for each Unit file. Valid fields are %q", strings.Join(unitToFieldKeys(listUnitFilesFields), ",")))
 }
 
 func runListUnitFiles(args []string) (exit int) {
@@ -94,18 +96,6 @@ func runListUnitFiles(args []string) (exit int) {
 		return 1
 	}
 
-	sched, err := cAPI.Schedule()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error retrieving unit schedule from repository: %v\n", err)
-		return 1
-	}
-
-	sMap := make(map[string]*job.ScheduledUnit)
-	for _, s := range sched {
-		s := s
-		sMap[s.Name] = &s
-	}
-
 	if !sharedFlags.NoLegend {
 		fmt.Fprintln(out, strings.ToUpper(strings.Join(cols, "\t")))
 	}
@@ -113,7 +103,7 @@ func runListUnitFiles(args []string) (exit int) {
 	for _, u := range units {
 		var f []string
 		for _, c := range cols {
-			f = append(f, listUnitFilesFields[c](u, sMap[u.Name], sharedFlags.Full))
+			f = append(f, listUnitFilesFields[c](*u, sharedFlags.Full))
 		}
 		fmt.Fprintln(out, strings.Join(f, "\t"))
 	}
@@ -122,7 +112,7 @@ func runListUnitFiles(args []string) (exit int) {
 	return
 }
 
-func jobUnitToFieldKeys(m map[string]jobUnitToField) (keys []string) {
+func unitToFieldKeys(m map[string]unitToField) (keys []string) {
 	for k := range m {
 		keys = append(keys, k)
 	}

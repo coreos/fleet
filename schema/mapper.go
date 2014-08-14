@@ -106,18 +106,24 @@ func MapSchemaToMachineStates(entities []*Machine) []machine.MachineState {
 
 func MapUnitStatesToSchemaUnitStates(entities []*unit.UnitState) []*UnitState {
 	sus := make([]*UnitState, len(entities))
-	for i, us := range entities {
-		sus[i] = &UnitState{
-			Name:               us.UnitName,
-			Hash:               us.UnitHash,
-			MachineID:          us.MachineID,
-			SystemdLoadState:   us.LoadState,
-			SystemdActiveState: us.ActiveState,
-			SystemdSubState:    us.SubState,
-		}
+	for i, e := range entities {
+		sus[i] = MapUnitStateToSchemaUnitState(e)
 	}
 
 	return sus
+}
+
+func MapUnitStateToSchemaUnitState(entity *unit.UnitState) *UnitState {
+	us := UnitState{
+		Name:               entity.UnitName,
+		Hash:               entity.UnitHash,
+		MachineID:          entity.MachineID,
+		SystemdLoadState:   entity.LoadState,
+		SystemdActiveState: entity.ActiveState,
+		SystemdSubState:    entity.SubState,
+	}
+
+	return &us
 }
 
 func MapSchemaUnitStatesToUnitStates(entities []*UnitState) []*unit.UnitState {

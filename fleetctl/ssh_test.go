@@ -3,6 +3,7 @@ package main
 import (
 	"testing"
 
+	"github.com/coreos/fleet/client"
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/registry"
@@ -17,7 +18,7 @@ func newMachineState(id, ip string, md map[string]string) machine.MachineState {
 	}
 }
 
-func newFakeRegistryForSsh() registry.Registry {
+func newFakeRegistryForSsh() client.API {
 	// clear machineStates for every invocation
 	machineStates = nil
 	machines := []machine.MachineState{
@@ -43,7 +44,7 @@ func newFakeRegistryForSsh() registry.Registry {
 	reg.SetUnitStates(states)
 	reg.SetJobs(jobs)
 
-	return reg
+	return &client.RegistryClient{reg}
 }
 
 func TestSshUnknownMachine(t *testing.T) {

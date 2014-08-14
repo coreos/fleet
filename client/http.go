@@ -6,10 +6,8 @@ import (
 	"github.com/coreos/fleet/Godeps/_workspace/src/code.google.com/p/google-api-go-client/googleapi"
 	"github.com/coreos/fleet/Godeps/_workspace/src/github.com/coreos/go-semver/semver"
 
-	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/schema"
-	"github.com/coreos/fleet/unit"
 )
 
 func NewHTTPClient(c *http.Client) (API, error) {
@@ -49,8 +47,8 @@ func (c *HTTPClient) Machines() ([]machine.MachineState, error) {
 	return machines, nil
 }
 
-func (c *HTTPClient) Units() ([]job.Unit, error) {
-	var junits []job.Unit
+func (c *HTTPClient) Units() ([]*schema.Unit, error) {
+	var units []*schema.Unit
 	call := c.svc.Units.List()
 	for call != nil {
 		page, err := call.Do()
@@ -58,7 +56,7 @@ func (c *HTTPClient) Units() ([]job.Unit, error) {
 			return nil, err
 		}
 
-		junits = append(junits, schema.MapSchemaUnitsToUnits(page.Units)...)
+		units = append(units, page.Units...)
 
 		if len(page.NextPageToken) > 0 {
 			call = c.svc.Units.List()
@@ -67,40 +65,15 @@ func (c *HTTPClient) Units() ([]job.Unit, error) {
 			call = nil
 		}
 	}
-	return junits, nil
+	return units, nil
 }
 
-func (c *HTTPClient) ScheduledUnit(name string) (*job.ScheduledUnit, error) {
-	u, err := c.svc.Units.Get(name).Do()
-	if err != nil || u == nil {
-		return nil, err
-	}
-	su := schema.MapSchemaUnitToScheduledUnit(u)
-	return su, err
+func (c *HTTPClient) Unit(name string) (*schema.Unit, error) {
+	return c.svc.Units.Get(name).Do()
 }
 
-func (c *HTTPClient) Schedule() ([]job.ScheduledUnit, error) {
-	var sunits []job.ScheduledUnit
-	call := c.svc.Units.List()
-	for call != nil {
-		page, err := call.Do()
-		if err != nil {
-			return nil, err
-		}
-		sunits = append(sunits, schema.MapSchemaUnitsToScheduledUnits(page.Units)...)
-
-		if len(page.NextPageToken) > 0 {
-			call = c.svc.Units.List()
-			call.NextPageToken(page.NextPageToken)
-		} else {
-			call = nil
-		}
-	}
-	return sunits, nil
-}
-
-func (c *HTTPClient) UnitStates() ([]*unit.UnitState, error) {
-	var states []*unit.UnitState
+func (c *HTTPClient) UnitStates() ([]*schema.UnitState, error) {
+	var states []*schema.UnitState
 	call := c.svc.UnitState.List()
 	for call != nil {
 		page, err := call.Do()
@@ -108,7 +81,7 @@ func (c *HTTPClient) UnitStates() ([]*unit.UnitState, error) {
 			return nil, err
 		}
 
-		states = append(states, schema.MapSchemaUnitStatesToUnitStates(page.States)...)
+		states = append(states, page.States...)
 
 		if len(page.NextPageToken) > 0 {
 			call = c.svc.UnitState.List()
@@ -124,14 +97,14 @@ func (c *HTTPClient) DestroyUnit(name string) error {
 	return c.svc.Units.Delete(name).Do()
 }
 
-func (c *HTTPClient) CreateUnit(u *job.Unit) error {
-	return c.svc.Units.Set(u.Name, schema.MapUnitToSchemaUnit(u, nil)).Do()
+func (c *HTTPClient) CreateUnit(u *schema.Unit) error {
+	return c.svc.Units.Set(u.Name, u).Do()
 }
 
-func (c *HTTPClient) SetUnitTargetState(name string, state job.JobState) error {
+func (c *HTTPClient) SetUnitTargetState(name, target string) error {
 	u := schema.Unit{
 		Name:         name,
-		DesiredState: string(state),
+		DesiredState: target,
 	}
 	return c.svc.Units.Set(name, &u).Do()
 }

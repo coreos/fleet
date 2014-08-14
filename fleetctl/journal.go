@@ -38,15 +38,15 @@ func runJournal(args []string) (exit int) {
 	}
 	name := unitNameMangle(args[0])
 
-	su, err := cAPI.ScheduledUnit(name)
+	u, err := cAPI.Unit(name)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error retrieving unit %s: %v", name, err)
 		return 1
 	}
-	if su == nil {
+	if u == nil {
 		fmt.Fprintf(os.Stderr, "Unit %s does not exist.\n", name)
 		return 1
-	} else if su.State == nil || *su.State == job.JobStateInactive {
+	} else if job.JobState(u.CurrentState) == job.JobStateInactive {
 		fmt.Fprintf(os.Stderr, "Unit %s does not appear to be running.\n", name)
 		return 1
 	}
@@ -56,5 +56,5 @@ func runJournal(args []string) (exit int) {
 		command += " -f"
 	}
 
-	return runCommand(command, su.TargetMachineID)
+	return runCommand(command, u.Machine)
 }
