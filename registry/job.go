@@ -169,9 +169,9 @@ func (r *EtcdRegistry) ScheduledUnit(name string) (*job.ScheduledUnit, error) {
 	return &su, nil
 }
 
-func (r *EtcdRegistry) ClearJobTarget(jobName, machID string) error {
+func (r *EtcdRegistry) UnscheduleUnit(name, machID string) error {
 	req := etcd.Delete{
-		Key:           r.jobTargetAgentPath(jobName),
+		Key:           r.jobTargetAgentPath(name),
 		PreviousValue: machID,
 	}
 

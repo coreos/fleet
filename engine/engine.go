@@ -161,12 +161,12 @@ func (e *Engine) clusterState() (*clusterState, error) {
 	return newClusterState(units, sUnits, machines), nil
 }
 
-func (e *Engine) unscheduleJob(jName, machID string) (err error) {
-	err = e.registry.ClearJobTarget(jName, machID)
+func (e *Engine) unscheduleUnit(name, machID string) (err error) {
+	err = e.registry.UnscheduleUnit(name, machID)
 	if err != nil {
-		log.Errorf("Failed clearing target Machine(%s) of Job(%s): %v", machID, jName, err)
+		log.Errorf("Failed unscheduling Unit(%s) from Machine(%s): %v", name, machID, err)
 	} else {
-		log.Infof("Unscheduled Job(%s) from Machine(%s)", jName, machID)
+		log.Infof("Unscheduled Job(%s) from Machine(%s)", name, machID)
 	}
 	return
 }

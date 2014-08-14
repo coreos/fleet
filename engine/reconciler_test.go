@@ -67,7 +67,7 @@ func TestCalculateClusterTasks(t *testing.T) {
 			),
 			tasks: []*task{
 				&task{
-					Type:      taskTypeUnscheduleJob,
+					Type:      taskTypeUnscheduleUnit,
 					Reason:    "target Machine(ZZZ) went away",
 					JobName:   "foo.service",
 					MachineID: "ZZZ",
@@ -103,7 +103,7 @@ func TestCalculateClusterTasks(t *testing.T) {
 			),
 			tasks: []*task{
 				&task{
-					Type:      taskTypeUnscheduleJob,
+					Type:      taskTypeUnscheduleUnit,
 					Reason:    "target state inactive",
 					JobName:   "foo.service",
 					MachineID: "XXX",

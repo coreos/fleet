@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	taskTypeUnscheduleJob       = "UnscheduleJob"
+	taskTypeUnscheduleUnit      = "UnscheduleUnit"
 	taskTypeAttemptScheduleUnit = "AttemptScheduleUnit"
 )
 
@@ -92,7 +92,7 @@ func (r *Reconciler) calculateClusterTasks(clust *clusterState, stopchan chan st
 				var able bool
 				if able, reason = as.AbleToRun(j); !able {
 					unschedule = true
-					reason = fmt.Sprintf("target Machine(%s) unable to run job")
+					reason = fmt.Sprintf("target Machine(%s) unable to run unit")
 					return
 				}
 
@@ -104,7 +104,7 @@ func (r *Reconciler) calculateClusterTasks(clust *clusterState, stopchan chan st
 				continue
 			}
 
-			if !send(taskTypeUnscheduleJob, reason, j.Name, j.TargetMachineID) {
+			if !send(taskTypeUnscheduleUnit, reason, j.Name, j.TargetMachineID) {
 				return
 			}
 
@@ -136,8 +136,8 @@ func (r *Reconciler) calculateClusterTasks(clust *clusterState, stopchan chan st
 
 func doTask(t *task, e *Engine) (err error) {
 	switch t.Type {
-	case taskTypeUnscheduleJob:
-		err = e.unscheduleJob(t.JobName, t.MachineID)
+	case taskTypeUnscheduleUnit:
+		err = e.unscheduleUnit(t.JobName, t.MachineID)
 	case taskTypeAttemptScheduleUnit:
 		e.attemptScheduleUnit(t.JobName, t.MachineID)
 	default:

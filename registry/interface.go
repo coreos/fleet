@@ -13,7 +13,6 @@ import (
 
 type Registry interface {
 	ClearJobHeartbeat(jobName string)
-	ClearJobTarget(jobName, machID string) error
 	CreateUnit(*job.Unit) error
 	CreateSignatureSet(ss *sign.SignatureSet) error
 	DestroyUnit(string) error
@@ -29,6 +28,7 @@ type Registry interface {
 	ScheduleUnit(name, machID string) error
 	SetJobTargetState(jobName string, state job.JobState) error
 	SetMachineState(ms machine.MachineState, ttl time.Duration) (uint64, error)
+	UnscheduleUnit(name, machID string) error
 
 	UnitRegistry
 }
