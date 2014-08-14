@@ -25,22 +25,22 @@ func runVerifyUnit(args []string) (exit int) {
 	}
 
 	name := unitNameMangle(args[0])
-	j, err := cAPI.Job(name)
+	u, err := cAPI.Unit(name)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error retrieving Job %s: %v", name, err)
+		fmt.Fprintf(os.Stderr, "Error retrieving Unit %s: %v", name, err)
 		return 1
 	}
-	if j == nil {
-		fmt.Fprintf(os.Stderr, "Job %s not found.\n", name)
+	if u == nil {
+		fmt.Fprintf(os.Stderr, "Unit %s not found.\n", name)
 		return 1
 	}
 
-	err = verifyJob(j)
+	err = verifyUnit(u)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		return 1
 	}
 
-	fmt.Printf("Succeeded verifying unit signature for Job %s.\n", j.Name)
+	fmt.Printf("Succeeded verifying unit signature for Unit %s.\n", u.Name)
 	return
 }

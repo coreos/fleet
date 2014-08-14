@@ -13,14 +13,14 @@ type API interface {
 	CreateJob(*job.Job) error
 	CreateSignatureSet(*sign.SignatureSet) error
 	DestroyJob(string) error
-	Job(string) (*job.Job, error)
-	Jobs() ([]job.Job, error)
 	JobSignatureSet(string) (*sign.SignatureSet, error)
 	LatestVersion() (*semver.Version, error)
 	Machines() ([]machine.MachineState, error)
 	SetJobTargetState(string, job.JobState) error
 
-	Units() ([]job.Unit, error)
 	Schedule() ([]job.ScheduledUnit, error)
+	ScheduledUnit(name string) (*job.ScheduledUnit, error)
+	Unit(string) (*job.Unit, error)
+	Units() ([]job.Unit, error)
 	UnitStates() ([]*unit.UnitState, error)
 }

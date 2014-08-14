@@ -90,7 +90,7 @@ func (r *EtcdRegistry) Schedule() ([]job.ScheduledUnit, error) {
 		j := &job.ScheduledUnit{
 			Name: name,
 		}
-		heartbeat, err := r.parseJobDir(j, &dir)
+		heartbeat, _, err := r.parseJobDir(j, &dir)
 		if err != nil {
 			log.Errorf("Failed to parse Job(%s) model: %v", j.Name, err)
 			continue
@@ -128,47 +128,45 @@ func (r *EtcdRegistry) Schedule() ([]job.ScheduledUnit, error) {
 
 // Units lists all Units known by the Registry, ordered by job name
 func (r *EtcdRegistry) Units() ([]job.Unit, error) {
-	var jobs []job.Unit
-
-	req := etcd.Get{
-		Key:       path.Join(r.keyPrefix, jobPrefix),
-		Sorted:    true,
-		Recursive: true,
-	}
-
-	res, err := r.etcd.Do(&req)
+	jobs, err := r.Jobs()
 	if err != nil {
-		if isKeyNotFound(err) {
-			err = nil
-		}
-		return jobs, err
+		return nil, err
 	}
-
-	for _, dir := range res.Node.Nodes {
-		objKey := path.Join(dir.Key, "object")
-		var obj *etcd.Node
-		for _, node := range dir.Nodes {
-			if node.Key != objKey {
-				continue
-			}
-			node := node
-			obj = &node
+	units := make([]job.Unit, len(jobs))
+	for i, j := range jobs {
+		units[i] = job.Unit{
+			Name:        j.Name,
+			Unit:        j.Unit,
+			TargetState: j.TargetState,
 		}
-
-		if obj == nil {
-			continue
-		}
-
-		j, err := r.getUnitFromObjectNode(obj)
-		if j == nil || err != nil {
-			log.Infof("Unable to parse Job in Registry at key %s", obj.Key)
-			continue
-		}
-
-		jobs = append(jobs, *j)
 	}
+	return units, nil
+}
 
-	return jobs, nil
+func (r *EtcdRegistry) Unit(name string) (*job.Unit, error) {
+	j, err := r.Job(name)
+	if err != nil || j == nil {
+		return nil, err
+	}
+	u := job.Unit{
+		Name:        j.Name,
+		Unit:        j.Unit,
+		TargetState: j.TargetState,
+	}
+	return &u, nil
+}
+
+func (r *EtcdRegistry) ScheduledUnit(name string) (*job.ScheduledUnit, error) {
+	j, err := r.Job(name)
+	if err != nil || j == nil {
+		return nil, err
+	}
+	su := job.ScheduledUnit{
+		Name:            j.Name,
+		State:           j.State,
+		TargetMachineID: j.TargetMachineID,
+	}
+	return &su, nil
 }
 
 func (r *EtcdRegistry) ClearJobTarget(jobName, machID string) error {
@@ -230,14 +228,15 @@ func (r *EtcdRegistry) Job(jobName string) (*job.Job, error) {
 // hydrateJobFromDir fully hydrates a legacy Job struct
 func (r *EtcdRegistry) hydrateJobFromDir(j *job.Job, dir *etcd.Node) (err error) {
 	var heartbeat string
+	var tgtstate job.JobState
 	su := &job.ScheduledUnit{
 		Name: j.Name,
 	}
-	if heartbeat, err = r.parseJobDir(su, dir); err != nil {
+	if heartbeat, tgtstate, err = r.parseJobDir(su, dir); err != nil {
 		return
 	}
 	j.TargetMachineID = su.TargetMachineID
-	j.TargetState = su.TargetState
+	j.TargetState = tgtstate
 
 	j.UnitState = r.getUnitState(j.Name)
 
@@ -251,11 +250,11 @@ func (r *EtcdRegistry) hydrateJobFromDir(j *job.Job, dir *etcd.Node) (err error)
 // TargetState and TargetMachineID fields of the job. It returns a string
 // representing the machine ID that has recently heartbeaten the job (or a nil
 // string if none is found) and any error encountered.
-func (r *EtcdRegistry) parseJobDir(su *job.ScheduledUnit, dir *etcd.Node) (heartbeat string, err error) {
+func (r *EtcdRegistry) parseJobDir(su *job.ScheduledUnit, dir *etcd.Node) (heartbeat string, tgtstate job.JobState, err error) {
 	for _, node := range dir.Nodes {
 		switch node.Key {
 		case r.jobTargetStatePath(su.Name):
-			su.TargetState, err = job.ParseJobState(node.Value)
+			tgtstate, err = job.ParseJobState(node.Value)
 			if err != nil {
 				return
 			}
@@ -266,7 +265,7 @@ func (r *EtcdRegistry) parseJobDir(su *job.ScheduledUnit, dir *etcd.Node) (heart
 		}
 	}
 
-	return heartbeat, err
+	return heartbeat, tgtstate, err
 }
 
 func (r *EtcdRegistry) getUnitFromObjectNode(node *etcd.Node) (*job.Unit, error) {

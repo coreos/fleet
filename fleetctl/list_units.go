@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 
 	"github.com/coreos/fleet/machine"
@@ -130,5 +131,6 @@ func usToFieldKeys(m map[string]usToField) (keys []string) {
 	for k := range m {
 		keys = append(keys, k)
 	}
+	sort.Strings(keys)
 	return
 }

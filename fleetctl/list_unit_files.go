@@ -3,13 +3,15 @@ package main
 import (
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 
 	"github.com/coreos/fleet/job"
+	"github.com/coreos/fleet/machine"
 )
 
 const (
-	defaultListUnitFilesFields = "unit,hash,desc"
+	defaultListUnitFilesFields = "unit,hash,dstate,state,tmachine"
 )
 
 var (
@@ -22,17 +24,40 @@ var (
 		Run:         runListUnitFiles,
 	}
 	listUnitFilesFields = map[string]jobUnitToField{
-		"unit": func(j job.Unit, full bool) string {
-			return j.Name
+		"unit": func(u job.Unit, su *job.ScheduledUnit, full bool) string {
+			return u.Name
 		},
-		"hash": func(j job.Unit, full bool) string {
-			if !full {
-				return j.Unit.Hash().Short()
+		"dstate": func(u job.Unit, su *job.ScheduledUnit, full bool) string {
+			if u.TargetState == "" {
+				return "-"
 			}
-			return j.Unit.Hash().String()
+			return string(u.TargetState)
 		},
-		"desc": func(j job.Unit, full bool) string {
-			d := j.Unit.Description()
+		"tmachine": func(u job.Unit, su *job.ScheduledUnit, full bool) string {
+			if su == nil || su.TargetMachineID == "" {
+				return "-"
+			}
+			ms := cachedMachineState(su.TargetMachineID)
+			if ms == nil {
+				ms = &machine.MachineState{ID: su.TargetMachineID}
+			}
+
+			return machineFullLegend(*ms, full)
+		},
+		"state": func(u job.Unit, su *job.ScheduledUnit, full bool) string {
+			if su == nil || su.State == nil {
+				return "-"
+			}
+			return string(*su.State)
+		},
+		"hash": func(u job.Unit, su *job.ScheduledUnit, full bool) string {
+			if !full {
+				return u.Unit.Hash().Short()
+			}
+			return u.Unit.Hash().String()
+		},
+		"desc": func(u job.Unit, su *job.ScheduledUnit, full bool) string {
+			d := u.Unit.Description()
 			if d == "" {
 				return "-"
 			}
@@ -41,7 +66,7 @@ var (
 	}
 )
 
-type jobUnitToField func(j job.Unit, full bool) string
+type jobUnitToField func(j job.Unit, su *job.ScheduledUnit, full bool) string
 
 func init() {
 	cmdListUnitFiles.Flags.BoolVar(&sharedFlags.Full, "full", false, "Do not ellipsize fields on output")
@@ -63,21 +88,32 @@ func runListUnitFiles(args []string) (exit int) {
 		}
 	}
 
-	jobs, err := cAPI.Units()
-
+	units, err := cAPI.Units()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error retrieving list of units from repository: %v\n", err)
 		return 1
 	}
+
+	sched, err := cAPI.Schedule()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error retrieving unit schedule from repository: %v\n", err)
+		return 1
+	}
+
+	sMap := make(map[string]*job.ScheduledUnit)
+	for _, s := range sched {
+		s := s
+		sMap[s.Name] = &s
+	}
+
 	if !sharedFlags.NoLegend {
 		fmt.Fprintln(out, strings.ToUpper(strings.Join(cols, "\t")))
 	}
 
-	for _, j := range jobs {
-		j := j
+	for _, u := range units {
 		var f []string
 		for _, c := range cols {
-			f = append(f, listUnitFilesFields[c](j, sharedFlags.Full))
+			f = append(f, listUnitFilesFields[c](u, sMap[u.Name], sharedFlags.Full))
 		}
 		fmt.Fprintln(out, strings.Join(f, "\t"))
 	}
@@ -90,5 +126,6 @@ func jobUnitToFieldKeys(m map[string]jobUnitToField) (keys []string) {
 	for k := range m {
 		keys = append(keys, k)
 	}
+	sort.Strings(keys)
 	return
 }

@@ -24,7 +24,7 @@ func init() {
 }
 
 func runUnloadUnit(args []string) (exit int) {
-	jobs, err := findJobs(args)
+	jobs, err := findScheduledUnits(args)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		return 1

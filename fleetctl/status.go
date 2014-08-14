@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"os"
+
+	"github.com/coreos/fleet/job"
 )
 
 var cmdStatusUnits = &Command{
@@ -38,19 +40,19 @@ func runStatusUnits(args []string) (exit int) {
 }
 
 func printUnitStatus(jobName string) int {
-	j, err := cAPI.Job(jobName)
+	su, err := cAPI.ScheduledUnit(jobName)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error retrieving Job %s: %v", jobName, err)
+		fmt.Fprintf(os.Stderr, "Error retrieving Unit %s: %v", jobName, err)
 		return 1
 	}
-	if j == nil {
-		fmt.Fprintf(os.Stderr, "Job %s does not exist.\n", jobName)
+	if su == nil {
+		fmt.Fprintf(os.Stderr, "Unit %s does not exist.\n", jobName)
 		return 1
-	} else if j.UnitState == nil {
-		fmt.Fprintf(os.Stderr, "Job %s does not appear to be running.\n", jobName)
+	} else if su.State == nil || *su.State == job.JobStateInactive {
+		fmt.Fprintf(os.Stderr, "Unit %s does not appear to be running.\n", jobName)
 		return 1
 	}
 
 	cmd := fmt.Sprintf("systemctl status -l %s", jobName)
-	return runCommand(cmd, j.UnitState.MachineID)
+	return runCommand(cmd, su.TargetMachineID)
 }

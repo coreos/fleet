@@ -113,6 +113,26 @@ func (f *FakeRegistry) Job(name string) (*job.Job, error) {
 	return &j, nil
 }
 
+func (f *FakeRegistry) ScheduledUnit(name string) (*job.ScheduledUnit, error) {
+	f.RLock()
+	defer f.RUnlock()
+
+	j, ok := f.jobs[name]
+	if !ok {
+		return nil, nil
+	}
+
+	j.UnitState = f.jobStates[name]
+	su := job.ScheduledUnit{
+		Name:  j.Name,
+		State: j.State,
+	}
+	if us, ok := f.jobStates[j.Name]; ok {
+		su.TargetMachineID = us.MachineID
+	}
+	return &su, nil
+}
+
 func (f *FakeRegistry) CreateJob(j *job.Job) error {
 	f.Lock()
 	defer f.Unlock()
