@@ -246,4 +246,4 @@ func (f *FakeRegistry) JobHeartbeat(jobName, agentMachID string, ttl time.Durati
 	return nil
 }
 
-func (f *FakeRegistry) ClearJobHeartbeat(string) {}
+func (f *FakeRegistry) ClearUnitHeartbeat(string) {}

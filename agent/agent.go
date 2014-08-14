@@ -90,7 +90,7 @@ func (a *Agent) unloadJob(jobName string) {
 		a.um.Unload(jobName)
 	}()
 
-	a.registry.ClearJobHeartbeat(jobName)
+	a.registry.ClearUnitHeartbeat(jobName)
 	a.registry.RemoveUnitState(jobName)
 	a.cache.dropTargetState(jobName)
 }
@@ -108,7 +108,7 @@ func (a *Agent) startJob(jobName string) {
 
 func (a *Agent) stopJob(jobName string) {
 	a.cache.setTargetState(jobName, job.JobStateLoaded)
-	a.registry.ClearJobHeartbeat(jobName)
+	a.registry.ClearUnitHeartbeat(jobName)
 
 	go func() {
 		a.um.Stop(jobName)

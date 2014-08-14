@@ -42,9 +42,9 @@ func (r *EtcdRegistry) JobHeartbeat(jobName, agentMachID string, ttl time.Durati
 	return err
 }
 
-func (r *EtcdRegistry) ClearJobHeartbeat(jobName string) {
+func (r *EtcdRegistry) ClearUnitHeartbeat(name string) {
 	req := etcd.Delete{
-		Key: r.jobHeartbeatPath(jobName),
+		Key: r.jobHeartbeatPath(name),
 	}
 	r.etcd.Do(&req)
 }

@@ -12,7 +12,7 @@ import (
 )
 
 type Registry interface {
-	ClearJobHeartbeat(jobName string)
+	ClearUnitHeartbeat(name string)
 	CreateUnit(*job.Unit) error
 	CreateSignatureSet(ss *sign.SignatureSet) error
 	DestroyUnit(string) error
