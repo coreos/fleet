@@ -49,12 +49,12 @@ func runStartUnit(args []string) (exit int) {
 	if !sharedFlags.NoBlock {
 		errchan := waitForUnitStates(triggered, job.JobStateLaunched, sharedFlags.BlockAttempts, os.Stdout)
 		for err := range errchan {
-			fmt.Fprintf(os.Stderr, "Error waiting for jobs: %v\n", err)
+			fmt.Fprintf(os.Stderr, "Error waiting for units: %v\n", err)
 			exit = 1
 		}
 	} else {
-		for _, jobName := range triggered {
-			fmt.Printf("Triggered job %s start\n", jobName)
+		for _, name := range triggered {
+			fmt.Printf("Triggered unit %s start\n", name)
 		}
 	}
 

@@ -13,7 +13,7 @@ var (
 	cmdJournal = &Command{
 		Name:    "journal",
 		Summary: "Print the journal of a unit in the cluster to stdout",
-		Usage:   "[--lines=N] [-f|--follow] job",
+		Usage:   "[--lines=N] [-f|--follow] <unit>",
 		Run:     runJournal,
 		Description: `Outputs the journal of a unit by connecting to the machine that the unit occupies.
 
@@ -36,22 +36,22 @@ func runJournal(args []string) (exit int) {
 		fmt.Fprintln(os.Stderr, "One unit file must be provided.")
 		return 1
 	}
-	jobName := unitNameMangle(args[0])
+	name := unitNameMangle(args[0])
 
-	su, err := cAPI.ScheduledUnit(jobName)
+	su, err := cAPI.ScheduledUnit(name)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error retrieving Job %s: %v", jobName, err)
+		fmt.Fprintf(os.Stderr, "Error retrieving unit %s: %v", name, err)
 		return 1
 	}
 	if su == nil {
-		fmt.Fprintf(os.Stderr, "Unit %s does not exist.\n", jobName)
+		fmt.Fprintf(os.Stderr, "Unit %s does not exist.\n", name)
 		return 1
 	} else if su.State == nil || *su.State == job.JobStateInactive {
-		fmt.Fprintf(os.Stderr, "Unit %s does not appear to be running.\n", jobName)
+		fmt.Fprintf(os.Stderr, "Unit %s does not appear to be running.\n", name)
 		return 1
 	}
 
-	command := fmt.Sprintf("journalctl --unit %s --no-pager -n %d", jobName, flagLines)
+	command := fmt.Sprintf("journalctl --unit %s --no-pager -n %d", name, flagLines)
 	if flagFollow {
 		command += " -f"
 	}

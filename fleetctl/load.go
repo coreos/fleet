@@ -18,8 +18,8 @@ var (
 
 func init() {
 	cmdLoadUnits.Flags.BoolVar(&sharedFlags.Sign, "sign", false, "Sign unit file signatures and verify submitted units using local SSH identities.")
-	cmdLoadUnits.Flags.IntVar(&sharedFlags.BlockAttempts, "block-attempts", 0, "Wait until the jobs are loaded, performing up to N attempts before giving up. A value of 0 indicates no limit.")
-	cmdLoadUnits.Flags.BoolVar(&sharedFlags.NoBlock, "no-block", false, "Do not wait until the jobs have been loaded before exiting.")
+	cmdLoadUnits.Flags.IntVar(&sharedFlags.BlockAttempts, "block-attempts", 0, "Wait until the units are loaded, performing up to N attempts before giving up. A value of 0 indicates no limit.")
+	cmdLoadUnits.Flags.BoolVar(&sharedFlags.NoBlock, "no-block", false, "Do not wait until the units have been loaded before exiting.")
 }
 
 func runLoadUnits(args []string) (exit int) {
@@ -41,8 +41,8 @@ func runLoadUnits(args []string) (exit int) {
 			exit = 1
 		}
 	} else {
-		for _, jobName := range triggered {
-			fmt.Printf("Triggered job %s load\n", jobName)
+		for _, name := range triggered {
+			fmt.Printf("Triggered unit %s load\n", name)
 		}
 	}
 

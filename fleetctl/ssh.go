@@ -162,8 +162,8 @@ func findAddressInMachineList(lookup string) (string, bool) {
 	return match.PublicIP, true
 }
 
-func findAddressInRunningUnits(jobName string) (string, bool) {
-	name := unitNameMangle(jobName)
+func findAddressInRunningUnits(name string) (string, bool) {
+	name = unitNameMangle(name)
 	su, err := cAPI.ScheduledUnit(name)
 	if err != nil {
 		log.V(1).Infof("Unable to retrieve Unit(%s) from Repository: %v", name, err)

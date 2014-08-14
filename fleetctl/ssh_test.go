@@ -64,16 +64,16 @@ func TestSshFindMachine(t *testing.T) {
 	}
 }
 
-func TestSshFindMachineByUnknownJobName(t *testing.T) {
+func TestSshFindMachineByUnknownUnitName(t *testing.T) {
 	cAPI = newFakeRegistryForSsh()
 
 	_, ok := findAddressInRunningUnits("asdf")
 	if ok {
-		t.Error("Expected to not find any machine with the job name `asdf`")
+		t.Error("Expected to not find any machine with the unit name `asdf`")
 	}
 }
 
-func TestSshFindMachineByJobName(t *testing.T) {
+func TestSshFindMachineByUnitName(t *testing.T) {
 	cAPI = newFakeRegistryForSsh()
 
 	ip, _ := findAddressInRunningUnits("j1")
@@ -108,7 +108,7 @@ func TestGlobalLookupByMachineID(t *testing.T) {
 	}
 }
 
-func TestGlobalLookupByJobName(t *testing.T) {
+func TestGlobalLookupByUnitName(t *testing.T) {
 	cAPI = newFakeRegistryForSsh()
 
 	ip, err := globalMachineLookup([]string{"j1"})
