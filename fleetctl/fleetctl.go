@@ -20,6 +20,7 @@ import (
 	"github.com/coreos/fleet/etcd"
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/machine"
+	"github.com/coreos/fleet/pkg"
 	"github.com/coreos/fleet/registry"
 	"github.com/coreos/fleet/schema"
 	"github.com/coreos/fleet/sign"
@@ -259,8 +260,10 @@ func getHTTPClient() (client.API, error) {
 		return net.Dial("unix", "/var/run/fleet.sock")
 	}
 
-	trans := http.Transport{
-		Dial: dialFunc,
+	trans := pkg.LoggingHTTPTransport{
+		http.Transport{
+			Dial: dialFunc,
+		},
 	}
 
 	hc := http.Client{
