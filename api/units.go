@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"path"
 
-	gsunit "github.com/coreos/fleet/Godeps/_workspace/src/github.com/coreos/go-systemd/unit"
 	log "github.com/coreos/fleet/Godeps/_workspace/src/github.com/golang/glog"
 
 	"github.com/coreos/fleet/job"
@@ -58,9 +57,9 @@ func (ur *unitsResource) set(rw http.ResponseWriter, req *http.Request, item str
 		return
 	}
 
-	var dus schema.DesiredUnitState
+	var su schema.Unit
 	dec := json.NewDecoder(req.Body)
-	err := dec.Decode(&dus)
+	err := dec.Decode(&su)
 	if err != nil {
 		sendError(rw, http.StatusBadRequest, fmt.Errorf("unable to decode body: %v", err))
 		return
@@ -74,12 +73,12 @@ func (ur *unitsResource) set(rw http.ResponseWriter, req *http.Request, item str
 	}
 
 	var uf *unit.UnitFile
-	if len(dus.Options) > 0 {
-		uf = mapSchemaToUnit(dus.Options)
+	if len(su.Options) > 0 {
+		uf = schema.MapSchemaUnitOptionsToUnitFile(su.Options)
 	}
 
 	// TODO(bcwaldon): Assert value of DesiredState is launched, loaded or inactive
-	ds := job.JobState(dus.DesiredState)
+	ds := job.JobState(su.DesiredState)
 
 	if u != nil {
 		ur.update(rw, u, ds)
@@ -108,8 +107,7 @@ func (ur *unitsResource) create(rw http.ResponseWriter, item string, ds job.JobS
 }
 
 func (ur *unitsResource) update(rw http.ResponseWriter, u *job.Unit, ds job.JobState) {
-	err := ur.reg.SetUnitTargetState(u.Name, ds)
-	if err != nil {
+	if err := ur.reg.SetUnitTargetState(u.Name, ds); err != nil {
 		log.Errorf("Failed setting target state of Unit(%s): %v", u.Name, err)
 		sendError(rw, http.StatusInternalServerError, nil)
 		return
@@ -133,7 +131,7 @@ func (ur *unitsResource) destroy(rw http.ResponseWriter, req *http.Request, item
 
 	err = ur.reg.DestroyUnit(item)
 	if err != nil {
-		log.Errorf("Failed destroying Job(%s): %v", item, err)
+		log.Errorf("Failed destroying Unit(%s): %v", item, err)
 		sendError(rw, http.StatusInternalServerError, nil)
 		return
 	}
@@ -154,12 +152,6 @@ func (ur *unitsResource) get(rw http.ResponseWriter, req *http.Request, item str
 		return
 	}
 
-	j := job.Job{
-		Name:        u.Name,
-		Unit:        u.Unit,
-		TargetState: u.TargetState,
-	}
-
 	su, err := ur.reg.ScheduledUnit(item)
 	if err != nil {
 		log.Errorf("Failed fetching ScheduledUnit(%s) from Registry: %v", item, err)
@@ -167,18 +159,7 @@ func (ur *unitsResource) get(rw http.ResponseWriter, req *http.Request, item str
 		return
 	}
 
-	if su != nil {
-		j.State = su.State
-		j.TargetMachineID = su.TargetMachineID
-	}
-
-	s, err := mapJobToSchema(&j)
-	if err != nil {
-		log.Errorf("Failed mapping Job(%s) to schema: %v", item, err)
-		sendError(rw, http.StatusInternalServerError, nil)
-		return
-	}
-
+	s := schema.MapUnitToSchemaUnit(u, su)
 	sendResponse(rw, http.StatusOK, *s)
 }
 
@@ -221,38 +202,27 @@ func getUnitPage(reg registry.Registry, tok PageToken) (*schema.UnitPage, error)
 		sUnitMap[sUnit.Name] = &sUnit
 	}
 
-	jobs := make([]job.Job, len(units))
-	for i, u := range units {
-		j := job.Job{
-			Name:        u.Name,
-			Unit:        u.Unit,
-			TargetState: u.TargetState,
-		}
-
-		if sUnit, ok := sUnitMap[u.Name]; ok {
-			j.TargetMachineID = sUnit.TargetMachineID
-			j.State = sUnit.State
-		}
-
-		jobs[i] = j
+	items, next := extractUnitPageData(units, tok)
+	page := schema.UnitPage{
+		Units: make([]*schema.Unit, len(items)),
 	}
 
-	page, err := extractUnitPage(reg, jobs, tok)
-	if err != nil {
-		return nil, err
+	if next != nil {
+		page.NextPageToken = next.Encode()
 	}
 
-	return page, nil
+	for i, u := range items {
+		page.Units[i] = schema.MapUnitToSchemaUnit(&u, sUnitMap[u.Name])
+	}
+
+	return &page, nil
 }
 
-func extractUnitPage(reg registry.Registry, all []job.Job, tok PageToken) (*schema.UnitPage, error) {
+func extractUnitPageData(all []job.Unit, tok PageToken) (items []job.Unit, next *PageToken) {
 	total := len(all)
 
 	startIndex := int((tok.Page - 1) * tok.Limit)
 	stopIndex := int(tok.Page * tok.Limit)
-
-	var items []job.Job
-	var next *PageToken
 
 	if startIndex < total {
 		if stopIndex > total {
@@ -265,75 +235,5 @@ func extractUnitPage(reg registry.Registry, all []job.Job, tok PageToken) (*sche
 		items = all[startIndex:stopIndex]
 	}
 
-	return newUnitPage(reg, items, next)
-}
-
-func newUnitPage(reg registry.Registry, items []job.Job, tok *PageToken) (*schema.UnitPage, error) {
-	sup := schema.UnitPage{
-		Units: make([]*schema.Unit, 0, len(items)),
-	}
-
-	if tok != nil {
-		sup.NextPageToken = tok.Encode()
-	}
-
-	for _, j := range items {
-		u, err := mapJobToSchema(&j)
-		if err != nil {
-			return nil, err
-		}
-		sup.Units = append(sup.Units, u)
-	}
-	return &sup, nil
-}
-
-func mapJobToSchema(j *job.Job) (*schema.Unit, error) {
-	su := schema.Unit{
-		Name:            j.Name,
-		Options:         mapUnitToSchema(&j.Unit),
-		TargetMachineID: j.TargetMachineID,
-		DesiredState:    string(j.TargetState),
-	}
-
-	if j.State != nil {
-		su.CurrentState = string(*(j.State))
-	}
-
-	if j.UnitState != nil {
-		su.Systemd = &schema.SystemdState{
-			LoadState:   j.UnitState.LoadState,
-			ActiveState: j.UnitState.ActiveState,
-			SubState:    j.UnitState.SubState,
-		}
-		if j.UnitState.MachineID != "" {
-			su.Systemd.MachineID = j.UnitState.MachineID
-		}
-	}
-
-	return &su, nil
-}
-
-func mapUnitToSchema(u *unit.UnitFile) []*schema.UnitOption {
-	sopts := make([]*schema.UnitOption, len(u.Options))
-	for i, opt := range u.Options {
-		sopts[i] = &schema.UnitOption{
-			Section: opt.Section,
-			Name:    opt.Name,
-			Value:   opt.Value,
-		}
-	}
-	return sopts
-}
-
-func mapSchemaToUnit(sopts []*schema.UnitOption) *unit.UnitFile {
-	opts := make([]*gsunit.UnitOption, len(sopts))
-	for i, sopt := range sopts {
-		opts[i] = &gsunit.UnitOption{
-			Section: sopt.Section,
-			Name:    sopt.Name,
-			Value:   sopt.Value,
-		}
-	}
-
-	return unit.NewUnitFromOptions(opts)
+	return
 }

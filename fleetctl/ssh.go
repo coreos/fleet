@@ -164,14 +164,14 @@ func findAddressInMachineList(lookup string) (string, bool) {
 
 func findAddressInRunningUnits(name string) (string, bool) {
 	name = unitNameMangle(name)
-	su, err := cAPI.ScheduledUnit(name)
+	u, err := cAPI.Unit(name)
 	if err != nil {
 		log.V(1).Infof("Unable to retrieve Unit(%s) from Repository: %v", name, err)
 	}
-	if su == nil {
+	if u == nil {
 		return "", false
 	}
-	m := cachedMachineState(su.TargetMachineID)
+	m := cachedMachineState(u.Machine)
 	if m != nil && m.PublicIP != "" {
 		return m.PublicIP, true
 	}

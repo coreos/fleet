@@ -40,19 +40,19 @@ func runStatusUnits(args []string) (exit int) {
 }
 
 func printUnitStatus(name string) int {
-	su, err := cAPI.ScheduledUnit(name)
+	u, err := cAPI.Unit(name)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error retrieving unit %s: %v", name, err)
 		return 1
 	}
-	if su == nil {
+	if u == nil {
 		fmt.Fprintf(os.Stderr, "Unit %s does not exist.\n", name)
 		return 1
-	} else if su.State == nil || *su.State == job.JobStateInactive {
+	} else if job.JobState(u.CurrentState) == job.JobStateInactive {
 		fmt.Fprintf(os.Stderr, "Unit %s does not appear to be running.\n", name)
 		return 1
 	}
 
 	cmd := fmt.Sprintf("systemctl status -l %s", name)
-	return runCommand(cmd, su.TargetMachineID)
+	return runCommand(cmd, u.Machine)
 }

@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/coreos/fleet/machine"
-	"github.com/coreos/fleet/unit"
+	"github.com/coreos/fleet/schema"
 )
 
 const (
@@ -34,31 +34,31 @@ Or, choose the columns to display:
 	}
 
 	listUnitsFields = map[string]usToField{
-		"unit": func(us *unit.UnitState, full bool) string {
+		"unit": func(us *schema.UnitState, full bool) string {
 			if us == nil {
 				return "-"
 			}
-			return us.UnitName
+			return us.Name
 		},
-		"load": func(us *unit.UnitState, full bool) string {
+		"load": func(us *schema.UnitState, full bool) string {
 			if us == nil {
 				return "-"
 			}
-			return us.LoadState
+			return us.SystemdLoadState
 		},
-		"active": func(us *unit.UnitState, full bool) string {
+		"active": func(us *schema.UnitState, full bool) string {
 			if us == nil {
 				return "-"
 			}
-			return us.ActiveState
+			return us.SystemdActiveState
 		},
-		"sub": func(us *unit.UnitState, full bool) string {
+		"sub": func(us *schema.UnitState, full bool) string {
 			if us == nil {
 				return "-"
 			}
-			return us.SubState
+			return us.SystemdSubState
 		},
-		"machine": func(us *unit.UnitState, full bool) string {
+		"machine": func(us *schema.UnitState, full bool) string {
 			if us == nil || us.MachineID == "" {
 				return "-"
 			}
@@ -68,19 +68,19 @@ Or, choose the columns to display:
 			}
 			return machineFullLegend(*ms, full)
 		},
-		"hash": func(us *unit.UnitState, full bool) string {
-			if us == nil || us.UnitHash == "" {
+		"hash": func(us *schema.UnitState, full bool) string {
+			if us == nil || us.Hash == "" {
 				return "-"
 			}
 			if !full {
-				return us.UnitHash[:7]
+				return us.Hash[:7]
 			}
-			return us.UnitHash
+			return us.Hash
 		},
 	}
 )
 
-type usToField func(us *unit.UnitState, full bool) string
+type usToField func(us *schema.UnitState, full bool) string
 
 func init() {
 	cmdListUnits.Flags.BoolVar(&sharedFlags.Full, "full", false, "Do not ellipsize fields on output")

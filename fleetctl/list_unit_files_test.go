@@ -5,29 +5,15 @@ import (
 
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/machine"
-	"github.com/coreos/fleet/unit"
+	"github.com/coreos/fleet/schema"
 )
 
-func newNamedTestUnitFromUnitContents(t *testing.T, name, contents string) job.Unit {
-	u, err := unit.NewUnitFile(contents)
-	if err != nil {
-		t.Fatalf("error creating Unit from %q: %v", contents, err)
-	}
-	return job.Unit{
-		Name: name,
-		Unit: *u,
-	}
-}
-
-func newTestUnitFromUnitContents(t *testing.T, contents string) job.Unit {
-	return newNamedTestUnitFromUnitContents(t, "foo.service", contents)
-}
-
 func TestListUnitFilesFieldsToStrings(t *testing.T) {
-	j := newTestUnitFromUnitContents(t, "")
-	su := &job.ScheduledUnit{
-		Name: "foo.service",
+	u := schema.Unit{
+		Name:    "foo.service",
+		Options: []*schema.UnitOption{},
 	}
+
 	for k, v := range map[string]string{
 		"hash":     "da39a3e",
 		"desc":     "-",
@@ -35,41 +21,46 @@ func TestListUnitFilesFieldsToStrings(t *testing.T) {
 		"tmachine": "-",
 		"state":    "-",
 	} {
-		f := listUnitFilesFields[k](j, su, false)
+		f := listUnitFilesFields[k](u, false)
 		assertEqual(t, k, v, f)
 	}
 
-	f := listUnitFilesFields["unit"](j, su, false)
-	assertEqual(t, "unit", j.Name, f)
+	f := listUnitFilesFields["unit"](u, false)
+	assertEqual(t, "unit", u.Name, f)
 
-	j = newTestUnitFromUnitContents(t, `[Unit]
-Description=some description`)
-	d := listUnitFilesFields["desc"](j, su, false)
+	u = schema.Unit{
+		Name: "foo.service",
+		Options: []*schema.UnitOption{
+			&schema.UnitOption{Section: "Unit", Name: "Description", Value: "some description"},
+		},
+	}
+
+	d := listUnitFilesFields["desc"](u, false)
 	assertEqual(t, "desc", "some description", d)
 
 	for _, state := range []job.JobState{job.JobStateLoaded, job.JobStateInactive, job.JobStateLaunched} {
-		su.State = &state
-		f := listUnitFilesFields["state"](j, su, false)
+		u.CurrentState = string(state)
+		f := listUnitFilesFields["state"](u, false)
 		assertEqual(t, "state", string(state), f)
 	}
 
-	su.TargetMachineID = "some-id"
-	ms := listUnitFilesFields["tmachine"](j, su, true)
+	u.Machine = "some-id"
+	ms := listUnitFilesFields["tmachine"](u, true)
 	assertEqual(t, "machine", "some-id", ms)
 
-	su.TargetMachineID = "other-id"
+	u.Machine = "other-id"
 	machineStates = map[string]*machine.MachineState{
 		"other-id": &machine.MachineState{
 			ID:       "other-id",
 			PublicIP: "1.2.3.4",
 		},
 	}
-	ms = listUnitFilesFields["tmachine"](j, su, true)
+	ms = listUnitFilesFields["tmachine"](u, true)
 	assertEqual(t, "machine", "other-id/1.2.3.4", ms)
 
 	uh := "a0f275d46bc6ee0eca06be7c339913c07d99c0c7"
-	fuh := listUnitFilesFields["hash"](j, su, true)
-	suh := listUnitFilesFields["hash"](j, su, false)
+	fuh := listUnitFilesFields["hash"](u, true)
+	suh := listUnitFilesFields["hash"](u, false)
 	assertEqual(t, "hash", uh, fuh)
 	assertEqual(t, "hash", uh[:7], suh)
 }

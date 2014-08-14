@@ -6,7 +6,7 @@ import (
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/registry"
-	"github.com/coreos/fleet/unit"
+	"github.com/coreos/fleet/schema"
 )
 
 func newFakeRegistryForListUnits(t *testing.T, jobs []job.Job) registry.Registry {
@@ -28,8 +28,14 @@ func TestListUnitsFieldsToStrings(t *testing.T) {
 		assertEqual(t, tt, "-", f)
 	}
 
-	us := unit.NewUnitState("foo", "bar", "baz", "")
-	us.UnitName = "sleep"
+	us := &schema.UnitState{
+		Name:               "sleep",
+		SystemdLoadState:   "foo",
+		SystemdActiveState: "bar",
+		SystemdSubState:    "baz",
+		MachineID:          "",
+	}
+
 	for k, want := range map[string]string{
 		"load":    "foo",
 		"active":  "bar",
@@ -56,7 +62,7 @@ func TestListUnitsFieldsToStrings(t *testing.T) {
 	assertEqual(t, "machine", "other-id/1.2.3.4", ms)
 
 	uh := "a0f275d46bc6ee0eca06be7c339913c07d99c0c7"
-	us.UnitHash = uh
+	us.Hash = uh
 	fuh := listUnitsFields["hash"](us, true)
 	suh := listUnitsFields["hash"](us, false)
 	assertEqual(t, "hash", uh, fuh)

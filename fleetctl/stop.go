@@ -34,30 +34,25 @@ func init() {
 }
 
 func runStopUnit(args []string) (exit int) {
-	sUnits, err := findScheduledUnits(args)
+	units, err := findUnits(args)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		return 1
 	}
 
 	stopping := make([]string, 0)
-	for _, su := range sUnits {
-		if su.State == nil {
-			fmt.Fprintf(os.Stderr, "Unable to determine state of unit %q\n", su.Name)
+	for _, u := range units {
+		if job.JobState(u.CurrentState) == job.JobStateInactive {
+			fmt.Fprintf(os.Stderr, "Unable to stop unit %s in state %s\n", u.Name, job.JobStateInactive)
 			return 1
-		}
-
-		if *(su.State) == job.JobStateInactive {
-			fmt.Fprintf(os.Stderr, "Unable to stop unit %s in state %s\n", su.Name, job.JobStateInactive)
-			return 1
-		} else if *(su.State) == job.JobStateLoaded {
-			log.V(1).Infof("Unit(%s) already %s, skipping.", su.Name, job.JobStateLoaded)
+		} else if job.JobState(u.CurrentState) == job.JobStateLoaded {
+			log.V(1).Infof("Unit(%s) already %s, skipping.", u.Name, job.JobStateLoaded)
 			continue
 		}
 
-		log.V(1).Infof("Setting target state of Unit(%s) to %s", su.Name, job.JobStateLoaded)
-		cAPI.SetUnitTargetState(su.Name, job.JobStateLoaded)
-		stopping = append(stopping, su.Name)
+		log.V(1).Infof("Setting target state of Unit(%s) to %s", u.Name, job.JobStateLoaded)
+		cAPI.SetUnitTargetState(u.Name, string(job.JobStateLoaded))
+		stopping = append(stopping, u.Name)
 	}
 
 	if !sharedFlags.NoBlock {

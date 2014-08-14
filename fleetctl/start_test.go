@@ -3,6 +3,7 @@ package main
 import (
 	"time"
 
+	"github.com/coreos/fleet/client"
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/registry"
@@ -57,5 +58,5 @@ func setupRegistryForStart(echoAttempts int) {
 	reg.SetMachines(machines)
 	reg.SetUnitStates(states)
 
-	cAPI = &BlockedFakeRegistry{echoAttempts, *reg}
+	cAPI = &client.RegistryClient{&BlockedFakeRegistry{echoAttempts, *reg}}
 }

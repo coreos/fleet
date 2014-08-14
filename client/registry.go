@@ -5,7 +5,9 @@ import (
 	"time"
 
 	"github.com/coreos/fleet/etcd"
+	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/registry"
+	"github.com/coreos/fleet/schema"
 )
 
 func NewRegistryClient(trans *http.Transport, endpoint, keyPrefix string, requestTimeout time.Duration) (API, error) {
@@ -15,5 +17,75 @@ func NewRegistryClient(trans *http.Transport, endpoint, keyPrefix string, reques
 		return nil, err
 	}
 
-	return registry.New(client, keyPrefix), nil
+	reg := registry.New(client, keyPrefix)
+	return &RegistryClient{reg}, nil
+}
+
+type RegistryClient struct {
+	registry.Registry
+}
+
+func (rc *RegistryClient) Units() ([]*schema.Unit, error) {
+	rUnits, err := rc.Registry.Units()
+	if err != nil {
+		return nil, err
+	}
+
+	sUnits, err := rc.Registry.Schedule()
+	if err != nil {
+		return nil, err
+	}
+
+	sUnitMap := make(map[string]*job.ScheduledUnit, len(sUnits))
+	for _, sUnit := range sUnits {
+		sUnit := sUnit
+		sUnitMap[sUnit.Name] = &sUnit
+	}
+
+	units := make([]*schema.Unit, len(rUnits))
+	for i, ru := range rUnits {
+		units[i] = schema.MapUnitToSchemaUnit(&ru, sUnitMap[ru.Name])
+	}
+
+	return units, nil
+}
+
+func (rc *RegistryClient) Unit(name string) (*schema.Unit, error) {
+	rUnit, err := rc.Registry.Unit(name)
+	if err != nil || rUnit == nil {
+		return nil, err
+	}
+
+	sUnit, err := rc.Registry.ScheduledUnit(name)
+	if err != nil {
+		return nil, err
+	}
+
+	return schema.MapUnitToSchemaUnit(rUnit, sUnit), nil
+}
+
+func (rc *RegistryClient) CreateUnit(u *schema.Unit) error {
+	rUnit := job.Unit{
+		Name: u.Name,
+		Unit: *schema.MapSchemaUnitOptionsToUnitFile(u.Options),
+	}
+	return rc.Registry.CreateUnit(&rUnit)
+}
+
+func (rc *RegistryClient) UnitStates() ([]*schema.UnitState, error) {
+	rUnitStates, err := rc.Registry.UnitStates()
+	if err != nil {
+		return nil, err
+	}
+
+	states := make([]*schema.UnitState, len(rUnitStates))
+	for i, rus := range rUnitStates {
+		states[i] = schema.MapUnitStateToSchemaUnitState(rus)
+	}
+
+	return states, nil
+}
+
+func (rc *RegistryClient) SetUnitTargetState(name, target string) error {
+	return rc.Registry.SetUnitTargetState(name, job.JobState(target))
 }

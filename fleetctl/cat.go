@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"os"
+
+	"github.com/coreos/fleet/schema"
 )
 
 var (
@@ -33,6 +35,7 @@ func runCatUnit(args []string) (exit int) {
 		return 1
 	}
 
-	fmt.Print(u.Unit.String())
+	uf := schema.MapSchemaUnitOptionsToUnitFile(u.Options)
+	fmt.Print(uf.String())
 	return
 }

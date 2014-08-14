@@ -74,20 +74,15 @@ Content-Length: 80
 {"error:{"code":400,"message":"invalid value of nextPageToken query parameter"}}
 ```
 
-## Units
+## Managing Units
 
 ### Unit Entity
 
-- **name**: unique identifier of entity
-- **desiredState**: state the user wishes the Unit to be in (inactive, loaded, or launched)
+- **name**: (readonly) unique identifier of entity
 - **options**: list of UnitOption entities
-- **currentState**: last known state of the Unit (inactive, loaded, or launched)
-- **targetMachineID**: identifier of the Machine to which this Unit is currently scheduled
-- **sytemd**:
-  - **loadState**: LOAD state of the underlying systemd unit
-  - **activeState**: ACTIVE state of the underlying systemd unit
-  - **subState**: SUB state of the underlying systemd unit
-  - **machineID**: identifier of the Machine that published this systemd state
+- **desiredState**: state the user wishes the Unit to be in ("inactive", "loaded", or "launched")
+- **currentState**: (readonly) state the Unit is currently in (same possible values as desiredState)
+- **machine**: ID of machine to which the Unit is scheduled
 
 A UnitOption represents a single option in a systemd unit file.
 
@@ -95,7 +90,7 @@ A UnitOption represents a single option in a systemd unit file.
 - **name**: name of option (e.g. "BindsTo", "After", "ExecStart")
 - **value**: value of option (e.g. "/usr/bin/docker run busybox /bin/sleep 1000")
 
-### Create or Modify Unit
+### Create a Unit
 
 ```
 PUT /units/<name> HTTP/1.1
@@ -103,9 +98,8 @@ PUT /units/<name> HTTP/1.1
 
 #### Request
 
-A request is comprised of a partial Unit entity.
-If creating a new Unit, supply the desiredState and a list of options.
-To modify an existing Unit, only the desiredState field is required.
+Create a Unit by passing a partial Unit entity to the /units resource.
+The options and desiredState fields are required, and all other Unit fields will be ignored.
 
 The base datastructure looks like this:
 
@@ -124,13 +118,35 @@ PUT /units/foo.service HTTP/1.1
 }
 ```
 
-Unloading an existing Unit called "bar.service" could look like this:
+#### Response
+
+A successful response contains no body.
+Attempting to create an entity without fileContents will return a `409 Conflict` response.
+
+### Modify desired state of a Unit
+
+```
+PUT /units/<name> HTTP/1.1
+```
+
+#### Request
+
+Modify the desired state by providing a partial Unit entity.
+The only field used from this Unit entity is the desiredState.
+
+The base datastructure looks like this:
+
+```
+{"desiredState": <state>}
+```
+
+For example, unloading an existing Unit called "bar.service" could look like this:
 
 ```
 PUT /units/bar.service HTTP/1.1
 
 {
-  "desiredState": "inactive"
+  "state": "inactive"
 }
 ```
 
@@ -139,7 +155,7 @@ PUT /units/bar.service HTTP/1.1
 A successful response contains no body.
 Attempting to create an entity without fileContents will return a `409 Conflict` response.
 
-### List Units
+### Retrieve desired state of all Units
 
 Explore a paginated collection of Unit entities.
 
@@ -155,9 +171,9 @@ The request must not have a body.
 
 A successful response will contain a single page of zero or more Unit entities.
 
-### Fetch Unit
+### Retrieve desired state of a specific Unit
 
-Retrieve a single Unit entity.
+Explore a paginated collection of Unit entities.
 
 #### Request
 
@@ -170,11 +186,11 @@ The request must not have a body.
 #### Response
 
 A successful response will contain a single Unit entity.
-If the indicated Unit does not exist, a `404 Not Found` will be returned.
+If the requested Unit does not exist, a 404 Not Found will be returned.
 
-### Destroy Units
+### Destroy a Unit
 
-Destroy an existing Unit entity.
+Destroy the desired state of an existing Unit entity.
 
 #### Request
 
@@ -188,6 +204,37 @@ The request must not have a body.
 
 A successful response will not contain a body or any additional headers.
 If the indicated Unit does not exist, a `404 Not Found` will be returned.
+
+## Current Unit State
+
+### UnitState Entity
+
+- **name**: unique identifier of entity
+- **hash**: SHA1 hash of underlying unit file
+- **machineID**: ID of machine from which this state originated
+- **systemdLoadState**: load state as reported by systemd
+- **systemdActiveState**: active state as reported by systemd
+- **systemdSubState**: sub state as reported by systemd
+
+### Retrieve current state of all Units
+
+Explore a paginated collection of UnitState entities.
+
+#### Request
+
+```
+GET /state HTTP/1.1
+```
+
+The request must not have a body.
+
+The request may be filtered using two query parameters:
+- **machineID**: filter all UnitState objects to those originating from a specific machine
+- **unitName**: filter all UnitState objects to those related to a specific unit
+
+#### Response
+
+A successful response will contain a single page of zero or more UnitState entities.
 
 ## Machines
 
