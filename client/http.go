@@ -69,7 +69,11 @@ func (c *HTTPClient) Units() ([]*schema.Unit, error) {
 }
 
 func (c *HTTPClient) Unit(name string) (*schema.Unit, error) {
-	return c.svc.Units.Get(name).Do()
+	u, err := c.svc.Units.Get(name).Do()
+	if err != nil && !is404(err) {
+		return nil, err
+	}
+	return u, nil
 }
 
 func (c *HTTPClient) UnitStates() ([]*schema.UnitState, error) {
