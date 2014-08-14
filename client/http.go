@@ -249,9 +249,9 @@ func (c *HTTPClient) DestroyJob(name string) error {
 	return c.svc.Units.Delete(name).Do()
 }
 
-func (c *HTTPClient) CreateJob(j *job.Job) error {
-	opts := make([]*schema.UnitOption, len(j.Unit.Options))
-	for i, opt := range j.Unit.Options {
+func (c *HTTPClient) CreateUnit(u *job.Unit) error {
+	opts := make([]*schema.UnitOption, len(u.Unit.Options))
+	for i, opt := range u.Unit.Options {
 		opts[i] = &schema.UnitOption{
 			Section: opt.Section,
 			Name:    opt.Name,
@@ -259,11 +259,11 @@ func (c *HTTPClient) CreateJob(j *job.Job) error {
 		}
 	}
 	req := schema.DesiredUnitState{
-		Name:         j.Name,
+		Name:         u.Name,
 		DesiredState: string(job.JobStateInactive),
 		Options:      opts,
 	}
-	return c.svc.Units.Set(j.Name, &req).Do()
+	return c.svc.Units.Set(u.Name, &req).Do()
 }
 
 func (c *HTTPClient) SetJobTargetState(name string, state job.JobState) error {

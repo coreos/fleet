@@ -366,19 +366,13 @@ func findScheduledUnits(args []string) (sus []job.ScheduledUnit, err error) {
 	return sus, nil
 }
 
-func createJob(jobName string, unit *unit.UnitFile) (*job.Unit, error) {
-	j := job.NewJob(jobName, *unit)
-
-	if err := cAPI.CreateJob(j); err != nil {
-		return nil, fmt.Errorf("failed creating job %s: %v", j.Name, err)
+func createJob(name string, uf unit.UnitFile) (*job.Unit, error) {
+	u := job.Unit{Name: name, Unit: uf}
+	if err := cAPI.CreateUnit(&u); err != nil {
+		return nil, fmt.Errorf("failed creating unit %s: %v", u.Name, err)
 	}
 
-	log.V(1).Infof("Created Job(%s) in Registry", j.Name)
-
-	u := job.Unit{
-		Name: j.Name,
-		Unit: j.Unit,
-	}
+	log.V(1).Infof("Created Unit(%s) in Registry", u.Name)
 	return &u, nil
 }
 
@@ -475,7 +469,7 @@ func lazyCreateJobs(args []string, signAndVerify bool) error {
 			if err != nil {
 				return fmt.Errorf("failed getting Unit(%s) from file: %v", jobName, err)
 			}
-			u, err = createJob(jobName, unit)
+			u, err = createJob(jobName, *unit)
 			if err != nil {
 				return err
 			}
@@ -518,7 +512,7 @@ func lazyCreateJobs(args []string, signAndVerify bool) error {
 
 		// If we found a template Unit or Job, create a near-identical instance Job in
 		// the Registry - same Unit as the template, but different name
-		u, err = createJob(jobName, uf)
+		u, err = createJob(jobName, *uf)
 		if err != nil {
 			return err
 		}

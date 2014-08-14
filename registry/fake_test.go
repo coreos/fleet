@@ -19,11 +19,11 @@ func TestFakeRegistryUnitLifecycle(t *testing.T) {
 		t.Fatalf("Expected no units, got %v", units)
 	}
 
-	u, _ := unit.NewUnitFile("")
-	j1 := job.NewJob("u1.service", *u)
-	err = reg.CreateJob(j1)
+	uf, _ := unit.NewUnitFile("")
+	u1 := job.Unit{Name: "u1.service", Unit: *uf}
+	err = reg.CreateUnit(&u1)
 	if err != nil {
-		t.Fatalf("Received error while calling CreateJob: %v", err)
+		t.Fatalf("Received error while calling CreateUnit: %v", err)
 	}
 
 	units, err = reg.Units()

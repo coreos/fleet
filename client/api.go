@@ -10,7 +10,7 @@ import (
 )
 
 type API interface {
-	CreateJob(*job.Job) error
+	CreateUnit(*job.Unit) error
 	CreateSignatureSet(*sign.SignatureSet) error
 	DestroyJob(string) error
 	JobSignatureSet(string) (*sign.SignatureSet, error)

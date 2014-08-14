@@ -14,7 +14,7 @@ import (
 type Registry interface {
 	ClearJobHeartbeat(jobName string)
 	ClearJobTarget(jobName, machID string) error
-	CreateJob(j *job.Job) (err error)
+	CreateUnit(*job.Unit) error
 	CreateSignatureSet(ss *sign.SignatureSet) error
 	DestroyJob(jobName string) error
 	DestroySignatureSet(tag string)

@@ -308,7 +308,7 @@ func (r *EtcdRegistry) getJobFromObjectNode(node *etcd.Node) (*job.Job, error) {
 		}
 
 		log.Infof("Migrating legacy Payload(%s)", jm.Name)
-		if err := r.storeOrGetUnit(*unit); err != nil {
+		if err := r.storeOrGetUnitFile(*unit); err != nil {
 			log.Warningf("Unable to migrate legacy Payload: %v", err)
 		}
 
@@ -362,15 +362,15 @@ func (r *EtcdRegistry) destroyLegacyPayload(payloadName string) {
 	r.etcd.Do(&req)
 }
 
-// CreateJob attempts to store a Job and its associated Unit in the registry
-func (r *EtcdRegistry) CreateJob(j *job.Job) (err error) {
-	if err := r.storeOrGetUnit(j.Unit); err != nil {
+// CreateUnit attempts to store a Unit and its associated unit file in the registry
+func (r *EtcdRegistry) CreateUnit(u *job.Unit) (err error) {
+	if err := r.storeOrGetUnitFile(u.Unit); err != nil {
 		return err
 	}
 
 	jm := jobModel{
-		Name:     j.Name,
-		UnitHash: j.Unit.Hash(),
+		Name:     u.Name,
+		UnitHash: u.Unit.Hash(),
 	}
 	json, err := marshal(jm)
 	if err != nil {
@@ -378,7 +378,7 @@ func (r *EtcdRegistry) CreateJob(j *job.Job) (err error) {
 	}
 
 	req := etcd.Create{
-		Key:   path.Join(r.keyPrefix, jobPrefix, j.Name, "object"),
+		Key:   path.Join(r.keyPrefix, jobPrefix, u.Name, "object"),
 		Value: json,
 	}
 

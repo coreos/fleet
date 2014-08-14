@@ -165,16 +165,21 @@ func (f *FakeRegistry) ScheduledUnit(name string) (*job.ScheduledUnit, error) {
 	return &su, nil
 }
 
-func (f *FakeRegistry) CreateJob(j *job.Job) error {
+func (f *FakeRegistry) CreateUnit(u *job.Unit) error {
 	f.Lock()
 	defer f.Unlock()
 
-	_, ok := f.jobs[j.Name]
+	_, ok := f.jobs[u.Name]
 	if ok {
-		return errors.New("Job already exists")
+		return errors.New("unit already exists")
 	}
 
-	f.jobs[j.Name] = *j
+	j := job.Job{
+		Name: u.Name,
+		Unit: u.Unit,
+	}
+
+	f.jobs[u.Name] = j
 	return nil
 }
 

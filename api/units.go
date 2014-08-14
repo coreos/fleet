@@ -90,17 +90,16 @@ func (ur *unitsResource) set(rw http.ResponseWriter, req *http.Request, item str
 	}
 }
 
-func (ur *unitsResource) create(rw http.ResponseWriter, item string, ds job.JobState, u *unit.UnitFile) {
-	j := job.NewJob(item, *u)
-
-	if err := ur.reg.CreateJob(j); err != nil {
-		log.Errorf("Failed creating Job(%s) in Registry: %v", j.Name, err)
+func (ur *unitsResource) create(rw http.ResponseWriter, item string, ds job.JobState, uf *unit.UnitFile) {
+	u := job.Unit{Name: item, Unit: *uf}
+	if err := ur.reg.CreateUnit(&u); err != nil {
+		log.Errorf("Failed creating Unit(%s) in Registry: %v", u.Name, err)
 		sendError(rw, http.StatusInternalServerError, nil)
 		return
 	}
 
-	if err := ur.reg.SetJobTargetState(j.Name, ds); err != nil {
-		log.Errorf("Failed setting target state of Job(%s): %v", j.Name, err)
+	if err := ur.reg.SetJobTargetState(u.Name, ds); err != nil {
+		log.Errorf("Failed setting target state of Unit(%s): %v", u.Name, err)
 		sendError(rw, http.StatusInternalServerError, nil)
 		return
 	}
