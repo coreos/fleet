@@ -49,9 +49,9 @@ func TestScheduleConditionMachineOf(t *testing.T) {
 
 	// All 6 services should be visible immediately and become ACTIVE
 	// shortly thereafter
-	stdout, _, err := cluster.Fleetctl("show-schedule", "--no-legend")
+	stdout, _, err := cluster.Fleetctl("list-unit-files", "--no-legend")
 	if err != nil {
-		t.Fatalf("Failed to run show-schedule: %v", err)
+		t.Fatalf("Failed to run list-unit-files: %v", err)
 	}
 	units := strings.Split(strings.TrimSpace(stdout), "\n")
 	if len(units) != 6 {
@@ -149,9 +149,9 @@ func TestScheduleGlobalConflicts(t *testing.T) {
 
 	// All 5 services should be visible immediately and 3 should become
 	// ACTIVE shortly thereafter
-	stdout, _, err := cluster.Fleetctl("show-schedule", "--no-legend")
+	stdout, _, err := cluster.Fleetctl("list-unit-files", "--no-legend")
 	if err != nil {
-		t.Fatalf("Failed to run show-schedule: %v", err)
+		t.Fatalf("Failed to run list-unit-files: %v", err)
 	}
 	units := strings.Split(strings.TrimSpace(stdout), "\n")
 	if len(units) != 5 {
@@ -209,9 +209,9 @@ func TestScheduleOneWayConflict(t *testing.T) {
 
 	// Both units should show up, but only conflicts-with-hello.service
 	// should report ACTIVE
-	stdout, _, err := cluster.Fleetctl("show-schedule", "--no-legend")
+	stdout, _, err := cluster.Fleetctl("list-unit-files", "--no-legend")
 	if err != nil {
-		t.Fatalf("Failed to run show-schedule: %v", err)
+		t.Fatalf("Failed to run list-unit-files: %v", err)
 	}
 	units := strings.Split(strings.TrimSpace(stdout), "\n")
 	if len(units) != 2 {
