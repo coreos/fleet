@@ -6,7 +6,6 @@ import (
 	"path"
 
 	"github.com/coreos/fleet/Godeps/_workspace/src/code.google.com/p/google-api-go-client/googleapi"
-	"github.com/coreos/fleet/Godeps/_workspace/src/github.com/coreos/go-semver/semver"
 
 	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/schema"
@@ -123,11 +122,6 @@ func (c *HTTPClient) SetUnitTargetState(name, target string) error {
 		DesiredState: target,
 	}
 	return c.svc.Units.Set(name, &u).Do()
-}
-
-//NOTE(bcwaldon): This is only temporary until a better version negotiation mechanism is in place
-func (c *HTTPClient) LatestVersion() (*semver.Version, error) {
-	return semver.NewVersion("0.0.0")
 }
 
 func is404(err error) bool {

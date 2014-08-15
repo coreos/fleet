@@ -146,9 +146,9 @@ func getFlags(flagset *flag.FlagSet) (flags []*flag.Flag) {
 // latest fleet version found registered in the cluster. If any errors are encountered or fleetctl
 // is >= the latest version found, it returns true. If it is < the latest found version, it returns
 // false and a scary warning to the user.
-func checkVersion() (string, bool) {
+func checkVersion(reg registry.Registry) (string, bool) {
 	fv := version.SemVersion
-	lv, err := cAPI.LatestVersion()
+	lv, err := reg.LatestVersion()
 	if err != nil {
 		log.Errorf("error attempting to check latest fleet version in Registry: %v", err)
 	} else if lv != nil && fv.LessThan(*lv) {
@@ -212,11 +212,6 @@ func main() {
 			msg := fmt.Sprintf("Unable to initialize client: %v\n", err)
 			fmt.Fprint(os.Stderr, msg)
 			os.Exit(1)
-		}
-
-		msg, ok := checkVersion()
-		if !ok {
-			fmt.Fprint(os.Stderr, msg)
 		}
 	}
 
@@ -327,7 +322,19 @@ func getRegistryClient() (client.API, error) {
 	}
 
 	timeout := time.Duration(globalFlags.RequestTimeout*1000) * time.Millisecond
-	return client.NewRegistryClient(&trans, globalFlags.Endpoint, globalFlags.EtcdKeyPrefix, timeout)
+	machines := []string{globalFlags.Endpoint}
+	eClient, err := etcd.NewClient(machines, trans, timeout)
+	if err != nil {
+		return nil, err
+	}
+
+	reg := registry.New(eClient, globalFlags.EtcdKeyPrefix)
+
+	if msg, ok := checkVersion(reg); !ok {
+		fmt.Fprint(os.Stderr, msg)
+	}
+
+	return &client.RegistryClient{reg}, nil
 }
 
 // getChecker creates and returns a HostKeyChecker, or nil if any error is encountered

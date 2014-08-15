@@ -1,25 +1,10 @@
 package client
 
 import (
-	"net/http"
-	"time"
-
-	"github.com/coreos/fleet/etcd"
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/registry"
 	"github.com/coreos/fleet/schema"
 )
-
-func NewRegistryClient(trans *http.Transport, endpoint, keyPrefix string, requestTimeout time.Duration) (API, error) {
-	machines := []string{endpoint}
-	client, err := etcd.NewClient(machines, *trans, requestTimeout)
-	if err != nil {
-		return nil, err
-	}
-
-	reg := registry.New(client, keyPrefix)
-	return &RegistryClient{reg}, nil
-}
 
 type RegistryClient struct {
 	registry.Registry

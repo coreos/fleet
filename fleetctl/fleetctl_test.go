@@ -3,7 +3,6 @@ package main
 import (
 	"testing"
 
-	"github.com/coreos/fleet/client"
 	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/registry"
 	"github.com/coreos/fleet/version"
@@ -11,7 +10,7 @@ import (
 	"github.com/coreos/fleet/Godeps/_workspace/src/github.com/coreos/go-semver/semver"
 )
 
-func newFakeRegistryForCheckVersion(v string) client.API {
+func newFakeRegistryForCheckVersion(v string) registry.Registry {
 	sv, err := semver.NewVersion(v)
 	if err != nil {
 		panic(err)
@@ -19,18 +18,17 @@ func newFakeRegistryForCheckVersion(v string) client.API {
 
 	reg := registry.NewFakeRegistry()
 	reg.SetLatestVersion(*sv)
-
-	return &client.RegistryClient{reg}
+	return reg
 }
 
 func TestCheckVersion(t *testing.T) {
-	cAPI = newFakeRegistryForCheckVersion(version.Version)
-	_, ok := checkVersion()
+	reg := newFakeRegistryForCheckVersion(version.Version)
+	_, ok := checkVersion(reg)
 	if !ok {
 		t.Errorf("checkVersion failed but should have succeeded")
 	}
-	cAPI = newFakeRegistryForCheckVersion("9.0.0")
-	msg, ok := checkVersion()
+	reg = newFakeRegistryForCheckVersion("9.0.0")
+	msg, ok := checkVersion(reg)
 	if ok || msg == "" {
 		t.Errorf("checkVersion succeeded but should have failed")
 	}
