@@ -256,8 +256,26 @@ func getClient() (client.API, error) {
 }
 
 func getHTTPClient() (client.API, error) {
-	dialFunc := func(string, string) (net.Conn, error) {
-		return net.Dial("unix", "/var/run/fleet.sock")
+	dialDomainSocket := strings.HasPrefix(globalFlags.Endpoint, "/")
+
+	tunnelFunc := net.Dial
+	tun := getTunnelFlag()
+	if tun != "" {
+		sshClient, err := ssh.NewSSHClient("core", tun, getChecker(), false)
+		if err != nil {
+			return nil, fmt.Errorf("failed initializing SSH client: %v", err)
+		}
+
+		tunnelFunc = func(net, addr string) (net.Conn, error) {
+			return sshClient.Dial(net, addr)
+		}
+	}
+
+	dialFunc := tunnelFunc
+	if dialDomainSocket {
+		dialFunc = func(net, addr string) (net.Conn, error) {
+			return tunnelFunc("unix", globalFlags.Endpoint)
+		}
 	}
 
 	trans := pkg.LoggingHTTPTransport{
@@ -270,7 +288,14 @@ func getHTTPClient() (client.API, error) {
 		Transport: &trans,
 	}
 
-	return client.NewHTTPClient(&hc)
+	endpoint := globalFlags.Endpoint
+	if dialDomainSocket {
+		endpoint = "http://domain-sock/"
+	} else if !strings.HasPrefix(endpoint, "http") {
+		endpoint = fmt.Sprintf("http://%s", endpoint)
+	}
+
+	return client.NewHTTPClient(&hc, endpoint)
 }
 
 func getRegistryClient() (client.API, error) {
