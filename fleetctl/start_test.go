@@ -46,12 +46,30 @@ func setupRegistryForStart(echoAttempts int) {
 		Metadata: map[string]string{"foo": "bar"},
 	}
 
-	js := unit.NewUnitState("loaded", "active", "listening", m1.ID)
-	js2 := unit.NewUnitState("loaded", "inactive", "dead", m2.ID)
-	js3 := unit.NewUnitState("loaded", "inactive", "dead", m2.ID)
-	js4 := unit.NewUnitState("loaded", "inactive", "dead", m3.ID)
+	states := []unit.UnitState{
+		unit.UnitState{
+			UnitName:    "pong.service",
+			LoadState:   "loaded",
+			ActiveState: "active",
+			SubState:    "listening",
+			MachineID:   m1.ID,
+		},
+		unit.UnitState{
+			UnitName:    "hello.service",
+			LoadState:   "loaded",
+			ActiveState: "inactive",
+			SubState:    "dead",
+			MachineID:   m2.ID,
+		},
+		unit.UnitState{
+			UnitName:    "echo.service",
+			LoadState:   "loaded",
+			ActiveState: "inactive",
+			SubState:    "dead",
+			MachineID:   m2.ID,
+		},
+	}
 
-	states := map[string]*unit.UnitState{"pong.service": js, "hello.service": js2, "echo.service": js3, "private.service": js4}
 	machines := []machine.MachineState{m1, m2, m3}
 
 	reg := registry.NewFakeRegistry()
