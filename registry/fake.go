@@ -54,11 +54,15 @@ func (f *FakeRegistry) SetJobs(jobs []job.Job) {
 	}
 }
 
-func (f *FakeRegistry) SetUnitStates(jobStates map[string]*unit.UnitState) {
+func (f *FakeRegistry) SetUnitStates(states []unit.UnitState) {
 	f.Lock()
 	defer f.Unlock()
 
-	f.jobStates = jobStates
+	f.jobStates = make(map[string]*unit.UnitState, len(states))
+	for _, us := range states {
+		us := us
+		f.jobStates[us.UnitName] = &us
+	}
 }
 
 func (f *FakeRegistry) SetUnits(units []unit.UnitFile) {
@@ -237,6 +241,25 @@ func (f *FakeRegistry) SaveUnitState(jobName string, unitState *unit.UnitState) 
 func (f *FakeRegistry) RemoveUnitState(jobName string) error {
 	delete(f.jobStates, jobName)
 	return nil
+}
+
+func (f *FakeRegistry) UnitStates() ([]*unit.UnitState, error) {
+	f.Lock()
+	defer f.Unlock()
+
+	sortable := make([]string, 0)
+	for k := range f.jobStates {
+		sortable = append(sortable, k)
+	}
+
+	sort.Strings(sortable)
+
+	states := make([]*unit.UnitState, len(f.jobStates))
+	for i, k := range sortable {
+		states[i] = f.jobStates[k]
+	}
+
+	return states, nil
 }
 
 func (f *FakeRegistry) LatestVersion() (*semver.Version, error) {

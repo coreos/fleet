@@ -33,10 +33,28 @@ func newFakeRegistryForSsh() client.API {
 		job.Job{Name: "hello.service", Unit: unit.UnitFile{}, TargetMachineID: machines[2].ID},
 	}
 
-	states := map[string]*unit.UnitState{
-		"j1.service":    unit.NewUnitState("loaded", "active", "listening", machines[0].ID),
-		"j2.service":    unit.NewUnitState("loaded", "inactive", "dead", machines[1].ID),
-		"hello.service": unit.NewUnitState("loaded", "inactive", "dead", machines[2].ID),
+	states := []unit.UnitState{
+		unit.UnitState{
+			UnitName:    "j1.service",
+			LoadState:   "loaded",
+			ActiveState: "active",
+			SubState:    "listening",
+			MachineID:   machines[0].ID,
+		},
+		unit.UnitState{
+			UnitName:    "j2.service",
+			LoadState:   "loaded",
+			ActiveState: "inactive",
+			SubState:    "dead",
+			MachineID:   machines[1].ID,
+		},
+		unit.UnitState{
+			UnitName:    "hello.service",
+			LoadState:   "loaded",
+			ActiveState: "inactive",
+			SubState:    "dead",
+			MachineID:   machines[2].ID,
+		},
 	}
 
 	reg := registry.NewFakeRegistry()
