@@ -1,25 +1,10 @@
 package client
 
 import (
-	"net/http"
-	"time"
-
-	"github.com/coreos/fleet/etcd"
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/registry"
 	"github.com/coreos/fleet/schema"
 )
-
-func NewRegistryClient(trans *http.Transport, endpoint, keyPrefix string, requestTimeout time.Duration) (API, error) {
-	machines := []string{endpoint}
-	client, err := etcd.NewClient(machines, *trans, requestTimeout)
-	if err != nil {
-		return nil, err
-	}
-
-	reg := registry.New(client, keyPrefix)
-	return &RegistryClient{reg}, nil
-}
 
 type RegistryClient struct {
 	registry.Registry
@@ -66,9 +51,20 @@ func (rc *RegistryClient) Unit(name string) (*schema.Unit, error) {
 
 func (rc *RegistryClient) CreateUnit(u *schema.Unit) error {
 	rUnit := job.Unit{
-		Name: u.Name,
-		Unit: *schema.MapSchemaUnitOptionsToUnitFile(u.Options),
+		Name:        u.Name,
+		Unit:        *schema.MapSchemaUnitOptionsToUnitFile(u.Options),
+		TargetState: job.JobStateInactive,
 	}
+
+	if len(u.DesiredState) > 0 {
+		ts, err := job.ParseJobState(u.DesiredState)
+		if err != nil {
+			return err
+		}
+
+		rUnit.TargetState = ts
+	}
+
 	return rc.Registry.CreateUnit(&rUnit)
 }
 

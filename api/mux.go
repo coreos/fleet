@@ -5,16 +5,18 @@ import (
 
 	log "github.com/coreos/fleet/Godeps/_workspace/src/github.com/golang/glog"
 
+	"github.com/coreos/fleet/client"
 	"github.com/coreos/fleet/registry"
 )
 
 func NewServeMux(reg registry.Registry) http.Handler {
 	sm := http.NewServeMux()
+	cAPI := &client.RegistryClient{reg}
 
 	prefix := "/v1-alpha"
-	wireUpMachinesResource(sm, prefix, reg)
-	wireUpStateResource(sm, prefix, reg)
-	wireUpUnitsResource(sm, prefix, reg)
+	wireUpMachinesResource(sm, prefix, cAPI)
+	wireUpStateResource(sm, prefix, cAPI)
+	wireUpUnitsResource(sm, prefix, cAPI)
 
 	sm.HandleFunc(prefix, methodNotAllowedHandler)
 	sm.HandleFunc("/", baseHandler)

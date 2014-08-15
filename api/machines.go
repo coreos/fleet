@@ -7,19 +7,19 @@ import (
 
 	log "github.com/coreos/fleet/Godeps/_workspace/src/github.com/golang/glog"
 
+	"github.com/coreos/fleet/client"
 	"github.com/coreos/fleet/machine"
-	"github.com/coreos/fleet/registry"
 	"github.com/coreos/fleet/schema"
 )
 
-func wireUpMachinesResource(mux *http.ServeMux, prefix string, reg registry.Registry) {
+func wireUpMachinesResource(mux *http.ServeMux, prefix string, cAPI client.API) {
 	res := path.Join(prefix, "machines")
-	mr := machinesResource{reg}
+	mr := machinesResource{cAPI}
 	mux.Handle(res, &mr)
 }
 
 type machinesResource struct {
-	reg registry.Registry
+	cAPI client.API
 }
 
 func (mr *machinesResource) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
@@ -39,7 +39,7 @@ func (mr *machinesResource) ServeHTTP(rw http.ResponseWriter, req *http.Request)
 		token = &def
 	}
 
-	page, err := getMachinePage(mr.reg, *token)
+	page, err := getMachinePage(mr.cAPI, *token)
 	if err != nil {
 		log.Errorf("Failed fetching page of Machines: %v", err)
 		sendError(rw, http.StatusInternalServerError, nil)
@@ -49,8 +49,8 @@ func (mr *machinesResource) ServeHTTP(rw http.ResponseWriter, req *http.Request)
 	sendResponse(rw, http.StatusOK, page)
 }
 
-func getMachinePage(reg registry.Registry, tok PageToken) (*schema.MachinePage, error) {
-	all, err := reg.Machines()
+func getMachinePage(cAPI client.API, tok PageToken) (*schema.MachinePage, error) {
+	all, err := cAPI.Machines()
 	if err != nil {
 		return nil, err
 	}

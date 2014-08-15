@@ -20,6 +20,7 @@ import (
 	"github.com/coreos/fleet/etcd"
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/machine"
+	"github.com/coreos/fleet/pkg"
 	"github.com/coreos/fleet/registry"
 	"github.com/coreos/fleet/schema"
 	"github.com/coreos/fleet/sign"
@@ -145,9 +146,9 @@ func getFlags(flagset *flag.FlagSet) (flags []*flag.Flag) {
 // latest fleet version found registered in the cluster. If any errors are encountered or fleetctl
 // is >= the latest version found, it returns true. If it is < the latest found version, it returns
 // false and a scary warning to the user.
-func checkVersion() (string, bool) {
+func checkVersion(reg registry.Registry) (string, bool) {
 	fv := version.SemVersion
-	lv, err := cAPI.LatestVersion()
+	lv, err := reg.LatestVersion()
 	if err != nil {
 		log.Errorf("error attempting to check latest fleet version in Registry: %v", err)
 	} else if lv != nil && fv.LessThan(*lv) {
@@ -212,11 +213,6 @@ func main() {
 			fmt.Fprint(os.Stderr, msg)
 			os.Exit(1)
 		}
-
-		msg, ok := checkVersion()
-		if !ok {
-			fmt.Fprint(os.Stderr, msg)
-		}
 	}
 
 	os.Exit(cmd.Run(cmd.Flags.Args()))
@@ -255,19 +251,46 @@ func getClient() (client.API, error) {
 }
 
 func getHTTPClient() (client.API, error) {
-	dialFunc := func(string, string) (net.Conn, error) {
-		return net.Dial("unix", "/var/run/fleet.sock")
+	dialDomainSocket := strings.HasPrefix(globalFlags.Endpoint, "/")
+
+	tunnelFunc := net.Dial
+	tun := getTunnelFlag()
+	if tun != "" {
+		sshClient, err := ssh.NewSSHClient("core", tun, getChecker(), false)
+		if err != nil {
+			return nil, fmt.Errorf("failed initializing SSH client: %v", err)
+		}
+
+		tunnelFunc = func(net, addr string) (net.Conn, error) {
+			return sshClient.Dial(net, addr)
+		}
 	}
 
-	trans := http.Transport{
-		Dial: dialFunc,
+	dialFunc := tunnelFunc
+	if dialDomainSocket {
+		dialFunc = func(net, addr string) (net.Conn, error) {
+			return tunnelFunc("unix", globalFlags.Endpoint)
+		}
+	}
+
+	trans := pkg.LoggingHTTPTransport{
+		http.Transport{
+			Dial: dialFunc,
+		},
 	}
 
 	hc := http.Client{
 		Transport: &trans,
 	}
 
-	return client.NewHTTPClient(&hc)
+	endpoint := globalFlags.Endpoint
+	if dialDomainSocket {
+		endpoint = "http://domain-sock/"
+	} else if !strings.HasPrefix(endpoint, "http") {
+		endpoint = fmt.Sprintf("http://%s", endpoint)
+	}
+
+	return client.NewHTTPClient(&hc, endpoint)
 }
 
 func getRegistryClient() (client.API, error) {
@@ -299,7 +322,19 @@ func getRegistryClient() (client.API, error) {
 	}
 
 	timeout := time.Duration(globalFlags.RequestTimeout*1000) * time.Millisecond
-	return client.NewRegistryClient(&trans, globalFlags.Endpoint, globalFlags.EtcdKeyPrefix, timeout)
+	machines := []string{globalFlags.Endpoint}
+	eClient, err := etcd.NewClient(machines, trans, timeout)
+	if err != nil {
+		return nil, err
+	}
+
+	reg := registry.New(eClient, globalFlags.EtcdKeyPrefix)
+
+	if msg, ok := checkVersion(reg); !ok {
+		fmt.Fprint(os.Stderr, msg)
+	}
+
+	return &client.RegistryClient{reg}, nil
 }
 
 // getChecker creates and returns a HostKeyChecker, or nil if any error is encountered
@@ -377,8 +412,8 @@ func findUnits(args []string) (sus []schema.Unit, err error) {
 
 func createUnit(name string, uf *unit.UnitFile) (*schema.Unit, error) {
 	u := schema.Unit{
-		Name:    name,
-		Options: schema.MapUnitFileToSchemaUnitOptions(uf),
+		Name:         name,
+		Options:      schema.MapUnitFileToSchemaUnitOptions(uf),
 	}
 	err := cAPI.CreateUnit(&u)
 	if err != nil {

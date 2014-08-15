@@ -180,7 +180,7 @@ func (f *FakeRegistry) CreateUnit(u *job.Unit) error {
 	}
 
 	f.jobs[u.Name] = j
-	return nil
+	return f.unsafeSetUnitTargetState(u.Name, u.TargetState)
 }
 
 func (f *FakeRegistry) DestroyUnit(name string) error {
@@ -195,6 +195,10 @@ func (f *FakeRegistry) SetUnitTargetState(name string, target job.JobState) erro
 	f.Lock()
 	defer f.Unlock()
 
+	return f.unsafeSetUnitTargetState(name, target)
+}
+
+func (f *FakeRegistry) unsafeSetUnitTargetState(name string, target job.JobState) error {
 	j, ok := f.jobs[name]
 
 	if !ok {

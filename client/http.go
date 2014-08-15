@@ -2,19 +2,30 @@ package client
 
 import (
 	"net/http"
+	"net/url"
+	"path"
 
 	"github.com/coreos/fleet/Godeps/_workspace/src/code.google.com/p/google-api-go-client/googleapi"
-	"github.com/coreos/fleet/Godeps/_workspace/src/github.com/coreos/go-semver/semver"
 
 	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/schema"
 )
 
-func NewHTTPClient(c *http.Client) (API, error) {
+func NewHTTPClient(c *http.Client, endpoint string) (API, error) {
 	svc, err := schema.New(c)
 	if err != nil {
 		return nil, err
 	}
+
+	ep, err := url.Parse(endpoint)
+	if err != nil {
+		return nil, err
+	}
+
+	// append a slash so the schema.Service knows this is the root path
+	ep.Path = path.Join(ep.Path, "v1-alpha") + "/"
+	svc.BasePath = ep.String()
+
 	return &HTTPClient{svc: svc}, nil
 }
 
@@ -69,7 +80,11 @@ func (c *HTTPClient) Units() ([]*schema.Unit, error) {
 }
 
 func (c *HTTPClient) Unit(name string) (*schema.Unit, error) {
-	return c.svc.Units.Get(name).Do()
+	u, err := c.svc.Units.Get(name).Do()
+	if err != nil && !is404(err) {
+		return nil, err
+	}
+	return u, nil
 }
 
 func (c *HTTPClient) UnitStates() ([]*schema.UnitState, error) {
@@ -107,11 +122,6 @@ func (c *HTTPClient) SetUnitTargetState(name, target string) error {
 		DesiredState: target,
 	}
 	return c.svc.Units.Set(name, &u).Do()
-}
-
-//NOTE(bcwaldon): This is only temporary until a better version negotiation mechanism is in place
-func (c *HTTPClient) LatestVersion() (*semver.Version, error) {
-	return semver.NewVersion("0.0.0")
 }
 
 func is404(err error) bool {

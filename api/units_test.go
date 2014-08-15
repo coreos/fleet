@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/coreos/fleet/client"
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/registry"
 	"github.com/coreos/fleet/schema"
@@ -27,7 +28,8 @@ func newUnit(t *testing.T, str string) unit.UnitFile {
 
 func TestUnitsSubResourceNotFound(t *testing.T) {
 	fr := registry.NewFakeRegistry()
-	ur := &unitsResource{fr, "/units"}
+	fAPI := &client.RegistryClient{fr}
+	ur := &unitsResource{fAPI, "/units"}
 	rr := httptest.NewRecorder()
 
 	req, err := http.NewRequest("GET", "/units/foo/bar", nil)
@@ -49,7 +51,8 @@ func TestUnitsList(t *testing.T) {
 		{Name: "XXX"},
 		{Name: "YYY"},
 	})
-	resource := &unitsResource{fr, "/units"}
+	fAPI := &client.RegistryClient{fr}
+	resource := &unitsResource{fAPI, "/units"}
 	rw := httptest.NewRecorder()
 	req, err := http.NewRequest("GET", "http://example.com/units", nil)
 	if err != nil {
@@ -85,7 +88,8 @@ func TestUnitsList(t *testing.T) {
 
 func TestUnitsListBadNextPageToken(t *testing.T) {
 	fr := registry.NewFakeRegistry()
-	resource := &unitsResource{fr, "/units"}
+	fAPI := &client.RegistryClient{fr}
+	resource := &unitsResource{fAPI, "/units"}
 	rw := httptest.NewRecorder()
 	req, err := http.NewRequest("GET", "http://example.com/units?nextPageToken=EwBMLg==", nil)
 	if err != nil {
@@ -101,10 +105,10 @@ func TestUnitsListBadNextPageToken(t *testing.T) {
 }
 
 func TestExtractUnitPage(t *testing.T) {
-	all := make([]job.Unit, 103)
+	all := make([]*schema.Unit, 103)
 	for i := 0; i < 103; i++ {
 		name := strconv.FormatInt(int64(i), 10)
-		all[i] = job.Unit{Name: name}
+		all[i] = &schema.Unit{Name: name}
 	}
 
 	tests := []struct {
@@ -165,7 +169,8 @@ func TestUnitGet(t *testing.T) {
 		{Name: "XXX"},
 		{Name: "YYY"},
 	})
-	resource := &unitsResource{fr, "/units"}
+	fAPI := &client.RegistryClient{fr}
+	resource := &unitsResource{fAPI, "/units"}
 
 	for i, tt := range tests {
 		rw := httptest.NewRecorder()
@@ -227,7 +232,8 @@ func TestUnitsDestroy(t *testing.T) {
 			continue
 		}
 
-		resource := &unitsResource{fr, "/units"}
+		fAPI := &client.RegistryClient{fr}
+		resource := &unitsResource{fAPI, "/units"}
 		rw := httptest.NewRecorder()
 		resource.destroy(rw, req, tt.arg)
 
@@ -316,9 +322,6 @@ func TestUnitsSetDesiredState(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		if i != 1 {
-			continue
-		}
 		fr := registry.NewFakeRegistry()
 		fr.SetJobs(tt.initJobs)
 		for j, s := range tt.initStates {
@@ -342,7 +345,8 @@ func TestUnitsSetDesiredState(t *testing.T) {
 		req.Body = ioutil.NopCloser(bytes.NewBuffer(enc))
 		req.Header.Set("Content-Type", "application/json")
 
-		resource := &unitsResource{fr, "/units"}
+		fAPI := &client.RegistryClient{fr}
+		resource := &unitsResource{fAPI, "/units"}
 		rw := httptest.NewRecorder()
 		resource.set(rw, req, tt.arg.Name)
 

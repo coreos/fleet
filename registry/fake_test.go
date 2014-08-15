@@ -20,7 +20,7 @@ func TestFakeRegistryUnitLifecycle(t *testing.T) {
 	}
 
 	uf, _ := unit.NewUnitFile("")
-	u1 := job.Unit{Name: "u1.service", Unit: *uf}
+	u1 := job.Unit{Name: "u1.service", Unit: *uf, TargetState: job.JobStateLoaded}
 	err = reg.CreateUnit(&u1)
 	if err != nil {
 		t.Fatalf("Received error while calling CreateUnit: %v", err)
@@ -33,8 +33,8 @@ func TestFakeRegistryUnitLifecycle(t *testing.T) {
 	if len(units) != 1 {
 		t.Fatalf("Expected 1 Unit, got %v", units)
 	}
-	if units[0].Name != "u1.service" {
-		t.Fatalf("Expected Job with name \"u1.service\", got %q", units[0].Name)
+	if !reflect.DeepEqual(u1, units[0]) {
+		t.Fatalf("Expected unit %v, got %v", u1, units[0])
 	}
 
 	err = reg.ScheduleUnit("u1.service", "XXX")
