@@ -6,14 +6,14 @@
 	],
 	"Deps": [
 		{
+			"ImportPath": "code.google.com/p/go.crypto/ssh",
+			"Comment": "null-218",
+			"Rev": "f3cebac2bd11c2bf03c15bfa4c66688ad02a0a40"
+		},
+		{
 			"ImportPath": "code.google.com/p/google-api-go-client/googleapi",
 			"Comment": "release-87",
 			"Rev": "c99e2061b8c60e8c9066434f77bb0d0ac5b34377"
-		},
-		{
-			"ImportPath": "code.google.com/p/gosshnew/ssh",
-			"Comment": "null-156",
-			"Rev": "841c53ee2005900291ddc3e98e870f8f2f6a9d80"
 		},
 		{
 			"ImportPath": "github.com/coreos/go-semver/semver",

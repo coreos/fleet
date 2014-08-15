@@ -12,7 +12,7 @@ import (
 	"strconv"
 	"strings"
 
-	gossh "github.com/coreos/fleet/Godeps/_workspace/src/code.google.com/p/gosshnew/ssh"
+	gossh "github.com/coreos/fleet/Godeps/_workspace/src/code.google.com/p/go.crypto/ssh"
 	log "github.com/coreos/fleet/Godeps/_workspace/src/github.com/golang/glog"
 
 	"github.com/coreos/fleet/pkg"
