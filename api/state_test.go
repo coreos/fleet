@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"reflect"
+	"strconv"
 	"testing"
 
 	"github.com/coreos/fleet/client"
@@ -61,6 +62,75 @@ func TestUnitStateList(t *testing.T) {
 		expect2 := &schema.UnitState{Name: "YYY", SystemdActiveState: "inactive"}
 		if !reflect.DeepEqual(expect2, page.States[1]) {
 			t.Errorf("expected first entity %#v, got %#v", expect2, page.States[1])
+		}
+	}
+}
+
+func TestUnitStateListBadNextPageToken(t *testing.T) {
+	fr := registry.NewFakeRegistry()
+	fAPI := &client.RegistryClient{fr}
+	resource := &stateResource{fAPI, "/state"}
+	rw := httptest.NewRecorder()
+	req, err := http.NewRequest("GET", "http://example.com/state?nextPageToken=EwBMLg==", nil)
+	if err != nil {
+		t.Fatalf("Failed creating http.Request: %v", err)
+	}
+
+	resource.list(rw, req)
+
+	err = assertErrorResponse(rw, http.StatusBadRequest)
+	if err != nil {
+		t.Error(err.Error())
+	}
+}
+
+func TestExtractUnitStatePage(t *testing.T) {
+	all := make([]*schema.UnitState, 103)
+	for i := 0; i < 103; i++ {
+		name := strconv.FormatInt(int64(i), 10)
+		all[i] = &schema.UnitState{Name: name}
+	}
+
+	tests := []struct {
+		token    PageToken
+		idxStart int
+		idxEnd   int
+		next     *PageToken
+	}{
+		{PageToken{Page: 1, Limit: 60}, 0, 59, &PageToken{Page: 2, Limit: 60}},
+		{PageToken{Page: 2, Limit: 60}, 60, 102, nil},
+	}
+
+	for i, tt := range tests {
+		items, next := extractUnitStatePageData(all, tt.token)
+		expectCount := (tt.idxEnd - tt.idxStart + 1)
+		if len(items) != expectCount {
+			t.Errorf("case %d: expected page of %d, got %d", i, expectCount, len(items))
+			continue
+		}
+
+		first := items[0].Name
+		if first != strconv.FormatInt(int64(tt.idxStart), 10) {
+			t.Errorf("case %d: first element in first page should have ID %d, got %d", i, tt.idxStart, first)
+		}
+
+		last := items[len(items)-1].Name
+		if last != strconv.FormatInt(int64(tt.idxEnd), 10) {
+			t.Errorf("case %d: first element in first page should have ID %d, got %d", i, tt.idxEnd, last)
+		}
+
+		if tt.next == nil && next != nil {
+			t.Errorf("case %d: did not expect NextPageToken", i)
+			continue
+		} else if next == nil {
+			if tt.next != nil {
+				t.Errorf("case %d: did not receive expected NextPageToken", i)
+			}
+			continue
+		}
+
+		if !reflect.DeepEqual(next, tt.next) {
+			t.Errorf("case %d: expected PageToken %v, got %v", i, tt.next, next)
 		}
 	}
 }
