@@ -623,11 +623,11 @@ func assertUnitState(name string, js job.JobState, out io.Writer) (ret bool) {
 	ret = true
 	msg := fmt.Sprintf("Unit %s %s", name, u.CurrentState)
 
-	if u.Machine == "" {
+	if u.MachineID == "" {
 		return
 	}
 
-	ms := cachedMachineState(u.Machine)
+	ms := cachedMachineState(u.MachineID)
 	if ms != nil {
 		msg = fmt.Sprintf("%s on %s", msg, machineFullLegend(*ms, false))
 	}

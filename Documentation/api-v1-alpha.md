@@ -82,7 +82,7 @@ Content-Length: 80
 - **options**: list of UnitOption entities
 - **desiredState**: state the user wishes the Unit to be in ("inactive", "loaded", or "launched")
 - **currentState**: (readonly) state the Unit is currently in (same possible values as desiredState)
-- **machine**: ID of machine to which the Unit is scheduled
+- **machineID**: ID of machine to which the Unit is scheduled
 
 A UnitOption represents a single option in a systemd unit file.
 

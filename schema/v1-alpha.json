@@ -108,7 +108,7 @@
             "launched"
           ]
         },
-        "machine": {
+        "machineID": {
           "type": "string",
           "required": true
         }

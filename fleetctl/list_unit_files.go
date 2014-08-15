@@ -34,12 +34,12 @@ var (
 			return u.DesiredState
 		},
 		"tmachine": func(u schema.Unit, full bool) string {
-			if u.Machine == "" {
+			if u.MachineID == "" {
 				return "-"
 			}
-			ms := cachedMachineState(u.Machine)
+			ms := cachedMachineState(u.MachineID)
 			if ms == nil {
-				ms = &machine.MachineState{ID: u.Machine}
+				ms = &machine.MachineState{ID: u.MachineID}
 			}
 
 			return machineFullLegend(*ms, full)

@@ -47,11 +47,11 @@ func TestListUnitFilesFieldsToStrings(t *testing.T) {
 	// machineStates must be initialized since cAPI is not set
 	machineStates = map[string]*machine.MachineState{}
 
-	u.Machine = "some-id"
+	u.MachineID = "some-id"
 	ms := listUnitFilesFields["tmachine"](u, true)
 	assertEqual(t, "machine", "some-id", ms)
 
-	u.Machine = "other-id"
+	u.MachineID = "other-id"
 	machineStates = map[string]*machine.MachineState{
 		"other-id": &machine.MachineState{
 			ID:       "other-id",

@@ -108,7 +108,7 @@ type Unit struct {
 
 	DesiredState string `json:"desiredState,omitempty"`
 
-	Machine string `json:"machine,omitempty"`
+	MachineID string `json:"machineID,omitempty"`
 
 	Name string `json:"name,omitempty"`
 
