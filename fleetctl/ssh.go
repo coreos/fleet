@@ -171,7 +171,7 @@ func findAddressInRunningUnits(name string) (string, bool) {
 	if u == nil {
 		return "", false
 	}
-	m := cachedMachineState(u.Machine)
+	m := cachedMachineState(u.MachineID)
 	if m != nil && m.PublicIP != "" {
 		return m.PublicIP, true
 	}

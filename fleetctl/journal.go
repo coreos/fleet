@@ -56,5 +56,5 @@ func runJournal(args []string) (exit int) {
 		command += " -f"
 	}
 
-	return runCommand(command, u.Machine)
+	return runCommand(command, u.MachineID)
 }

@@ -50,7 +50,7 @@ func MapUnitToSchemaUnit(u *job.Unit, su *job.ScheduledUnit) *Unit {
 	}
 
 	if su != nil {
-		s.Machine = su.TargetMachineID
+		s.MachineID = su.TargetMachineID
 		if su.State != nil {
 			s.CurrentState = string(*su.State)
 		}
@@ -147,7 +147,7 @@ func MapSchemaUnitToScheduledUnit(entity *Unit) *job.ScheduledUnit {
 	return &job.ScheduledUnit{
 		Name:            entity.Name,
 		State:           &cs,
-		TargetMachineID: entity.Machine,
+		TargetMachineID: entity.MachineID,
 	}
 }
 
