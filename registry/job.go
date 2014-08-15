@@ -383,11 +383,14 @@ func (r *EtcdRegistry) CreateUnit(u *job.Unit) (err error) {
 	}
 
 	_, err = r.etcd.Do(&req)
-	if err != nil && isNodeExist(err) {
-		err = errors.New("job already exists")
+	if err != nil {
+		if isNodeExist(err) {
+			err = errors.New("job already exists")
+		}
+		return
 	}
 
-	return
+	return r.SetUnitTargetState(u.Name, u.TargetState)
 }
 
 func (r *EtcdRegistry) updateJobObjectNode(jm *jobModel, idx uint64) (err error) {

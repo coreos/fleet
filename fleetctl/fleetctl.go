@@ -412,8 +412,8 @@ func findUnits(args []string) (sus []schema.Unit, err error) {
 
 func createUnit(name string, uf *unit.UnitFile) (*schema.Unit, error) {
 	u := schema.Unit{
-		Name:    name,
-		Options: schema.MapUnitFileToSchemaUnitOptions(uf),
+		Name:         name,
+		Options:      schema.MapUnitFileToSchemaUnitOptions(uf),
 	}
 	err := cAPI.CreateUnit(&u)
 	if err != nil {

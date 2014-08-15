@@ -63,52 +63,46 @@ func (ur *unitsResource) set(rw http.ResponseWriter, req *http.Request, item str
 		return
 	}
 
-	u, err := ur.cAPI.Unit(item)
+	eu, err := ur.cAPI.Unit(item)
 	if err != nil {
 		log.Errorf("Failed fetching Unit(%s) from Registry: %v", item, err)
 		sendError(rw, http.StatusInternalServerError, nil)
 		return
 	}
 
-	var opts []*schema.UnitOption
-	if len(su.Options) > 0 {
-		opts = su.Options
+	if eu == nil && len(su.Options) == 0 {
+		err := errors.New("unit does not exist and options field empty")
+		sendError(rw, http.StatusConflict, err)
+		return
 	}
 
-	// TODO(bcwaldon): Assert value of DesiredState is launched, loaded or inactive
-	ds := su.DesiredState
-
-	if u != nil {
-		ur.update(rw, u, ds)
-	} else if opts != nil {
-		ur.create(rw, item, ds, opts)
-	} else {
-		sendError(rw, http.StatusConflict, errors.New("unit does not exist and no fileContents provided"))
+	if eu == nil {
+		ur.create(rw, item, &su)
+		return
 	}
+
+	if len(su.DesiredState) == 0 {
+		err := errors.New("must provide DesiredState to update existing unit")
+		sendError(rw, http.StatusConflict, err)
+		return
+	}
+
+	ur.update(rw, item, su.DesiredState)
 }
 
-func (ur *unitsResource) create(rw http.ResponseWriter, item, ds string, opts []*schema.UnitOption) {
-	u := schema.Unit{Name: item, Options: opts}
-	if err := ur.cAPI.CreateUnit(&u); err != nil {
+func (ur *unitsResource) create(rw http.ResponseWriter, name string, u *schema.Unit) {
+	if err := ur.cAPI.CreateUnit(u); err != nil {
 		log.Errorf("Failed creating Unit(%s) in Registry: %v", u.Name, err)
 		sendError(rw, http.StatusInternalServerError, nil)
 		return
 	}
 
-	if len(ds) > 0 {
-		if err := ur.cAPI.SetUnitTargetState(u.Name, ds); err != nil {
-			log.Errorf("Failed setting target state of Unit(%s): %v", u.Name, err)
-			sendError(rw, http.StatusInternalServerError, nil)
-			return
-		}
-	}
-
 	rw.WriteHeader(http.StatusNoContent)
 }
 
-func (ur *unitsResource) update(rw http.ResponseWriter, u *schema.Unit, ds string) {
-	if err := ur.cAPI.SetUnitTargetState(u.Name, ds); err != nil {
-		log.Errorf("Failed setting target state of Unit(%s): %v", u.Name, err)
+func (ur *unitsResource) update(rw http.ResponseWriter, item, ds string) {
+	if err := ur.cAPI.SetUnitTargetState(item, ds); err != nil {
+		log.Errorf("Failed setting target state of Unit(%s): %v", item, err)
 		sendError(rw, http.StatusInternalServerError, nil)
 		return
 	}

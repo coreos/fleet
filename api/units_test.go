@@ -322,9 +322,6 @@ func TestUnitsSetDesiredState(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		if i != 1 {
-			continue
-		}
 		fr := registry.NewFakeRegistry()
 		fr.SetJobs(tt.initJobs)
 		for j, s := range tt.initStates {

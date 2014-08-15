@@ -51,9 +51,20 @@ func (rc *RegistryClient) Unit(name string) (*schema.Unit, error) {
 
 func (rc *RegistryClient) CreateUnit(u *schema.Unit) error {
 	rUnit := job.Unit{
-		Name: u.Name,
-		Unit: *schema.MapSchemaUnitOptionsToUnitFile(u.Options),
+		Name:        u.Name,
+		Unit:        *schema.MapSchemaUnitOptionsToUnitFile(u.Options),
+		TargetState: job.JobStateInactive,
 	}
+
+	if len(u.DesiredState) > 0 {
+		ts, err := job.ParseJobState(u.DesiredState)
+		if err != nil {
+			return err
+		}
+
+		rUnit.TargetState = ts
+	}
+
 	return rc.Registry.CreateUnit(&rUnit)
 }
 
