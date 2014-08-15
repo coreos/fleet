@@ -9,21 +9,19 @@ import (
 
 	log "github.com/coreos/fleet/Godeps/_workspace/src/github.com/golang/glog"
 
-	"github.com/coreos/fleet/job"
-	"github.com/coreos/fleet/registry"
+	"github.com/coreos/fleet/client"
 	"github.com/coreos/fleet/schema"
-	"github.com/coreos/fleet/unit"
 )
 
-func wireUpUnitsResource(mux *http.ServeMux, prefix string, reg registry.Registry) {
+func wireUpUnitsResource(mux *http.ServeMux, prefix string, cAPI client.API) {
 	base := path.Join(prefix, "units")
-	ur := unitsResource{reg, base}
+	ur := unitsResource{cAPI, base}
 	mux.Handle(base, &ur)
 	mux.Handle(base+"/", &ur)
 }
 
 type unitsResource struct {
-	reg      registry.Registry
+	cAPI     client.API
 	basePath string
 }
 
@@ -65,40 +63,40 @@ func (ur *unitsResource) set(rw http.ResponseWriter, req *http.Request, item str
 		return
 	}
 
-	u, err := ur.reg.Unit(item)
+	u, err := ur.cAPI.Unit(item)
 	if err != nil {
 		log.Errorf("Failed fetching Unit(%s) from Registry: %v", item, err)
 		sendError(rw, http.StatusInternalServerError, nil)
 		return
 	}
 
-	var uf *unit.UnitFile
+	var opts []*schema.UnitOption
 	if len(su.Options) > 0 {
-		uf = schema.MapSchemaUnitOptionsToUnitFile(su.Options)
+		opts = su.Options
 	}
 
 	// TODO(bcwaldon): Assert value of DesiredState is launched, loaded or inactive
-	ds := job.JobState(su.DesiredState)
+	ds := su.DesiredState
 
 	if u != nil {
 		ur.update(rw, u, ds)
-	} else if uf != nil {
-		ur.create(rw, item, ds, uf)
+	} else if opts != nil {
+		ur.create(rw, item, ds, opts)
 	} else {
 		sendError(rw, http.StatusConflict, errors.New("unit does not exist and no fileContents provided"))
 	}
 }
 
-func (ur *unitsResource) create(rw http.ResponseWriter, item string, ds job.JobState, uf *unit.UnitFile) {
-	u := job.Unit{Name: item, Unit: *uf}
-	if err := ur.reg.CreateUnit(&u); err != nil {
+func (ur *unitsResource) create(rw http.ResponseWriter, item, ds string, opts []*schema.UnitOption) {
+	u := schema.Unit{Name: item, Options: opts}
+	if err := ur.cAPI.CreateUnit(&u); err != nil {
 		log.Errorf("Failed creating Unit(%s) in Registry: %v", u.Name, err)
 		sendError(rw, http.StatusInternalServerError, nil)
 		return
 	}
 
 	if len(ds) > 0 {
-		if err := ur.reg.SetUnitTargetState(u.Name, ds); err != nil {
+		if err := ur.cAPI.SetUnitTargetState(u.Name, ds); err != nil {
 			log.Errorf("Failed setting target state of Unit(%s): %v", u.Name, err)
 			sendError(rw, http.StatusInternalServerError, nil)
 			return
@@ -108,8 +106,8 @@ func (ur *unitsResource) create(rw http.ResponseWriter, item string, ds job.JobS
 	rw.WriteHeader(http.StatusNoContent)
 }
 
-func (ur *unitsResource) update(rw http.ResponseWriter, u *job.Unit, ds job.JobState) {
-	if err := ur.reg.SetUnitTargetState(u.Name, ds); err != nil {
+func (ur *unitsResource) update(rw http.ResponseWriter, u *schema.Unit, ds string) {
+	if err := ur.cAPI.SetUnitTargetState(u.Name, ds); err != nil {
 		log.Errorf("Failed setting target state of Unit(%s): %v", u.Name, err)
 		sendError(rw, http.StatusInternalServerError, nil)
 		return
@@ -119,7 +117,7 @@ func (ur *unitsResource) update(rw http.ResponseWriter, u *job.Unit, ds job.JobS
 }
 
 func (ur *unitsResource) destroy(rw http.ResponseWriter, req *http.Request, item string) {
-	u, err := ur.reg.Unit(item)
+	u, err := ur.cAPI.Unit(item)
 	if err != nil {
 		log.Errorf("Failed fetching Unit(%s): %v", item, err)
 		sendError(rw, http.StatusInternalServerError, nil)
@@ -131,7 +129,7 @@ func (ur *unitsResource) destroy(rw http.ResponseWriter, req *http.Request, item
 		return
 	}
 
-	err = ur.reg.DestroyUnit(item)
+	err = ur.cAPI.DestroyUnit(item)
 	if err != nil {
 		log.Errorf("Failed destroying Unit(%s): %v", item, err)
 		sendError(rw, http.StatusInternalServerError, nil)
@@ -142,7 +140,7 @@ func (ur *unitsResource) destroy(rw http.ResponseWriter, req *http.Request, item
 }
 
 func (ur *unitsResource) get(rw http.ResponseWriter, req *http.Request, item string) {
-	u, err := ur.reg.Unit(item)
+	u, err := ur.cAPI.Unit(item)
 	if err != nil {
 		log.Errorf("Failed fetching Unit(%s) from Registry: %v", item, err)
 		sendError(rw, http.StatusInternalServerError, nil)
@@ -154,15 +152,7 @@ func (ur *unitsResource) get(rw http.ResponseWriter, req *http.Request, item str
 		return
 	}
 
-	su, err := ur.reg.ScheduledUnit(item)
-	if err != nil {
-		log.Errorf("Failed fetching ScheduledUnit(%s) from Registry: %v", item, err)
-		sendError(rw, http.StatusInternalServerError, nil)
-		return
-	}
-
-	s := schema.MapUnitToSchemaUnit(u, su)
-	sendResponse(rw, http.StatusOK, *s)
+	sendResponse(rw, http.StatusOK, *u)
 }
 
 func (ur *unitsResource) list(rw http.ResponseWriter, req *http.Request) {
@@ -177,7 +167,7 @@ func (ur *unitsResource) list(rw http.ResponseWriter, req *http.Request) {
 		token = &def
 	}
 
-	page, err := getUnitPage(ur.reg, *token)
+	page, err := getUnitPage(ur.cAPI, *token)
 	if err != nil {
 		log.Errorf("Failed fetching page of Units: %v", err)
 		sendError(rw, http.StatusInternalServerError, nil)
@@ -187,40 +177,25 @@ func (ur *unitsResource) list(rw http.ResponseWriter, req *http.Request) {
 	sendResponse(rw, http.StatusOK, page)
 }
 
-func getUnitPage(reg registry.Registry, tok PageToken) (*schema.UnitPage, error) {
-	units, err := reg.Units()
+func getUnitPage(cAPI client.API, tok PageToken) (*schema.UnitPage, error) {
+	units, err := cAPI.Units()
 	if err != nil {
 		return nil, err
-	}
-
-	sUnits, err := reg.Schedule()
-	if err != nil {
-		return nil, err
-	}
-
-	sUnitMap := make(map[string]*job.ScheduledUnit)
-	for _, sUnit := range sUnits {
-		sUnit := sUnit
-		sUnitMap[sUnit.Name] = &sUnit
 	}
 
 	items, next := extractUnitPageData(units, tok)
 	page := schema.UnitPage{
-		Units: make([]*schema.Unit, len(items)),
+		Units: items,
 	}
 
 	if next != nil {
 		page.NextPageToken = next.Encode()
 	}
 
-	for i, u := range items {
-		page.Units[i] = schema.MapUnitToSchemaUnit(&u, sUnitMap[u.Name])
-	}
-
 	return &page, nil
 }
 
-func extractUnitPageData(all []job.Unit, tok PageToken) (items []job.Unit, next *PageToken) {
+func extractUnitPageData(all []*schema.Unit, tok PageToken) (items []*schema.Unit, next *PageToken) {
 	total := len(all)
 
 	startIndex := int((tok.Page - 1) * tok.Limit)

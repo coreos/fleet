@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/coreos/fleet/client"
 	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/registry"
 )
@@ -17,7 +18,8 @@ func TestMachinesList(t *testing.T) {
 		{ID: "XXX", PublicIP: "", Metadata: nil},
 		{ID: "YYY", PublicIP: "1.2.3.4", Metadata: map[string]string{"ping": "pong"}},
 	})
-	resource := &machinesResource{fr}
+	fAPI := &client.RegistryClient{fr}
+	resource := &machinesResource{fAPI}
 	rw := httptest.NewRecorder()
 	req, err := http.NewRequest("GET", "http://example.com", nil)
 	if err != nil {
@@ -49,7 +51,8 @@ func TestMachinesList(t *testing.T) {
 
 func TestMachinesListBadNextPageToken(t *testing.T) {
 	fr := registry.NewFakeRegistry()
-	resource := &machinesResource{fr}
+	fAPI := &client.RegistryClient{fr}
+	resource := &machinesResource{fAPI}
 	rw := httptest.NewRecorder()
 	req, err := http.NewRequest("GET", "http://example.com/machines?nextPageToken=EwBMLg==", nil)
 	if err != nil {
