@@ -238,9 +238,8 @@ func (r *EtcdRegistry) hydrateJobFromDir(j *job.Job, dir *etcd.Node) (err error)
 	j.TargetMachineID = su.TargetMachineID
 	j.TargetState = tgtstate
 
-	j.UnitState = r.getUnitState(j.Name)
-
-	js := determineJobState(heartbeat, j.TargetMachineID, j.UnitState)
+	us := r.getUnitState(j.Name)
+	js := determineJobState(heartbeat, j.TargetMachineID, us)
 	j.State = &js
 
 	return
