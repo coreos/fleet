@@ -99,7 +99,7 @@ func (r *EtcdRegistry) units() ([]job.Unit, error) {
 	for _, dir := range res.Node.Nodes {
 		u, err := r.dirToUnit(&dir)
 		if err != nil {
-			log.Errorf("Error distilling Unit from node: %v", err)
+			log.Errorf("Failed to parse Unit from etcd: %v", err)
 			continue
 		}
 		if u == nil {
