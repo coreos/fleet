@@ -138,17 +138,12 @@ func (a *Agent) jobs() (map[string]*job.Job, error) {
 	for _, u := range units {
 		filter.Add(u)
 	}
-	states, err := a.um.GetUnitStates(filter)
-	if err != nil {
-		return nil, fmt.Errorf("failed fetching unit states: %v", err)
-	}
 
 	jobs := make(map[string]*job.Job)
 	for _, uName := range units {
 		jobs[uName] = &job.Job{
-			Name:      uName,
-			UnitState: states[uName],
-			State:     nil,
+			Name:  uName,
+			State: nil,
 
 			// The following fields are not properly populated
 			// and should not be used in the calling code

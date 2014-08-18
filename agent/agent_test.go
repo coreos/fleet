@@ -60,14 +60,7 @@ func TestAgentLoadUnloadJob(t *testing.T) {
 	jsLoaded := job.JobStateLoaded
 	expectJobs := map[string]*job.Job{
 		"foo.service": &job.Job{
-			Name: "foo.service",
-			UnitState: &unit.UnitState{
-				LoadState:   "loaded",
-				ActiveState: "active",
-				SubState:    "running",
-				MachineID:   "",
-				UnitName:    "foo.service",
-			},
+			Name:  "foo.service",
 			State: &jsLoaded,
 
 			Unit:            unit.UnitFile{},
@@ -129,14 +122,7 @@ func TestAgentLoadStartStopJob(t *testing.T) {
 	jsLaunched := job.JobStateLaunched
 	expectJobs := map[string]*job.Job{
 		"foo.service": &job.Job{
-			Name: "foo.service",
-			UnitState: &unit.UnitState{
-				LoadState:   "loaded",
-				ActiveState: "active",
-				SubState:    "running",
-				MachineID:   "",
-				UnitName:    "foo.service",
-			},
+			Name:  "foo.service",
 			State: &jsLaunched,
 
 			Unit:            unit.UnitFile{},
@@ -159,14 +145,7 @@ func TestAgentLoadStartStopJob(t *testing.T) {
 	jsLoaded := job.JobStateLoaded
 	expectJobs = map[string]*job.Job{
 		"foo.service": &job.Job{
-			Name: "foo.service",
-			UnitState: &unit.UnitState{
-				LoadState:   "loaded",
-				ActiveState: "active",
-				SubState:    "running",
-				MachineID:   "",
-				UnitName:    "foo.service",
-			},
+			Name:  "foo.service",
 			State: &jsLoaded,
 
 			Unit:            unit.UnitFile{},

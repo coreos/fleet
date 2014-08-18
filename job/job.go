@@ -61,7 +61,6 @@ type Job struct {
 	TargetState     JobState
 	TargetMachineID string
 	Unit            unit.UnitFile
-	UnitState       *unit.UnitState
 }
 
 // ScheduledUnit represents a Unit known by fleet and encapsulates its current scheduling state
@@ -80,8 +79,8 @@ type Unit struct {
 }
 
 // NewJob creates a new Job based on the given name and Unit.
-// The returned Job has a populated UnitHash and empty JobState and
-// UnitState. nil is returned on failure.
+// The returned Job has a populated UnitHash and empty JobState.
+// nil is returned on failure.
 func NewJob(name string, unit unit.UnitFile) *Job {
 	return &Job{
 		Name:            name,
@@ -89,7 +88,6 @@ func NewJob(name string, unit unit.UnitFile) *Job {
 		TargetState:     JobStateInactive,
 		TargetMachineID: "",
 		Unit:            unit,
-		UnitState:       nil,
 	}
 }
 

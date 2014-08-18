@@ -160,7 +160,6 @@ func (f *FakeRegistry) ScheduledUnit(name string) (*job.ScheduledUnit, error) {
 		return nil, nil
 	}
 
-	j.UnitState = f.jobStates[name]
 	su := job.ScheduledUnit{
 		Name:            j.Name,
 		State:           j.State,
