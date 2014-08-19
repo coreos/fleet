@@ -203,7 +203,6 @@ func (ar *AgentReconciler) desiredAgentState(units []job.Unit, sUnits []job.Sche
 			Unit:            u.Unit,
 			TargetState:     u.TargetState,
 			TargetMachineID: sUnit.TargetMachineID,
-			State:           sUnit.State,
 		}
 	}
 
@@ -289,11 +288,6 @@ func (ar *AgentReconciler) calculateTasksForJob(dState, cState *AgentState, jNam
 
 	if cJob.State == nil {
 		log.Errorf("Current state of Job(%s) unknown, unable to reconcile", jName)
-		return
-	}
-
-	if dJob.State == nil {
-		log.Errorf("Desired state of Job(%s) unknown, unable to reconcile", jName)
 		return
 	}
 
