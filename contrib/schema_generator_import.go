@@ -1,7 +1,7 @@
 // +build ignore
 package contrib
 
-// This file exists to ensure Godep manages a vendered copy of the
+// This file exists to ensure Godep manages a vendored copy of the
 // `google-api-go-generator` library, used by contrib/schema-generator.
 // Unfortunately since this is a binary package and hence is not importable, we
 // need to trick godep into managing it. To update the dependency, do the following steps:
