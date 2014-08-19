@@ -162,15 +162,13 @@ func (r *EtcdRegistry) dirToUnit(dir *etcd.Node) (*job.Unit, error) {
 	if u == nil {
 		return nil, fmt.Errorf("unable to parse Unit in Registry at key %s", objKey)
 	}
-	tgtstate := dirToTargetState(dir)
-	if tgtstate == "" {
-		return nil, fmt.Errorf("could not find target-state for Unit(%s)", u.Name)
+	if tgtstate := dirToTargetState(dir); tgtstate != "" {
+		ts, err := job.ParseJobState(tgtstate)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse Unit(%s) target-state: %v", u.Name, err)
+		}
+		u.TargetState = ts
 	}
-	ts, err := job.ParseJobState(tgtstate)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse Unit(%s) target-state: %v", u.Name, err)
-	}
-	u.TargetState = ts
 
 	return u, nil
 }
