@@ -11,6 +11,11 @@
 			"Rev": "f3cebac2bd11c2bf03c15bfa4c66688ad02a0a40"
 		},
 		{
+			"ImportPath": "code.google.com/p/google-api-go-client/google-api-go-generator",
+			"Comment": "release-87",
+			"Rev": "c99e2061b8c60e8c9066434f77bb0d0ac5b34377"
+		},
+		{
 			"ImportPath": "code.google.com/p/google-api-go-client/googleapi",
 			"Comment": "release-87",
 			"Rev": "c99e2061b8c60e8c9066434f77bb0d0ac5b34377"

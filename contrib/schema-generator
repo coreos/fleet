@@ -1,11 +1,20 @@
 #!/bin/bash
 
+IN="schema/v1-alpha.json"
+OUT="schema/v1-alpha-gen.go"
+
+# See contrib/schema_generator_import.go for instructions on updating the dependency
+PKG="code.google.com/p/google-api-go-client/google-api-go-generator"
+
 GEN_PATH="bin/google-api-go-generator"
 if [ ! -f ${GEN_PATH} ]; then
-	go build -o ${GEN_PATH} code.google.com/p/google-api-go-client/google-api-go-generator
+	GOPATH="${PWD}/Godeps/_workspace" go build -o ${GEN_PATH} ${PKG}
 fi
 
-./bin/google-api-go-generator \
+GOPATH=${PWD}/gopath ./bin/google-api-go-generator \
     -googleapi_pkg "code.google.com/p/google-api-go-client/googleapi" \
-    -api_json_file "schema/v1-alpha.json" \
-    -output "schema/v1-alpha-gen.go"
+    -api_json_file "${IN}" \
+    -output "${OUT}"
+
+sed -i -e "s%code.google.com%github.com/coreos/fleet/Godeps/_workspace/src/code.google.com%" "${OUT}"
+goimports -w ${OUT}

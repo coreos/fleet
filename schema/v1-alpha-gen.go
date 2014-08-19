@@ -4,7 +4,7 @@
 //
 // Usage example:
 //
-//   import "code.google.com/p/google-api-go-client/schema/v1-alpha"
+//   import "github.com/coreos/fleet/Godeps/_workspace/src/code.google.com/p/google-api-go-client/schema/v1-alpha"
 //   ...
 //   schemaService, err := schema.New(oauthHttpClient)
 package schema
