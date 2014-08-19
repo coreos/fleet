@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"strconv"
 	"strings"
 
+	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/schema"
 )
@@ -27,6 +29,9 @@ var (
 		"unit": func(u schema.Unit, full bool) string {
 			return u.Name
 		},
+		"global": func(u schema.Unit, full bool) string {
+			return strconv.FormatBool(suToGlobal(u))
+		},
 		"dstate": func(u schema.Unit, full bool) string {
 			if u.DesiredState == "" {
 				return "-"
@@ -34,7 +39,7 @@ var (
 			return u.DesiredState
 		},
 		"tmachine": func(u schema.Unit, full bool) string {
-			if u.MachineID == "" {
+			if suToGlobal(u) || u.MachineID == "" {
 				return "-"
 			}
 			ms := cachedMachineState(u.MachineID)
@@ -45,7 +50,7 @@ var (
 			return machineFullLegend(*ms, full)
 		},
 		"state": func(u schema.Unit, full bool) string {
-			if u.CurrentState == "" {
+			if suToGlobal(u) || u.CurrentState == "" {
 				return "-"
 			}
 			return u.CurrentState
@@ -118,4 +123,11 @@ func unitToFieldKeys(m map[string]unitToField) (keys []string) {
 	}
 	sort.Strings(keys)
 	return
+}
+
+func suToGlobal(su schema.Unit) bool {
+	u := job.Unit{
+		Unit: *schema.MapSchemaUnitOptionsToUnitFile(su.Options),
+	}
+	return u.IsGlobal()
 }

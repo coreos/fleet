@@ -78,6 +78,17 @@ type Unit struct {
 	TargetState JobState
 }
 
+// IsGlobal returns whether a Unit is considered a global unit
+func (u *Unit) IsGlobal() bool {
+	for key, values := range u.Unit.Contents["X-Fleet"] {
+		if key == "Global" {
+			// Last value found wins
+			return strings.ToLower(values[len(values)-1]) == "true"
+		}
+	}
+	return false
+}
+
 // NewJob creates a new Job based on the given name and Unit.
 // The returned Job has a populated UnitHash and empty JobState.
 // nil is returned on failure.

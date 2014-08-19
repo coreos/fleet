@@ -327,3 +327,37 @@ func TestJobScheduled(t *testing.T) {
 		t.Error("Job should now be scheduled")
 	}
 }
+
+func TestUnitIsGlobal(t *testing.T) {
+	for i, tt := range []struct {
+		contents string
+		want     bool
+	}{
+		// empty unit file
+		{"", false},
+		// no relevant sections
+		{"foobarbaz", false},
+		{"[Service]\nExecStart=/bin/true", false},
+		{"[X-Fleet]\nX-ConditionMachineOf=bar", false},
+		{"Global=true", false},
+		// specified in wrong section
+		{"[Service]\nGlobal=true", false},
+		// bad values
+		{"[X-Fleet]\nX-ConditionMachineOf=bar\nGlobal=false", false},
+		{"[X-Fleet]\nX-ConditionMachineOf=bar\nGlobal=what", false},
+		// correct specifications
+		{"[X-Fleet]\nX-ConditionMachineOf=foo\nGlobal=true", true},
+		{"[X-Fleet]\nX-ConditionMachineOf=foo\nGlobal=True", true},
+		// multiple parameters - last wins
+		{"[X-Fleet]\nGlobal=true\nGlobal=false", false},
+		{"[X-Fleet]\nGlobal=false\nGlobal=true", true},
+	} {
+		u := Unit{
+			Unit: *newUnit(t, tt.contents),
+		}
+		got := u.IsGlobal()
+		if got != tt.want {
+			t.Errorf("case %d: IsGlobal returned %t, want %t", i, got, tt.want)
+		}
+	}
+}
