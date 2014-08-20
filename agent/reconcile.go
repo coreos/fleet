@@ -236,12 +236,20 @@ func (ar *AgentReconciler) calculateTaskChainForJob(dState, cState *AgentState, 
 	}
 
 	if cJob == nil {
-		t := task{
+		tc := newTaskChain(dJob)
+		tc.Add(task{
 			typ:    taskTypeLoadJob,
 			reason: taskReasonScheduledButUnloaded,
+		})
+
+		// as an optimization, queue the job for launching immediately after loading
+		if dJob.TargetState == job.JobStateLaunched {
+			tc.Add(task{
+				typ:    taskTypeStartJob,
+				reason: taskReasonLoadedDesiredStateLaunched,
+			})
 		}
 
-		tc := newTaskChain(dJob, t)
 		return &tc
 	}
 
