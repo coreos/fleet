@@ -8,10 +8,9 @@ import (
 	log "github.com/coreos/fleet/Godeps/_workspace/src/github.com/golang/glog"
 
 	"github.com/coreos/fleet/etcd"
-	"github.com/coreos/fleet/pkg"
 )
 
-var (
+const (
 	// Occurs when any Job's target is touched
 	JobTargetChangeEvent = Event("JobTargetChangeEvent")
 	// Occurs when any Job's target state is touched
@@ -24,22 +23,17 @@ type EventStream interface {
 
 type Event string
 
-type EtcdEventStream struct {
+type etcdEventStream struct {
 	etcd       etcd.Client
 	rootPrefix string
-	listen     pkg.Set
 }
 
-func NewEtcdEventStream(client etcd.Client, rootPrefix string, listen []Event) (*EtcdEventStream, error) {
-	lSet := pkg.NewUnsafeSet()
-	for _, e := range listen {
-		lSet.Add(string(e))
-	}
-
-	return &EtcdEventStream{client, rootPrefix, lSet}, nil
+func NewEventStream(client etcd.Client, rootPrefix string) (EventStream, error) {
+	return &etcdEventStream{client, rootPrefix}, nil
 }
 
-func (es *EtcdEventStream) Next(stop chan struct{}) chan Event {
+// Next returns a channel which will emit an Event as soon as one of interest occurs
+func (es *etcdEventStream) Next(stop chan struct{}) chan Event {
 	evchan := make(chan Event)
 	go func() {
 		for {
@@ -50,26 +44,15 @@ func (es *EtcdEventStream) Next(stop chan struct{}) chan Event {
 			}
 
 			res := watch(es.etcd, path.Join(es.rootPrefix, jobPrefix), stop)
-			ev, ok := parse(res, es.rootPrefix)
-			if !ok {
-				continue
+			if ev, ok := parse(res, es.rootPrefix); ok {
+				evchan <- ev
+				return
 			}
-
-			if !es.filter(ev) {
-				continue
-			}
-
-			evchan <- ev
-			break
 		}
 
 	}()
 
 	return evchan
-}
-
-func (es *EtcdEventStream) filter(ev Event) bool {
-	return es.listen.Contains(string(ev))
 }
 
 func parse(res *etcd.Result, prefix string) (ev Event, ok bool) {
