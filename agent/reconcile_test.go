@@ -162,7 +162,7 @@ func TestCalculateTasksForJob(t *testing.T) {
 		cState *AgentState
 		jName  string
 
-		tasks []task
+		chain *taskChain
 	}{
 
 		// nil agent state objects should result in no tasks
@@ -170,7 +170,7 @@ func TestCalculateTasksForJob(t *testing.T) {
 			dState: nil,
 			cState: nil,
 			jName:  "foo.service",
-			tasks:  []task{},
+			chain:  nil,
 		},
 
 		// nil job should result in no tasks
@@ -178,7 +178,7 @@ func TestCalculateTasksForJob(t *testing.T) {
 			dState: NewAgentState(&machine.MachineState{ID: "XXX"}),
 			cState: NewAgentState(&machine.MachineState{ID: "XXX"}),
 			jName:  "foo.service",
-			tasks:  []task{},
+			chain:  nil,
 		},
 
 		// no work needs to be done when target state == desired state
@@ -196,7 +196,7 @@ func TestCalculateTasksForJob(t *testing.T) {
 				},
 			},
 			jName: "foo.service",
-			tasks: []task{},
+			chain: nil,
 		},
 
 		// no work needs to be done when target state == desired state
@@ -214,7 +214,7 @@ func TestCalculateTasksForJob(t *testing.T) {
 				},
 			},
 			jName: "foo.service",
-			tasks: []task{},
+			chain: nil,
 		},
 
 		// load jobs that have a loaded desired state
@@ -227,11 +227,13 @@ func TestCalculateTasksForJob(t *testing.T) {
 			},
 			cState: NewAgentState(&machine.MachineState{ID: "XXX"}),
 			jName:  "foo.service",
-			tasks: []task{
-				task{
-					Type:   taskTypeLoadJob,
-					Job:    &job.Job{TargetState: jsLoaded},
-					Reason: taskReasonScheduledButUnloaded,
+			chain: &taskChain{
+				job: &job.Job{TargetState: jsLoaded},
+				tasks: []task{
+					task{
+						typ:    taskTypeLoadJob,
+						reason: taskReasonScheduledButUnloaded,
+					},
 				},
 			},
 		},
@@ -246,11 +248,13 @@ func TestCalculateTasksForJob(t *testing.T) {
 			},
 			cState: NewAgentState(&machine.MachineState{ID: "XXX"}),
 			jName:  "foo.service",
-			tasks: []task{
-				task{
-					Type:   taskTypeLoadJob,
-					Job:    &job.Job{TargetState: jsLaunched},
-					Reason: taskReasonScheduledButUnloaded,
+			chain: &taskChain{
+				job: &job.Job{TargetState: jsLaunched},
+				tasks: []task{
+					task{
+						typ:    taskTypeLoadJob,
+						reason: taskReasonScheduledButUnloaded,
+					},
 				},
 			},
 		},
@@ -265,11 +269,13 @@ func TestCalculateTasksForJob(t *testing.T) {
 				},
 			},
 			jName: "foo.service",
-			tasks: []task{
-				task{
-					Type:   taskTypeUnloadJob,
-					Job:    &job.Job{State: &jsLoaded},
-					Reason: taskReasonLoadedButNotScheduled,
+			chain: &taskChain{
+				job: &job.Job{State: &jsLoaded},
+				tasks: []task{
+					task{
+						typ:    taskTypeUnloadJob,
+						reason: taskReasonLoadedButNotScheduled,
+					},
 				},
 			},
 		},
@@ -284,11 +290,13 @@ func TestCalculateTasksForJob(t *testing.T) {
 				},
 			},
 			jName: "foo.service",
-			tasks: []task{
-				task{
-					Type:   taskTypeUnloadJob,
-					Job:    &job.Job{State: &jsLaunched},
-					Reason: taskReasonLoadedButNotScheduled,
+			chain: &taskChain{
+				job: &job.Job{State: &jsLaunched},
+				tasks: []task{
+					task{
+						typ:    taskTypeUnloadJob,
+						reason: taskReasonLoadedButNotScheduled,
+					},
 				},
 			},
 		},
@@ -310,11 +318,13 @@ func TestCalculateTasksForJob(t *testing.T) {
 				},
 			},
 			jName: "foo.service",
-			tasks: []task{
-				task{
-					Type:   taskTypeUnloadJob,
-					Job:    &job.Job{State: &jsLoaded},
-					Reason: taskReasonLoadedButNotScheduled,
+			chain: &taskChain{
+				job: &job.Job{State: &jsLoaded},
+				tasks: []task{
+					task{
+						typ:    taskTypeUnloadJob,
+						reason: taskReasonLoadedButNotScheduled,
+					},
 				},
 			},
 		},
@@ -327,19 +337,9 @@ func TestCalculateTasksForJob(t *testing.T) {
 			continue
 		}
 
-		taskchan := make(chan *task)
-		tasks := []task{}
-		go func() {
-			ar.calculateTasksForJob(tt.dState, tt.cState, tt.jName, taskchan)
-			close(taskchan)
-		}()
-
-		for t := range taskchan {
-			tasks = append(tasks, *t)
-		}
-
-		if !reflect.DeepEqual(tt.tasks, tasks) {
-			t.Errorf("case %d: calculated incorrect list of tasks\nexpected=%v\nreceived=%v\n", i, tt.tasks, tasks)
+		chain := ar.calculateTaskChainForJob(tt.dState, tt.cState, tt.jName)
+		if !reflect.DeepEqual(tt.chain, chain) {
+			t.Errorf("case %d: calculated incorrect task chain\nexpected=%v\nreceived=%v\n", i, tt.chain, chain)
 		}
 	}
 }
