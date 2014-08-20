@@ -74,12 +74,15 @@ func (e *Engine) Run(ival time.Duration, stop chan bool) {
 
 	trigger := make(chan struct{})
 	go func() {
-		abort := make(chan struct{})
-		select {
-		case <-stop:
-			close(abort)
-		case <-e.rStream.Next(abort):
-			trigger <- struct{}{}
+		for {
+			abort := make(chan struct{})
+			select {
+			case <-stop:
+				close(abort)
+				return
+			case <-e.rStream.Next(abort):
+				trigger <- struct{}{}
+			}
 		}
 	}()
 

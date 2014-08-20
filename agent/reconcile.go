@@ -50,11 +50,14 @@ func (ar *AgentReconciler) Run(a *Agent, stop chan bool) {
 	trigger := make(chan struct{})
 	go func() {
 		abort := make(chan struct{})
-		select {
-		case <-stop:
-			close(abort)
-		case <-ar.rStream.Next(abort):
-			trigger <- struct{}{}
+		for {
+			select {
+			case <-stop:
+				close(abort)
+				return
+			case <-ar.rStream.Next(abort):
+				trigger <- struct{}{}
+			}
 		}
 	}()
 
@@ -64,8 +67,10 @@ func (ar *AgentReconciler) Run(a *Agent, stop chan bool) {
 			log.V(1).Info("AgentReconciler exiting due to stop signal")
 			return
 		case <-ticker:
+			log.V(1).Info("AgentReconciler tick")
 			reconcile()
 		case <-trigger:
+			log.V(1).Info("AgentReconciler triggered by rStream event")
 			reconcile()
 		}
 	}

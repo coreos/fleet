@@ -138,7 +138,7 @@ func newMachineFromConfig(cfg config.Config, mgr unit.UnitManager) (*machine.Cor
 }
 
 func newEngineFromConfig(reg registry.Registry, eClient etcd.Client, mach machine.Machine, cfg config.Config) (*engine.Engine, error) {
-	listen := []registry.Event{registry.JobTargetChangeEvent, registry.JobTargetStateChangeEvent}
+	listen := []registry.Event{registry.JobTargetChangeEvent}
 	rStream, err := registry.NewEtcdEventStream(eClient, cfg.EtcdKeyPrefix, listen)
 	if err != nil {
 		return nil, err
@@ -149,7 +149,7 @@ func newEngineFromConfig(reg registry.Registry, eClient etcd.Client, mach machin
 }
 
 func newAgentReconcilerFromConfig(reg registry.Registry, eClient etcd.Client, cfg config.Config) (*agent.AgentReconciler, error) {
-	listen := []registry.Event{registry.JobTargetChangeEvent}
+	listen := []registry.Event{registry.JobTargetChangeEvent, registry.JobTargetStateChangeEvent}
 	rStream, err := registry.NewEtcdEventStream(eClient, cfg.EtcdKeyPrefix, listen)
 	if err != nil {
 		return nil, err
