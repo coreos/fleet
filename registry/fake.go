@@ -33,7 +33,6 @@ type FakeRegistry struct {
 	machines  []machine.MachineState
 	jobStates map[string]*unit.UnitState
 	jobs      map[string]job.Job
-	global    map[string]job.Unit
 	units     []unit.UnitFile
 	version   *semver.Version
 }

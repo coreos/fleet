@@ -27,9 +27,9 @@ func (rc *RegistryClient) Units() ([]*schema.Unit, error) {
 		sUnitMap[sUnit.Name] = &sUnit
 	}
 
-	units := make([]*schema.Unit, 0, len(rUnits))
-	for _, ru := range rUnits {
-		units = append(units, schema.MapUnitToSchemaUnit(&ru, sUnitMap[ru.Name]))
+	units := make([]*schema.Unit, len(rUnits))
+	for i, ru := range rUnits {
+		units[i] = schema.MapUnitToSchemaUnit(&ru, sUnitMap[ru.Name])
 	}
 
 	return units, nil
