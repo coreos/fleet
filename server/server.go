@@ -70,7 +70,11 @@ func New(cfg config.Config) (*Server, error) {
 
 	reg := registry.New(eClient, cfg.EtcdKeyPrefix)
 
-	pub := agent.NewUnitStatePublisher(mgr, reg, mach)
+	pub, err := newUnitStatePublisherFromConfig(mgr, mach, reg, cfg)
+	if err != nil {
+		return nil, err
+	}
+
 	gen := unit.NewUnitStateGenerator(mgr)
 
 	a, err := newAgentFromConfig(mach, reg, cfg, mgr, gen)
@@ -118,6 +122,15 @@ func New(cfg config.Config) (*Server, error) {
 	}
 
 	return &srv, nil
+}
+
+func newUnitStatePublisherFromConfig(mgr unit.UnitManager, mach machine.Machine, reg registry.Registry, cfg config.Config) (*agent.UnitStatePublisher, error) {
+	ttl, err := time.ParseDuration(cfg.AgentTTL)
+	if err != nil {
+		return nil, err
+	}
+
+	return agent.NewUnitStatePublisher(mgr, reg, mach, ttl), nil
 }
 
 func newHeartMonitorFromConfig(mach machine.Machine, reg registry.Registry, cfg config.Config) (hrt heart.Heart, mon *heart.Monitor, err error) {

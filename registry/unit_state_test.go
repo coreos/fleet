@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"sort"
 	"testing"
+	"time"
 
 	"github.com/coreos/fleet/etcd"
 	"github.com/coreos/fleet/machine"
@@ -74,7 +75,7 @@ func TestSaveUnitState(t *testing.T) {
 	us := unit.NewUnitState("abc", "def", "ghi", mID)
 
 	// Saving nil unit state should fail
-	r.SaveUnitState(j, nil)
+	r.SaveUnitState(j, nil, time.Second)
 	if e.sets != nil || e.deletes != nil {
 		t.Logf("sets: %#v", e.sets)
 		t.Logf("deletes: %#v", e.deletes)
@@ -83,7 +84,7 @@ func TestSaveUnitState(t *testing.T) {
 
 	// Saving unit state with no hash should succeed for now, but should fail
 	// in the future. See https://github.com/coreos/fleet/issues/720.
-	//r.SaveUnitState(j, us)
+	//r.SaveUnitState(j, us, time.Second)
 	//if len(e.sets) != 1 || e.deletes == nil {
 	//	t.Logf("sets: %#v", e.sets)
 	//	t.Logf("deletes: %#v", e.deletes)
@@ -91,7 +92,7 @@ func TestSaveUnitState(t *testing.T) {
 	//}
 
 	us.UnitHash = "quickbrownfox"
-	r.SaveUnitState(j, us)
+	r.SaveUnitState(j, us, time.Second)
 
 	json := `{"loadState":"abc","activeState":"def","subState":"ghi","machineState":{"ID":"mymachine","PublicIP":"","Metadata":null,"Version":"","TotalResources":{"Cores":0,"Memory":0,"Disk":0},"FreeResources":{"Cores":0,"Memory":0,"Disk":0}},"unitHash":"quickbrownfox"}`
 	p1 := "/fleet/state/foo.service"

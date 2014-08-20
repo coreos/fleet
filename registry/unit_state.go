@@ -3,6 +3,7 @@ package registry
 import (
 	"path"
 	"sort"
+	"time"
 
 	log "github.com/coreos/fleet/Godeps/_workspace/src/github.com/golang/glog"
 
@@ -162,7 +163,7 @@ func (r *EtcdRegistry) getUnitState(jobName string) *unit.UnitState {
 }
 
 // SaveUnitState persists the given UnitState to the Registry
-func (r *EtcdRegistry) SaveUnitState(jobName string, unitState *unit.UnitState) {
+func (r *EtcdRegistry) SaveUnitState(jobName string, unitState *unit.UnitState, ttl time.Duration) {
 	usm := unitStateToModel(unitState)
 	if usm == nil {
 		log.Errorf("Unable to save nil UnitState model")
@@ -179,6 +180,7 @@ func (r *EtcdRegistry) SaveUnitState(jobName string, unitState *unit.UnitState) 
 	req := etcd.Set{
 		Key:   legacyKey,
 		Value: json,
+		TTL:   ttl,
 	}
 	r.etcd.Do(&req)
 
@@ -186,6 +188,7 @@ func (r *EtcdRegistry) SaveUnitState(jobName string, unitState *unit.UnitState) 
 	req = etcd.Set{
 		Key:   newKey,
 		Value: json,
+		TTL:   ttl,
 	}
 	r.etcd.Do(&req)
 }
