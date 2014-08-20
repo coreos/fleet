@@ -69,7 +69,7 @@ func (nc *nspawnCluster) WaitForNMachines(count int) ([]string, error) {
 	return util.WaitForNMachines(nc.Fleetctl, count)
 }
 
-func (nc *nspawnCluster) WaitForNActiveUnits(count int) (map[string]util.UnitState, error) {
+func (nc *nspawnCluster) WaitForNActiveUnits(count int) (map[string][]util.UnitState, error) {
 	return util.WaitForNActiveUnits(nc.Fleetctl, count)
 }
 
@@ -326,6 +326,16 @@ UseDNS no
 		log.Printf("Failed symlinking fleet.service: %v", err)
 		return
 	}
+
+	/*
+		// Ensure etcd is available in the container
+		_, stderr, err = nc.nsenter(pid, "etcdctl ls")
+		if err != nil {
+			log.Printf("Failed reaching etcd from within container: %s", stderr)
+			time.Sleep(100 * time.Second)
+			return
+		}
+	*/
 
 	_, _, err = nc.nsenter(pid, "systemctl start fleet.service")
 	if err != nil {
