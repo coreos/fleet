@@ -80,15 +80,11 @@ func New(cfg config.Config) (*Server, error) {
 
 	a := agent.New(mgr, gen, reg, mach, agentTTL)
 
-	ar, err := newAgentReconcilerFromConfig(reg, eClient, cfg)
-	if err != nil {
-		return nil, err
-	}
+	rStream := registry.NewEtcdEventStream(eClient, cfg.EtcdKeyPrefix)
 
-	e, err := newEngineFromConfig(reg, eClient, mach, cfg)
-	if err != nil {
-		return nil, err
-	}
+	ar := agent.NewReconciler(reg, rStream)
+
+	e := engine.New(reg, rStream, mach)
 
 	listeners, err := activation.Listeners(false)
 	if err != nil {
@@ -135,25 +131,6 @@ func newMachineFromConfig(cfg config.Config, mgr unit.UnitManager) (*machine.Cor
 	}
 
 	return mach, nil
-}
-
-func newEngineFromConfig(reg registry.Registry, eClient etcd.Client, mach machine.Machine, cfg config.Config) (*engine.Engine, error) {
-	rStream, err := registry.NewEventStream(eClient, cfg.EtcdKeyPrefix)
-	if err != nil {
-		return nil, err
-	}
-
-	e := engine.New(reg, rStream, mach)
-	return e, nil
-}
-
-func newAgentReconcilerFromConfig(reg registry.Registry, eClient etcd.Client, cfg config.Config) (*agent.AgentReconciler, error) {
-	rStream, err := registry.NewEventStream(eClient, cfg.EtcdKeyPrefix)
-	if err != nil {
-		return nil, err
-	}
-
-	return agent.NewReconciler(reg, rStream)
 }
 
 func (s *Server) Run() {

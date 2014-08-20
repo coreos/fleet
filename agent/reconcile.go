@@ -16,10 +16,8 @@ const (
 	reconcileInterval = 5 * time.Second
 )
 
-func NewReconciler(reg registry.Registry, rStream registry.EventStream) (*AgentReconciler, error) {
-	taskManager := newTaskManager()
-	ar := AgentReconciler{reg, rStream, taskManager}
-	return &ar, nil
+func NewReconciler(reg registry.Registry, rStream registry.EventStream) *AgentReconciler {
+	return &AgentReconciler{reg, rStream, newTaskManager()}
 }
 
 type AgentReconciler struct {

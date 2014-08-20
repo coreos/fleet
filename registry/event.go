@@ -28,8 +28,8 @@ type etcdEventStream struct {
 	rootPrefix string
 }
 
-func NewEventStream(client etcd.Client, rootPrefix string) (EventStream, error) {
-	return &etcdEventStream{client, rootPrefix}, nil
+func NewEtcdEventStream(client etcd.Client, rootPrefix string) EventStream {
+	return &etcdEventStream{client, rootPrefix}
 }
 
 // Next returns a channel which will emit an Event as soon as one of interest occurs
