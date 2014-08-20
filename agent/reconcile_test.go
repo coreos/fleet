@@ -335,12 +335,7 @@ func TestCalculateTasksForJob(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		ar, err := NewReconciler(registry.NewFakeRegistry(), nil)
-		if err != nil {
-			t.Errorf("case %d: unexpected error from NewReconciler: %v", i, err)
-			continue
-		}
-
+		ar := NewReconciler(registry.NewFakeRegistry(), nil)
 		chain := ar.calculateTaskChainForJob(tt.dState, tt.cState, tt.jName)
 		if !reflect.DeepEqual(tt.chain, chain) {
 			t.Errorf("case %d: calculated incorrect task chain\nexpected=%v\nreceived=%v\n", i, tt.chain, chain)
