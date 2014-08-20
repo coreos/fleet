@@ -7,7 +7,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/schema"
 )
@@ -123,11 +122,4 @@ func unitToFieldKeys(m map[string]unitToField) (keys []string) {
 	}
 	sort.Strings(keys)
 	return
-}
-
-func suToGlobal(su schema.Unit) bool {
-	u := job.Unit{
-		Unit: *schema.MapSchemaUnitOptionsToUnitFile(su.Options),
-	}
-	return u.IsGlobal()
 }

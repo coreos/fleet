@@ -520,7 +520,7 @@ func warnOnDifferentLocalUnit(name string, su *schema.Unit) {
 	}
 }
 
-func lazyLoadUnits(args []string) ([]string, error) {
+func lazyLoadUnits(args []string) ([]*schema.Unit, error) {
 	units := make([]string, 0, len(args))
 	for _, j := range args {
 		units = append(units, unitNameMangle(j))
@@ -528,7 +528,7 @@ func lazyLoadUnits(args []string) ([]string, error) {
 	return setTargetStateOfUnits(units, job.JobStateLoaded)
 }
 
-func lazyStartUnits(args []string) ([]string, error) {
+func lazyStartUnits(args []string) ([]*schema.Unit, error) {
 	units := make([]string, 0, len(args))
 	for _, j := range args {
 		units = append(units, unitNameMangle(j))
@@ -540,22 +540,22 @@ func lazyStartUnits(args []string) ([]string, error) {
 // to the given state in the Registry.
 // On success, a slice of the Units for which a state change was made is returned.
 // Any error encountered is immediately returned (i.e. this is not a transaction).
-func setTargetStateOfUnits(units []string, state job.JobState) ([]string, error) {
-	triggered := make([]string, 0)
+func setTargetStateOfUnits(units []string, state job.JobState) ([]*schema.Unit, error) {
+	triggered := make([]*schema.Unit, 0)
 	for _, name := range units {
 		u, err := cAPI.Unit(name)
 		if err != nil {
 			return nil, fmt.Errorf("error retrieving unit %s from registry: %v", name, err)
 		} else if u == nil {
 			return nil, fmt.Errorf("unable to find unit %s", name)
-		} else if job.JobState(u.CurrentState) == state {
-			log.V(1).Infof("Unit(%s) already %s, skipping.", u.Name, u.CurrentState)
+		} else if job.JobState(u.DesiredState) == state {
+			log.V(1).Infof("Unit(%s) already %s, skipping.", u.Name, u.DesiredState)
 			continue
 		}
 
 		log.V(1).Infof("Setting Unit(%s) target state to %s", u.Name, state)
 		cAPI.SetUnitTargetState(u.Name, string(state))
-		triggered = append(triggered, u.Name)
+		triggered = append(triggered, u)
 	}
 
 	return triggered, nil
@@ -673,4 +673,12 @@ func unitNameMangle(baseName string) string {
 	}
 
 	return name
+}
+
+// suToGlobal returns whether or not a schema.Unit refers to a global unit
+func suToGlobal(su schema.Unit) bool {
+	u := job.Unit{
+		Unit: *schema.MapSchemaUnitOptionsToUnitFile(su.Options),
+	}
+	return u.IsGlobal()
 }
