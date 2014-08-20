@@ -220,6 +220,7 @@ func (s *Server) Stop() {
 
 func (s *Server) Purge() {
 	s.aReconciler.Purge(s.agent)
+	s.usPub.Purge()
 	s.engine.Purge()
 	s.hrt.Clear()
 }

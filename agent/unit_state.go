@@ -115,3 +115,9 @@ func (p *UnitStatePublisher) addToCache(update *unit.UnitStateHeartbeat) {
 		go p.publishOne(update.Name, update.State)
 	}
 }
+
+func (p *UnitStatePublisher) Purge() {
+	for name := range p.cache {
+		p.publishOne(name, nil)
+	}
+}
