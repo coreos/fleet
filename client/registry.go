@@ -27,9 +27,9 @@ func (rc *RegistryClient) Units() ([]*schema.Unit, error) {
 		sUnitMap[sUnit.Name] = &sUnit
 	}
 
-	units := make([]*schema.Unit, len(rUnits))
-	for i, ru := range rUnits {
-		units[i] = schema.MapUnitToSchemaUnit(&ru, sUnitMap[ru.Name])
+	units := make([]*schema.Unit, 0, len(rUnits))
+	for _, ru := range rUnits {
+		units = append(units, schema.MapUnitToSchemaUnit(&ru, sUnitMap[ru.Name]))
 	}
 
 	return units, nil
@@ -41,9 +41,13 @@ func (rc *RegistryClient) Unit(name string) (*schema.Unit, error) {
 		return nil, err
 	}
 
-	sUnit, err := rc.Registry.ScheduledUnit(name)
-	if err != nil {
-		return nil, err
+	var sUnit *job.ScheduledUnit
+	// Only non-global units have an associated Schedule
+	if !rUnit.IsGlobal() {
+		sUnit, err = rc.Registry.ScheduledUnit(name)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return schema.MapUnitToSchemaUnit(rUnit, sUnit), nil

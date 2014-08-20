@@ -62,7 +62,7 @@ type Job struct {
 	Unit            unit.UnitFile
 }
 
-// ScheduledUnit represents a Unit known by fleet and encapsulates its current scheduling state
+// ScheduledUnit represents a Unit known by fleet and encapsulates its current scheduling state. This does not include Global units.
 type ScheduledUnit struct {
 	Name            string
 	State           *JobState

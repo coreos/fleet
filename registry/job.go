@@ -72,14 +72,8 @@ func (r *EtcdRegistry) Schedule() ([]job.ScheduledUnit, error) {
 	return units, nil
 }
 
-// Units lists all Units stored in the Registry, ordered by name
+// Units lists all Units stored in the Registry, ordered by name. This includes both global and non-global units.
 func (r *EtcdRegistry) Units() ([]job.Unit, error) {
-	return r.units()
-}
-
-// units retrieves a list of all units stored in the
-// Registry, depending on the provided flag. The list is ordered by unit name.
-func (r *EtcdRegistry) units() ([]job.Unit, error) {
 	req := etcd.Get{
 		Key:       path.Join(r.keyPrefix, jobPrefix),
 		Sorted:    true,

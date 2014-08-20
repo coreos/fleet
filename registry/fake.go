@@ -33,6 +33,7 @@ type FakeRegistry struct {
 	machines  []machine.MachineState
 	jobStates map[string]*unit.UnitState
 	jobs      map[string]job.Job
+	global    map[string]job.Unit
 	units     []unit.UnitFile
 	version   *semver.Version
 }
@@ -96,15 +97,15 @@ func (f *FakeRegistry) Units() ([]job.Unit, error) {
 	}
 	sorted.Sort()
 
-	units := make([]job.Unit, 0, len(f.jobs))
-	for _, jName := range sorted {
+	units := make([]job.Unit, len(f.jobs))
+	for i, jName := range sorted {
 		j := f.jobs[jName]
 		u := job.Unit{
 			Name:        j.Name,
 			Unit:        j.Unit,
 			TargetState: j.TargetState,
 		}
-		units = append(units, u)
+		units[i] = u
 	}
 
 	return units, nil

@@ -97,7 +97,7 @@ func (r *EtcdRegistry) hashedUnitPath(hash unit.Hash) string {
 	return path.Join(r.keyPrefix, unitPrefix, hash.String())
 }
 
-// LegacyJobPayload deals with the legacy concept of a "JobPayload" (deprecated by Units).
+// LegacyJobPayload deals with the legacy concept of a "JobPayload" (deprecated by UnitFiles).
 // The associated marshaling/unmarshaling methods deal with Payloads encoded in this legacy format.
 type LegacyJobPayload struct {
 	Name string
