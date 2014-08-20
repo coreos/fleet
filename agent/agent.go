@@ -29,14 +29,8 @@ type Agent struct {
 	cache *agentCache
 }
 
-func New(mgr unit.UnitManager, uGen *unit.UnitStateGenerator, reg registry.Registry, mach machine.Machine, ttl string) (*Agent, error) {
-	ttldur, err := time.ParseDuration(ttl)
-	if err != nil {
-		return nil, err
-	}
-
-	a := &Agent{reg, mgr, uGen, mach, ttldur, &agentCache{}}
-	return a, nil
+func New(mgr unit.UnitManager, uGen *unit.UnitStateGenerator, reg registry.Registry, mach machine.Machine, ttl time.Duration) *Agent {
+	return &Agent{reg, mgr, uGen, mach, ttl, &agentCache{}}
 }
 
 func (a *Agent) MarshalJSON() ([]byte, error) {
