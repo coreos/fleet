@@ -230,7 +230,7 @@ func (f *FakeRegistry) ScheduleUnit(name string, machID string) error {
 	return nil
 }
 
-func (f *FakeRegistry) SaveUnitState(jobName string, unitState *unit.UnitState) {
+func (f *FakeRegistry) SaveUnitState(jobName string, unitState *unit.UnitState, ttl time.Duration) {
 	f.Lock()
 	defer f.Unlock()
 

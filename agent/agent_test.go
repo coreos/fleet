@@ -41,13 +41,10 @@ func TestAgentLoadUnloadJob(t *testing.T) {
 	usGenerator := unit.NewUnitStateGenerator(uManager)
 	fReg := registry.NewFakeRegistry()
 	mach := &machine.FakeMachine{machine.MachineState{ID: "XXX"}}
-	a, err := New(uManager, usGenerator, fReg, mach, DefaultTTL)
-	if err != nil {
-		t.Fatalf("Failed creating Agent: %v", err)
-	}
+	a := New(uManager, usGenerator, fReg, mach, time.Second)
 
 	j := newTestJobFromUnitContents(t, "foo.service", "")
-	err = a.loadJob(j)
+	err := a.loadJob(j)
 	if err != nil {
 		t.Fatalf("Failed calling Agent.loadJob: %v", err)
 	}
@@ -95,10 +92,7 @@ func TestAgentLoadStartStopJob(t *testing.T) {
 	usGenerator := unit.NewUnitStateGenerator(uManager)
 	fReg := registry.NewFakeRegistry()
 	mach := &machine.FakeMachine{machine.MachineState{ID: "XXX"}}
-	a, err := New(uManager, usGenerator, fReg, mach, DefaultTTL)
-	if err != nil {
-		t.Fatalf("Failed creating Agent: %v", err)
-	}
+	a := New(uManager, usGenerator, fReg, mach, time.Second)
 
 	u, err := unit.NewUnitFile("")
 	if err != nil {

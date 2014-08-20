@@ -12,11 +12,12 @@ import (
 	"github.com/coreos/fleet/unit"
 )
 
-func NewUnitStatePublisher(mgr unit.UnitManager, reg registry.Registry, mach machine.Machine) *UnitStatePublisher {
+func NewUnitStatePublisher(mgr unit.UnitManager, reg registry.Registry, mach machine.Machine, ttl time.Duration) *UnitStatePublisher {
 	return &UnitStatePublisher{
 		mgr:   mgr,
 		reg:   reg,
 		mach:  mach,
+		ttl:   ttl,
 		mutex: sync.RWMutex{},
 		cache: make(map[string]*unit.UnitState),
 	}
@@ -26,6 +27,7 @@ type UnitStatePublisher struct {
 	mgr  unit.UnitManager
 	reg  registry.Registry
 	mach machine.Machine
+	ttl  time.Duration
 
 	mutex sync.RWMutex
 	cache map[string]*unit.UnitState
@@ -98,7 +100,7 @@ func (p *UnitStatePublisher) publishOne(name string, us *unit.UnitState) {
 			log.Errorf("Refusing to push UnitState(%s), no MachineID: %#v", name, us)
 		} else {
 			log.V(1).Infof("Pushing UnitState(%s) to Registry: %#v", name, us)
-			p.reg.SaveUnitState(name, us)
+			p.reg.SaveUnitState(name, us, p.ttl)
 		}
 	}
 }

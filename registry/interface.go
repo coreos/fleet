@@ -20,7 +20,7 @@ type Registry interface {
 	Machines() ([]machine.MachineState, error)
 	RemoveMachineState(machID string) error
 	RemoveUnitState(jobName string) error
-	SaveUnitState(jobName string, unitState *unit.UnitState)
+	SaveUnitState(jobName string, unitState *unit.UnitState, ttl time.Duration)
 	ScheduleUnit(name, machID string) error
 	SetUnitTargetState(name string, state job.JobState) error
 	SetMachineState(ms machine.MachineState, ttl time.Duration) (uint64, error)

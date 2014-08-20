@@ -46,6 +46,12 @@ type Server struct {
 }
 
 func New(cfg config.Config) (*Server, error) {
+	etcdRequestTimeout := time.Duration(cfg.EtcdRequestTimeout*1000) * time.Millisecond
+	agentTTL, err := time.ParseDuration(cfg.AgentTTL)
+	if err != nil {
+		return nil, err
+	}
+
 	mgr, err := systemd.NewSystemdUnitManager(systemd.DefaultUnitsDirectory)
 	if err != nil {
 		return nil, err
@@ -62,21 +68,17 @@ func New(cfg config.Config) (*Server, error) {
 	}
 
 	eTrans := http.Transport{TLSClientConfig: tlsConfig}
-	timeout := time.Duration(cfg.EtcdRequestTimeout*1000) * time.Millisecond
-	eClient, err := etcd.NewClient(cfg.EtcdServers, eTrans, timeout)
+	eClient, err := etcd.NewClient(cfg.EtcdServers, eTrans, etcdRequestTimeout)
 	if err != nil {
 		return nil, err
 	}
 
 	reg := registry.New(eClient, cfg.EtcdKeyPrefix)
 
-	pub := agent.NewUnitStatePublisher(mgr, reg, mach)
+	pub := agent.NewUnitStatePublisher(mgr, reg, mach, agentTTL)
 	gen := unit.NewUnitStateGenerator(mgr)
 
-	a, err := newAgentFromConfig(mach, reg, cfg, mgr, gen)
-	if err != nil {
-		return nil, err
-	}
+	a := agent.New(mgr, gen, reg, mach, agentTTL)
 
 	ar, err := newAgentReconcilerFromConfig(reg, eClient, cfg)
 	if err != nil {
@@ -93,10 +95,8 @@ func New(cfg config.Config) (*Server, error) {
 		return nil, err
 	}
 
-	hrt, mon, err := newHeartMonitorFromConfig(mach, reg, cfg)
-	if err != nil {
-		return nil, err
-	}
+	hrt := heart.New(reg, mach)
+	mon := heart.NewMonitor(agentTTL)
 
 	apiServer := api.NewServer(listeners, api.NewServeMux(reg))
 	apiServer.Serve()
@@ -118,18 +118,6 @@ func New(cfg config.Config) (*Server, error) {
 	}
 
 	return &srv, nil
-}
-
-func newHeartMonitorFromConfig(mach machine.Machine, reg registry.Registry, cfg config.Config) (hrt heart.Heart, mon *heart.Monitor, err error) {
-	var ttl time.Duration
-	ttl, err = time.ParseDuration(cfg.AgentTTL)
-	if err != nil {
-		return
-	}
-
-	hrt = heart.New(reg, mach)
-	mon = heart.NewMonitor(ttl)
-	return
 }
 
 func newMachineFromConfig(cfg config.Config, mgr unit.UnitManager) (*machine.CoreOSMachine, error) {
@@ -158,10 +146,6 @@ func newEngineFromConfig(reg registry.Registry, eClient etcd.Client, mach machin
 
 	e := engine.New(reg, rStream, mach)
 	return e, nil
-}
-
-func newAgentFromConfig(mach machine.Machine, reg registry.Registry, cfg config.Config, mgr unit.UnitManager, uGen *unit.UnitStateGenerator) (*agent.Agent, error) {
-	return agent.New(mgr, uGen, reg, mach, cfg.AgentTTL)
 }
 
 func newAgentReconcilerFromConfig(reg registry.Registry, eClient etcd.Client, cfg config.Config) (*agent.AgentReconciler, error) {
