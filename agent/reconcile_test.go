@@ -238,7 +238,7 @@ func TestCalculateTasksForJob(t *testing.T) {
 			},
 		},
 
-		// load jobs that have a launched desired state
+		// load + launch jobs that have a launched desired state
 		{
 			dState: &AgentState{
 				MState: &machine.MachineState{ID: "XXX"},
@@ -254,6 +254,10 @@ func TestCalculateTasksForJob(t *testing.T) {
 					task{
 						typ:    taskTypeLoadJob,
 						reason: taskReasonScheduledButUnloaded,
+					},
+					task{
+						typ:    taskTypeStartJob,
+						reason: taskReasonLoadedDesiredStateLaunched,
 					},
 				},
 			},
