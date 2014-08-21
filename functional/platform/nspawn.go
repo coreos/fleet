@@ -219,8 +219,8 @@ func (nc *nspawnCluster) CreateMember(name string, cfg MachineConfig) (err error
 		fmt.Sprintf("mkdir -p %s/home/core", fsdir),
 		fmt.Sprintf("chown core:core %s/home/core", fsdir),
 
-		// set up directory for machine-id (see below)
-		fmt.Sprintf("mkdir -p %s/var/lib/dbus", fsdir),
+		// We don't need this, and it's slow, so mask it
+		fmt.Sprintf("ln -s /dev/null %s/etc/systemd/system/systemd-udev-hwdb-update.service", fsdir),
 
 		// set up directory for sshd_config (see below)
 		fmt.Sprintf("mkdir -p %s/etc/ssh", fsdir),
@@ -235,15 +235,6 @@ func (nc *nspawnCluster) CreateMember(name string, cfg MachineConfig) (err error
 		}
 	}
 
-	// Write machine-id manually to override systemd picking up the host OS's machine-id in the case of the host being a KVM
-	// (otherwise all smoke machines will have the same machine-id, causing havoc)
-	// TODO(jonboulle): this should be fixed upstream in fdd25311706bd32580ec4d43211cdf4665d2f9de; remove once newer systemd is deployed
-	uuid := fmt.Sprintf("0000000000000000000000000000000%s\n", name)
-	if err = ioutil.WriteFile(path.Join(fsdir, "/var/lib/dbus/machine-id"), []byte(uuid), 0755); err != nil {
-		log.Printf("Failed writing machine-id: %v", err)
-		return
-	}
-
 	sshd_config := `# Use most defaults for sshd configuration.
 UsePrivilegeSeparation sandbox
 Subsystem sftp internal-sftp
@@ -253,6 +244,19 @@ UseDNS no
 	if err = ioutil.WriteFile(path.Join(fsdir, "/etc/ssh/sshd_config"), []byte(sshd_config), 0644); err != nil {
 		log.Printf("Failed writing sshd_config: %v", err)
 		return
+	}
+
+	// For expediency, generate the minimal viable SSH keys for the host, instead of the default set
+	sshd_keygen := `[Unit]
+	Description=Generate sshd host keys
+	Before=sshd.service
+
+	[Service]
+	Type=oneshot
+	RemainAfterExit=yes
+	ExecStart=/usr/bin/ssh-keygen -t rsa -f /etc/ssh/ssh_host_rsa_key -N "" -b 768`
+	if err = ioutil.WriteFile(path.Join(fsdir, "/etc/systemd/system/sshd-keygen.service"), []byte(sshd_keygen), 0644); err != nil {
+		log.Printf("Failed writing sshd-keygen.service: %v", err)
 	}
 
 	sshKeySrc := path.Join("fixtures", "id_rsa.pub")
