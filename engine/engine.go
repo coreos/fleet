@@ -4,8 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	log "github.com/coreos/fleet/Godeps/_workspace/src/github.com/golang/glog"
-
+	"github.com/coreos/fleet/log"
 	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/registry"
 )

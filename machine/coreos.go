@@ -10,7 +10,8 @@ import (
 	"time"
 
 	"github.com/coreos/fleet/Godeps/_workspace/src/github.com/docker/libcontainer/netlink"
-	log "github.com/coreos/fleet/Godeps/_workspace/src/github.com/golang/glog"
+
+	"github.com/coreos/fleet/log"
 	"github.com/coreos/fleet/unit"
 )
 

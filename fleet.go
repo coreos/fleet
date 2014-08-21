@@ -9,11 +9,11 @@ import (
 	"strings"
 	"syscall"
 
-	log "github.com/coreos/fleet/Godeps/_workspace/src/github.com/golang/glog"
 	"github.com/coreos/fleet/Godeps/_workspace/src/github.com/rakyll/globalconf"
 
 	"github.com/coreos/fleet/agent"
 	"github.com/coreos/fleet/config"
+	"github.com/coreos/fleet/log"
 	"github.com/coreos/fleet/registry"
 	"github.com/coreos/fleet/server"
 	"github.com/coreos/fleet/version"
@@ -24,13 +24,9 @@ const (
 )
 
 func main() {
-	// We use a FlagSets since glog adds a bunch of flags we do not want to publish
 	userset := flag.NewFlagSet("fleet", flag.ExitOnError)
 	printVersion := userset.Bool("version", false, "Print the version and exit")
 	cfgPath := userset.String("config", "", fmt.Sprintf("Path to config file. Fleet will look for a config at %s by default.", DefaultConfigFile))
-
-	// Initialize logging so we have it set up while parsing config information
-	config.UpdateLoggingFlagsFromConfig(flag.CommandLine, &config.Config{})
 
 	err := userset.Parse(os.Args[1:])
 	if err == flag.ErrHelp {
@@ -178,8 +174,7 @@ func getConfig(flagset *flag.FlagSet, userCfgFile string) (*config.Config, error
 		log.Error("Config option authorized_keys_file is no longer supported - ignoring")
 	}
 
-	config.UpdateLoggingFlagsFromConfig(flag.CommandLine, &cfg)
-
+	log.SetVerbosity(cfg.Verbosity)
 	return &cfg, nil
 }
 

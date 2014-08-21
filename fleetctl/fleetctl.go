@@ -14,11 +14,10 @@ import (
 	"text/tabwriter"
 	"time"
 
-	log "github.com/coreos/fleet/Godeps/_workspace/src/github.com/golang/glog"
-
 	"github.com/coreos/fleet/client"
 	"github.com/coreos/fleet/etcd"
 	"github.com/coreos/fleet/job"
+	"github.com/coreos/fleet/log"
 	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/pkg"
 	"github.com/coreos/fleet/registry"
@@ -164,10 +163,8 @@ func main() {
 
 	getFlagsFromEnv(cliName, globalFlagset)
 
-	// configure glog, which uses the global command line options
 	if globalFlags.Debug {
-		flag.CommandLine.Lookup("v").Value.Set("1")
-		flag.CommandLine.Lookup("logtostderr").Value.Set("true")
+		log.SetVerbosity(1)
 	}
 
 	// no command specified - trigger help

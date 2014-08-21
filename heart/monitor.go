@@ -4,7 +4,7 @@ import (
 	"errors"
 	"time"
 
-	log "github.com/coreos/fleet/Godeps/_workspace/src/github.com/golang/glog"
+	"github.com/coreos/fleet/log"
 )
 
 func NewMonitor(ttl time.Duration) *Monitor {
