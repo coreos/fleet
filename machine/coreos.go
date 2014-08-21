@@ -92,16 +92,10 @@ func (m *CoreOSMachine) currentState() *MachineState {
 		return nil
 	}
 	publicIP := getLocalIP()
-	totalResources, err := readLocalResources()
-	if err != nil {
-		log.Errorf("Error retrieving local resources: %v\n", err)
-		return nil
-	}
 	return &MachineState{
-		ID:             id,
-		PublicIP:       publicIP,
-		Metadata:       make(map[string]string, 0),
-		TotalResources: totalResources,
+		ID:       id,
+		PublicIP: publicIP,
+		Metadata: make(map[string]string, 0),
 	}
 }
 

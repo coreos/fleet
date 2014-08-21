@@ -5,7 +5,6 @@ import (
 
 	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/registry"
-	"github.com/coreos/fleet/resource"
 )
 
 func newTestRegistryForListMachines() registry.Registry {
@@ -29,14 +28,12 @@ func TestListMachinesFieldsToStrings(t *testing.T) {
 		"ping": "pong",
 	}
 	ver := "v9.9.9"
-	res := resource.ResourceTuple{10, 1024, 1024}
 
 	ms := &machine.MachineState{
-		ID:             id,
-		PublicIP:       ip,
-		Metadata:       metadata,
-		Version:        ver,
-		TotalResources: res,
+		ID:       id,
+		PublicIP: ip,
+		Metadata: metadata,
+		Version:  ver,
 	}
 
 	val := listMachinesFields["machine"](ms, false)
@@ -57,14 +54,12 @@ func TestListMachinesFieldsEmpty(t *testing.T) {
 	ip := ""
 	metadata := map[string]string{}
 	ver := "v9.9.9"
-	res := resource.ResourceTuple{10, 1024, 1024}
 
 	ms := &machine.MachineState{
-		ID:             id,
-		PublicIP:       ip,
-		Metadata:       metadata,
-		Version:        ver,
-		TotalResources: res,
+		ID:       id,
+		PublicIP: ip,
+		Metadata: metadata,
+		Version:  ver,
 	}
 
 	for _, tt := range []string{"ip", "metadata"} {
