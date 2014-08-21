@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/coreos/fleet/Godeps/_workspace/src/github.com/coreos/go-systemd/activation"
-	log "github.com/coreos/fleet/Godeps/_workspace/src/github.com/golang/glog"
 
 	"github.com/coreos/fleet/agent"
 	"github.com/coreos/fleet/api"
@@ -15,6 +14,7 @@ import (
 	"github.com/coreos/fleet/engine"
 	"github.com/coreos/fleet/etcd"
 	"github.com/coreos/fleet/heart"
+	"github.com/coreos/fleet/log"
 	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/pkg"
 	"github.com/coreos/fleet/registry"

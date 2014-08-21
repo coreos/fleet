@@ -1,7 +1,6 @@
 package config
 
 import (
-	"flag"
 	"testing"
 )
 
@@ -30,14 +29,4 @@ func TestConfigMetadataNotSet(t *testing.T) {
 	if len(metadata) != 0 {
 		t.Errorf("Parsed %d keys, expected 0", len(metadata))
 	}
-}
-
-func TestConfigUpdateLoggingFlags(t *testing.T) {
-	flagset := flag.NewFlagSet("fleet-testing", flag.ContinueOnError)
-	flagset.Bool("logtostderr", false, "")
-	flagset.Int("v", 0, "")
-
-	cfg := Config{Verbosity: 2}
-
-	UpdateLoggingFlagsFromConfig(flagset, &cfg)
 }

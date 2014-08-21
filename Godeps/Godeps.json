@@ -50,10 +50,6 @@
 			"Rev": "cb98efbb933d8389ab549a060e880ea3c375d213"
 		},
 		{
-			"ImportPath": "github.com/golang/glog",
-			"Rev": "20cea4dfef0c0151bba0422a6244cc1d3e8292b1"
-		},
-		{
 			"ImportPath": "github.com/rakyll/globalconf",
 			"Rev": "fd9ff89130a682478a0c94e893ff4affe570b002"
 		},

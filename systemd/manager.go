@@ -8,8 +8,8 @@ import (
 	"sync"
 
 	"github.com/coreos/fleet/Godeps/_workspace/src/github.com/coreos/go-systemd/dbus"
-	log "github.com/coreos/fleet/Godeps/_workspace/src/github.com/golang/glog"
 
+	"github.com/coreos/fleet/log"
 	"github.com/coreos/fleet/pkg"
 	"github.com/coreos/fleet/unit"
 )

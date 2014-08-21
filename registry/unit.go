@@ -5,9 +5,8 @@ import (
 	"fmt"
 	"path"
 
-	log "github.com/coreos/fleet/Godeps/_workspace/src/github.com/golang/glog"
-
 	"github.com/coreos/fleet/etcd"
+	"github.com/coreos/fleet/log"
 	"github.com/coreos/fleet/unit"
 )
 

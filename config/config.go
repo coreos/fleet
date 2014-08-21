@@ -1,11 +1,7 @@
 package config
 
 import (
-	"flag"
-	"strconv"
 	"strings"
-
-	"github.com/coreos/fleet/Godeps/_workspace/src/github.com/golang/glog"
 )
 
 type Config struct {
@@ -40,18 +36,4 @@ func (c *Config) Metadata() map[string]string {
 	}
 
 	return meta
-}
-
-// UpdateLoggingFlagsFromConfig extracts the logging-related options from
-// the provided config and sets flags in the given flagset
-func UpdateLoggingFlagsFromConfig(flagset *flag.FlagSet, conf *Config) {
-	err := flagset.Lookup("v").Value.Set(strconv.Itoa(conf.Verbosity))
-	if err != nil {
-		glog.Errorf("Failed to apply config.Verbosity to flag.v: %v", err)
-	}
-
-	err = flagset.Lookup("logtostderr").Value.Set("true")
-	if err != nil {
-		glog.Errorf("Failed to set flag.logtostderr to true: %v", err)
-	}
 }
