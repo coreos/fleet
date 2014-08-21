@@ -1,54 +1,49 @@
-# fleet - a Distributed init System.
-
-fleet ties together [systemd](http://coreos.com/using-coreos/systemd) and [etcd](https://github.com/coreos/etcd) into a distributed init system. Think of it as an extension of systemd that operates at the cluster level instead of the machine level.
-
-This project is very low level and is designed as a foundation for higher order orchestration. This is a preview release – please read the [security notice](Documentation/security.md).
+# fleet - a distributed init system
 
 [![Build Status](https://travis-ci.org/coreos/fleet.png?branch=master)](https://travis-ci.org/coreos/fleet)
 
-## Common Uses
+fleet ties together [systemd](http://coreos.com/using-coreos/systemd) and [etcd](https://github.com/coreos/etcd) into a distributed init system. Think of it as an extension of systemd that operates at the cluster level instead of the machine level. This project is very low level and is designed as a foundation for higher order orchestration.
 
-fleet allows you to define flexible architectures for running your services:
-
-* Deploy a single container anywhere on the cluster
-* Deploy multiple copies of the same container
-* Ensure that containers are deployed together on the same machine
-* Forbid specific services from co-habitation
-* Maintain N containers of a service, re-deploying on failure
-* Deploy containers on machines matching specific metadata
-
-## Examples
-
-### List Machines in the Cluster
-```
-$ fleetctl list-machines
-MACHINE									IP			METADATA
-148a18ff-6e95-4cd8-92da-c9de9bb90d5a	19.4.0.112	region=us-west
-491586a6-508f-4583-a71d-bfc4d146e996	19.4.0.113	region=us-east
-```
-
-### Submit & Start Units
+Launching a unit with fleet is as simple as running `fleetctl start`:
 
 ```
-$ ls examples/
-hello.service	ping.service	pong.service
-$ fleetctl submit examples/*
-$ fleetctl start hello.service
+$ fleetctl start examples/hello.service
+Unit hello.service launched on 113f16a7.../172.17.8.103
 ```
 
-### List Units
+The `fleetctl start` command waits for the unit to get scheduled and actually start somewhere in the cluster.
+`fleetctl list-unit-files` tells you the desired state of your units and where they are currently scheduled:
+
+```
+$ fleetctl list-unit-files
+UNIT            HASH     DSTATE    STATE     TMACHINE
+hello.service   e55c0ae  launched  launched  113f16a7.../172.17.8.103
+```
+
+`fleetctl list-units` exposes the systemd state for each unit in your fleet cluster:
 
 ```
 $ fleetctl list-units
-UNIT			LOAD	ACTIVE	SUB		DESC	MACHINE
-hello.service	loaded	active	running	-		148a18ff-6e95-4cd8-92da-c9de9bb90d5a
-ping.service	-		-		-		-		-
-pong.service	-		-		-		-		-
+UNIT            MACHINE                    ACTIVE   SUB
+hello.service   113f16a7.../172.17.8.103   active   running
 ```
+
+## Supported Deployment Patterns
+
+* Deploy a single unit anywhere on the cluster
+* Deploy multiple copies of the same unit
+* Ensure that units are deployed together on the same machine
+* Forbid specific units from co-habitation
+* Maintain N units, re-scheduling on machine failure
+* Deploy units to machines only with specific metadata
+
+These patterns are all defined using [custom systemd unit options][unit-files].
+
+[unit-files]: https://github.com/coreos/fleet/blob/master/Documentation/unit-files.md#fleet-specific-options
 
 ## Getting Started
 
-Before you can deploy units, fleet must be [deployed][deploy] and [configured][configure] on each host in your cluster. After you have machines configured (`fleetctl list-machines`), [start some units][using-the-client.md].
+Before you can deploy units, fleet must be [deployed][deploy] and [configured][configure] on each host in your cluster. After you have machines configured (check `fleetctl list-machines`), [get to work][using-the-client.md].
 
 [using-the-client.md]: https://github.com/coreos/fleet/blob/master/Documentation/using-the-client.md
 [deploy]: https://github.com/coreos/fleet/blob/master/Documentation/deployment.md
@@ -60,9 +55,12 @@ fleet must be built with Go 1.2 on a Linux machine, or in a [Go docker container
 
 ## Project Details
 
-### APIs
+### API
 
-The current fleet interfaces should not be considered stable. Expect incompatible changes in subsequent releases.
+An HTTP API is currently being implemented, but it is not yet stable and may change.
+See the [API documentation][api-doc] for more information.
+
+[api-doc]: https://github.com/coreos/fleet/blob/master/Documentation/api-v1-alpha.md
 
 ### Contributing
 
