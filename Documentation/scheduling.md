@@ -76,4 +76,4 @@ X-ConditionMachineOf=%p.socket
 
 would result in an effective `X-ConditionMachineOf` of `foo.socket`. Using the same unit snippet with a Job called `bar.service`, on the other hand, would result in an effective `X-ConditionMachineOf` of `bar.socket`.
 
-For more information on the available specifiers, see the [unit file configuration](Documentation/unit-files.md#systemd-specifiers) documentation.
+For more information on the available specifiers, see the [unit file configuration](unit-files.md#systemd-specifiers) documentation.
