@@ -146,7 +146,7 @@ For example, unloading an existing Unit called "bar.service" could look like thi
 PUT /units/bar.service HTTP/1.1
 
 {
-  "state": "inactive"
+  "desiredState": "inactive"
 }
 ```
 
