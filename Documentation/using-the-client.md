@@ -1,6 +1,7 @@
 # Using the Client
 
-fleet provides a command-line tool called `fleetctl`. The commands provided by fleetctl are generally identical to those of systemd's CLI, `systemctl`, while enabling a user to interact with an entire cluster of disconnected systemd instances.
+fleet provides a command-line tool called `fleetctl`. 
+The commands provided by fleetctl are generally identical to those of systemd's CLI, `systemctl`, while enabling a user to interact with an entire cluster of disconnected systemd instances.
 
 ## Get up and running
 
@@ -26,9 +27,11 @@ One can also provide `--tunnel` through the environment variable `FLEETCTL_TUNNE
 
     FLEETCTL_TUNNEL=<IP[:PORT]> fleetctl list-units
 
-When using `--tunnel` and `--endpoint` together, it is important to note that all etcd requests will be made through the SSH tunnel. The address in the `--endpoint` flag must be routable from the server hosting the tunnel.
+When using `--tunnel` and `--endpoint` together, it is important to note that all etcd requests will be made through the SSH tunnel. 
+The address in the `--endpoint` flag must be routable from the server hosting the tunnel.
 
-Be sure to install one of the [tagged releases](https://github.com/coreos/fleet/releases) of `fleetctl` that matches the version of fleet running on the CoreOS machine. Find the version on the server with:
+Be sure to install one of the [tagged releases](https://github.com/coreos/fleet/releases) of `fleetctl` that matches the version of fleet running on the CoreOS machine. 
+Find the version on the server with:
 
 ```
 fleet --version
@@ -36,48 +39,84 @@ fleet --version
 
 See more about [configuring remote access](https://github.com/coreos/fleet/blob/master/Documentation/remote-access.md).
 
-## Interact with units
+## Interacting with units
 
-For information about the additional unit file parameters fleet will interact with, see [this documentation](https://github.com/coreos/fleet/blob/master/Documentation/unit-files.md).
+For information regarding the additional unit file parameters that modify fleet's behavior, see [this documentation](https://github.com/coreos/fleet/blob/master/Documentation/unit-files.md).
 
 ### Explore existing units
 
-List the unit files that the fleet cluster knows about with `fleetctl list-unit-files`:
+List all units in the fleet cluster with `fleetctl list-unit-files`:
 
 ```
 $ fleetctl list-unit-files
-UNIT		HASH	DESC
-foo.service	c18207c	This is my first service
-hello.service	ac91312	-
-slow.service	895350e	-
+UNIT            HASH    DSTATE   STATE    TMACHINE
+goodbye.service d4c61bf launched launched 85c0c595.../172.17.8.102
+hello.service   e55c0ae launched launched 113f16a7.../172.17.8.103
 ```
 
-See what the current state of scheduling is with `fleetctl show-schedule`:
+`fleetctl list-unit-files` communicates what the desired state of a unit is, what its current state is, and where it is currently scheduled.
 
-```
-$ fleetctl  show-schedule
-UNIT		DSTATE		STATE		TMACHINE
-foo.service			inactive	-
-hello.service	loaded		inactive	16e8b2b9.../172.17.8.102
-slow.service	launched	inactive	16e8b2b9.../172.17.8.102
-```
-
-Finally, see the latest status of active units in the cluster (those loaded into a machine) with `fleetctl list-units`:
+List the last-known state of fleet's active units (i.e. those loaded onto a machine) with `fleetctl list-units`:
 
 ```
 $ fleetctl list-units
-UNIT		MACHINE				ACTIVE		SUB
-hello.service	16e8b2b9.../172.17.8.102	inactive	dead
-slow.service	16e8b2b9.../172.17.8.102	failed		failed
+UNIT            MACHINE                   ACTIVE  SUB
+goodbye.service 85c0c595.../172.17.8.102  active  running
+hello.service   113f16a7.../172.17.8.103  active  running
 ```
 
-### Push units into the cluster
+### Start and stop units
 
-Getting units into the cluster is as simple as a call to `fleetctl submit` with a path to one or more unit files:
+Start and stop units with the `start` and `stop` commands:
+
+```
+$ fleetctl start goodbye.service
+Unit goodbye.service launched on 85c0c595.../172.17.8.102
+
+$ fleetctl stop goodbye.service
+Unit goodbye.service loaded on 85c0c595.../172.17.8.102
+```
+
+If the unit does not exist when calling `start`, fleetctl will first search for a local unit file, submit it and schedule it.
+
+### Scheduling units
+
+To schedule a unit into the cluster (i.e. load it on a machine) without starting it, call `fleetctl load`:
+
+```
+$ fleetctl load hello.service
+Unit hello.service loaded on 113f16a7.../172.17.8.103
+```
+
+This will not call the equivalent of `systemctl start`, so the loaded unit will be in an inactive state:
+
+```
+$ fleetctl list-units
+UNIT          MACHINE                  ACTIVE   SUB
+hello.service 113f16a7.../172.17.8.103 inactive dead
+```
+
+This is useful if you have another unit that will activate it at a later date, such as a path or timer.
+
+Units can also be unscheduled, but remain in the cluster with `fleetctl unload`.
+The unit will still be visible in `fleetctl list-unit-files`, but will have no state reported in `fleetctl list-units`:
+
+```
+$ fleetctl unload hello.service
+
+$ fleetctl list-unit-files
+UNIT          HASH    DSTATE   STATE    TMACHINE
+hello.service e55c0ae inactive inactive -
+```
+
+### Adding and removing units
+
+Getting units into the cluster is as simple as a call to `fleetctl submit`:
 
 ```
 $ fleetctl submit examples/hello.service
 ```
+
 You can also rely on your shell's path-expansion to conveniently submit a large set of unit files:
 
 ```
@@ -86,9 +125,8 @@ hello.service	ping.service	pong.service
 $ fleetctl submit examples/*
 ```
 
-Submission of units to a fleet cluster does not cause them to be scheduled out to specific hosts. The unit should be visible in a `fleetctl list-unit-files` command, but have no reported state, and hence not listed in `fleetctl list-units`.
-
-### Remove units from the cluster
+Submission of units to a fleet cluster does not cause them to be scheduled. 
+The unit will be visible in a `fleetctl list-unit-files` command, but have no reported state in `fleetctl list-units`.
 
 A unit can be removed from a cluster with the `destroy` command:
 
@@ -101,33 +139,20 @@ The `destroy` command does two things:
 1. Instruct systemd on the host machine to stop the unit, deferring to systemd completely for any custom stop directives (i.e. `ExecStop` option in the unit file).
 2. Remove the unit file from the cluster, making it impossible to start again until it has been re-submitted.
 
+Once a unit is destroyed, state will continue to be reported for it in `fleetctl list-units`.
+Only once the unit has stopped will its state be removed.
+
 ### View unit contents
 
 The contents of a loaded unit file can be printed to stdout using the `fleetctl cat` command:
 
 ```
-$ fleetctl cat examples/hello.service
+$ fleetctl cat hello.service
 [Unit]
 Description=Hello World
 
 [Service]
 ExecStart=/bin/bash -c "while true; do echo \"Hello, world\"; sleep 1; done"
-```
-
-### Start and stop units
-
-Once a unit has been submitted to the fleet cluster, it can be started and stopped like so:
-
-```
-$ fleetctl start hello.service
-```
-
-The `start` operation is what causes a unit to be scheduled to a specific host and executed.
-
-Halting execution of a unit is as simple as calling `stop`:
-
-```
-$ fleetctl stop hello.service
 ```
 
 ### Query unit status
@@ -162,17 +187,8 @@ The `fleetctl journal` command can be used to interact directly with `journalctl
 
 ```
 $ fleetctl journal hello.service
--- Logs begin at Wed 2014-01-29 20:50:48 UTC, end at Thu 2014-01-30 01:14:55 UTC. --
-Jan 30 01:14:46 ip-172-31-5-250 bash[6973]: Hello, world
-Jan 30 01:14:47 ip-172-31-5-250 bash[6973]: Hello, world
-Jan 30 01:14:48 ip-172-31-5-250 bash[6973]: Hello, world
-Jan 30 01:14:49 ip-172-31-5-250 bash[6973]: Hello, world
-Jan 30 01:14:50 ip-172-31-5-250 bash[6973]: Hello, world
-Jan 30 01:14:51 ip-172-31-5-250 bash[6973]: Hello, world
-Jan 30 01:14:52 ip-172-31-5-250 bash[6973]: Hello, world
-Jan 30 01:14:53 ip-172-31-5-250 bash[6973]: Hello, world
-Jan 30 01:14:54 ip-172-31-5-250 bash[6973]: Hello, world
-Jan 30 01:14:55 ip-172-31-5-250 bash[6973]: Hello, world
+-- Logs begin at Thu 2014-08-21 18:27:04 UTC, end at Thu 2014-08-21 19:07:38 UTC. --
+Aug 21 19:07:38 core-03 bash[1127]: Hello, world
 ```
 
 ## Exploring the cluster
@@ -182,37 +198,27 @@ Jan 30 01:14:55 ip-172-31-5-250 bash[6973]: Hello, world
 Describe all of the machines currently connected to the cluster with `fleetctl list-machines`:
 
 ```
-$ fleetctl list-machines --no-legend
-MACHINE									IP			METADATA
-148a18ff-6e95-4cd8-92da-c9de9bb90d5a	19.4.0.112	region=us-west
-491586a6-508f-4583-a71d-bfc4d146e996	19.4.0.113	region=us-east
+$ fleetctl list-machines
+MACHINE     IP           METADATA
+113f16a7... 172.17.8.103 az=us-west-1b
+85c0c595... 172.17.8.102 az=us-west-1b
+e793afb9... 172.17.8.101 az=us-west-1a
 ```
 
 ### SSH dynamically to host
 
-The `fleetctl ssh` command can be used to open a pseudo-terminal over SSH to a host in the fleet cluster. The command will look up the IP address of a machine based on the provided machine ID:
+The `fleetctl ssh` command can be used to open a pseudo-terminal over SSH to a host in the fleet cluster.
+The command will look up the IP address of a machine based on the provided machine ID:
 
 ```
-$ fleetctl ssh 491586a6-508f-4583-a71d-bfc4d146e996
-   ______                ____  _____
-  / ____/___  ________  / __ \/ ___/
- / /   / __ \/ ___/ _ \/ / / /\__ \
-/ /___/ /_/ / /  /  __/ /_/ /___/ /
-\____/\____/_/   \___/\____//____/
-core@ip-172-31-5-251 ~ $
+$ fleetctl ssh 113f16a7
 ```
 
-Alternatively, a unit name can be provided using the `--unit` flag. `fleetctl ssh --unit <UNIT>` will look up the location of the
-provided unit in the cluster before opening an SSH connection:
+Alternatively, a unit name can be provided.
+`fleetctl ssh` will connecto to the machine to-which the given unit is scheduled:
 
 ```
-$ fleetctl ssh --unit hello.service
-   ______                ____  _____
-  / ____/___  ________  / __ \/ ___/
- / /   / __ \/ ___/ _ \/ / / /\__ \
-/ /___/ /_/ / /  /  __/ /_/ /___/ /
-\____/\____/_/   \___/\____//____/
-core@ip-172-31-5-250 ~ $
+$ fleetctl ssh hello.service
 ```
 
 ### Known-Hosts Verification
