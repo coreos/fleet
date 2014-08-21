@@ -52,7 +52,14 @@ func (g *UnitStateGenerator) Run(receiver chan<- *UnitStateHeartbeat, stop chan 
 // Generate returns and fills a channel with *UnitStateHeartbeat objects. Objects will
 // only be returned for units to which this generator is currently subscribed.
 func (g *UnitStateGenerator) Generate() (<-chan *UnitStateHeartbeat, error) {
+	var lastSubscribed pkg.Set
+	if g.lastSubscribed != nil {
+		lastSubscribed = g.lastSubscribed.Copy()
+	}
+
 	subscribed := g.subscribed.Copy()
+	g.lastSubscribed = subscribed
+
 	reportable, err := g.mgr.GetUnitStates(subscribed)
 	if err != nil {
 		return nil, err
@@ -68,18 +75,17 @@ func (g *UnitStateGenerator) Generate() (<-chan *UnitStateHeartbeat, error) {
 			}
 		}
 
-		if g.lastSubscribed != nil {
+		if lastSubscribed != nil {
 			// For all units that were part of the subscription list
 			// last time Generate ran, but are now not part of that
 			// list, send nil-State heartbeats to signal removal
-			for _, name := range g.lastSubscribed.Sub(subscribed).Values() {
+			for _, name := range lastSubscribed.Sub(subscribed).Values() {
 				beatchan <- &UnitStateHeartbeat{
 					Name: name,
 				}
 			}
 		}
 
-		g.lastSubscribed = subscribed
 		close(beatchan)
 	}()
 
