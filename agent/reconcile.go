@@ -30,8 +30,6 @@ type AgentReconciler struct {
 // channel is closed. Run will also reconcile in reaction to calls to Trigger.
 // While a reconciliation is being attempted, calls to Trigger are ignored.
 func (ar *AgentReconciler) Run(a *Agent, stop chan bool) {
-	ticker := time.Tick(reconcileInterval)
-
 	reconcile := func() {
 		start := time.Now()
 		ar.Reconcile(a)
@@ -59,15 +57,18 @@ func (ar *AgentReconciler) Run(a *Agent, stop chan bool) {
 		}
 	}()
 
+	ticker := time.After(reconcileInterval)
 	for {
 		select {
 		case <-stop:
 			log.V(1).Info("AgentReconciler exiting due to stop signal")
 			return
 		case <-ticker:
+			ticker = time.After(reconcileInterval)
 			log.V(1).Info("AgentReconciler tick")
 			reconcile()
 		case <-trigger:
+			ticker = time.After(reconcileInterval)
 			log.V(1).Info("AgentReconciler triggered by rStream event")
 			reconcile()
 		}

@@ -32,7 +32,6 @@ func New(reg registry.Registry, rStream registry.EventStream, mach machine.Machi
 
 func (e *Engine) Run(ival time.Duration, stop chan bool) {
 	leaseTTL := ival * 5
-	ticker := time.Tick(ival)
 	machID := e.machine.State().ID
 
 	reconcile := func() {
@@ -86,15 +85,18 @@ func (e *Engine) Run(ival time.Duration, stop chan bool) {
 		}
 	}()
 
+	ticker := time.After(ival)
 	for {
 		select {
 		case <-stop:
 			log.V(1).Info("Engine exiting due to stop signal")
 			return
 		case <-ticker:
+			ticker = time.After(ival)
 			log.V(1).Info("Engine tick")
 			reconcile()
 		case <-trigger:
+			ticker = time.After(ival)
 			log.V(1).Info("Engine reconcilation triggered by job state change")
 			reconcile()
 		}
