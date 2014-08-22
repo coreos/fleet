@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/machine"
@@ -340,5 +341,92 @@ func TestCalculateTasksForJob(t *testing.T) {
 		if !reflect.DeepEqual(tt.chain, chain) {
 			t.Errorf("case %d: calculated incorrect task chain\nexpected=%v\nreceived=%v\n", i, tt.chain, chain)
 		}
+	}
+}
+
+type FakeEventStream struct {
+	ret chan registry.Event
+}
+
+func (f *FakeEventStream) Next(chan struct{}) chan registry.Event {
+	return f.ret
+}
+
+func (f *FakeEventStream) trigger() {
+	go func() {
+		f.ret <- registry.JobTargetChangeEvent
+	}()
+}
+
+// TestAgentReconcilerRun attempts to validate the behaviour of the central Run
+// loop of the AgentReconciler, particularly its response to events
+func TestAgentReconcilerRun(t *testing.T) {
+	fes := &FakeEventStream{make(chan registry.Event)}
+	called := make(chan struct{})
+	rec := func(*AgentReconciler, *Agent) {
+		go func() {
+			called <- struct{}{}
+		}()
+	}
+	ar := &AgentReconciler{
+		reg:       nil,
+		rStream:   fes,
+		tManager:  nil,
+		rint:      time.Hour, // Implausibly high reconcile interval we never expect to reach
+		reconcile: rec,
+	}
+	// launch the AgentReconciler in the background
+	arDone := make(chan bool)
+	stop := make(chan bool)
+	go func() {
+		ar.Run(nil, stop)
+		arDone <- true
+	}()
+	// no reconcile yet expected
+	select {
+	case <-called:
+		t.Fatalf("reconcile() called unexpectedly!")
+	default:
+	}
+	// now, send an event on the EventStream and ensure reconcile occurs
+	fes.trigger()
+	select {
+	case <-called:
+	case <-time.After(time.Second):
+		t.Fatalf("reconcile() not called after trigger!")
+	}
+	// assert reconcile was only called once
+	select {
+	case <-called:
+		t.Fatalf("reconcile() called unexpectedly!")
+	default:
+	}
+	// another event should work OK
+	fes.trigger()
+	select {
+	case <-called:
+	case <-time.After(time.Second):
+		t.Fatalf("reconcile() not called after trigger!")
+	}
+	// again, assert reconcile was only called once
+	select {
+	case <-called:
+		t.Fatalf("reconcile() called unexpectedly!")
+	default:
+	}
+	// stop the loop
+	close(stop)
+	// now, sending an event should do nothing
+	fes.trigger()
+	select {
+	case <-called:
+		t.Fatalf("reconcile() called unexpectedly!")
+	default:
+	}
+	// and the AgentReconciler should have shut down
+	select {
+	case <-arDone:
+	case <-time.After(time.Second):
+		t.Fatalf("AgentReconciler.Run did not return after stop signal!")
 	}
 }

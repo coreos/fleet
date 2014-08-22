@@ -12,17 +12,25 @@ import (
 
 const (
 	// time between triggering reconciliation routine
-	reconcileInterval = 5 * time.Second
+	DefaultReconcileInterval = 5 * time.Second
 )
 
 func NewReconciler(reg registry.Registry, rStream registry.EventStream) *AgentReconciler {
-	return &AgentReconciler{reg, rStream, newTaskManager()}
+	return &AgentReconciler{
+		reg:       reg,
+		rStream:   rStream,
+		tManager:  newTaskManager(),
+		rint:      DefaultReconcileInterval,
+		reconcile: Reconcile,
+	}
 }
 
 type AgentReconciler struct {
-	reg      registry.Registry
-	rStream  registry.EventStream
-	tManager *taskManager
+	reg       registry.Registry
+	rStream   registry.EventStream
+	tManager  *taskManager
+	rint      time.Duration
+	reconcile func(*AgentReconciler, *Agent)
 }
 
 // Run periodically attempts to reconcile the provided Agent until the stop
@@ -35,7 +43,7 @@ func (ar *AgentReconciler) Run(a *Agent, stop chan bool) {
 		elapsed := time.Now().Sub(start)
 
 		msg := fmt.Sprintf("AgentReconciler completed reconciliation in %s", elapsed)
-		if elapsed > reconcileInterval {
+		if elapsed > ar.rint {
 			log.Warning(msg)
 		} else {
 			log.V(1).Info(msg)
@@ -56,27 +64,31 @@ func (ar *AgentReconciler) Run(a *Agent, stop chan bool) {
 		}
 	}()
 
-	ticker := time.After(reconcileInterval)
+	ticker := time.After(ar.rint)
 	for {
 		select {
 		case <-stop:
 			log.V(1).Info("AgentReconciler exiting due to stop signal")
 			return
 		case <-ticker:
-			ticker = time.After(reconcileInterval)
+			ticker = time.After(ar.rint)
 			log.V(1).Info("AgentReconciler tick")
 			reconcile()
 		case <-trigger:
-			ticker = time.After(reconcileInterval)
+			ticker = time.After(ar.rint)
 			log.V(1).Info("AgentReconciler triggered by rStream event")
 			reconcile()
 		}
 	}
 }
 
+func (ar *AgentReconciler) Reconcile(a *Agent) {
+	ar.reconcile(ar, a)
+}
+
 // Reconcile drives the local Agent's state towards the desired state
 // stored in the Registry.
-func (ar *AgentReconciler) Reconcile(a *Agent) {
+func Reconcile(ar *AgentReconciler, a *Agent) {
 	dAgentState, err := ar.desiredAgentState(a, ar.reg)
 	if err != nil {
 		log.Errorf("Unable to determine agent's desired state: %v", err)
