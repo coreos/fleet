@@ -12,7 +12,7 @@ import (
 
 const (
 	// time between triggering reconciliation routine
-	DefaultReconcileInterval = 5 * time.Second
+	reconcileInterval = 5 * time.Second
 )
 
 func NewReconciler(reg registry.Registry, rStream pkg.EventStream) *AgentReconciler {
@@ -20,7 +20,6 @@ func NewReconciler(reg registry.Registry, rStream pkg.EventStream) *AgentReconci
 		reg:      reg,
 		rStream:  rStream,
 		tManager: newTaskManager(),
-		rint:     DefaultReconcileInterval,
 	}
 }
 
@@ -28,7 +27,6 @@ type AgentReconciler struct {
 	reg      registry.Registry
 	rStream  pkg.EventStream
 	tManager *taskManager
-	rint     time.Duration
 }
 
 // Run periodically attempts to reconcile the provided Agent until the stop
@@ -41,13 +39,13 @@ func (ar *AgentReconciler) Run(a *Agent, stop chan bool) {
 		elapsed := time.Now().Sub(start)
 
 		msg := fmt.Sprintf("AgentReconciler completed reconciliation in %s", elapsed)
-		if elapsed > ar.rint {
+		if elapsed > reconcileInterval {
 			log.Warning(msg)
 		} else {
 			log.V(1).Info(msg)
 		}
 	}
-	reconciler := pkg.NewPeriodicReconciler(ar.rint, reconcile, ar.rStream)
+	reconciler := pkg.NewPeriodicReconciler(reconcileInterval, reconcile, ar.rStream)
 	reconciler.Run(stop)
 }
 
