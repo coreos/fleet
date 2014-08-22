@@ -1,12 +1,12 @@
 # Deploying fleet
 
-Deploying `fleet` is as simple as dropping a binary on a machine with access to etcd and starting it.
+Deploying `fleet` is as simple as dropping the `fleetd` binary on a machine with access to etcd and starting it.
 
 Deploying `fleet` on CoreOS is even simpler: just run `systemctl start fleet`. The built-in configuration assumes each of your hosts is serving an etcd endpoint at the default location (http://127.0.0.1:4001). However, if your etcd cluster differs, you must make the corresponding configuration changes.
 
 ### etcd
 
-Each `fleet` daemon must be configured to talk to the same [etcd cluster][etcd]. By default, the `fleet` daemon will connect to http://127.0.0.1:4001. Refer to the [configuration documentation][config] for customization help.
+Each `fleetd` daemon must be configured to talk to the same [etcd cluster][etcd]. By default, the `fleetd` daemon will connect to http://127.0.0.1:4001. Refer to the [configuration documentation][config] for customization help.
 
 `fleet` requires etcd be of version 0.3.0+.
 
@@ -15,7 +15,7 @@ Each `fleet` daemon must be configured to talk to the same [etcd cluster][etcd].
 
 ### systemd
 
-The `fleet` daemon communicates with systemd (v207+) running locally on a given machine. It requires D-Bus (v1.6.12+) to do this.
+The `fleetd` daemon communicates with systemd (v207+) running locally on a given machine. It requires D-Bus (v1.6.12+) to do this.
 
 ### SSH Keys
 

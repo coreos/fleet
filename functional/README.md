@@ -16,10 +16,10 @@ $ ssh-add fleet/functional/fixtures/id_rsa
 $ echo $SSH_AUTH_SOCK
 /tmp/ssh-kwmtTOsL7978/agent.7978
 ```
-2. Ensure the `FLEET_BIN` and `FLEETCTL_BIN` environment variables point to the respective fleet and fleetctl binaries that should be used to drive the actual tests.
+2. Ensure the `FLEETD_BIN` and `FLEETCTL_BIN` environment variables point to the respective fleetd and fleetctl binaries that should be used to drive the actual tests.
 
 ```
-$ export FLEET_BIN=/path/to/fleet
+$ export FLEETD_BIN=/path/to/fleetd
 $ export FLEETCTL_BIN=/path/to/fleetctl
 ```
 
@@ -45,7 +45,7 @@ export PATH="${GOROOT}/bin:$PATH"
 cd fleet
 ssh-add functional/fixtures/id_rsa
 export GOPATH="$(pwd)/gopath"
-export FLEET_BIN="$(pwd)/bin/fleet"
+export FLEETD_BIN="$(pwd)/bin/fleet"
 export FLEETCTL_BIN="$(pwd)/bin/fleetctl"
 sudo -E env PATH=$PATH go test github.com/coreos/fleet/functional -v
 ```

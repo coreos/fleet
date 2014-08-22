@@ -1,18 +1,18 @@
 # Configuration
 
-The `fleet` daemon uses two sources for configuration parameters:
+The `fleetd` daemon uses two sources for configuration parameters:
 
 1. an INI-formatted config file ([sample][config])
 2. environment variables
 
 [config]: https://github.com/coreos/fleet/blob/master/fleet.conf.sample
 
-fleet will look at `/etc/fleet/fleet.conf` for this config file by default. The `--config` flag may be passed to the fleet binary to use a custom config file location. The options that may be set are defined below. Note that each of the options should be defined at the global level, outside of any INI sections.
+fleet will look at `/etc/fleet/fleet.conf` for this config file by default. The `--config` flag may be passed to the `fleetd` binary to use a custom config file location. The options that may be set are defined below. Note that each of the options should be defined at the global level, outside of any INI sections.
 
-Environment variables may also provide configuration options. Options provided in an environment variable will override the corresponding option provided in a config file. To use an environment variable, simply prefix the name of a given option with 'FLEET_', while uppercasing the rest of the name. For example, to set the `etcd_servers` option to 'http://192.0.2.12:4001' when running the fleet binary:
+Environment variables may also provide configuration options. Options provided in an environment variable will override the corresponding option provided in a config file. To use an environment variable, simply prefix the name of a given option with 'FLEET_', while uppercasing the rest of the name. For example, to set the `etcd_servers` option to 'http://192.0.2.12:4001' when running the fleetd binary:
 
 ```
-$ FLEET_ETCD_SERVERS=http://192.0.2.12:4001 /usr/bin/fleet
+$ FLEET_ETCD_SERVERS=http://192.0.2.12:4001 /usr/bin/fleetd
 ```
 
 ## General Options
@@ -44,7 +44,7 @@ Default: ""
 #### public_ip
 
 IP address that should be published with the local Machine's state and any socket information.
-If not set, fleet will attempt to detect the IP it should publish based on the machine's IP routing information.
+If not set, fleetd will attempt to detect the IP it should publish based on the machine's IP routing information.
 
 Default: ""
 
