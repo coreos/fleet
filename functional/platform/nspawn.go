@@ -327,16 +327,6 @@ UseDNS no
 		return
 	}
 
-	/*
-		// Ensure etcd is available in the container
-		_, stderr, err = nc.nsenter(pid, "etcdctl ls")
-		if err != nil {
-			log.Printf("Failed reaching etcd from within container: %s", stderr)
-			time.Sleep(100 * time.Second)
-			return
-		}
-	*/
-
 	_, _, err = nc.nsenter(pid, "systemctl start fleet.service")
 	if err != nil {
 		log.Printf("Failed starting fleet.service: %v", err)
