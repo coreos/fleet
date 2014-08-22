@@ -19,14 +19,14 @@ import (
 	"github.com/coreos/fleet/functional/util"
 )
 
-var fleetBinPath string
+var fleetdBinPath string
 
 func init() {
-	fleetBinPath = os.Getenv("FLEET_BIN")
-	if fleetBinPath == "" {
-		fmt.Println("FLEET_BIN environment variable must be set")
+	fleetdBinPath = os.Getenv("FLEETD_BIN")
+	if fleetdBinPath == "" {
+		fmt.Println("FLEETD_BIN environment variable must be set")
 		os.Exit(1)
-	} else if _, err := os.Stat(fleetBinPath); err != nil {
+	} else if _, err := os.Stat(fleetdBinPath); err != nil {
 		fmt.Printf("%v\n", err)
 		os.Exit(1)
 	}
@@ -119,7 +119,7 @@ func (nc *nspawnCluster) prepCluster() (err error) {
 	return nil
 }
 
-func (nc *nspawnCluster) prepFleet(dir, ip, sshKeySrc, fleetBinSrc string, cfg MachineConfig) error {
+func (nc *nspawnCluster) prepFleet(dir, ip, sshKeySrc, fleetdBinSrc string, cfg MachineConfig) error {
 	cmd := fmt.Sprintf("mkdir -p %s/opt/fleet", dir)
 	if _, _, err := run(cmd); err != nil {
 		return err
@@ -131,8 +131,8 @@ func (nc *nspawnCluster) prepFleet(dir, ip, sshKeySrc, fleetBinSrc string, cfg M
 		return err
 	}
 
-	fleetBinDst := path.Join(dir, "opt", "fleet", "fleet")
-	if err := copyFile(fleetBinSrc, fleetBinDst, 0755); err != nil {
+	fleetdBinDst := path.Join(dir, "opt", "fleet", "fleetd")
+	if err := copyFile(fleetdBinSrc, fleetdBinDst, 0755); err != nil {
 		return err
 	}
 
@@ -149,7 +149,7 @@ authorized_keys_file=%s
 	}
 
 	unitContents := `[Service]
-ExecStart=/opt/fleet/fleet -config /opt/fleet/fleet.conf
+ExecStart=/opt/fleet/fleetd -config /opt/fleet/fleet.conf
 `
 	unitPath := path.Join(dir, "opt", "fleet", "fleet.service")
 	if err := ioutil.WriteFile(unitPath, []byte(unitContents), 0644); err != nil {
@@ -260,8 +260,8 @@ UseDNS no
 	}
 
 	sshKeySrc := path.Join("fixtures", "id_rsa.pub")
-	if err = nc.prepFleet(fsdir, ip, sshKeySrc, fleetBinPath, cfg); err != nil {
-		log.Printf("Failed preparing fleet in filesystem: %v", err)
+	if err = nc.prepFleet(fsdir, ip, sshKeySrc, fleetdBinPath, cfg); err != nil {
+		log.Printf("Failed preparing fleetd in filesystem: %v", err)
 		return
 	}
 

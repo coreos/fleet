@@ -1,6 +1,6 @@
 # Architecture
 
-There exist two primary roles within fleet: Engine and Agent. Each `fleet` daemon running in a cluster fulfills both roles. An Engine primarily makes scheduling decisions while an Agent executes jobs.
+There exist two primary roles within fleet: Engine and Agent. Each `fleetd` daemon running in a cluster fulfills both roles. An Engine primarily makes scheduling decisions while an Agent executes jobs.
 
 ## Moving Parts
 
