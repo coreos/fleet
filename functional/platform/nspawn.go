@@ -69,7 +69,7 @@ func (nc *nspawnCluster) WaitForNMachines(count int) ([]string, error) {
 	return util.WaitForNMachines(nc.Fleetctl, count)
 }
 
-func (nc *nspawnCluster) WaitForNActiveUnits(count int) (map[string]util.UnitState, error) {
+func (nc *nspawnCluster) WaitForNActiveUnits(count int) (map[string][]util.UnitState, error) {
 	return util.WaitForNActiveUnits(nc.Fleetctl, count)
 }
 

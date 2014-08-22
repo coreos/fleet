@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/coreos/fleet/functional/platform"
+	"github.com/coreos/fleet/functional/util"
 )
 
 // Ensure an existing unit migrates to an unoccupied machine
@@ -43,7 +44,13 @@ func TestDynamicClusterNewMemberUnitMigration(t *testing.T) {
 	if len(units) != 3 {
 		t.Fatalf("Did not find 3 units in cluster: \n%s", stdout)
 	}
-	states, err := cluster.WaitForNActiveUnits(3)
+	active, err := cluster.WaitForNActiveUnits(3)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Ensure each unit is only running on a single machine
+	states, err := util.ActiveToSingleStates(active)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -57,10 +64,16 @@ func TestDynamicClusterNewMemberUnitMigration(t *testing.T) {
 	if _, err = cluster.WaitForNMachines(3); err != nil {
 		t.Fatal(err)
 	}
-	newStates, err := cluster.WaitForNActiveUnits(3)
+	newActive, err := cluster.WaitForNActiveUnits(3)
 	if err != nil {
 		t.Fatal(err)
 	}
+	// Ensure each unit is only running on a single machine
+	newStates, err := util.ActiveToSingleStates(newActive)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	newMach := newStates[unit].Machine
 	if newMach == oldMach {
 		t.Fatalf("Unit %s did not migrate from machine %s to %s", unit, oldMach, newMach)
@@ -110,7 +123,12 @@ func TestDynamicClusterMemberReboot(t *testing.T) {
 	if len(units) != 3 {
 		t.Fatalf("Did not find 3 units in cluster: \n%s", stdout)
 	}
-	oldStates, err := cluster.WaitForNActiveUnits(3)
+	oldActive, err := cluster.WaitForNActiveUnits(3)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	oldStates, err := util.ActiveToSingleStates(oldActive)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -135,7 +153,11 @@ func TestDynamicClusterMemberReboot(t *testing.T) {
 	if _, err = cluster.WaitForNMachines(3); err != nil {
 		t.Fatal(err)
 	}
-	newStates, err := cluster.WaitForNActiveUnits(3)
+	newActive, err := cluster.WaitForNActiveUnits(3)
+	if err != nil {
+		t.Fatal(err)
+	}
+	newStates, err := util.ActiveToSingleStates(newActive)
 	if err != nil {
 		t.Fatal(err)
 	}

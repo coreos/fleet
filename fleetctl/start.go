@@ -16,6 +16,12 @@ var (
 for units in the current working directory or matching names of previously
 submitted units.
 
+For units which are not global, start operations are performed synchronously,
+which means fleetctl will block until it detects that the unit(s) have
+transitioned to a started state. This behaviour can be configured with the
+respective --block-attempts and --no-block options. Start operations on global
+units are always non-blocking.
+
 Start a single unit:
 	fleetctl start foo.service
 
@@ -30,13 +36,13 @@ Machine metadata is located in the fleet configuration file.`,
 
 func init() {
 	cmdStartUnit.Flags.BoolVar(&sharedFlags.Sign, "sign", false, "DEPRECATED - this option cannot be used")
-	cmdStartUnit.Flags.IntVar(&sharedFlags.BlockAttempts, "block-attempts", 0, "Wait until the jobs are launched, performing up to N attempts before giving up. A value of 0 indicates no limit.")
-	cmdStartUnit.Flags.BoolVar(&sharedFlags.NoBlock, "no-block", false, "Do not wait until the jobs have been launched before exiting.")
+	cmdStartUnit.Flags.IntVar(&sharedFlags.BlockAttempts, "block-attempts", 0, "Wait until the units are launched, performing up to N attempts before giving up. A value of 0 indicates no limit. Does not apply to global units.")
+	cmdStartUnit.Flags.BoolVar(&sharedFlags.NoBlock, "no-block", false, "Do not wait until the units have launched before exiting. Always the case for global units.")
 }
 
 func runStartUnit(args []string) (exit int) {
 	if err := lazyCreateUnits(args); err != nil {
-		fmt.Fprintf(os.Stderr, "Error creating jobs: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error creating units: %v\n", err)
 		return 1
 	}
 
@@ -46,14 +52,23 @@ func runStartUnit(args []string) (exit int) {
 		return 1
 	}
 
+	var starting []string
+	for _, u := range triggered {
+		if suToGlobal(*u) {
+			fmt.Printf("Triggered global unit %s start\n", u.Name)
+		} else {
+			starting = append(starting, u.Name)
+		}
+	}
+
 	if !sharedFlags.NoBlock {
-		errchan := waitForUnitStates(triggered, job.JobStateLaunched, sharedFlags.BlockAttempts, os.Stdout)
+		errchan := waitForUnitStates(starting, job.JobStateLaunched, sharedFlags.BlockAttempts, os.Stdout)
 		for err := range errchan {
 			fmt.Fprintf(os.Stderr, "Error waiting for units: %v\n", err)
 			exit = 1
 		}
 	} else {
-		for _, name := range triggered {
+		for _, name := range starting {
 			fmt.Printf("Triggered unit %s start\n", name)
 		}
 	}

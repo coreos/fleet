@@ -125,17 +125,18 @@ func desiredAgentState(a *Agent, reg registry.Registry) (*AgentState, error) {
 	}
 
 	for _, u := range units {
-		sUnit, ok := sUnitMap[u.Name]
-		if !ok || sUnit.TargetMachineID == "" || sUnit.TargetMachineID != ms.ID {
-			continue
+		j := &job.Job{
+			Name:        u.Name,
+			Unit:        u.Unit,
+			TargetState: u.TargetState,
 		}
-
-		as.Jobs[u.Name] = &job.Job{
-			Name:            u.Name,
-			Unit:            u.Unit,
-			TargetState:     u.TargetState,
-			TargetMachineID: sUnit.TargetMachineID,
+		if !u.IsGlobal() {
+			sUnit, ok := sUnitMap[u.Name]
+			if !ok || sUnit.TargetMachineID == "" || sUnit.TargetMachineID != ms.ID {
+				continue
+			}
 		}
+		as.Jobs[u.Name] = j
 	}
 
 	return &as, nil

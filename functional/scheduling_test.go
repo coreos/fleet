@@ -57,7 +57,11 @@ func TestScheduleConditionMachineOf(t *testing.T) {
 	if len(units) != 6 {
 		t.Fatalf("Did not find six units in cluster: \n%s", stdout)
 	}
-	states, err := cluster.WaitForNActiveUnits(6)
+	active, err := cluster.WaitForNActiveUnits(6)
+	if err != nil {
+		t.Fatal(err)
+	}
+	states, err := util.ActiveToSingleStates(active)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -98,7 +102,11 @@ func TestScheduleConditionMachineOf(t *testing.T) {
 	if _, err := cluster.WaitForNMachines(2); err != nil {
 		t.Fatal(err)
 	}
-	states, err = cluster.WaitForNActiveUnits(6)
+	active, err = cluster.WaitForNActiveUnits(6)
+	if err != nil {
+		t.Fatal(err)
+	}
+	states, err = util.ActiveToSingleStates(active)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -116,7 +124,7 @@ func TestScheduleConditionMachineOf(t *testing.T) {
 
 // Start 5 services that conflict with one another. Assert that only
 // 3 of the 5 are started.
-func TestScheduleGlobalConflicts(t *testing.T) {
+func TestScheduleConflicts(t *testing.T) {
 	cluster, err := platform.NewNspawnCluster("smoke")
 	if err != nil {
 		t.Fatal(err)
@@ -157,7 +165,11 @@ func TestScheduleGlobalConflicts(t *testing.T) {
 	if len(units) != 5 {
 		t.Fatalf("Did not find five units in cluster: \n%s", stdout)
 	}
-	states, err := cluster.WaitForNActiveUnits(3)
+	active, err := cluster.WaitForNActiveUnits(3)
+	if err != nil {
+		t.Fatal(err)
+	}
+	states, err := util.ActiveToSingleStates(active)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -198,7 +210,11 @@ func TestScheduleOneWayConflict(t *testing.T) {
 		t.Fatalf("Failed starting unit %s: %v", name, err)
 	}
 
-	states, err := cluster.WaitForNActiveUnits(1)
+	active, err := cluster.WaitForNActiveUnits(1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	states, err := util.ActiveToSingleStates(active)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -217,7 +233,11 @@ func TestScheduleOneWayConflict(t *testing.T) {
 	if len(units) != 2 {
 		t.Fatalf("Did not find two units in cluster: \n%s", stdout)
 	}
-	states, err = cluster.WaitForNActiveUnits(1)
+	active, err = cluster.WaitForNActiveUnits(1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	states, err = util.ActiveToSingleStates(active)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -246,7 +266,11 @@ func TestScheduleOneWayConflict(t *testing.T) {
 	if len(units) != 1 {
 		t.Fatalf("Did not find one unit in cluster: \n%s", stdout)
 	}
-	states, err = cluster.WaitForNActiveUnits(1)
+	active, err = cluster.WaitForNActiveUnits(1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	states, err = util.ActiveToSingleStates(active)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -302,7 +326,11 @@ X-ConditionMachineID=%s
 	}
 
 	// Block until our three units have been started
-	states, err := cluster.WaitForNActiveUnits(3)
+	active, err := cluster.WaitForNActiveUnits(3)
+	if err != nil {
+		t.Fatal(err)
+	}
+	states, err := util.ActiveToSingleStates(active)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -310,6 +338,59 @@ X-ConditionMachineID=%s
 	for unit, unitState := range states {
 		if unitState.Machine != schedule[unit] {
 			t.Errorf("Unit %s was scheduled to %s, expected %s", unit, unitState.Machine, schedule[unit])
+		}
+	}
+}
+
+func TestScheduleGlobalUnits(t *testing.T) {
+	// Create a three-member cluster
+	cluster, err := platform.NewNspawnCluster("smoke")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cluster.Destroy()
+	if err := platform.CreateNClusterMembers(cluster, 3, platform.MachineConfig{}); err != nil {
+		t.Fatal(err)
+	}
+	machines, err := cluster.WaitForNMachines(3)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Launch a couple of simple units
+	cluster.Fleetctl("start", "--no-block", "fixtures/units/hello.service", "fixtures/units/goodbye.service")
+
+	// Both units should show up active
+	_, err = cluster.WaitForNActiveUnits(2)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Now add a global unit
+	cluster.Fleetctl("start", "--no-block", "fixtures/units/global.service")
+
+	// Should see 2 + 3 units
+	states, err := cluster.WaitForNActiveUnits(5)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Each machine should have a single global unit
+	us := states["global.service"]
+	for _, mach := range machines {
+		var found bool
+		for _, state := range us {
+			if state.Machine == mach {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Fatalf("Did not find global unit on machine %v", mach)
+			t.Logf("Found unit states:")
+			for _, state := range states {
+				t.Logf("%#v", state)
+			}
 		}
 	}
 }

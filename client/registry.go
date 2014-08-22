@@ -41,9 +41,13 @@ func (rc *RegistryClient) Unit(name string) (*schema.Unit, error) {
 		return nil, err
 	}
 
-	sUnit, err := rc.Registry.ScheduledUnit(name)
-	if err != nil {
-		return nil, err
+	var sUnit *job.ScheduledUnit
+	// Only non-global units have an associated Schedule
+	if !rUnit.IsGlobal() {
+		sUnit, err = rc.Registry.ScheduledUnit(name)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return schema.MapUnitToSchemaUnit(rUnit, sUnit), nil

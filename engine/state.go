@@ -8,6 +8,7 @@ import (
 
 type clusterState struct {
 	jobs     map[string]*job.Job
+	gUnits   map[string]*job.Unit
 	machines map[string]*machine.MachineState
 }
 
@@ -18,20 +19,26 @@ func newClusterState(units []job.Unit, sUnits []job.ScheduledUnit, machines []ma
 		sUnitMap[sUnit.Name] = &sUnit
 	}
 
-	jMap := make(map[string]*job.Job, len(units))
+	jMap := make(map[string]*job.Job)
+	guMap := make(map[string]*job.Unit)
 	for _, u := range units {
-		j := job.Job{
-			Name:        u.Name,
-			Unit:        u.Unit,
-			TargetState: u.TargetState,
-		}
+		if u.IsGlobal() {
+			u := u
+			guMap[u.Name] = &u
+		} else {
+			j := job.Job{
+				Name:        u.Name,
+				Unit:        u.Unit,
+				TargetState: u.TargetState,
+			}
 
-		if sUnit, ok := sUnitMap[u.Name]; ok {
-			j.TargetMachineID = sUnit.TargetMachineID
-			j.State = sUnit.State
-		}
+			if sUnit, ok := sUnitMap[u.Name]; ok {
+				j.TargetMachineID = sUnit.TargetMachineID
+				j.State = sUnit.State
+			}
 
-		jMap[j.Name] = &j
+			jMap[j.Name] = &j
+		}
 	}
 
 	mMap := make(map[string]*machine.MachineState, len(machines))
@@ -42,6 +49,7 @@ func newClusterState(units []job.Unit, sUnits []job.ScheduledUnit, machines []ma
 
 	return &clusterState{
 		jobs:     jMap,
+		gUnits:   guMap,
 		machines: mMap,
 	}
 }
@@ -54,17 +62,24 @@ func (cs *clusterState) agents() map[string]*agent.AgentState {
 	}
 
 	for _, j := range cs.jobs {
+		j := j
 		if !j.Scheduled() || j.TargetState == job.JobStateInactive {
 			continue
 		}
-
-		as := agents[j.TargetMachineID]
-		if as == nil {
-			continue
+		if as, ok := agents[j.TargetMachineID]; ok {
+			as.Jobs[j.Name] = j
 		}
+	}
 
-		j := j
-		as.Jobs[j.Name] = j
+	for _, gu := range cs.gUnits {
+		j := &job.Job{
+			Name:        gu.Name,
+			Unit:        gu.Unit,
+			TargetState: gu.TargetState,
+		}
+		for _, a := range agents {
+			a.Jobs[gu.Name] = j
+		}
 	}
 
 	return agents

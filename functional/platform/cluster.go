@@ -17,7 +17,7 @@ type Cluster interface {
 	// client operations
 	Fleetctl(args ...string) (string, string, error)
 	FleetctlWithInput(input string, args ...string) (string, string, error)
-	WaitForNActiveUnits(count int) (map[string]util.UnitState, error)
+	WaitForNActiveUnits(count int) (map[string][]util.UnitState, error)
 	WaitForNMachines(count int) ([]string, error)
 }
 
