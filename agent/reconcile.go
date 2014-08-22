@@ -89,13 +89,13 @@ func (ar *AgentReconciler) Reconcile(a *Agent) {
 // Reconcile drives the local Agent's state towards the desired state
 // stored in the Registry.
 func Reconcile(ar *AgentReconciler, a *Agent) {
-	dAgentState, err := ar.desiredAgentState(a, ar.reg)
+	dAgentState, err := desiredAgentState(a, ar.reg)
 	if err != nil {
 		log.Errorf("Unable to determine agent's desired state: %v", err)
 		return
 	}
 
-	cAgentState, err := ar.currentAgentState(a)
+	cAgentState, err := currentAgentState(a)
 	if err != nil {
 		log.Errorf("Unable to determine agent's current state: %v", err)
 		return
@@ -109,7 +109,7 @@ func Reconcile(ar *AgentReconciler, a *Agent) {
 // Purge attempts to unload all Jobs that have been loaded locally
 func (ar *AgentReconciler) Purge(a *Agent) {
 	for {
-		cAgentState, err := ar.currentAgentState(a)
+		cAgentState, err := currentAgentState(a)
 		if err != nil {
 			log.Errorf("Unable to determine agent's current state: %v", err)
 			return
@@ -136,7 +136,7 @@ func (ar *AgentReconciler) Purge(a *Agent) {
 
 // desiredAgentState builds an *AgentState object that represents what the
 // provided Agent should currently be doing.
-func (ar *AgentReconciler) desiredAgentState(a *Agent, reg registry.Registry) (*AgentState, error) {
+func desiredAgentState(a *Agent, reg registry.Registry) (*AgentState, error) {
 	units, err := reg.Units()
 	if err != nil {
 		log.Errorf("Failed fetching Units from Registry: %v", err)
@@ -180,7 +180,7 @@ func (ar *AgentReconciler) desiredAgentState(a *Agent, reg registry.Registry) (*
 
 // currentAgentState builds an *AgentState object that represents what an
 // Agent is currently doing.
-func (ar *AgentReconciler) currentAgentState(a *Agent) (*AgentState, error) {
+func currentAgentState(a *Agent) (*AgentState, error) {
 	jobs, err := a.jobs()
 	if err != nil {
 		return nil, err
