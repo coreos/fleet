@@ -24,8 +24,8 @@ func NewFakeRegistry() *FakeRegistry {
 }
 
 type FakeRegistry struct {
-	// Not all methods of required by the Registry interface are implemented
-	// by the TestRegistry. Any calls to these unimplemented methods will
+	// Not all methods required by the Registry interface are implemented
+	// by the FakeRegistry. Any calls to these unimplemented methods will
 	// result in a panic.
 	Registry
 	sync.RWMutex
