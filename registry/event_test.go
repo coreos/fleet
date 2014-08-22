@@ -5,12 +5,13 @@ import (
 	"testing"
 
 	"github.com/coreos/fleet/etcd"
+	"github.com/coreos/fleet/pkg"
 )
 
 func TestFilterEtcdEvents(t *testing.T) {
 	tests := []struct {
 		in string
-		ev Event
+		ev pkg.Event
 		ok bool
 	}{
 		{

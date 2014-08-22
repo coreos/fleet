@@ -7,33 +7,28 @@ import (
 
 	"github.com/coreos/fleet/etcd"
 	"github.com/coreos/fleet/log"
+	"github.com/coreos/fleet/pkg"
 )
 
 const (
 	// Occurs when any Job's target is touched
-	JobTargetChangeEvent = Event("JobTargetChangeEvent")
+	JobTargetChangeEvent = pkg.Event("JobTargetChangeEvent")
 	// Occurs when any Job's target state is touched
-	JobTargetStateChangeEvent = Event("JobTargetStateChangeEvent")
+	JobTargetStateChangeEvent = pkg.Event("JobTargetStateChangeEvent")
 )
-
-type EventStream interface {
-	Next(chan struct{}) chan Event
-}
-
-type Event string
 
 type etcdEventStream struct {
 	etcd       etcd.Client
 	rootPrefix string
 }
 
-func NewEtcdEventStream(client etcd.Client, rootPrefix string) EventStream {
+func NewEtcdEventStream(client etcd.Client, rootPrefix string) pkg.EventStream {
 	return &etcdEventStream{client, rootPrefix}
 }
 
 // Next returns a channel which will emit an Event as soon as one of interest occurs
-func (es *etcdEventStream) Next(stop chan struct{}) chan Event {
-	evchan := make(chan Event)
+func (es *etcdEventStream) Next(stop chan struct{}) chan pkg.Event {
+	evchan := make(chan pkg.Event)
 	go func() {
 		for {
 			select {
@@ -54,7 +49,7 @@ func (es *etcdEventStream) Next(stop chan struct{}) chan Event {
 	return evchan
 }
 
-func parse(res *etcd.Result, prefix string) (ev Event, ok bool) {
+func parse(res *etcd.Result, prefix string) (ev pkg.Event, ok bool) {
 	if res == nil || res.Node == nil {
 		return
 	}

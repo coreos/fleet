@@ -15,13 +15,17 @@ const (
 	reconcileInterval = 5 * time.Second
 )
 
-func NewReconciler(reg registry.Registry, rStream registry.EventStream) *AgentReconciler {
-	return &AgentReconciler{reg, rStream, newTaskManager()}
+func NewReconciler(reg registry.Registry, rStream pkg.EventStream) *AgentReconciler {
+	return &AgentReconciler{
+		reg:      reg,
+		rStream:  rStream,
+		tManager: newTaskManager(),
+	}
 }
 
 type AgentReconciler struct {
 	reg      registry.Registry
-	rStream  registry.EventStream
+	rStream  pkg.EventStream
 	tManager *taskManager
 }
 
@@ -41,49 +45,20 @@ func (ar *AgentReconciler) Run(a *Agent, stop chan bool) {
 			log.V(1).Info(msg)
 		}
 	}
-
-	trigger := make(chan struct{})
-	go func() {
-		abort := make(chan struct{})
-		for {
-			select {
-			case <-stop:
-				close(abort)
-				return
-			case <-ar.rStream.Next(abort):
-				trigger <- struct{}{}
-			}
-		}
-	}()
-
-	ticker := time.After(reconcileInterval)
-	for {
-		select {
-		case <-stop:
-			log.V(1).Info("AgentReconciler exiting due to stop signal")
-			return
-		case <-ticker:
-			ticker = time.After(reconcileInterval)
-			log.V(1).Info("AgentReconciler tick")
-			reconcile()
-		case <-trigger:
-			ticker = time.After(reconcileInterval)
-			log.V(1).Info("AgentReconciler triggered by rStream event")
-			reconcile()
-		}
-	}
+	reconciler := pkg.NewPeriodicReconciler(reconcileInterval, reconcile, ar.rStream)
+	reconciler.Run(stop)
 }
 
 // Reconcile drives the local Agent's state towards the desired state
 // stored in the Registry.
 func (ar *AgentReconciler) Reconcile(a *Agent) {
-	dAgentState, err := ar.desiredAgentState(a, ar.reg)
+	dAgentState, err := desiredAgentState(a, ar.reg)
 	if err != nil {
 		log.Errorf("Unable to determine agent's desired state: %v", err)
 		return
 	}
 
-	cAgentState, err := ar.currentAgentState(a)
+	cAgentState, err := currentAgentState(a)
 	if err != nil {
 		log.Errorf("Unable to determine agent's current state: %v", err)
 		return
@@ -97,7 +72,7 @@ func (ar *AgentReconciler) Reconcile(a *Agent) {
 // Purge attempts to unload all Jobs that have been loaded locally
 func (ar *AgentReconciler) Purge(a *Agent) {
 	for {
-		cAgentState, err := ar.currentAgentState(a)
+		cAgentState, err := currentAgentState(a)
 		if err != nil {
 			log.Errorf("Unable to determine agent's current state: %v", err)
 			return
@@ -124,7 +99,7 @@ func (ar *AgentReconciler) Purge(a *Agent) {
 
 // desiredAgentState builds an *AgentState object that represents what the
 // provided Agent should currently be doing.
-func (ar *AgentReconciler) desiredAgentState(a *Agent, reg registry.Registry) (*AgentState, error) {
+func desiredAgentState(a *Agent, reg registry.Registry) (*AgentState, error) {
 	units, err := reg.Units()
 	if err != nil {
 		log.Errorf("Failed fetching Units from Registry: %v", err)
@@ -168,7 +143,7 @@ func (ar *AgentReconciler) desiredAgentState(a *Agent, reg registry.Registry) (*
 
 // currentAgentState builds an *AgentState object that represents what an
 // Agent is currently doing.
-func (ar *AgentReconciler) currentAgentState(a *Agent) (*AgentState, error) {
+func currentAgentState(a *Agent) (*AgentState, error) {
 	jobs, err := a.jobs()
 	if err != nil {
 		return nil, err

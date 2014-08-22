@@ -6,6 +6,7 @@ import (
 
 	"github.com/coreos/fleet/log"
 	"github.com/coreos/fleet/machine"
+	"github.com/coreos/fleet/pkg"
 	"github.com/coreos/fleet/registry"
 )
 
@@ -17,14 +18,14 @@ const (
 type Engine struct {
 	rec      *Reconciler
 	registry registry.Registry
-	rStream  registry.EventStream
+	rStream  pkg.EventStream
 	machine  machine.Machine
 
 	lease   registry.Lease
 	trigger chan struct{}
 }
 
-func New(reg registry.Registry, rStream registry.EventStream, mach machine.Machine) *Engine {
+func New(reg registry.Registry, rStream pkg.EventStream, mach machine.Machine) *Engine {
 	rec := NewReconciler()
 	return &Engine{rec, reg, rStream, mach, nil, make(chan struct{})}
 }
@@ -70,36 +71,8 @@ func (e *Engine) Run(ival time.Duration, stop chan bool) {
 		}
 	}
 
-	trigger := make(chan struct{})
-	go func() {
-		for {
-			abort := make(chan struct{})
-			select {
-			case <-stop:
-				close(abort)
-				return
-			case <-e.rStream.Next(abort):
-				trigger <- struct{}{}
-			}
-		}
-	}()
-
-	ticker := time.After(ival)
-	for {
-		select {
-		case <-stop:
-			log.V(1).Info("Engine exiting due to stop signal")
-			return
-		case <-ticker:
-			ticker = time.After(ival)
-			log.V(1).Info("Engine tick")
-			reconcile()
-		case <-trigger:
-			ticker = time.After(ival)
-			log.V(1).Info("Engine reconcilation triggered by job state change")
-			reconcile()
-		}
-	}
+	rec := pkg.NewPeriodicReconciler(ival, reconcile, e.rStream)
+	rec.Run(stop)
 }
 
 func (e *Engine) Purge() {
