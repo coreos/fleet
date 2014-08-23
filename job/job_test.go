@@ -79,31 +79,6 @@ func TestJobConflictsNotProvided(t *testing.T) {
 	}
 }
 
-func TestJobResourceReservations(t *testing.T) {
-	contents := `[Unit]
-Description=Testing
-
-[X-Fleet]
-X-MemoryReservation=1024
-X-CoresReservation=150
-X-DiskReservation=524288
-`
-	j := NewJob("echo.service", *newUnit(t, contents))
-	res := j.Resources()
-
-	if res.Cores != 150 {
-		t.Errorf("Expected 150 cores reservation, received %d", res.Cores)
-	}
-
-	if res.Memory != 1024 {
-		t.Errorf("Expected 1024 memory reservation, received %d", res.Memory)
-	}
-
-	if res.Disk != 524288 {
-		t.Errorf("Expected 524288 disk reservation, received %d", res.Disk)
-	}
-}
-
 func TestParseRequirements(t *testing.T) {
 	contents := `
 [X-Fleet]
