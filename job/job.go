@@ -2,11 +2,8 @@ package job
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 
-	"github.com/coreos/fleet/log"
-	"github.com/coreos/fleet/resource"
 	"github.com/coreos/fleet/unit"
 )
 
@@ -31,12 +28,6 @@ const (
 	fleetXConflicts = "Conflicts"
 	// Machine metadata key in the unit file, without the X- prefix
 	fleetXConditionMachineMetadata = "ConditionMachineMetadata"
-	// Memory required in MB
-	fleetXMemoryReservation = "MemoryReservation"
-	// Cores required in hundreds, ie 100=1core, 50=0.5core, 200=2cores
-	fleetXCoresReservation = "CoresReservation"
-	// Disk required in MB
-	fleetXDiskReservation = "DiskReservation"
 	// Machine metadata key for the deprecated `require` flag
 	fleetFlagMachineMetadata = "MachineMetadata"
 )
@@ -150,27 +141,6 @@ func (j *Job) Peers() []string {
 		return []string{}
 	}
 	return peers
-}
-
-func (j *Job) resourceFromKey(resKey string) int {
-	valStr, ok := j.Requirements()[resKey]
-	if ok && len(valStr) > 0 {
-		val, err := strconv.Atoi(valStr[0])
-		if err != nil {
-			log.Errorf("failed to parse resource requirement %s from %s: %v", resKey, j.Name, err)
-			return 0
-		}
-		return val
-	}
-	return 0
-}
-
-func (j *Job) Resources() resource.ResourceTuple {
-	return resource.ResourceTuple{
-		Cores:  j.resourceFromKey(fleetXCoresReservation),
-		Memory: j.resourceFromKey(fleetXMemoryReservation),
-		Disk:   j.resourceFromKey(fleetXDiskReservation),
-	}
 }
 
 // RequiredTarget determines whether or not this Job must be scheduled to
