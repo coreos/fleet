@@ -60,7 +60,8 @@ func (m *systemdUnitManager) Load(name string, u unit.UnitFile) error {
 }
 
 // Unload removes the indicated unit from the filesystem, deletes its
-// associated Hash from the cache, and unsubscribes from relevant dbus events.
+// associated Hash from the cache, clears its unit status in systemd, and
+// performs a systemd daemon-reload
 func (m *systemdUnitManager) Unload(name string) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
@@ -234,6 +235,7 @@ func (m *systemdUnitManager) removeUnit(name string) {
 	log.Infof("Removing systemd unit %s", name)
 
 	m.systemd.DisableUnitFiles([]string{name}, true)
+	m.systemd.ResetFailedUnit(name)
 
 	ufPath := m.getUnitFilePath(name)
 	os.Remove(ufPath)
