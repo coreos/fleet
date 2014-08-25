@@ -10,6 +10,6 @@ shift 1
 
 pubkey=$(cat)
 
-for machine in $(fleetctl $@ list-machines --no-legend | awk '{ print $1;}'); do
+for machine in $(fleetctl $@ list-machines --no-legend --full | awk '{ print $1;}'); do
 	fleetctl $@ ssh $machine "echo '${pubkey}' | update-ssh-keys -a $name -n"
 done
