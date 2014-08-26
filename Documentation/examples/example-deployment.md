@@ -77,18 +77,18 @@ X-ConditionMachineOf=subgun-http.1.service
 ## Deploy!
 
 
-At this point, it is simple enough to hand the two unit files over to fleet:
+At this point, it is simple enough to hand the unit files over to fleet:
 
 ```
 $ fleetctl submit subgun-presence.*.service subgun-http.*.service
-$ fleetctl list-units
-UNIT						STATE	LOAD	ACTIVE	SUB	DESC	MACHINE
-subgun-presence.1.service	-		-		-		-	-		-
-subgun-presence.2.service	-		-		-		-	-		-
-subgun-presence.3.service	-		-		-		-	-		-
-subgun.1.service			-		-		-		-	-		-
-subgun.2.service			-		-		-		-	-		-
-subgun.3.service			-		-		-		-	-		-
+$ fleetctl list-unit-files
+UNIT				HASH	DSTATE		STATE		TMACHINE
+subgun-http.1.service		9645ede	inactive	inactive	-
+subgun-http.2.service		dc866b0	inactive	inactive	-
+subgun-http.3.service		43644e7	inactive	inactive	-
+subgun-presence.1.service	3a52ed1	inactive	inactive	-
+subgun-presence.2.service	37811b3	inactive	inactive	-
+subgun-presence.3.service	b1ba9e2	inactive	inactive	-
 ```
 
 And now they can be started:
@@ -96,13 +96,13 @@ And now they can be started:
 ```
 $ fleetctl start subgun-presence.*.service subgun-http.*.service
 $ fleetctl list-units
-UNIT						STATE		LOAD	ACTIVE	SUB		DESC	MACHINE
-subgun-presence.1.service	inactive	loaded	active	running	-		148a18ff...
-subgun-presence.2.service	inactive	loaded	active	running	-		3caa7b7d...
-subgun-presence.3.service	inactive	loaded	active	running	-		491586a6...
-subgun.1.service			inactive	loaded	active	running	-		148a18ff...
-subgun.2.service			inactive	loaded	active	running	-		3caa7b7d...
-subgun.3.service			inactive	loaded	active	running	-		491586a6...
+UNIT				MACHINE				ACTIVE	SUB
+subgun-http.1.service		16b3e287.../172.17.8.101	active	running
+subgun-http.2.service		4127c5ef.../172.17.8.103	active	running
+subgun-http.3.service		ec4ba903.../172.17.8.102	active	running
+subgun-presence.1.service	16b3e287.../172.17.8.101	active	running
+subgun-presence.2.service	4127c5ef.../172.17.8.103	active	running
+subgun-presence.3.service	ec4ba903.../172.17.8.102	active	running
 ```
 
 At this point, our application is deployed!
