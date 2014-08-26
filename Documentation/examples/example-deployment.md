@@ -5,7 +5,7 @@ This example deploys [subgun](https://github.com/coreos/subgun), a simple subscr
 
 subgun is deployed in two pieces: an application and a presence daemon. The application simply serves HTTP requests through an AWS load balancer, while the presence daemon updates the load balancer with backend information. The diagram below illustrates this model:
 
-![image](img/subgun.png)
+![image](subgun.png)
 
 ## Containers
 
