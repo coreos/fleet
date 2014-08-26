@@ -50,7 +50,7 @@ Description=subgun
 [Service]
 ExecStartPre=-/usr/bin/docker kill subgun-1
 ExecStartPre=-/usr/bin/docker rm subgun-1
-ExecStart=/usr/bin/docker run -rm -name subgun-1 -e SUBGUN_LISTEN=127.0.0.1:8080 -e SUBGUN_LISTS=recv@sandbox2398.mailgun.org -e SUBGUN_API_KEY=key-779ru4cibbnhfa1qp7a3apyvwkls7ny7 -p 8080:8080 coreos/subgun
+ExecStart=/usr/bin/docker run --rm --name subgun-1 -e SUBGUN_LISTEN=127.0.0.1:8080 -e SUBGUN_LISTS=recv@sandbox2398.mailgun.org -e SUBGUN_API_KEY=key-779ru4cibbnhfa1qp7a3apyvwkls7ny7 -p 8080:8080 coreos/subgun
 ExecStop=/usr/bin/docker stop subgun-1
 
 [X-Fleet]
@@ -67,7 +67,7 @@ BindsTo=subgun-http.1.service
 [Service]
 ExecStartPre=-/usr/bin/docker kill subgun-presence-1
 ExecStartPre=-/usr/bin/docker rm subgun-presence-1
-ExecStart=/usr/bin/docker run -rm -name subgun-presence-1 -e AWS_ACCESS_KEY=AKIAIBC5MW3ONCW6J2XQ -e AWS_SECRET_KEY=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 -e AWS_REGION=us-east-1 -e ELB_NAME=bcwaldon-fleet-lb coreos/elb-presence
+ExecStart=/usr/bin/docker run --rm --name subgun-presence-1 -e AWS_ACCESS_KEY=AKIAIBC5MW3ONCW6J2XQ -e AWS_SECRET_KEY=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 -e AWS_REGION=us-east-1 -e ELB_NAME=bcwaldon-fleet-lb coreos/elb-presence
 ExecStop=/usr/bin/docker stop subgun-presence-1
 
 [X-Fleet]
