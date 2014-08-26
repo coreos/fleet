@@ -59,11 +59,7 @@ The output communicates exactly how the connection to a vagrant host is made whe
 ```
 $ ssh -p 2222 -i /Users/bcwaldon/.vagrant.d/insecure_private_key core@127.0.0.1
 Last login: Thu Feb 20 05:39:51 UTC 2014 from 10.0.2.2 on pts/1
-   ______                ____  _____
-  / ____/___  ________  / __ \/ ___/
- / /   / __ \/ ___/ _ \/ / / /\__ \
-/ /___/ /_/ / /  /  __/ /_/ /___/ /
-\____/\____/_/   \___/\____//____/
+CoreOS (alpha)
 core@localhost ~ $
 ```
 
