@@ -1,16 +1,16 @@
-## Job states
+## Unit states
 
-There are currently three cluster-level states for a job:
+There are currently three cluster-level states for a unit:
 
 - `inactive`: known by fleet, but not assigned to a machine
 - `loaded`: assigned to a machine and loaded into systemd there, but not started
 - `launched`: loaded into systemd, and fleet has called the equivalent of `systemctl start`
 
-Jobs may only transition directly between these states. For example, for a job to transition from `inactive` to `launched` it must first go state `loaded`.
+Units may only transition directly between these states. For example, for a unit to transition from `inactive` to `launched` it must first go state `loaded`.
 
 The desired and last known states are exposed in the `DSTATE` and `STATE` columns of the output from `fleetctl show-schedule`.
 
-The `fleetctl` commands to act on jobs change the *desired state* of a job. fleet itself is then responsible for performing the necessary state transitions to move a job to the desired state. The following table explains the relationship between each `fleetctl` command and job states.
+The `fleetctl` commands to act on units change the *desired state* of a unit. fleet itself is then responsible for performing the necessary state transitions to move a unit to the desired state. The following table explains the relationship between each `fleetctl` command and unit states.
 
 | Command | Desired State | Valid Previous States |
 |---------|--------------|-----|
@@ -22,17 +22,17 @@ The `fleetctl` commands to act on jobs change the *desired state* of a job. flee
 | `fleetctl destroy` | `(unknown)` | `launched` or `loaded` or `inactive` |
 
 
-`(unknown)` indicates that the job has not yet been submitted to fleet at all (or it previously existed in fleet but was destroyed).
+`(unknown)` indicates that the unit has not yet been submitted to fleet at all (or it previously existed in fleet but was destroyed).
 
 For example:
-- if a job is `inactive`, then `fleetctl start` will cause it to be `loaded` and then `launched`
-- if a job is `loaded`, then `fleetctl destroy` will cause it to be `inactive` and then `(unknown)`
-- if a job is `inactive`, then `fleetctl stop` is an invalid action
+- if a unit is `inactive`, then `fleetctl start` will cause it to be `loaded` and then `launched`
+- if a unit is `loaded`, then `fleetctl destroy` will cause it to be `inactive` and then `(unknown)`
+- if a unit is `inactive`, then `fleetctl stop` is an invalid action
 
 
 ## systemd states
 
-The other state associated with jobs in fleet is their systemd unit state. This will only exist for jobs which are assigned to a machine and known by systemd on that machine; i.e., they are in state `loaded` or `launched`. 
+The other state associated with units in fleet is their systemd unit state. This will only exist for units which are assigned to a machine and known by systemd on that machine; i.e., they are in state `loaded` or `launched`. 
 
 The systemd state is composed of three subcomponents, exposed in `fleetctl list-units`. fleet retrieves this state directly from systemd and performs no manipulation before presenting it to the user; they correspond exactly to the respective output columns from the `systemctl list-units` command.
 
