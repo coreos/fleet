@@ -19,7 +19,7 @@ Every system in the fleet cluster runs a single `fleetd` daemon. Each daemon enc
 
 ## etcd
 
-etcd is the sole datastore in a fleet cluster. All persistent and ephemeral data is stored in etcd: unit files, cluster presence, job state, etc. 
+etcd is the sole datastore in a fleet cluster. All persistent and ephemeral data is stored in etcd: unit files, cluster presence, unit state, etc. 
 
 etcd is also used for all internal communication between fleet engines and agents.
 
