@@ -15,6 +15,7 @@ fleet will schedule any valid service, socket, path or timer systemd unit to a m
 | `X-ConditionMachineOf` | Limit eligible machines to the one that hosts a specific unit. |
 | `X-ConditionMachineMetadata` | Limit eligible machines to those with this specific metadata. |
 | `X-Conflicts` | Prevent a unit from being collocated with other units using glob-matching on the other unit names. |
+| `Global` | Schedule this unit on all agents in the cluster. Should not be used with other options. | 
 
 See [more information](https://github.com/coreos/fleet/blob/master/Documentation/scheduling.md) on these parameters and how they impact scheduling decisions.
 

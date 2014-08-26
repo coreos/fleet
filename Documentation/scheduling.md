@@ -2,12 +2,7 @@
 
 ## Making Scheduling Decisions
 
-The current method of making service placement decisions is incredibly simple. 
-When a user requests a given service be started in the system, a JobOffer is created.
-Agents react to this JobOffer by deciding if they are able to run the referenced Job, and if so, submitting a JobBid back to the Engine.
-The Engine simply accepts the first bid that is submitted for a given offer and commits the schedule change.
-
-**NOTE:** The current approach of accepting the first bid is only temporary - the Engine will make an effort to fairly schedule across the entire schedule in the near future.
+The fleet engine is responsible for deciding where units should be scheduled in the cluster. The current algorithm for making this determination is incredibly simple and only considers the number of units that each agent is running; it will attempt to schedule a unit on the agent with the lowest number of units.
 
 Read more about [fleet's architecture and data model](https://github.com/coreos/fleet/blob/master/Documentation/architecture.md).
 
@@ -65,15 +60,15 @@ If a unit is scheduled to the system without an `X-Conflicts` option, other unit
 
 ##### Dynamic requirements
 
-fleet supports several systemd specifiers to allow requirements to be dynamically determined based on a Job's name. This means that the same unit can be used for multiple Jobs and the requirements are dynamically substituted when the Job is scheduled.
+fleet supports several systemd specifiers to allow requirements to be dynamically determined based on a Unit's name. This means that the same unit can be used for multiple Units and the requirements are dynamically substituted when the Unit is scheduled.
 
-For example, a Job by the name `foo.service`, whose unit contains the following snippet:
+For example, a Unit by the name `foo.service`, whose unit contains the following snippet:
 
 ```
 [X-Fleet]
 X-ConditionMachineOf=%p.socket
 ```
 
-would result in an effective `X-ConditionMachineOf` of `foo.socket`. Using the same unit snippet with a Job called `bar.service`, on the other hand, would result in an effective `X-ConditionMachineOf` of `bar.socket`.
+would result in an effective `X-ConditionMachineOf` of `foo.socket`. Using the same unit snippet with a Unit called `bar.service`, on the other hand, would result in an effective `X-ConditionMachineOf` of `bar.socket`.
 
 For more information on the available specifiers, see the [unit file configuration](unit-files.md#systemd-specifiers) documentation.
