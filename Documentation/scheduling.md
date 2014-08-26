@@ -40,7 +40,7 @@ X-ConditionMachineMetadata=region=us-west-1
 This would allow a machine to match just one of the provided values to be considered eligible to run.
 
 A machine is not automatically configured with metadata.
-A deployer may define machine metadata using the `metadata` [config option](https://github.com/coreos/fleet/blob/master/Documentation/configuration.md).
+A deployer may define machine metadata using the `metadata` [config option](https://github.com/coreos/fleet/blob/master/Documentation/deployment-and-configuration.md).
 
 ##### Schedule unit next to another unit
 

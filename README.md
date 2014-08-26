@@ -31,10 +31,10 @@ hello.service   113f16a7.../172.17.8.103   active   running
 ## Supported Deployment Patterns
 
 * Deploy a single unit anywhere on the cluster
-* Deploy multiple copies of the same unit
+* Deploy a unit globally everywhere in the cluster
+* Automatic rescheduling of units on machine failure
 * Ensure that units are deployed together on the same machine
-* Forbid specific units from co-habitation
-* Maintain N units, re-scheduling on machine failure
+* Forbid specific units from colocation on the same machine (anti-affinity)
 * Deploy units to machines only with specific metadata
 
 These patterns are all defined using [custom systemd unit options][unit-files].
@@ -43,15 +43,16 @@ These patterns are all defined using [custom systemd unit options][unit-files].
 
 ## Getting Started
 
-Before you can deploy units, fleet must be [deployed][deploy] and [configured][configure] on each host in your cluster. After you have machines configured (check `fleetctl list-machines`), [get to work][using-the-client.md].
+Before you can deploy units, fleet must be [deployed and configured][deploy-and-configure] on each host in your cluster. (If you are running CoreOS, fleet is already installed.)
+
+After you have machines configured (check `fleetctl list-machines`), get to work with the [client][using-the-client.md].
 
 [using-the-client.md]: https://github.com/coreos/fleet/blob/master/Documentation/using-the-client.md
-[deploy]: https://github.com/coreos/fleet/blob/master/Documentation/deployment.md
-[configure]: https://github.com/coreos/fleet/blob/master/Documentation/configuration.md
+[deploy-and-configure]: https://github.com/coreos/fleet/blob/master/Documentation/deployment-and-configuration.md
 
 ### Building
 
-fleet must be built with Go 1.2 on a Linux machine, or in a [Go docker container](https://index.docker.io/u/miksago/ubuntu-go/). Simply run `./build` and then copy the binaries out of bin/ onto each of your machines.
+fleet must be built with Go 1.2 on a Linux machine, or in a [Go docker container](https://index.docker.io/u/miksago/ubuntu-go/). Simply run `./build` and then copy the binaries out of bin/ onto each of your machines. The tests can similarly be run by simply invoking `./test`.
 
 ## Project Details
 
