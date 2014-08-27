@@ -19,9 +19,9 @@ const DiscoveryJSON = `{
     "x32": ""
   },
   "labels": [],
-  "baseUrl": "http://example.com/v1-alpha/",
+  "baseUrl": "$ENDPOINT/v1-alpha/",
   "basePath": "/v1-alpha/",
-  "rootUrl": "http://example.com/",
+  "rootUrl": "$ENDPOINT/",
   "servicePath": "v1-alpha/",
   "batchPath": "batch",
   "parameters": {},

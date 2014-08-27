@@ -1,13 +1,14 @@
 # fleet API v1-alpha (EXPERIMENTAL)
 
 The API this document describes is not yet finalized, so clients should expect it to change.
-This document describes only what has been implemented, not the final state
+This document describes only what has been implemented, not the final state.
 The version of the API will transition from "v1-alpha" to "v1" when it has been finalized, and the EXPERIMENTAL label will be removed.
 
 ## Capability Discovery
 
 The v1 fleet API is described by a [discovery document][disco].
-This document is available in the [fleet source][schema].
+This document is available in the [fleet source][schema] and served directly from the API itself, at the `/discovery` endpoint.
+Note that this discovery document intentionally ships with an unusable `rootUrl`; clients *must* initialize this as appropriate.
 
 [disco]: https://developers.google.com/discovery/v1/reference/apis
 [schema]: ../schema/v1-alpha.json

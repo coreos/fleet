@@ -38,7 +38,7 @@ var _ = strings.Replace
 const apiId = "fleet:v1-alpha"
 const apiName = "schema"
 const apiVersion = "v1-alpha"
-const basePath = "http://example.com/v1-alpha/"
+const basePath = "$ENDPOINT/v1-alpha/"
 
 func New(client *http.Client) (*Service, error) {
 	if client == nil {
