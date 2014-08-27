@@ -42,7 +42,17 @@ func (sr *stateResource) list(rw http.ResponseWriter, req *http.Request) {
 		token = &def
 	}
 
-	page, err := getUnitStatePage(sr.cAPI, *token)
+	var machineID, unitName string
+	for _, val := range req.URL.Query()["machineID"] {
+		machineID = val
+		break
+	}
+	for _, val := range req.URL.Query()["unitName"] {
+		unitName = val
+		break
+	}
+
+	page, err := getUnitStatePage(sr.cAPI, machineID, unitName, *token)
 	if err != nil {
 		log.Errorf("Failed fetching page of UnitStates: %v", err)
 		sendError(rw, http.StatusInternalServerError, nil)
@@ -52,13 +62,23 @@ func (sr *stateResource) list(rw http.ResponseWriter, req *http.Request) {
 	sendResponse(rw, http.StatusOK, &page)
 }
 
-func getUnitStatePage(cAPI client.API, tok PageToken) (*schema.UnitStatePage, error) {
+func getUnitStatePage(cAPI client.API, machineID, unitName string, tok PageToken) (*schema.UnitStatePage, error) {
 	states, err := cAPI.UnitStates()
 	if err != nil {
 		return nil, err
 	}
+	var filtered []*schema.UnitState
+	for _, us := range states {
+		if machineID != "" && machineID != us.MachineID {
+			continue
+		}
+		if unitName != "" && unitName != us.Name {
+			continue
+		}
+		filtered = append(filtered, us)
+	}
 
-	items, next := extractUnitStatePageData(states, tok)
+	items, next := extractUnitStatePageData(filtered, tok)
 	page := schema.UnitStatePage{
 		States: items,
 	}
