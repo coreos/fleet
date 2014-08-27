@@ -35,6 +35,15 @@ X-ConditionMachineMetadata=location=chicago
 X-Conflicts=monitor*
 ```
 
+
+## Template unit files
+
+fleet provides support for using systemd's [instances](systemd instances) feature to dynamically create "instance" units from a common "template" unit file. This allows you to have a single unit configuration and easily and dynamically create new instances of the unit as necessary.
+
+To use instance units, simply create a template matching the `<name>@.<suffix>` format - for example, `hello@.service` - and submit it to fleet. You can then instantiate units by creating new units that match the instance pattern `<name>@<instance>.<suffix>` - in this case, for example, `hello@world.service` or `hello@1.service` - and fleet will automatically utilize the underlying template unit. For a detailed example, see the [example deployment].
+
+[example deployment]: https://github.com/coreos/fleet/blob/master/Documentation/examples/example-deployment.md#service-files
+
 ## systemd specifiers
 
 When evaluating the `[X-Fleet]` section, fleet supports a subset of systemd's [specifiers][systemd specifiers] to perform variable substitution. The following specifiers are currently supported:
@@ -46,6 +55,7 @@ When evaluating the `[X-Fleet]` section, fleet supports a subset of systemd's [s
 
 For the meaning of the specifiers, refer to the official [systemd documentation][systemd specifiers].
 
+[systemd instances]: http://0pointer.de/blog/projects/instances.html
 [systemd specifiers]: http://www.freedesktop.org/software/systemd/man/systemd.unit.html#Specifiers
 
 
