@@ -35,12 +35,13 @@ X-ConditionMachineMetadata=location=chicago
 X-Conflicts=monitor*
 ```
 
-
 ## Template unit files
 
-fleet provides support for using systemd's [instances](systemd instances) feature to dynamically create "instance" units from a common "template" unit file. This allows you to have a single unit configuration and easily and dynamically create new instances of the unit as necessary.
+fleet provides support for using systemd's [instances](systemd instances) feature to dynamically create _instance_ units from a common _template_ unit file. This allows you to have a single unit configuration and easily and dynamically create new instances of the unit as necessary.
 
-To use instance units, simply create a template matching the `<name>@.<suffix>` format - for example, `hello@.service` - and submit it to fleet. You can then instantiate units by creating new units that match the instance pattern `<name>@<instance>.<suffix>` - in this case, for example, `hello@world.service` or `hello@1.service` - and fleet will automatically utilize the underlying template unit. For a detailed example, see the [example deployment].
+To use instance units, simply create a unit file whose name matches the `<name>@.<suffix>` format - for example, `hello@.service` - and submit it to fleet. You can then instantiate units by creating new units that match the instance pattern `<name>@<instance>.<suffix>` - in this case, for example, `hello@world.service` or `hello@1.service` - and fleet will automatically utilize the relevant template unit. For a detailed example, see the [example deployment].
+
+When working with instance units, it is strongly recommended that all units be _entirely homogenous_. This means that any unit created as, say, `foo@1.service`, should be created only from the unit named `foo@.service`. This homogeneity will be enforced by the fleet API in future.
 
 [example deployment]: https://github.com/coreos/fleet/blob/master/Documentation/examples/example-deployment.md#service-files
 
@@ -61,13 +62,17 @@ For the meaning of the specifiers, refer to the official [systemd documentation]
 
 # Unit Scheduling
 
-## Making Scheduling Decisions
+When working with units, fleet distinguishes between two types of units: _non-global_ (the default) and _global_. (A global unit is one with `Global=true` in its `X-Fleet` section, as mentioned above).
 
-The fleet engine is responsible for deciding where units should be scheduled in the cluster. The current algorithm for making this determination is incredibly simple and only considers the number of units that each agent is running; it will attempt to schedule a unit on the agent with the lowest number of units.
+Global units run on every possible machine in the fleet cluster: there is no scheduling decision involved.
 
-Read more about [fleet's architecture and data model](https://github.com/coreos/fleet/blob/master/Documentation/architecture.md).
+Non-global units are scheduled by the fleet engine - the engine is responsible for deciding where they should be placed in the cluster. 
+
+For more details on the specific behavior of the engine, read more about [fleet's architecture and data model](https://github.com/coreos/fleet/blob/master/Documentation/architecture.md).
 
 ## User-Defined Requirements
+
+For non-global units, several different directives are available to control the engine's scheduling decision.
 
 ##### Schedule unit to specific machine
 
@@ -90,7 +95,7 @@ The `X-ConditionMachineMetadata` option of a unit file allows you to set conditi
 X-ConditionMachineMetadata="region=us-east-1" "diskType=SSD"
 ```
 
-This requires an eligible machine to have at least the `region` and `diskType` keys set accordingly. A single key may also be defined multiple timess, in which case only one of the conditions needs to be met:
+This requires an eligible machine to have at least the `region` and `diskType` keys set accordingly. A single key may also be defined multiple times, in which case only one of the conditions needs to be met:
 
 ```
 [X-Fleet]
@@ -101,7 +106,7 @@ X-ConditionMachineMetadata=region=us-west-1
 This would allow a machine to match just one of the provided values to be considered eligible to run.
 
 A machine is not automatically configured with metadata.
-A deployer may define machine metadata using the `metadata` [config option](https://github.com/coreos/fleet/blob/master/Documentation/deployment-and-configuration.md).
+A deployer may define machine metadata using the `metadata` [config option](https://github.com/coreos/fleet/blob/master/Documentation/deployment-and-configuration.md#metadata).
 
 ##### Schedule unit next to another unit
 
@@ -121,7 +126,7 @@ If a unit is scheduled to the system without an `X-Conflicts` option, other unit
 
 ##### Dynamic requirements
 
-fleet supports several systemd specifiers to allow requirements to be dynamically determined based on a Unit's name. This means that the same unit can be used for multiple Units and the requirements are dynamically substituted when the Unit is scheduled.
+fleet supports several [systemd specifiers](#systemd-specifiers) to allow requirements to be dynamically determined based on a Unit's name. This means that the same unit can be used for multiple Units and the requirements are dynamically substituted when the Unit is scheduled.
 
 For example, a Unit by the name `foo.service`, whose unit contains the following snippet:
 
@@ -131,5 +136,3 @@ X-ConditionMachineOf=%p.socket
 ```
 
 would result in an effective `X-ConditionMachineOf` of `foo.socket`. Using the same unit snippet with a Unit called `bar.service`, on the other hand, would result in an effective `X-ConditionMachineOf` of `bar.socket`.
-
-For more information on the available specifiers, see the [unit file configuration](unit-files.md#systemd-specifiers) documentation.
