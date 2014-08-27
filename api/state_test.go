@@ -15,6 +15,101 @@ import (
 )
 
 func TestUnitStateList(t *testing.T) {
+	us1 := unit.UnitState{UnitName: "AAA", ActiveState: "active"}
+	us2 := unit.UnitState{UnitName: "BBB", ActiveState: "inactive", MachineID: "XXX"}
+	us3 := unit.UnitState{UnitName: "CCC", ActiveState: "active", MachineID: "XXX"}
+	us4 := unit.UnitState{UnitName: "CCC", ActiveState: "inactive", MachineID: "YYY"}
+	sus1 := &schema.UnitState{Name: "AAA", SystemdActiveState: "active"}
+	sus2 := &schema.UnitState{Name: "BBB", SystemdActiveState: "inactive", MachineID: "XXX"}
+	sus3 := &schema.UnitState{Name: "CCC", SystemdActiveState: "active", MachineID: "XXX"}
+	sus4 := &schema.UnitState{Name: "CCC", SystemdActiveState: "inactive", MachineID: "YYY"}
+
+	for i, tt := range []struct {
+		url      string
+		expected []*schema.UnitState
+	}{
+		{
+			// Standard query - return all results
+			"http://example.com/state",
+			[]*schema.UnitState{sus1, sus2, sus3, sus4},
+		},
+		{
+			// Query for specific unit name should be fine
+			"http://example.com/state?unitName=AAA",
+			[]*schema.UnitState{sus1},
+		},
+		{
+			// Query for a different specific unit name should be fine
+			"http://example.com/state?unitName=CCC",
+			[]*schema.UnitState{sus3, sus4},
+		},
+		{
+			// Query for nonexistent unit name should return nothing
+			"http://example.com/state?unitName=nope",
+			nil,
+		},
+		{
+			// Query for a specific machine ID should be fine
+			"http://example.com/state?machineID=XXX",
+			[]*schema.UnitState{sus2, sus3},
+		},
+		{
+			// Query for nonexistent machine ID should return nothing
+			"http://example.com/state?machineID=nope",
+			nil,
+		},
+		{
+			// Query for specific unit name and specific machine ID should filter by both
+			"http://example.com/state?unitName=CCC&machineID=XXX",
+			[]*schema.UnitState{sus3},
+		},
+	} {
+		fr := registry.NewFakeRegistry()
+		fr.SetUnitStates([]unit.UnitState{us1, us2, us3, us4})
+		fAPI := &client.RegistryClient{fr}
+		resource := &stateResource{fAPI, "/state"}
+		rw := httptest.NewRecorder()
+		req, err := http.NewRequest("GET", tt.url, nil)
+		if err != nil {
+			t.Fatalf("case %d: Failed creating http.Request: %v", i, err)
+		}
+
+		resource.list(rw, req)
+		if rw.Code != http.StatusOK {
+			t.Errorf("case %d: Expected 200, got %d", i, rw.Code)
+		}
+		ct := rw.HeaderMap["Content-Type"]
+		if len(ct) != 1 {
+			t.Errorf("case %d: Response has wrong number of Content-Type values: %v", i, ct)
+		} else if ct[0] != "application/json" {
+			t.Errorf("case %d: Expected application/json, got %s", i, ct)
+		}
+
+		if rw.Body == nil {
+			t.Errorf("case %d: Received nil response body", i)
+			continue
+		}
+
+		var page schema.UnitStatePage
+		if err := json.Unmarshal(rw.Body.Bytes(), &page); err != nil {
+			t.Fatalf("case %d: Received unparseable body: %v", i, err)
+		}
+
+		got := page.States
+		if !reflect.DeepEqual(got, tt.expected) {
+			t.Errorf("case %d: Unexpected UnitStates received.", i)
+			t.Logf("Got UnitStates:")
+			for _, us := range got {
+				t.Logf("%#v", us)
+			}
+			t.Logf("Expected UnitStates:")
+			for _, us := range tt.expected {
+				t.Logf("%#v", us)
+			}
+
+		}
+	}
+
 	fr := registry.NewFakeRegistry()
 	fr.SetUnitStates([]unit.UnitState{
 		unit.UnitState{UnitName: "XXX", ActiveState: "active"},
