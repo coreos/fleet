@@ -92,7 +92,7 @@ subgun-presence@.service	5180ed9	inactive	inactive	-
 And now, using shell expansion, we can easily launch three instances of each template:
 
 ```sh
-$ fleetctl start subgun-presence{1..3}.service subgun-http@{1..3}.service
+$ fleetctl start subgun-presence@{1..3}.service subgun-http@{1..3}.service
 Unit subgun-http@1.service launched on 0e0a1f59.../172.17.8.102
 Unit subgun-http@2.service launched on 30a73182.../172.17.8.103
 Unit subgun-presence@1.service launched on 0e0a1f59.../172.17.8.102
