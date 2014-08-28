@@ -72,10 +72,6 @@ func TestAgentLoadUnloadJob(t *testing.T) {
 
 	a.unloadJob("foo.service")
 
-	// This sucks, but we have to do it if Agent.unloadJob is going to spin
-	// off the real work that matters in a goroutine
-	time.Sleep(200)
-
 	jobs, err = a.jobs()
 	if err != nil {
 		t.Fatalf("Failed calling Agent.jobs: %v", err)
