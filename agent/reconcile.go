@@ -30,8 +30,8 @@ type AgentReconciler struct {
 }
 
 // Run periodically attempts to reconcile the provided Agent until the stop
-// channel is closed. Run will also reconcile in reaction to calls to Trigger.
-// While a reconciliation is being attempted, calls to Trigger are ignored.
+// channel is closed. Run will also reconcile in reaction to events on the
+// AgentReconciler's rStream.
 func (ar *AgentReconciler) Run(a *Agent, stop chan bool) {
 	reconcile := func() {
 		start := time.Now()
@@ -85,11 +85,15 @@ func (ar *AgentReconciler) Purge(a *Agent) {
 		for _, cJob := range cAgentState.Jobs {
 			cJob := cJob
 			t := task{
-				typ:    taskTypeUnloadJob,
+				typ:    taskTypeUnloadUnit,
 				reason: taskReasonPurgingAgent,
 			}
 
-			tc := newTaskChain(cJob, t)
+			u := &job.Unit{
+				Name: cJob.Name,
+				Unit: cJob.Unit,
+			}
+			tc := newTaskChain(u, t)
 			ar.launchTaskChain(tc, a)
 		}
 
@@ -206,25 +210,33 @@ func (ar *AgentReconciler) calculateTaskChainForJob(dState, cState *AgentState, 
 		delete(cState.Jobs, jName)
 
 		t := task{
-			typ:    taskTypeUnloadJob,
+			typ:    taskTypeUnloadUnit,
 			reason: taskReasonLoadedButNotScheduled,
 		}
+		u := &job.Unit{
+			Name: cJob.Name,
+		}
 
-		tc := newTaskChain(cJob, t)
+		tc := newTaskChain(u, t)
 		return &tc
 	}
 
+	u := &job.Unit{
+		Name: jName,
+		Unit: dJob.Unit,
+	}
+
 	if cJob == nil {
-		tc := newTaskChain(dJob)
+		tc := newTaskChain(u)
 		tc.Add(task{
-			typ:    taskTypeLoadJob,
+			typ:    taskTypeLoadUnit,
 			reason: taskReasonScheduledButUnloaded,
 		})
 
 		// as an optimization, queue the job for launching immediately after loading
 		if dJob.TargetState == job.JobStateLaunched {
 			tc.Add(task{
-				typ:    taskTypeStartJob,
+				typ:    taskTypeStartUnit,
 				reason: taskReasonLoadedDesiredStateLaunched,
 			})
 		}
@@ -242,24 +254,24 @@ func (ar *AgentReconciler) calculateTaskChainForJob(dState, cState *AgentState, 
 		return nil
 	}
 
-	tc := newTaskChain(dJob)
+	tc := newTaskChain(u)
 	if *cJob.State == job.JobStateInactive {
 		tc.Add(task{
-			typ:    taskTypeLoadJob,
+			typ:    taskTypeLoadUnit,
 			reason: taskReasonScheduledButUnloaded,
 		})
 	}
 
 	if (*cJob.State == job.JobStateInactive || *cJob.State == job.JobStateLoaded) && dJob.TargetState == job.JobStateLaunched {
 		tc.Add(task{
-			typ:    taskTypeStartJob,
+			typ:    taskTypeStartUnit,
 			reason: taskReasonLoadedDesiredStateLaunched,
 		})
 	}
 
 	if *cJob.State == job.JobStateLaunched && dJob.TargetState == job.JobStateLoaded {
 		tc.Add(task{
-			typ:    taskTypeStopJob,
+			typ:    taskTypeStopUnit,
 			reason: taskReasonLaunchedDesiredStateLoaded,
 		})
 	}
@@ -283,9 +295,9 @@ func (ar *AgentReconciler) launchTaskChain(tc taskChain, a *Agent) {
 	go func() {
 		for res := range reschan {
 			if res.err == nil {
-				log.Infof("AgentReconciler completed task: type=%s job=%s reason=%q", res.task.typ, tc.job.Name, res.task.reason)
+				log.Infof("AgentReconciler completed task: type=%s job=%s reason=%q", res.task.typ, tc.unit.Name, res.task.reason)
 			} else {
-				log.Infof("AgentReconciler task failed: type=%s job=%s reason=%q err=%v", res.task.typ, tc.job.Name, res.task.reason, res.err)
+				log.Infof("AgentReconciler task failed: type=%s job=%s reason=%q err=%v", res.task.typ, tc.unit.Name, res.task.reason, res.err)
 			}
 		}
 	}()

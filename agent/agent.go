@@ -70,37 +70,37 @@ func (a *Agent) heartbeatJobs(ttl time.Duration, stop chan bool) {
 	}
 }
 
-func (a *Agent) loadJob(j *job.Job) error {
-	a.cache.setTargetState(j.Name, job.JobStateLoaded)
-	a.uGen.Subscribe(j.Name)
-	return a.um.Load(j.Name, j.Unit)
+func (a *Agent) loadUnit(u *job.Unit) error {
+	a.cache.setTargetState(u.Name, job.JobStateLoaded)
+	a.uGen.Subscribe(u.Name)
+	return a.um.Load(u.Name, u.Unit)
 }
 
-func (a *Agent) unloadJob(jobName string) {
-	a.registry.ClearUnitHeartbeat(jobName)
-	a.cache.dropTargetState(jobName)
+func (a *Agent) unloadUnit(unitName string) {
+	a.registry.ClearUnitHeartbeat(unitName)
+	a.cache.dropTargetState(unitName)
 
-	a.um.Stop(jobName)
+	a.um.Stop(unitName)
 
-	a.uGen.Unsubscribe(jobName)
+	a.uGen.Unsubscribe(unitName)
 
-	a.um.Unload(jobName)
+	a.um.Unload(unitName)
 }
 
-func (a *Agent) startJob(jobName string) {
-	a.cache.setTargetState(jobName, job.JobStateLaunched)
+func (a *Agent) startUnit(unitName string) {
+	a.cache.setTargetState(unitName, job.JobStateLaunched)
 
 	machID := a.Machine.State().ID
-	a.registry.UnitHeartbeat(jobName, machID, a.ttl)
+	a.registry.UnitHeartbeat(unitName, machID, a.ttl)
 
-	a.um.Start(jobName)
+	a.um.Start(unitName)
 }
 
-func (a *Agent) stopJob(jobName string) {
-	a.cache.setTargetState(jobName, job.JobStateLoaded)
-	a.registry.ClearUnitHeartbeat(jobName)
+func (a *Agent) stopUnit(unitName string) {
+	a.cache.setTargetState(unitName, job.JobStateLoaded)
+	a.registry.ClearUnitHeartbeat(unitName)
 
-	a.um.Stop(jobName)
+	a.um.Stop(unitName)
 }
 
 // jobs returns a collection of all Jobs that the Agent has either loaded

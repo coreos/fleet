@@ -228,10 +228,13 @@ func TestCalculateTasksForJob(t *testing.T) {
 			cState: NewAgentState(&machine.MachineState{ID: "XXX"}),
 			jName:  "foo.service",
 			chain: &taskChain{
-				job: &job.Job{TargetState: jsLoaded},
+				unit: &job.Unit{
+					Name: "foo.service",
+					Unit: unit.UnitFile{},
+				},
 				tasks: []task{
 					task{
-						typ:    taskTypeLoadJob,
+						typ:    taskTypeLoadUnit,
 						reason: taskReasonScheduledButUnloaded,
 					},
 				},
@@ -249,14 +252,16 @@ func TestCalculateTasksForJob(t *testing.T) {
 			cState: NewAgentState(&machine.MachineState{ID: "XXX"}),
 			jName:  "foo.service",
 			chain: &taskChain{
-				job: &job.Job{TargetState: jsLaunched},
+				unit: &job.Unit{
+					Name: "foo.service",
+				},
 				tasks: []task{
 					task{
-						typ:    taskTypeLoadJob,
+						typ:    taskTypeLoadUnit,
 						reason: taskReasonScheduledButUnloaded,
 					},
 					task{
-						typ:    taskTypeStartJob,
+						typ:    taskTypeStartUnit,
 						reason: taskReasonLoadedDesiredStateLaunched,
 					},
 				},
@@ -274,10 +279,10 @@ func TestCalculateTasksForJob(t *testing.T) {
 			},
 			jName: "foo.service",
 			chain: &taskChain{
-				job: &job.Job{State: &jsLoaded},
+				unit: &job.Unit{},
 				tasks: []task{
 					task{
-						typ:    taskTypeUnloadJob,
+						typ:    taskTypeUnloadUnit,
 						reason: taskReasonLoadedButNotScheduled,
 					},
 				},
@@ -295,10 +300,10 @@ func TestCalculateTasksForJob(t *testing.T) {
 			},
 			jName: "foo.service",
 			chain: &taskChain{
-				job: &job.Job{State: &jsLaunched},
+				unit: &job.Unit{},
 				tasks: []task{
 					task{
-						typ:    taskTypeUnloadJob,
+						typ:    taskTypeUnloadUnit,
 						reason: taskReasonLoadedButNotScheduled,
 					},
 				},
@@ -323,10 +328,10 @@ func TestCalculateTasksForJob(t *testing.T) {
 			},
 			jName: "foo.service",
 			chain: &taskChain{
-				job: &job.Job{State: &jsLoaded},
+				unit: &job.Unit{},
 				tasks: []task{
 					task{
-						typ:    taskTypeUnloadJob,
+						typ:    taskTypeUnloadUnit,
 						reason: taskReasonLoadedButNotScheduled,
 					},
 				},
@@ -338,7 +343,9 @@ func TestCalculateTasksForJob(t *testing.T) {
 		ar := NewReconciler(registry.NewFakeRegistry(), nil)
 		chain := ar.calculateTaskChainForJob(tt.dState, tt.cState, tt.jName)
 		if !reflect.DeepEqual(tt.chain, chain) {
-			t.Errorf("case %d: calculated incorrect task chain\nexpected=%v\nreceived=%v\n", i, tt.chain, chain)
+			t.Errorf("case %d: calculated incorrect task chain\nexpected=%#v\nreceived=%#v\n", i, tt.chain, chain)
+			t.Logf("expected Unit: %#v", *tt.chain.unit)
+			t.Logf("received Unit: %#v", *chain.unit)
 		}
 	}
 }

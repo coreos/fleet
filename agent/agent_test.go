@@ -12,6 +12,14 @@ import (
 	"github.com/coreos/fleet/unit"
 )
 
+func newTestUnitFromUnitContents(t *testing.T, name, contents string) *job.Unit {
+	j := newTestJobFromUnitContents(t, name, contents)
+	return &job.Unit{
+		Name: j.Name,
+		Unit: j.Unit,
+	}
+}
+
 func newTestJobFromUnitContents(t *testing.T, name, contents string) *job.Job {
 	u, err := unit.NewUnitFile(contents)
 	if err != nil {
@@ -36,17 +44,17 @@ func newTestJobWithXFleetValues(t *testing.T, metadata string) *job.Job {
 	return newNamedTestJobWithXFleetValues(t, "pong.service", metadata)
 }
 
-func TestAgentLoadUnloadJob(t *testing.T) {
+func TestAgentLoadUnloadUnit(t *testing.T) {
 	uManager := unit.NewFakeUnitManager()
 	usGenerator := unit.NewUnitStateGenerator(uManager)
 	fReg := registry.NewFakeRegistry()
 	mach := &machine.FakeMachine{machine.MachineState{ID: "XXX"}}
 	a := New(uManager, usGenerator, fReg, mach, time.Second)
 
-	j := newTestJobFromUnitContents(t, "foo.service", "")
-	err := a.loadJob(j)
+	u := newTestUnitFromUnitContents(t, "foo.service", "")
+	err := a.loadUnit(u)
 	if err != nil {
-		t.Fatalf("Failed calling Agent.loadJob: %v", err)
+		t.Fatalf("Failed calling Agent.loadUnit: %v", err)
 	}
 
 	jobs, err := a.jobs()
@@ -70,7 +78,7 @@ func TestAgentLoadUnloadJob(t *testing.T) {
 		t.Fatalf("Received unexpected collection of Jobs: %#v\nExpected: %#v", jobs, expectJobs)
 	}
 
-	a.unloadJob("foo.service")
+	a.unloadUnit("foo.service")
 
 	jobs, err = a.jobs()
 	if err != nil {
@@ -83,26 +91,21 @@ func TestAgentLoadUnloadJob(t *testing.T) {
 	}
 }
 
-func TestAgentLoadStartStopJob(t *testing.T) {
+func TestAgentLoadStartStopUnit(t *testing.T) {
 	uManager := unit.NewFakeUnitManager()
 	usGenerator := unit.NewUnitStateGenerator(uManager)
 	fReg := registry.NewFakeRegistry()
 	mach := &machine.FakeMachine{machine.MachineState{ID: "XXX"}}
 	a := New(uManager, usGenerator, fReg, mach, time.Second)
 
-	u, err := unit.NewUnitFile("")
+	u := newTestUnitFromUnitContents(t, "foo.service", "")
+
+	err := a.loadUnit(u)
 	if err != nil {
-		t.Fatalf("Failed creating Unit: %v", err)
+		t.Fatalf("Failed calling Agent.loadUnit: %v", err)
 	}
 
-	j := job.NewJob("foo.service", *u)
-
-	err = a.loadJob(j)
-	if err != nil {
-		t.Fatalf("Failed calling Agent.loadJob: %v", err)
-	}
-
-	a.startJob("foo.service")
+	a.startUnit("foo.service")
 
 	jobs, err := a.jobs()
 	if err != nil {
@@ -125,7 +128,7 @@ func TestAgentLoadStartStopJob(t *testing.T) {
 		t.Fatalf("Received unexpected collection of Jobs: %#v\nExpected: %#v", jobs, expectJobs)
 	}
 
-	a.stopJob("foo.service")
+	a.stopUnit("foo.service")
 
 	jobs, err = a.jobs()
 	if err != nil {
