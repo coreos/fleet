@@ -9,6 +9,20 @@ import (
 	"github.com/coreos/fleet/unit"
 )
 
+func fleetUnit(t *testing.T, opts ...string) unit.UnitFile {
+	contents := "[X-Fleet]"
+	for _, v := range opts {
+		contents = fmt.Sprintf("%s\n%s", contents, v)
+	}
+
+	u, err := unit.NewUnitFile(contents)
+	if u == nil || err != nil {
+		t.Fatalf("Failed creating test unit: unit=%v, err=%v", u, err)
+	}
+
+	return *u
+}
+
 func TestHasConflicts(t *testing.T) {
 	tests := []struct {
 		cState   *AgentState
