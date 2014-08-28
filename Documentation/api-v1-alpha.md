@@ -4,6 +4,67 @@ The API this document describes is not yet finalized, so clients should expect i
 This document describes only what has been implemented, not the final state
 The version of the API will transition from "v1-alpha" to "v1" when it has been finalized, and the EXPERIMENTAL label will be removed.
 
+## Enabling the API
+
+To enable the API, all you need to do is create a socket and start it manually or with cloud-config.
+
+### Create the Socket Manually
+
+#### /etc/systemd/system/fleet.socket
+```
+[Socket]
+# Talk to the API over a Unix domain socket (default)
+ListenStream=/var/run/fleet.sock
+# Talk to the API over an exposed port, uncomment to enable and choose a port
+#ListenStream=
+Service=fleet.service
+ 
+[Install]
+WantedBy=sockets.target
+ ```
+
+To allow fleet to detect the new socket, enable it, then stop and start the fleet unit:
+
+```sh
+$ sudo systemctl enable /etc/systemd/system/fleet.socket
+$ sudo systemctl stop fleet
+$ sudo systemctl start fleet.socket
+$ sudo systemctl start fleet
+```
+
+### Cloud-Config
+
+To enable the API on your entire cluster, you can set up the socket in cloud-config:
+
+```yaml
+#cloud-config
+
+coreos:
+  etcd:
+    # generate a new token for each unique cluster from https://discovery.etcd.io/new
+    discovery: https://discovery.etcd.io/<token>
+    # multi-region and multi-cloud deployments need to use $public_ipv4
+    addr: $private_ipv4:4001
+    peer-addr: $private_ipv4:7001
+  units:
+    - name: etcd.service
+      command: start
+    - name: fleet.socket
+      command: start
+      content: |
+        [Socket]
+        # Talk to the API over a Unix domain socket (default)
+        ListenStream=/var/run/fleet.sock
+        # Talk to the API over an exposed port, uncomment to enable and choose a port
+        #ListenStream=
+        Service=fleet.service
+         
+        [Install]
+        WantedBy=sockets.target
+    - name: fleet.service
+      command: start
+```
+
 ## Capability Discovery
 
 The v1 fleet API is described by a [discovery document][disco].
