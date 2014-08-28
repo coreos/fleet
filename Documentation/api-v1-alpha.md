@@ -67,12 +67,15 @@ coreos:
 
 ## Capability Discovery
 
-The v1 fleet API is described by a [discovery document][disco].
+The v1 fleet API is described by a [discovery document][disco]. Users should generate their client bindings from this document using the appropriate language generator.
 This document is available in the [fleet source][schema] and served directly from the API itself, at the `/discovery` endpoint.
 Note that this discovery document intentionally ships with an unusable `rootUrl`; clients *must* initialize this as appropriate.
 
+An extremely simplified example client can be found [here][example].
+
 [disco]: https://developers.google.com/discovery/v1/reference/apis
 [schema]: ../schema/v1-alpha.json
+[example]: ../Documentation/examples/api.py
 
 ## Media Types
 
