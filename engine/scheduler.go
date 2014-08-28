@@ -67,7 +67,7 @@ func (sas sortableAgentStates) Len() int      { return len(sas) }
 func (sas sortableAgentStates) Swap(i, j int) { sas[i], sas[j] = sas[j], sas[i] }
 
 func (sas sortableAgentStates) Less(i, j int) bool {
-	niJobs := len(sas[i].Jobs)
-	njJobs := len(sas[j].Jobs)
-	return niJobs < njJobs || (niJobs == njJobs && sas[i].MState.ID < sas[j].MState.ID)
+	niUnits := len(sas[i].Units)
+	njUnits := len(sas[j].Units)
+	return niUnits < njUnits || (niUnits == njUnits && sas[i].MState.ID < sas[j].MState.ID)
 }

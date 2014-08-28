@@ -92,6 +92,39 @@ func NewJob(name string, unit unit.UnitFile) *Job {
 	}
 }
 
+// The following helper functions are to facilitate the transition from Job --> Unit
+func (u *Unit) Conflicts() []string {
+	j := &Job{
+		Name: u.Name,
+		Unit: u.Unit,
+	}
+	return j.Conflicts()
+}
+
+func (u *Unit) Peers() []string {
+	j := &Job{
+		Name: u.Name,
+		Unit: u.Unit,
+	}
+	return j.Peers()
+}
+
+func (u *Unit) RequiredTarget() (string, bool) {
+	j := &Job{
+		Name: u.Name,
+		Unit: u.Unit,
+	}
+	return j.RequiredTarget()
+}
+
+func (u *Unit) RequiredTargetMetadata() map[string][]string {
+	j := &Job{
+		Name: u.Name,
+		Unit: u.Unit,
+	}
+	return j.RequiredTargetMetadata()
+}
+
 // requirements returns all relevant options from the [X-Fleet] section of a unit file.
 // Relevant options are identified with a `X-` prefix in the unit.
 // This prefix is stripped from relevant options before being returned.

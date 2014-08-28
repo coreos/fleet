@@ -11,39 +11,39 @@ import (
 
 type AgentState struct {
 	MState *machine.MachineState
-	Jobs   map[string]*job.Job
+	Units  map[string]*job.Unit
 }
 
 func NewAgentState(ms *machine.MachineState) *AgentState {
 	return &AgentState{
 		MState: ms,
-		Jobs:   make(map[string]*job.Job),
+		Units:  make(map[string]*job.Unit),
 	}
 }
 
-func (as *AgentState) jobScheduled(jName string) bool {
-	return as.Jobs[jName] != nil
+func (as *AgentState) unitScheduled(name string) bool {
+	return as.Units[name] != nil
 }
 
-// hasConflict determines whether there are any known conflicts with the given Job
-func (as *AgentState) hasConflict(pJobName string, pConflicts []string) (found bool, conflict string) {
-	for _, eJob := range as.Jobs {
-		if pJobName == eJob.Name {
+// hasConflict determines whether there are any known conflicts with the given Unit
+func (as *AgentState) hasConflict(pUnitName string, pConflicts []string) (found bool, conflict string) {
+	for _, eUnit := range as.Units {
+		if pUnitName == eUnit.Name {
 			continue
 		}
 
 		for _, pConflict := range pConflicts {
-			if globMatches(pConflict, eJob.Name) {
+			if globMatches(pConflict, eUnit.Name) {
 				found = true
-				conflict = eJob.Name
+				conflict = eUnit.Name
 				return
 			}
 		}
 
-		for _, eConflict := range eJob.Conflicts() {
-			if globMatches(eConflict, pJobName) {
+		for _, eConflict := range eUnit.Conflicts() {
+			if globMatches(eConflict, pUnitName) {
 				found = true
-				conflict = eJob.Name
+				conflict = eUnit.Name
 				return
 			}
 		}
@@ -66,7 +66,7 @@ func globMatches(pattern, target string) bool {
 //   - Agent must meet the Job's machine target requirement (if any)
 //   - Agent must have all of the Job's required metadata (if any)
 //   - Agent must have all required Peers of the Job scheduled locally (if any)
-//   - Job must not conflict with any other Jobs scheduled to the agent
+//   - Job must not conflict with any other Units scheduled to the agent
 func (as *AgentState) AbleToRun(j *job.Job) (bool, string) {
 	if tgt, ok := j.RequiredTarget(); ok && !as.MState.MatchID(tgt) {
 		return false, fmt.Sprintf("agent ID %q does not match required %q", as.MState.ID, tgt)
@@ -82,14 +82,14 @@ func (as *AgentState) AbleToRun(j *job.Job) (bool, string) {
 	peers := j.Peers()
 	if len(peers) != 0 {
 		for _, peer := range peers {
-			if !as.jobScheduled(peer) {
-				return false, fmt.Sprintf("required peer Job(%s) is not scheduled locally", peer)
+			if !as.unitScheduled(peer) {
+				return false, fmt.Sprintf("required peer Unit(%s) is not scheduled locally", peer)
 			}
 		}
 	}
 
 	if cExists, cJobName := as.hasConflict(j.Name, j.Conflicts()); cExists {
-		return false, fmt.Sprintf("found conflict with locally-scheduled Job(%s)", cJobName)
+		return false, fmt.Sprintf("found conflict with locally-scheduled Unit(%s)", cJobName)
 	}
 
 	return true, ""

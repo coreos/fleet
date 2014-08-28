@@ -115,7 +115,7 @@ func desiredAgentState(a *Agent, reg registry.Registry) (*AgentState, error) {
 	ms := a.Machine.State()
 	as := AgentState{
 		MState: &ms,
-		Jobs:   make(map[string]*job.Job),
+		Units:  make(map[string]*job.Unit),
 	}
 
 	sUnitMap := make(map[string]*job.ScheduledUnit)
@@ -125,18 +125,14 @@ func desiredAgentState(a *Agent, reg registry.Registry) (*AgentState, error) {
 	}
 
 	for _, u := range units {
-		j := &job.Job{
-			Name:        u.Name,
-			Unit:        u.Unit,
-			TargetState: u.TargetState,
-		}
+		u := u
 		if !u.IsGlobal() {
 			sUnit, ok := sUnitMap[u.Name]
 			if !ok || sUnit.TargetMachineID == "" || sUnit.TargetMachineID != ms.ID {
 				continue
 			}
 		}
-		as.Jobs[u.Name] = j
+		as.Units[u.Name] = &u
 	}
 
 	return &as, nil
@@ -153,7 +149,7 @@ func (ar *AgentReconciler) calculateTaskChainsForJobs(dState *AgentState, cState
 			jobs.Add(cName)
 		}
 
-		for dName := range dState.Jobs {
+		for dName := range dState.Units {
 			jobs.Add(dName)
 		}
 
@@ -172,9 +168,9 @@ func (ar *AgentReconciler) calculateTaskChainsForJobs(dState *AgentState, cState
 }
 
 func (ar *AgentReconciler) calculateTaskChainForJob(dState *AgentState, cState unitStates, jName string) *taskChain {
-	var dJob *job.Job
+	var dJob *job.Unit
 	if dState != nil {
-		dJob = dState.Jobs[jName]
+		dJob = dState.Units[jName]
 	}
 	var cJState *job.JobState
 	if state, ok := cState[jName]; ok {

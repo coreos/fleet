@@ -27,8 +27,8 @@ func TestHasConflicts(t *testing.T) {
 		{
 			cState: &AgentState{
 				MState: &machine.MachineState{ID: "XXX"},
-				Jobs: map[string]*job.Job{
-					"bar.service": &job.Job{
+				Units: map[string]*job.Unit{
+					"bar.service": &job.Unit{
 						Name: "bar.service",
 						Unit: fleetUnit(t, "X-Conflicts=foo.service"),
 					},
@@ -43,8 +43,8 @@ func TestHasConflicts(t *testing.T) {
 		{
 			cState: &AgentState{
 				MState: &machine.MachineState{ID: "XXX"},
-				Jobs: map[string]*job.Job{
-					"bar.service": &job.Job{
+				Units: map[string]*job.Unit{
+					"bar.service": &job.Unit{
 						Name: "bar.service",
 						Unit: unit.UnitFile{},
 					},

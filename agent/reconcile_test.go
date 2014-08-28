@@ -83,8 +83,8 @@ func TestAbleToRun(t *testing.T) {
 		{
 			dState: &AgentState{
 				MState: &machine.MachineState{ID: "123"},
-				Jobs: map[string]*job.Job{
-					"pong.service": &job.Job{Name: "pong.service"},
+				Units: map[string]*job.Unit{
+					"pong.service": &job.Unit{Name: "pong.service"},
 				},
 			},
 			job:  newTestJobWithXFleetValues(t, "X-ConditionMachineOf=pong.service"),
@@ -95,9 +95,9 @@ func TestAbleToRun(t *testing.T) {
 		{
 			dState: &AgentState{
 				MState: &machine.MachineState{ID: "123"},
-				Jobs: map[string]*job.Job{
-					"ping.service": &job.Job{Name: "ping.service"},
-					"pong.service": &job.Job{Name: "pong.service"},
+				Units: map[string]*job.Unit{
+					"ping.service": &job.Unit{Name: "ping.service"},
+					"pong.service": &job.Unit{Name: "pong.service"},
 				},
 			},
 			job:  newTestJobWithXFleetValues(t, "X-ConditionMachineOf=pong.service\nX-ConditionMachineOf=ping.service"),
@@ -115,8 +115,8 @@ func TestAbleToRun(t *testing.T) {
 		{
 			dState: &AgentState{
 				MState: &machine.MachineState{ID: "123"},
-				Jobs: map[string]*job.Job{
-					"ping.service": &job.Job{Name: "ping.service"},
+				Units: map[string]*job.Unit{
+					"ping.service": &job.Unit{Name: "ping.service"},
 				},
 			},
 			job:  newTestJobWithXFleetValues(t, "X-ConditionMachineOf=pong.service\nX-ConditionMachineOf=ping.service"),
@@ -127,8 +127,8 @@ func TestAbleToRun(t *testing.T) {
 		{
 			dState: &AgentState{
 				MState: &machine.MachineState{ID: "123"},
-				Jobs: map[string]*job.Job{
-					"ping.service": &job.Job{Name: "ping.service"},
+				Units: map[string]*job.Unit{
+					"ping.service": &job.Unit{Name: "ping.service"},
 				},
 			},
 			job:  newTestJobWithXFleetValues(t, "X-Conflicts=pong.service"),
@@ -139,8 +139,8 @@ func TestAbleToRun(t *testing.T) {
 		{
 			dState: &AgentState{
 				MState: &machine.MachineState{ID: "123"},
-				Jobs: map[string]*job.Job{
-					"ping.service": &job.Job{Name: "ping.service"},
+				Units: map[string]*job.Unit{
+					"ping.service": &job.Unit{Name: "ping.service"},
 				},
 			},
 			job:  newTestJobWithXFleetValues(t, "X-Conflicts=ping.service"),
@@ -185,8 +185,8 @@ func TestCalculateTasksForJob(t *testing.T) {
 		{
 			dState: &AgentState{
 				MState: &machine.MachineState{ID: "XXX"},
-				Jobs: map[string]*job.Job{
-					"foo.service": &job.Job{TargetState: jsLoaded},
+				Units: map[string]*job.Unit{
+					"foo.service": &job.Unit{TargetState: jsLoaded},
 				},
 			},
 			cState: unitStates{"foo.service": jsLoaded},
@@ -198,8 +198,8 @@ func TestCalculateTasksForJob(t *testing.T) {
 		{
 			dState: &AgentState{
 				MState: &machine.MachineState{ID: "XXX"},
-				Jobs: map[string]*job.Job{
-					"foo.service": &job.Job{TargetState: jsLaunched},
+				Units: map[string]*job.Unit{
+					"foo.service": &job.Unit{TargetState: jsLaunched},
 				},
 			},
 			cState: unitStates{"foo.service": jsLaunched},
@@ -211,8 +211,8 @@ func TestCalculateTasksForJob(t *testing.T) {
 		{
 			dState: &AgentState{
 				MState: &machine.MachineState{ID: "XXX"},
-				Jobs: map[string]*job.Job{
-					"foo.service": &job.Job{TargetState: jsLoaded},
+				Units: map[string]*job.Unit{
+					"foo.service": &job.Unit{TargetState: jsLoaded},
 				},
 			},
 			cState: unitStates{},
@@ -235,8 +235,8 @@ func TestCalculateTasksForJob(t *testing.T) {
 		{
 			dState: &AgentState{
 				MState: &machine.MachineState{ID: "XXX"},
-				Jobs: map[string]*job.Job{
-					"foo.service": &job.Job{TargetState: jsLaunched},
+				Units: map[string]*job.Unit{
+					"foo.service": &job.Unit{TargetState: jsLaunched},
 				},
 			},
 			cState: unitStates{},
@@ -298,8 +298,8 @@ func TestCalculateTasksForJob(t *testing.T) {
 		{
 			dState: &AgentState{
 				MState: &machine.MachineState{ID: "XXX"},
-				Jobs: map[string]*job.Job{
-					"foo.service": &job.Job{
+				Units: map[string]*job.Unit{
+					"foo.service": &job.Unit{
 						TargetState: jsInactive,
 					},
 				},

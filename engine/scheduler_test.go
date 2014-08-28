@@ -66,38 +66,38 @@ func TestAgentStateSorting(t *testing.T) {
 			in: []*agent.AgentState{
 				&agent.AgentState{
 					MState: &machine.MachineState{ID: "A"},
-					Jobs: map[string]*job.Job{
-						"1.service": &job.Job{},
-						"2.service": &job.Job{},
-						"3.service": &job.Job{},
-						"4.service": &job.Job{},
-						"5.service": &job.Job{},
+					Units: map[string]*job.Unit{
+						"1.service": &job.Unit{},
+						"2.service": &job.Unit{},
+						"3.service": &job.Unit{},
+						"4.service": &job.Unit{},
+						"5.service": &job.Unit{},
 					},
 				},
 				&agent.AgentState{
 					MState: &machine.MachineState{ID: "B"},
-					Jobs: map[string]*job.Job{
-						"6.service": &job.Job{},
-						"7.service": &job.Job{},
+					Units: map[string]*job.Unit{
+						"6.service": &job.Unit{},
+						"7.service": &job.Unit{},
 					},
 				},
 			},
 			out: []*agent.AgentState{
 				&agent.AgentState{
 					MState: &machine.MachineState{ID: "B"},
-					Jobs: map[string]*job.Job{
-						"6.service": &job.Job{},
-						"7.service": &job.Job{},
+					Units: map[string]*job.Unit{
+						"6.service": &job.Unit{},
+						"7.service": &job.Unit{},
 					},
 				},
 				&agent.AgentState{
 					MState: &machine.MachineState{ID: "A"},
-					Jobs: map[string]*job.Job{
-						"1.service": &job.Job{},
-						"2.service": &job.Job{},
-						"3.service": &job.Job{},
-						"4.service": &job.Job{},
-						"5.service": &job.Job{},
+					Units: map[string]*job.Unit{
+						"1.service": &job.Unit{},
+						"2.service": &job.Unit{},
+						"3.service": &job.Unit{},
+						"4.service": &job.Unit{},
+						"5.service": &job.Unit{},
 					},
 				},
 			},
@@ -108,32 +108,32 @@ func TestAgentStateSorting(t *testing.T) {
 			in: []*agent.AgentState{
 				&agent.AgentState{
 					MState: &machine.MachineState{ID: "B"},
-					Jobs: map[string]*job.Job{
-						"1.service": &job.Job{},
-						"2.service": &job.Job{},
+					Units: map[string]*job.Unit{
+						"1.service": &job.Unit{},
+						"2.service": &job.Unit{},
 					},
 				},
 				&agent.AgentState{
 					MState: &machine.MachineState{ID: "A"},
-					Jobs: map[string]*job.Job{
-						"3.service": &job.Job{},
-						"4.service": &job.Job{},
+					Units: map[string]*job.Unit{
+						"3.service": &job.Unit{},
+						"4.service": &job.Unit{},
 					},
 				},
 			},
 			out: []*agent.AgentState{
 				&agent.AgentState{
 					MState: &machine.MachineState{ID: "A"},
-					Jobs: map[string]*job.Job{
-						"3.service": &job.Job{},
-						"4.service": &job.Job{},
+					Units: map[string]*job.Unit{
+						"3.service": &job.Unit{},
+						"4.service": &job.Unit{},
 					},
 				},
 				&agent.AgentState{
 					MState: &machine.MachineState{ID: "B"},
-					Jobs: map[string]*job.Job{
-						"1.service": &job.Job{},
-						"2.service": &job.Job{},
+					Units: map[string]*job.Unit{
+						"1.service": &job.Unit{},
+						"2.service": &job.Unit{},
 					},
 				},
 			},
