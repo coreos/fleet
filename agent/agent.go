@@ -103,10 +103,10 @@ func (a *Agent) stopUnit(unitName string) {
 	a.um.Stop(unitName)
 }
 
-// jobs returns a collection of all Jobs that the Agent has either loaded
-// or launched. The Unit, TargetState and TargetMachineID fields of the
-// returned *job.Job objects are not properly hydrated.
-func (a *Agent) jobs() (map[string]*job.Job, error) {
+type unitStates map[string]job.JobState
+
+// units returns a map representing the current state of units known by the agent.
+func (a *Agent) units() (unitStates, error) {
 	launched := pkg.NewUnsafeSet()
 	for _, jName := range a.cache.launchedJobs() {
 		launched.Add(jName)
@@ -127,27 +127,16 @@ func (a *Agent) jobs() (map[string]*job.Job, error) {
 		filter.Add(u)
 	}
 
-	jobs := make(map[string]*job.Job)
+	states := make(unitStates)
 	for _, uName := range units {
-		jobs[uName] = &job.Job{
-			Name:  uName,
-			State: nil,
-
-			// The following fields are not properly populated
-			// and should not be used in the calling code
-			Unit:            unit.UnitFile{},
-			TargetState:     job.JobState(""),
-			TargetMachineID: "",
-		}
-
 		js := job.JobStateInactive
 		if loaded.Contains(uName) {
 			js = job.JobStateLoaded
 		} else if launched.Contains(uName) {
 			js = job.JobStateLaunched
 		}
-		jobs[uName].State = &js
+		states[uName] = js
 	}
 
-	return jobs, nil
+	return states, nil
 }

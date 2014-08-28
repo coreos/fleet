@@ -159,7 +159,7 @@ func TestAbleToRun(t *testing.T) {
 func TestCalculateTasksForJob(t *testing.T) {
 	tests := []struct {
 		dState *AgentState
-		cState *AgentState
+		cState unitStates
 		jName  string
 
 		chain *taskChain
@@ -176,7 +176,7 @@ func TestCalculateTasksForJob(t *testing.T) {
 		// nil job should result in no tasks
 		{
 			dState: NewAgentState(&machine.MachineState{ID: "XXX"}),
-			cState: NewAgentState(&machine.MachineState{ID: "XXX"}),
+			cState: unitStates{},
 			jName:  "foo.service",
 			chain:  nil,
 		},
@@ -189,14 +189,9 @@ func TestCalculateTasksForJob(t *testing.T) {
 					"foo.service": &job.Job{TargetState: jsLoaded},
 				},
 			},
-			cState: &AgentState{
-				MState: &machine.MachineState{ID: "XXX"},
-				Jobs: map[string]*job.Job{
-					"foo.service": &job.Job{State: &jsLoaded},
-				},
-			},
-			jName: "foo.service",
-			chain: nil,
+			cState: unitStates{"foo.service": jsLoaded},
+			jName:  "foo.service",
+			chain:  nil,
 		},
 
 		// no work needs to be done when target state == desired state
@@ -207,14 +202,9 @@ func TestCalculateTasksForJob(t *testing.T) {
 					"foo.service": &job.Job{TargetState: jsLaunched},
 				},
 			},
-			cState: &AgentState{
-				MState: &machine.MachineState{ID: "XXX"},
-				Jobs: map[string]*job.Job{
-					"foo.service": &job.Job{State: &jsLaunched},
-				},
-			},
-			jName: "foo.service",
-			chain: nil,
+			cState: unitStates{"foo.service": jsLaunched},
+			jName:  "foo.service",
+			chain:  nil,
 		},
 
 		// load jobs that have a loaded desired state
@@ -225,7 +215,7 @@ func TestCalculateTasksForJob(t *testing.T) {
 					"foo.service": &job.Job{TargetState: jsLoaded},
 				},
 			},
-			cState: NewAgentState(&machine.MachineState{ID: "XXX"}),
+			cState: unitStates{},
 			jName:  "foo.service",
 			chain: &taskChain{
 				unit: &job.Unit{
@@ -249,7 +239,7 @@ func TestCalculateTasksForJob(t *testing.T) {
 					"foo.service": &job.Job{TargetState: jsLaunched},
 				},
 			},
-			cState: NewAgentState(&machine.MachineState{ID: "XXX"}),
+			cState: unitStates{},
 			jName:  "foo.service",
 			chain: &taskChain{
 				unit: &job.Unit{
@@ -271,15 +261,12 @@ func TestCalculateTasksForJob(t *testing.T) {
 		// unload jobs that are no longer scheduled locally
 		{
 			dState: NewAgentState(&machine.MachineState{ID: "XXX"}),
-			cState: &AgentState{
-				MState: &machine.MachineState{ID: "XXX"},
-				Jobs: map[string]*job.Job{
-					"foo.service": &job.Job{State: &jsLoaded},
-				},
-			},
-			jName: "foo.service",
+			cState: unitStates{"foo.service": jsLoaded},
+			jName:  "foo.service",
 			chain: &taskChain{
-				unit: &job.Unit{},
+				unit: &job.Unit{
+					Name: "foo.service",
+				},
 				tasks: []task{
 					task{
 						typ:    taskTypeUnloadUnit,
@@ -292,15 +279,12 @@ func TestCalculateTasksForJob(t *testing.T) {
 		// unload jobs that are no longer scheduled locally
 		{
 			dState: NewAgentState(&machine.MachineState{ID: "XXX"}),
-			cState: &AgentState{
-				MState: &machine.MachineState{ID: "XXX"},
-				Jobs: map[string]*job.Job{
-					"foo.service": &job.Job{State: &jsLaunched},
-				},
-			},
-			jName: "foo.service",
+			cState: unitStates{"foo.service": jsLaunched},
+			jName:  "foo.service",
 			chain: &taskChain{
-				unit: &job.Unit{},
+				unit: &job.Unit{
+					Name: "foo.service",
+				},
 				tasks: []task{
 					task{
 						typ:    taskTypeUnloadUnit,
@@ -320,15 +304,12 @@ func TestCalculateTasksForJob(t *testing.T) {
 					},
 				},
 			},
-			cState: &AgentState{
-				MState: &machine.MachineState{ID: "XXX"},
-				Jobs: map[string]*job.Job{
-					"foo.service": &job.Job{State: &jsLoaded},
-				},
-			},
-			jName: "foo.service",
+			cState: unitStates{"foo.service": jsLoaded},
+			jName:  "foo.service",
 			chain: &taskChain{
-				unit: &job.Unit{},
+				unit: &job.Unit{
+					Name: "foo.service",
+				},
 				tasks: []task{
 					task{
 						typ:    taskTypeUnloadUnit,
