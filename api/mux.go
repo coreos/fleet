@@ -13,6 +13,7 @@ func NewServeMux(reg registry.Registry) http.Handler {
 	cAPI := &client.RegistryClient{reg}
 
 	prefix := "/v1-alpha"
+	wireUpDiscoveryResource(sm, prefix)
 	wireUpMachinesResource(sm, prefix, cAPI)
 	wireUpStateResource(sm, prefix, cAPI)
 	wireUpUnitsResource(sm, prefix, cAPI)
