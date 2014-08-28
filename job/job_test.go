@@ -87,7 +87,7 @@ Ping=Pong
 X-Key=Value
 `
 	j := NewJob("foo.service", *newUnit(t, contents))
-	reqs := j.Requirements()
+	reqs := j.requirements()
 	if len(reqs) != 2 {
 		t.Fatalf("Incorrect number of requirements; got %d, expected 2", len(reqs))
 	}
@@ -110,7 +110,7 @@ X-Ping=Pong
 X-Ping=Pang
 `
 	j := NewJob("foo.service", *newUnit(t, contents))
-	reqs := j.Requirements()
+	reqs := j.requirements()
 	if len(reqs) != 2 {
 		t.Fatalf("Incorrect number of requirements; got %d, expected 2: %v", len(reqs), reqs)
 	}
@@ -135,7 +135,7 @@ X-Zzz=something
 `
 	// Ensure the correct values are replaced for a non-instance unit
 	j := NewJob("test.service", *newUnit(t, contents))
-	reqs := j.Requirements()
+	reqs := j.requirements()
 	for field, want := range map[string]string{
 		"Foo": "test.service",
 		"Bar": "test",
@@ -151,7 +151,7 @@ X-Zzz=something
 
 	// Now ensure that they are substituted appropriately for an instance unit
 	j = NewJob("ssh@2.service", *newUnit(t, contents))
-	reqs = j.Requirements()
+	reqs = j.requirements()
 	for field, want := range map[string]string{
 		"Foo": "ssh@2.service",
 		"Bar": "ssh@2",
@@ -173,7 +173,7 @@ func TestParseRequirementsMissingSection(t *testing.T) {
 Description=Timmy
 `
 	j := NewJob("foo.service", *newUnit(t, contents))
-	reqs := j.Requirements()
+	reqs := j.requirements()
 	if len(reqs) != 0 {
 		t.Fatalf("Incorrect number of requirements; got %d, expected 0", len(reqs))
 	}

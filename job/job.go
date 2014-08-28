@@ -92,11 +92,11 @@ func NewJob(name string, unit unit.UnitFile) *Job {
 	}
 }
 
-// Requirements returns all relevant options from the [X-Fleet] section of a unit file.
+// requirements returns all relevant options from the [X-Fleet] section of a unit file.
 // Relevant options are identified with a `X-` prefix in the unit.
 // This prefix is stripped from relevant options before being returned.
 // Furthermore, specifier substitution (using unitPrintf) is performed on all requirements.
-func (j *Job) Requirements() map[string][]string {
+func (j *Job) requirements() map[string][]string {
 	uni := unit.NewUnitNameInfo(j.Name)
 	requirements := make(map[string][]string)
 	for key, values := range j.Unit.Contents["X-Fleet"] {
@@ -126,7 +126,7 @@ func (j *Job) Requirements() map[string][]string {
 // Conflicts returns a list of Job names that cannot be scheduled to the same
 // machine as this Job.
 func (j *Job) Conflicts() []string {
-	conflicts, ok := j.Requirements()[fleetXConflicts]
+	conflicts, ok := j.requirements()[fleetXConflicts]
 	if ok {
 		return conflicts
 	}
@@ -136,7 +136,7 @@ func (j *Job) Conflicts() []string {
 // Peers returns a list of Job names that must be scheduled to the same
 // machine as this Job.
 func (j *Job) Peers() []string {
-	peers, ok := j.Requirements()[fleetXConditionMachineOf]
+	peers, ok := j.requirements()[fleetXConditionMachineOf]
 	if !ok {
 		return []string{}
 	}
@@ -149,7 +149,7 @@ func (j *Job) Peers() []string {
 // true. If no requirement exists, an empty string along with a bool false
 // will be returned.
 func (j *Job) RequiredTarget() (string, bool) {
-	requirements := j.Requirements()
+	requirements := j.requirements()
 
 	machIDs, ok := requirements[fleetXConditionMachineID]
 	if ok && len(machIDs) != 0 {
@@ -171,7 +171,7 @@ func (j *Job) RequiredTarget() (string, bool) {
 // RequiredTargetMetadata return all machine-related metadata from a Job's requirements
 func (j *Job) RequiredTargetMetadata() map[string][]string {
 	metadata := make(map[string][]string)
-	for key, values := range j.Requirements() {
+	for key, values := range j.requirements() {
 		// Deprecated syntax added to the metadata via the old `--require` flag.
 		if strings.HasPrefix(key, fleetFlagMachineMetadata) {
 			if len(values) == 0 {
