@@ -120,7 +120,7 @@ Follower units will reschedule themselves around the cluster to ensure their `X-
 
 ##### Schedule unit away from other unit(s)
 
-The value of the `X-Conflicts` option is a [glob pattern](http://golang.org/pkg/path/#Match) defining which other units next to which a given unit must not be scheduled.
+The value of the `X-Conflicts` option is a [glob pattern](http://golang.org/pkg/path/#Match) defining which other units next to which a given unit must not be scheduled. A unit may have multiple `X-Conflicts` options.
 
 If a unit is scheduled to the system without an `X-Conflicts` option, other units' conflicts still take effect and prevent the new unit from being scheduled to machines where conflicts exist.
 
