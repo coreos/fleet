@@ -1,4 +1,5 @@
 // +build ignore
+
 package contrib
 
 // This file exists to ensure Godep manages a vendored copy of the

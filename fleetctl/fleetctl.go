@@ -313,7 +313,7 @@ func getRegistryClient() (client.API, error) {
 		return nil, err
 	}
 
-	trans := http.Transport{
+	trans := &http.Transport{
 		Dial:            dial,
 		TLSClientConfig: tlsConfig,
 	}
