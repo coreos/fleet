@@ -56,7 +56,7 @@ func (f *FakeRegistry) SetUnitStates(states []unit.UnitState) {
 	f.Lock()
 	defer f.Unlock()
 
-	f.jobStates = make(map[string]map[string]*unit.UnitState, len(states))
+	f.jobStates = make(map[string]map[string]*unit.UnitState)
 	for _, us := range states {
 		us := us
 		name := us.UnitName
@@ -229,6 +229,9 @@ func (f *FakeRegistry) SaveUnitState(jobName string, unitState *unit.UnitState, 
 	f.Lock()
 	defer f.Unlock()
 
+	if _, ok := f.jobStates[jobName]; !ok {
+		f.jobStates[jobName] = make(map[string]*unit.UnitState)
+	}
 	f.jobStates[jobName][unitState.MachineID] = unitState
 }
 
@@ -241,7 +244,7 @@ func (f *FakeRegistry) UnitStates() ([]*unit.UnitState, error) {
 	f.Lock()
 	defer f.Unlock()
 
-	var states []*unit.UnitState
+	states := make([]*unit.UnitState, 0)
 
 	// Sort by unit name, then by machineID
 	sUnitNames := make([]string, 0)
@@ -260,7 +263,6 @@ func (f *FakeRegistry) UnitStates() ([]*unit.UnitState, error) {
 			states = append(states, f.jobStates[name][mID])
 		}
 	}
-
 	return states, nil
 }
 
