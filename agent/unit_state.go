@@ -11,9 +11,8 @@ import (
 	"github.com/coreos/fleet/unit"
 )
 
-func NewUnitStatePublisher(mgr unit.UnitManager, reg registry.Registry, mach machine.Machine, ttl time.Duration) *UnitStatePublisher {
+func NewUnitStatePublisher(reg registry.Registry, mach machine.Machine, ttl time.Duration) *UnitStatePublisher {
 	return &UnitStatePublisher{
-		mgr:   mgr,
 		reg:   reg,
 		mach:  mach,
 		ttl:   ttl,
@@ -23,7 +22,6 @@ func NewUnitStatePublisher(mgr unit.UnitManager, reg registry.Registry, mach mac
 }
 
 type UnitStatePublisher struct {
-	mgr  unit.UnitManager
 	reg  registry.Registry
 	mach machine.Machine
 	ttl  time.Duration
