@@ -41,7 +41,7 @@ CMD /bin/elb-presence
 
 With the docker images available over the public internet, systemd can simply run the containers. 
 
-The following unit files are [templates](https://github.com/coreos/fleet/Documentation/unit-files-and-scheduling#template-unit-files), which means they can be run multiple times by referencing them with full instance names. You can find these unit files in the [unit-examples](https://github.com/coreos/unit-examples/tree/master/blog-fleet-intro) repository. To save time, clone the repo on the machine from which you are controlling fleet.
+The following unit files are [templates](https://github.com/coreos/fleet/blob/master/Documentation/unit-files-and-scheduling.md#template-unit-files), which means they can be run multiple times by referencing them with full instance names. You can find these unit files in the [unit-examples](https://github.com/coreos/unit-examples/tree/master/blog-fleet-intro) repository. To save time, clone the repo on the machine from which you are controlling fleet.
 
 **`subgun-http@.service`**
 
