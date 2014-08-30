@@ -39,7 +39,7 @@ hello.service   113f16a7.../172.17.8.103   active   running
 
 These patterns are all defined using [custom systemd unit options][unit-files].
 
-[unit-files]: https://github.com/coreos/fleet/blob/master/Documentation/unit-files.md#fleet-specific-options
+[unit-files]: https://github.com/coreos/fleet/blob/master/Documentation/unit-files-and-scheduling.md#fleet-specific-options
 
 ## Getting Started
 
