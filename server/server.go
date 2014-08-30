@@ -75,7 +75,7 @@ func New(cfg config.Config) (*Server, error) {
 
 	reg := registry.New(eClient, cfg.EtcdKeyPrefix)
 
-	pub := agent.NewUnitStatePublisher(mgr, reg, mach, agentTTL)
+	pub := agent.NewUnitStatePublisher(reg, mach, agentTTL)
 	gen := unit.NewUnitStateGenerator(mgr)
 
 	a := agent.New(mgr, gen, reg, mach, agentTTL)
