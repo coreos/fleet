@@ -10,10 +10,10 @@ import (
 var (
 	verbosity = VLevel(0)
 
-	iLog = log.New(os.Stdout, "INFO ", log.Lshortfile)
-	eLog = log.New(os.Stdout, "ERROR ", log.Lshortfile)
-	wLog = log.New(os.Stdout, "WARN ", log.Lshortfile)
-	fLog = log.New(os.Stdout, "FATAL ", log.Lshortfile)
+	iLog = log.New(os.Stderr, "INFO ", log.Lshortfile)
+	eLog = log.New(os.Stderr, "ERROR ", log.Lshortfile)
+	wLog = log.New(os.Stderr, "WARN ", log.Lshortfile)
+	fLog = log.New(os.Stderr, "FATAL ", log.Lshortfile)
 )
 
 func SetVerbosity(lvl int) {
