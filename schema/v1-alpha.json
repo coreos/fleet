@@ -34,7 +34,6 @@
         },
         "metadata": {
           "type": "object",
-          "required": true,
           "properties": {},
           "additionalProperties": {
             "type": "string"
