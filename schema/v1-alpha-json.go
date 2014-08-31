@@ -237,7 +237,7 @@ const DiscoveryJSON = `{
           }
         },
         "Delete": {
-          "id": "fleet.DesiredState.Delete",
+          "id": "fleet.Unit.Delete",
           "description": "Delete the referenced Unit object.",
           "httpMethod": "DELETE",
           "path": "units/{unitName}",
