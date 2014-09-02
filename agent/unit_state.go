@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"encoding/json"
 	"reflect"
 	"sync"
 	"time"
@@ -35,13 +36,17 @@ type UnitStatePublisher struct {
 // are received on the channel.
 func (p *UnitStatePublisher) Run(beatchan <-chan *unit.UnitStateHeartbeat, stop chan bool) {
 	go func() {
-		tick := time.Tick(5 * time.Second)
 		for {
 			select {
 			case <-stop:
 				return
-			case <-tick:
-				p.publishAll()
+			case <-time.After(p.ttl / 2):
+				p.mutex.Lock()
+				for name, us := range p.cache {
+					p.publishOne(name, us)
+				}
+				p.pruneCache()
+				p.mutex.Unlock()
 			}
 		}
 	}()
@@ -57,24 +62,31 @@ func (p *UnitStatePublisher) Run(beatchan <-chan *unit.UnitStateHeartbeat, stop 
 				bt.State.MachineID = machID
 			}
 
-			p.addToCache(bt)
+			if p.updateCache(bt) {
+				go p.publishOne(bt.Name, bt.State)
+			}
 		}
 	}
 }
 
-func (p *UnitStatePublisher) publishAll() {
+func (p *UnitStatePublisher) MarshalJSON() ([]byte, error) {
 	p.mutex.Lock()
-	defer p.mutex.Unlock()
+	data := struct {
+		Cache map[string]*unit.UnitState
+	}{
+		Cache: p.cache,
+	}
+	p.mutex.Unlock()
 
-	cache := make(map[string]*unit.UnitState)
+	return json.Marshal(data)
+}
+
+func (p *UnitStatePublisher) pruneCache() {
 	for name, us := range p.cache {
-		p.publishOne(name, us)
-		if us != nil {
-			cache[name] = us
+		if us == nil {
+			delete(p.cache, name)
 		}
 	}
-
-	p.cache = cache
 }
 
 func (p *UnitStatePublisher) publishOne(name string, us *unit.UnitState) {
@@ -102,17 +114,18 @@ func (p *UnitStatePublisher) publishOne(name string, us *unit.UnitState) {
 	}
 }
 
-func (p *UnitStatePublisher) addToCache(update *unit.UnitStateHeartbeat) {
+func (p *UnitStatePublisher) updateCache(update *unit.UnitStateHeartbeat) (changed bool) {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 
-	last := p.cache[update.Name]
+	last, ok := p.cache[update.Name]
 	p.cache[update.Name] = update.State
 
-	// As an optimization, publish changes as they flow in
-	if !reflect.DeepEqual(last, update.State) {
-		go p.publishOne(update.Name, update.State)
+	if !ok || !reflect.DeepEqual(last, update.State) {
+		changed = true
 	}
+
+	return
 }
 
 func (p *UnitStatePublisher) Purge() {

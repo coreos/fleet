@@ -185,5 +185,11 @@ func (s *Server) Purge() {
 }
 
 func (s *Server) MarshalJSON() ([]byte, error) {
-	return json.Marshal(struct{ Agent *agent.Agent }{Agent: s.agent})
+	return json.Marshal(struct {
+		Agent              *agent.Agent
+		UnitStatePublisher *agent.UnitStatePublisher
+	}{
+		Agent:              s.agent,
+		UnitStatePublisher: s.usPub,
+	})
 }
