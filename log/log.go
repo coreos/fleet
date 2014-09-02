@@ -10,16 +10,25 @@ import (
 
 const (
 	calldepth = 2
+	defaultFlags = log.Lshortfile
 )
 
 var (
 	verbosity = VLevel(0)
 
-	iLog = log.New(os.Stderr, "INFO ", log.Lshortfile)
-	eLog = log.New(os.Stderr, "ERROR ", log.Lshortfile)
-	wLog = log.New(os.Stderr, "WARN ", log.Lshortfile)
-	fLog = log.New(os.Stderr, "FATAL ", log.Lshortfile)
+	iLog = log.New(os.Stderr, "INFO ", defaultFlags)
+	eLog = log.New(os.Stderr, "ERROR ", defaultFlags)
+	wLog = log.New(os.Stderr, "WARN ", defaultFlags)
+	fLog = log.New(os.Stderr, "FATAL ", defaultFlags)
+
+	loggers = []*log.Logger{iLog, eLog, wLog, fLog}
 )
+
+func EnableTimestamps() {
+	for _, l := range loggers {
+		l.SetFlags(l.Flags() | log.Ldate | log.Ltime)
+	}
+}
 
 func SetVerbosity(lvl int) {
 	verbosity.set(int32(lvl))
