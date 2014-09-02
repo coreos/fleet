@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"encoding/json"
 	"reflect"
 	"sync"
 	"time"
@@ -66,6 +67,18 @@ func (p *UnitStatePublisher) Run(beatchan <-chan *unit.UnitStateHeartbeat, stop 
 			}
 		}
 	}
+}
+
+func (p *UnitStatePublisher) MarshalJSON() ([]byte, error) {
+	p.mutex.Lock()
+	data := struct {
+		Cache map[string]*unit.UnitState
+	}{
+		Cache: p.cache,
+	}
+	p.mutex.Unlock()
+
+	return json.Marshal(data)
 }
 
 func (p *UnitStatePublisher) pruneCache() {
