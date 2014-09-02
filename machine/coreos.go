@@ -132,9 +132,9 @@ func getLocalIP() string {
 
 	for _, addr := range addrs {
 		// Attempt to parse the address in CIDR notation
-		// and assert it is IPv4
+		// and assert that it is IPv4 and global unicast
 		ip, _, err := net.ParseCIDR(addr.String())
-		if err == nil && ip.To4() != nil {
+		if err == nil && ip.To4() != nil && ip.IsGlobalUnicast() {
 			return ip.String()
 		}
 	}
