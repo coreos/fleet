@@ -556,6 +556,11 @@ func (p *Property) Description() string {
 	return jstr(p.m, "description")
 }
 
+func (p *Property) IsRequired() bool {
+	v, _ := p.m["required"].(bool)
+	return v
+}
+
 type Type struct {
 	m   map[string]interface{} // JSON map containing key "type" and maybe "items", "properties"
 	api *API
@@ -900,7 +905,10 @@ func (s *Schema) writeSchemaStruct() {
 		if p.Type().isIntAsString() {
 			extraOpt += ",string"
 		}
-		s.api.p("\t%s %s `json:\"%s,omitempty%s\"`\n", pname, p.Type().AsGo(), p.APIName(), extraOpt)
+		if !p.IsRequired() {
+			extraOpt += ",omitempty"
+		}
+		s.api.p("\t%s %s `json:\"%s%s\"`\n", pname, p.Type().AsGo(), p.APIName(), extraOpt)
 	}
 	s.api.p("}\n")
 }
