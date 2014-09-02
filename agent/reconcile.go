@@ -6,6 +6,7 @@ import (
 
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/log"
+	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/pkg"
 	"github.com/coreos/fleet/registry"
 )
@@ -126,6 +127,11 @@ func desiredAgentState(a *Agent, reg registry.Registry) (*AgentState, error) {
 
 	for _, u := range units {
 		u := u
+		md := u.RequiredTargetMetadata()
+		if u.IsGlobal() && !machine.HasMetadata(&ms, md) {
+			log.V(1).Infof("Agent unable to run global unit %s: missing required metadata", u.Name)
+			continue
+		}
 		if !u.IsGlobal() {
 			sUnit, ok := sUnitMap[u.Name]
 			if !ok || sUnit.TargetMachineID == "" || sUnit.TargetMachineID != ms.ID {

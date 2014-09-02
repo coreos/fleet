@@ -1,7 +1,6 @@
 package agent
 
 import (
-	"fmt"
 	"reflect"
 	"testing"
 
@@ -17,18 +16,241 @@ var (
 	jsLaunched = job.JobStateLaunched
 )
 
-func fleetUnit(t *testing.T, opts ...string) unit.UnitFile {
-	contents := "[X-Fleet]"
-	for _, v := range opts {
-		contents = fmt.Sprintf("%s\n%s", contents, v)
+func makeAgentWithMetadata(md map[string]string) *Agent {
+	return &Agent{
+		Machine: &machine.FakeMachine{
+			MachineState: machine.MachineState{
+				ID:       "this_machine",
+				Metadata: md,
+			},
+		},
+	}
+}
+
+func newUF(t *testing.T, contents string) unit.UnitFile {
+	uf, err := unit.NewUnitFile(contents)
+	if err != nil {
+		t.Fatalf("error creating new unit file from %v: %v", contents, err)
+	}
+	return *uf
+}
+
+func TestDesiredAgentState(t *testing.T) {
+	testCases := []struct {
+		metadata map[string]string
+		regJobs  []job.Job
+		asUnits  map[string]*job.Unit
+	}{
+		// No units in the registry = nothing to do
+		{
+			nil,
+			nil,
+			map[string]*job.Unit{},
+		},
+		// Single Unit scheduled to this machine. Easy.
+		{
+			nil,
+			[]job.Job{
+				job.Job{
+					Name:            "foo.service",
+					Unit:            newUF(t, "blah"),
+					TargetMachineID: "this_machine",
+				},
+			},
+			map[string]*job.Unit{
+				"foo.service": &job.Unit{
+					Name: "foo.service",
+					Unit: newUF(t, "blah"),
+				},
+			},
+		},
+		// Unit scheduled nowhere - ignore it
+		{
+			nil,
+			[]job.Job{
+				job.Job{
+					Name: "foo.service",
+					Unit: newUF(t, "blah"),
+				},
+			},
+			map[string]*job.Unit{},
+		},
+		// Unit scheduled somewhere else - ignore it
+		{
+			nil,
+			[]job.Job{
+				job.Job{
+					Name:            "foo.service",
+					Unit:            newUF(t, "blah"),
+					TargetMachineID: "elsewhere",
+				},
+			},
+			map[string]*job.Unit{},
+		},
+		// Global Unit with no metadata? No problem
+		{
+			nil,
+			[]job.Job{
+				job.Job{
+					Name: "global.service",
+					Unit: newUF(t, "[X-Fleet]\nGlobal=true"),
+				},
+			},
+			map[string]*job.Unit{
+				"global.service": &job.Unit{
+					Name: "global.service",
+					Unit: newUF(t, "[X-Fleet]\nGlobal=true"),
+				},
+			},
+		},
+		// Global Unit with metadata we have? Great
+		{
+			map[string]string{"dog": "woof"},
+			[]job.Job{
+				job.Job{
+					Name: "global.mount",
+					Unit: newUF(t, `
+[X-Fleet]
+Global=true
+X-ConditionMachineMetadata=dog=woof`),
+				},
+			},
+			map[string]*job.Unit{
+				"global.mount": &job.Unit{
+					Name: "global.mount",
+					Unit: newUF(t, `
+[X-Fleet]
+Global=true
+X-ConditionMachineMetadata=dog=woof`),
+				},
+			},
+		},
+		// Global Unit with metadata we don't? Uhoh
+		{
+			nil,
+			[]job.Job{
+				job.Job{
+					Name: "global.mount",
+					Unit: newUF(t, `
+[X-Fleet]
+Global=true
+X-ConditionMachineMetadata=dog=woof`),
+				},
+			},
+			map[string]*job.Unit{},
+		},
+		{
+			map[string]string{"cat": "miaow"},
+			[]job.Job{
+				job.Job{
+					Name: "global.mount",
+					Unit: newUF(t, `
+[X-Fleet]
+Global=true
+X-ConditionMachineMetadata=dog=woof`),
+				},
+			},
+			map[string]*job.Unit{},
+		},
+		// Mix it up a bit!
+		{
+			nil,
+			[]job.Job{
+				job.Job{
+					Name:            "foo.service",
+					Unit:            newUF(t, "blah"),
+					TargetMachineID: "this_machine",
+				},
+				job.Job{
+					Name: "bar.service",
+					Unit: newUF(t, "blah"),
+				},
+				job.Job{
+					Name: "global.service",
+					Unit: newUF(t, "[X-Fleet]\nGlobal=true"),
+				},
+				job.Job{
+					Name: "global.mount",
+					Unit: newUF(t, `
+[X-Fleet]
+Global=true
+X-ConditionMachineMetadata=dog=woof`),
+				},
+			},
+			map[string]*job.Unit{
+				"foo.service": &job.Unit{
+					Name: "foo.service",
+					Unit: newUF(t, "blah"),
+				},
+				"global.service": &job.Unit{
+					Name: "global.service",
+					Unit: newUF(t, "[X-Fleet]\nGlobal=true"),
+				},
+			},
+		},
+		{
+			map[string]string{"dog": "woof"},
+			[]job.Job{
+				job.Job{
+					Name:            "foo.service",
+					Unit:            newUF(t, "blah"),
+					TargetMachineID: "this_machine",
+				},
+				job.Job{
+					Name: "bar.service",
+					Unit: newUF(t, "blah"),
+				},
+				job.Job{
+					Name: "global.service",
+					Unit: newUF(t, "[X-Fleet]\nGlobal=true"),
+				},
+				job.Job{
+					Name: "global.mount",
+					Unit: newUF(t, `
+[X-Fleet]
+Global=true
+X-ConditionMachineMetadata=dog=woof`),
+				},
+			},
+			map[string]*job.Unit{
+				"foo.service": &job.Unit{
+					Name: "foo.service",
+					Unit: newUF(t, "blah"),
+				},
+				"global.service": &job.Unit{
+					Name: "global.service",
+					Unit: newUF(t, "[X-Fleet]\nGlobal=true"),
+				},
+				"global.mount": &job.Unit{
+					Name: "global.mount",
+					Unit: newUF(t, `
+[X-Fleet]
+Global=true
+X-ConditionMachineMetadata=dog=woof`),
+				},
+			},
+		},
 	}
 
-	u, err := unit.NewUnitFile(contents)
-	if u == nil || err != nil {
-		t.Fatalf("Failed creating test unit: unit=%v, err=%v", u, err)
+	for i, tt := range testCases {
+		reg := registry.NewFakeRegistry()
+		reg.SetJobs(tt.regJobs)
+		a := makeAgentWithMetadata(tt.metadata)
+		as, err := desiredAgentState(a, reg)
+		if err != nil {
+			t.Errorf("case %d: unexpected error: %v", i, err)
+		} else if !reflect.DeepEqual(as.Units, tt.asUnits) {
+			t.Errorf("case %d: AgentState differs to expected", i)
+			t.Logf("found:\n")
+			for _, u := range as.Units {
+				t.Logf("  %#v", u)
+			}
+			t.Logf("expected:\n")
+			for _, u := range tt.asUnits {
+				t.Logf("  %#v", u)
+			}
+		}
 	}
-
-	return *u
 }
 
 func TestAbleToRun(t *testing.T) {
