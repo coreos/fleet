@@ -81,6 +81,10 @@ var (
 )
 
 func init() {
+	// call this as early as possible to ensure we always have timestamps
+	// on fleetctl logs
+	log.EnableTimestamps()
+
 	globalFlagset.BoolVar(&globalFlags.Debug, "debug", false, "Print out more debug information to stderr")
 	globalFlagset.BoolVar(&globalFlags.Version, "version", false, "Print the version and exit")
 	globalFlagset.StringVar(&globalFlags.Endpoint, "endpoint", "http://127.0.0.1:4001", "etcd endpoint for fleet")
