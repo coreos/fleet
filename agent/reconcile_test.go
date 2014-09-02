@@ -181,7 +181,7 @@ func TestCalculateTasksForJob(t *testing.T) {
 			chain:  nil,
 		},
 
-		// no work needs to be done when target state == desired state
+		// no work needs to be done when current state == desired state
 		{
 			dState: &AgentState{
 				MState: &machine.MachineState{ID: "XXX"},
@@ -194,7 +194,7 @@ func TestCalculateTasksForJob(t *testing.T) {
 			chain:  nil,
 		},
 
-		// no work needs to be done when target state == desired state
+		// no work needs to be done when current state == desired state
 		{
 			dState: &AgentState{
 				MState: &machine.MachineState{ID: "XXX"},
@@ -203,6 +203,19 @@ func TestCalculateTasksForJob(t *testing.T) {
 				},
 			},
 			cState: unitStates{"foo.service": jsLaunched},
+			jName:  "foo.service",
+			chain:  nil,
+		},
+
+		// no work needs to be done when desired state == inactive and current state == nil
+		{
+			dState: &AgentState{
+				MState: &machine.MachineState{ID: "XXX"},
+				Units: map[string]*job.Unit{
+					"foo.service": &job.Unit{TargetState: jsInactive},
+				},
+			},
+			cState: unitStates{},
 			jName:  "foo.service",
 			chain:  nil,
 		},

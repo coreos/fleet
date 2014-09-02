@@ -182,6 +182,9 @@ func (ar *AgentReconciler) calculateTaskChainForJob(dState *AgentState, cState u
 	}
 
 	if dJob == nil || dJob.TargetState == job.JobStateInactive {
+		if cJState == nil {
+			return nil
+		}
 		t := task{
 			typ:    taskTypeUnloadUnit,
 			reason: taskReasonLoadedButNotScheduled,
