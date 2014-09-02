@@ -51,7 +51,8 @@ func (r *reconciler) Run(stop chan bool) {
 		}
 	}()
 
-	ticker := time.After(r.ival)
+	// When starting up, trigger immediately
+	ticker := time.After(0)
 	for {
 		select {
 		case <-stop:
