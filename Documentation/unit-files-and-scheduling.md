@@ -17,7 +17,7 @@ fleet will schedule any valid service, socket, path or timer systemd unit to a m
 | `X-ConditionMachineOf` | Limit eligible machines to the one that hosts a specific unit. |
 | `X-ConditionMachineMetadata` | Limit eligible machines to those with this specific metadata. |
 | `X-Conflicts` | Prevent a unit from being collocated with other units using glob-matching on the other unit names. |
-| `Global` | Schedule this unit on all agents in the cluster. Should not be used with other options. | 
+| `Global` | Schedule this unit on all agents in the cluster. Should not be used with other options. _New in version 0.8.0_ | 
 
 See [more information](#unit-scheduling) on these parameters and how they impact scheduling decisions.
 
@@ -36,6 +36,8 @@ X-Conflicts=monitor*
 ```
 
 ## Template unit files
+
+_New in version 0.5.0_
 
 fleet provides support for using systemd's [instances](systemd instances) feature to dynamically create _instance_ units from a common _template_ unit file. This allows you to have a single unit configuration and easily and dynamically create new instances of the unit as necessary.
 
