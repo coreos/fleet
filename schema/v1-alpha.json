@@ -34,7 +34,6 @@
         },
         "metadata": {
           "type": "object",
-          "required": true,
           "properties": {},
           "additionalProperties": {
             "type": "string"
@@ -71,8 +70,7 @@
           "required": true
         },
         "value": {
-          "type": "string",
-          "required": true
+          "type": "string"
         }
       }
     },
@@ -231,7 +229,7 @@
           }
         },
         "Delete": {
-          "id": "fleet.DesiredState.Delete",
+          "id": "fleet.Unit.Delete",
           "description": "Delete the referenced Unit object.",
           "httpMethod": "DELETE",
           "path": "units/{unitName}",
