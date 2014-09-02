@@ -32,7 +32,7 @@ type transport interface {
 	CancelRequest(req *http.Request)
 }
 
-func NewClient(endpoints []string, transport http.Transport, actionTimeout time.Duration) (*client, error) {
+func NewClient(endpoints []string, transport *http.Transport, actionTimeout time.Duration) (*client, error) {
 	if len(endpoints) == 0 {
 		endpoints = []string{defaultEndpoint}
 	}
@@ -55,7 +55,7 @@ func NewClient(endpoints []string, transport http.Transport, actionTimeout time.
 
 	return &client{
 		endpoints:     parsed,
-		transport:     &transport,
+		transport:     transport,
 		actionTimeout: actionTimeout,
 	}, nil
 }
