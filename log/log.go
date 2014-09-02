@@ -1,10 +1,15 @@
 package log
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"strconv"
 	"sync/atomic"
+)
+
+const (
+	calldepth = 2
 )
 
 var (
@@ -53,46 +58,48 @@ func V(level VLevel) VLogger {
 	return VLogger(verbosity.get() >= level)
 }
 
-func (v VLogger) Info(args ...interface{}) {
-	if v {
-		iLog.Print(args...)
+func (vl VLogger) Info(v ...interface{}) {
+	if vl {
+		iLog.Output(calldepth, fmt.Sprint(v...))
 	}
 }
 
-func (v VLogger) Infof(format string, args ...interface{}) {
-	if v {
-		iLog.Printf(format, args...)
+func (vl VLogger) Infof(format string, v ...interface{}) {
+	if vl {
+		iLog.Output(calldepth, fmt.Sprintf(format, v...))
 	}
 }
 
-func Info(args ...interface{}) {
-	iLog.Print(args...)
+func Info(v ...interface{}) {
+	iLog.Output(calldepth, fmt.Sprint(v...))
 }
 
-func Infof(fmt string, args ...interface{}) {
-	iLog.Printf(fmt, args...)
+func Infof(format string, v ...interface{}) {
+	iLog.Output(calldepth, fmt.Sprintf(format, v...))
 }
 
-func Error(args ...interface{}) {
-	eLog.Print(args...)
+func Error(v ...interface{}) {
+	eLog.Output(calldepth, fmt.Sprint(v...))
 }
 
-func Errorf(fmt string, args ...interface{}) {
-	eLog.Printf(fmt, args...)
+func Errorf(format string, v ...interface{}) {
+	eLog.Output(calldepth, fmt.Sprintf(format, v...))
 }
 
-func Warning(fmt string, args ...interface{}) {
-	wLog.Print(args...)
+func Warning(format string, v ...interface{}) {
+	wLog.Output(calldepth, fmt.Sprint(v...))
 }
 
-func Warningf(fmt string, args ...interface{}) {
-	wLog.Printf(fmt, args...)
+func Warningf(format string, v ...interface{}) {
+	wLog.Output(calldepth, fmt.Sprintf(format, v...))
 }
 
-func Fatal(args ...interface{}) {
-	fLog.Fatal(args...)
+func Fatal(v ...interface{}) {
+	fLog.Output(calldepth, fmt.Sprint(v...))
+	os.Exit(1)
 }
 
-func Fatalf(fmt string, args ...interface{}) {
-	fLog.Fatalf(fmt, args...)
+func Fatalf(format string, v ...interface{}) {
+	fLog.Output(calldepth, fmt.Sprintf(format, v...))
+	os.Exit(1)
 }
