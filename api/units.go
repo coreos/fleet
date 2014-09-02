@@ -8,7 +8,9 @@ import (
 	"path"
 
 	"github.com/coreos/fleet/client"
+	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/log"
+	"github.com/coreos/fleet/pkg"
 	"github.com/coreos/fleet/schema"
 )
 
@@ -69,14 +71,15 @@ func (ur *unitsResource) set(rw http.ResponseWriter, req *http.Request, item str
 		return
 	}
 
-	if eu == nil && len(su.Options) == 0 {
-		err := errors.New("unit does not exist and options field empty")
-		sendError(rw, http.StatusConflict, err)
-		return
-	}
-
 	if eu == nil {
-		ur.create(rw, item, &su)
+		if len(su.Options) == 0 {
+			err := errors.New("unit does not exist and options field empty")
+			sendError(rw, http.StatusConflict, err)
+		} else if err := ValidateOptions(su.Options); err != nil {
+			sendError(rw, http.StatusConflict, err)
+		} else {
+			ur.create(rw, item, &su)
+		}
 		return
 	}
 
@@ -87,6 +90,48 @@ func (ur *unitsResource) set(rw http.ResponseWriter, req *http.Request, item str
 	}
 
 	ur.update(rw, item, su.DesiredState)
+}
+
+// ValidateOptions ensures that a set of UnitOptions is valid; if not, an error
+// is returned detailing the issue encountered.  If there are several problems
+// with a set of options, only the first is returned.
+func ValidateOptions(opts []*schema.UnitOption) error {
+	uf := schema.MapSchemaUnitOptionsToUnitFile(opts)
+	j := &job.Job{
+		Unit: *uf,
+	}
+	conflicts := pkg.NewUnsafeSet(j.Conflicts()...)
+	peers := pkg.NewUnsafeSet(j.Peers()...)
+	for _, peer := range peers.Values() {
+		for _, conflict := range conflicts.Values() {
+			matched, _ := path.Match(conflict, peer)
+			if matched {
+				return fmt.Errorf("unresolvable requirements: peer %q matches conflict %q", peer, conflict)
+			}
+		}
+	}
+	hasPeers := peers.Length() != 0
+	hasConflicts := conflicts.Length() != 0
+	_, hasReqTarget := j.RequiredTarget()
+	u := &job.Unit{
+		Unit: *uf,
+	}
+	isGlobal := u.IsGlobal()
+
+	switch {
+	case hasReqTarget && hasPeers:
+		return errors.New("ConditionMachineID cannot be used with Peers")
+	case hasReqTarget && hasConflicts:
+		return errors.New("ConditionMachineID cannot be used with Conflicts")
+	case hasReqTarget && isGlobal:
+		return errors.New("ConditionMachineID cannot be used with Global")
+	case isGlobal && hasPeers:
+		return errors.New("Global cannot be used with Peers")
+	case isGlobal && hasConflicts:
+		return errors.New("Global cannot be used with Conflicts")
+	}
+
+	return nil
 }
 
 func (ur *unitsResource) create(rw http.ResponseWriter, name string, u *schema.Unit) {

@@ -285,7 +285,7 @@ func TestUnitsSetDesiredState(t *testing.T) {
 			code:        http.StatusNoContent,
 			finalStates: map[string]job.JobState{"XXX": "launched"},
 		},
-		// Create a new Job
+		// Create a new Unit
 		{
 			initJobs:   []job.Job{},
 			initStates: map[string]job.JobState{},
@@ -299,7 +299,7 @@ func TestUnitsSetDesiredState(t *testing.T) {
 			code:        http.StatusNoContent,
 			finalStates: map[string]job.JobState{"YYY": "loaded"},
 		},
-		// Creating a new Job without Options fails
+		// Creating a new Unit without Options fails
 		{
 			initJobs:   []job.Job{},
 			initStates: map[string]job.JobState{},
@@ -311,7 +311,7 @@ func TestUnitsSetDesiredState(t *testing.T) {
 			code:        http.StatusConflict,
 			finalStates: map[string]job.JobState{},
 		},
-		// Modifying a nonexistent Job should fail
+		// Modifying a nonexistent Unit should fail
 		{
 			initJobs:    []job.Job{},
 			initStates:  map[string]job.JobState{},
@@ -373,6 +373,218 @@ func TestUnitsSetDesiredState(t *testing.T) {
 			if u.TargetState != expect {
 				t.Errorf("case %d: expect Unit(%s) target state %q, got %q", i, name, expect, u.TargetState)
 			}
+		}
+	}
+}
+
+func makeConflictUO(name string) *schema.UnitOption {
+	return &schema.UnitOption{
+		Section: "X-Fleet",
+		Name:    "X-Conflicts",
+		Value:   name,
+	}
+}
+
+func makePeerUO(name string) *schema.UnitOption {
+	return &schema.UnitOption{
+		Section: "X-Fleet",
+		Name:    "X-ConditionMachineOf",
+		Value:   name,
+	}
+}
+
+func makeIDUO(name string) *schema.UnitOption {
+	return &schema.UnitOption{
+		Section: "X-Fleet",
+		Name:    "X-ConditionMachineID",
+		Value:   name,
+	}
+}
+
+func TestValidateOptions(t *testing.T) {
+	testCases := []struct {
+		opts  []*schema.UnitOption
+		valid bool
+	}{
+		// Empty set is fine
+		{
+			nil,
+			true,
+		},
+		{
+			[]*schema.UnitOption{},
+			true,
+		},
+		// Non-overlapping peers/conflicts are fine
+		{
+			[]*schema.UnitOption{
+				makeConflictUO("foo.service"),
+				makeConflictUO("bar.service"),
+			},
+			true,
+		},
+		{
+			[]*schema.UnitOption{
+				makeConflictUO("foo.service"),
+				makePeerUO("bar.service"),
+			},
+			true,
+		},
+		{
+			[]*schema.UnitOption{
+				makeConflictUO("foo.service"),
+				makePeerUO("bar.service"),
+			},
+			true,
+		},
+		{
+			[]*schema.UnitOption{
+				makeConflictUO("b*e"),
+				makePeerUO("foo.service"),
+			},
+			true,
+		},
+		// Intersecting peers/conflicts are no good
+		{
+			[]*schema.UnitOption{
+				makeConflictUO("foo.service"),
+				makePeerUO("foo.service"),
+			},
+			false,
+		},
+		{
+			[]*schema.UnitOption{
+				makeConflictUO("foo.service"),
+				makeConflictUO("bar.service"),
+				makePeerUO("bar.service"),
+			},
+			false,
+		},
+		{
+			[]*schema.UnitOption{
+				makeConflictUO("b*e"),
+				makePeerUO("bar.service"),
+			},
+			false,
+		},
+		{
+			[]*schema.UnitOption{
+				makeConflictUO("b*e"),
+				makePeerUO("baz.service"),
+			},
+			false,
+		},
+		// ConditionMachineID is fine by itself
+		{
+			[]*schema.UnitOption{
+				makeIDUO("abcdefghi"),
+			},
+			true,
+		},
+		// ConditionMachineID with Peers no good
+		{
+			[]*schema.UnitOption{
+				makeIDUO("abcdefghi"),
+				makePeerUO("foo.service"),
+			},
+			false,
+		},
+		{
+			[]*schema.UnitOption{
+				makeIDUO("zyxwvutsr"),
+				makePeerUO("bar.service"),
+				makePeerUO("foo.service"),
+			},
+			false,
+		},
+		// ConditionMachineID with Conflicts no good
+		{
+			[]*schema.UnitOption{
+				makeIDUO("abcdefghi"),
+				makeConflictUO("bar.service"),
+			},
+			false,
+		},
+		{
+			[]*schema.UnitOption{
+				makeIDUO("zyxwvutsr"), makeConflictUO("foo.service"), makeConflictUO("bar.service"),
+			},
+			false,
+		},
+		// Global by itself is OK
+		{
+			[]*schema.UnitOption{
+				&schema.UnitOption{
+					Section: "X-Fleet",
+					Name:    "Global",
+					Value:   "true",
+				},
+			},
+			true,
+		},
+		// Global with Peers/Conflicts no good
+		{
+			[]*schema.UnitOption{
+				&schema.UnitOption{
+					Section: "X-Fleet",
+					Name:    "Global",
+					Value:   "true",
+				},
+				makeConflictUO("foo.service"),
+			},
+			false,
+		},
+		{
+			[]*schema.UnitOption{
+				&schema.UnitOption{
+					Section: "X-Fleet",
+					Name:    "Global",
+					Value:   "true",
+				},
+				makeConflictUO("bar.service"),
+			},
+			false,
+		},
+		{
+			[]*schema.UnitOption{
+				&schema.UnitOption{
+					Section: "X-Fleet",
+					Name:    "Global",
+					Value:   "true",
+				},
+				makePeerUO("foo.service"),
+				makePeerUO("bar.service"),
+			},
+			false,
+		},
+		// Global with ConditionMachineID no good
+		{
+			[]*schema.UnitOption{
+				&schema.UnitOption{
+					Section: "X-Fleet",
+					Name:    "Global",
+					Value:   "true",
+				},
+				makeIDUO("abcdefghi"),
+			},
+			false,
+		},
+		{
+			[]*schema.UnitOption{
+				makeIDUO("abcdefghi"),
+				&schema.UnitOption{
+					Section: "X-Fleet",
+					Name:    "Global",
+					Value:   "true",
+				},
+			},
+			false,
+		},
+	}
+	for i, tt := range testCases {
+		err := ValidateOptions(tt.opts)
+		if (err == nil) != tt.valid {
+			t.Errorf("case %d: bad error value (got err=%v, want valid=%t)", i, err, tt.valid)
 		}
 	}
 }

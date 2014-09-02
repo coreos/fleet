@@ -14,6 +14,7 @@ import (
 	"text/tabwriter"
 	"time"
 
+	"github.com/coreos/fleet/api"
 	"github.com/coreos/fleet/client"
 	"github.com/coreos/fleet/etcd"
 	"github.com/coreos/fleet/job"
@@ -408,9 +409,19 @@ func findUnits(args []string) (sus []schema.Unit, err error) {
 }
 
 func createUnit(name string, uf *unit.UnitFile) (*schema.Unit, error) {
+	if uf == nil {
+		return nil, fmt.Errorf("nil unit provided")
+	}
 	u := schema.Unit{
 		Name:    name,
 		Options: schema.MapUnitFileToSchemaUnitOptions(uf),
+	}
+	// TODO(jonboulle): this dependency on the API package is awkward, and
+	// redundant with the check in api.unitsResource.set, but it is a
+	// workaround to implementing the same check in the RegistryClient. It
+	// will disappear once RegistryClient is deprecated.
+	if err := api.ValidateOptions(u.Options); err != nil {
+		return nil, err
 	}
 	err := cAPI.CreateUnit(&u)
 	if err != nil {

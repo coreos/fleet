@@ -3,8 +3,10 @@ package main
 import (
 	"testing"
 
+	"github.com/coreos/fleet/client"
 	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/registry"
+	"github.com/coreos/fleet/unit"
 	"github.com/coreos/fleet/version"
 
 	"github.com/coreos/fleet/Godeps/_workspace/src/github.com/coreos/go-semver/semver"
@@ -99,6 +101,52 @@ func TestUnitNameMangle(t *testing.T) {
 	for n, w := range unitNameMangleTests {
 		if g := unitNameMangle(n); g != w {
 			t.Errorf("got %q, want %q", g, w)
+		}
+	}
+}
+
+func newUnitFile(t *testing.T, contents string) *unit.UnitFile {
+	uf, err := unit.NewUnitFile(contents)
+	if err != nil {
+		t.Fatalf("error creating NewUnitFile from %s: %v", contents, err)
+	}
+	return uf
+}
+
+func TestCreateUnitFails(t *testing.T) {
+	type fakeAPI struct {
+		client.API
+	}
+	cAPI = fakeAPI{}
+	var i int
+	var uf *unit.UnitFile
+	defer func() {
+		if r := recover(); r != nil {
+			t.Errorf("case %d: unexpectedly called API!", i)
+			t.Logf("unit file: %#v", uf)
+		}
+	}()
+	for i, uf = range []*unit.UnitFile{
+		nil,
+		newUnitFile(t, `[X-Fleet]
+X-ConditionMachineOf=abcd
+X-Conflicts=abcd`),
+		newUnitFile(t, `[X-Fleet]
+X-ConditionMachineOf=abcd
+X-Conflicts=abcd`),
+		newUnitFile(t, `[X-Fleet]
+Global=true
+X-ConditionMachineOf=abcd`),
+		newUnitFile(t, `[X-Fleet]
+Global=true
+X-ConditionMachineOf=zxcvq`),
+		newUnitFile(t, `[X-Fleet]
+Global=true
+X-Conflicts=bar`),
+	} {
+		if _, err := createUnit("foo.service", uf); err == nil {
+			t.Errorf("case %d did not return error as expected!", i)
+			t.Logf("unit file: %#v", uf)
 		}
 	}
 }
