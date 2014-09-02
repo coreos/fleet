@@ -10,7 +10,7 @@ import (
 
 func TestTaskManagerTwoInFlight(t *testing.T) {
 	result := make(chan error)
-	testMapper := func(task, *job.Job, *Agent) (exec func() error, err error) {
+	testMapper := func(task, *job.Unit, *Agent) (exec func() error, err error) {
 		exec = func() error {
 			return <-result
 		}
@@ -22,12 +22,12 @@ func TestTaskManagerTwoInFlight(t *testing.T) {
 		mapper:     testMapper,
 	}
 
-	errchan1, err := tm.Do(taskChain{job: &job.Job{Name: "foo"}, tasks: []task{task{typ: "test"}}}, nil)
+	errchan1, err := tm.Do(taskChain{unit: &job.Unit{Name: "foo"}, tasks: []task{task{typ: "test"}}}, nil)
 	if err != nil {
 		t.Fatalf("unable to start task: %v", err)
 	}
 
-	errchan2, err := tm.Do(taskChain{job: &job.Job{Name: "bar"}, tasks: []task{task{typ: "test"}}}, nil)
+	errchan2, err := tm.Do(taskChain{unit: &job.Unit{Name: "bar"}, tasks: []task{task{typ: "test"}}}, nil)
 	if err != nil {
 		t.Fatalf("unable to start task: %v", err)
 	}
@@ -50,9 +50,9 @@ func TestTaskManagerTwoInFlight(t *testing.T) {
 	}
 }
 
-func TestTaskManagerJobSerialization(t *testing.T) {
+func TestTaskManagerUnitSerialization(t *testing.T) {
 	result := make(chan error)
-	testMapper := func(task, *job.Job, *Agent) (exec func() error, err error) {
+	testMapper := func(task, *job.Unit, *Agent) (exec func() error, err error) {
 		exec = func() error {
 			return <-result
 		}
@@ -64,13 +64,13 @@ func TestTaskManagerJobSerialization(t *testing.T) {
 		mapper:     testMapper,
 	}
 
-	reschan, err := tm.Do(taskChain{job: &job.Job{Name: "foo"}, tasks: []task{task{typ: "test"}}}, nil)
+	reschan, err := tm.Do(taskChain{unit: &job.Unit{Name: "foo"}, tasks: []task{task{typ: "test"}}}, nil)
 	if err != nil {
 		t.Fatalf("unable to start first task: %v", err)
 	}
 
 	// the first task should block the second, as it is still in progress
-	_, err = tm.Do(taskChain{job: &job.Job{Name: "foo"}, tasks: []task{task{typ: "test"}}}, nil)
+	_, err = tm.Do(taskChain{unit: &job.Unit{Name: "foo"}, tasks: []task{task{typ: "test"}}}, nil)
 	if err == nil {
 		t.Fatalf("expected error from attempt to start second task, got nil")
 	}
@@ -87,7 +87,7 @@ func TestTaskManagerJobSerialization(t *testing.T) {
 	}
 
 	// since the first task completed, this third task can start
-	_, err = tm.Do(taskChain{job: &job.Job{Name: "foo"}, tasks: []task{task{typ: "test"}}}, nil)
+	_, err = tm.Do(taskChain{unit: &job.Unit{Name: "foo"}, tasks: []task{task{typ: "test"}}}, nil)
 	if err != nil {
 		t.Fatalf("unable to start third task: %v", err)
 	}

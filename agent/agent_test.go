@@ -12,6 +12,14 @@ import (
 	"github.com/coreos/fleet/unit"
 )
 
+func newTestUnitFromUnitContents(t *testing.T, name, contents string) *job.Unit {
+	j := newTestJobFromUnitContents(t, name, contents)
+	return &job.Unit{
+		Name: j.Name,
+		Unit: j.Unit,
+	}
+}
+
 func newTestJobFromUnitContents(t *testing.T, name, contents string) *job.Job {
 	u, err := unit.NewUnitFile(contents)
 	if err != nil {
@@ -36,115 +44,89 @@ func newTestJobWithXFleetValues(t *testing.T, metadata string) *job.Job {
 	return newNamedTestJobWithXFleetValues(t, "pong.service", metadata)
 }
 
-func TestAgentLoadUnloadJob(t *testing.T) {
+func TestAgentLoadUnloadUnit(t *testing.T) {
 	uManager := unit.NewFakeUnitManager()
 	usGenerator := unit.NewUnitStateGenerator(uManager)
 	fReg := registry.NewFakeRegistry()
 	mach := &machine.FakeMachine{machine.MachineState{ID: "XXX"}}
 	a := New(uManager, usGenerator, fReg, mach, time.Second)
 
-	j := newTestJobFromUnitContents(t, "foo.service", "")
-	err := a.loadJob(j)
+	u := newTestUnitFromUnitContents(t, "foo.service", "")
+	err := a.loadUnit(u)
 	if err != nil {
-		t.Fatalf("Failed calling Agent.loadJob: %v", err)
+		t.Fatalf("Failed calling Agent.loadUnit: %v", err)
 	}
 
-	jobs, err := a.jobs()
+	units, err := a.units()
 	if err != nil {
-		t.Fatalf("Failed calling Agent.jobs: %v", err)
+		t.Fatalf("Failed calling Agent.units: %v", err)
 	}
 
 	jsLoaded := job.JobStateLoaded
-	expectJobs := map[string]*job.Job{
-		"foo.service": &job.Job{
-			Name:  "foo.service",
-			State: &jsLoaded,
-
-			Unit:            unit.UnitFile{},
-			TargetState:     job.JobState(""),
-			TargetMachineID: "",
-		},
+	expectUnits := unitStates{
+		"foo.service": jsLoaded,
 	}
 
-	if !reflect.DeepEqual(expectJobs, jobs) {
-		t.Fatalf("Received unexpected collection of Jobs: %#v\nExpected: %#v", jobs, expectJobs)
+	if !reflect.DeepEqual(expectUnits, units) {
+		t.Fatalf("Received unexpected collection of Units: %#v\nExpected: %#v", units, expectUnits)
 	}
 
-	a.unloadJob("foo.service")
+	a.unloadUnit("foo.service")
 
-	jobs, err = a.jobs()
+	units, err = a.units()
 	if err != nil {
-		t.Fatalf("Failed calling Agent.jobs: %v", err)
+		t.Fatalf("Failed calling Agent.units: %v", err)
 	}
 
-	expectJobs = map[string]*job.Job{}
-	if !reflect.DeepEqual(expectJobs, jobs) {
-		t.Fatalf("Received unexpected collection of Jobs: %#v\nExpected: %#v", jobs, expectJobs)
+	expectUnits = unitStates{}
+	if !reflect.DeepEqual(expectUnits, units) {
+		t.Fatalf("Received unexpected collection of Units: %#v\nExpected: %#v", units, expectUnits)
 	}
 }
 
-func TestAgentLoadStartStopJob(t *testing.T) {
+func TestAgentLoadStartStopUnit(t *testing.T) {
 	uManager := unit.NewFakeUnitManager()
 	usGenerator := unit.NewUnitStateGenerator(uManager)
 	fReg := registry.NewFakeRegistry()
 	mach := &machine.FakeMachine{machine.MachineState{ID: "XXX"}}
 	a := New(uManager, usGenerator, fReg, mach, time.Second)
 
-	u, err := unit.NewUnitFile("")
+	u := newTestUnitFromUnitContents(t, "foo.service", "")
+
+	err := a.loadUnit(u)
 	if err != nil {
-		t.Fatalf("Failed creating Unit: %v", err)
+		t.Fatalf("Failed calling Agent.loadUnit: %v", err)
 	}
 
-	j := job.NewJob("foo.service", *u)
+	a.startUnit("foo.service")
 
-	err = a.loadJob(j)
+	units, err := a.units()
 	if err != nil {
-		t.Fatalf("Failed calling Agent.loadJob: %v", err)
-	}
-
-	a.startJob("foo.service")
-
-	jobs, err := a.jobs()
-	if err != nil {
-		t.Fatalf("Failed calling Agent.jobs: %v", err)
+		t.Fatalf("Failed calling Agent.units: %v", err)
 	}
 
 	jsLaunched := job.JobStateLaunched
-	expectJobs := map[string]*job.Job{
-		"foo.service": &job.Job{
-			Name:  "foo.service",
-			State: &jsLaunched,
-
-			Unit:            unit.UnitFile{},
-			TargetState:     job.JobState(""),
-			TargetMachineID: "",
-		},
+	expectUnits := unitStates{
+		"foo.service": jsLaunched,
 	}
 
-	if !reflect.DeepEqual(expectJobs, jobs) {
-		t.Fatalf("Received unexpected collection of Jobs: %#v\nExpected: %#v", jobs, expectJobs)
+	if !reflect.DeepEqual(expectUnits, units) {
+		t.Fatalf("Received unexpected collection of Units: %#v\nExpected: %#v", units, expectUnits)
 	}
 
-	a.stopJob("foo.service")
+	a.stopUnit("foo.service")
 
-	jobs, err = a.jobs()
+	units, err = a.units()
 	if err != nil {
-		t.Fatalf("Failed calling Agent.jobs: %v", err)
+		t.Fatalf("Failed calling Agent.units: %v", err)
 	}
 
 	jsLoaded := job.JobStateLoaded
-	expectJobs = map[string]*job.Job{
-		"foo.service": &job.Job{
-			Name:  "foo.service",
-			State: &jsLoaded,
-
-			Unit:            unit.UnitFile{},
-			TargetState:     job.JobState(""),
-			TargetMachineID: "",
-		},
+	expectUnits = unitStates{
+		"foo.service": jsLoaded,
 	}
 
-	if !reflect.DeepEqual(expectJobs, jobs) {
-		t.Fatalf("Received unexpected collection of Jobs: %#v\nExpected: %#v", jobs, expectJobs)
+	if !reflect.DeepEqual(expectUnits, units) {
+		t.Fatalf("Received unexpected collection of Units: %#v\nExpected: %#v", units, expectUnits)
 	}
 }

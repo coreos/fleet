@@ -83,8 +83,8 @@ func TestAbleToRun(t *testing.T) {
 		{
 			dState: &AgentState{
 				MState: &machine.MachineState{ID: "123"},
-				Jobs: map[string]*job.Job{
-					"pong.service": &job.Job{Name: "pong.service"},
+				Units: map[string]*job.Unit{
+					"pong.service": &job.Unit{Name: "pong.service"},
 				},
 			},
 			job:  newTestJobWithXFleetValues(t, "X-ConditionMachineOf=pong.service"),
@@ -95,9 +95,9 @@ func TestAbleToRun(t *testing.T) {
 		{
 			dState: &AgentState{
 				MState: &machine.MachineState{ID: "123"},
-				Jobs: map[string]*job.Job{
-					"ping.service": &job.Job{Name: "ping.service"},
-					"pong.service": &job.Job{Name: "pong.service"},
+				Units: map[string]*job.Unit{
+					"ping.service": &job.Unit{Name: "ping.service"},
+					"pong.service": &job.Unit{Name: "pong.service"},
 				},
 			},
 			job:  newTestJobWithXFleetValues(t, "X-ConditionMachineOf=pong.service\nX-ConditionMachineOf=ping.service"),
@@ -115,8 +115,8 @@ func TestAbleToRun(t *testing.T) {
 		{
 			dState: &AgentState{
 				MState: &machine.MachineState{ID: "123"},
-				Jobs: map[string]*job.Job{
-					"ping.service": &job.Job{Name: "ping.service"},
+				Units: map[string]*job.Unit{
+					"ping.service": &job.Unit{Name: "ping.service"},
 				},
 			},
 			job:  newTestJobWithXFleetValues(t, "X-ConditionMachineOf=pong.service\nX-ConditionMachineOf=ping.service"),
@@ -127,8 +127,8 @@ func TestAbleToRun(t *testing.T) {
 		{
 			dState: &AgentState{
 				MState: &machine.MachineState{ID: "123"},
-				Jobs: map[string]*job.Job{
-					"ping.service": &job.Job{Name: "ping.service"},
+				Units: map[string]*job.Unit{
+					"ping.service": &job.Unit{Name: "ping.service"},
 				},
 			},
 			job:  newTestJobWithXFleetValues(t, "X-Conflicts=pong.service"),
@@ -139,8 +139,8 @@ func TestAbleToRun(t *testing.T) {
 		{
 			dState: &AgentState{
 				MState: &machine.MachineState{ID: "123"},
-				Jobs: map[string]*job.Job{
-					"ping.service": &job.Job{Name: "ping.service"},
+				Units: map[string]*job.Unit{
+					"ping.service": &job.Unit{Name: "ping.service"},
 				},
 			},
 			job:  newTestJobWithXFleetValues(t, "X-Conflicts=ping.service"),
@@ -159,7 +159,7 @@ func TestAbleToRun(t *testing.T) {
 func TestCalculateTasksForJob(t *testing.T) {
 	tests := []struct {
 		dState *AgentState
-		cState *AgentState
+		cState unitStates
 		jName  string
 
 		chain *taskChain
@@ -176,7 +176,7 @@ func TestCalculateTasksForJob(t *testing.T) {
 		// nil job should result in no tasks
 		{
 			dState: NewAgentState(&machine.MachineState{ID: "XXX"}),
-			cState: NewAgentState(&machine.MachineState{ID: "XXX"}),
+			cState: unitStates{},
 			jName:  "foo.service",
 			chain:  nil,
 		},
@@ -185,53 +185,46 @@ func TestCalculateTasksForJob(t *testing.T) {
 		{
 			dState: &AgentState{
 				MState: &machine.MachineState{ID: "XXX"},
-				Jobs: map[string]*job.Job{
-					"foo.service": &job.Job{TargetState: jsLoaded},
+				Units: map[string]*job.Unit{
+					"foo.service": &job.Unit{TargetState: jsLoaded},
 				},
 			},
-			cState: &AgentState{
-				MState: &machine.MachineState{ID: "XXX"},
-				Jobs: map[string]*job.Job{
-					"foo.service": &job.Job{State: &jsLoaded},
-				},
-			},
-			jName: "foo.service",
-			chain: nil,
+			cState: unitStates{"foo.service": jsLoaded},
+			jName:  "foo.service",
+			chain:  nil,
 		},
 
 		// no work needs to be done when target state == desired state
 		{
 			dState: &AgentState{
 				MState: &machine.MachineState{ID: "XXX"},
-				Jobs: map[string]*job.Job{
-					"foo.service": &job.Job{TargetState: jsLaunched},
+				Units: map[string]*job.Unit{
+					"foo.service": &job.Unit{TargetState: jsLaunched},
 				},
 			},
-			cState: &AgentState{
-				MState: &machine.MachineState{ID: "XXX"},
-				Jobs: map[string]*job.Job{
-					"foo.service": &job.Job{State: &jsLaunched},
-				},
-			},
-			jName: "foo.service",
-			chain: nil,
+			cState: unitStates{"foo.service": jsLaunched},
+			jName:  "foo.service",
+			chain:  nil,
 		},
 
 		// load jobs that have a loaded desired state
 		{
 			dState: &AgentState{
 				MState: &machine.MachineState{ID: "XXX"},
-				Jobs: map[string]*job.Job{
-					"foo.service": &job.Job{TargetState: jsLoaded},
+				Units: map[string]*job.Unit{
+					"foo.service": &job.Unit{TargetState: jsLoaded},
 				},
 			},
-			cState: NewAgentState(&machine.MachineState{ID: "XXX"}),
+			cState: unitStates{},
 			jName:  "foo.service",
 			chain: &taskChain{
-				job: &job.Job{TargetState: jsLoaded},
+				unit: &job.Unit{
+					Name: "foo.service",
+					Unit: unit.UnitFile{},
+				},
 				tasks: []task{
 					task{
-						typ:    taskTypeLoadJob,
+						typ:    taskTypeLoadUnit,
 						reason: taskReasonScheduledButUnloaded,
 					},
 				},
@@ -242,21 +235,23 @@ func TestCalculateTasksForJob(t *testing.T) {
 		{
 			dState: &AgentState{
 				MState: &machine.MachineState{ID: "XXX"},
-				Jobs: map[string]*job.Job{
-					"foo.service": &job.Job{TargetState: jsLaunched},
+				Units: map[string]*job.Unit{
+					"foo.service": &job.Unit{TargetState: jsLaunched},
 				},
 			},
-			cState: NewAgentState(&machine.MachineState{ID: "XXX"}),
+			cState: unitStates{},
 			jName:  "foo.service",
 			chain: &taskChain{
-				job: &job.Job{TargetState: jsLaunched},
+				unit: &job.Unit{
+					Name: "foo.service",
+				},
 				tasks: []task{
 					task{
-						typ:    taskTypeLoadJob,
+						typ:    taskTypeLoadUnit,
 						reason: taskReasonScheduledButUnloaded,
 					},
 					task{
-						typ:    taskTypeStartJob,
+						typ:    taskTypeStartUnit,
 						reason: taskReasonLoadedDesiredStateLaunched,
 					},
 				},
@@ -266,18 +261,15 @@ func TestCalculateTasksForJob(t *testing.T) {
 		// unload jobs that are no longer scheduled locally
 		{
 			dState: NewAgentState(&machine.MachineState{ID: "XXX"}),
-			cState: &AgentState{
-				MState: &machine.MachineState{ID: "XXX"},
-				Jobs: map[string]*job.Job{
-					"foo.service": &job.Job{State: &jsLoaded},
-				},
-			},
-			jName: "foo.service",
+			cState: unitStates{"foo.service": jsLoaded},
+			jName:  "foo.service",
 			chain: &taskChain{
-				job: &job.Job{State: &jsLoaded},
+				unit: &job.Unit{
+					Name: "foo.service",
+				},
 				tasks: []task{
 					task{
-						typ:    taskTypeUnloadJob,
+						typ:    taskTypeUnloadUnit,
 						reason: taskReasonLoadedButNotScheduled,
 					},
 				},
@@ -287,18 +279,15 @@ func TestCalculateTasksForJob(t *testing.T) {
 		// unload jobs that are no longer scheduled locally
 		{
 			dState: NewAgentState(&machine.MachineState{ID: "XXX"}),
-			cState: &AgentState{
-				MState: &machine.MachineState{ID: "XXX"},
-				Jobs: map[string]*job.Job{
-					"foo.service": &job.Job{State: &jsLaunched},
-				},
-			},
-			jName: "foo.service",
+			cState: unitStates{"foo.service": jsLaunched},
+			jName:  "foo.service",
 			chain: &taskChain{
-				job: &job.Job{State: &jsLaunched},
+				unit: &job.Unit{
+					Name: "foo.service",
+				},
 				tasks: []task{
 					task{
-						typ:    taskTypeUnloadJob,
+						typ:    taskTypeUnloadUnit,
 						reason: taskReasonLoadedButNotScheduled,
 					},
 				},
@@ -309,24 +298,21 @@ func TestCalculateTasksForJob(t *testing.T) {
 		{
 			dState: &AgentState{
 				MState: &machine.MachineState{ID: "XXX"},
-				Jobs: map[string]*job.Job{
-					"foo.service": &job.Job{
+				Units: map[string]*job.Unit{
+					"foo.service": &job.Unit{
 						TargetState: jsInactive,
 					},
 				},
 			},
-			cState: &AgentState{
-				MState: &machine.MachineState{ID: "XXX"},
-				Jobs: map[string]*job.Job{
-					"foo.service": &job.Job{State: &jsLoaded},
-				},
-			},
-			jName: "foo.service",
+			cState: unitStates{"foo.service": jsLoaded},
+			jName:  "foo.service",
 			chain: &taskChain{
-				job: &job.Job{State: &jsLoaded},
+				unit: &job.Unit{
+					Name: "foo.service",
+				},
 				tasks: []task{
 					task{
-						typ:    taskTypeUnloadJob,
+						typ:    taskTypeUnloadUnit,
 						reason: taskReasonLoadedButNotScheduled,
 					},
 				},
@@ -338,7 +324,9 @@ func TestCalculateTasksForJob(t *testing.T) {
 		ar := NewReconciler(registry.NewFakeRegistry(), nil)
 		chain := ar.calculateTaskChainForJob(tt.dState, tt.cState, tt.jName)
 		if !reflect.DeepEqual(tt.chain, chain) {
-			t.Errorf("case %d: calculated incorrect task chain\nexpected=%v\nreceived=%v\n", i, tt.chain, chain)
+			t.Errorf("case %d: calculated incorrect task chain\nexpected=%#v\nreceived=%#v\n", i, tt.chain, chain)
+			t.Logf("expected Unit: %#v", *tt.chain.unit)
+			t.Logf("received Unit: %#v", *chain.unit)
 		}
 	}
 }

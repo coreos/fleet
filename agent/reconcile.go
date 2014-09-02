@@ -30,8 +30,8 @@ type AgentReconciler struct {
 }
 
 // Run periodically attempts to reconcile the provided Agent until the stop
-// channel is closed. Run will also reconcile in reaction to calls to Trigger.
-// While a reconciliation is being attempted, calls to Trigger are ignored.
+// channel is closed. Run will also reconcile in reaction to events on the
+// AgentReconciler's rStream.
 func (ar *AgentReconciler) Run(a *Agent, stop chan bool) {
 	reconcile := func() {
 		start := time.Now()
@@ -58,7 +58,7 @@ func (ar *AgentReconciler) Reconcile(a *Agent) {
 		return
 	}
 
-	cAgentState, err := currentAgentState(a)
+	cAgentState, err := a.units()
 	if err != nil {
 		log.Errorf("Unable to determine agent's current state: %v", err)
 		return
@@ -72,24 +72,24 @@ func (ar *AgentReconciler) Reconcile(a *Agent) {
 // Purge attempts to unload all Jobs that have been loaded locally
 func (ar *AgentReconciler) Purge(a *Agent) {
 	for {
-		cAgentState, err := currentAgentState(a)
+		cAgentState, err := a.units()
 		if err != nil {
 			log.Errorf("Unable to determine agent's current state: %v", err)
 			return
 		}
-
-		if len(cAgentState.Jobs) == 0 {
+		if len(cAgentState) == 0 {
 			return
 		}
 
-		for _, cJob := range cAgentState.Jobs {
-			cJob := cJob
+		for name, _ := range cAgentState {
 			t := task{
-				typ:    taskTypeUnloadJob,
+				typ:    taskTypeUnloadUnit,
 				reason: taskReasonPurgingAgent,
 			}
-
-			tc := newTaskChain(cJob, t)
+			u := &job.Unit{
+				Name: name,
+			}
+			tc := newTaskChain(u, t)
 			ar.launchTaskChain(tc, a)
 		}
 
@@ -115,7 +115,7 @@ func desiredAgentState(a *Agent, reg registry.Registry) (*AgentState, error) {
 	ms := a.Machine.State()
 	as := AgentState{
 		MState: &ms,
-		Jobs:   make(map[string]*job.Job),
+		Units:  make(map[string]*job.Unit),
 	}
 
 	sUnitMap := make(map[string]*job.ScheduledUnit)
@@ -125,35 +125,14 @@ func desiredAgentState(a *Agent, reg registry.Registry) (*AgentState, error) {
 	}
 
 	for _, u := range units {
-		j := &job.Job{
-			Name:        u.Name,
-			Unit:        u.Unit,
-			TargetState: u.TargetState,
-		}
+		u := u
 		if !u.IsGlobal() {
 			sUnit, ok := sUnitMap[u.Name]
 			if !ok || sUnit.TargetMachineID == "" || sUnit.TargetMachineID != ms.ID {
 				continue
 			}
 		}
-		as.Jobs[u.Name] = j
-	}
-
-	return &as, nil
-}
-
-// currentAgentState builds an *AgentState object that represents what an
-// Agent is currently doing.
-func currentAgentState(a *Agent) (*AgentState, error) {
-	jobs, err := a.jobs()
-	if err != nil {
-		return nil, err
-	}
-
-	ms := a.Machine.State()
-	as := AgentState{
-		MState: &ms,
-		Jobs:   jobs,
+		as.Units[u.Name] = &u
 	}
 
 	return &as, nil
@@ -162,15 +141,15 @@ func currentAgentState(a *Agent) (*AgentState, error) {
 // calculateTaskChainsForJobs compares the desired and current state of an Agent.
 // The generated taskChains represent what should be done to make the desired
 // state match the current state.
-func (ar *AgentReconciler) calculateTaskChainsForJobs(dState, cState *AgentState) <-chan taskChain {
+func (ar *AgentReconciler) calculateTaskChainsForJobs(dState *AgentState, cState unitStates) <-chan taskChain {
 	tcChan := make(chan taskChain)
 	go func() {
 		jobs := pkg.NewUnsafeSet()
-		for cName := range cState.Jobs {
+		for cName := range cState {
 			jobs.Add(cName)
 		}
 
-		for dName := range dState.Jobs {
+		for dName := range dState.Units {
 			jobs.Add(dName)
 		}
 
@@ -188,43 +167,48 @@ func (ar *AgentReconciler) calculateTaskChainsForJobs(dState, cState *AgentState
 	return tcChan
 }
 
-func (ar *AgentReconciler) calculateTaskChainForJob(dState, cState *AgentState, jName string) *taskChain {
-	var dJob, cJob *job.Job
+func (ar *AgentReconciler) calculateTaskChainForJob(dState *AgentState, cState unitStates, jName string) *taskChain {
+	var dJob *job.Unit
 	if dState != nil {
-		dJob = dState.Jobs[jName]
+		dJob = dState.Units[jName]
 	}
-	if cState != nil {
-		cJob = cState.Jobs[jName]
+	var cJState *job.JobState
+	if state, ok := cState[jName]; ok {
+		cJState = &state
 	}
-
-	if dJob == nil && cJob == nil {
+	if dJob == nil && cJState == nil {
 		log.Errorf("Desired state and current state of Job(%s) nil, not sure what to do", jName)
 		return nil
 	}
 
 	if dJob == nil || dJob.TargetState == job.JobStateInactive {
-		delete(cState.Jobs, jName)
-
 		t := task{
-			typ:    taskTypeUnloadJob,
+			typ:    taskTypeUnloadUnit,
 			reason: taskReasonLoadedButNotScheduled,
 		}
-
-		tc := newTaskChain(cJob, t)
+		u := &job.Unit{
+			Name: jName,
+		}
+		tc := newTaskChain(u, t)
 		return &tc
 	}
 
-	if cJob == nil {
-		tc := newTaskChain(dJob)
+	u := &job.Unit{
+		Name: jName,
+		Unit: dJob.Unit,
+	}
+
+	if cJState == nil {
+		tc := newTaskChain(u)
 		tc.Add(task{
-			typ:    taskTypeLoadJob,
+			typ:    taskTypeLoadUnit,
 			reason: taskReasonScheduledButUnloaded,
 		})
 
 		// as an optimization, queue the job for launching immediately after loading
 		if dJob.TargetState == job.JobStateLaunched {
 			tc.Add(task{
-				typ:    taskTypeStartJob,
+				typ:    taskTypeStartUnit,
 				reason: taskReasonLoadedDesiredStateLaunched,
 			})
 		}
@@ -232,40 +216,35 @@ func (ar *AgentReconciler) calculateTaskChainForJob(dState, cState *AgentState, 
 		return &tc
 	}
 
-	if cJob.State == nil {
-		log.Errorf("Current state of Job(%s) unknown, unable to reconcile", jName)
+	if *cJState == dJob.TargetState {
+		log.V(1).Infof("Desired state %q matches current state of Job(%s), nothing to do", *cJState, jName)
 		return nil
 	}
 
-	if *cJob.State == dJob.TargetState {
-		log.V(1).Infof("Desired state %q matches current state of Job(%s), nothing to do", *cJob.State, jName)
-		return nil
-	}
-
-	tc := newTaskChain(dJob)
-	if *cJob.State == job.JobStateInactive {
+	tc := newTaskChain(u)
+	if *cJState == job.JobStateInactive {
 		tc.Add(task{
-			typ:    taskTypeLoadJob,
+			typ:    taskTypeLoadUnit,
 			reason: taskReasonScheduledButUnloaded,
 		})
 	}
 
-	if (*cJob.State == job.JobStateInactive || *cJob.State == job.JobStateLoaded) && dJob.TargetState == job.JobStateLaunched {
+	if (*cJState == job.JobStateInactive || *cJState == job.JobStateLoaded) && dJob.TargetState == job.JobStateLaunched {
 		tc.Add(task{
-			typ:    taskTypeStartJob,
+			typ:    taskTypeStartUnit,
 			reason: taskReasonLoadedDesiredStateLaunched,
 		})
 	}
 
-	if *cJob.State == job.JobStateLaunched && dJob.TargetState == job.JobStateLoaded {
+	if *cJState == job.JobStateLaunched && dJob.TargetState == job.JobStateLoaded {
 		tc.Add(task{
-			typ:    taskTypeStopJob,
+			typ:    taskTypeStopUnit,
 			reason: taskReasonLaunchedDesiredStateLoaded,
 		})
 	}
 
 	if len(tc.tasks) == 0 {
-		log.Errorf("Unable to determine how to reconcile Job(%s): desiredState=%#v currentState=%#v", jName, dJob, cJob)
+		log.Errorf("Unable to determine how to reconcile Job(%s): desiredState=%#v currentState=%#v", jName, dJob, cJState)
 		return nil
 	}
 
@@ -283,9 +262,9 @@ func (ar *AgentReconciler) launchTaskChain(tc taskChain, a *Agent) {
 	go func() {
 		for res := range reschan {
 			if res.err == nil {
-				log.Infof("AgentReconciler completed task: type=%s job=%s reason=%q", res.task.typ, tc.job.Name, res.task.reason)
+				log.Infof("AgentReconciler completed task: type=%s job=%s reason=%q", res.task.typ, tc.unit.Name, res.task.reason)
 			} else {
-				log.Infof("AgentReconciler task failed: type=%s job=%s reason=%q err=%v", res.task.typ, tc.job.Name, res.task.reason, res.err)
+				log.Infof("AgentReconciler task failed: type=%s job=%s reason=%q err=%v", res.task.typ, tc.unit.Name, res.task.reason, res.err)
 			}
 		}
 	}()

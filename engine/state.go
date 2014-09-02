@@ -67,18 +67,19 @@ func (cs *clusterState) agents() map[string]*agent.AgentState {
 			continue
 		}
 		if as, ok := agents[j.TargetMachineID]; ok {
-			as.Jobs[j.Name] = j
+			u := &job.Unit{
+				Name:        j.Name,
+				Unit:        j.Unit,
+				TargetState: j.TargetState,
+			}
+			as.Units[j.Name] = u
 		}
 	}
 
 	for _, gu := range cs.gUnits {
-		j := &job.Job{
-			Name:        gu.Name,
-			Unit:        gu.Unit,
-			TargetState: gu.TargetState,
-		}
+		gu := gu
 		for _, a := range agents {
-			a.Jobs[gu.Name] = j
+			a.Units[gu.Name] = gu
 		}
 	}
 

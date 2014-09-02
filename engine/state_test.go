@@ -48,7 +48,7 @@ func TestClusterStateAgents(t *testing.T) {
 			agents: map[string]*agent.AgentState{
 				"XXX": &agent.AgentState{
 					MState: &machine.MachineState{ID: "XXX"},
-					Jobs:   map[string]*job.Job{},
+					Units:  map[string]*job.Unit{},
 				},
 			},
 		},
@@ -80,16 +80,14 @@ func TestClusterStateAgents(t *testing.T) {
 			agents: map[string]*agent.AgentState{
 				"XXX": &agent.AgentState{
 					MState: &machine.MachineState{ID: "XXX"},
-					Jobs: map[string]*job.Job{
-						"bar.service": &job.Job{
-							Name:            "bar.service",
-							TargetState:     job.JobStateLoaded,
-							TargetMachineID: "XXX",
+					Units: map[string]*job.Unit{
+						"bar.service": &job.Unit{
+							Name:        "bar.service",
+							TargetState: job.JobStateLoaded,
 						},
-						"baz.service": &job.Job{
-							Name:            "baz.service",
-							TargetState:     job.JobStateLaunched,
-							TargetMachineID: "XXX",
+						"baz.service": &job.Unit{
+							Name:        "baz.service",
+							TargetState: job.JobStateLaunched,
 						},
 					},
 				},
@@ -130,36 +128,32 @@ func TestClusterStateAgents(t *testing.T) {
 			agents: map[string]*agent.AgentState{
 				"XXX": &agent.AgentState{
 					MState: &machine.MachineState{ID: "XXX"},
-					Jobs: map[string]*job.Job{
-						"foo.service": &job.Job{
-							Name:            "foo.service",
-							TargetState:     job.JobStateLaunched,
-							TargetMachineID: "XXX",
+					Units: map[string]*job.Unit{
+						"foo.service": &job.Unit{
+							Name:        "foo.service",
+							TargetState: job.JobStateLaunched,
 						},
-						"ping.service": &job.Job{
-							Name:            "ping.service",
-							TargetState:     job.JobStateLaunched,
-							TargetMachineID: "XXX",
+						"ping.service": &job.Unit{
+							Name:        "ping.service",
+							TargetState: job.JobStateLaunched,
 						},
 					},
 				},
 				"YYY": &agent.AgentState{
 					MState: &machine.MachineState{ID: "YYY"},
-					Jobs: map[string]*job.Job{
-						"pong.service": &job.Job{
-							Name:            "pong.service",
-							TargetState:     job.JobStateLaunched,
-							TargetMachineID: "YYY",
+					Units: map[string]*job.Unit{
+						"pong.service": &job.Unit{
+							Name:        "pong.service",
+							TargetState: job.JobStateLaunched,
 						},
 					},
 				},
 				"ZZZ": &agent.AgentState{
 					MState: &machine.MachineState{ID: "ZZZ"},
-					Jobs: map[string]*job.Job{
-						"bar.service": &job.Job{
-							Name:            "bar.service",
-							TargetState:     job.JobStateLaunched,
-							TargetMachineID: "ZZZ",
+					Units: map[string]*job.Unit{
+						"bar.service": &job.Unit{
+							Name:        "bar.service",
+							TargetState: job.JobStateLaunched,
 						},
 					},
 				},

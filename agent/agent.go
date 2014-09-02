@@ -70,43 +70,43 @@ func (a *Agent) heartbeatJobs(ttl time.Duration, stop chan bool) {
 	}
 }
 
-func (a *Agent) loadJob(j *job.Job) error {
-	a.cache.setTargetState(j.Name, job.JobStateLoaded)
-	a.uGen.Subscribe(j.Name)
-	return a.um.Load(j.Name, j.Unit)
+func (a *Agent) loadUnit(u *job.Unit) error {
+	a.cache.setTargetState(u.Name, job.JobStateLoaded)
+	a.uGen.Subscribe(u.Name)
+	return a.um.Load(u.Name, u.Unit)
 }
 
-func (a *Agent) unloadJob(jobName string) {
-	a.registry.ClearUnitHeartbeat(jobName)
-	a.cache.dropTargetState(jobName)
+func (a *Agent) unloadUnit(unitName string) {
+	a.registry.ClearUnitHeartbeat(unitName)
+	a.cache.dropTargetState(unitName)
 
-	a.um.Stop(jobName)
+	a.um.Stop(unitName)
 
-	a.uGen.Unsubscribe(jobName)
+	a.uGen.Unsubscribe(unitName)
 
-	a.um.Unload(jobName)
+	a.um.Unload(unitName)
 }
 
-func (a *Agent) startJob(jobName string) {
-	a.cache.setTargetState(jobName, job.JobStateLaunched)
+func (a *Agent) startUnit(unitName string) {
+	a.cache.setTargetState(unitName, job.JobStateLaunched)
 
 	machID := a.Machine.State().ID
-	a.registry.UnitHeartbeat(jobName, machID, a.ttl)
+	a.registry.UnitHeartbeat(unitName, machID, a.ttl)
 
-	a.um.Start(jobName)
+	a.um.Start(unitName)
 }
 
-func (a *Agent) stopJob(jobName string) {
-	a.cache.setTargetState(jobName, job.JobStateLoaded)
-	a.registry.ClearUnitHeartbeat(jobName)
+func (a *Agent) stopUnit(unitName string) {
+	a.cache.setTargetState(unitName, job.JobStateLoaded)
+	a.registry.ClearUnitHeartbeat(unitName)
 
-	a.um.Stop(jobName)
+	a.um.Stop(unitName)
 }
 
-// jobs returns a collection of all Jobs that the Agent has either loaded
-// or launched. The Unit, TargetState and TargetMachineID fields of the
-// returned *job.Job objects are not properly hydrated.
-func (a *Agent) jobs() (map[string]*job.Job, error) {
+type unitStates map[string]job.JobState
+
+// units returns a map representing the current state of units known by the agent.
+func (a *Agent) units() (unitStates, error) {
 	launched := pkg.NewUnsafeSet()
 	for _, jName := range a.cache.launchedJobs() {
 		launched.Add(jName)
@@ -127,27 +127,16 @@ func (a *Agent) jobs() (map[string]*job.Job, error) {
 		filter.Add(u)
 	}
 
-	jobs := make(map[string]*job.Job)
+	states := make(unitStates)
 	for _, uName := range units {
-		jobs[uName] = &job.Job{
-			Name:  uName,
-			State: nil,
-
-			// The following fields are not properly populated
-			// and should not be used in the calling code
-			Unit:            unit.UnitFile{},
-			TargetState:     job.JobState(""),
-			TargetMachineID: "",
-		}
-
 		js := job.JobStateInactive
 		if loaded.Contains(uName) {
 			js = job.JobStateLoaded
 		} else if launched.Contains(uName) {
 			js = job.JobStateLaunched
 		}
-		jobs[uName].State = &js
+		states[uName] = js
 	}
 
-	return jobs, nil
+	return states, nil
 }
