@@ -41,7 +41,13 @@ func TestPeriodicReconcilerRun(t *testing.T) {
 		pr.Run(stop)
 		prDone <- true
 	}()
-	// no reconcile yet expected
+	// reconcile should have occurred once at start-up
+	select {
+	case <-called:
+	case <-time.After(time.Second):
+		t.Fatalf("rFunc() not called at start-up as expected!")
+	}
+	// no further reconciles yet expected
 	select {
 	case <-called:
 		t.Fatalf("rFunc() called unexpectedly!")
