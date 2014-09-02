@@ -31,14 +31,20 @@ func runUnloadUnit(args []string) (exit int) {
 
 	wait := make([]string, 0)
 	for _, s := range units {
-		if job.JobState(s.CurrentState) == job.JobStateInactive {
-			log.V(1).Infof("Unit(%s) already %s, skipping.", s.Name, job.JobStateInactive)
-			continue
+		if !suToGlobal(s) {
+			if job.JobState(s.CurrentState) == job.JobStateInactive {
+				log.V(1).Infof("Target state of Unit(%s) already %s, skipping.", s.Name, job.JobStateInactive)
+				continue
+			}
 		}
 
 		log.V(1).Infof("Setting target state of Unit(%s) to %s", s.Name, job.JobStateInactive)
 		cAPI.SetUnitTargetState(s.Name, string(job.JobStateInactive))
-		wait = append(wait, s.Name)
+		if suToGlobal(s) {
+			fmt.Printf("Triggered global unit %s unload\n", s.Name)
+		} else {
+			wait = append(wait, s.Name)
+		}
 	}
 
 	if !sharedFlags.NoBlock {
