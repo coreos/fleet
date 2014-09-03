@@ -3,6 +3,7 @@ package agent
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/pkg"
@@ -36,6 +37,14 @@ func newTaskChain(u *job.Unit, t ...task) taskChain {
 
 func (tc *taskChain) Add(t task) {
 	tc.tasks = append(tc.tasks, t)
+}
+
+func (tc taskChain) String() (out string) {
+	tasks := make([]string, len(tc.tasks))
+	for i, t := range tc.tasks {
+		tasks[i] = fmt.Sprintf("(%s, %q)", t.typ, t.reason)
+	}
+	return fmt.Sprintf("{%s %s}", tc.unit.Name, strings.Join(tasks, ", "))
 }
 
 type task struct {

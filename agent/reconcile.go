@@ -261,7 +261,7 @@ func (ar *AgentReconciler) calculateTaskChainForJob(dState *AgentState, cState u
 }
 
 func (ar *AgentReconciler) launchTaskChain(tc taskChain, a *Agent) {
-	log.V(1).Infof("AgentReconciler attempting task chain: %s", tc)
+	log.V(1).Infof("AgentReconciler attempting task chain %s", tc)
 	reschan, err := ar.tManager.Do(tc, a)
 	if err != nil {
 		log.Infof("AgentReconciler task chain failed: chain=%s err=%v", tc, err)
