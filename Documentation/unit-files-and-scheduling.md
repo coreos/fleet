@@ -25,10 +25,10 @@ In versions of fleet <= 0.8.0, the following options are available. They are dep
 
 | Option Name | Description |
 |-------------|-------------|
-| `X-ConditionMachineID` | _Deprecated in 0.8.0 in favor of `MachineID`_ |
-| `X-ConditionMachineOf` | _Deprecated in 0.8.0 in favor of `MachineOf`_ |
-| `X-ConditionMachineMetadata` | _Deprecated in 0.8.0 in favor of `MachineMetadata`_ |
-| `X-Conflicts` | _Deprecated in 0.8.0 in favor of `Conflicts`_ |
+| `X-ConditionMachineID` | _Deprecated in v0.8.0 in favor of `MachineID`_ |
+| `X-ConditionMachineOf` | _Deprecated in v0.8.0 in favor of `MachineOf`_ |
+| `X-ConditionMachineMetadata` | _Deprecated in v0.8.0 in favor of `MachineMetadata`_ |
+| `X-Conflicts` | _Deprecated in v0.8.0 in favor of `Conflicts`_ |
 
 Take the following as an example of how your `[X-Fleet]` section could be written:
 
