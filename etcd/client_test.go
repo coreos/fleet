@@ -1,6 +1,7 @@
 package etcd
 
 import (
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -658,8 +659,15 @@ func TestCancelledRequestHTTP(t *testing.T) {
 	}
 }
 
+func newDummyKeyParser(cert tls.Certificate, err error) keypairFunc {
+	return func(certPEMBlock, keyPEMBlock []byte) (tls.Certificate, error) {
+		return cert, err
+	}
+}
+
 func TestBuildTLSClientConfigNoCertificate(t *testing.T) {
-	config, err := buildTLSClientConfig([]byte{}, []byte{}, []byte{})
+	parser := newDummyKeyParser(tls.Certificate{}, nil)
+	config, err := buildTLSClientConfig([]byte{}, []byte{}, []byte{}, parser)
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
@@ -675,7 +683,8 @@ func TestBuildTLSClientConfigNoCertificate(t *testing.T) {
 }
 
 func TestBuildTLSClientConfigWithValidCertificateAndWithCA(t *testing.T) {
-	config, err := buildTLSClientConfig(validCA, validCert, validKey)
+	parser := newDummyKeyParser(tls.Certificate{}, nil)
+	config, err := buildTLSClientConfig(validCA, validCert, validKey, parser)
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
@@ -691,7 +700,8 @@ func TestBuildTLSClientConfigWithValidCertificateAndWithCA(t *testing.T) {
 }
 
 func TestBuildTLSClientConfigWithValidCertificateAndWithoutCA(t *testing.T) {
-	config, err := buildTLSClientConfig([]byte{}, validCert, validKey)
+	parser := newDummyKeyParser(tls.Certificate{}, nil)
+	config, err := buildTLSClientConfig([]byte{}, validCert, validKey, parser)
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
@@ -706,28 +716,9 @@ func TestBuildTLSClientConfigWithValidCertificateAndWithoutCA(t *testing.T) {
 	}
 }
 
-func TestBuildTLSClientConfigWithOnlyKeyfileIsAnError(t *testing.T) {
-	config, err := buildTLSClientConfig([]byte{}, []byte{}, corruptedKey)
-	if err == nil {
-		t.Errorf("error expected")
-	}
-	if config != nil {
-		t.Errorf("config should be nil")
-	}
-}
-
-func TestBuildTLSClientConfigWithOnlyCertfileIsAnError(t *testing.T) {
-	config, err := buildTLSClientConfig([]byte{}, validCert, []byte{})
-	if err == nil {
-		t.Errorf("error expected")
-	}
-	if config != nil {
-		t.Errorf("config should be nil")
-	}
-}
-
-func TestBuildTLSClientConfigWithCorruptedCertificate(t *testing.T) {
-	config, err := buildTLSClientConfig([]byte{}, corruptedCert, corruptedKey)
+func TestBuildTLSClientConfigWithInvalidParameters(t *testing.T) {
+	parser := newDummyKeyParser(tls.Certificate{}, errors.New("err"))
+	config, err := buildTLSClientConfig([]byte{}, validCert, validKey, parser)
 	if err == nil {
 		t.Errorf("error expected")
 	}
