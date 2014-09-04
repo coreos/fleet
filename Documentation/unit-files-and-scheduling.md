@@ -17,7 +17,7 @@ fleet will schedule any valid service, socket, path or timer systemd unit to a m
 | `MachineOf` | Limit eligible machines to the one that hosts a specific unit. |
 | `MachineMetadata` | Limit eligible machines to those with this specific metadata. |
 | `Conflicts` | Prevent a unit from being collocated with other units using glob-matching on the other unit names. |
-| `Global` | Schedule this unit on all agents in the cluster. Should not be used with other options. |
+| `Global` | Schedule this unit on all agents in the cluster. A unit is considered invalid if options other than `MachineMetadata` are provided alongside `Global=true`. |
 
 See [more information](#unit-scheduling) on these parameters and how they impact scheduling decisions.
 
@@ -25,10 +25,10 @@ In versions of fleet <= 0.8.0, the following options are available. They are dep
 
 | Option Name | Description |
 |-------------|-------------|
-| `X-ConditionMachineID` | _Deprecated in 0.8.0 in favor of `MachineID`_ |
-| `X-ConditionMachineOf` | _Deprecated in 0.8.0 in favor of `MachineOf`_ |
-| `X-ConditionMachineMetadata` | _Deprecated in 0.8.0 in favor of `MachineMetadata`_ |
-| `X-Conflicts` | _Deprecated in 0.8.0 in favor of `Conflicts`_ |
+| `X-ConditionMachineID` | _Deprecated in v0.8.0 in favor of `MachineID`_ |
+| `X-ConditionMachineOf` | _Deprecated in v0.8.0 in favor of `MachineOf`_ |
+| `X-ConditionMachineMetadata` | _Deprecated in v0.8.0 in favor of `MachineMetadata`_ |
+| `X-Conflicts` | _Deprecated in v0.8.0 in favor of `Conflicts`_ |
 
 Take the following as an example of how your `[X-Fleet]` section could be written:
 
@@ -75,9 +75,11 @@ For the meaning of the specifiers, refer to the official [systemd documentation]
 
 When working with units, fleet distinguishes between two types of units: _non-global_ (the default) and _global_. (A global unit is one with `Global=true` in its `X-Fleet` section, as mentioned above).
 
-Global units run on every possible machine in the fleet cluster: there is no scheduling decision involved.
-
 Non-global units are scheduled by the fleet engine - the engine is responsible for deciding where they should be placed in the cluster. 
+
+Global units can run on every possible machine in the fleet cluster.
+While global units are not scheduled through the engine, fleet agents still check the `MachineMetadata` option before starting them.
+Other options are ignored.
 
 For more details on the specific behavior of the engine, read more about [fleet's architecture and data model](https://github.com/coreos/fleet/blob/master/Documentation/architecture.md).
 
