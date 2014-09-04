@@ -180,10 +180,23 @@ PUT /units/foo.service HTTP/1.1
 }
 ```
 
+**Note:** If the units name field is set in the request body, it must match the
+name in the PUT /units/<name> request like so:
+
+```
+PUT /units/foo.service HTTP/1.1
+
+{
+  "name": "foo.service",
+  "desiredState": "launched",
+  "options": [{"section": "Service", "name": "ExecStart", "value": "/usr/bin/sleep 3000"}]
+}
+```
+
 #### Response
 
 A successful response contains no body.
-Attempting to create an entity without fileContents will return a `409 Conflict` response.
+Attempting to create an entity without options will return a `409 Conflict` response.
 
 ### Modify desired state of a Unit
 
@@ -215,7 +228,7 @@ PUT /units/bar.service HTTP/1.1
 #### Response
 
 A successful response contains no body.
-Attempting to create an entity without fileContents will return a `409 Conflict` response.
+Attempting to create an entity without options will return a `409 Conflict` response.
 
 ### Retrieve desired state of all Units
 
