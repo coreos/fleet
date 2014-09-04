@@ -63,10 +63,21 @@ func (ur *unitsResource) set(rw http.ResponseWriter, req *http.Request, item str
 		sendError(rw, http.StatusBadRequest, fmt.Errorf("unable to decode body: %v", err))
 		return
 	}
+	if su.Name == "" {
+		su.Name = item
+	}
+	if item != su.Name {
+		sendError(rw, http.StatusBadRequest, fmt.Errorf("name in URL %q differs from unit name in request body %q", item, su.Name))
+		return
+	}
+	if err := validateName(su.Name); err != nil {
+		sendError(rw, http.StatusBadRequest, err)
+		return
+	}
 
-	eu, err := ur.cAPI.Unit(item)
+	eu, err := ur.cAPI.Unit(su.Name)
 	if err != nil {
-		log.Errorf("Failed fetching Unit(%s) from Registry: %v", item, err)
+		log.Errorf("Failed fetching Unit(%s) from Registry: %v", su.Name, err)
 		sendError(rw, http.StatusInternalServerError, nil)
 		return
 	}
@@ -76,9 +87,9 @@ func (ur *unitsResource) set(rw http.ResponseWriter, req *http.Request, item str
 			err := errors.New("unit does not exist and options field empty")
 			sendError(rw, http.StatusConflict, err)
 		} else if err := ValidateOptions(su.Options); err != nil {
-			sendError(rw, http.StatusConflict, err)
+			sendError(rw, http.StatusBadRequest, err)
 		} else {
-			ur.create(rw, item, &su)
+			ur.create(rw, su.Name, &su)
 		}
 		return
 	}
@@ -89,7 +100,16 @@ func (ur *unitsResource) set(rw http.ResponseWriter, req *http.Request, item str
 		return
 	}
 
-	ur.update(rw, item, su.DesiredState)
+	ur.update(rw, su.Name, su.DesiredState)
+}
+
+// validateName ensures that a given unit name is valid; if not, an error is
+// returned detailing the issue encountered.
+func validateName(name string) error {
+	if len(name) == 0 {
+		return errors.New("unit name cannot be empty")
+	}
+	return nil
 }
 
 // ValidateOptions ensures that a set of UnitOptions is valid; if not, an error
