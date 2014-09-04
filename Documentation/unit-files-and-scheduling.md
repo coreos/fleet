@@ -17,7 +17,7 @@ fleet will schedule any valid service, socket, path or timer systemd unit to a m
 | `MachineOf` | Limit eligible machines to the one that hosts a specific unit. |
 | `MachineMetadata` | Limit eligible machines to those with this specific metadata. |
 | `Conflicts` | Prevent a unit from being collocated with other units using glob-matching on the other unit names. |
-| `Global` | Schedule this unit on all agents in the cluster. Should not be used with other options. |
+| `Global` | Schedule this unit on all agents in the cluster. A unit is considered invalid if options other than `MachineMetadata` are provided alongside `Global=true`. |
 
 See [more information](#unit-scheduling) on these parameters and how they impact scheduling decisions.
 
