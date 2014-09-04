@@ -270,7 +270,9 @@ func TestUnitsSetDesiredState(t *testing.T) {
 		// initial state of Registry
 		initJobs   []job.Job
 		initStates map[string]job.JobState
-		// which Job to attempt to delete
+		// item path (name) of the Unit
+		item string
+		// Unit to attempt to set
 		arg schema.Unit
 		// expected HTTP status code
 		code int
@@ -281,6 +283,7 @@ func TestUnitsSetDesiredState(t *testing.T) {
 		{
 			initJobs:    []job.Job{job.Job{Name: "XXX", Unit: newUnit(t, "[Service]\nFoo=Bar")}},
 			initStates:  map[string]job.JobState{"XXX": "inactive"},
+			item:        "XXX",
 			arg:         schema.Unit{Name: "XXX", DesiredState: "launched"},
 			code:        http.StatusNoContent,
 			finalStates: map[string]job.JobState{"XXX": "launched"},
@@ -289,6 +292,7 @@ func TestUnitsSetDesiredState(t *testing.T) {
 		{
 			initJobs:   []job.Job{},
 			initStates: map[string]job.JobState{},
+			item:       "YYY",
 			arg: schema.Unit{
 				Name:         "YYY",
 				DesiredState: "loaded",
@@ -303,6 +307,7 @@ func TestUnitsSetDesiredState(t *testing.T) {
 		{
 			initJobs:   []job.Job{},
 			initStates: map[string]job.JobState{},
+			item:       "YYY",
 			arg: schema.Unit{
 				Name:         "YYY",
 				DesiredState: "loaded",
@@ -311,13 +316,46 @@ func TestUnitsSetDesiredState(t *testing.T) {
 			code:        http.StatusConflict,
 			finalStates: map[string]job.JobState{},
 		},
-		// Modifying a nonexistent Unit should fail
+		// Referencing a Unit where the name is inconsistent with the path should fail
 		{
-			initJobs:    []job.Job{},
-			initStates:  map[string]job.JobState{},
-			arg:         schema.Unit{Name: "YYY", DesiredState: "loaded"},
-			code:        http.StatusConflict,
-			finalStates: map[string]job.JobState{},
+			initJobs: []job.Job{
+				job.Job{Name: "XXX", Unit: newUnit(t, "[Service]\nFoo=Bar")},
+				job.Job{Name: "YYY", Unit: newUnit(t, "[Service]\nFoo=Baz")},
+			},
+			initStates: map[string]job.JobState{
+				"XXX": "inactive",
+				"YYY": "inactive",
+			},
+			item: "XXX",
+			arg: schema.Unit{
+				Name:         "YYY",
+				DesiredState: "loaded",
+			},
+			code: http.StatusBadRequest,
+			finalStates: map[string]job.JobState{
+				"XXX": "inactive",
+				"YYY": "inactive",
+			},
+		},
+		// Referencing a Unit where the name is omitted should substitute the name from the path
+		{
+			initJobs: []job.Job{
+				job.Job{Name: "XXX", Unit: newUnit(t, "[Service]\nFoo=Bar")},
+				job.Job{Name: "YYY", Unit: newUnit(t, "[Service]\nFoo=Baz")},
+			},
+			initStates: map[string]job.JobState{
+				"XXX": "inactive",
+				"YYY": "inactive",
+			},
+			item: "XXX",
+			arg: schema.Unit{
+				DesiredState: "loaded",
+			},
+			code: http.StatusNoContent,
+			finalStates: map[string]job.JobState{
+				"XXX": "loaded",
+				"YYY": "inactive",
+			},
 		},
 	}
 
@@ -331,7 +369,7 @@ func TestUnitsSetDesiredState(t *testing.T) {
 			}
 		}
 
-		req, err := http.NewRequest("PUT", fmt.Sprintf("http://example.com/units/%s", tt.arg.Name), nil)
+		req, err := http.NewRequest("PUT", fmt.Sprintf("http://example.com/units/%s", tt.item), nil)
 		if err != nil {
 			t.Errorf("case %d: failed creating http.Request: %v", i, err)
 			continue
@@ -348,7 +386,7 @@ func TestUnitsSetDesiredState(t *testing.T) {
 		fAPI := &client.RegistryClient{fr}
 		resource := &unitsResource{fAPI, "/units"}
 		rw := httptest.NewRecorder()
-		resource.set(rw, req, tt.arg.Name)
+		resource.set(rw, req, tt.item)
 
 		if tt.code/100 == 2 {
 			if tt.code != rw.Code {
@@ -585,6 +623,19 @@ func TestValidateOptions(t *testing.T) {
 		err := ValidateOptions(tt.opts)
 		if (err == nil) != tt.valid {
 			t.Errorf("case %d: bad error value (got err=%v, want valid=%t)", i, err, tt.valid)
+		}
+	}
+}
+
+func TestValidateName(t *testing.T) {
+	testCases := map[string]bool{
+		"asdf": true,
+		"":     false,
+	}
+	for name, want := range testCases {
+		err := validateName(name)
+		if (err == nil) != want {
+			t.Errorf("name %q: bad validation: want %t, got err=%v", name, want, err)
 		}
 	}
 }
