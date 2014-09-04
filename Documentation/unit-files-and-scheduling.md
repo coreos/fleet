@@ -41,7 +41,7 @@ ExecStart=/bin/monitorme
 
 [X-Fleet]
 MachineMetadata=location=chicago
-X-Conflicts=monitor*
+Conflicts=monitor*
 ```
 
 ## Template unit files
