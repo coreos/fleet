@@ -75,9 +75,11 @@ For the meaning of the specifiers, refer to the official [systemd documentation]
 
 When working with units, fleet distinguishes between two types of units: _non-global_ (the default) and _global_. (A global unit is one with `Global=true` in its `X-Fleet` section, as mentioned above).
 
-Global units run on every possible machine in the fleet cluster: there is no scheduling decision involved.
-
 Non-global units are scheduled by the fleet engine - the engine is responsible for deciding where they should be placed in the cluster. 
+
+Global units can run on every possible machine in the fleet cluster.
+While global units are not scheduled through the engine, fleet agents still check the `MachineMetadata` option before starting them.
+Other options are ignored.
 
 For more details on the specific behavior of the engine, read more about [fleet's architecture and data model](https://github.com/coreos/fleet/blob/master/Documentation/architecture.md).
 
