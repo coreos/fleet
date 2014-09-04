@@ -42,7 +42,7 @@ func TestMachinesList(t *testing.T) {
 		t.Error("Received nil response body")
 	} else {
 		body := rw.Body.String()
-		expected := `{"machines":[{"id":"XXX"},{"id":"YYY","metadata":{"ping":"pong"},"primaryIP":"1.2.3.4"}]}`
+		expected := `{"machines":[{"id":"XXX","metadata":{}},{"id":"YYY","metadata":{"ping":"pong"},"primaryIP":"1.2.3.4"}]}`
 		if body != expected {
 			t.Errorf("Expected body:\n%s\n\nReceived body:\n%s\n", expected, body)
 		}

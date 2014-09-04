@@ -90,51 +90,51 @@ type UnitsService struct {
 }
 
 type Machine struct {
-	Id string `json:"id,omitempty"`
+	Id string `json:"id"`
 
-	Metadata map[string]string `json:"metadata,omitempty"`
+	Metadata map[string]string `json:"metadata"`
 
 	PrimaryIP string `json:"primaryIP,omitempty"`
 }
 
 type MachinePage struct {
-	Machines []*Machine `json:"machines,omitempty"`
+	Machines []*Machine `json:"machines"`
 
 	NextPageToken string `json:"nextPageToken,omitempty"`
 }
 
 type Unit struct {
-	CurrentState string `json:"currentState,omitempty"`
+	CurrentState string `json:"currentState"`
 
-	DesiredState string `json:"desiredState,omitempty"`
+	DesiredState string `json:"desiredState"`
 
-	MachineID string `json:"machineID,omitempty"`
+	MachineID string `json:"machineID"`
 
-	Name string `json:"name,omitempty"`
+	Name string `json:"name"`
 
 	Options []*UnitOption `json:"options,omitempty"`
 }
 
 type UnitOption struct {
-	Name string `json:"name,omitempty"`
+	Name string `json:"name"`
 
-	Section string `json:"section,omitempty"`
+	Section string `json:"section"`
 
-	Value string `json:"value,omitempty"`
+	Value string `json:"value"`
 }
 
 type UnitPage struct {
 	NextPageToken string `json:"nextPageToken,omitempty"`
 
-	Units []*Unit `json:"units,omitempty"`
+	Units []*Unit `json:"units"`
 }
 
 type UnitState struct {
-	Hash string `json:"hash,omitempty"`
+	Hash string `json:"hash"`
 
-	MachineID string `json:"machineID,omitempty"`
+	MachineID string `json:"machineID"`
 
-	Name string `json:"name,omitempty"`
+	Name string `json:"name"`
 
 	SystemdActiveState string `json:"systemdActiveState,omitempty"`
 
@@ -146,7 +146,7 @@ type UnitState struct {
 type UnitStatePage struct {
 	NextPageToken string `json:"nextPageToken,omitempty"`
 
-	States []*UnitState `json:"states,omitempty"`
+	States []*UnitState `json:"states"`
 }
 
 // method id "fleet.Machine.List":
