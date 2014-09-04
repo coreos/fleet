@@ -169,7 +169,7 @@ The base datastructure looks like this:
 {"desiredState": <state>, "options": [<option>, ...]}
 ```
 
-For example, launching a new unit "foo.service" could be done like so: 
+For example, creating and launching a new unit "foo.service" could be done like so:
 
 ```
 PUT /units/foo.service HTTP/1.1
@@ -180,23 +180,14 @@ PUT /units/foo.service HTTP/1.1
 }
 ```
 
-**Note:** If the units name field is set in the request body, it must match the
-name in the PUT /units/<name> request like so:
-
-```
-PUT /units/foo.service HTTP/1.1
-
-{
-  "name": "foo.service",
-  "desiredState": "launched",
-  "options": [{"section": "Service", "name": "ExecStart", "value": "/usr/bin/sleep 3000"}]
-}
-```
+**Note:** If the unit's name field is set in the request body, it must match the
+name in the PUT /units/<name> request.
 
 #### Response
 
 A successful response contains no body.
 Attempting to create an entity without options will return a `409 Conflict` response.
+Attempting to create an invalid entity will return a `400 Bad Request` response.
 
 ### Modify desired state of a Unit
 
@@ -225,10 +216,13 @@ PUT /units/bar.service HTTP/1.1
 }
 ```
 
+**Note:** If the unit's name field is set in the request body, it must match the
+name in the PUT /units/<name> request.
+
 #### Response
 
 A successful response contains no body.
-Attempting to create an entity without options will return a `409 Conflict` response.
+Attempting to modify with an invalid entity will return a `400 Bad Request` response.
 
 ### Retrieve desired state of all Units
 
@@ -248,7 +242,7 @@ A successful response will contain a single page of zero or more Unit entities.
 
 ### Retrieve desired state of a specific Unit
 
-Explore a paginated collection of Unit entities.
+View a particular Unit entity.
 
 #### Request
 
@@ -261,7 +255,7 @@ The request must not have a body.
 #### Response
 
 A successful response will contain a single Unit entity.
-If the requested Unit does not exist, a 404 Not Found will be returned.
+If the requested Unit does not exist, a `404 Not Found` will be returned.
 
 ### Destroy a Unit
 
