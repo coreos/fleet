@@ -12,8 +12,20 @@ import (
 )
 
 const (
-	defaultListUnitFilesFields = "unit,hash,dstate,state,tmachine"
+	defaultListUnitFilesFields = "unit,hash,dstate,state,target"
 )
+
+func mapTargetField(u schema.Unit, full bool) string {
+	if suToGlobal(u) || u.MachineID == "" {
+		return "-"
+	}
+	ms := cachedMachineState(u.MachineID)
+	if ms == nil {
+		ms = &machine.MachineState{ID: u.MachineID}
+	}
+
+	return machineFullLegend(*ms, full)
+}
 
 var (
 	listUnitFilesFieldsFlag string
@@ -37,17 +49,8 @@ var (
 			}
 			return u.DesiredState
 		},
-		"tmachine": func(u schema.Unit, full bool) string {
-			if suToGlobal(u) || u.MachineID == "" {
-				return "-"
-			}
-			ms := cachedMachineState(u.MachineID)
-			if ms == nil {
-				ms = &machine.MachineState{ID: u.MachineID}
-			}
-
-			return machineFullLegend(*ms, full)
-		},
+		"target":   mapTargetField,
+		"tmachine": mapTargetField,
 		"state": func(u schema.Unit, full bool) string {
 			if suToGlobal(u) || u.CurrentState == "" {
 				return "-"
@@ -91,6 +94,9 @@ func runListUnitFiles(args []string) (exit int) {
 		if _, ok := listUnitFilesFields[s]; !ok {
 			fmt.Fprintf(os.Stderr, "Invalid key in output format: %q\n", s)
 			return 1
+		}
+		if s == "tmachine" {
+			fmt.Fprintln(os.Stderr, "WARNING: The \"tmachine\" field is deprecated. Use \"target\" instead")
 		}
 	}
 
