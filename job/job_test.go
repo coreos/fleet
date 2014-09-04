@@ -1,8 +1,10 @@
 package job
 
 import (
+	"reflect"
 	"testing"
 
+	"github.com/coreos/fleet/pkg"
 	"github.com/coreos/fleet/unit"
 )
 
@@ -22,116 +24,129 @@ func TestNewJob(t *testing.T) {
 	}
 }
 
-func TestJobWithPeers(t *testing.T) {
-	j := NewJob("echo.service", *newUnit(t, ``))
-	peers := j.Peers()
-
-	if len(peers) != 0 {
-		t.Fatalf("Unexpected number of peers %d, expected 0", len(peers))
-	}
-}
-
-func TestJobWithoutPeers(t *testing.T) {
-	contents := `[X-Fleet]
+func TestJobPeers(t *testing.T) {
+	testCases := []struct {
+		contents string
+		peers    []string
+	}{
+		// no values should be fine
+		{``, []string{}},
+		// single value should be fine
+		{`[X-Fleet]
+X-ConditionMachineOf="lol.service"
+`, []string{"lol.service"}},
+		// multiple values should be fine
+		{`[X-Fleet]
 X-ConditionMachineOf="foo.service" "bar.service"
-`
-	j := NewJob("echo.service", *newUnit(t, contents))
-	peers := j.Peers()
-
-	if len(peers) != 2 {
-		t.Fatalf("Unexpected number of peers %d, expected 2", len(peers))
+`, []string{"foo.service", "bar.service"}},
 	}
+	for i, tt := range testCases {
+		j := NewJob("echo.service", *newUnit(t, tt.contents))
+		peers := j.Peers()
+		if !reflect.DeepEqual(peers, tt.peers) {
+			t.Errorf("case %d: unexpected peers: got %#v, want %#v", i, peers, tt.peers)
+		}
 
-	if peers[0] != "foo.service" {
-		t.Errorf("Expected first peer to be foo.service, got %s", peers[0])
-	}
-
-	if peers[1] != "bar.service" {
-		t.Errorf("Expected second peer to be bar.service, got %s", peers[1])
 	}
 }
 
 func TestJobConflicts(t *testing.T) {
-	contents := `[Unit]
+	testCases := []struct {
+		contents  string
+		conflicts []string
+	}{
+		{``, []string{}},
+		{`[Unit]
 Description=Testing
 
 [X-Fleet]
 X-Conflicts=*bar*
-`
-	j := NewJob("echo.service", *newUnit(t, contents))
-	conflicts := j.Conflicts()
-
-	if len(conflicts) != 1 {
-		t.Errorf("Expected 1 conflict, received %v", conflicts)
+`, []string{"*bar*"}},
 	}
+	for i, tt := range testCases {
+		j := NewJob("echo.service", *newUnit(t, tt.contents))
+		conflicts := j.Conflicts()
+		if !reflect.DeepEqual(conflicts, tt.conflicts) {
+			t.Errorf("case %d: unexpected conflicts: got %#v, want %#v", i, conflicts, tt.conflicts)
+		}
 
-	if conflicts[0] != "*bar*" {
-		t.Errorf("Expected first conflict to be '*bar*', received %s", conflicts[1])
-	}
-}
-
-func TestJobConflictsNotProvided(t *testing.T) {
-	j := NewJob("echo.socket", *newUnit(t, ""))
-	conflicts := j.Conflicts()
-
-	if len(conflicts) > 0 {
-		t.Fatalf("Expected no conflicts, received %v", conflicts)
 	}
 }
 
 func TestParseRequirements(t *testing.T) {
-	contents := `
-[X-Fleet]
-X-Foo=Bar
+	testCases := []struct {
+		contents string
+		reqs     map[string][]string
+	}{
+		// No reqs should be fine
+		{``, map[string][]string{}},
+		{`[X-Fleet]`, map[string][]string{}},
+		// Simple req is fine
+		{
+			"[X-Fleet]\nFoo=bar",
+			map[string][]string{"Foo": []string{"bar"}},
+		},
+		// Deprecated prefixes should be unmutated
+		{
+			"[X-Fleet]\nX-Foo=bar",
+			map[string][]string{"X-Foo": []string{"bar"}},
+		},
+		{
+			"[X-Fleet]\nX-ConditionFoo=bar",
+			map[string][]string{"X-ConditionFoo": []string{"bar"}},
+		},
+		// Multiple values are fine
+		{
+			`[X-Fleet]
+Foo=asdf
+Foo=qwer
+`,
+			map[string][]string{"Foo": []string{"asdf", "qwer"}},
+		},
+		// Multiple values with different prefixes
+		{
+			`[X-Fleet]
+Dog=Woof
+X-Dog=Yap
+X-ConditionDog=Howl
+`,
+			map[string][]string{
+				"Dog":            []string{"Woof"},
+				"X-Dog":          []string{"Yap"},
+				"X-ConditionDog": []string{"Howl"},
+			},
+		},
+		// Multiple values stacking with the same key
+		{
+			`[X-Fleet]
+Foo=Bar
+Foo=Baz
 Ping=Pong
-X-Key=Value
-`
-	j := NewJob("foo.service", *newUnit(t, contents))
-	reqs := j.requirements()
-	if len(reqs) != 2 {
-		t.Fatalf("Incorrect number of requirements; got %d, expected 2", len(reqs))
+Ping=Pang
+`,
+			map[string][]string{
+				"Foo":  []string{"Bar", "Baz"},
+				"Ping": []string{"Pong", "Pang"},
+			},
+		},
 	}
-
-	if len(reqs["Foo"]) != 1 || reqs["Foo"][0] != "Bar" {
-		t.Fatalf("Incorrect value %q of requirement 'Foo'", reqs["Foo"])
-	}
-
-	if len(reqs["Key"]) != 1 || reqs["Key"][0] != "Value" {
-		t.Fatalf("Incorrect value %q of requirement 'Key'", reqs["Key"])
-	}
-}
-
-func TestParseRequirementsMultipleValuesForKeyStack(t *testing.T) {
-	contents := `
-[X-Fleet]
-X-Foo=Bar
-X-Foo=Baz
-X-Ping=Pong
-X-Ping=Pang
-`
-	j := NewJob("foo.service", *newUnit(t, contents))
-	reqs := j.requirements()
-	if len(reqs) != 2 {
-		t.Fatalf("Incorrect number of requirements; got %d, expected 2: %v", len(reqs), reqs)
-	}
-
-	if len(reqs["Foo"]) != 2 || reqs["Foo"][0] != "Bar" || reqs["Foo"][1] != "Baz" {
-		t.Fatalf("Incorrect value %v of requirement 'Foo'", reqs["Foo"])
-	}
-
-	if len(reqs["Ping"]) != 2 || reqs["Ping"][0] != "Pong" || reqs["Ping"][1] != "Pang" {
-		t.Fatalf("Incorrect value %v of requirement 'Ping'", reqs["Ping"])
+	for i, tt := range testCases {
+		j := NewJob("foo.service", *newUnit(t, tt.contents))
+		reqs := j.requirements()
+		if !reflect.DeepEqual(reqs, tt.reqs) {
+			t.Errorf("case %d: incorrect requirements: got %#v, want %#v", i, reqs, tt.reqs)
+		}
 	}
 }
 
 func TestParseRequirementsInstanceUnit(t *testing.T) {
 	contents := `
 [X-Fleet]
-X-Foo=%n
-X-Bar=%N
-X-Baz=%p
-X-Qux=%i
-X-Zzz=something
+Foo=%n
+Bar=%N
+Baz=%p
+Qux=%i
+Zzz=something
 `
 	// Ensure the correct values are replaced for a non-instance unit
 	j := NewJob("test.service", *newUnit(t, contents))
@@ -185,10 +200,16 @@ func TestJobConditionMachineID(t *testing.T) {
 		outS string
 		outB bool
 	}{
+		// No value provided
+		{
+			`[X-Fleet]`,
+			"",
+			false,
+		},
 		// Simplest case
 		{
 			`[X-Fleet]
-X-ConditionMachineID=123
+MachineID=123
 `,
 			"123",
 			true,
@@ -198,17 +219,35 @@ X-ConditionMachineID=123
 		// TODO(bcwaldon): maybe the last one should win?
 		{
 			`[X-Fleet]
+MachineID="123" "456"
+`,
+			"123",
+			true,
+		},
+		// Ensure we fall back to the deprecated prefix
+		{
+			`[X-Fleet]
 X-ConditionMachineID="123" "456"
 `,
 			"123",
 			true,
 		},
-
-		// No value provided
+		// Fall back to the deprecated prefix only if the modern syntax is absent
 		{
-			`[X-Fleet]`,
-			"",
-			false,
+			`[X-Fleet]
+X-ConditionMachineID="456"
+MachineID="123"
+`,
+			"123",
+			true,
+		},
+		{
+			`[X-Fleet]
+MachineID="123"
+X-ConditionMachineID="456"
+`,
+			"123",
+			true,
 		},
 
 		// Ensure we fall back to the legacy boot ID option
@@ -229,18 +268,143 @@ X-ConditionMachineID=456
 			"456",
 			true,
 		},
+		{
+			`[X-Fleet]
+X-ConditionMachineBootID=123
+MachineID=456
+`,
+			"456",
+			true,
+		},
 	}
 
-	for _, tt := range tests {
+	for i, tt := range tests {
 		j := NewJob("echo.service", *newUnit(t, tt.unit))
 		outS, outB := j.RequiredTarget()
 
 		if outS != tt.outS {
-			t.Errorf("Expected target requirement %s, got %s", tt.outS, outS)
+			t.Errorf("case %d: Expected target requirement %s, got %s", i, tt.outS, outS)
 		}
 
 		if outB != tt.outB {
-			t.Errorf("Expected target requirement ok-val %t, got %t", tt.outB, outB)
+			t.Errorf("case %d: Expected target requirement ok-val %t, got %t", i, tt.outB, outB)
+		}
+	}
+}
+
+func TestJobRequiredMetadata(t *testing.T) {
+	testCases := []struct {
+		unit string
+		out  map[string]pkg.Set
+	}{
+		// no metadata
+		{
+			`[X-Fleet]`,
+			map[string]pkg.Set{},
+		},
+		// simplest case - one key/value
+		{
+			`[X-Fleet]
+MachineMetadata=foo=bar`,
+			map[string]pkg.Set{
+				"foo": pkg.NewUnsafeSet("bar"),
+			},
+		},
+		// multiple different values for a key in one line
+		{
+			`[X-Fleet]
+MachineMetadata="foo=bar" "foo=baz"`,
+			map[string]pkg.Set{
+				"foo": pkg.NewUnsafeSet("bar", "baz"),
+			},
+		},
+		// multiple different values for a key in different lines
+		{
+			`[X-Fleet]
+MachineMetadata=foo=bar
+MachineMetadata=foo=baz
+MachineMetadata=foo=asdf`,
+			map[string]pkg.Set{
+				"foo": pkg.NewUnsafeSet("bar", "baz", "asdf"),
+			},
+		},
+		// multiple different key-value pairs in a single line
+		{
+			`[X-Fleet]
+MachineMetadata="foo=bar" "duck=quack"`,
+			map[string]pkg.Set{
+				"foo":  pkg.NewUnsafeSet("bar"),
+				"duck": pkg.NewUnsafeSet("quack"),
+			},
+		},
+		// multiple different key-value pairs in different lines
+		{
+			`[X-Fleet]
+MachineMetadata=foo=bar
+MachineMetadata=dog=woof
+MachineMetadata=cat=miaow`,
+			map[string]pkg.Set{
+				"foo": pkg.NewUnsafeSet("bar"),
+				"dog": pkg.NewUnsafeSet("woof"),
+				"cat": pkg.NewUnsafeSet("miaow"),
+			},
+		},
+		// support deprecated prefixed syntax
+		{
+			`[X-Fleet]
+X-ConditionMachineMetadata=foo=bar`,
+			map[string]pkg.Set{
+				"foo": pkg.NewUnsafeSet("bar"),
+			},
+		},
+		// support deprecated prefixed syntax mixed with modern syntax
+		{
+			`[X-Fleet]
+MachineMetadata=foo=bar
+X-ConditionMachineMetadata=foo=asdf`,
+			map[string]pkg.Set{
+				"foo": pkg.NewUnsafeSet("bar", "asdf"),
+			},
+		},
+		// bad fields just get ignored
+		{
+			`[X-Fleet]
+MachineMetadata=foo=`,
+			map[string]pkg.Set{},
+		},
+		{
+			`[X-Fleet]
+MachineMetadata==asdf`,
+			map[string]pkg.Set{},
+		},
+		{
+			`[X-Fleet]
+MachineMetadata=foo=asdf=WHAT`,
+			map[string]pkg.Set{},
+		},
+		// mix everything up
+		{
+			`[X-Fleet]
+MachineMetadata=ignored=
+MachineMetadata=oh=yeah
+MachineMetadata=whynot=zoidberg
+X-ConditionMachineMetadata=oh=no
+X-ConditionMachineMetadata="one=abc" "two=def"`,
+			map[string]pkg.Set{
+				"oh":     pkg.NewUnsafeSet("yeah", "no"),
+				"whynot": pkg.NewUnsafeSet("zoidberg"),
+				"one":    pkg.NewUnsafeSet("abc"),
+				"two":    pkg.NewUnsafeSet("def"),
+			},
+		},
+	}
+	for i, tt := range testCases {
+		j := NewJob("echo.service", *newUnit(t, tt.unit))
+		md := j.RequiredTargetMetadata()
+		if !reflect.DeepEqual(md, tt.out) {
+			t.Errorf("case %d: metadata differs", i)
+			t.Logf("got: %#v", md)
+			t.Logf("want: %#v", tt.out)
 		}
 	}
 }
@@ -320,6 +484,8 @@ func TestUnitIsGlobal(t *testing.T) {
 		// bad values
 		{"[X-Fleet]\nX-ConditionMachineOf=bar\nGlobal=false", false},
 		{"[X-Fleet]\nX-ConditionMachineOf=bar\nGlobal=what", false},
+		{"[X-Fleet]\nX-Global=true", false},
+		{"[X-Fleet]\nX-ConditionGlobal=true", false},
 		// correct specifications
 		{"[X-Fleet]\nX-ConditionMachineOf=foo\nGlobal=true", true},
 		{"[X-Fleet]\nX-ConditionMachineOf=foo\nGlobal=True", true},

@@ -12,14 +12,23 @@ fleet will schedule any valid service, socket, path or timer systemd unit to a m
 ## fleet-specific Options
 
 | Option Name | Description |
-|---------------|-------------|
-| `X-ConditionMachineID` | Require the unit be scheduled to the machine identified by the given string. |
-| `X-ConditionMachineOf` | Limit eligible machines to the one that hosts a specific unit. |
-| `X-ConditionMachineMetadata` | Limit eligible machines to those with this specific metadata. |
-| `X-Conflicts` | Prevent a unit from being collocated with other units using glob-matching on the other unit names. |
-| `Global` | Schedule this unit on all agents in the cluster. Should not be used with other options. _New in version 0.8.0_ | 
+|-------------|-------------|
+| `MachineID` | Require the unit be scheduled to the machine identified by the given string. |
+| `MachineOf` | Limit eligible machines to the one that hosts a specific unit. |
+| `MachineMetadata` | Limit eligible machines to those with this specific metadata. |
+| `Conflicts` | Prevent a unit from being collocated with other units using glob-matching on the other unit names. |
+| `Global` | Schedule this unit on all agents in the cluster. Should not be used with other options. |
 
 See [more information](#unit-scheduling) on these parameters and how they impact scheduling decisions.
+
+In versions of fleet <= 0.8.0, the following options are available. They are deprecated and should be migrated to the new options as soon as possible.
+
+| Option Name | Description |
+|-------------|-------------|
+| `X-ConditionMachineID` | _Deprecated in 0.8.0 in favor of `MachineID`_ |
+| `X-ConditionMachineOf` | _Deprecated in 0.8.0 in favor of `MachineOf`_ |
+| `X-ConditionMachineMetadata` | _Deprecated in 0.8.0 in favor of `MachineMetadata`_ |
+| `X-Conflicts` | _Deprecated in 0.8.0 in favor of `Conflicts`_ |
 
 Take the following as an example of how your `[X-Fleet]` section could be written:
 
@@ -31,7 +40,7 @@ Description=Some Monitoring Service
 ExecStart=/bin/monitorme
 
 [X-Fleet]
-X-ConditionMachineMetadata=location=chicago
+MachineMetadata=location=chicago
 X-Conflicts=monitor*
 ```
 
@@ -78,10 +87,10 @@ For non-global units, several different directives are available to control the 
 
 ##### Schedule unit to specific machine
 
-The `X-ConditionMachineID` option of a unit file causes the system to schedule a unit to a machine identified by the option's value.
+The `MachineID` option of a unit file causes the system to schedule a unit to a machine identified by the option's value.
 
 The ID of each machine is currently published in the `MACHINE` column in the output of `fleetctl list-machines -l`.
-One must use the entire ID when setting `X-ConditionMachineID` - the shortened ID returned by `fleetctl list-machines` without the `-l` flag is not acceptable.
+One must use the entire ID when setting `MachineID` - the shortened ID returned by `fleetctl list-machines` without the `-l` flag is not acceptable.
 
 fleet depends on its host to generate an identifier at `/etc/machine-id`, which is handled today by systemd.
 Read more about machine IDs in the [official systemd documentation][machine-id].
@@ -90,19 +99,19 @@ Read more about machine IDs in the [official systemd documentation][machine-id].
 
 ##### Schedule unit to machine with specific metadata
 
-The `X-ConditionMachineMetadata` option of a unit file allows you to set conditional metadata required for a machine to be elegible.
+The `MachineMetadata` option of a unit file allows you to set conditional metadata required for a machine to be elegible.
 
 ```
 [X-Fleet]
-X-ConditionMachineMetadata="region=us-east-1" "diskType=SSD"
+MachineMetadata="region=us-east-1" "diskType=SSD"
 ```
 
 This requires an eligible machine to have at least the `region` and `diskType` keys set accordingly. A single key may also be defined multiple times, in which case only one of the conditions needs to be met:
 
 ```
 [X-Fleet]
-X-ConditionMachineMetadata=region=us-east-1
-X-ConditionMachineMetadata=region=us-west-1
+MachineMetadata=region=us-east-1
+MachineMetadata=region=us-west-1
 ```
 
 This would allow a machine to match just one of the provided values to be considered eligible to run.
@@ -112,19 +121,19 @@ A deployer may define machine metadata using the `metadata` [config option](http
 
 ##### Schedule unit next to another unit
 
-In order for a unit to be scheduled to the same machine as another unit, a unit file can define `X-ConditionMachineOf`.
+In order for a unit to be scheduled to the same machine as another unit, a unit file can define `MachineOf`.
 The value of this option is the exact name of another unit in the system, which we'll call the target unit.
 
 If the target unit is not found in the system, the follower unit will be considered unschedulable. 
 Once the target unit is scheduled somewhere, the follower unit will be scheduled there as well.
 
-Follower units will reschedule themselves around the cluster to ensure their `X-ConditionMachineOf` options are always fulfilled.
+Follower units will reschedule themselves around the cluster to ensure their `MachineOf` options are always fulfilled.
 
 ##### Schedule unit away from other unit(s)
 
-The value of the `X-Conflicts` option is a [glob pattern](http://golang.org/pkg/path/#Match) defining which other units next to which a given unit must not be scheduled. A unit may have multiple `X-Conflicts` options.
+The value of the `Conflicts` option is a [glob pattern](http://golang.org/pkg/path/#Match) defining which other units next to which a given unit must not be scheduled. A unit may have multiple `Conflicts` options.
 
-If a unit is scheduled to the system without an `X-Conflicts` option, other units' conflicts still take effect and prevent the new unit from being scheduled to machines where conflicts exist.
+If a unit is scheduled to the system without an `Conflicts` option, other units' conflicts still take effect and prevent the new unit from being scheduled to machines where conflicts exist.
 
 ##### Dynamic requirements
 
@@ -134,7 +143,7 @@ For example, a Unit by the name `foo.service`, whose unit contains the following
 
 ```
 [X-Fleet]
-X-ConditionMachineOf=%p.socket
+MachineOf=%p.socket
 ```
 
-would result in an effective `X-ConditionMachineOf` of `foo.socket`. Using the same unit snippet with a Unit called `bar.service`, on the other hand, would result in an effective `X-ConditionMachineOf` of `bar.socket`.
+would result in an effective `MachineOf` of `foo.socket`. Using the same unit snippet with a Unit called `bar.service`, on the other hand, would result in an effective `MachineOf` of `bar.socket`.
