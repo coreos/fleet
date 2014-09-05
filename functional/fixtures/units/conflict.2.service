@@ -5,4 +5,4 @@ Description=Test Unit
 ExecStart=/bin/bash -c "while true; do echo Hello, World!; sleep 1; done"
 
 [X-Fleet]
-X-Conflicts=conflict.*.service
+Conflicts=conflict.*.service

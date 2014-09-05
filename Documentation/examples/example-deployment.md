@@ -56,7 +56,7 @@ ExecStart=/usr/bin/docker run --rm --name subgun-%i -e SUBGUN_LISTEN=127.0.0.1:8
 ExecStop=/usr/bin/docker stop subgun-%i
 
 [X-Fleet]
-X-Conflicts=subgun-http@*.service
+Conflicts=subgun-http@*.service
 ```
 
 **`subgun-presence@.service`**
@@ -73,7 +73,7 @@ ExecStart=/usr/bin/docker run --rm --name subgun-presence-%i -e AWS_ACCESS_KEY=A
 ExecStop=/usr/bin/docker stop subgun-presence-%i
 
 [X-Fleet]
-X-ConditionMachineOf=subgun-http@%i.service
+MachineOf=subgun-http@%i.service
 ```
 
 ## Deploy!

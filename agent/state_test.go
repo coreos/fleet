@@ -33,7 +33,7 @@ func TestHasConflicts(t *testing.T) {
 		// empty current state causes no conflicts
 		{
 			cState: NewAgentState(&machine.MachineState{ID: "XXX"}),
-			job:    &job.Job{Name: "foo.service", Unit: fleetUnit(t, "X-Conflicts=bar.service")},
+			job:    &job.Job{Name: "foo.service", Unit: fleetUnit(t, "Conflicts=bar.service")},
 			want:   false,
 		},
 
@@ -44,7 +44,7 @@ func TestHasConflicts(t *testing.T) {
 				Units: map[string]*job.Unit{
 					"bar.service": &job.Unit{
 						Name: "bar.service",
-						Unit: fleetUnit(t, "X-Conflicts=foo.service"),
+						Unit: fleetUnit(t, "Conflicts=foo.service"),
 					},
 				},
 			},
@@ -64,7 +64,7 @@ func TestHasConflicts(t *testing.T) {
 					},
 				},
 			},
-			job:      &job.Job{Name: "foo.service", Unit: fleetUnit(t, "X-Conflicts=bar.service")},
+			job:      &job.Job{Name: "foo.service", Unit: fleetUnit(t, "Conflicts=bar.service")},
 			want:     true,
 			conflict: "bar.service",
 		},

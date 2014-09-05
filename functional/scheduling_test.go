@@ -13,8 +13,8 @@ import (
 )
 
 // Start three pairs of services, asserting each pair land on the same
-// machine due to the X-ConditionMachineOf options in the unit files.
-func TestScheduleConditionMachineOf(t *testing.T) {
+// machine due to the MachineOf options in the unit files.
+func TestScheduleMachineOf(t *testing.T) {
 	cluster, err := platform.NewNspawnCluster("smoke")
 	if err != nil {
 		t.Fatal(err)
@@ -283,7 +283,7 @@ func TestScheduleOneWayConflict(t *testing.T) {
 }
 
 // Ensure units can be scheduled directly to a given machine using the
-// X-ConditionMachineID unit option.
+// MachineID unit option.
 func TestScheduleConditionMachineID(t *testing.T) {
 	cluster, err := platform.NewNspawnCluster("smoke")
 	if err != nil {
@@ -308,7 +308,7 @@ func TestScheduleConditionMachineID(t *testing.T) {
 ExecStart=/bin/bash -c "while true; do echo Hello, World!; sleep 1; done"
 
 [X-Fleet]
-X-ConditionMachineID=%s
+MachineID=%s
 `
 		unitFile, err := util.TempUnit(fmt.Sprintf(contents, machine))
 		if err != nil {

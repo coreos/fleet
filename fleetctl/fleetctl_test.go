@@ -129,20 +129,20 @@ func TestCreateUnitFails(t *testing.T) {
 	for i, uf = range []*unit.UnitFile{
 		nil,
 		newUnitFile(t, `[X-Fleet]
-X-ConditionMachineOf=abcd
-X-Conflicts=abcd`),
+MachineOf=abcd
+Conflicts=abcd`),
 		newUnitFile(t, `[X-Fleet]
-X-ConditionMachineOf=abcd
-X-Conflicts=abcd`),
-		newUnitFile(t, `[X-Fleet]
-Global=true
-X-ConditionMachineOf=abcd`),
+MachineOf=abcd
+Conflicts=abcd`),
 		newUnitFile(t, `[X-Fleet]
 Global=true
-X-ConditionMachineOf=zxcvq`),
+MachineOf=abcd`),
 		newUnitFile(t, `[X-Fleet]
 Global=true
-X-Conflicts=bar`),
+MachineOf=zxcvq`),
+		newUnitFile(t, `[X-Fleet]
+Global=true
+Conflicts=bar`),
 	} {
 		if _, err := createUnit("foo.service", uf); err == nil {
 			t.Errorf("case %d did not return error as expected!", i)

@@ -12,7 +12,7 @@ import (
 )
 
 func newUnitWithMetadata(t *testing.T, metadata string) unit.UnitFile {
-	contents := fmt.Sprintf("[X-Fleet]\nX-ConditionMachineMetadata=%s", metadata)
+	contents := fmt.Sprintf("[X-Fleet]\nMachineMetadata=%s", metadata)
 	u, err := unit.NewUnitFile(contents)
 	if err != nil {
 		t.Fatalf("error creating unit from %q: %v", contents, err)
