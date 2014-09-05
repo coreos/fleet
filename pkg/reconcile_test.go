@@ -83,19 +83,22 @@ func TestPeriodicReconcilerRun(t *testing.T) {
 	default:
 	}
 	// now check that time changes have the expected effect
-	fclock.tick(2 * time.Hour)
+	fclock.Tick(2 * time.Hour)
 	select {
 	case <-called:
 		t.Fatalf("rFunc() called unexpectedly!")
 	default:
 	}
-	fclock.tick(3 * time.Hour)
+	fclock.Tick(3 * time.Hour)
 	select {
 	case <-called:
 	case <-time.After(time.Second):
 		t.Fatalf("rFunc() not called after time event!")
 	}
+
+	// stop the PeriodicReconciler
 	close(stop)
+
 	// now, sending an event should do nothing
 	fes.trigger()
 	select {
@@ -104,7 +107,7 @@ func TestPeriodicReconcilerRun(t *testing.T) {
 	default:
 	}
 	// and nor should changes in time
-	fclock.tick(10 * time.Hour)
+	fclock.Tick(10 * time.Hour)
 	select {
 	case <-called:
 		t.Fatalf("rFunc() called unexpectedly!")

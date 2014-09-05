@@ -20,8 +20,7 @@ type PeriodicReconciler interface {
 }
 
 // NewPeriodicReconciler creates a PeriodicReconciler that will run recFunc at least every
-// ival, or in response to anything emitted from the channel returned by
-// trigFunc
+// ival, or in response to anything emitted from EventStream.Next()
 func NewPeriodicReconciler(interval time.Duration, recFunc func(), eStream EventStream) PeriodicReconciler {
 	return &reconciler{
 		ival:    interval,
@@ -53,8 +52,12 @@ func (r *reconciler) Run(stop chan bool) {
 		}
 	}()
 
-	// When starting up, trigger immediately
-	ticker := r.clock.After(0)
+	ticker := r.clock.After(r.ival)
+
+	// When starting up, reconcile once immediately
+	log.V(1).Info("Initial reconcilation commencing")
+	r.rFunc()
+
 	for {
 		select {
 		case <-stop:

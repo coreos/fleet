@@ -39,7 +39,8 @@ func (rc *realClock) Sleep(d time.Duration) {
 type fakeClock struct {
 	sleepers []*sleeper
 	time     time.Time
-	l        sync.RWMutex
+
+	l sync.RWMutex
 }
 
 type sleeper struct {
@@ -50,22 +51,22 @@ type sleeper struct {
 // After mimics time.After; it waits for the given duration to elapse on the
 // fakeClock, then sends the current time on the returned channel.
 func (fc *fakeClock) After(d time.Duration) <-chan time.Time {
+	fc.l.Lock()
+	defer fc.l.Unlock()
+	now := fc.time
 	done := make(chan time.Time, 1)
 	if d.Nanoseconds() == 0 {
 		// special case - trigger immediately
 		go func() {
-			done <- fc.time
+			done <- now
 		}()
 	} else {
 		// otherwise, add to the set of sleepers
-		end := fc.time.Add(d)
 		s := &sleeper{
-			until: end,
+			until: now.Add(d),
 			done:  done,
 		}
-		fc.l.Lock()
 		fc.sleepers = append(fc.sleepers, s)
-		fc.l.Unlock()
 	}
 	return done
 }
