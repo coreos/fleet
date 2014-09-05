@@ -343,6 +343,14 @@ func TestUnitStatePublisherRun(t *testing.T) {
 	// reset states
 	states = []*unit.UnitState{}
 
+	// block until Run() is definitely waiting on After()
+	// TODO(jonboulle): do this more elegantly!!!
+	for {
+		if fclock.Sleepers() == 1 {
+			break
+		}
+	}
+
 	// tick less than the publish interval, again
 	fclock.Tick(4 * time.Second)
 
@@ -375,5 +383,33 @@ func TestUnitStatePublisherRun(t *testing.T) {
 		}
 	case <-time.After(time.Second):
 		t.Fatalf("UnitState not published as expected!")
+	}
+
+	// now stop the UnitStatePublisher
+	close(sc)
+
+	// reset states
+	states = []*unit.UnitState{}
+
+	// block until Run() is definitely waiting on After()
+	// TODO(jonboulle): do this more elegantly!!!
+	for {
+		if fclock.Sleepers() == 1 {
+			break
+		}
+	}
+
+	// tick way past the publish interval
+	fclock.Tick(time.Hour)
+
+	// no more states should be published
+	select {
+	case <-published:
+		t.Fatal("UnitState published unexpectedly!")
+	default:
+	}
+	want = []*unit.UnitState{}
+	if !reflect.DeepEqual(states, want) {
+		t.Errorf("bad UnitStates: got %#v, want %#v", states, want)
 	}
 }
