@@ -21,7 +21,7 @@ func NewRealClock() Clock {
 // NewFakeClock returns a Clock which can be manually ticked through time for
 // testing.
 func NewFakeClock() Clock {
-	return &fakeClock{
+	return &FakeClock{
 		l: sync.RWMutex{},
 	}
 }
@@ -36,7 +36,7 @@ func (rc *realClock) Sleep(d time.Duration) {
 	time.Sleep(d)
 }
 
-type fakeClock struct {
+type FakeClock struct {
 	sleepers []*sleeper
 	time     time.Time
 
@@ -49,8 +49,8 @@ type sleeper struct {
 }
 
 // After mimics time.After; it waits for the given duration to elapse on the
-// fakeClock, then sends the current time on the returned channel.
-func (fc *fakeClock) After(d time.Duration) <-chan time.Time {
+// FakeClock, then sends the current time on the returned channel.
+func (fc *FakeClock) After(d time.Duration) <-chan time.Time {
 	fc.l.Lock()
 	defer fc.l.Unlock()
 	now := fc.time
@@ -71,14 +71,14 @@ func (fc *fakeClock) After(d time.Duration) <-chan time.Time {
 	return done
 }
 
-// Sleep blocks until the given duration has passed on the fakeClock
-func (fc *fakeClock) Sleep(d time.Duration) {
+// Sleep blocks until the given duration has passed on the FakeClock
+func (fc *FakeClock) Sleep(d time.Duration) {
 	<-fc.After(d)
 }
 
-// Tick advances fakeClock to a new point in time, ensuring channels from any
+// Tick advances FakeClock to a new point in time, ensuring channels from any
 // previous invocations of After are notified appropriately before returning
-func (fc *fakeClock) Tick(d time.Duration) {
+func (fc *FakeClock) Tick(d time.Duration) {
 	fc.l.Lock()
 	end := fc.time.Add(d)
 	var newSleepers []*sleeper
@@ -92,4 +92,12 @@ func (fc *fakeClock) Tick(d time.Duration) {
 	fc.sleepers = newSleepers
 	fc.time = end
 	fc.l.Unlock()
+}
+
+// Sleepers returns the number of sleepers currently waiting for FakeClock
+// to reach a certain time
+func (fc *FakeClock) Sleepers() int {
+	fc.l.Lock()
+	defer fc.l.Unlock()
+	return len(fc.sleepers)
 }
