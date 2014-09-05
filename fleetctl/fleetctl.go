@@ -602,7 +602,7 @@ func waitForUnitStates(units []string, js job.JobState, maxAttempts int, out io.
 func checkUnitState(name string, js job.JobState, maxAttempts int, out io.Writer, wg *sync.WaitGroup, errchan chan error) {
 	defer wg.Done()
 
-	sleep := 100 * time.Millisecond
+	sleep := 500 * time.Millisecond
 
 	if maxAttempts < 1 {
 		for {
