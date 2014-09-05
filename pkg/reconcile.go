@@ -27,6 +27,7 @@ func NewPeriodicReconciler(interval time.Duration, recFunc func(), eStream Event
 		ival:    interval,
 		rFunc:   recFunc,
 		eStream: eStream,
+		clock:   NewRealClock(),
 	}
 }
 
@@ -34,6 +35,7 @@ type reconciler struct {
 	ival    time.Duration
 	rFunc   func()
 	eStream EventStream
+	clock   Clock
 }
 
 func (r *reconciler) Run(stop chan bool) {
@@ -52,18 +54,18 @@ func (r *reconciler) Run(stop chan bool) {
 	}()
 
 	// When starting up, trigger immediately
-	ticker := time.After(0)
+	ticker := r.clock.After(0)
 	for {
 		select {
 		case <-stop:
 			log.V(1).Info("Reconciler exiting due to stop signal")
 			return
 		case <-ticker:
-			ticker = time.After(r.ival)
+			ticker = r.clock.After(r.ival)
 			log.V(1).Info("Reconciler tick")
 			r.rFunc()
 		case <-trigger:
-			ticker = time.After(r.ival)
+			ticker = r.clock.After(r.ival)
 			log.V(1).Info("Reconciler triggered")
 			r.rFunc()
 		}
