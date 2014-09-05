@@ -1,0 +1,36 @@
+#!/bin/bash -eu
+#
+# $1 = version string (e.g. 0.8.0)
+# $2 = remote configured to track github.com/coreos/fleet (defaults to "origin" if unset)
+
+VERSION="${1:?version must be set}"
+if [ "${VERSION:0:1}" == "v" ]; then
+	echo "version tag shouldn't start with v" >> /dev/stderr
+	exit 255
+fi
+REMOTE="${2:-origin}"
+VERSIONTAG="v${VERSION}"
+
+MASTERBR="v${VERSION}-master"
+TAGBR="v${VERSION}-branch"
+
+replace_version() {
+	sed -i -e "s/const Version.*/const Version = \"$1\"/" version/version.go
+	git commit -m "version: bump to v$1" version/version.go
+}
+
+# set up a new branch tracking the latest origin
+git fetch ${REMOTE}
+git checkout -b ${MASTERBR} ${REMOTE}/master
+
+# set up our local branch for the tag and bump the version
+git checkout -b ${TAGBR} ${REMOTE}/master
+replace_version ${VERSION}
+git tag -s -m "${VERSIONTAG}" "${VERSIONTAG}"
+git push "${REMOTE}" "${VERSIONTAG}"
+
+# return to the clean master and bump the version
+git checkout "${MASTERBR}"
+git branch -D "${TAGBR}"
+replace_version "${VERSION}+git"
+git push "${REMOTE}" "${MASTERBR}":master
