@@ -8,6 +8,7 @@ import (
 
 	"github.com/coreos/fleet/log"
 	"github.com/coreos/fleet/machine"
+	"github.com/coreos/fleet/pkg"
 	"github.com/coreos/fleet/registry"
 	"github.com/coreos/fleet/unit"
 )
@@ -24,6 +25,7 @@ func NewUnitStatePublisher(reg registry.Registry, mach machine.Machine, ttl time
 		toPublish:       make(chan string),
 		toPublishStates: make(map[string]*unit.UnitState),
 		toPublishMutex:  sync.RWMutex{},
+		clock:           pkg.NewRealClock(),
 	}
 }
 
@@ -43,6 +45,8 @@ type UnitStatePublisher struct {
 	// should be published for each UnitName.
 	toPublishStates map[string]*unit.UnitState
 	toPublishMutex  sync.RWMutex
+
+	clock pkg.Clock
 }
 
 // Run caches all of the heartbeat objects from the provided channel, publishing
@@ -54,7 +58,7 @@ func (p *UnitStatePublisher) Run(beatchan <-chan *unit.UnitStateHeartbeat, stop 
 			select {
 			case <-stop:
 				return
-			case <-time.After(p.ttl / 2):
+			case <-p.clock.After(p.ttl / 2):
 				p.cacheMutex.Lock()
 				for name, us := range p.cache {
 					go p.queueForPublish(name, us)
