@@ -13,7 +13,7 @@ type Clock interface {
 }
 
 // NewRealClock returns a Clock which simply delegates calls to the actual time
-// package; it should be used by packges in production.
+// package; it should be used by packages in production.
 func NewRealClock() Clock {
 	return &realClock{}
 }
