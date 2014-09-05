@@ -17,9 +17,9 @@ const numPublishers = 5
 
 func NewUnitStatePublisher(reg registry.Registry, mach machine.Machine, ttl time.Duration) *UnitStatePublisher {
 	return &UnitStatePublisher{
-		reg:             reg,
 		mach:            mach,
 		ttl:             ttl,
+		publisher:       newPublisher(reg, ttl),
 		cache:           make(map[string]*unit.UnitState),
 		cacheMutex:      sync.RWMutex{},
 		toPublish:       make(chan string),
@@ -29,8 +29,9 @@ func NewUnitStatePublisher(reg registry.Registry, mach machine.Machine, ttl time
 	}
 }
 
+type publishFunc func(name string, us *unit.UnitState)
+
 type UnitStatePublisher struct {
-	reg  registry.Registry
 	mach machine.Machine
 	ttl  time.Duration
 
@@ -45,6 +46,8 @@ type UnitStatePublisher struct {
 	// should be published for each UnitName.
 	toPublishStates map[string]*unit.UnitState
 	toPublishMutex  sync.RWMutex
+
+	publisher publishFunc
 
 	clock pkg.Clock
 }
@@ -91,7 +94,7 @@ func (p *UnitStatePublisher) Run(beatchan <-chan *unit.UnitStateHeartbeat, stop 
 					}
 					delete(p.toPublishStates, name)
 					p.toPublishMutex.Unlock()
-					p.publishOne(name, us)
+					p.publisher(name, us)
 
 				}
 			}
@@ -136,31 +139,6 @@ func (p *UnitStatePublisher) pruneCache() {
 	}
 }
 
-func (p *UnitStatePublisher) publishOne(name string, us *unit.UnitState) {
-	if us == nil {
-		log.V(1).Infof("Destroying UnitState(%s) in Registry", name)
-		err := p.reg.RemoveUnitState(name)
-		if err != nil {
-			log.Errorf("Failed to destroy UnitState(%s) in Registry: %v", name, err)
-		}
-	} else {
-		// Sanity check - don't want to publish incomplete UnitStates
-		// TODO(jonboulle): consider teasing apart a separate UnitState-like struct
-		// so we can rely on a UnitState always being fully hydrated?
-
-		// See https://github.com/coreos/fleet/issues/720
-		//if len(us.UnitHash) == 0 {
-		//	log.Errorf("Refusing to push UnitState(%s), no UnitHash: %#v", name, us)
-
-		if len(us.MachineID) == 0 {
-			log.Errorf("Refusing to push UnitState(%s), no MachineID: %#v", name, us)
-		} else {
-			log.V(1).Infof("Pushing UnitState(%s) to Registry: %#v", name, us)
-			p.reg.SaveUnitState(name, us, p.ttl)
-		}
-	}
-}
-
 // queueForPublish notifies the publishing goroutines that a particular
 // UnitState should be published to the Registry. This can block and should be
 // called in a goroutine.
@@ -197,6 +175,35 @@ func (p *UnitStatePublisher) updateCache(update *unit.UnitStateHeartbeat) (chang
 // UnitStatePublisher's cache are removed from the registry.
 func (p *UnitStatePublisher) Purge() {
 	for name := range p.cache {
-		p.publishOne(name, nil)
+		p.publisher(name, nil)
+	}
+}
+
+// newPublisher returns a publishFunc that publishes a single UnitState
+// by the given name to the provided Registry, with the given TTL
+func newPublisher(reg registry.Registry, ttl time.Duration) publishFunc {
+	return func(name string, us *unit.UnitState) {
+		if us == nil {
+			log.V(1).Infof("Destroying UnitState(%s) in Registry", name)
+			err := reg.RemoveUnitState(name)
+			if err != nil {
+				log.Errorf("Failed to destroy UnitState(%s) in Registry: %v", name, err)
+			}
+		} else {
+			// Sanity check - don't want to publish incomplete UnitStates
+			// TODO(jonboulle): consider teasing apart a separate UnitState-like struct
+			// so we can rely on a UnitState always being fully hydrated?
+
+			// See https://github.com/coreos/fleet/issues/720
+			//if len(us.UnitHash) == 0 {
+			//	log.Errorf("Refusing to push UnitState(%s), no UnitHash: %#v", name, us)
+
+			if len(us.MachineID) == 0 {
+				log.Errorf("Refusing to push UnitState(%s), no MachineID: %#v", name, us)
+			} else {
+				log.V(1).Infof("Pushing UnitState(%s) to Registry: %#v", name, us)
+				reg.SaveUnitState(name, us, ttl)
+			}
+		}
 	}
 }
