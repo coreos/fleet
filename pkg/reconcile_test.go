@@ -20,8 +20,10 @@ func (f *fakeEventStream) trigger() {
 }
 
 // TestPeriodicReconcilerRun attempts to validate the behaviour of the central Run
-// loop of the PeriodicReconciler, particularly its response to events
+// loop of the PeriodicReconciler
 func TestPeriodicReconcilerRun(t *testing.T) {
+	ival := 5 * time.Hour
+	fclock := &fakeClock{}
 	fes := &fakeEventStream{make(chan Event)}
 	called := make(chan struct{})
 	rec := func() {
@@ -30,9 +32,10 @@ func TestPeriodicReconcilerRun(t *testing.T) {
 		}()
 	}
 	pr := &reconciler{
-		ival:    time.Hour, // Implausibly high reconcile interval we never expect to reach
+		ival:    ival,
 		rFunc:   rec,
 		eStream: fes,
+		clock:   fclock,
 	}
 	// launch the PeriodicReconciler in the background
 	prDone := make(chan bool)
@@ -79,10 +82,29 @@ func TestPeriodicReconcilerRun(t *testing.T) {
 		t.Fatalf("rFunc() called unexpectedly!")
 	default:
 	}
-	// stop the loop
+	// now check that time changes have the expected effect
+	fclock.tick(2 * time.Hour)
+	select {
+	case <-called:
+		t.Fatalf("rFunc() called unexpectedly!")
+	default:
+	}
+	fclock.tick(3 * time.Hour)
+	select {
+	case <-called:
+	case <-time.After(time.Second):
+		t.Fatalf("rFunc() not called after time event!")
+	}
 	close(stop)
 	// now, sending an event should do nothing
 	fes.trigger()
+	select {
+	case <-called:
+		t.Fatalf("rFunc() called unexpectedly!")
+	default:
+	}
+	// and nor should changes in time
+	fclock.tick(10 * time.Hour)
 	select {
 	case <-called:
 		t.Fatalf("rFunc() called unexpectedly!")
