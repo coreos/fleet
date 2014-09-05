@@ -418,7 +418,7 @@ func TestUnitsSetDesiredState(t *testing.T) {
 func makeConflictUO(name string) *schema.UnitOption {
 	return &schema.UnitOption{
 		Section: "X-Fleet",
-		Name:    "X-Conflicts",
+		Name:    "Conflicts",
 		Value:   name,
 	}
 }
@@ -426,7 +426,7 @@ func makeConflictUO(name string) *schema.UnitOption {
 func makePeerUO(name string) *schema.UnitOption {
 	return &schema.UnitOption{
 		Section: "X-Fleet",
-		Name:    "X-ConditionMachineOf",
+		Name:    "MachineOf",
 		Value:   name,
 	}
 }
@@ -434,7 +434,7 @@ func makePeerUO(name string) *schema.UnitOption {
 func makeIDUO(name string) *schema.UnitOption {
 	return &schema.UnitOption{
 		Section: "X-Fleet",
-		Name:    "X-ConditionMachineID",
+		Name:    "MachineID",
 		Value:   name,
 	}
 }
@@ -512,14 +512,14 @@ func TestValidateOptions(t *testing.T) {
 			},
 			false,
 		},
-		// ConditionMachineID is fine by itself
+		// MachineID is fine by itself
 		{
 			[]*schema.UnitOption{
 				makeIDUO("abcdefghi"),
 			},
 			true,
 		},
-		// ConditionMachineID with Peers no good
+		// MachineID with Peers no good
 		{
 			[]*schema.UnitOption{
 				makeIDUO("abcdefghi"),
@@ -535,7 +535,7 @@ func TestValidateOptions(t *testing.T) {
 			},
 			false,
 		},
-		// ConditionMachineID with Conflicts no good
+		// MachineID with Conflicts no good
 		{
 			[]*schema.UnitOption{
 				makeIDUO("abcdefghi"),
@@ -595,7 +595,7 @@ func TestValidateOptions(t *testing.T) {
 			},
 			false,
 		},
-		// Global with ConditionMachineID no good
+		// Global with MachineID no good
 		{
 			[]*schema.UnitOption{
 				&schema.UnitOption{

@@ -5,4 +5,4 @@ Description=PONG
 ExecStart=/bin/bash -c "while true; do echo pong; sleep 1; done"
 
 [X-Fleet]
-X-ConditionMachineOf=ping.1.service
+MachineOf=ping.1.service

@@ -33,11 +33,11 @@ func TestJobPeers(t *testing.T) {
 		{``, []string{}},
 		// single value should be fine
 		{`[X-Fleet]
-X-ConditionMachineOf="lol.service"
+MachineOf="lol.service"
 `, []string{"lol.service"}},
 		// multiple values should be fine
 		{`[X-Fleet]
-X-ConditionMachineOf="foo.service" "bar.service"
+MachineOf="foo.service" "bar.service"
 `, []string{"foo.service", "bar.service"}},
 	}
 	for i, tt := range testCases {
@@ -60,7 +60,7 @@ func TestJobConflicts(t *testing.T) {
 Description=Testing
 
 [X-Fleet]
-X-Conflicts=*bar*
+Conflicts=*bar*
 `, []string{"*bar*"}},
 	}
 	for i, tt := range testCases {
@@ -477,18 +477,18 @@ func TestUnitIsGlobal(t *testing.T) {
 		// no relevant sections
 		{"foobarbaz", false},
 		{"[Service]\nExecStart=/bin/true", false},
-		{"[X-Fleet]\nX-ConditionMachineOf=bar", false},
+		{"[X-Fleet]\nMachineOf=bar", false},
 		{"Global=true", false},
 		// specified in wrong section
 		{"[Service]\nGlobal=true", false},
 		// bad values
-		{"[X-Fleet]\nX-ConditionMachineOf=bar\nGlobal=false", false},
-		{"[X-Fleet]\nX-ConditionMachineOf=bar\nGlobal=what", false},
+		{"[X-Fleet]\nMachineOf=bar\nGlobal=false", false},
+		{"[X-Fleet]\nMachineOf=bar\nGlobal=what", false},
 		{"[X-Fleet]\nX-Global=true", false},
 		{"[X-Fleet]\nX-ConditionGlobal=true", false},
 		// correct specifications
-		{"[X-Fleet]\nX-ConditionMachineOf=foo\nGlobal=true", true},
-		{"[X-Fleet]\nX-ConditionMachineOf=foo\nGlobal=True", true},
+		{"[X-Fleet]\nMachineOf=foo\nGlobal=true", true},
+		{"[X-Fleet]\nMachineOf=foo\nGlobal=True", true},
 		// multiple parameters - last wins
 		{"[X-Fleet]\nGlobal=true\nGlobal=false", false},
 		{"[X-Fleet]\nGlobal=false\nGlobal=true", true},

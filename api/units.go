@@ -140,11 +140,11 @@ func ValidateOptions(opts []*schema.UnitOption) error {
 
 	switch {
 	case hasReqTarget && hasPeers:
-		return errors.New("ConditionMachineID cannot be used with Peers")
+		return errors.New("MachineID cannot be used with Peers")
 	case hasReqTarget && hasConflicts:
-		return errors.New("ConditionMachineID cannot be used with Conflicts")
+		return errors.New("MachineID cannot be used with Conflicts")
 	case hasReqTarget && isGlobal:
-		return errors.New("ConditionMachineID cannot be used with Global")
+		return errors.New("MachineID cannot be used with Global")
 	case isGlobal && hasPeers:
 		return errors.New("Global cannot be used with Peers")
 	case isGlobal && hasConflicts:

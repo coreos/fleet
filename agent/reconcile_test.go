@@ -112,7 +112,7 @@ func TestDesiredAgentState(t *testing.T) {
 					Unit: newUF(t, `
 [X-Fleet]
 Global=true
-X-ConditionMachineMetadata=dog=woof`),
+MachineMetadata=dog=woof`),
 				},
 			},
 			map[string]*job.Unit{
@@ -121,7 +121,7 @@ X-ConditionMachineMetadata=dog=woof`),
 					Unit: newUF(t, `
 [X-Fleet]
 Global=true
-X-ConditionMachineMetadata=dog=woof`),
+MachineMetadata=dog=woof`),
 				},
 			},
 		},
@@ -134,7 +134,7 @@ X-ConditionMachineMetadata=dog=woof`),
 					Unit: newUF(t, `
 [X-Fleet]
 Global=true
-X-ConditionMachineMetadata=dog=woof`),
+MachineMetadata=dog=woof`),
 				},
 			},
 			map[string]*job.Unit{},
@@ -147,7 +147,7 @@ X-ConditionMachineMetadata=dog=woof`),
 					Unit: newUF(t, `
 [X-Fleet]
 Global=true
-X-ConditionMachineMetadata=dog=woof`),
+MachineMetadata=dog=woof`),
 				},
 			},
 			map[string]*job.Unit{},
@@ -174,7 +174,7 @@ X-ConditionMachineMetadata=dog=woof`),
 					Unit: newUF(t, `
 [X-Fleet]
 Global=true
-X-ConditionMachineMetadata=dog=woof`),
+MachineMetadata=dog=woof`),
 				},
 			},
 			map[string]*job.Unit{
@@ -209,7 +209,7 @@ X-ConditionMachineMetadata=dog=woof`),
 					Unit: newUF(t, `
 [X-Fleet]
 Global=true
-X-ConditionMachineMetadata=dog=woof`),
+MachineMetadata=dog=woof`),
 				},
 			},
 			map[string]*job.Unit{
@@ -226,7 +226,7 @@ X-ConditionMachineMetadata=dog=woof`),
 					Unit: newUF(t, `
 [X-Fleet]
 Global=true
-X-ConditionMachineMetadata=dog=woof`),
+MachineMetadata=dog=woof`),
 				},
 			},
 		},
@@ -266,38 +266,38 @@ func TestAbleToRun(t *testing.T) {
 			want:   true,
 		},
 
-		// match X-ConditionMachineID
+		// match MachineID
 		{
 			dState: NewAgentState(&machine.MachineState{ID: "XYZ"}),
-			job:    newTestJobWithXFleetValues(t, "X-ConditionMachineID=XYZ"),
+			job:    newTestJobWithXFleetValues(t, "MachineID=XYZ"),
 			want:   true,
 		},
 
-		// mismatch X-ConditionMachineID
+		// mismatch MachineID
 		{
 			dState: NewAgentState(&machine.MachineState{ID: "123"}),
-			job:    newTestJobWithXFleetValues(t, "X-ConditionMachineID=XYZ"),
+			job:    newTestJobWithXFleetValues(t, "MachineID=XYZ"),
 			want:   false,
 		},
 
-		// match X-ConditionMachineMetadata
+		// match MachineMetadata
 		{
 			dState: NewAgentState(&machine.MachineState{ID: "123", Metadata: map[string]string{"region": "us-west"}}),
-			job:    newTestJobWithXFleetValues(t, "X-ConditionMachineMetadata=region=us-west"),
+			job:    newTestJobWithXFleetValues(t, "MachineMetadata=region=us-west"),
 			want:   true,
 		},
 
-		// Machine metadata ignored when no X-ConditionMachineMetadata in Job
+		// Machine metadata ignored when no MachineMetadata in Job
 		{
 			dState: NewAgentState(&machine.MachineState{ID: "123", Metadata: map[string]string{"region": "us-west"}}),
 			job:    &job.Job{Name: "easy-street.service", Unit: unit.UnitFile{}},
 			want:   true,
 		},
 
-		// mismatch X-ConditionMachineMetadata
+		// mismatch MachineMetadata
 		{
 			dState: NewAgentState(&machine.MachineState{ID: "123", Metadata: map[string]string{"region": "us-west"}}),
-			job:    newTestJobWithXFleetValues(t, "X-ConditionMachineMetadata=region=us-east"),
+			job:    newTestJobWithXFleetValues(t, "MachineMetadata=region=us-east"),
 			want:   false,
 		},
 
@@ -309,7 +309,7 @@ func TestAbleToRun(t *testing.T) {
 					"pong.service": &job.Unit{Name: "pong.service"},
 				},
 			},
-			job:  newTestJobWithXFleetValues(t, "X-ConditionMachineOf=pong.service"),
+			job:  newTestJobWithXFleetValues(t, "MachineOf=pong.service"),
 			want: true,
 		},
 
@@ -322,14 +322,14 @@ func TestAbleToRun(t *testing.T) {
 					"pong.service": &job.Unit{Name: "pong.service"},
 				},
 			},
-			job:  newTestJobWithXFleetValues(t, "X-ConditionMachineOf=pong.service\nX-ConditionMachineOf=ping.service"),
+			job:  newTestJobWithXFleetValues(t, "MachineOf=pong.service\nMachineOf=ping.service"),
 			want: true,
 		},
 
 		// peer not scheduled locally
 		{
 			dState: NewAgentState(&machine.MachineState{ID: "123"}),
-			job:    newTestJobWithXFleetValues(t, "X-ConditionMachineOf=ping.service"),
+			job:    newTestJobWithXFleetValues(t, "MachineOf=ping.service"),
 			want:   false,
 		},
 
@@ -341,7 +341,7 @@ func TestAbleToRun(t *testing.T) {
 					"ping.service": &job.Unit{Name: "ping.service"},
 				},
 			},
-			job:  newTestJobWithXFleetValues(t, "X-ConditionMachineOf=pong.service\nX-ConditionMachineOf=ping.service"),
+			job:  newTestJobWithXFleetValues(t, "MachineOf=pong.service\nMachineOf=ping.service"),
 			want: false,
 		},
 
@@ -353,7 +353,7 @@ func TestAbleToRun(t *testing.T) {
 					"ping.service": &job.Unit{Name: "ping.service"},
 				},
 			},
-			job:  newTestJobWithXFleetValues(t, "X-Conflicts=pong.service"),
+			job:  newTestJobWithXFleetValues(t, "Conflicts=pong.service"),
 			want: true,
 		},
 
@@ -365,7 +365,7 @@ func TestAbleToRun(t *testing.T) {
 					"ping.service": &job.Unit{Name: "ping.service"},
 				},
 			},
-			job:  newTestJobWithXFleetValues(t, "X-Conflicts=ping.service"),
+			job:  newTestJobWithXFleetValues(t, "Conflicts=ping.service"),
 			want: false,
 		},
 	}
