@@ -23,7 +23,7 @@ func (f *fakeEventStream) trigger() {
 // loop of the PeriodicReconciler
 func TestPeriodicReconcilerRun(t *testing.T) {
 	ival := 5 * time.Hour
-	fclock := &fakeClock{}
+	fclock := &FakeClock{}
 	fes := &fakeEventStream{make(chan Event)}
 	called := make(chan struct{})
 	rec := func() {

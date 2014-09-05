@@ -3,7 +3,7 @@ package pkg
 import "testing"
 
 func TestFakeClockAfter(t *testing.T) {
-	fc := &fakeClock{}
+	fc := &FakeClock{}
 
 	one := fc.After(1)
 	two := fc.After(2)

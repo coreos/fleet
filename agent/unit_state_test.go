@@ -1,8 +1,10 @@
 package agent
 
 import (
+	"encoding/json"
 	"fmt"
 	"reflect"
+	"runtime"
 	"sync"
 	"testing"
 	"time"
@@ -195,7 +197,7 @@ func TestPurge(t *testing.T) {
 	}
 }
 
-func TestPublishOne(t *testing.T) {
+func TestDefaultPublisher(t *testing.T) {
 	testCases := []struct {
 		name       string
 		state      *unit.UnitState
@@ -254,7 +256,7 @@ func TestPublishOne(t *testing.T) {
 		freg := registry.NewFakeRegistry()
 		freg.SetUnitStates(tt.initStates)
 		usp := NewUnitStatePublisher(freg, &machine.FakeMachine{}, 0)
-		usp.publishOne(tt.name, tt.state)
+		usp.publisher(tt.name, tt.state)
 		us, err := freg.UnitStates()
 		if err != nil {
 			t.Errorf("case %d: unexpected error retrieving unit states: %v", err)
@@ -269,7 +271,7 @@ func TestPublishOne(t *testing.T) {
 	}
 }
 
-func TestUnitStatePublisherRun(t *testing.T) {
+func TestUnitStatePublisherRunTiming(t *testing.T) {
 	fclock := &pkg.FakeClock{}
 	states := make([]*unit.UnitState, 0)
 	published := make(chan struct{})
@@ -280,12 +282,15 @@ func TestUnitStatePublisherRun(t *testing.T) {
 		}()
 	}
 	usp := &UnitStatePublisher{
-		mach:      &machine.FakeMachine{},
-		publisher: pf,
-		ttl:       5 * time.Second,
-		mutex:     sync.RWMutex{},
-		cache:     make(map[string]*unit.UnitState),
-		clock:     fclock,
+		mach:            &machine.FakeMachine{},
+		ttl:             5 * time.Second,
+		publisher:       pf,
+		cache:           make(map[string]*unit.UnitState),
+		cacheMutex:      sync.RWMutex{},
+		toPublish:       make(chan string),
+		toPublishStates: make(map[string]*unit.UnitState),
+		toPublishMutex:  sync.RWMutex{},
+		clock:           fclock,
 	}
 	usp.cache = map[string]*unit.UnitState{
 		"foo.service": &unit.UnitState{
@@ -301,13 +306,8 @@ func TestUnitStatePublisherRun(t *testing.T) {
 		usp.Run(bc, sc)
 	}()
 
-	// block until Run() is definitely waiting on After()
-	// TODO(jonboulle): do this more elegantly!!!
-	for {
-		if fclock.Sleepers() == 1 {
-			break
-		}
-	}
+	// yield so Run() is definitely waiting on After()
+	runtime.Gosched()
 
 	// tick less than the publish interval
 	fclock.Tick(time.Second)
@@ -343,13 +343,8 @@ func TestUnitStatePublisherRun(t *testing.T) {
 	// reset states
 	states = []*unit.UnitState{}
 
-	// block until Run() is definitely waiting on After()
-	// TODO(jonboulle): do this more elegantly!!!
-	for {
-		if fclock.Sleepers() == 1 {
-			break
-		}
-	}
+	// yield so Run() is definitely waiting on After()
+	runtime.Gosched()
 
 	// tick less than the publish interval, again
 	fclock.Tick(4 * time.Second)
@@ -391,13 +386,8 @@ func TestUnitStatePublisherRun(t *testing.T) {
 	// reset states
 	states = []*unit.UnitState{}
 
-	// block until Run() is definitely waiting on After()
-	// TODO(jonboulle): do this more elegantly!!!
-	for {
-		if fclock.Sleepers() == 1 {
-			break
-		}
-	}
+	// yield so Run() is definitely waiting on After()
+	runtime.Gosched()
 
 	// tick way past the publish interval
 	fclock.Tick(time.Hour)
@@ -412,4 +402,321 @@ func TestUnitStatePublisherRun(t *testing.T) {
 	if !reflect.DeepEqual(states, want) {
 		t.Errorf("bad UnitStates: got %#v, want %#v", states, want)
 	}
+}
+
+func TestUnitStatePublisherRunQueuing(t *testing.T) {
+	states := make([]string, 0)
+	var wg sync.WaitGroup
+	wg.Add(numPublishers)
+	block := make(chan struct{})
+	pf := func(name string, us *unit.UnitState) {
+		wg.Done()
+		<-block
+		states = append(states, name)
+	}
+	usp := &UnitStatePublisher{
+		mach: &machine.FakeMachine{
+			MachineState: machine.MachineState{
+				ID: "some_id",
+			},
+		},
+		ttl:             time.Hour, // we never expect to reach this
+		publisher:       pf,
+		cache:           make(map[string]*unit.UnitState),
+		cacheMutex:      sync.RWMutex{},
+		toPublish:       make(chan string),
+		toPublishStates: make(map[string]*unit.UnitState),
+		toPublishMutex:  sync.RWMutex{},
+		clock:           &pkg.FakeClock{},
+	}
+	bc := make(chan *unit.UnitStateHeartbeat)
+	sc := make(chan bool)
+	go func() {
+		usp.Run(bc, sc)
+	}()
+
+	// first, fill up the publishers with a bunch of things
+	wcache := make(map[string]*unit.UnitState)
+	for i := 0; i < numPublishers; i++ {
+		name := fmt.Sprintf("%d.service", i)
+		us := &unit.UnitState{
+			UnitName: name,
+		}
+		wcache[name] = us
+		bc <- &unit.UnitStateHeartbeat{
+			Name:  name,
+			State: us,
+		}
+	}
+
+	// wait until they're all started
+	wg.Wait()
+
+	// now the cache should contain them
+	got := usp.cache
+	if !reflect.DeepEqual(got, wcache) {
+		t.Errorf("bad cache: got %#v, want %#v", got, wcache)
+	}
+	// as should the toPublish queue
+	select {
+	case update := <-usp.toPublish:
+		t.Errorf("unexpected item in toPublish queue: %#v", update)
+	default:
+	}
+
+	// flush the cache
+	usp.cache = map[string]*unit.UnitState{
+		"foo.service": &unit.UnitState{
+			UnitName:    "foo.service",
+			ActiveState: "active",
+		},
+	}
+
+	// now send a new UnitStateHeartbeat referencing something already in the cache
+	bc <- &unit.UnitStateHeartbeat{
+		Name: "foo.service",
+		State: &unit.UnitState{
+			UnitName:    "foo.service",
+			ActiveState: "inactive",
+		},
+	}
+	// since something changed, queue should be updated
+	select {
+	case got := <-usp.toPublish:
+		want := "foo.service"
+		if !reflect.DeepEqual(got, want) {
+			t.Fatalf("update not as expected: got %#v, want %#v", got, want)
+		}
+	case <-time.After(time.Second):
+		t.Fatalf("change not added to toPublish queue as expected!")
+	}
+	// as should the cache
+	got = usp.cache
+	wcache = map[string]*unit.UnitState{
+		"foo.service": &unit.UnitState{
+			UnitName:    "foo.service",
+			ActiveState: "inactive",
+			MachineID:   "some_id",
+		},
+	}
+	if !reflect.DeepEqual(got, wcache) {
+		t.Errorf("cache not as expected: got %#v, want %#v", got, wcache)
+	}
+
+	// finally, send another of the same update
+	bc <- &unit.UnitStateHeartbeat{
+		Name: "foo.service",
+		State: &unit.UnitState{
+			UnitName:    "foo.service",
+			ActiveState: "inactive",
+		},
+	}
+	// same state as cache, so queue should _not_ be updated, nor should cache
+	select {
+	case update := <-usp.toPublish:
+		t.Errorf("unexpected change in toPublish queue: %#v", update)
+	default:
+	}
+	got = usp.cache
+	if !reflect.DeepEqual(got, wcache) {
+		t.Errorf("cache not as expected: got %#v, want %#v", got, wcache)
+	}
+
+}
+
+func TestUnitStatePublisherRunWithDelays(t *testing.T) {
+	states := make([]string, 0)
+	fclock := &pkg.FakeClock{}
+	var wgs, wgf sync.WaitGroup // track starting and stopping of publishers
+	slowpf := func(name string, us *unit.UnitState) {
+		wgs.Done()
+		// simulate a delay in communication with the registry
+		fclock.Sleep(3 * time.Second)
+		states = append(states, name)
+		wgf.Done()
+	}
+
+	usp := &UnitStatePublisher{
+		mach:            &machine.FakeMachine{},
+		ttl:             time.Hour, // we never expect to reach this
+		publisher:       slowpf,
+		cache:           make(map[string]*unit.UnitState),
+		cacheMutex:      sync.RWMutex{},
+		toPublish:       make(chan string),
+		toPublishStates: make(map[string]*unit.UnitState),
+		toPublishMutex:  sync.RWMutex{},
+		clock:           &pkg.FakeClock{},
+	}
+
+	bc := make(chan *unit.UnitStateHeartbeat)
+	sc := make(chan bool)
+	go func() {
+		usp.Run(bc, sc)
+	}()
+
+	// queue a bunch of unit states for publishing - occupy all publish workers
+	wantPublished := make([]string, numPublishers)
+	wgs.Add(numPublishers)
+	wgf.Add(numPublishers)
+	for i := 0; i < numPublishers; i++ {
+		name := fmt.Sprintf("%d.service", i)
+		wantPublished[i] = name
+		usp.queueForPublish(
+			name,
+			&unit.UnitState{
+				UnitName: name,
+			},
+		)
+	}
+
+	// now queue some more unit states for publishing - expect them to hang
+	go usp.queueForPublish("foo.service", &unit.UnitState{UnitName: "foo.service", ActiveState: "active"})
+	go usp.queueForPublish("bar.service", &unit.UnitState{})
+	go usp.queueForPublish("baz.service", &unit.UnitState{})
+
+	// re-queue one of the states; this should replace the above
+	go usp.queueForPublish("foo.service", &unit.UnitState{UnitName: "foo.service", ActiveState: "inactive"})
+
+	// wait for all publish workers to start
+	wgs.Wait()
+
+	// so far, no states should be published, and the last three should be enqueued
+	ws := []string{}
+	if !reflect.DeepEqual(states, ws) {
+		t.Errorf("bad UnitStates: got %#v, want %#v", states, ws)
+	}
+
+	wtps := map[string]*unit.UnitState{
+		"foo.service": &unit.UnitState{
+			UnitName:    "foo.service",
+			ActiveState: "inactive",
+		},
+		"bar.service": &unit.UnitState{},
+		"baz.service": &unit.UnitState{},
+	}
+	if !reflect.DeepEqual(usp.toPublishStates, wtps) {
+		t.Errorf("bad toPublishStates: got %#v, want %#v", usp.toPublishStates, wtps)
+	}
+
+	// end the registry delay by ticking past it just once -
+	// expect three more publishers to start, and block
+	wgs.Add(3)
+	fclock.Tick(3 * time.Second)
+
+	// wait for the original publishers to finish
+	wgf.Wait()
+
+	// now, all five original states should have been published
+	ws = wantPublished
+	if !reflect.DeepEqual(states, ws) {
+		t.Errorf("bad published UnitStates: got %#v, want %#v", states, ws)
+	}
+
+	// wait for the new publishers to start
+	wgs.Wait()
+
+	// and the other states should be flushed from the toPublish queue
+	wtps = map[string]*unit.UnitState{}
+	if !reflect.DeepEqual(usp.toPublishStates, wtps) {
+		t.Errorf("bad toPublishStates: got %#v, want %#v", usp.toPublishStates, wtps)
+	}
+
+	// but still not published
+	if !reflect.DeepEqual(states, ws) {
+		t.Errorf("bad published UnitStates: got %#v, want %#v", states, ws)
+	}
+
+	// clear the published states
+	states = []string{}
+
+	// prepare for the new publishers
+	wgf.Add(3)
+
+	// tick past the registry delay again so the new publishers continue
+	fclock.Tick(10 * time.Second)
+
+	// wait for them to complete
+	wgf.Wait()
+
+	// and now the other states should be published
+	ws = []string{"foo.service", "bar.service", "baz.service"}
+	if !reflect.DeepEqual(states, ws) {
+		t.Errorf("bad UnitStates: got %#v, want %#v", states, ws)
+	}
+
+	// and toPublish queue should still be empty
+	wtps = map[string]*unit.UnitState{}
+	if !reflect.DeepEqual(usp.toPublishStates, wtps) {
+		t.Errorf("bad toPublishStates: got %#v, want %#v", usp.toPublishStates, wtps)
+	}
+}
+
+func TestQueueForPublish(t *testing.T) {
+	usp := &UnitStatePublisher{
+		toPublish:       make(chan string),
+		toPublishStates: make(map[string]*unit.UnitState),
+	}
+	go usp.queueForPublish("foo.service", &unit.UnitState{
+		UnitName:    "foo.service",
+		ActiveState: "active",
+	})
+	select {
+	case name := <-usp.toPublish:
+		if name != "foo.service" {
+			t.Errorf("unexpected name on toPublish channel: %v", name)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("did not receive on toPublish channel as expected")
+	}
+	want := map[string]*unit.UnitState{
+		"foo.service": &unit.UnitState{
+			UnitName:    "foo.service",
+			ActiveState: "active",
+		},
+	}
+	if !reflect.DeepEqual(want, usp.toPublishStates) {
+		t.Errorf("bad toPublishStates: want %#v, got %#v", want, usp.toPublishStates)
+	}
+}
+
+func TestMarshalJSON(t *testing.T) {
+	usp := NewUnitStatePublisher(&registry.FakeRegistry{}, &machine.FakeMachine{}, 0)
+	got, err := json.Marshal(usp)
+	if err != nil {
+		t.Fatalf("unexpected error marshalling: %#v")
+	}
+	want := `{"Cache":{},"ToPublish":{}}`
+	if string(got) != want {
+		t.Fatalf("Bad JSON representation: got\n%s\n\nwant\n%s", string(got), want)
+	}
+
+	usp = NewUnitStatePublisher(&registry.FakeRegistry{}, &machine.FakeMachine{}, 0)
+	usp.cache = map[string]*unit.UnitState{
+		"foo.service": &unit.UnitState{
+			UnitName:    "foo.service",
+			ActiveState: "active",
+			MachineID:   "asdf",
+		},
+		"bar.service": &unit.UnitState{
+			UnitName:    "bar.service",
+			ActiveState: "inactive",
+			MachineID:   "asdf",
+		},
+	}
+	usp.toPublishStates = map[string]*unit.UnitState{
+		"woof.service": &unit.UnitState{
+			UnitName:    "woof.service",
+			ActiveState: "active",
+			MachineID:   "asdf",
+		},
+	}
+	got, err = json.Marshal(usp)
+	if err != nil {
+		t.Fatalf("unexpected error marshalling: %v", err)
+	}
+	want = `{"Cache":{"bar.service":{"LoadState":"","ActiveState":"inactive","SubState":"","MachineID":"asdf","UnitHash":"","UnitName":"bar.service"},"foo.service":{"LoadState":"","ActiveState":"active","SubState":"","MachineID":"asdf","UnitHash":"","UnitName":"foo.service"}},"ToPublish":{"woof.service":{"LoadState":"","ActiveState":"active","SubState":"","MachineID":"asdf","UnitHash":"","UnitName":"woof.service"}}}`
+	if string(got) != want {
+		t.Fatalf("Bad JSON representation: got\n%s\n\nwant\n%s", string(got), want)
+	}
+
 }

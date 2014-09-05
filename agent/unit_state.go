@@ -120,11 +120,11 @@ func (p *UnitStatePublisher) Run(beatchan <-chan *unit.UnitStateHeartbeat, stop 
 func (p *UnitStatePublisher) MarshalJSON() ([]byte, error) {
 	p.cacheMutex.Lock()
 	data := struct {
-		Cache map[string]*unit.UnitState
-		Queue chan string
+		Cache     map[string]*unit.UnitState
+		ToPublish map[string]*unit.UnitState
 	}{
-		Cache: p.cache,
-		Queue: p.toPublish,
+		Cache:     p.cache,
+		ToPublish: p.toPublishStates,
 	}
 	p.cacheMutex.Unlock()
 
@@ -167,7 +167,6 @@ func (p *UnitStatePublisher) updateCache(update *unit.UnitStateHeartbeat) (chang
 	if !ok || !reflect.DeepEqual(last, update.State) {
 		changed = true
 	}
-
 	return
 }
 
