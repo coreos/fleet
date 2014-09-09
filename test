@@ -37,7 +37,6 @@ split=(${TEST// / })
 TEST=${split[@]/#/${REPO_PATH}/}
 
 echo "Running tests..."
-go test -i ${TEST}
 go test ${COVER} $@ ${TEST}
 
 echo "Checking gofmt..."
