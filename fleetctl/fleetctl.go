@@ -424,6 +424,9 @@ func createUnit(name string, uf *unit.UnitFile) (*schema.Unit, error) {
 	// redundant with the check in api.unitsResource.set, but it is a
 	// workaround to implementing the same check in the RegistryClient. It
 	// will disappear once RegistryClient is deprecated.
+	if err := api.ValidateName(name); err != nil {
+		return nil, err
+	}
 	if err := api.ValidateOptions(u.Options); err != nil {
 		return nil, err
 	}

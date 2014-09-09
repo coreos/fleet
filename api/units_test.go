@@ -657,7 +657,7 @@ func TestValidateName(t *testing.T) {
 		"@this.mount",
 	}
 	for _, name := range badTestCases {
-		if err := validateName(name); err == nil {
+		if err := ValidateName(name); err == nil {
 			t.Errorf("name %q: validation did not fail as expected!", name)
 		}
 	}
@@ -676,7 +676,7 @@ func TestValidateName(t *testing.T) {
 		fmt.Sprintf("%0"+strconv.Itoa(unitNameMax)+"s", ".service"),
 	}
 	for _, name := range goodTestCases {
-		if err := validateName(name); err != nil {
+		if err := ValidateName(name); err != nil {
 			t.Errorf("name %q: validation failed unexpectedly! err=%v", name, err)
 		}
 	}

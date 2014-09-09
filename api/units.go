@@ -71,7 +71,7 @@ func (ur *unitsResource) set(rw http.ResponseWriter, req *http.Request, item str
 		sendError(rw, http.StatusBadRequest, fmt.Errorf("name in URL %q differs from unit name in request body %q", item, su.Name))
 		return
 	}
-	if err := validateName(su.Name); err != nil {
+	if err := ValidateName(su.Name); err != nil {
 		sendError(rw, http.StatusBadRequest, err)
 		return
 	}
@@ -130,10 +130,10 @@ var validUnitTypes = pkg.NewUnsafeSet(
 	"scope",
 )
 
-// validateName ensures that a given unit name is valid; if not, an error is
+// ValidateName ensures that a given unit name is valid; if not, an error is
 // returned describing the first issue encountered.
 // systemd reference: `unit_name_is_valid` in `unit-name.c`
-func validateName(name string) error {
+func ValidateName(name string) error {
 	length := len(name)
 	if length == 0 {
 		return errors.New("unit name cannot be empty")
