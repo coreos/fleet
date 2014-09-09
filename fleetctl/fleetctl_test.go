@@ -119,33 +119,72 @@ func TestCreateUnitFails(t *testing.T) {
 	}
 	cAPI = fakeAPI{}
 	var i int
+	var un string
 	var uf *unit.UnitFile
 	defer func() {
 		if r := recover(); r != nil {
 			t.Errorf("case %d: unexpectedly called API!", i)
+			t.Logf("unit name: %q", un)
 			t.Logf("unit file: %#v", uf)
 		}
 	}()
-	for i, uf = range []*unit.UnitFile{
-		nil,
-		newUnitFile(t, `[X-Fleet]
+	testCases := []struct {
+		name string
+		uf   *unit.UnitFile
+	}{
+		{
+			"foo@{1,3}.service",
+			newUnitFile(t, ``),
+		},
+		{
+			"foo@{1..3}.service",
+			newUnitFile(t, ``),
+		},
+		{
+			"foo.{1-3}.service",
+			newUnitFile(t, ``),
+		},
+		{
+			"foo.service",
+			nil,
+		},
+		{
+			"foo.service",
+			newUnitFile(t, `[X-Fleet]
+	MachineOf=abcd
+	Conflicts=abcd`),
+		},
+		{
+			"foo.service",
+			newUnitFile(t, `[X-Fleet]
 MachineOf=abcd
 Conflicts=abcd`),
-		newUnitFile(t, `[X-Fleet]
-MachineOf=abcd
-Conflicts=abcd`),
-		newUnitFile(t, `[X-Fleet]
+		},
+		{
+			"foo.service",
+			newUnitFile(t, `[X-Fleet]
 Global=true
 MachineOf=abcd`),
-		newUnitFile(t, `[X-Fleet]
+		},
+		{
+			"foo.service",
+			newUnitFile(t, `[X-Fleet]
 Global=true
 MachineOf=zxcvq`),
-		newUnitFile(t, `[X-Fleet]
+		},
+		{
+			"foo.service",
+			newUnitFile(t, `[X-Fleet]
 Global=true
 Conflicts=bar`),
-	} {
-		if _, err := createUnit("foo.service", uf); err == nil {
+		},
+	}
+	for i, tt := range testCases {
+		un = tt.name
+		uf = tt.uf
+		if _, err := createUnit(un, uf); err == nil {
 			t.Errorf("case %d did not return error as expected!", i)
+			t.Logf("unit name: %v", un)
 			t.Logf("unit file: %#v", uf)
 		}
 	}
