@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"path"
+	"strings"
 
 	"github.com/coreos/fleet/client"
 	"github.com/coreos/fleet/job"
@@ -103,11 +104,60 @@ func (ur *unitsResource) set(rw http.ResponseWriter, req *http.Request, item str
 	ur.update(rw, su.Name, su.DesiredState)
 }
 
+const (
+	// These constants taken from systemd
+	unitNameMax    = 256
+	digits         = "0123456789"
+	lowercase      = "abcdefghijklmnopqrstuvwxyz"
+	uppercase      = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	alphanumerical = digits + lowercase + uppercase
+	validChars     = alphanumerical + `:=+.\@`
+)
+
+var validUnitTypes = pkg.NewUnsafeSet(
+	"service",
+	"socket",
+	"busname",
+	"target",
+	"snapshot",
+	"device",
+	"mount",
+	"automount",
+	"swap",
+	"timer",
+	"path",
+	"slice",
+	"scope",
+)
+
 // validateName ensures that a given unit name is valid; if not, an error is
-// returned detailing the issue encountered.
+// returned describing the first issue encountered.
+// systemd reference: `unit_name_is_valid` in `unit-name.c`
 func validateName(name string) error {
-	if len(name) == 0 {
+	length := len(name)
+	if length == 0 {
 		return errors.New("unit name cannot be empty")
+	}
+	if length > unitNameMax {
+		return fmt.Errorf("unit name exceeds maximum length (%d)", unitNameMax)
+	}
+	dot := strings.Index(name, ".")
+	if dot == -1 {
+		return errors.New(`unit name must contain "."`)
+	}
+	if dot == length-1 {
+		return errors.New(`unit name cannot end in "."`)
+	}
+	if suffix := name[dot+1:]; !validUnitTypes.Contains(suffix) {
+		return fmt.Errorf("invalid unit type: %q", suffix)
+	}
+	for _, char := range name[:dot] {
+		if !strings.ContainsRune(validChars, char) {
+			return fmt.Errorf("invalid character %q in unit name", char)
+		}
+	}
+	if strings.HasPrefix(name, "@") {
+		return errors.New(`unit name cannot start in "@"`)
 	}
 	return nil
 }

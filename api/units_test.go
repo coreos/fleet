@@ -48,8 +48,8 @@ func TestUnitsSubResourceNotFound(t *testing.T) {
 func TestUnitsList(t *testing.T) {
 	fr := registry.NewFakeRegistry()
 	fr.SetJobs([]job.Job{
-		{Name: "XXX"},
-		{Name: "YYY"},
+		{Name: "XXX.service"},
+		{Name: "YYY.service"},
 	})
 	fAPI := &client.RegistryClient{fr}
 	resource := &unitsResource{fAPI, "/units"}
@@ -80,7 +80,7 @@ func TestUnitsList(t *testing.T) {
 			t.Fatalf("Received unparseable body: %v", err)
 		}
 
-		if len(page.Units) != 2 || page.Units[0].Name != "XXX" || page.Units[1].Name != "YYY" {
+		if len(page.Units) != 2 || page.Units[0].Name != "XXX.service" || page.Units[1].Name != "YYY.service" {
 			t.Errorf("Received incorrect UnitPage entity: %v", page)
 		}
 	}
@@ -160,14 +160,14 @@ func TestUnitGet(t *testing.T) {
 		item string
 		code int
 	}{
-		{item: "XXX", code: http.StatusOK},
+		{item: "XXX.service", code: http.StatusOK},
 		{item: "ZZZ", code: http.StatusNotFound},
 	}
 
 	fr := registry.NewFakeRegistry()
 	fr.SetJobs([]job.Job{
-		{Name: "XXX"},
-		{Name: "YYY"},
+		{Name: "XXX.service"},
+		{Name: "YYY.service"},
 	})
 	fAPI := &client.RegistryClient{fr}
 	resource := &unitsResource{fAPI, "/units"}
@@ -208,17 +208,17 @@ func TestUnitsDestroy(t *testing.T) {
 	}{
 		// Deletion of an existing unit should succeed
 		{
-			init:      []job.Job{job.Job{Name: "XXX", Unit: newUnit(t, "[Service]\nFoo=Bar")}},
-			arg:       "XXX",
+			init:      []job.Job{job.Job{Name: "XXX.service", Unit: newUnit(t, "[Service]\nFoo=Bar")}},
+			arg:       "XXX.service",
 			code:      http.StatusNoContent,
 			remaining: []string{},
 		},
 		// Deletion of a nonexistent unit should fail
 		{
-			init:      []job.Job{job.Job{Name: "XXX", Unit: newUnit(t, "[Service]\nFoo=Bar")}},
-			arg:       "YYY",
+			init:      []job.Job{job.Job{Name: "XXX.service", Unit: newUnit(t, "[Service]\nFoo=Bar")}},
+			arg:       "YYY.service",
 			code:      http.StatusNotFound,
-			remaining: []string{"XXX"},
+			remaining: []string{"XXX.service"},
 		},
 	}
 
@@ -281,35 +281,35 @@ func TestUnitsSetDesiredState(t *testing.T) {
 	}{
 		// Modify the desired State of an existing Job
 		{
-			initJobs:    []job.Job{job.Job{Name: "XXX", Unit: newUnit(t, "[Service]\nFoo=Bar")}},
-			initStates:  map[string]job.JobState{"XXX": "inactive"},
-			item:        "XXX",
-			arg:         schema.Unit{Name: "XXX", DesiredState: "launched"},
+			initJobs:    []job.Job{job.Job{Name: "XXX.service", Unit: newUnit(t, "[Service]\nFoo=Bar")}},
+			initStates:  map[string]job.JobState{"XXX.service": "inactive"},
+			item:        "XXX.service",
+			arg:         schema.Unit{Name: "XXX.service", DesiredState: "launched"},
 			code:        http.StatusNoContent,
-			finalStates: map[string]job.JobState{"XXX": "launched"},
+			finalStates: map[string]job.JobState{"XXX.service": "launched"},
 		},
 		// Create a new Unit
 		{
 			initJobs:   []job.Job{},
 			initStates: map[string]job.JobState{},
-			item:       "YYY",
+			item:       "YYY.service",
 			arg: schema.Unit{
-				Name:         "YYY",
+				Name:         "YYY.service",
 				DesiredState: "loaded",
 				Options: []*schema.UnitOption{
 					&schema.UnitOption{Section: "Service", Name: "Foo", Value: "Baz"},
 				},
 			},
 			code:        http.StatusNoContent,
-			finalStates: map[string]job.JobState{"YYY": "loaded"},
+			finalStates: map[string]job.JobState{"YYY.service": "loaded"},
 		},
 		// Creating a new Unit without Options fails
 		{
 			initJobs:   []job.Job{},
 			initStates: map[string]job.JobState{},
-			item:       "YYY",
+			item:       "YYY.service",
 			arg: schema.Unit{
-				Name:         "YYY",
+				Name:         "YYY.service",
 				DesiredState: "loaded",
 				Options:      []*schema.UnitOption{},
 			},
@@ -319,42 +319,42 @@ func TestUnitsSetDesiredState(t *testing.T) {
 		// Referencing a Unit where the name is inconsistent with the path should fail
 		{
 			initJobs: []job.Job{
-				job.Job{Name: "XXX", Unit: newUnit(t, "[Service]\nFoo=Bar")},
-				job.Job{Name: "YYY", Unit: newUnit(t, "[Service]\nFoo=Baz")},
+				job.Job{Name: "XXX.service", Unit: newUnit(t, "[Service]\nFoo=Bar")},
+				job.Job{Name: "YYY.service", Unit: newUnit(t, "[Service]\nFoo=Baz")},
 			},
 			initStates: map[string]job.JobState{
-				"XXX": "inactive",
-				"YYY": "inactive",
+				"XXX.service": "inactive",
+				"YYY.service": "inactive",
 			},
-			item: "XXX",
+			item: "XXX.service",
 			arg: schema.Unit{
-				Name:         "YYY",
+				Name:         "YYY.service",
 				DesiredState: "loaded",
 			},
 			code: http.StatusBadRequest,
 			finalStates: map[string]job.JobState{
-				"XXX": "inactive",
-				"YYY": "inactive",
+				"XXX.service": "inactive",
+				"YYY.service": "inactive",
 			},
 		},
 		// Referencing a Unit where the name is omitted should substitute the name from the path
 		{
 			initJobs: []job.Job{
-				job.Job{Name: "XXX", Unit: newUnit(t, "[Service]\nFoo=Bar")},
-				job.Job{Name: "YYY", Unit: newUnit(t, "[Service]\nFoo=Baz")},
+				job.Job{Name: "XXX.service", Unit: newUnit(t, "[Service]\nFoo=Bar")},
+				job.Job{Name: "YYY.service", Unit: newUnit(t, "[Service]\nFoo=Baz")},
 			},
 			initStates: map[string]job.JobState{
-				"XXX": "inactive",
-				"YYY": "inactive",
+				"XXX.service": "inactive",
+				"YYY.service": "inactive",
 			},
-			item: "XXX",
+			item: "XXX.service",
 			arg: schema.Unit{
 				DesiredState: "loaded",
 			},
 			code: http.StatusNoContent,
 			finalStates: map[string]job.JobState{
-				"XXX": "loaded",
-				"YYY": "inactive",
+				"XXX.service": "loaded",
+				"YYY.service": "inactive",
 			},
 		},
 	}
@@ -628,14 +628,56 @@ func TestValidateOptions(t *testing.T) {
 }
 
 func TestValidateName(t *testing.T) {
-	testCases := map[string]bool{
-		"asdf": true,
-		"":     false,
+	badTestCases := []string{
+		// cannot be empty
+		"",
+		// cannot be longer than unitNameMax
+		fmt.Sprintf("%0"+strconv.Itoa(unitNameMax+1)+"s", ".service"),
+		fmt.Sprintf("%0"+strconv.Itoa(unitNameMax*2)+"s", ".mount"),
+		// must contain "."
+		"fooservice",
+		"barmount",
+		"bar@foo",
+		// cannot end in "."
+		"foo.",
+		"foo.service.",
+		"foo@foo.service.",
+		// must have valid unit suffix
+		"foo.bar",
+		"hello.cerveza",
+		"foo.servICE",
+		"yo.yo.service",
+		// cannot have invalid characters
+		"foo%.service",
+		"foo$asd.service",
+		"hello##.mount",
+		"yes/no.service",
+		// cannot start in "@"
+		"@foo.service",
+		"@this.mount",
 	}
-	for name, want := range testCases {
-		err := validateName(name)
-		if (err == nil) != want {
-			t.Errorf("name %q: bad validation: want %t, got err=%v", name, want, err)
+	for _, name := range badTestCases {
+		if err := validateName(name); err == nil {
+			t.Errorf("name %q: validation did not fail as expected!", name)
+		}
+	}
+
+	goodTestCases := []string{
+		"foo.service",
+		"hello.mount",
+		"foo@123.service",
+		"foo@.service",
+		"hello@world.path",
+		"hello:world.service",
+		"this+that.mount",
+		"yes@no\\.service",
+		"dog=woof@.mount",
+		// generate a name the exact length of unitNameMax
+		fmt.Sprintf("%0"+strconv.Itoa(unitNameMax)+"s", ".service"),
+	}
+	for _, name := range goodTestCases {
+		if err := validateName(name); err != nil {
+			t.Errorf("name %q: validation failed unexpectedly! err=%v", name, err)
 		}
 	}
 }
