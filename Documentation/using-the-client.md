@@ -1,3 +1,5 @@
+<i>Note: this document closely tracks the *master* branch of fleet. For information most accurate to the version of fleet you are running, please browse the documentation at a particular tagged release. Recent releases: [v0.6.2](https://github.com/coreos/fleet/tree/v0.6.2/Documentation) [v0.7.1](https://github.com/coreos/fleet/tree/v0.7.1/Documentation) [v0.8.0](https://github.com/coreos/fleet/tree/v0.8.0/Documentation)</i>
+
 # Using the Client
 
 fleet provides a command-line tool called `fleetctl`. The commands provided by
