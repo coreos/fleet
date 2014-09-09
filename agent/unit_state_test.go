@@ -2,9 +2,12 @@ package agent
 
 import (
 	"reflect"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/coreos/fleet/machine"
+	"github.com/coreos/fleet/pkg"
 	"github.com/coreos/fleet/unit"
 )
 
@@ -141,5 +144,150 @@ func TestPruneCache(t *testing.T) {
 		if !reflect.DeepEqual(tt.cacheAfter, usp.cache) {
 			t.Errorf("case %d: expected cache after operation %#v, got %#v", i, tt.cacheAfter, usp.cache)
 		}
+	}
+}
+
+func TestUnitStatePublisherRun(t *testing.T) {
+	fclock := &pkg.FakeClock{}
+	states := make([]*unit.UnitState, 0)
+	published := make(chan struct{})
+	pf := func(name string, us *unit.UnitState) {
+		states = append(states, us)
+		go func() {
+			published <- struct{}{}
+		}()
+	}
+	usp := &UnitStatePublisher{
+		mach:      &machine.FakeMachine{},
+		publisher: pf,
+		ttl:       5 * time.Second,
+		mutex:     sync.RWMutex{},
+		cache:     make(map[string]*unit.UnitState),
+		clock:     fclock,
+	}
+	usp.cache = map[string]*unit.UnitState{
+		"foo.service": &unit.UnitState{
+			UnitName:    "foo.service",
+			ActiveState: "active",
+			MachineID:   "XXX",
+		},
+	}
+
+	bc := make(chan *unit.UnitStateHeartbeat)
+	sc := make(chan bool)
+	go func() {
+		usp.Run(bc, sc)
+	}()
+
+	// block until Run() is definitely waiting on After()
+	// TODO(jonboulle): do this more elegantly!!!
+	for {
+		if fclock.Sleepers() == 1 {
+			break
+		}
+	}
+
+	// tick less than the publish interval
+	fclock.Tick(time.Second)
+
+	select {
+	case <-published:
+		t.Fatal("UnitState published unexpectedly!")
+	default:
+	}
+	want := []*unit.UnitState{}
+	if !reflect.DeepEqual(states, want) {
+		t.Errorf("bad UnitStates: got %#v, want %#v", states, want)
+	}
+
+	// now up to the publish interval
+	fclock.Tick(4 * time.Second)
+	want = []*unit.UnitState{
+		&unit.UnitState{
+			UnitName:    "foo.service",
+			ActiveState: "active",
+			MachineID:   "XXX",
+		},
+	}
+	select {
+	case <-published:
+		if !reflect.DeepEqual(states, want) {
+			t.Errorf("bad UnitStates: got %#v, want %#v", states, want)
+		}
+	case <-time.After(time.Second):
+		t.Fatalf("UnitState not published as expected!")
+	}
+
+	// reset states
+	states = []*unit.UnitState{}
+
+	// block until Run() is definitely waiting on After()
+	// TODO(jonboulle): do this more elegantly!!!
+	for {
+		if fclock.Sleepers() == 1 {
+			break
+		}
+	}
+
+	// tick less than the publish interval, again
+	fclock.Tick(4 * time.Second)
+
+	// no more should be published
+	select {
+	case <-published:
+		t.Fatal("UnitState published unexpectedly!")
+	default:
+	}
+	want = []*unit.UnitState{}
+	if !reflect.DeepEqual(states, want) {
+		t.Errorf("bad UnitStates: got %#v, want %#v", states, want)
+	}
+
+	// tick way past the publish interval
+	fclock.Tick(time.Hour)
+	want = []*unit.UnitState{
+		&unit.UnitState{
+			UnitName:    "foo.service",
+			ActiveState: "active",
+			MachineID:   "XXX",
+		},
+	}
+
+	// state should be published, but just once (since it's still just a single event)
+	select {
+	case <-published:
+		if !reflect.DeepEqual(states, want) {
+			t.Errorf("bad UnitStates: got %#v, want %#v", states, want)
+		}
+	case <-time.After(time.Second):
+		t.Fatalf("UnitState not published as expected!")
+	}
+
+	// now stop the UnitStatePublisher
+	close(sc)
+
+	// reset states
+	states = []*unit.UnitState{}
+
+	// block until Run() is definitely waiting on After()
+	// TODO(jonboulle): do this more elegantly!!!
+	for {
+		if fclock.Sleepers() == 1 {
+			break
+		}
+	}
+
+	// tick way past the publish interval
+	fclock.Tick(time.Hour)
+
+	// no more states should be published
+	select {
+	case <-published:
+		t.Fatal("UnitState published unexpectedly!")
+	default:
+	}
+	want = []*unit.UnitState{}
+	if !reflect.DeepEqual(states, want) {
+		t.Errorf("bad UnitStates: got %#v, want %#v", states, want)
 	}
 }

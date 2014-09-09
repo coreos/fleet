@@ -8,27 +8,34 @@ import (
 
 	"github.com/coreos/fleet/log"
 	"github.com/coreos/fleet/machine"
+	"github.com/coreos/fleet/pkg"
 	"github.com/coreos/fleet/registry"
 	"github.com/coreos/fleet/unit"
 )
 
 func NewUnitStatePublisher(reg registry.Registry, mach machine.Machine, ttl time.Duration) *UnitStatePublisher {
 	return &UnitStatePublisher{
-		reg:   reg,
-		mach:  mach,
-		ttl:   ttl,
-		mutex: sync.RWMutex{},
-		cache: make(map[string]*unit.UnitState),
+		mach:      mach,
+		ttl:       ttl,
+		publisher: newPublisher(reg, ttl),
+		mutex:     sync.RWMutex{},
+		cache:     make(map[string]*unit.UnitState),
+		clock:     pkg.NewRealClock(),
 	}
 }
 
+type publishFunc func(name string, us *unit.UnitState)
+
 type UnitStatePublisher struct {
-	reg  registry.Registry
 	mach machine.Machine
 	ttl  time.Duration
 
+	publisher publishFunc
+
 	mutex sync.RWMutex
 	cache map[string]*unit.UnitState
+
+	clock pkg.Clock
 }
 
 // Run caches all of the heartbeat objects from the provided channel, publishing
@@ -40,10 +47,10 @@ func (p *UnitStatePublisher) Run(beatchan <-chan *unit.UnitStateHeartbeat, stop 
 			select {
 			case <-stop:
 				return
-			case <-time.After(p.ttl / 2):
+			case <-p.clock.After(p.ttl / 2):
 				p.mutex.Lock()
 				for name, us := range p.cache {
-					p.publishOne(name, us)
+					p.publisher(name, us)
 				}
 				p.pruneCache()
 				p.mutex.Unlock()
@@ -63,7 +70,7 @@ func (p *UnitStatePublisher) Run(beatchan <-chan *unit.UnitStateHeartbeat, stop 
 			}
 
 			if p.updateCache(bt) {
-				go p.publishOne(bt.Name, bt.State)
+				go p.publisher(bt.Name, bt.State)
 			}
 		}
 	}
@@ -89,31 +96,6 @@ func (p *UnitStatePublisher) pruneCache() {
 	}
 }
 
-func (p *UnitStatePublisher) publishOne(name string, us *unit.UnitState) {
-	if us == nil {
-		log.V(1).Infof("Destroying UnitState(%s) in Registry", name)
-		err := p.reg.RemoveUnitState(name)
-		if err != nil {
-			log.Errorf("Failed to destroy UnitState(%s) in Registry: %v", name, err)
-		}
-	} else {
-		// Sanity check - don't want to publish incomplete UnitStates
-		// TODO(jonboulle): consider teasing apart a separate UnitState-like struct
-		// so we can rely on a UnitState always being fully hydrated?
-
-		// See https://github.com/coreos/fleet/issues/720
-		//if len(us.UnitHash) == 0 {
-		//	log.Errorf("Refusing to push UnitState(%s), no UnitHash: %#v", name, us)
-
-		if len(us.MachineID) == 0 {
-			log.Errorf("Refusing to push UnitState(%s), no MachineID: %#v", name, us)
-		} else {
-			log.V(1).Infof("Pushing UnitState(%s) to Registry: %#v", name, us)
-			p.reg.SaveUnitState(name, us, p.ttl)
-		}
-	}
-}
-
 func (p *UnitStatePublisher) updateCache(update *unit.UnitStateHeartbeat) (changed bool) {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
@@ -130,6 +112,35 @@ func (p *UnitStatePublisher) updateCache(update *unit.UnitStateHeartbeat) (chang
 
 func (p *UnitStatePublisher) Purge() {
 	for name := range p.cache {
-		p.publishOne(name, nil)
+		p.publisher(name, nil)
+	}
+}
+
+// newPublisher returns a publishFunc that publishes a single UnitState
+// by the given name to the provided Registry, with the given TTL
+func newPublisher(reg registry.Registry, ttl time.Duration) publishFunc {
+	return func(name string, us *unit.UnitState) {
+		if us == nil {
+			log.V(1).Infof("Destroying UnitState(%s) in Registry", name)
+			err := reg.RemoveUnitState(name)
+			if err != nil {
+				log.Errorf("Failed to destroy UnitState(%s) in Registry: %v", name, err)
+			}
+		} else {
+			// Sanity check - don't want to publish incomplete UnitStates
+			// TODO(jonboulle): consider teasing apart a separate UnitState-like struct
+			// so we can rely on a UnitState always being fully hydrated?
+
+			// See https://github.com/coreos/fleet/issues/720
+			//if len(us.UnitHash) == 0 {
+			//	log.Errorf("Refusing to push UnitState(%s), no UnitHash: %#v", name, us)
+
+			if len(us.MachineID) == 0 {
+				log.Errorf("Refusing to push UnitState(%s), no MachineID: %#v", name, us)
+			} else {
+				log.V(1).Infof("Pushing UnitState(%s) to Registry: %#v", name, us)
+				reg.SaveUnitState(name, us, ttl)
+			}
+		}
 	}
 }
