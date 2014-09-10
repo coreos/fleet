@@ -651,6 +651,8 @@ func TestValidateName(t *testing.T) {
 		"foo$asd.service",
 		"hello##.mount",
 		"yes/no.service",
+		"this+that.mount",
+		"dog=woof@.mount",
 		// cannot start in "@"
 		"@foo.service",
 		"@this.mount",
@@ -669,9 +671,9 @@ func TestValidateName(t *testing.T) {
 		"yo.yo.service",
 		"hello@world.path",
 		"hello:world.service",
-		"this+that.mount",
 		"yes@no\\.service",
-		"dog=woof@.mount",
+		"foo-bar.mount",
+		"jalapano_chips.service",
 		// generate a name the exact length of unitNameMax
 		fmt.Sprintf("%0"+strconv.Itoa(unitNameMax)+"s", ".service"),
 	}

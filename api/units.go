@@ -111,7 +111,7 @@ const (
 	lowercase      = "abcdefghijklmnopqrstuvwxyz"
 	uppercase      = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 	alphanumerical = digits + lowercase + uppercase
-	validChars     = alphanumerical + `:=+.\@`
+	validChars     = alphanumerical + `:-_.\@`
 )
 
 var validUnitTypes = pkg.NewUnsafeSet(
