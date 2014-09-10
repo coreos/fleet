@@ -646,7 +646,6 @@ func TestValidateName(t *testing.T) {
 		"foo.bar",
 		"hello.cerveza",
 		"foo.servICE",
-		"yo.yo.service",
 		// cannot have invalid characters
 		"foo%.service",
 		"foo$asd.service",
@@ -667,6 +666,7 @@ func TestValidateName(t *testing.T) {
 		"hello.mount",
 		"foo@123.service",
 		"foo@.service",
+		"yo.yo.service",
 		"hello@world.path",
 		"hello:world.service",
 		"this+that.mount",

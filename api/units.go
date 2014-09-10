@@ -141,7 +141,7 @@ func ValidateName(name string) error {
 	if length > unitNameMax {
 		return fmt.Errorf("unit name exceeds maximum length (%d)", unitNameMax)
 	}
-	dot := strings.Index(name, ".")
+	dot := strings.LastIndex(name, ".")
 	if dot == -1 {
 		return errors.New(`unit name must contain "."`)
 	}
