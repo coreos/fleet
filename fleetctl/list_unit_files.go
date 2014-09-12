@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -85,24 +84,24 @@ func init() {
 
 func runListUnitFiles(args []string) (exit int) {
 	if listUnitFilesFieldsFlag == "" {
-		fmt.Fprintf(os.Stderr, "Must define output format\n")
+		stderr("Must define output format")
 		return 1
 	}
 
 	cols := strings.Split(listUnitFilesFieldsFlag, ",")
 	for _, s := range cols {
 		if _, ok := listUnitFilesFields[s]; !ok {
-			fmt.Fprintf(os.Stderr, "Invalid key in output format: %q\n", s)
+			stderr("Invalid key in output format: %q", s)
 			return 1
 		}
 		if s == "tmachine" {
-			fmt.Fprintln(os.Stderr, "WARNING: The \"tmachine\" field is deprecated. Use \"target\" instead")
+			stderr("WARNING: The \"tmachine\" field is deprecated. Use \"target\" instead")
 		}
 	}
 
 	units, err := cAPI.Units()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error retrieving list of units from repository: %v\n", err)
+		stderr("Error retrieving list of units from repository: %v", err)
 		return 1
 	}
 

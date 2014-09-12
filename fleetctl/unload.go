@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/coreos/fleet/job"
@@ -25,7 +24,7 @@ func init() {
 func runUnloadUnit(args []string) (exit int) {
 	units, err := findUnits(args)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
+		stderr("%v", err)
 		return 1
 	}
 
@@ -41,7 +40,7 @@ func runUnloadUnit(args []string) (exit int) {
 		log.V(1).Infof("Setting target state of Unit(%s) to %s", s.Name, job.JobStateInactive)
 		cAPI.SetUnitTargetState(s.Name, string(job.JobStateInactive))
 		if suToGlobal(s) {
-			fmt.Printf("Triggered global unit %s unload\n", s.Name)
+			stdout("Triggered global unit %s unload", s.Name)
 		} else {
 			wait = append(wait, s.Name)
 		}
@@ -50,12 +49,12 @@ func runUnloadUnit(args []string) (exit int) {
 	if !sharedFlags.NoBlock {
 		errchan := waitForUnitStates(wait, job.JobStateInactive, sharedFlags.BlockAttempts, os.Stderr)
 		for err := range errchan {
-			fmt.Fprintf(os.Stderr, "Error waiting for units: %v\n", err)
+			stderr("Error waiting for units: %v", err)
 			exit = 1
 		}
 	} else {
 		for _, name := range wait {
-			fmt.Printf("Triggered unit %s unload\n", name)
+			stdout("Triggered unit %s unload", name)
 		}
 	}
 

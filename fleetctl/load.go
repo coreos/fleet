@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/coreos/fleet/job"
@@ -34,20 +33,20 @@ func init() {
 
 func runLoadUnits(args []string) (exit int) {
 	if err := lazyCreateUnits(args); err != nil {
-		fmt.Fprintf(os.Stderr, "Error creating units: %v\n", err)
+		stderr("Error creating units: %v", err)
 		return 1
 	}
 
 	triggered, err := lazyLoadUnits(args)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error loading units: %v\n", err)
+		stderr("Error loading units: %v", err)
 		return 1
 	}
 
 	var loading []string
 	for _, u := range triggered {
 		if suToGlobal(*u) {
-			fmt.Printf("Triggered global unit %s load\n", u.Name)
+			stdout("Triggered global unit %s load", u.Name)
 		} else {
 			loading = append(loading, u.Name)
 		}
@@ -56,12 +55,12 @@ func runLoadUnits(args []string) (exit int) {
 	if !sharedFlags.NoBlock {
 		errchan := waitForUnitStates(loading, job.JobStateLoaded, sharedFlags.BlockAttempts, os.Stdout)
 		for err := range errchan {
-			fmt.Fprintf(os.Stderr, "Error waiting for units: %v\n", err)
+			stderr("Error waiting for units: %v", err)
 			exit = 1
 		}
 	} else {
 		for _, name := range loading {
-			fmt.Printf("Triggered unit %s load\n", name)
+			stdout("Triggered unit %s load", name)
 		}
 	}
 

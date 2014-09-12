@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/coreos/fleet/schema"
 )
@@ -20,22 +19,26 @@ the correct version of a unit is running.`,
 
 func runCatUnit(args []string) (exit int) {
 	if len(args) != 1 {
-		fmt.Fprintln(os.Stderr, "One unit file must be provided.")
+		stderr("One unit file must be provided")
 		return 1
 	}
 
 	name := unitNameMangle(args[0])
 	u, err := cAPI.Unit(name)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error retrieving Unit %s: %v\n", name, err)
+		stderr("Error retrieving Unit %s: %v", name, err)
 		return 1
 	}
 	if u == nil {
-		fmt.Fprintf(os.Stderr, "Unit %s not found.\n", name)
+		stderr("Unit %s not found", name)
 		return 1
 	}
 
 	uf := schema.MapSchemaUnitOptionsToUnitFile(u.Options)
+
+	// Must not add a newline here. The contents of the unit file
+	// must not be modified.
 	fmt.Print(uf.String())
+
 	return
 }
