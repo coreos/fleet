@@ -188,8 +188,10 @@ func (s *Server) MarshalJSON() ([]byte, error) {
 	return json.Marshal(struct {
 		Agent              *agent.Agent
 		UnitStatePublisher *agent.UnitStatePublisher
+		UnitStateGenerator *unit.UnitStateGenerator
 	}{
 		Agent:              s.agent,
 		UnitStatePublisher: s.usPub,
+		UnitStateGenerator: s.usGen,
 	})
 }
