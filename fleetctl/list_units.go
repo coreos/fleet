@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"os"
 	"sort"
 	"strings"
 
@@ -90,24 +89,22 @@ func init() {
 }
 
 func runListUnits(args []string) (exit int) {
-
 	if listUnitsFieldsFlag == "" {
-		fmt.Fprintf(os.Stderr, "Must define output format\n")
+		stderr("Must define output format")
 		return 1
 	}
 
 	cols := strings.Split(listUnitsFieldsFlag, ",")
 	for _, s := range cols {
 		if _, ok := listUnitsFields[s]; !ok {
-			fmt.Fprintf(os.Stderr, "Invalid key in output format: %q\n", s)
+			stderr("Invalid key in output format: %q", s)
 			return 1
 		}
 	}
 
 	states, err := cAPI.UnitStates()
-
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error retrieving list of units from repository: %v\n", err)
+		stderr("Error retrieving list of units from repository: %v", err)
 		return 1
 	}
 

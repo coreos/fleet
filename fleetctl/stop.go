@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/coreos/fleet/job"
@@ -41,7 +40,7 @@ func init() {
 func runStopUnit(args []string) (exit int) {
 	units, err := findUnits(args)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
+		stderr("%v", err)
 		return 1
 	}
 
@@ -49,7 +48,7 @@ func runStopUnit(args []string) (exit int) {
 	for _, u := range units {
 		if !suToGlobal(u) {
 			if job.JobState(u.CurrentState) == job.JobStateInactive {
-				fmt.Fprintf(os.Stderr, "Unable to stop unit %s in state %s\n", u.Name, job.JobStateInactive)
+				stderr("Unable to stop unit %s in state %s", u.Name, job.JobStateInactive)
 				return 1
 			} else if job.JobState(u.CurrentState) == job.JobStateLoaded {
 				log.V(1).Infof("Unit(%s) already %s, skipping.", u.Name, job.JobStateLoaded)
@@ -60,7 +59,7 @@ func runStopUnit(args []string) (exit int) {
 		log.V(1).Infof("Setting target state of Unit(%s) to %s", u.Name, job.JobStateLoaded)
 		cAPI.SetUnitTargetState(u.Name, string(job.JobStateLoaded))
 		if suToGlobal(u) {
-			fmt.Printf("Triggered global unit %s stop\n", u.Name)
+			stdout("Triggered global unit %s stop", u.Name)
 		} else {
 			stopping = append(stopping, u.Name)
 		}
@@ -69,12 +68,12 @@ func runStopUnit(args []string) (exit int) {
 	if !sharedFlags.NoBlock {
 		errchan := waitForUnitStates(stopping, job.JobStateLoaded, sharedFlags.BlockAttempts, os.Stdout)
 		for err := range errchan {
-			fmt.Fprintf(os.Stderr, "Error waiting for units: %v\n", err)
+			stderr("Error waiting for units: %v", err)
 			exit = 1
 		}
 	} else {
 		for _, name := range stopping {
-			fmt.Printf("Triggered unit %s stop\n", name)
+			stdout("Triggered unit %s stop", name)
 		}
 	}
 

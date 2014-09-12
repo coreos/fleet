@@ -55,7 +55,7 @@ func init() {
 
 func runSSH(args []string) (exit int) {
 	if flagUnit != "" && flagMachine != "" {
-		fmt.Fprintln(os.Stderr, "Both machine and unit flags provided, please specify only one.")
+		stderr("Both machine and unit flags provided, please specify only one.")
 		return 1
 	}
 
@@ -70,7 +70,7 @@ func runSSH(args []string) (exit int) {
 	default:
 		addr, err = globalMachineLookup(args)
 		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
+			stderr("%v", err)
 			return 1
 		}
 		// trim machine/unit name from args
@@ -80,7 +80,7 @@ func runSSH(args []string) (exit int) {
 	}
 
 	if addr == "" {
-		fmt.Fprintln(os.Stderr, "Requested machine could not be found.")
+		stderr("Requested machine could not be found.")
 		return 1
 	}
 
@@ -93,7 +93,7 @@ func runSSH(args []string) (exit int) {
 		sshClient, err = ssh.NewSSHClient("core", addr, getChecker(), flagSSHAgentForwarding)
 	}
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed building SSH client: %v\n", err)
+		stderr("Failed building SSH client: %v", err)
 		return 1
 	}
 
@@ -103,11 +103,11 @@ func runSSH(args []string) (exit int) {
 		cmd := strings.Join(args, " ")
 		err, exit = ssh.Execute(sshClient, cmd)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed running command over SSH: %v\n", err)
+			stderr("Failed running command over SSH: %v", err)
 		}
 	} else {
 		if err := ssh.Shell(sshClient); err != nil {
-			fmt.Fprintf(os.Stderr, "Failed opening shell over SSH: %v\n", err)
+			stderr("Failed opening shell over SSH: %v", err)
 			exit = 1
 		}
 	}
@@ -150,7 +150,7 @@ func findAddressInMachineList(lookup string) (string, bool) {
 		if !strings.HasPrefix(machState.ID, lookup) {
 			continue
 		} else if match != nil {
-			fmt.Fprintln(os.Stderr, "Found more than one Machine, be more specific.")
+			stderr("Found more than one Machine, be more specific.")
 			os.Exit(1)
 		}
 		match = &machState
@@ -185,16 +185,16 @@ func runCommand(cmd string, machID string) (retcode int) {
 	if machine.IsLocalMachineID(machID) {
 		err, retcode = runLocalCommand(cmd)
 		if err != nil {
-			fmt.Printf("Error running local command: %v\n", err)
+			stdout("Error running local command: %v", err)
 		}
 	} else {
 		ms, err := machineState(machID)
 		if err != nil || ms == nil {
-			fmt.Printf("Error getting machine IP: %v\n", err)
+			stdout("Error getting machine IP: %v", err)
 		} else {
 			err, retcode = runRemoteCommand(cmd, ms.PublicIP)
 			if err != nil {
-				fmt.Printf("Error running remote command: %v\n", err)
+				stdout("Error running remote command: %v", err)
 			}
 		}
 	}

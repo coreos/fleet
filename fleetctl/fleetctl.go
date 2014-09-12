@@ -145,6 +145,22 @@ func getFlags(flagset *flag.FlagSet) (flags []*flag.Flag) {
 	return
 }
 
+
+func maybeAddNewline(s string) string {
+	if !strings.HasSuffix(s, "\n") {
+		s = s + "\n"
+	}
+	return s
+}
+
+func stderr(format string, args ...interface{}) {
+	fmt.Fprintf(os.Stderr, maybeAddNewline(format), args...)
+}
+
+func stdout(format string, args ...interface{}) {
+	fmt.Fprintf(os.Stdout, maybeAddNewline(format), args...)
+}
+
 // checkVersion makes a best-effort attempt to verify that fleetctl is at least as new as the
 // latest fleet version found registered in the cluster. If any errors are encountered or fleetctl
 // is >= the latest version found, it returns true. If it is < the latest found version, it returns
@@ -189,7 +205,7 @@ func main() {
 		if c.Name == args[0] {
 			cmd = c
 			if err := c.Flags.Parse(args[1:]); err != nil {
-				fmt.Println(err.Error())
+				stdout("%v", err)
 				os.Exit(2)
 			}
 			break
@@ -197,13 +213,13 @@ func main() {
 	}
 
 	if cmd == nil {
-		fmt.Printf("%v: unknown subcommand: %q\n", cliName, args[0])
-		fmt.Printf("Run '%v help' for usage.\n", cliName)
+		stdout("%v: unknown subcommand: %q", cliName, args[0])
+		stdout("Run '%v help' for usage.", cliName)
 		os.Exit(2)
 	}
 
 	if sharedFlags.Sign {
-		fmt.Fprintln(os.Stderr, "WARNING: The signed/verified units feature is DEPRECATED and cannot be used.")
+		stderr("WARNING: The signed/verified units feature is DEPRECATED and cannot be used.")
 		os.Exit(2)
 	}
 
@@ -211,8 +227,7 @@ func main() {
 		var err error
 		cAPI, err = getClient()
 		if err != nil {
-			msg := fmt.Sprintf("Unable to initialize client: %v\n", err)
-			fmt.Fprint(os.Stderr, msg)
+			stderr("Unable to initialize client: %v", err)
 			os.Exit(1)
 		}
 	}
@@ -333,7 +348,7 @@ func getRegistryClient() (client.API, error) {
 	reg := registry.New(eClient, globalFlags.EtcdKeyPrefix)
 
 	if msg, ok := checkVersion(reg); !ok {
-		fmt.Fprint(os.Stderr, msg)
+		stderr(msg)
 	}
 
 	return &client.RegistryClient{reg}, nil
@@ -523,7 +538,7 @@ func warnOnDifferentLocalUnit(name string, su *schema.Unit) {
 	if _, err := os.Stat(name); !os.IsNotExist(err) {
 		luf, err := getUnitFromFile(name)
 		if err == nil && luf.Hash() != suf.Hash() {
-			fmt.Fprintf(os.Stderr, "WARNING: Unit %s in registry differs from local unit file %s\n", su.Name, name)
+			stderr("WARNING: Unit %s in registry differs from local unit file %s", su.Name, name)
 			return
 		}
 	}
@@ -532,7 +547,7 @@ func warnOnDifferentLocalUnit(name string, su *schema.Unit) {
 		if _, err := os.Stat(file); !os.IsNotExist(err) {
 			tmpl, err := getUnitFromFile(file)
 			if err == nil && tmpl.Hash() != suf.Hash() {
-				fmt.Fprintf(os.Stderr, "WARNING: Unit %s in registry differs from local template unit file %s\n", su.Name, uni.Template)
+				stderr("WARNING: Unit %s in registry differs from local template unit file %s", su.Name, uni.Template)
 			}
 		}
 	}

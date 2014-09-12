@@ -1,10 +1,5 @@
 package main
 
-import (
-	"fmt"
-	"os"
-)
-
 var cmdSubmitUnit = &Command{
 	Name:    "submit",
 	Summary: "Upload one or more units to the cluster without starting them",
@@ -28,7 +23,7 @@ func init() {
 
 func runSubmitUnits(args []string) (exit int) {
 	if err := lazyCreateUnits(args); err != nil {
-		fmt.Fprintf(os.Stderr, "Error creating units: %v\n", err)
+		stderr("Error creating units: %v", err)
 		exit = 1
 	}
 	return
