@@ -185,16 +185,16 @@ func runCommand(cmd string, machID string) (retcode int) {
 	if machine.IsLocalMachineID(machID) {
 		err, retcode = runLocalCommand(cmd)
 		if err != nil {
-			stdout("Error running local command: %v", err)
+			stderr("Error running local command: %v", err)
 		}
 	} else {
 		ms, err := machineState(machID)
 		if err != nil || ms == nil {
-			stdout("Error getting machine IP: %v", err)
+			stderr("Error getting machine IP: %v", err)
 		} else {
 			err, retcode = runRemoteCommand(cmd, ms.PublicIP)
 			if err != nil {
-				stdout("Error running remote command: %v", err)
+				stderr("Error running remote command: %v", err)
 			}
 		}
 	}
