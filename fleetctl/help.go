@@ -90,7 +90,7 @@ func runHelp(args []string) (exit int) {
 	}
 
 	if cmd == nil {
-		stdout("Unrecognized command: %s", args[0])
+		stderr("Unrecognized command: %s", args[0])
 		return 1
 	}
 

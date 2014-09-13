@@ -205,7 +205,7 @@ func main() {
 		if c.Name == args[0] {
 			cmd = c
 			if err := c.Flags.Parse(args[1:]); err != nil {
-				stdout("%v", err)
+				stderr("%v", err)
 				os.Exit(2)
 			}
 			break
@@ -213,8 +213,8 @@ func main() {
 	}
 
 	if cmd == nil {
-		stdout("%v: unknown subcommand: %q", cliName, args[0])
-		stdout("Run '%v help' for usage.", cliName)
+		stderr("%v: unknown subcommand: %q", cliName, args[0])
+		stderr("Run '%v help' for usage.", cliName)
 		os.Exit(2)
 	}
 
