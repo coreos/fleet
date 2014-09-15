@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"os"
 	"sort"
 	"strings"
 
@@ -59,21 +58,21 @@ func init() {
 
 func runListMachines(args []string) (exit int) {
 	if listMachinesFieldsFlag == "" {
-		fmt.Fprintf(os.Stderr, "Must define output format\n")
+		stderr("Must define output format")
 		return 1
 	}
 
 	cols := strings.Split(listMachinesFieldsFlag, ",")
 	for _, s := range cols {
 		if _, ok := listMachinesFields[s]; !ok {
-			fmt.Fprintf(os.Stderr, "Invalid key in output format: %q\n", s)
+			stderr("Invalid key in output format: %q", s)
 			return 1
 		}
 	}
 
 	machines, err := cAPI.Machines()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error retrieving list of active machines: %v\n", err)
+		stderr("Error retrieving list of active machines: %v", err)
 		return 1
 	}
 

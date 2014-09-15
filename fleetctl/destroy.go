@@ -1,9 +1,5 @@
 package main
 
-import (
-	"fmt"
-)
-
 var cmdDestroyUnit = &Command{
 	Name:    "destroy",
 	Summary: "Destroy one or more units in the cluster",
@@ -26,7 +22,7 @@ func runDestroyUnits(args []string) (exit int) {
 			continue
 		}
 
-		fmt.Printf("Destroyed %s\n", name)
+		stdout("Destroyed %s", name)
 	}
 	return
 }
