@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/coreos/fleet/job"
 )
@@ -42,14 +41,14 @@ func runStatusUnits(args []string) (exit int) {
 func printUnitStatus(name string) int {
 	u, err := cAPI.Unit(name)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error retrieving unit %s: %v", name, err)
+		stderr("Error retrieving unit %s: %v", name, err)
 		return 1
 	}
 	if u == nil {
-		fmt.Fprintf(os.Stderr, "Unit %s does not exist.\n", name)
+		stderr("Unit %s does not exist.", name)
 		return 1
 	} else if job.JobState(u.CurrentState) == job.JobStateInactive {
-		fmt.Fprintf(os.Stderr, "Unit %s does not appear to be running.\n", name)
+		stderr("Unit %s does not appear to be running.", name)
 		return 1
 	}
 
