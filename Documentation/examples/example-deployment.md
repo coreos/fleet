@@ -76,6 +76,8 @@ ExecStop=/usr/bin/docker stop subgun-presence-%i
 MachineOf=subgun-http@%i.service
 ```
 
+If you are going to modify these units, be sure you don't copy a `docker run` command that starts a container in detached mode (`-d`). Detached mode won't start the container as a child of the unit's pid. This will cause the unit to run for just a few seconds and then exit.
+
 ## Deploy!
 
 
