@@ -52,9 +52,9 @@ After you have machines configured (check `fleetctl list-machines`), get to work
 
 ### Building
 
-fleet must be built with Go 1.2+ on a Linux machine. Simply run `./build` and then copy the binaries out of bin/ onto each of your machines. The tests can similarly be run by simply invoking `./test`.
+fleet must be built with Go 1.3+ on a Linux machine. Simply run `./build` and then copy the binaries out of bin/ onto each of your machines. The tests can similarly be run by simply invoking `./test`.
 
-If you're on a machine without Go 1.2+ but you have Docker installed, run `./build-docker` to compile the binaries instead.
+If you're on a machine without Go 1.3+ but you have Docker installed, run `./build-docker` to compile the binaries instead.
 
 ## Project Details
 
