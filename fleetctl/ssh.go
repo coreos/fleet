@@ -40,7 +40,9 @@ Open a shell on a machine and forward the authentication agent connection:
 
 Tip: Create an alias for --tunnel.
 	- Add "alias fleetctl=fleetctl --tunnel 10.10.10.10" to your bash profile.
-	- Now you can run all fleet commands locally.`,
+	- Now you can run all fleet commands locally.
+
+This command does not work with global units.`,
 		Run: runSSH,
 	}
 )
@@ -168,9 +170,10 @@ func findAddressInRunningUnits(name string) (string, bool, error) {
 	u, err := cAPI.Unit(name)
 	if err != nil {
 		return "", false, err
-	}
-	if u == nil {
+	} else if u == nil {
 		return "", false, fmt.Errorf("unit does not exist")
+	} else if suToGlobal(*u) {
+		return "", false, fmt.Errorf("global units unsupported")
 	}
 
 	m := cachedMachineState(u.MachineID)
