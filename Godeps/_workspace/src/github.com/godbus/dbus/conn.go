@@ -317,11 +317,7 @@ func (conn *Conn) inWorker() {
 				}
 				conn.signalsLck.Lock()
 				for _, ch := range conn.signals {
-					// don't block trying to send a signal
-					select {
-					case ch <- signal:
-					default:
-					}
+					ch <- signal
 				}
 				conn.signalsLck.Unlock()
 			case TypeMethodCall:
@@ -508,6 +504,10 @@ type Error struct {
 	Body []interface{}
 }
 
+func NewError(name string, body []interface{}) *Error {
+	return &Error{name, body}
+}
+
 func (e Error) Error() string {
 	if len(e.Body) >= 1 {
 		s, ok := e.Body[0].(string)
@@ -546,13 +546,14 @@ type transport interface {
 	SendMessage(*Message) error
 }
 
+var (
+	transports map[string]func(string) (transport, error) = make(map[string]func(string) (transport, error))
+)
+
 func getTransport(address string) (transport, error) {
 	var err error
 	var t transport
 
-	m := map[string]func(string) (transport, error){
-		"unix": newUnixTransport,
-	}
 	addresses := strings.Split(address, ";")
 	for _, v := range addresses {
 		i := strings.IndexRune(v, ':')
@@ -560,7 +561,7 @@ func getTransport(address string) (transport, error) {
 			err = errors.New("dbus: invalid bus address (no transport)")
 			continue
 		}
-		f := m[v[:i]]
+		f := transports[v[:i]]
 		if f == nil {
 			err = errors.New("dbus: invalid bus address (invalid or unsupported transport)")
 		}

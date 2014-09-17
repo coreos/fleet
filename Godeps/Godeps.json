@@ -46,8 +46,8 @@
 		},
 		{
 			"ImportPath": "github.com/godbus/dbus",
-			"Comment": "0",
-			"Rev": "cb98efbb933d8389ab549a060e880ea3c375d213"
+			"Comment": "0-11-gcfab99a",
+			"Rev": "cfab99a9500db4ba03067996059d2fc425090bf3"
 		},
 		{
 			"ImportPath": "github.com/rakyll/globalconf",
