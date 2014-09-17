@@ -19,7 +19,9 @@ Show status of a single unit:
 	fleetctl status foo.service
 
 Show status of an entire directory with glob matching:
-fleetctl status myservice/*`,
+fleetctl status myservice/*
+
+This command does not work with global units.`,
 	Run: runStatusUnits,
 }
 
@@ -32,8 +34,10 @@ func runStatusUnits(args []string) (exit int) {
 
 	uMap := make(map[string]*schema.Unit, len(args))
 	for _, u := range units {
-		u := u
-		uMap[u.Name] = u
+		if u != nil {
+			u := u
+			uMap[u.Name] = u
+		}
 	}
 
 	names := make([]string, len(args))
@@ -42,13 +46,13 @@ func runStatusUnits(args []string) (exit int) {
 		names[i] = name
 
 		u, ok := uMap[name]
-
 		if !ok {
 			stderr("Unit %s does not exist.", name)
 			return 1
-		}
-
-		if job.JobState(u.CurrentState) == job.JobStateInactive {
+		} else if suToGlobal(*u) {
+			stderr("Unable to determine status of global unit %s.", name)
+			return 1
+		} else if job.JobState(u.CurrentState) == job.JobStateInactive {
 			stderr("Unit %s does not appear to be loaded.", name)
 			return 1
 		}
