@@ -15,7 +15,6 @@ import (
 )
 
 var (
-	flagMachine            string
 	flagUnit               string
 	flagSSHAgentForwarding bool
 	cmdSSH                 = &Command{
@@ -47,14 +46,14 @@ Tip: Create an alias for --tunnel.
 )
 
 func init() {
-	cmdSSH.Flags.StringVar(&flagMachine, "machine", "", "Open SSH connection to a specific machine.")
+	cmdSSH.Flags.StringVar(&sharedFlags.Machine, "machine", "", "Open SSH connection to a specific machine.")
 	cmdSSH.Flags.StringVar(&flagUnit, "unit", "", "Open SSH connection to machine running provided unit.")
 	cmdSSH.Flags.BoolVar(&flagSSHAgentForwarding, "forward-agent", false, "Forward local ssh-agent to target machine.")
 	cmdSSH.Flags.BoolVar(&flagSSHAgentForwarding, "A", false, "Shorthand for --forward-agent")
 }
 
 func runSSH(args []string) (exit int) {
-	if flagUnit != "" && flagMachine != "" {
+	if flagUnit != "" && sharedFlags.Machine != "" {
 		stderr("Both machine and unit flags provided, please specify only one.")
 		return 1
 	}
@@ -63,8 +62,8 @@ func runSSH(args []string) (exit int) {
 	var addr string
 
 	switch {
-	case flagMachine != "":
-		addr, _ = findAddressInMachineList(flagMachine)
+	case sharedFlags.Machine != "":
+		addr, _ = findAddressInMachineList(sharedFlags.Machine)
 	case flagUnit != "":
 		addr, _ = findAddressInRunningUnits(flagUnit)
 	default:
