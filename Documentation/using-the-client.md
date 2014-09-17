@@ -32,6 +32,14 @@ One can also provide `--tunnel` through the environment variable `FLEETCTL_TUNNE
 When using `--tunnel` and `--endpoint` together, it is important to note that all etcd requests will be made through the SSH tunnel. 
 The address in the `--endpoint` flag must be routable from the server hosting the tunnel.
 
+If the external host requires a username other than `core`, the `--ssh-username` flag can be used to set an alternative username.
+
+    fleetctl --ssh-username=elroy list-units
+
+Or
+
+    FLEETCTL_SSH_USERNAME=elroy fleetctl list-units
+
 Be sure to install one of the [tagged releases](https://github.com/coreos/fleet/releases) of `fleetctl` that matches the version of fleet running on the CoreOS machine. 
 Find the version on the server with:
 
