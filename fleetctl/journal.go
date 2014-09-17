@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/coreos/fleet/job"
+	"github.com/coreos/fleet/pkg"
 )
 
 var (
@@ -25,6 +25,7 @@ Read the last 100 lines:
 )
 
 func init() {
+	cmdJournal.Flags.StringVar(&sharedFlags.Machine, "machine", "", "Fetch the logs for a unit from a specific machine.")
 	cmdJournal.Flags.IntVar(&flagLines, "lines", 10, "Number of recent log lines to return")
 	cmdJournal.Flags.BoolVar(&flagFollow, "follow", false, "Continuously print new entries as they are appended to the journal.")
 	cmdJournal.Flags.BoolVar(&flagFollow, "f", false, "Shorthand for --follow")
@@ -37,17 +38,42 @@ func runJournal(args []string) (exit int) {
 	}
 	name := unitNameMangle(args[0])
 
-	u, err := cAPI.Unit(name)
+	states, err := cAPI.UnitStates()
 	if err != nil {
 		stderr("Error retrieving unit %s: %v", name, err)
 		return 1
 	}
-	if u == nil {
-		stderr("Unit %s does not exist.", name)
+
+	machines := pkg.NewUnsafeSet()
+	for _, s := range states {
+		if s.Name != name {
+			continue
+		}
+
+		machines.Add(s.MachineID)
+	}
+
+	mLen := machines.Length()
+	if mLen == 0 {
+		stderr("No state found for unit.")
 		return 1
-	} else if job.JobState(u.CurrentState) == job.JobStateInactive {
-		stderr("Unit %s does not appear to be running.", name)
-		return 1
+	}
+
+	var target string
+
+	if sharedFlags.Machine != "" {
+		if !machines.Contains(sharedFlags.Machine) {
+			stderr("Unable to find state for unit on provided machine.")
+			return 1
+		}
+		target = sharedFlags.Machine
+
+	} else {
+		if mLen > 1 {
+			stderr("Multiple machines reporting state for unit. Specify machine using the --machine flag.")
+			return 1
+		}
+		target = machines.Values()[0]
 	}
 
 	command := fmt.Sprintf("journalctl --unit %s --no-pager -n %d", name, flagLines)
@@ -55,5 +81,5 @@ func runJournal(args []string) (exit int) {
 		command += " -f"
 	}
 
-	return runCommand(command, u.MachineID)
+	return runCommand(command, target)
 }
