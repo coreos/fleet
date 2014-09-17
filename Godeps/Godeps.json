@@ -26,18 +26,18 @@
 		},
 		{
 			"ImportPath": "github.com/coreos/go-systemd/activation",
-			"Comment": "v2-21-g6704af4",
-			"Rev": "6704af41568c40cc2da750651280252c32168603"
+			"Comment": "v2-33-g7a81740",
+			"Rev": "7a81740665de3d730bf98811f6b2ae5746e42a32"
 		},
 		{
 			"ImportPath": "github.com/coreos/go-systemd/dbus",
-			"Comment": "v2-21-g6704af4",
-			"Rev": "6704af41568c40cc2da750651280252c32168603"
+			"Comment": "v2-33-g7a81740",
+			"Rev": "7a81740665de3d730bf98811f6b2ae5746e42a32"
 		},
 		{
 			"ImportPath": "github.com/coreos/go-systemd/unit",
-			"Comment": "v2-21-g6704af4",
-			"Rev": "6704af41568c40cc2da750651280252c32168603"
+			"Comment": "v2-33-g7a81740",
+			"Rev": "7a81740665de3d730bf98811f6b2ae5746e42a32"
 		},
 		{
 			"ImportPath": "github.com/docker/libcontainer/netlink",
@@ -46,8 +46,8 @@
 		},
 		{
 			"ImportPath": "github.com/godbus/dbus",
-			"Comment": "0",
-			"Rev": "cb98efbb933d8389ab549a060e880ea3c375d213"
+			"Comment": "0-11-gcfab99a",
+			"Rev": "cfab99a9500db4ba03067996059d2fc425090bf3"
 		},
 		{
 			"ImportPath": "github.com/rakyll/globalconf",
