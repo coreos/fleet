@@ -22,10 +22,6 @@ import (
 	"github.com/coreos/fleet/Godeps/_workspace/src/github.com/godbus/dbus"
 )
 
-func (c *Conn) initJobs() {
-	c.jobListener.jobs = make(map[dbus.ObjectPath]chan string)
-}
-
 func (c *Conn) jobComplete(signal *dbus.Signal) {
 	var id uint32
 	var job dbus.ObjectPath
@@ -140,8 +136,8 @@ func (c *Conn) KillUnit(name string, signal int32) {
 }
 
 // ResetFailedUnit resets the "failed" state of a specific unit.
-func (c *Conn) ResetFailedUnit(name string) (string, error) {
-	return c.runJob("org.freedesktop.systemd1.Manager.ResetFailedUnit", name)
+func (c *Conn) ResetFailedUnit(name string) error {
+	return c.sysobj.Call("org.freedesktop.systemd1.Manager.ResetFailedUnit", 0, name).Store()
 }
 
 // getProperties takes the unit name and returns all of its dbus object properties, for the given dbus interface
