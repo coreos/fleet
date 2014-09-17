@@ -68,7 +68,7 @@ func newFakeRegistryForSsh() client.API {
 func TestSshUnknownMachine(t *testing.T) {
 	cAPI = newFakeRegistryForSsh()
 
-	_, ok := findAddressInMachineList("asdf")
+	_, ok, _ := findAddressInMachineList("asdf")
 	if ok {
 		t.Error("Expected to not find any machine with the machine ID `asdf`")
 	}
@@ -77,7 +77,7 @@ func TestSshUnknownMachine(t *testing.T) {
 func TestSshFindMachine(t *testing.T) {
 	cAPI = newFakeRegistryForSsh()
 
-	ip, _ := findAddressInMachineList("c31e44e1-f858-436e-933e-59c642517860")
+	ip, _, _ := findAddressInMachineList("c31e44e1-f858-436e-933e-59c642517860")
 	if ip != "1.2.3.4" {
 		t.Errorf("Expected to return the host 1.2.3.4, but it was %s", ip)
 	}
@@ -86,7 +86,7 @@ func TestSshFindMachine(t *testing.T) {
 func TestSshFindMachineByUnknownUnitName(t *testing.T) {
 	cAPI = newFakeRegistryForSsh()
 
-	_, ok := findAddressInRunningUnits("asdf")
+	_, ok, _ := findAddressInRunningUnits("asdf")
 	if ok {
 		t.Error("Expected to not find any machine with the unit name `asdf`")
 	}
@@ -95,7 +95,7 @@ func TestSshFindMachineByUnknownUnitName(t *testing.T) {
 func TestSshFindMachineByUnitName(t *testing.T) {
 	cAPI = newFakeRegistryForSsh()
 
-	ip, _ := findAddressInRunningUnits("j1")
+	ip, _, _ := findAddressInRunningUnits("j1")
 	if ip != "1.2.3.4" {
 		t.Errorf("Expected to return the host 1.2.3.4, but it was %s", ip)
 	}
@@ -104,13 +104,9 @@ func TestSshFindMachineByUnitName(t *testing.T) {
 func TestGlobalLookupByUnknownArgument(t *testing.T) {
 	cAPI = newFakeRegistryForSsh()
 
-	ip, err := globalMachineLookup([]string{"asdf"})
-	if err != nil {
-		t.Fatal("Expected to not find any error")
-	}
-
-	if ip != "" {
-		t.Errorf("Expected to not find any host with the argument `asdf`")
+	_, err := globalMachineLookup([]string{"asdf"})
+	if err == nil {
+		t.Fatal("Expected to receive error, got nil")
 	}
 }
 

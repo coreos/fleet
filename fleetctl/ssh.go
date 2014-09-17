@@ -8,7 +8,6 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/coreos/fleet/log"
 	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/pkg"
 	"github.com/coreos/fleet/ssh"
@@ -64,23 +63,24 @@ func runSSH(args []string) (exit int) {
 
 	switch {
 	case flagMachine != "":
-		addr, _ = findAddressInMachineList(flagMachine)
+		addr, _, err = findAddressInMachineList(flagMachine)
 	case flagUnit != "":
-		addr, _ = findAddressInRunningUnits(flagUnit)
+		addr, _, err = findAddressInRunningUnits(flagUnit)
 	default:
 		addr, err = globalMachineLookup(args)
-		if err != nil {
-			stderr("%v", err)
-			return 1
-		}
 		// trim machine/unit name from args
 		if len(args) > 0 {
 			args = args[1:]
 		}
 	}
 
+	if err != nil {
+		stderr("Unable to proceed: %v", err)
+		return 1
+	}
+
 	if addr == "" {
-		stderr("Requested machine could not be found.")
+		stderr("Could not determine address of machine.")
 		return 1
 	}
 
@@ -121,8 +121,8 @@ func globalMachineLookup(args []string) (string, error) {
 
 	lookup := args[0]
 
-	machineAddr, machineOk := findAddressInMachineList(lookup)
-	unitAddr, unitOk := findAddressInRunningUnits(lookup)
+	machineAddr, machineOk, _ := findAddressInMachineList(lookup)
+	unitAddr, unitOk, _ := findAddressInRunningUnits(lookup)
 
 	switch {
 	case machineOk && unitOk:
@@ -133,49 +133,52 @@ func globalMachineLookup(args []string) (string, error) {
 		return unitAddr, nil
 	}
 
-	return "", nil
+	return "", fmt.Errorf("could not find matching unit or machine")
 }
 
-func findAddressInMachineList(lookup string) (string, bool) {
+func findAddressInMachineList(lookup string) (string, bool, error) {
 	states, err := cAPI.Machines()
 	if err != nil {
-		log.V(1).Infof("Unable to retrieve list of active machines from the Registry: %v", err)
-		return "", false
+		return "", false, err
 	}
 
 	var match *machine.MachineState
-
 	for i := range states {
 		machState := states[i]
 		if !strings.HasPrefix(machState.ID, lookup) {
 			continue
-		} else if match != nil {
-			stderr("Found more than one Machine, be more specific.")
-			os.Exit(1)
 		}
+
+		if match != nil {
+			return "", false, fmt.Errorf("found more than one machine")
+		}
+
 		match = &machState
 	}
 
 	if match == nil {
-		return "", false
+		return "", false, fmt.Errorf("machine does not exist")
 	}
-	return match.PublicIP, true
+
+	return match.PublicIP, true, nil
 }
 
-func findAddressInRunningUnits(name string) (string, bool) {
+func findAddressInRunningUnits(name string) (string, bool, error) {
 	name = unitNameMangle(name)
 	u, err := cAPI.Unit(name)
 	if err != nil {
-		log.V(1).Infof("Unable to retrieve Unit(%s) from Repository: %v", name, err)
+		return "", false, err
 	}
 	if u == nil {
-		return "", false
+		return "", false, fmt.Errorf("unit does not exist")
 	}
+
 	m := cachedMachineState(u.MachineID)
 	if m != nil && m.PublicIP != "" {
-		return m.PublicIP, true
+		return m.PublicIP, true, nil
 	}
-	return "", false
+
+	return "", false, nil
 }
 
 // runCommand will attempt to run a command on a given machine. It will attempt
