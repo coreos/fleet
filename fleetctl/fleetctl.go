@@ -74,6 +74,7 @@ var (
 		NoBlock       bool
 		BlockAttempts int
 		Fields        string
+		Machine       string
 	}{}
 
 	// used to cache MachineStates
