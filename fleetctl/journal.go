@@ -20,7 +20,9 @@ Read the last 10 lines:
 	fleetctl journal foo.service
 
 Read the last 100 lines:
-	fleetctl journal --lines 100 foo.service`,
+	fleetctl journal --lines 100 foo.service
+
+This command does not work with global units.`,
 	}
 )
 
@@ -41,9 +43,11 @@ func runJournal(args []string) (exit int) {
 	if err != nil {
 		stderr("Error retrieving unit %s: %v", name, err)
 		return 1
-	}
-	if u == nil {
+	} else if u == nil {
 		stderr("Unit %s does not exist.", name)
+		return 1
+	} else if suToGlobal(*u) {
+		stderr("Unable to retrieve journal of global unit %s.", name)
 		return 1
 	} else if job.JobState(u.CurrentState) == job.JobStateInactive {
 		stderr("Unit %s does not appear to be running.", name)
