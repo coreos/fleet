@@ -37,7 +37,7 @@ const (
 	deprecatedXConditionPrefix = "X-Condition"
 )
 
-// validRequirements encapsulates all known current and deprecated unit file requirement keys
+// validRequirements encapsulates all current and deprecated unit file requirement keys
 var validRequirements = pkg.NewUnsafeSet(
 	fleetMachineID,
 	deprecatedXConditionPrefix+fleetMachineID,

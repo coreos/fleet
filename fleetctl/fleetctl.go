@@ -444,6 +444,10 @@ func createUnit(name string, uf *unit.UnitFile) (*schema.Unit, error) {
 	if err := api.ValidateOptions(u.Options); err != nil {
 		return nil, err
 	}
+	j := &job.Job{Unit: *uf}
+	if err := j.ValidateRequirements(); err != nil {
+		log.Warningf("Unit %s: %v", name, err)
+	}
 	err := cAPI.CreateUnit(&u)
 	if err != nil {
 		return nil, fmt.Errorf("failed creating unit %s: %v", name, err)
