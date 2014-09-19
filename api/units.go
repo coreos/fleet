@@ -170,6 +170,9 @@ func ValidateOptions(opts []*schema.UnitOption) error {
 	j := &job.Job{
 		Unit: *uf,
 	}
+	if err := j.ValidateRequirements(); err != nil {
+		return err
+	}
 	conflicts := pkg.NewUnsafeSet(j.Conflicts()...)
 	peers := pkg.NewUnsafeSet(j.Peers()...)
 	for _, peer := range peers.Values() {

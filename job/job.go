@@ -37,6 +37,20 @@ const (
 	deprecatedXConditionPrefix = "X-Condition"
 )
 
+// validRequirements encapsulates all known current and deprecated unit file requirement keys
+var validRequirements = pkg.NewUnsafeSet(
+	fleetMachineID,
+	deprecatedXConditionPrefix+fleetMachineID,
+	deprecatedXConditionPrefix+fleetMachineBootID,
+	deprecatedXConditionPrefix+fleetMachineOf,
+	fleetMachineOf,
+	deprecatedXPrefix+fleetConflicts,
+	fleetConflicts,
+	deprecatedXConditionPrefix+fleetMachineMetadata,
+	fleetMachineMetadata,
+	fleetGlobal,
+)
+
 func ParseJobState(s string) (JobState, error) {
 	js := JobState(s)
 
@@ -155,6 +169,18 @@ func (j *Job) requirements() map[string][]string {
 	}
 
 	return requirements
+}
+
+// ValidateRequirements ensures that all options in the [X-Fleet] section of
+// the job's associated unit file are known keys. If not, an error is
+// returned.
+func (j *Job) ValidateRequirements() error {
+	for key, _ := range j.requirements() {
+		if !validRequirements.Contains(key) {
+			return fmt.Errorf("unrecognized requirement in [X-Fleet] section: %q", key)
+		}
+	}
+	return nil
 }
 
 // Conflicts returns a list of Job names that cannot be scheduled to the same

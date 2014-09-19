@@ -1,6 +1,7 @@
 package job
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
 
@@ -499,6 +500,49 @@ func TestUnitIsGlobal(t *testing.T) {
 		got := u.IsGlobal()
 		if got != tt.want {
 			t.Errorf("case %d: IsGlobal returned %t, want %t", i, got, tt.want)
+		}
+	}
+}
+
+func TestValidateRequirements(t *testing.T) {
+	tests := []string{
+		"MachineID=asdf",
+		"X-ConditionMachineID=123456",
+		"X-ConditionMachineBootID=woofwoof",
+		"X-ConditionMachineOf=asdf",
+		"MachineOf=joe.service",
+		"X-Conflicts=bar.service",
+		"Conflicts=foo",
+		"X-ConditionMachineMetadata=up=down",
+		"MachineMetadata=true=false",
+		"Global=true",
+	}
+	for i, req := range tests {
+		contents := fmt.Sprintf("[X-Fleet]\n%s", req)
+		j := NewJob("echo.service", *newUnit(t, contents))
+		if err := j.ValidateRequirements(); err != nil {
+			t.Errorf("case %d: unexpected non-nil error for req %q: %v", i, req, err)
+		}
+	}
+}
+
+func TestBadValidateRequirements(t *testing.T) {
+	tests := []string{
+		"X-ConditionConflicts=asdf",
+		"X-Peers=one",
+		"Machineof=something",
+		"X-Global=true",
+		"global=true",
+		"X-ConditionMachineId=one",
+		"MachineId=true",
+		"X-MachineMetadata=none",
+		"X-ConditionMetadata=foo=foo",
+	}
+	for i, req := range tests {
+		contents := fmt.Sprintf("[X-Fleet]\n%s", req)
+		j := NewJob("echo.service", *newUnit(t, contents))
+		if err := j.ValidateRequirements(); err == nil {
+			t.Errorf("case %d: unexpected nil error for requirement: %q", i, req)
 		}
 	}
 }
