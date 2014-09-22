@@ -128,10 +128,12 @@ func TestCreateUnitFails(t *testing.T) {
 			t.Logf("unit file: %#v", uf)
 		}
 	}()
-	testCases := []struct {
+	type testCase struct {
 		name string
 		uf   *unit.UnitFile
-	}{
+	}
+	var tt testCase
+	testCases := []testCase{
 		{
 			"foo@{1,3}.service",
 			newUnitFile(t, ``),
@@ -178,23 +180,8 @@ MachineOf=zxcvq`),
 Global=true
 Conflicts=bar`),
 		},
-		{
-			"foo.service",
-			newUnitFile(t, `[X-Fleet]
-global=true`),
-		},
-		{
-			"foo.service",
-			newUnitFile(t, `[X-Fleet]
-X-conflicts=bar`),
-		},
-		{
-			"foo.service",
-			newUnitFile(t, `[X-Fleet]
-X-machineof=bar`),
-		},
 	}
-	for i, tt := range testCases {
+	for i, tt = range testCases {
 		un = tt.name
 		uf = tt.uf
 		if _, err := createUnit(un, uf); err == nil {
