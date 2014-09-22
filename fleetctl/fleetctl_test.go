@@ -178,6 +178,21 @@ MachineOf=zxcvq`),
 Global=true
 Conflicts=bar`),
 		},
+		{
+			"foo.service",
+			newUnitFile(t, `[X-Fleet]
+global=true`),
+		},
+		{
+			"foo.service",
+			newUnitFile(t, `[X-Fleet]
+X-conflicts=bar`),
+		},
+		{
+			"foo.service",
+			newUnitFile(t, `[X-Fleet]
+X-machineof=bar`),
+		},
 	}
 	for i, tt := range testCases {
 		un = tt.name
