@@ -18,15 +18,17 @@ import json
 import uritemplate
 import urllib
 import urlparse
+import pprint
 
 # Step 1: Fetch Discovery document.
-DISCOVERY_URI = "http://localhost:8080/v1-alpha/discovery"
+ROOT_URL = "http://localhost:8080/"
+DISCOVERY_URI = ROOT_URL + "v1-alpha/discovery.json"
 h = httplib2.Http()
 resp, content = h.request(DISCOVERY_URI)
 discovery = json.loads(content)
 
 # Step 2.a: Construct base URI
-BASE_URI = discovery['rootUrl'] + discovery['servicePath']
+BASE_URI = ROOT_URL + discovery['servicePath']
 
 class Collection(object): pass
 
@@ -56,5 +58,11 @@ def build(discovery, collection):
 service = build(discovery, Collection())
 
 # Step 3.b: Use the client
-service.Units()
+response = service.Machines.List()
+
+# output metadata (status, content-length, etc...)
+pprint(response[0])
+
+# output body
+pprint(json.loads(response[1]))
 
