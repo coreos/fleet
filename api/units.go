@@ -211,7 +211,7 @@ func (ur *unitsResource) create(rw http.ResponseWriter, name string, u *schema.U
 		return
 	}
 
-	rw.WriteHeader(http.StatusNoContent)
+	rw.WriteHeader(http.StatusCreated)
 }
 
 func (ur *unitsResource) update(rw http.ResponseWriter, item, ds string) {
