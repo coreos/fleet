@@ -61,8 +61,8 @@ service = build(discovery, Collection())
 response = service.Machines.List()
 
 # output metadata (status, content-length, etc...)
-pprint(response[0])
+pprint.pprint(response[0])
 
 # output body
-pprint(json.loads(response[1]))
+pprint.pprint(json.loads(response[1]))
 
