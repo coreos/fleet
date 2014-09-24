@@ -300,7 +300,7 @@ func TestUnitsSetDesiredState(t *testing.T) {
 					&schema.UnitOption{Section: "Service", Name: "Foo", Value: "Baz"},
 				},
 			},
-			code:        http.StatusNoContent,
+			code:        http.StatusCreated,
 			finalStates: map[string]job.JobState{"YYY.service": "loaded"},
 		},
 		// Creating a new Unit without Options fails

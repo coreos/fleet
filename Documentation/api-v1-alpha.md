@@ -188,7 +188,7 @@ name in the PUT /units/<name> request.
 
 #### Response
 
-A successful response contains no body.
+A success is indicated by a `201 Created` but contains no body.
 Attempting to create an entity without options will return a `409 Conflict` response.
 Attempting to create an invalid entity will return a `400 Bad Request` response.
 
@@ -224,7 +224,7 @@ name in the PUT /units/<name> request.
 
 #### Response
 
-A successful response contains no body.
+A success is indicated by a `204 No Content`.
 Attempting to modify with an invalid entity will return a `400 Bad Request` response.
 
 ### Retrieve desired state of all Units
