@@ -7,6 +7,7 @@ import (
 	"os"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/systemd"
@@ -58,39 +59,19 @@ ExecStart=/usr/bin/sleep 3000
 		t.Fatalf("Expected [hello.service], got %v", units)
 	}
 
-	us, err := mgr.GetUnitState(name)
-	if err == nil {
-		expect := unit.UnitState{"loaded", "inactive", "dead", "", hash, ""}
-		if !reflect.DeepEqual(expect, *us) {
-			t.Errorf("Expected UnitState %v, got %v", expect, *us)
-		}
-	} else {
-		t.Errorf("Failed determining unit state: %v", err)
+	err = waitForUnitState(mgr, name, unit.UnitState{"loaded", "inactive", "dead", "", hash, ""})
+	if err != nil {
+		t.Error(err.Error())
 	}
 
-	mgr.Start(name)
+	mgr.TriggerStart(name)
 
-	us, err = mgr.GetUnitState(name)
-	if err == nil {
-		expect := unit.UnitState{"loaded", "active", "running", "", hash, ""}
-		if !reflect.DeepEqual(expect, *us) {
-			t.Errorf("Expected UnitState %v, got %v", expect, *us)
-		}
-	} else {
-		t.Errorf("Failed determining unit state: %v", err)
+	err = waitForUnitState(mgr, name, unit.UnitState{"loaded", "active", "running", "", hash, ""})
+	if err != nil {
+		t.Error(err.Error())
 	}
 
-	mgr.Stop(name)
-
-	us, err = mgr.GetUnitState(name)
-	if err == nil {
-		expect := unit.UnitState{"loaded", "inactive", "dead", "", hash, ""}
-		if !reflect.DeepEqual(expect, *us) {
-			t.Errorf("Expected UnitState %v, got %v", expect, *us)
-		}
-	} else {
-		t.Errorf("Failed determining unit state: %v", err)
-	}
+	mgr.TriggerStop(name)
 
 	mgr.Unload(name)
 
@@ -101,5 +82,25 @@ ExecStart=/usr/bin/sleep 3000
 
 	if len(units) > 0 {
 		t.Fatalf("Expected no units to be returned, got %v", units)
+	}
+}
+
+func waitForUnitState(mgr unit.UnitManager, name string, want unit.UnitState) error {
+	timeout := time.After(time.Second)
+	for {
+		select {
+		case <-timeout:
+			return fmt.Errorf("Timed out waiting for state of %s to match %#v", name, want)
+		default:
+		}
+
+		got, err := mgr.GetUnitState(name)
+		if err != nil {
+			return err
+		}
+
+		if reflect.DeepEqual(want, *got) {
+			return nil
+		}
 	}
 }
