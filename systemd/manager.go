@@ -70,14 +70,26 @@ func (m *systemdUnitManager) Unload(name string) {
 	m.daemonReload()
 }
 
-// Start starts the unit identified by the given name
-func (m *systemdUnitManager) Start(name string) {
-	m.startUnit(name)
+// TriggerStart asynchronously starts the unit identified by the given name.
+// This function does not block for the underlying unit to actually start.
+func (m *systemdUnitManager) TriggerStart(name string) {
+	jobID, err := m.systemd.StartUnit(name, "replace", nil)
+	if err == nil {
+		log.Infof("Triggered systemd unit %s start: job=%d", name, jobID)
+	} else {
+		log.Errorf("Failed to trigger systemd unit %s start: %v", name, err)
+	}
 }
 
-// Stop stops the unit identified by the given name
-func (m *systemdUnitManager) Stop(name string) {
-	m.stopUnit(name)
+// TriggerStop asynchronously starts the unit identified by the given name.
+// This function does not block for the underlying unit to actually stop.
+func (m *systemdUnitManager) TriggerStop(name string) {
+	jobID, err := m.systemd.StopUnit(name, "replace", nil)
+	if err == nil {
+		log.Infof("Triggered systemd unit %s stop: job=%d", name, jobID)
+	} else {
+		log.Errorf("Failed to trigger systemd unit %s stop: %v", name, err)
+	}
 }
 
 // GetUnitState generates a UnitState object representing the
@@ -106,22 +118,6 @@ func (m *systemdUnitManager) getUnitState(name string) (*unit.UnitState, error) 
 		SubState:    info["SubState"].(string),
 	}
 	return &us, nil
-}
-
-func (m *systemdUnitManager) startUnit(name string) {
-	if stat, err := m.systemd.StartUnit(name, "replace"); err != nil {
-		log.Errorf("Failed to start systemd unit %s: %v", name, err)
-	} else {
-		log.Infof("Started systemd unit %s(%s)", name, stat)
-	}
-}
-
-func (m *systemdUnitManager) stopUnit(name string) {
-	if stat, err := m.systemd.StopUnit(name, "replace"); err != nil {
-		log.Errorf("Failed to stop systemd unit %s: %v", name, err)
-	} else {
-		log.Infof("Stopped systemd unit %s(%s)", name, stat)
-	}
 }
 
 func (m *systemdUnitManager) readUnit(name string) (string, error) {

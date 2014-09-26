@@ -26,18 +26,18 @@
 		},
 		{
 			"ImportPath": "github.com/coreos/go-systemd/activation",
-			"Comment": "v2-33-g7a81740",
-			"Rev": "7a81740665de3d730bf98811f6b2ae5746e42a32"
+			"Comment": "v2-35-gcf3cdf7",
+			"Rev": "cf3cdf77462baaad163ad2d5d1984b9c1b493701"
 		},
 		{
 			"ImportPath": "github.com/coreos/go-systemd/dbus",
-			"Comment": "v2-33-g7a81740",
-			"Rev": "7a81740665de3d730bf98811f6b2ae5746e42a32"
+			"Comment": "v2-35-gcf3cdf7",
+			"Rev": "cf3cdf77462baaad163ad2d5d1984b9c1b493701"
 		},
 		{
 			"ImportPath": "github.com/coreos/go-systemd/unit",
-			"Comment": "v2-33-g7a81740",
-			"Rev": "7a81740665de3d730bf98811f6b2ae5746e42a32"
+			"Comment": "v2-35-gcf3cdf7",
+			"Rev": "cf3cdf77462baaad163ad2d5d1984b9c1b493701"
 		},
 		{
 			"ImportPath": "github.com/docker/libcontainer/netlink",

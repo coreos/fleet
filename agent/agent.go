@@ -80,7 +80,7 @@ func (a *Agent) unloadUnit(unitName string) {
 	a.registry.ClearUnitHeartbeat(unitName)
 	a.cache.dropTargetState(unitName)
 
-	a.um.Stop(unitName)
+	a.um.TriggerStop(unitName)
 
 	a.uGen.Unsubscribe(unitName)
 
@@ -93,14 +93,14 @@ func (a *Agent) startUnit(unitName string) {
 	machID := a.Machine.State().ID
 	a.registry.UnitHeartbeat(unitName, machID, a.ttl)
 
-	a.um.Start(unitName)
+	a.um.TriggerStart(unitName)
 }
 
 func (a *Agent) stopUnit(unitName string) {
 	a.cache.setTargetState(unitName, job.JobStateLoaded)
 	a.registry.ClearUnitHeartbeat(unitName)
 
-	a.um.Stop(unitName)
+	a.um.TriggerStop(unitName)
 }
 
 type unitStates map[string]job.JobState
