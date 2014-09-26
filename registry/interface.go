@@ -15,7 +15,6 @@ type Registry interface {
 	CreateUnit(*job.Unit) error
 	DestroyUnit(string) error
 	UnitHeartbeat(name, machID string, ttl time.Duration) error
-	LatestDaemonVersion() (*semver.Version, error)
 	LeaseRole(role, machID string, period time.Duration) (Lease, error)
 	Machines() ([]machine.MachineState, error)
 	RemoveMachineState(machID string) error
@@ -35,6 +34,10 @@ type UnitRegistry interface {
 	Unit(name string) (*job.Unit, error)
 	Units() ([]job.Unit, error)
 	UnitStates() ([]*unit.UnitState, error)
+}
+
+type ClusterRegistry interface {
+	LatestDaemonVersion() (*semver.Version, error)
 }
 
 type Lease interface {

@@ -16,18 +16,26 @@ const (
 )
 
 type Engine struct {
-	rec      *Reconciler
-	registry registry.Registry
-	rStream  pkg.EventStream
-	machine  machine.Machine
+	rec       *Reconciler
+	registry  registry.Registry
+	cRegistry registry.ClusterRegistry
+	rStream   pkg.EventStream
+	machine   machine.Machine
 
 	lease   registry.Lease
 	trigger chan struct{}
 }
 
-func New(reg registry.Registry, rStream pkg.EventStream, mach machine.Machine) *Engine {
+func New(reg *registry.EtcdRegistry, rStream pkg.EventStream, mach machine.Machine) *Engine {
 	rec := NewReconciler()
-	return &Engine{rec, reg, rStream, mach, nil, make(chan struct{})}
+	return &Engine{
+		rec:       rec,
+		registry:  reg,
+		cRegistry: reg,
+		rStream:   rStream,
+		machine:   mach,
+		trigger:   make(chan struct{}),
+	}
 }
 
 func (e *Engine) Run(ival time.Duration, stop chan bool) {

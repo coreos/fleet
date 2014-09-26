@@ -67,13 +67,6 @@ func (f *FakeRegistry) SetUnitStates(states []unit.UnitState) {
 	}
 }
 
-func (f *FakeRegistry) SetLatestDaemonVersion(v semver.Version) {
-	f.Lock()
-	defer f.Unlock()
-
-	f.daemonVersion = &v
-}
-
 func (f *FakeRegistry) Machines() ([]machine.MachineState, error) {
 	f.RLock()
 	defer f.RUnlock()
@@ -266,15 +259,22 @@ func (f *FakeRegistry) UnitStates() ([]*unit.UnitState, error) {
 	return states, nil
 }
 
-func (f *FakeRegistry) LatestDaemonVersion() (*semver.Version, error) {
-	f.RLock()
-	defer f.RUnlock()
-
-	return f.daemonVersion, nil
-}
-
 func (f *FakeRegistry) UnitHeartbeat(name, machID string, ttl time.Duration) error {
 	return nil
 }
 
 func (f *FakeRegistry) ClearUnitHeartbeat(string) {}
+
+func NewFakeClusterRegistry(dVersion *semver.Version) *FakeClusterRegistry {
+	return &FakeClusterRegistry{
+		dVersion: dVersion,
+	}
+}
+
+type FakeClusterRegistry struct {
+	dVersion *semver.Version
+}
+
+func (fc *FakeClusterRegistry) LatestDaemonVersion() (*semver.Version, error) {
+	return fc.dVersion, nil
+}

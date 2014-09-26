@@ -12,15 +12,13 @@ import (
 	"github.com/coreos/fleet/Godeps/_workspace/src/github.com/coreos/go-semver/semver"
 )
 
-func newFakeRegistryForCheckVersion(v string) registry.Registry {
+func newFakeRegistryForCheckVersion(v string) registry.ClusterRegistry {
 	sv, err := semver.NewVersion(v)
 	if err != nil {
 		panic(err)
 	}
 
-	reg := registry.NewFakeRegistry()
-	reg.SetLatestDaemonVersion(*sv)
-	return reg
+	return registry.NewFakeClusterRegistry(sv)
 }
 
 func TestCheckVersion(t *testing.T) {
