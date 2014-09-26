@@ -19,7 +19,7 @@ func newFakeRegistryForCheckVersion(v string) registry.Registry {
 	}
 
 	reg := registry.NewFakeRegistry()
-	reg.SetLatestVersion(*sv)
+	reg.SetLatestDaemonVersion(*sv)
 	return reg
 }
 

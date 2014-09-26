@@ -15,10 +15,10 @@ import (
 
 func NewFakeRegistry() *FakeRegistry {
 	return &FakeRegistry{
-		machines:  []machine.MachineState{},
-		jobStates: map[string]map[string]*unit.UnitState{},
-		jobs:      map[string]job.Job{},
-		version:   nil,
+		machines:      []machine.MachineState{},
+		jobStates:     map[string]map[string]*unit.UnitState{},
+		jobs:          map[string]job.Job{},
+		daemonVersion: nil,
 	}
 }
 
@@ -29,10 +29,10 @@ type FakeRegistry struct {
 	Registry
 	sync.RWMutex
 
-	machines  []machine.MachineState
-	jobStates map[string]map[string]*unit.UnitState
-	jobs      map[string]job.Job
-	version   *semver.Version
+	machines      []machine.MachineState
+	jobStates     map[string]map[string]*unit.UnitState
+	jobs          map[string]job.Job
+	daemonVersion *semver.Version
 }
 
 func (f *FakeRegistry) SetMachines(machines []machine.MachineState) {
@@ -67,11 +67,11 @@ func (f *FakeRegistry) SetUnitStates(states []unit.UnitState) {
 	}
 }
 
-func (f *FakeRegistry) SetLatestVersion(v semver.Version) {
+func (f *FakeRegistry) SetLatestDaemonVersion(v semver.Version) {
 	f.Lock()
 	defer f.Unlock()
 
-	f.version = &v
+	f.daemonVersion = &v
 }
 
 func (f *FakeRegistry) Machines() ([]machine.MachineState, error) {
@@ -266,11 +266,11 @@ func (f *FakeRegistry) UnitStates() ([]*unit.UnitState, error) {
 	return states, nil
 }
 
-func (f *FakeRegistry) LatestVersion() (*semver.Version, error) {
+func (f *FakeRegistry) LatestDaemonVersion() (*semver.Version, error) {
 	f.RLock()
 	defer f.RUnlock()
 
-	return f.version, nil
+	return f.daemonVersion, nil
 }
 
 func (f *FakeRegistry) UnitHeartbeat(name, machID string, ttl time.Duration) error {

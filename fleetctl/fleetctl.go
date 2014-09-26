@@ -166,7 +166,7 @@ func stdout(format string, args ...interface{}) {
 // false and a scary warning to the user.
 func checkVersion(reg registry.Registry) (string, bool) {
 	fv := version.SemVersion
-	lv, err := reg.LatestVersion()
+	lv, err := reg.LatestDaemonVersion()
 	if err != nil {
 		log.Errorf("error attempting to check latest fleet version in Registry: %v", err)
 	} else if lv != nil && fv.LessThan(*lv) {
