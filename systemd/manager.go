@@ -73,13 +73,23 @@ func (m *systemdUnitManager) Unload(name string) {
 // TriggerStart asynchronously starts the unit identified by the given name.
 // This function does not block for the underlying unit to actually start.
 func (m *systemdUnitManager) TriggerStart(name string) {
-	m.triggerStartUnit(name)
+	jobID, err := m.systemd.StartUnit(name, "replace", nil)
+	if err == nil {
+		log.Infof("Triggered systemd unit %s start: job=%d", name, jobID)
+	} else {
+		log.Errorf("Failed to trigger systemd unit %s start: %v", name, err)
+	}
 }
 
 // TriggerStop asynchronously starts the unit identified by the given name.
 // This function does not block for the underlying unit to actually stop.
 func (m *systemdUnitManager) TriggerStop(name string) {
-	m.triggerStopUnit(name)
+	jobID, err := m.systemd.StopUnit(name, "replace", nil)
+	if err == nil {
+		log.Infof("Triggered systemd unit %s stop: job=%d", name, jobID)
+	} else {
+		log.Errorf("Failed to trigger systemd unit %s stop: %v", name, err)
+	}
 }
 
 // GetUnitState generates a UnitState object representing the
@@ -108,24 +118,6 @@ func (m *systemdUnitManager) getUnitState(name string) (*unit.UnitState, error) 
 		SubState:    info["SubState"].(string),
 	}
 	return &us, nil
-}
-
-func (m *systemdUnitManager) triggerStartUnit(name string) {
-	jobID, err := m.systemd.StartUnit(name, "replace", nil)
-	if err == nil {
-		log.Infof("Triggered systemd unit %s start: job=%d", name, jobID)
-	} else {
-		log.Errorf("Failed to trigger systemd unit %s start: %v", name, err)
-	}
-}
-
-func (m *systemdUnitManager) triggerStopUnit(name string) {
-	jobID, err := m.systemd.StopUnit(name, "replace", nil)
-	if err == nil {
-		log.Infof("Triggered systemd unit %s stop: job=%d", name, jobID)
-	} else {
-		log.Errorf("Failed to trigger systemd unit %s stop: %v", name, err)
-	}
 }
 
 func (m *systemdUnitManager) readUnit(name string) (string, error) {
