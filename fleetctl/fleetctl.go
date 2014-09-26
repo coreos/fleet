@@ -344,7 +344,7 @@ func getRegistryClient() (client.API, error) {
 		return nil, err
 	}
 
-	reg := registry.New(eClient, globalFlags.EtcdKeyPrefix)
+	reg := registry.NewEtcdRegistry(eClient, globalFlags.EtcdKeyPrefix)
 
 	if msg, ok := checkVersion(reg); !ok {
 		stderr(msg)
