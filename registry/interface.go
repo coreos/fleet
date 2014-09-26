@@ -38,6 +38,18 @@ type UnitRegistry interface {
 
 type ClusterRegistry interface {
 	LatestDaemonVersion() (*semver.Version, error)
+
+	// EngineVersion returns the current version of the cluster. If the
+	// cluster does not yet have a version, zero will be returned. If
+	// any error occurs, an error object will be returned. In this case,
+	// the returned version number should be ignored.
+	EngineVersion() (int, error)
+
+	// UpdateEngineVersion attempts to compare-and-swap the cluster version
+	// from one value to another. Any failures in this process will be
+	// indicated by the returned error object. A nil value will be returned
+	// on success.
+	UpdateEngineVersion(from, to int) error
 }
 
 type Lease interface {

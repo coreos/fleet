@@ -265,16 +265,31 @@ func (f *FakeRegistry) UnitHeartbeat(name, machID string, ttl time.Duration) err
 
 func (f *FakeRegistry) ClearUnitHeartbeat(string) {}
 
-func NewFakeClusterRegistry(dVersion *semver.Version) *FakeClusterRegistry {
+func NewFakeClusterRegistry(dVersion *semver.Version, eVersion int) *FakeClusterRegistry {
 	return &FakeClusterRegistry{
 		dVersion: dVersion,
+		eVersion: eVersion,
 	}
 }
 
 type FakeClusterRegistry struct {
 	dVersion *semver.Version
+	eVersion int
 }
 
 func (fc *FakeClusterRegistry) LatestDaemonVersion() (*semver.Version, error) {
 	return fc.dVersion, nil
+}
+
+func (fc *FakeClusterRegistry) EngineVersion() (int, error) {
+	return fc.eVersion, nil
+}
+
+func (fc *FakeClusterRegistry) UpdateEngineVersion(from, to int) error {
+	if fc.eVersion != from {
+		return errors.New("version mismatch")
+	}
+
+	fc.eVersion = to
+	return nil
 }
