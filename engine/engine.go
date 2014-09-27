@@ -19,6 +19,7 @@ type Engine struct {
 	rec       *Reconciler
 	registry  registry.Registry
 	cRegistry registry.ClusterRegistry
+	lRegistry registry.LeaseRegistry
 	rStream   pkg.EventStream
 	machine   machine.Machine
 
@@ -32,6 +33,7 @@ func New(reg *registry.EtcdRegistry, rStream pkg.EventStream, mach machine.Machi
 		rec:       rec,
 		registry:  reg,
 		cRegistry: reg,
+		lRegistry: reg,
 		rStream:   rStream,
 		machine:   mach,
 		trigger:   make(chan struct{}),
@@ -43,7 +45,7 @@ func (e *Engine) Run(ival time.Duration, stop chan bool) {
 	machID := e.machine.State().ID
 
 	reconcile := func() {
-		e.lease = ensureLeader(e.lease, e.registry, machID, leaseTTL)
+		e.lease = ensureLeader(e.lease, e.lRegistry, machID, leaseTTL)
 		if e.lease == nil {
 			return
 		}
@@ -95,7 +97,7 @@ func (e *Engine) Purge() {
 
 // ensureLeader will attempt to renew the engine lease if it is already
 // held. If it is not already held, it will attempt to acquire the lease.
-func ensureLeader(prev registry.Lease, reg registry.Registry, machID string, ttl time.Duration) (cur registry.Lease) {
+func ensureLeader(prev registry.Lease, lReg registry.LeaseRegistry, machID string, ttl time.Duration) (cur registry.Lease) {
 	if prev != nil {
 		err := prev.Renew(ttl)
 		if err == nil {
@@ -108,7 +110,7 @@ func ensureLeader(prev registry.Lease, reg registry.Registry, machID string, ttl
 	}
 
 	var err error
-	cur, err = reg.AcquireLease(engineLeaseName, machID, ttl)
+	cur, err = lReg.AcquireLease(engineLeaseName, machID, ttl)
 	if err != nil {
 		log.Errorf("Engine leadership acquisition failed: %v", err)
 	} else if cur == nil {

@@ -15,7 +15,6 @@ type Registry interface {
 	CreateUnit(*job.Unit) error
 	DestroyUnit(string) error
 	UnitHeartbeat(name, machID string, ttl time.Duration) error
-	AcquireLease(name, machID string, period time.Duration) (Lease, error)
 	Machines() ([]machine.MachineState, error)
 	RemoveMachineState(machID string) error
 	RemoveUnitState(jobName string) error
@@ -52,7 +51,28 @@ type ClusterRegistry interface {
 	UpdateEngineVersion(from, to int) error
 }
 
+type LeaseRegistry interface {
+	// AcquireLease acquires a named lease only if the lease is not
+	// currently held. If a Lease cannot be acquired, a nil Lease
+	// object is returned. An error is returned only if there is a
+	// failure communicating with the Registry.
+	AcquireLease(name, machID string, period time.Duration) (Lease, error)
+}
+
+// Lease proxies to an auto-expiring lease stored in a LeaseRegistry.
+// The creator of a Lease must repeatedly call Renew to keep their lease
+// from expiring.
 type Lease interface {
+	// Renew attempts to extend the Lease TTL to the provided duration.
+	// The operation will succeed only if the Lease has not changed in
+	// the LeaseRegistry since it was last renewed or first acquired.
+	// An error is returned if the Lease has already expired, or if the
+	// operation fails for any other reason.
 	Renew(time.Duration) error
+
+	// Release relinquishes the ownership of a Lease back to the Registry.
+	// After calling Release, the Lease object should be discarded. An
+	// error is returned if the Lease has already expired, or if the
+	// operation fails for any other reason.
 	Release() error
 }
