@@ -11,8 +11,12 @@ const (
 	leasePrefix = "lease"
 )
 
+func (r *EtcdRegistry) leasePath(name string) string {
+	return path.Join(r.keyPrefix, leasePrefix, name)
+}
+
 func (r *EtcdRegistry) AcquireLease(name, machID string, period time.Duration) (Lease, error) {
-	key := path.Join(r.keyPrefix, leasePrefix, name)
+	key := r.leasePath(name)
 	req := etcd.Create{
 		Key:   key,
 		Value: machID,
