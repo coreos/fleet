@@ -11,11 +11,12 @@ const (
 	leasePrefix = "lease"
 )
 
-// LeaseRole acquires a lease of a role only if there are no outstanding
-// leases. If a Lease cannot be acquired, a nil Lease object is returned.
-// An error is returned only if there is a failure communicating with the Registry.
-func (r *EtcdRegistry) LeaseRole(role, machID string, period time.Duration) (Lease, error) {
-	key := path.Join(r.keyPrefix, leasePrefix, role)
+// AcquireLease acquires a named lease only if the lease is not
+// currently held. If a Lease cannot be acquired, a nil Lease
+// object is returned. An error is returned only if there is a
+// failure communicating with the Registry.
+func (r *EtcdRegistry) AcquireLease(name, machID string, period time.Duration) (Lease, error) {
+	key := path.Join(r.keyPrefix, leasePrefix, name)
 	req := etcd.Create{
 		Key:   key,
 		Value: machID,
@@ -25,7 +26,7 @@ func (r *EtcdRegistry) LeaseRole(role, machID string, period time.Duration) (Lea
 	var lease Lease
 	resp, err := r.etcd.Do(&req)
 	if err == nil {
-		lease = &etcdRoleLease{
+		lease = &etcdLease{
 			key:   key,
 			value: machID,
 			idx:   resp.Node.ModifiedIndex,
@@ -38,10 +39,10 @@ func (r *EtcdRegistry) LeaseRole(role, machID string, period time.Duration) (Lea
 	return lease, err
 }
 
-// etcdRoleLease is a proxy to an auto-expiring lease stored in the Registry.
+// etcdLease is a proxy to an auto-expiring lease stored in the Registry.
 // The creator of a Lease must repeatedly call Renew to keep their lease from
-// expiring. etcdRoleLease implements the Lease interface.
-type etcdRoleLease struct {
+// expiring. etcdLease implements the Lease interface.
+type etcdLease struct {
 	key   string
 	value string
 	idx   uint64
@@ -49,10 +50,10 @@ type etcdRoleLease struct {
 }
 
 // Release explicitly releases the ownership of a lease back to the Registry.
-// After calling Release, the etcdRoleLease object should be discarded. An
-// error is returned if the etcdRoleLease has already expired, or if
+// After calling Release, the etcdLease object should be discarded. An
+// error is returned if the etcdLease has already expired, or if
 // communication with the Registry fails.
-func (l *etcdRoleLease) Release() error {
+func (l *etcdLease) Release() error {
 	req := etcd.Delete{
 		Key:           l.key,
 		PreviousIndex: l.idx,
@@ -66,7 +67,7 @@ func (l *etcdRoleLease) Release() error {
 // Registry since it was last renewed or first acquired.
 // An error is returned if the lease has already expired, or if communication
 // with the Registry fails.
-func (l *etcdRoleLease) Renew(period time.Duration) error {
+func (l *etcdLease) Renew(period time.Duration) error {
 	req := etcd.Set{
 		Key:           l.key,
 		Value:         l.value,

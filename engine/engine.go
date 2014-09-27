@@ -11,8 +11,8 @@ import (
 )
 
 const (
-	// name of role that represents the lead engine in a cluster
-	engineRoleName = "engine-leader"
+	// name of lease that must be held by the lead engine in a cluster
+	engineLeaseName = "engine-leader"
 )
 
 type Engine struct {
@@ -93,8 +93,8 @@ func (e *Engine) Purge() {
 	}
 }
 
-// ensureLeader will attempt to renew a non-nil Lease, falling back to
-// acquiring a new Lease on the lead engine role.
+// ensureLeader will attempt to renew the engine lease if it is already
+// held. If it is not already held, it will attempt to acquire the lease.
 func ensureLeader(prev registry.Lease, reg registry.Registry, machID string, ttl time.Duration) (cur registry.Lease) {
 	if prev != nil {
 		err := prev.Renew(ttl)
@@ -108,7 +108,7 @@ func ensureLeader(prev registry.Lease, reg registry.Registry, machID string, ttl
 	}
 
 	var err error
-	cur, err = reg.LeaseRole(engineRoleName, machID, ttl)
+	cur, err = reg.AcquireLease(engineLeaseName, machID, ttl)
 	if err != nil {
 		log.Errorf("Engine leadership acquisition failed: %v", err)
 	} else if cur == nil {

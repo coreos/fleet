@@ -15,7 +15,7 @@ type Registry interface {
 	CreateUnit(*job.Unit) error
 	DestroyUnit(string) error
 	UnitHeartbeat(name, machID string, ttl time.Duration) error
-	LeaseRole(role, machID string, period time.Duration) (Lease, error)
+	AcquireLease(name, machID string, period time.Duration) (Lease, error)
 	Machines() ([]machine.MachineState, error)
 	RemoveMachineState(machID string) error
 	RemoveUnitState(jobName string) error
