@@ -421,17 +421,22 @@ func (nc *nspawnCluster) systemd(unitName, exec string) error {
 
 	log.Printf("Creating transient systemd unit %s", unitName)
 
-	if _, err = conn.StartTransientUnit(unitName, "replace", props...); err != nil {
+	res1 := make(chan string)
+	if _, err = conn.StartTransientUnit(unitName, "replace", props, res1); err != nil {
 		log.Printf("Failed creating transient unit %s: %v", unitName, err)
 		return err
 	}
+	<-res1
 
-	_, err = conn.StartUnit(unitName, "replace")
+	res2 := make(chan string)
+	_, err = conn.StartUnit(unitName, "replace", res2)
 	if err != nil {
 		log.Printf("Failed starting transient unit %s: %v", unitName, err)
+		return err
 	}
 
-	return err
+	<-res2
+	return nil
 }
 
 // wait up to 10s for a machine to be started
