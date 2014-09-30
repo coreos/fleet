@@ -63,7 +63,6 @@ var (
 		KnownHostsFile        string
 		StrictHostKeyChecking bool
 		Tunnel                string
-		TunnelUsername        string
 		SSHUsername           string
 		RequestTimeout        float64
 	}{}
@@ -98,7 +97,6 @@ func init() {
 	globalFlagset.StringVar(&globalFlags.KnownHostsFile, "known-hosts-file", ssh.DefaultKnownHostsFile, "File used to store remote machine fingerprints. Ignored if strict host key checking is disabled.")
 	globalFlagset.BoolVar(&globalFlags.StrictHostKeyChecking, "strict-host-key-checking", true, "Verify host keys presented by remote machines before initiating SSH connections.")
 	globalFlagset.StringVar(&globalFlags.Tunnel, "tunnel", "", "Establish an SSH tunnel through the provided address for communication with fleet and etcd.")
-	globalFlagset.StringVar(&globalFlags.TunnelUsername, "tunnel-username", "core", "Username used by the SSH tunnel.")
 	globalFlagset.StringVar(&globalFlags.SSHUsername, "ssh-username", "core", "Username used by SSH commands.")
 	globalFlagset.Float64Var(&globalFlags.RequestTimeout, "request-timeout", 3.0, "Amount of time in seconds to allow a single request before considering it failed.")
 }
@@ -276,7 +274,7 @@ func getHTTPClient() (client.API, error) {
 	tunnelFunc := net.Dial
 	tun := getTunnelFlag()
 	if tun != "" {
-		sshClient, err := ssh.NewSSHClient(globalFlags.TunnelUsername, tun, getChecker(), false)
+		sshClient, err := ssh.NewSSHClient(globalFlags.SSHUsername, tun, getChecker(), false)
 		if err != nil {
 			return nil, fmt.Errorf("failed initializing SSH client: %v", err)
 		}
@@ -317,7 +315,7 @@ func getRegistryClient() (client.API, error) {
 	var dial func(string, string) (net.Conn, error)
 	tun := getTunnelFlag()
 	if tun != "" {
-		sshClient, err := ssh.NewSSHClient(globalFlags.TunnelUsername, tun, getChecker(), false)
+		sshClient, err := ssh.NewSSHClient(globalFlags.SSHUsername, tun, getChecker(), false)
 		if err != nil {
 			return nil, fmt.Errorf("failed initializing SSH client: %v", err)
 		}
