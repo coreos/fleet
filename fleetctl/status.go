@@ -10,7 +10,7 @@ import (
 var cmdStatusUnits = &Command{
 	Name:    "status",
 	Summary: "Output the status of one or more units in the cluster",
-	Usage:   "UNIT...",
+	Usage:   "[--ssh-port=N] UNIT...",
 	Description: `Output the status of one or more units currently running in the cluster.
 Supports glob matching of units in the current working directory or matches
 previously started units.
@@ -23,6 +23,10 @@ fleetctl status myservice/*
 
 This command does not work with global units.`,
 	Run: runStatusUnits,
+}
+
+func init() {
+	cmdStatusUnits.Flags.IntVar(&sharedFlags.sshPort, "ssh-port", 22, "Use this SSH port to connect to host machine")
 }
 
 func runStatusUnits(args []string) (exit int) {

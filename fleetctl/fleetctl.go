@@ -74,6 +74,7 @@ var (
 		NoBlock       bool
 		BlockAttempts int
 		Fields        string
+		sshPort       int
 	}{}
 
 	// used to cache MachineStates
@@ -122,6 +123,7 @@ func init() {
 		cmdListUnitFiles,
 		cmdListUnits,
 		cmdLoadUnits,
+		cmdRestartUnit,
 		cmdSSH,
 		cmdStartUnit,
 		cmdStatusUnits,
@@ -715,4 +717,63 @@ func suToGlobal(su schema.Unit) bool {
 		Unit: *schema.MapSchemaUnitOptionsToUnitFile(su.Options),
 	}
 	return u.IsGlobal()
+}
+
+func waitForUnitsToRestart(units []schema.Unit, maxAttempts int, out io.Writer) chan error {
+	errchan := make(chan error)
+	var wg sync.WaitGroup
+	for _, unit := range units {
+		if suToGlobal(unit) {
+			stderr("Unable to restart global unit %s.", unit.Name)
+		} else {
+			wg.Add(1)
+			go restartUnit(unit, maxAttempts, out, &wg, errchan)
+		}
+	}
+
+	go func() {
+		wg.Wait()
+		close(errchan)
+	}()
+
+	return errchan
+}
+
+func restartUnit(unit schema.Unit, maxAttempts int, out io.Writer, wg *sync.WaitGroup, errchan chan error) {
+	defer wg.Done()
+
+	log.V(1).Infof("Restarting unit: %s:%s", unit.Name, unit.MachineID)
+
+	sleep := 500 * time.Millisecond
+
+	if maxAttempts < 1 {
+		for {
+			if assertUnitRestart(unit, out) {
+				return
+			}
+			time.Sleep(sleep)
+		}
+	} else {
+		for attempt := 0; attempt < maxAttempts; attempt++ {
+			if assertUnitRestart(unit, out) {
+				return
+			}
+			time.Sleep(sleep)
+		}
+		errchan <- fmt.Errorf("timed out waiting for unit %s to restart", unit)
+	}
+}
+
+func assertUnitRestart(unit schema.Unit, out io.Writer) (ret bool) {
+	log.V(1).Infof("Running restart command on %s:%s", unit.Name, unit.MachineID)
+	command := fmt.Sprintf("sudo systemctl restart %s", unit.Name)
+	if exit := runCommand(command, unit.MachineID); exit == 0 {
+		log.V(1).Infof("Unit %s restarted", unit.Name)
+		msg := fmt.Sprintf("Unit %s restarted", unit.Name)
+		fmt.Fprintln(out, msg)
+		ret = true
+		return
+	} else {
+		return
+	}
 }
