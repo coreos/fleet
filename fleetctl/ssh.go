@@ -90,9 +90,9 @@ func runSSH(args []string) (exit int) {
 
 	var sshClient *ssh.SSHForwardingClient
 	if tun := getTunnelFlag(); tun != "" {
-		sshClient, err = ssh.NewTunnelledSSHClient("core", tun, addr, getChecker(), flagSSHAgentForwarding)
+		sshClient, err = ssh.NewTunnelledSSHClient(globalFlags.SSHUsername, tun, addr, getChecker(), flagSSHAgentForwarding)
 	} else {
-		sshClient, err = ssh.NewSSHClient("core", addr, getChecker(), flagSSHAgentForwarding)
+		sshClient, err = ssh.NewSSHClient(globalFlags.SSHUsername, addr, getChecker(), flagSSHAgentForwarding)
 	}
 	if err != nil {
 		stderr("Failed building SSH client: %v", err)
@@ -233,9 +233,9 @@ func runLocalCommand(cmd string) (error, int) {
 func runRemoteCommand(cmd string, addr string) (err error, exit int) {
 	var sshClient *ssh.SSHForwardingClient
 	if tun := getTunnelFlag(); tun != "" {
-		sshClient, err = ssh.NewTunnelledSSHClient("core", tun, addr, getChecker(), false)
+		sshClient, err = ssh.NewTunnelledSSHClient(globalFlags.SSHUsername, tun, addr, getChecker(), false)
 	} else {
-		sshClient, err = ssh.NewSSHClient("core", addr, getChecker(), false)
+		sshClient, err = ssh.NewSSHClient(globalFlags.SSHUsername, addr, getChecker(), false)
 	}
 	if err != nil {
 		return err, -1
