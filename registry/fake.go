@@ -293,3 +293,112 @@ func (fc *FakeClusterRegistry) UpdateEngineVersion(from, to int) error {
 	fc.eVersion = to
 	return nil
 }
+
+func (fl *FakeLeaseRegistry) SetLease(name, machID string, ver int, ttl time.Duration) *fakeLease {
+	l := &fakeLease{
+		name:   name,
+		machID: machID,
+		ver:    ver,
+		ttl:    ttl,
+		reg:    fl,
+	}
+
+	fl.leaseMap[name] = l
+	return l
+}
+
+type fakeLease struct {
+	name   string
+	machID string
+	ver    int
+	ttl    time.Duration
+	reg    *FakeLeaseRegistry
+}
+
+func (l *fakeLease) MachineID() string {
+	return l.machID
+}
+
+func (l *fakeLease) Version() int {
+	return l.ver
+}
+
+func (l *fakeLease) TimeRemaining() time.Duration {
+	return l.ttl
+}
+
+func (l *fakeLease) Index() uint64 {
+	return 0
+}
+
+func (l *fakeLease) Renew(ttl time.Duration) error {
+	if l.reg == nil {
+		return errors.New("already released")
+	}
+
+	l.ttl = ttl
+	return nil
+}
+
+func (l *fakeLease) Release() error {
+	if l.reg == nil {
+		return errors.New("already released")
+	}
+
+	delete(l.reg.leaseMap, l.name)
+	l.reg = nil
+	return nil
+}
+
+func NewFakeLeaseRegistry() *FakeLeaseRegistry {
+	return &FakeLeaseRegistry{
+		leaseMap: make(map[string]Lease),
+	}
+}
+
+type FakeLeaseRegistry struct {
+	leaseMap map[string]Lease
+}
+
+func (fl *FakeLeaseRegistry) GetLease(name string) (Lease, error) {
+	return fl.leaseMap[name], nil
+}
+
+func (fl *FakeLeaseRegistry) AcquireLease(name, machID string, ver int, ttl time.Duration) (Lease, error) {
+	if _, ok := fl.leaseMap[name]; ok {
+		return nil, errors.New("already exists")
+	}
+
+	l := &fakeLease{
+		name:   name,
+		machID: machID,
+		ver:    ver,
+		ttl:    ttl,
+		reg:    fl,
+	}
+
+	fl.leaseMap[name] = l
+	return l, nil
+}
+
+func (fl *FakeLeaseRegistry) StealLease(name, machID string, ver int, ttl time.Duration, idx uint64) (Lease, error) {
+	if idx != 0 {
+		panic("unable to test StealLease with index other than zero")
+	}
+
+	_, ok := fl.leaseMap[name]
+	if !ok {
+		return nil, errors.New("does not exist")
+	}
+
+	l := &fakeLease{
+		name:   name,
+		machID: machID,
+		ver:    ver,
+		ttl:    ttl,
+		reg:    fl,
+	}
+
+	fl.leaseMap[name] = l
+	return l, nil
+}

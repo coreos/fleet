@@ -18,7 +18,7 @@ func newFakeRegistryForCheckVersion(v string) registry.ClusterRegistry {
 		panic(err)
 	}
 
-	return registry.NewFakeClusterRegistry(sv)
+	return registry.NewFakeClusterRegistry(sv, 0)
 }
 
 func TestCheckVersion(t *testing.T) {
