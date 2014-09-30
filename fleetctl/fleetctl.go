@@ -122,6 +122,7 @@ func init() {
 		cmdListUnitFiles,
 		cmdListUnits,
 		cmdLoadUnits,
+		cmdRestartUnit,
 		cmdSSH,
 		cmdStartUnit,
 		cmdStatusUnits,
