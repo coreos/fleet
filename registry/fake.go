@@ -15,10 +15,10 @@ import (
 
 func NewFakeRegistry() *FakeRegistry {
 	return &FakeRegistry{
-		machines:  []machine.MachineState{},
-		jobStates: map[string]map[string]*unit.UnitState{},
-		jobs:      map[string]job.Job{},
-		version:   nil,
+		machines:      []machine.MachineState{},
+		jobStates:     map[string]map[string]*unit.UnitState{},
+		jobs:          map[string]job.Job{},
+		daemonVersion: nil,
 	}
 }
 
@@ -29,10 +29,10 @@ type FakeRegistry struct {
 	Registry
 	sync.RWMutex
 
-	machines  []machine.MachineState
-	jobStates map[string]map[string]*unit.UnitState
-	jobs      map[string]job.Job
-	version   *semver.Version
+	machines      []machine.MachineState
+	jobStates     map[string]map[string]*unit.UnitState
+	jobs          map[string]job.Job
+	daemonVersion *semver.Version
 }
 
 func (f *FakeRegistry) SetMachines(machines []machine.MachineState) {
@@ -65,13 +65,6 @@ func (f *FakeRegistry) SetUnitStates(states []unit.UnitState) {
 		}
 		f.jobStates[name][us.MachineID] = &us
 	}
-}
-
-func (f *FakeRegistry) SetLatestVersion(v semver.Version) {
-	f.Lock()
-	defer f.Unlock()
-
-	f.version = &v
 }
 
 func (f *FakeRegistry) Machines() ([]machine.MachineState, error) {
@@ -266,15 +259,146 @@ func (f *FakeRegistry) UnitStates() ([]*unit.UnitState, error) {
 	return states, nil
 }
 
-func (f *FakeRegistry) LatestVersion() (*semver.Version, error) {
-	f.RLock()
-	defer f.RUnlock()
-
-	return f.version, nil
-}
-
 func (f *FakeRegistry) UnitHeartbeat(name, machID string, ttl time.Duration) error {
 	return nil
 }
 
 func (f *FakeRegistry) ClearUnitHeartbeat(string) {}
+
+func NewFakeClusterRegistry(dVersion *semver.Version, eVersion int) *FakeClusterRegistry {
+	return &FakeClusterRegistry{
+		dVersion: dVersion,
+		eVersion: eVersion,
+	}
+}
+
+type FakeClusterRegistry struct {
+	dVersion *semver.Version
+	eVersion int
+}
+
+func (fc *FakeClusterRegistry) LatestDaemonVersion() (*semver.Version, error) {
+	return fc.dVersion, nil
+}
+
+func (fc *FakeClusterRegistry) EngineVersion() (int, error) {
+	return fc.eVersion, nil
+}
+
+func (fc *FakeClusterRegistry) UpdateEngineVersion(from, to int) error {
+	if fc.eVersion != from {
+		return errors.New("version mismatch")
+	}
+
+	fc.eVersion = to
+	return nil
+}
+
+func (fl *FakeLeaseRegistry) SetLease(name, machID string, ver int, ttl time.Duration) *fakeLease {
+	l := &fakeLease{
+		name:   name,
+		machID: machID,
+		ver:    ver,
+		ttl:    ttl,
+		reg:    fl,
+	}
+
+	fl.leaseMap[name] = l
+	return l
+}
+
+type fakeLease struct {
+	name   string
+	machID string
+	ver    int
+	ttl    time.Duration
+	reg    *FakeLeaseRegistry
+}
+
+func (l *fakeLease) MachineID() string {
+	return l.machID
+}
+
+func (l *fakeLease) Version() int {
+	return l.ver
+}
+
+func (l *fakeLease) TimeRemaining() time.Duration {
+	return l.ttl
+}
+
+func (l *fakeLease) Index() uint64 {
+	return 0
+}
+
+func (l *fakeLease) Renew(ttl time.Duration) error {
+	if l.reg == nil {
+		return errors.New("already released")
+	}
+
+	l.ttl = ttl
+	return nil
+}
+
+func (l *fakeLease) Release() error {
+	if l.reg == nil {
+		return errors.New("already released")
+	}
+
+	delete(l.reg.leaseMap, l.name)
+	l.reg = nil
+	return nil
+}
+
+func NewFakeLeaseRegistry() *FakeLeaseRegistry {
+	return &FakeLeaseRegistry{
+		leaseMap: make(map[string]Lease),
+	}
+}
+
+type FakeLeaseRegistry struct {
+	leaseMap map[string]Lease
+}
+
+func (fl *FakeLeaseRegistry) GetLease(name string) (Lease, error) {
+	return fl.leaseMap[name], nil
+}
+
+func (fl *FakeLeaseRegistry) AcquireLease(name, machID string, ver int, ttl time.Duration) (Lease, error) {
+	if _, ok := fl.leaseMap[name]; ok {
+		return nil, errors.New("already exists")
+	}
+
+	l := &fakeLease{
+		name:   name,
+		machID: machID,
+		ver:    ver,
+		ttl:    ttl,
+		reg:    fl,
+	}
+
+	fl.leaseMap[name] = l
+	return l, nil
+}
+
+func (fl *FakeLeaseRegistry) StealLease(name, machID string, ver int, ttl time.Duration, idx uint64) (Lease, error) {
+	if idx != 0 {
+		panic("unable to test StealLease with index other than zero")
+	}
+
+	_, ok := fl.leaseMap[name]
+	if !ok {
+		return nil, errors.New("does not exist")
+	}
+
+	l := &fakeLease{
+		name:   name,
+		machID: machID,
+		ver:    ver,
+		ttl:    ttl,
+		reg:    fl,
+	}
+
+	fl.leaseMap[name] = l
+	return l, nil
+}

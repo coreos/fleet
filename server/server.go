@@ -73,7 +73,7 @@ func New(cfg config.Config) (*Server, error) {
 		return nil, err
 	}
 
-	reg := registry.New(eClient, cfg.EtcdKeyPrefix)
+	reg := registry.NewEtcdRegistry(eClient, cfg.EtcdKeyPrefix)
 
 	pub := agent.NewUnitStatePublisher(reg, mach, agentTTL)
 	gen := unit.NewUnitStateGenerator(mgr)

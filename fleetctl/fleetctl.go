@@ -164,9 +164,9 @@ func stdout(format string, args ...interface{}) {
 // latest fleet version found registered in the cluster. If any errors are encountered or fleetctl
 // is >= the latest version found, it returns true. If it is < the latest found version, it returns
 // false and a scary warning to the user.
-func checkVersion(reg registry.Registry) (string, bool) {
+func checkVersion(cReg registry.ClusterRegistry) (string, bool) {
 	fv := version.SemVersion
-	lv, err := reg.LatestVersion()
+	lv, err := cReg.LatestDaemonVersion()
 	if err != nil {
 		log.Errorf("error attempting to check latest fleet version in Registry: %v", err)
 	} else if lv != nil && fv.LessThan(*lv) {
@@ -344,7 +344,7 @@ func getRegistryClient() (client.API, error) {
 		return nil, err
 	}
 
-	reg := registry.New(eClient, globalFlags.EtcdKeyPrefix)
+	reg := registry.NewEtcdRegistry(eClient, globalFlags.EtcdKeyPrefix)
 
 	if msg, ok := checkVersion(reg); !ok {
 		stderr(msg)

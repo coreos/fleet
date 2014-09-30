@@ -11,23 +11,36 @@ import (
 )
 
 const (
-	// name of role that represents the lead engine in a cluster
-	engineRoleName = "engine-leader"
+	// name of lease that must be held by the lead engine in a cluster
+	engineLeaseName = "engine-leader"
+
+	// version at which the current engine code operates
+	engineVersion = 1
 )
 
 type Engine struct {
-	rec      *Reconciler
-	registry registry.Registry
-	rStream  pkg.EventStream
-	machine  machine.Machine
+	rec       *Reconciler
+	registry  registry.Registry
+	cRegistry registry.ClusterRegistry
+	lRegistry registry.LeaseRegistry
+	rStream   pkg.EventStream
+	machine   machine.Machine
 
 	lease   registry.Lease
 	trigger chan struct{}
 }
 
-func New(reg registry.Registry, rStream pkg.EventStream, mach machine.Machine) *Engine {
+func New(reg *registry.EtcdRegistry, rStream pkg.EventStream, mach machine.Machine) *Engine {
 	rec := NewReconciler()
-	return &Engine{rec, reg, rStream, mach, nil, make(chan struct{})}
+	return &Engine{
+		rec:       rec,
+		registry:  reg,
+		cRegistry: reg,
+		lRegistry: reg,
+		rStream:   rStream,
+		machine:   mach,
+		trigger:   make(chan struct{}),
+	}
 }
 
 func (e *Engine) Run(ival time.Duration, stop chan bool) {
@@ -35,7 +48,16 @@ func (e *Engine) Run(ival time.Duration, stop chan bool) {
 	machID := e.machine.State().ID
 
 	reconcile := func() {
-		e.lease = ensureLeader(e.lease, e.registry, machID, leaseTTL)
+		if !ensureEngineVersionMatch(e.cRegistry, engineVersion) {
+			return
+		}
+
+		if e.lease == nil {
+			e.lease = acquireLeadership(e.lRegistry, machID, engineVersion, leaseTTL)
+		} else {
+			e.lease = renewLeadership(e.lease, leaseTTL)
+		}
+
 		if e.lease == nil {
 			return
 		}
@@ -85,31 +107,89 @@ func (e *Engine) Purge() {
 	}
 }
 
-// ensureLeader will attempt to renew a non-nil Lease, falling back to
-// acquiring a new Lease on the lead engine role.
-func ensureLeader(prev registry.Lease, reg registry.Registry, machID string, ttl time.Duration) (cur registry.Lease) {
-	if prev != nil {
-		err := prev.Renew(ttl)
-		if err == nil {
-			log.V(1).Infof("Engine leadership renewed")
-			cur = prev
-			return
-		} else {
-			log.Errorf("Engine leadership lost, renewal failed: %v", err)
-		}
-	}
-
-	var err error
-	cur, err = reg.LeaseRole(engineRoleName, machID, ttl)
+func ensureEngineVersionMatch(cReg registry.ClusterRegistry, expect int) bool {
+	v, err := cReg.EngineVersion()
 	if err != nil {
-		log.Errorf("Engine leadership acquisition failed: %v", err)
-	} else if cur == nil {
-		log.V(1).Infof("Unable to acquire engine leadership")
-	} else {
-		log.Infof("Engine leadership acquired")
+		log.Errorf("Unable to determine cluster engine version")
+		return false
 	}
 
-	return
+	if v < expect {
+		err = cReg.UpdateEngineVersion(v, expect)
+		if err != nil {
+			log.Errorf("Failed updating cluster engine version from %d to %d: %v", v, expect, err)
+			return false
+		}
+		log.Infof("Updated cluster engine version from %d to %d", v, expect)
+	} else if v > expect {
+		log.V(1).Infof("Cluster engine version higher than local engine version (%d > %d), unable to participate", v, expect)
+		return false
+	}
+
+	return true
+}
+
+func acquireLeadership(lReg registry.LeaseRegistry, machID string, ver int, ttl time.Duration) registry.Lease {
+	existing, err := lReg.GetLease(engineLeaseName)
+	if err != nil {
+		log.Errorf("Unable to determine current lessee: %v", err)
+		return nil
+	}
+
+	var l registry.Lease
+	if existing == nil {
+		l, err = lReg.AcquireLease(engineLeaseName, machID, ver, ttl)
+		if err != nil {
+			log.Errorf("Engine leadership acquisition failed: %v", err)
+			return nil
+		} else if l == nil {
+			log.V(1).Infof("Unable to acquire engine leadership")
+			return nil
+		}
+		log.Infof("Engine leadership acquired")
+		return l
+	}
+
+	rem := existing.TimeRemaining()
+	expire := time.NewTicker(rem)
+
+	// call Stop to speed up garbage collection in the event
+	// that the Lease cannot be stolen
+	defer expire.Stop()
+
+	if existing.Version() >= ver {
+		log.V(1).Infof("Lease already held by Machine(%s) operating at acceptable version %d", existing.MachineID(), existing.Version())
+		return nil
+	}
+
+	l, err = lReg.StealLease(engineLeaseName, machID, ver, ttl, existing.Index())
+	if err != nil {
+		log.Errorf("Engine leadership steal failed: %v", err)
+		return nil
+	} else if l == nil {
+		log.V(1).Infof("Unable to steal engine leadership")
+		return nil
+	}
+
+	log.Infof("Stole engine leadership from Machine(%s)", existing.MachineID())
+
+	if rem > 0 {
+		log.Infof("Waiting %v for previous lease to expire before continuing reconciliation", rem)
+		<-expire.C
+	}
+
+	return l
+}
+
+func renewLeadership(l registry.Lease, ttl time.Duration) registry.Lease {
+	err := l.Renew(ttl)
+	if err != nil {
+		log.Errorf("Engine leadership lost, renewal failed: %v", err)
+		return nil
+	}
+
+	log.V(1).Infof("Engine leadership renewed")
+	return l
 }
 
 func (e *Engine) Trigger() {
