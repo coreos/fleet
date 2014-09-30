@@ -1,6 +1,7 @@
 package registry
 
 import (
+	"encoding/json"
 	"path"
 	"time"
 
@@ -15,36 +16,85 @@ func (r *EtcdRegistry) leasePath(name string) string {
 	return path.Join(r.keyPrefix, leasePrefix, name)
 }
 
-func (r *EtcdRegistry) AcquireLease(name, machID string, period time.Duration) (Lease, error) {
+func (r *EtcdRegistry) GetLease(name string) (Lease, error) {
 	key := r.leasePath(name)
+	req := etcd.Get{
+		Key: key,
+	}
+
+	resp, err := r.etcd.Do(&req)
+	if err != nil {
+		if isKeyNotFound(err) {
+			err = nil
+		}
+		return nil, err
+	}
+
+	l := leaseFromResult(resp, r.etcd)
+	return l, nil
+}
+
+func (r *EtcdRegistry) StealLease(name, machID string, ver int, period time.Duration, idx uint64) (Lease, error) {
+	val, err := serializeLeaseMetadata(machID, ver)
+	if err != nil {
+		return nil, err
+	}
+
+	req := etcd.Set{
+		Key:           r.leasePath(name),
+		Value:         val,
+		PreviousIndex: idx,
+		TTL:           period,
+	}
+
+	resp, err := r.etcd.Do(&req)
+	if err != nil {
+		if isNodeExist(err) {
+			err = nil
+		}
+		return nil, err
+	}
+
+	l := leaseFromResult(resp, r.etcd)
+	return l, nil
+}
+
+func (r *EtcdRegistry) AcquireLease(name string, machID string, ver int, period time.Duration) (Lease, error) {
+	val, err := serializeLeaseMetadata(machID, ver)
+	if err != nil {
+		return nil, err
+	}
+
 	req := etcd.Create{
-		Key:   key,
-		Value: machID,
+		Key:   r.leasePath(name),
+		Value: val,
 		TTL:   period,
 	}
 
-	var lease Lease
 	resp, err := r.etcd.Do(&req)
-	if err == nil {
-		lease = &etcdLease{
-			key:   key,
-			value: machID,
-			idx:   resp.Node.ModifiedIndex,
-			etcd:  r.etcd,
+	if err != nil {
+		if isNodeExist(err) {
+			err = nil
 		}
-	} else if isNodeExist(err) {
-		err = nil
+		return nil, err
 	}
 
-	return lease, err
+	l := leaseFromResult(resp, r.etcd)
+	return l, nil
+}
+
+type etcdLeaseMetadata struct {
+	MachineID string
+	Version   int
 }
 
 // etcdLease implements the Lease interface
 type etcdLease struct {
-	key   string
-	value string
-	idx   uint64
-	etcd  etcd.Client
+	key  string
+	meta etcdLeaseMetadata
+	idx  uint64
+	ttl  time.Duration
+	etcd etcd.Client
 }
 
 func (l *etcdLease) Release() error {
@@ -57,17 +107,74 @@ func (l *etcdLease) Release() error {
 }
 
 func (l *etcdLease) Renew(period time.Duration) error {
+	val, err := serializeLeaseMetadata(l.meta.MachineID, l.meta.Version)
 	req := etcd.Set{
 		Key:           l.key,
-		Value:         l.value,
+		Value:         val,
 		PreviousIndex: l.idx,
 		TTL:           period,
 	}
 
 	resp, err := l.etcd.Do(&req)
-	if err == nil {
-		l.idx = resp.Node.ModifiedIndex
+	if err != nil {
+		return err
 	}
 
-	return err
+	renewed := leaseFromResult(resp, l.etcd)
+	*l = *renewed
+
+	return nil
+}
+
+func (l *etcdLease) MachineID() string {
+	return l.meta.MachineID
+}
+
+func (l *etcdLease) Version() int {
+	return l.meta.Version
+}
+
+func (l *etcdLease) Index() uint64 {
+	return l.idx
+}
+
+func (l *etcdLease) TimeRemaining() time.Duration {
+	return l.ttl
+}
+
+func leaseFromResult(res *etcd.Result, ec etcd.Client) *etcdLease {
+	lease := &etcdLease{
+		key:  res.Node.Key,
+		idx:  res.Node.ModifiedIndex,
+		ttl:  res.Node.TTLDuration(),
+		etcd: ec,
+	}
+
+	err := json.Unmarshal([]byte(res.Node.Value), &lease.meta)
+
+	// fall back to using the entire value as the MachineID for
+	// backwards-compatibility with engines that are not aware
+	// of this versioning mechanism
+	if err != nil {
+		lease.meta = etcdLeaseMetadata{
+			MachineID: res.Node.Value,
+			Version:   0,
+		}
+	}
+
+	return lease
+}
+
+func serializeLeaseMetadata(machID string, ver int) (string, error) {
+	meta := etcdLeaseMetadata{
+		MachineID: machID,
+		Version:   ver,
+	}
+
+	b, err := json.Marshal(meta)
+	if err != nil {
+		return "", err
+	}
+
+	return string(b), nil
 }
