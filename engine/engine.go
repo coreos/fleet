@@ -150,13 +150,6 @@ func acquireLeadership(lReg registry.LeaseRegistry, machID string, ver int, ttl 
 		return l
 	}
 
-	rem := existing.TimeRemaining()
-	expire := time.NewTicker(rem)
-
-	// call Stop to speed up garbage collection in the event
-	// that the Lease cannot be stolen
-	defer expire.Stop()
-
 	if existing.Version() >= ver {
 		log.V(1).Infof("Lease already held by Machine(%s) operating at acceptable version %d", existing.MachineID(), existing.Version())
 		return nil
@@ -173,9 +166,10 @@ func acquireLeadership(lReg registry.LeaseRegistry, machID string, ver int, ttl 
 
 	log.Infof("Stole engine leadership from Machine(%s)", existing.MachineID())
 
+	rem := existing.TimeRemaining()
 	if rem > 0 {
 		log.Infof("Waiting %v for previous lease to expire before continuing reconciliation", rem)
-		<-expire.C
+		<-time.After(rem)
 	}
 
 	return l
