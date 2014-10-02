@@ -6,6 +6,7 @@ import (
 	"github.com/coreos/fleet/client"
 	"github.com/coreos/fleet/log"
 	"github.com/coreos/fleet/registry"
+	"github.com/coreos/fleet/version"
 )
 
 func NewServeMux(reg registry.Registry) http.Handler {
@@ -22,8 +23,9 @@ func NewServeMux(reg registry.Registry) http.Handler {
 	sm.HandleFunc("/", baseHandler)
 
 	lm := &loggingMiddleware{sm}
+	sim := &serverInfoMiddleware{lm}
 
-	return lm
+	return sim
 }
 
 type loggingMiddleware struct {
@@ -33,6 +35,15 @@ type loggingMiddleware struct {
 func (lm *loggingMiddleware) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	log.V(1).Infof("HTTP %s %v", req.Method, req.URL)
 	lm.next.ServeHTTP(rw, req)
+}
+
+type serverInfoMiddleware struct {
+	next http.Handler
+}
+
+func (si *serverInfoMiddleware) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
+	rw.Header().Set("Server", "fleetd/"+version.Version)
+	si.next.ServeHTTP(rw, req)
 }
 
 func methodNotAllowedHandler(rw http.ResponseWriter, req *http.Request) {
