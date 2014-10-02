@@ -155,7 +155,8 @@ func acquireLeadership(lReg registry.LeaseRegistry, machID string, ver int, ttl 
 		return nil
 	}
 
-	l, err = lReg.StealLease(engineLeaseName, machID, ver, ttl, existing.Index())
+	rem := existing.TimeRemaining()
+	l, err = lReg.StealLease(engineLeaseName, machID, ver, ttl+rem, existing.Index())
 	if err != nil {
 		log.Errorf("Engine leadership steal failed: %v", err)
 		return nil
@@ -166,7 +167,6 @@ func acquireLeadership(lReg registry.LeaseRegistry, machID string, ver int, ttl 
 
 	log.Infof("Stole engine leadership from Machine(%s)", existing.MachineID())
 
-	rem := existing.TimeRemaining()
 	if rem > 0 {
 		log.Infof("Waiting %v for previous lease to expire before continuing reconciliation", rem)
 		<-time.After(rem)
