@@ -3,6 +3,7 @@ package api
 import (
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/coreos/fleet/registry"
@@ -35,6 +36,10 @@ func TestDefaultHandlers(t *testing.T) {
 		err = assertErrorResponse(rr, tt.code)
 		if err != nil {
 			t.Errorf("case %d: %v", i, err)
+		}
+
+		if !strings.HasPrefix(rr.HeaderMap["Server"][0], "fleetd") {
+			t.Errorf("wrong Server header found %v", rr.HeaderMap["Server"])
 		}
 	}
 }
