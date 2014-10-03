@@ -683,3 +683,25 @@ func TestValidateName(t *testing.T) {
 		}
 	}
 }
+
+func TestUnitsSetDesiredStateBadContentType(t *testing.T) {
+	fr := registry.NewFakeRegistry()
+	fAPI := &client.RegistryClient{fr}
+	resource := &unitsResource{fAPI, "/units"}
+	rr := httptest.NewRecorder()
+
+	body := ioutil.NopCloser(bytes.NewBuffer([]byte(`{"foo":"bar"}`)))
+	req, err := http.NewRequest("PUT", "http://example.com/units/foo.service", body)
+	if err != nil {
+		t.Fatalf("Failed creating http.Request: %v", err)
+	}
+
+	req.Header.Set("Content-Type", "application/xml")
+
+	resource.set(rr, req, "foo.service")
+
+	err = assertErrorResponse(rr, http.StatusUnsupportedMediaType)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
