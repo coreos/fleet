@@ -53,7 +53,7 @@ func (ur *unitsResource) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 func (ur *unitsResource) set(rw http.ResponseWriter, req *http.Request, item string) {
 	if validateContentType(req) != nil {
-		sendError(rw, http.StatusNotAcceptable, errors.New("application/json is only supported Content-Type"))
+		sendError(rw, http.StatusUnsupportedMediaType, errors.New("application/json is only supported Content-Type"))
 		return
 	}
 
