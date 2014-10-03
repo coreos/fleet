@@ -22,10 +22,11 @@ func NewServeMux(reg registry.Registry) http.Handler {
 	sm.HandleFunc(prefix, methodNotAllowedHandler)
 	sm.HandleFunc("/", baseHandler)
 
-	lm := &loggingMiddleware{sm}
-	sim := &serverInfoMiddleware{lm}
+	hdlr := http.Handler(sm)
+	hdlr = &loggingMiddleware{hdlr}
+	hdlr = &serverInfoMiddleware{hdlr}
 
-	return sim
+	return hdlr
 }
 
 type loggingMiddleware struct {
