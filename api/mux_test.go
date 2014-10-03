@@ -1,12 +1,13 @@
 package api
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 
 	"github.com/coreos/fleet/registry"
+	"github.com/coreos/fleet/version"
 )
 
 func TestDefaultHandlers(t *testing.T) {
@@ -38,8 +39,10 @@ func TestDefaultHandlers(t *testing.T) {
 			t.Errorf("case %d: %v", i, err)
 		}
 
-		if !strings.HasPrefix(rr.HeaderMap["Server"][0], "fleetd") {
-			t.Errorf("wrong Server header found %v", rr.HeaderMap["Server"])
+		wantServer := fmt.Sprintf("fleetd/%s", version.Version)
+		gotServer := rr.HeaderMap["Server"][0]
+		if wantServer != gotServer {
+			t.Errorf("case %d: received incorrect Server header: want=%s, got=%s", i, wantServer, gotServer)
 		}
 	}
 }
