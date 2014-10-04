@@ -99,8 +99,52 @@ func TestAcquireLeadership(t *testing.T) {
 
 		got := acquireLeadership(lReg, tt.local.machID, tt.local.ver, time.Millisecond)
 
-		if tt.wantAcquire != (got != nil) {
+		if tt.wantAcquire != (isLeader(got, tt.local.machID)) {
 			t.Errorf("case %d: wantAcquire=%t but got %#v", i, tt.wantAcquire, got)
+		}
+	}
+}
+
+func TestIsLeader(t *testing.T) {
+	tests := []struct {
+		lease      *leaseMeta
+		machID     string
+		wantLeader bool
+	}{
+		// not a leader if lease is null
+		{
+			lease:      nil,
+			machID:     "XXX",
+			wantLeader: false,
+		},
+
+		// not a leader if lease is held by a different machines
+		{
+			lease:      &leaseMeta{machID: "YYY"},
+			machID:     "XXX",
+			wantLeader: false,
+		},
+
+		// leader if lease is valid and held by current machine
+		{
+			lease:      &leaseMeta{machID: "XXX"},
+			machID:     "XXX",
+			wantLeader: true,
+		},
+	}
+
+	for i, tt := range tests {
+		lReg := registry.NewFakeLeaseRegistry()
+
+		if tt.lease != nil {
+			lReg.SetLease(engineLeaseName, tt.lease.machID, tt.lease.ver, time.Millisecond)
+		}
+
+		lease, _ := lReg.GetLease(engineLeaseName)
+
+		got := isLeader(lease, tt.machID)
+		if tt.wantLeader != got {
+			t.Errorf("case %d: wantLeader=%t but got %t", i, tt.wantLeader, got)
 		}
 	}
 }
