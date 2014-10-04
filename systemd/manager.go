@@ -70,9 +70,6 @@ func (m *systemdUnitManager) Unload(name string) {
 	defer m.mutex.Unlock()
 	delete(m.hashes, name)
 	m.removeUnit(name)
-	if m.unitRequiresDaemonReload(name) {
-		m.daemonReload()
-	}
 }
 
 // TriggerStart asynchronously starts the unit identified by the given name.
