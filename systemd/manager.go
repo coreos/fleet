@@ -56,7 +56,10 @@ func (m *systemdUnitManager) Load(name string, u unit.UnitFile) error {
 		return err
 	}
 	m.hashes[name] = u.Hash()
-	return m.daemonReload()
+	if m.unitRequiresDaemonReload(name) {
+		return m.daemonReload()
+	}
+	return nil
 }
 
 // Unload removes the indicated unit from the filesystem, deletes its
@@ -67,7 +70,6 @@ func (m *systemdUnitManager) Unload(name string) {
 	defer m.mutex.Unlock()
 	delete(m.hashes, name)
 	m.removeUnit(name)
-	m.daemonReload()
 }
 
 // TriggerStart asynchronously starts the unit identified by the given name.
