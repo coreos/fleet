@@ -39,6 +39,8 @@ func main() {
 		os.Exit(0)
 	}
 
+	log.Infof("Starting fleet version %v", version.Version)
+
 	cfgset := flag.NewFlagSet("fleet", flag.ExitOnError)
 	cfgset.Int("verbosity", 0, "Logging level")
 	cfgset.Var(&stringSlice{}, "etcd_servers", "List of etcd endpoints")
