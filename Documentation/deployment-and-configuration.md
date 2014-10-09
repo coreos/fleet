@@ -22,7 +22,7 @@ The `fleetctl` client tool uses SSH to interact with a fleet cluster. This means
 
 Authorizing a public SSH key is typically as easy as appending it to the user's `~/.ssh/authorized_keys` file. This may not be true on your systemd, though. If running CoreOS, use the built-in `update-ssh-keys` utility - it helps manage multiple authorized keys.
 
-To make things incredibly easy, included in the [fleet source](../contrib/fleetctl-inject-ssh.sh) is a script that will distribute SSH keys across a fleet cluster running on CoreOS. Simply pipe the contents of a public SSH key into the script:
+To make things incredibly easy, included in the [fleet source](../scripts/fleetctl-inject-ssh.sh) is a script that will distribute SSH keys across a fleet cluster running on CoreOS. Simply pipe the contents of a public SSH key into the script:
 
 ```
 cat ~/.ssh/id_rsa.pub | ./fleetctl-inject-ssh.sh simon
