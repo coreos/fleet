@@ -4,7 +4,7 @@ Deploying `fleet` is as simple as dropping the `fleetd` binary on a machine with
 
 Deploying `fleet` on CoreOS is even simpler: just run `systemctl start fleet`. The built-in configuration assumes each of your hosts is serving an etcd endpoint at the default location (http://127.0.0.1:4001). However, if your etcd cluster differs, you must make the corresponding configuration changes.
 
-### etcd
+## etcd
 
 Each `fleetd` daemon must be configured to talk to the same [etcd cluster][etcd]. By default, the `fleetd` daemon will connect to http://127.0.0.1:4001. Refer to the configuration documentation below for customization help.
 
@@ -12,11 +12,11 @@ Each `fleetd` daemon must be configured to talk to the same [etcd cluster][etcd]
 
 [etcd]: https://coreos.com/docs/cluster-management/setup/getting-started-with-etcd
 
-### systemd
+## systemd
 
 The `fleetd` daemon communicates with systemd (v207+) running locally on a given machine. It requires D-Bus (v1.6.12+) to do this.
 
-### SSH Keys
+## SSH Keys
 
 The `fleetctl` client tool uses SSH to interact with a fleet cluster. This means each client's public SSH key must be authorized to access each `fleet` machine.
 
@@ -33,6 +33,25 @@ All but the first argument to `fleetctl-inject-ssh.sh` are passed directly to `f
 ```
 cat ~/.ssh/id_rsa.pub | ./fleetctl-inject-ssh.sh simon --tunnel 19.12.0.33
 ```
+
+## API
+
+fleet's API is served using systemd socket activation.
+At service startup, systemd passes fleet a set of file descriptors, preventing fleet from having to care on which interfaces it's serving the API.
+The configuration of these interfaces is managed through a [systemd socket unit][socket-unit].
+
+[socket-unit]: http://www.freedesktop.org/software/systemd/man/systemd.socket.html
+
+CoreOS ships a socket unit for fleet (`fleet.socket`) which binds to a Unix domain socket, `/var/run/fleet.sock`.
+To serve the fleet API over a network address, simply extend or replace this socket unit.
+For example, writing the following drop-in to `/etc/systemd/system/fleet.socket.d/30-ListenStream.conf` would enable fleet to be reached over the local port `49153` in addition to `/var/run/fleet.sock`:
+
+```
+[Socket]
+ListenStream=127.0.0.1:49153
+```
+
+After you've written the file, call `systemctl daemon-reload` to load the new drop-in, followed by `systemctl stop fleet.service; systemctl restart fleet.socket; systemctl start fleet.service`.
 
 # Configuration
 
