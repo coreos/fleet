@@ -52,13 +52,23 @@ func (e *Engine) Run(ival time.Duration, stop chan bool) {
 			return
 		}
 
-		if e.lease == nil {
-			e.lease = acquireLeadership(e.lRegistry, machID, engineVersion, leaseTTL)
+		var l registry.Lease
+		if isLeader(e.lease, machID) {
+			l = renewLeadership(e.lease, leaseTTL)
 		} else {
-			e.lease = renewLeadership(e.lease, leaseTTL)
+			l = acquireLeadership(e.lRegistry, machID, engineVersion, leaseTTL)
 		}
 
-		if e.lease == nil {
+		// log all leadership changes
+		if l != nil && e.lease == nil && l.MachineID() != machID {
+			log.Infof("Engine leader is %s", l.MachineID())
+		} else if l != nil && e.lease != nil && l.MachineID() != e.lease.MachineID() {
+			log.Infof("Engine leadership changed from %s to %s", e.lease.MachineID(), l.MachineID())
+		}
+
+		e.lease = l
+
+		if !isLeader(e.lease, machID) {
 			return
 		}
 
@@ -98,13 +108,24 @@ func (e *Engine) Run(ival time.Duration, stop chan bool) {
 }
 
 func (e *Engine) Purge() {
-	if e.lease == nil {
+	// only purge the lease if we are the leader
+	if !isLeader(e.lease, e.machine.State().ID) {
 		return
 	}
 	err := e.lease.Release()
 	if err != nil {
 		log.Errorf("Failed to release lease: %v", err)
 	}
+}
+
+func isLeader(l registry.Lease, machID string) bool {
+	if l == nil {
+		return false
+	}
+	if l.MachineID() != machID {
+		return false
+	}
+	return true
 }
 
 func ensureEngineVersionMatch(cReg registry.ClusterRegistry, expect int) bool {
@@ -152,7 +173,7 @@ func acquireLeadership(lReg registry.LeaseRegistry, machID string, ver int, ttl 
 
 	if existing.Version() >= ver {
 		log.V(1).Infof("Lease already held by Machine(%s) operating at acceptable version %d", existing.MachineID(), existing.Version())
-		return nil
+		return existing
 	}
 
 	rem := existing.TimeRemaining()
