@@ -1,9 +1,9 @@
 // +build ignore
 
-package contrib
+package scripts
 
 // This file exists to ensure Godep manages a vendored copy of the
-// `google-api-go-generator` library, used by contrib/schema-generator.
+// `google-api-go-generator` library, used by scripts/schema-generator.
 // Unfortunately since this is a binary package and hence is not importable, we
 // need to trick godep into managing it. To update the dependency, do the following steps:
 // 1. Use `godep restore` to set up GOPATH with all the right package versions
