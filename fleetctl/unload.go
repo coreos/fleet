@@ -47,7 +47,7 @@ func runUnloadUnit(args []string) (exit int) {
 	}
 
 	if !sharedFlags.NoBlock {
-		errchan := waitForUnitStates(wait, job.JobStateInactive, sharedFlags.BlockAttempts, os.Stderr)
+		errchan := waitForUnitStates(wait, job.JobStateInactive, sharedFlags.BlockAttempts, os.Stdout)
 		for err := range errchan {
 			stderr("Error waiting for units: %v", err)
 			exit = 1
