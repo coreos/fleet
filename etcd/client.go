@@ -375,6 +375,7 @@ func buildTLSClientConfig(ca, cert, key []byte, parseKeyPair keypairFunc) (*tls.
 
 	cfg := tls.Config{
 		Certificates: []tls.Certificate{tlsCert},
+		MinVersion:   tls.VersionTLS10,
 	}
 
 	if len(ca) != 0 {
