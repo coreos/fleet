@@ -135,6 +135,8 @@ Once the target unit is scheduled somewhere, the follower unit will be scheduled
 
 Follower units will reschedule themselves around the cluster to ensure their `MachineOf` options are always fulfilled.
 
+Note that currently `MachineOf` _cannot_ be a bidirectional dependency: i.e., if unit `foo.service` has `MachineOf=bar.service`, then `bar.service` must not have a `MachineOf=foo.service`, or fleet will be unable to schedule the units.
+
 ##### Schedule unit away from other unit(s)
 
 The value of the `Conflicts` option is a [glob pattern](http://golang.org/pkg/path/#Match) defining which other units next to which a given unit must not be scheduled. A unit may have multiple `Conflicts` options.
