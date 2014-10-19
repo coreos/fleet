@@ -81,12 +81,12 @@ func (ar *AgentReconciler) Reconcile(a *Agent) {
 		return
 	}
 
-	for tc := range ar.calculateTaskChainsForJobs(dAgentState, cAgentState) {
+	for tc := range ar.calculateTaskChainsForUnits(dAgentState, cAgentState) {
 		ar.launchTaskChain(tc, a)
 	}
 }
 
-// Purge attempts to unload all Jobs that have been loaded locally
+// Purge attempts to unload all Units that have been loaded locally
 func (ar *AgentReconciler) Purge(a *Agent) {
 	for {
 		cAgentState, err := a.units()
@@ -160,10 +160,10 @@ func desiredAgentState(a *Agent, reg registry.Registry) (*AgentState, error) {
 	return &as, nil
 }
 
-// calculateTaskChainsForJobs compares the desired and current state of an Agent.
+// calculateTaskChainsForUnits compares the desired and current state of an Agent.
 // The generated taskChains represent what should be done to make the desired
 // state match the current state.
-func (ar *AgentReconciler) calculateTaskChainsForJobs(dState *AgentState, cState unitStates) <-chan taskChain {
+func (ar *AgentReconciler) calculateTaskChainsForUnits(dState *AgentState, cState unitStates) <-chan taskChain {
 	tcChan := make(chan taskChain)
 	go func() {
 		jobs := pkg.NewUnsafeSet()
@@ -176,7 +176,7 @@ func (ar *AgentReconciler) calculateTaskChainsForJobs(dState *AgentState, cState
 		}
 
 		for _, name := range jobs.Values() {
-			tc := ar.calculateTaskChainForJob(dState, cState, name)
+			tc := ar.calculateTaskChainForUnit(dState, cState, name)
 			if tc == nil {
 				continue
 			}
@@ -189,14 +189,20 @@ func (ar *AgentReconciler) calculateTaskChainsForJobs(dState *AgentState, cState
 	return tcChan
 }
 
-func (ar *AgentReconciler) calculateTaskChainForJob(dState *AgentState, cState unitStates, jName string) *taskChain {
+func (ar *AgentReconciler) calculateTaskChainForUnit(dState *AgentState, cState unitStates, jName string) *taskChain {
 	var dJob *job.Unit
+	var dJHash string
 	if dState != nil {
 		dJob = dState.Units[jName]
+		if dJob != nil {
+			dJHash = dJob.Unit.Hash().String()
+		}
 	}
 	var cJState *job.JobState
-	if state, ok := cState[jName]; ok {
-		cJState = &state
+	var cJHash string
+	if us, ok := cState[jName]; ok {
+		cJState = &us.state
+		cJHash = us.hash
 	}
 	if dJob == nil && cJState == nil {
 		log.Errorf("Desired state and current state of Job(%s) nil, not sure what to do", jName)
@@ -238,6 +244,19 @@ func (ar *AgentReconciler) calculateTaskChainForJob(dState *AgentState, cState u
 			})
 		}
 
+		return &tc
+	}
+
+	if cJHash != dJHash {
+		log.V(1).Infof("Desired hash %q differs to current hash %s of Job(%s) - unloading", dJHash, cJHash, jName)
+		t := task{
+			typ:    taskTypeUnloadUnit,
+			reason: taskReasonLoadedButHashDiffers,
+		}
+		u := &job.Unit{
+			Name: jName,
+		}
+		tc := newTaskChain(u, t)
 		return &tc
 	}
 

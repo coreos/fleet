@@ -119,7 +119,11 @@ func (a *Agent) stopUnit(unitName string) {
 	a.um.TriggerStop(unitName)
 }
 
-type unitStates map[string]job.JobState
+type unitState struct {
+	state job.JobState
+	hash  string
+}
+type unitStates map[string]unitState
 
 // units returns a map representing the current state of units known by the agent.
 func (a *Agent) units() (unitStates, error) {
@@ -133,25 +137,34 @@ func (a *Agent) units() (unitStates, error) {
 		loaded.Add(jName)
 	}
 
-	units, err := a.um.Units()
+	unitFiles, err := a.um.Units()
 	if err != nil {
 		return nil, fmt.Errorf("failed fetching loaded units from UnitManager: %v", err)
 	}
 
 	filter := pkg.NewUnsafeSet()
-	for _, u := range units {
+	for _, u := range unitFiles {
 		filter.Add(u)
 	}
 
+	units, err := a.um.GetUnitStates(filter)
+	if err != nil {
+		return nil, fmt.Errorf("failed fetching unit states from UnitManager: %v", err)
+	}
+
 	states := make(unitStates)
-	for _, uName := range units {
+	for uName, state := range units {
 		js := job.JobStateInactive
 		if loaded.Contains(uName) {
 			js = job.JobStateLoaded
 		} else if launched.Contains(uName) {
 			js = job.JobStateLaunched
 		}
-		states[uName] = js
+		us := unitState{
+			state: js,
+			hash:  state.UnitHash,
+		}
+		states[uName] = us
 	}
 
 	return states, nil

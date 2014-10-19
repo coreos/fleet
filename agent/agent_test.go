@@ -80,7 +80,9 @@ func TestAgentLoadUnloadUnit(t *testing.T) {
 
 	jsLoaded := job.JobStateLoaded
 	expectUnits := unitStates{
-		"foo.service": jsLoaded,
+		"foo.service": unitState{
+			state: jsLoaded,
+		},
 	}
 
 	if !reflect.DeepEqual(expectUnits, units) {
@@ -123,7 +125,9 @@ func TestAgentLoadStartStopUnit(t *testing.T) {
 
 	jsLaunched := job.JobStateLaunched
 	expectUnits := unitStates{
-		"foo.service": jsLaunched,
+		"foo.service": unitState{
+			state: jsLaunched,
+		},
 	}
 
 	if !reflect.DeepEqual(expectUnits, units) {
@@ -139,7 +143,9 @@ func TestAgentLoadStartStopUnit(t *testing.T) {
 
 	jsLoaded := job.JobStateLoaded
 	expectUnits = unitStates{
-		"foo.service": jsLoaded,
+		"foo.service": unitState{
+			state: jsLoaded,
+		},
 	}
 
 	if !reflect.DeepEqual(expectUnits, units) {

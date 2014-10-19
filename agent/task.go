@@ -34,6 +34,7 @@ const (
 	taskReasonScheduledButNotRunnable    = "unit scheduled locally but unable to run"
 	taskReasonScheduledButUnloaded       = "unit scheduled here but not loaded"
 	taskReasonLoadedButNotScheduled      = "unit loaded but not scheduled here"
+	taskReasonLoadedButHashDiffers       = "unit loaded but hash differs to expected"
 	taskReasonLoadedDesiredStateLaunched = "unit currently loaded but desired state is launched"
 	taskReasonLaunchedDesiredStateLoaded = "unit currently launched but desired state is loaded"
 	taskReasonPurgingAgent               = "purging agent"
