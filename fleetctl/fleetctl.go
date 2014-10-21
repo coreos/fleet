@@ -70,6 +70,7 @@ var (
 	globalFlags = struct {
 		Debug                 bool
 		Version               bool
+		Help                  bool
 		Endpoint              string
 		EtcdKeyPrefix         string
 		EtcdKeyFile           string
@@ -100,6 +101,9 @@ func init() {
 	// call this as early as possible to ensure we always have timestamps
 	// on fleetctl logs
 	log.EnableTimestamps()
+
+	globalFlagset.BoolVar(&globalFlags.Help, "help", false, "Print usage information and exit")
+	globalFlagset.BoolVar(&globalFlags.Help, "h", false, "Print usage information and exit")
 
 	globalFlagset.BoolVar(&globalFlags.Debug, "debug", false, "Print out more debug information to stderr")
 	globalFlagset.BoolVar(&globalFlags.Version, "version", false, "Print the version and exit")
@@ -203,14 +207,10 @@ func main() {
 		log.SetVerbosity(1)
 	}
 
-	// no command specified - trigger help
-	if len(args) < 1 {
-		args = append(args, "help")
-	}
-
-	// deal specially with --version
 	if globalFlags.Version {
-		args[0] = "version"
+		args = []string{"version"}
+	} else if len(args) < 1 || globalFlags.Help {
+		args = []string{"help"}
 	}
 
 	var cmd *Command
