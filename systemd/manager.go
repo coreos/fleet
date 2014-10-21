@@ -163,21 +163,9 @@ func (m *systemdUnitManager) daemonReload() error {
 
 // Units enumerates all files recognized as valid systemd units in
 // this manager's units directory.
-func (m *systemdUnitManager) Units() (units []string, err error) {
-	fis, err := ioutil.ReadDir(m.unitsDir)
-	if err != nil {
-		return
-	}
+func (m *systemdUnitManager) Units() ([]string, error) {
+	return lsUnitsDir(m.unitsDir)
 
-	for _, fi := range fis {
-		name := fi.Name()
-		if !unit.RecognizedUnitType(name) {
-			log.Warningf("Found unrecognized file in %s, ignoring", path.Join(m.unitsDir, name))
-			continue
-		}
-		units = append(units, name)
-	}
-	return
 }
 
 func (m *systemdUnitManager) GetUnitStates(filter pkg.Set) (map[string]*unit.UnitState, error) {
@@ -257,4 +245,17 @@ func (m *systemdUnitManager) removeUnit(name string) {
 
 func (m *systemdUnitManager) getUnitFilePath(name string) string {
 	return path.Join(m.unitsDir, name)
+}
+
+func lsUnitsDir(dir string) ([]string, error) {
+	filterFunc := func(name string) bool {
+		if !unit.RecognizedUnitType(name) {
+			log.Warningf("Found unrecognized file in %s, ignoring", path.Join(dir, name))
+			return true
+		}
+
+		return false
+	}
+
+	return pkg.ListDirectory(dir, filterFunc)
 }
