@@ -215,7 +215,7 @@ Note that this discovery document intentionally ships with an unusable `rootUrl`
 An extremely simplified example client can be found [here][example].
 
 [disco]: https://developers.google.com/discovery/v1/reference/apis
-[schema]: ../schema/v1-alpha.json
+[schema]: ../schema/cluster-v1.json
 [example]: ../Documentation/examples/api.py
 
 ## Media Types
