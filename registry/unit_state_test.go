@@ -349,27 +349,6 @@ func TestUnitStates(t *testing.T) {
 			},
 		},
 	}
-	// Legacy unit state which we expect to be overridden by fus1 (from the
-	// same machine ID)
-	fus3 := unit.UnitState{"cba", "fed", "ihg", "mID1", "zzz", "foo"}
-	bfoo := etcd.Node{
-		Key:   "/fleet/state/foo",
-		Value: usToJson(t, &fus3),
-	}
-	// Legacy unit state which we expect to see in the results
-	bus := unit.UnitState{"111", "222", "333", "mID3", "aaa", "bar"}
-	baz := etcd.Node{
-		Key:   "/fleet/state/bar",
-		Value: usToJson(t, &bus),
-	}
-
-	// Result from crawling the legacy "state" namespace
-	res1 := &etcd.Result{
-		Node: &etcd.Node{
-			Key:   "/fleet/state",
-			Nodes: []etcd.Node{bfoo, baz},
-		},
-	}
 	// Result from crawling the new "states" namespace
 	res2 := &etcd.Result{
 		Node: &etcd.Node{
@@ -378,7 +357,7 @@ func TestUnitStates(t *testing.T) {
 		},
 	}
 	e := &testEtcdClient{
-		res: []*etcd.Result{res1, res2},
+		res: []*etcd.Result{res2},
 	}
 	r := &EtcdRegistry{e, "/fleet/"}
 
@@ -388,7 +367,6 @@ func TestUnitStates(t *testing.T) {
 	}
 
 	want := []*unit.UnitState{
-		&bus,
 		&fus1,
 		&fus2,
 	}
@@ -410,10 +388,10 @@ func TestUnitStates(t *testing.T) {
 		fail bool
 	}{
 		{[]error{etcd.Error{ErrorCode: etcd.ErrorKeyNotFound}}, false},
-		{[]error{nil, etcd.Error{ErrorCode: etcd.ErrorKeyNotFound}}, false},
-		{[]error{nil, nil}, false}, // No errors, no responses should succeed
+		{[]error{etcd.Error{ErrorCode: etcd.ErrorKeyNotFound}}, false},
+		{[]error{nil}, false}, // No errors, no responses should succeed
 		{[]error{errors.New("ur registry don't work")}, true},
-		{[]error{nil, errors.New("ur registry don't work")}, true},
+		{[]error{errors.New("ur registry don't work")}, true},
 	} {
 		e = &testEtcdClient{err: tt.errs}
 		r = &EtcdRegistry{e, "/fleet"}

@@ -95,39 +95,11 @@ func (mk MUSKeys) Swap(i, j int) { mk[i], mk[j] = mk[j], mk[i] }
 // statesByMUSKey returns a map of all UnitStates stored in the registry indexed by MUSKey
 func (r *EtcdRegistry) statesByMUSKey() (map[MUSKey]*unit.UnitState, error) {
 	mus := make(map[MUSKey]*unit.UnitState)
-
-	// For backwards compatibility, first retrieve any states stored in the
-	// old format
 	req := etcd.Get{
-		Key:       path.Join(r.keyPrefix, statePrefix),
-		Recursive: true,
-	}
-	res, err := r.etcd.Do(&req)
-	if err != nil && !isKeyNotFound(err) {
-		return nil, err
-	}
-	if res != nil {
-		for _, node := range res.Node.Nodes {
-			_, name := path.Split(node.Key)
-			var usm unitStateModel
-			if err := unmarshal(node.Value, &usm); err != nil {
-				log.Errorf("Error unmarshalling UnitState(%s): %v", name, err)
-				continue
-			}
-			us := modelToUnitState(&usm, name)
-			if us != nil {
-				key := MUSKey{name, us.MachineID}
-				mus[key] = us
-			}
-		}
-	}
-
-	// Now retrieve states stored in the new format and overlay them
-	req = etcd.Get{
 		Key:       path.Join(r.keyPrefix, statesPrefix),
 		Recursive: true,
 	}
-	res, err = r.etcd.Do(&req)
+	res, err := r.etcd.Do(&req)
 	if err != nil && !isKeyNotFound(err) {
 		return nil, err
 	}
