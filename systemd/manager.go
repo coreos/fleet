@@ -52,10 +52,15 @@ func NewSystemdUnitManager(uDir string) (*systemdUnitManager, error) {
 		return nil, err
 	}
 
+	hashes, err := hashUnitFiles(uDir)
+	if err != nil {
+		return nil, err
+	}
+
 	mgr := systemdUnitManager{
 		systemd:  systemd,
 		unitsDir: uDir,
-		hashes:   make(map[string]unit.Hash),
+		hashes:   hashes,
 		mutex:    sync.RWMutex{},
 	}
 	return &mgr, nil
