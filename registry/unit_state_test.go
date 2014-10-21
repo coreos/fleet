@@ -252,55 +252,66 @@ func makeResult(val string) *etcd.Result {
 }
 
 func TestGetUnitState(t *testing.T) {
-	for i, tt := range []struct {
-		res *etcd.Result // result returned from etcd
-		err error        // error returned from etcd
-		us  *unit.UnitState
+	tests := []struct {
+		res     *etcd.Result // result returned from etcd
+		err     error        // error returned from etcd
+		wantUS  *unit.UnitState
+		wantErr bool
 	}{
 		{
 			// Unit state with no UnitHash should be OK
-			res: makeResult(`{"loadState":"abc","activeState":"def","subState":"ghi","machineState":{"ID":"mymachine","PublicIP":"","Metadata":null,"Version":"","TotalResources":{"Cores":0,"Memory":0,"Disk":0},"FreeResources":{"Cores":0,"Memory":0,"Disk":0}}}`),
-			err: nil,
-			us:  &unit.UnitState{"abc", "def", "ghi", "mymachine", "", "foo.service"},
+			res:    makeResult(`{"loadState":"abc","activeState":"def","subState":"ghi","machineState":{"ID":"mymachine","PublicIP":"","Metadata":null,"Version":"","TotalResources":{"Cores":0,"Memory":0,"Disk":0},"FreeResources":{"Cores":0,"Memory":0,"Disk":0}}}`),
+			err:    nil,
+			wantUS: &unit.UnitState{"abc", "def", "ghi", "mymachine", "", "foo.service"},
 		},
 		{
 			// Unit state with UnitHash should be OK
-			res: makeResult(`{"loadState":"abc","activeState":"def","subState":"ghi","machineState":{"ID":"mymachine","PublicIP":"","Metadata":null,"Version":"","TotalResources":{"Cores":0,"Memory":0,"Disk":0},"FreeResources":{"Cores":0,"Memory":0,"Disk":0}},"unitHash":"quickbrownfox"}`),
-			err: nil,
-			us:  &unit.UnitState{"abc", "def", "ghi", "mymachine", "quickbrownfox", "foo.service"},
+			res:    makeResult(`{"loadState":"abc","activeState":"def","subState":"ghi","machineState":{"ID":"mymachine","PublicIP":"","Metadata":null,"Version":"","TotalResources":{"Cores":0,"Memory":0,"Disk":0},"FreeResources":{"Cores":0,"Memory":0,"Disk":0}},"unitHash":"quickbrownfox"}`),
+			err:    nil,
+			wantUS: &unit.UnitState{"abc", "def", "ghi", "mymachine", "quickbrownfox", "foo.service"},
 		},
 		{
 			// Unit state with no MachineState should be OK
-			res: makeResult(`{"loadState":"abc","activeState":"def","subState":"ghi"}`),
-			err: nil,
-			us:  &unit.UnitState{"abc", "def", "ghi", "", "", "foo.service"},
+			res:    makeResult(`{"loadState":"abc","activeState":"def","subState":"ghi"}`),
+			err:    nil,
+			wantUS: &unit.UnitState{"abc", "def", "ghi", "", "", "foo.service"},
 		},
 		{
 			// Bad unit state object should simply result in nil returned
-			res: makeResult(`garbage, not good proper json`),
-			err: nil,
-			us:  nil,
+			res:     makeResult(`garbage, not good proper json`),
+			err:     nil,
+			wantUS:  nil,
+			wantErr: true,
 		},
 		{
 			// Unknown errors should result in nil returned
-			res: nil,
-			err: errors.New("some random error from etcd"),
-			us:  nil,
+			res:     nil,
+			err:     errors.New("some random error from etcd"),
+			wantUS:  nil,
+			wantErr: true,
 		},
 		{
 			// KeyNotFound should result in nil returned
-			res: nil,
-			err: etcd.Error{ErrorCode: etcd.ErrorKeyNotFound},
-			us:  nil,
+			res:     nil,
+			err:     etcd.Error{ErrorCode: etcd.ErrorKeyNotFound},
+			wantUS:  nil,
+			wantErr: false,
 		},
-	} {
+	}
+
+	for i, tt := range tests {
 		e := &testEtcdClient{
 			res: []*etcd.Result{tt.res},
 			err: []error{tt.err},
 		}
 		r := &EtcdRegistry{e, "/fleet/"}
 		j := "foo.service"
-		us, _ := r.getUnitState(j, "XXX")
+		us, err := r.getUnitState(j, "XXX")
+		if tt.wantErr != (err != nil) {
+			t.Errorf("case %d: unexpected error %t, got %v", i, tt.wantErr, err)
+			continue
+		}
+
 		want := []action{
 			action{key: "/fleet/states/foo.service/XXX", rec: false},
 		}
@@ -308,8 +319,8 @@ func TestGetUnitState(t *testing.T) {
 		if !reflect.DeepEqual(got, want) {
 			t.Errorf("case %d: bad result from GetUnitState:\ngot\n%#v\nwant\n%#v", i, got, want)
 		}
-		if !reflect.DeepEqual(us, tt.us) {
-			t.Errorf("case %d: bad UnitState:\ngot\n%#v\nwant\n%#v", i, us, tt.us)
+		if !reflect.DeepEqual(us, tt.wantUS) {
+			t.Errorf("case %d: bad UnitState:\ngot\n%#v\nwant\n%#v", i, us, tt.wantUS)
 		}
 	}
 }
