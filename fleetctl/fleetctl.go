@@ -17,12 +17,14 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"path"
 	"strings"
@@ -283,7 +285,14 @@ func getClient() (client.API, error) {
 }
 
 func getHTTPClient() (client.API, error) {
-	dialDomainSocket := strings.HasPrefix(globalFlags.Endpoint, "/")
+	ep, err := url.Parse(globalFlags.Endpoint)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(ep.Scheme) == 0 {
+		return nil, errors.New("URL scheme undefined")
+	}
 
 	tunnelFunc := net.Dial
 	tun := getTunnelFlag()
@@ -299,10 +308,30 @@ func getHTTPClient() (client.API, error) {
 	}
 
 	dialFunc := tunnelFunc
-	if dialDomainSocket {
-		dialFunc = func(net, addr string) (net.Conn, error) {
-			return tunnelFunc("unix", globalFlags.Endpoint)
+	if ep.Scheme == "unix" || ep.Scheme == "file" {
+		// This commonly happens if the user misses the leading slash after the scheme.
+		// For example, "unix://var/run/fleet.sock" would be parsed as host "var".
+		if len(ep.Host) > 0 {
+			return nil, fmt.Errorf("unable to connect to host %q with scheme %q", ep.Host, ep.Scheme)
 		}
+
+		// The Path field is only used for dialing and should not be used when
+		// building any further HTTP requests.
+		sockPath := ep.Path
+		ep.Path = ""
+
+		// http.Client does not natively support dialing a unix domain socket, so the
+		// dial function must be overridden.
+		dialFunc = func(net, addr string) (net.Conn, error) {
+			return tunnelFunc("unix", sockPath)
+		}
+
+		// http.Client doesn't support the schemes "unix" or "file", but it
+		// is safe to use "http" as dialFunc ignores it anyway.
+		ep.Scheme = "http"
+
+		// The Host field is not used for dialing, but will be exposed in debug logs.
+		ep.Host = "domain-sock"
 	}
 
 	trans := pkg.LoggingHTTPTransport{
@@ -315,14 +344,7 @@ func getHTTPClient() (client.API, error) {
 		Transport: &trans,
 	}
 
-	endpoint := globalFlags.Endpoint
-	if dialDomainSocket {
-		endpoint = "http://domain-sock/"
-	} else if !strings.HasPrefix(endpoint, "http") {
-		endpoint = fmt.Sprintf("http://%s", endpoint)
-	}
-
-	return client.NewHTTPClient(&hc, endpoint)
+	return client.NewHTTPClient(&hc, *ep)
 }
 
 func getRegistryClient() (client.API, error) {

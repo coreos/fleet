@@ -27,13 +27,8 @@ import (
 	"github.com/coreos/fleet/schema"
 )
 
-func NewHTTPClient(c *http.Client, endpoint string) (API, error) {
+func NewHTTPClient(c *http.Client, ep url.URL) (API, error) {
 	svc, err := schema.New(c)
-	if err != nil {
-		return nil, err
-	}
-
-	ep, err := url.Parse(endpoint)
 	if err != nil {
 		return nil, err
 	}
