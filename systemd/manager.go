@@ -61,6 +61,39 @@ func NewSystemdUnitManager(uDir string) (*systemdUnitManager, error) {
 	return &mgr, nil
 }
 
+func hashUnitFiles(dir string) (map[string]unit.Hash, error) {
+	uNames, err := lsUnitsDir(dir)
+	if err != nil {
+		return nil, err
+	}
+
+	hMap := make(map[string]unit.Hash)
+	for _, uName := range uNames {
+		h, err := hashUnitFile(path.Join(dir, uName))
+		if err != nil {
+			return nil, err
+		}
+
+		hMap[uName] = h
+	}
+
+	return hMap, nil
+}
+
+func hashUnitFile(loc string) (unit.Hash, error) {
+	b, err := ioutil.ReadFile(loc)
+	if err != nil {
+		return unit.Hash{}, err
+	}
+
+	uf, err := unit.NewUnitFile(string(b))
+	if err != nil {
+		return unit.Hash{}, err
+	}
+
+	return uf.Hash(), nil
+}
+
 // Load writes the given Unit to disk, subscribing to relevant dbus
 // events, caching the Unit's Hash, and, if necessary, instructing the systemd
 // daemon to reload.
