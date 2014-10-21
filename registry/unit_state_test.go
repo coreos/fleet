@@ -300,9 +300,9 @@ func TestGetUnitState(t *testing.T) {
 		}
 		r := &EtcdRegistry{e, "/fleet/"}
 		j := "foo.service"
-		us := r.getUnitState(j)
+		us, _ := r.getUnitState(j, "XXX")
 		want := []action{
-			action{key: "/fleet/state/foo.service", rec: true},
+			action{key: "/fleet/states/foo.service/XXX", rec: false},
 		}
 		got := e.gets
 		if !reflect.DeepEqual(got, want) {

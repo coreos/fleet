@@ -152,29 +152,27 @@ func (r *EtcdRegistry) statesByMUSKey() (map[MUSKey]*unit.UnitState, error) {
 	return mus, nil
 }
 
-// getUnitState retrieves the current UnitState of the provided Job's Unit
-func (r *EtcdRegistry) getUnitState(jobName string) *unit.UnitState {
-	legacyKey := r.legacyUnitStatePath(jobName)
+// getUnitState retrieves the current UnitState, if any exists, for the
+// given unit that originates from the indicated machine
+func (r *EtcdRegistry) getUnitState(uName, machID string) (*unit.UnitState, error) {
 	req := etcd.Get{
-		Key:       legacyKey,
-		Recursive: true,
+		Key: r.unitStatePath(machID, uName),
 	}
 	res, err := r.etcd.Do(&req)
 
 	if err != nil {
-		if !isKeyNotFound(err) {
-			log.Errorf("Error retrieving UnitState(%s): %v", jobName, err)
+		if isKeyNotFound(err) {
+			err = nil
 		}
-		return nil
+		return nil, err
 	}
 
 	var usm unitStateModel
 	if err := unmarshal(res.Node.Value, &usm); err != nil {
-		log.Errorf("Error unmarshalling UnitState(%s): %v", jobName, err)
-		return nil
+		return nil, err
 	}
 
-	return modelToUnitState(&usm, jobName)
+	return modelToUnitState(&usm, uName), nil
 }
 
 // SaveUnitState persists the given UnitState to the Registry
