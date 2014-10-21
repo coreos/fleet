@@ -36,7 +36,7 @@ const (
 
 type systemdUnitManager struct {
 	systemd  *dbus.Conn
-	UnitsDir string
+	unitsDir string
 
 	hashes map[string]unit.Hash
 	mutex  sync.RWMutex
@@ -54,7 +54,7 @@ func NewSystemdUnitManager(uDir string) (*systemdUnitManager, error) {
 
 	mgr := systemdUnitManager{
 		systemd:  systemd,
-		UnitsDir: uDir,
+		unitsDir: uDir,
 		hashes:   make(map[string]unit.Hash),
 		mutex:    sync.RWMutex{},
 	}
@@ -164,7 +164,7 @@ func (m *systemdUnitManager) daemonReload() error {
 // Units enumerates all files recognized as valid systemd units in
 // this manager's units directory.
 func (m *systemdUnitManager) Units() (units []string, err error) {
-	fis, err := ioutil.ReadDir(m.UnitsDir)
+	fis, err := ioutil.ReadDir(m.unitsDir)
 	if err != nil {
 		return
 	}
@@ -172,7 +172,7 @@ func (m *systemdUnitManager) Units() (units []string, err error) {
 	for _, fi := range fis {
 		name := fi.Name()
 		if !unit.RecognizedUnitType(name) {
-			log.Warningf("Found unrecognized file in %s, ignoring", path.Join(m.UnitsDir, name))
+			log.Warningf("Found unrecognized file in %s, ignoring", path.Join(m.unitsDir, name))
 			continue
 		}
 		units = append(units, name)
@@ -256,5 +256,5 @@ func (m *systemdUnitManager) removeUnit(name string) {
 }
 
 func (m *systemdUnitManager) getUnitFilePath(name string) string {
-	return path.Join(m.UnitsDir, name)
+	return path.Join(m.unitsDir, name)
 }
