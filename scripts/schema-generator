@@ -1,8 +1,8 @@
 #!/bin/bash -eu
 
-IN="schema/v1-alpha.json"
-OUT="schema/v1-alpha-json.go"
-GEN="schema/v1-alpha-gen.go"
+IN="schema/cluster-v1.json"
+OUT="schema/cluster-v1-json.go"
+GEN="schema/cluster-v1-gen.go"
 
 # See scripts/schema_generator_import.go for instructions on updating the dependency
 PKG="code.google.com/p/google-api-go-client/google-api-go-generator"

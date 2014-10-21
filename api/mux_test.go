@@ -34,6 +34,7 @@ func TestDefaultHandlers(t *testing.T) {
 	}{
 		{"GET", "/", http.StatusMethodNotAllowed},
 		{"GET", "/v1-alpha", http.StatusMethodNotAllowed},
+		{"GET", "/cluster/v1", http.StatusMethodNotAllowed},
 		{"GET", "/bogus", http.StatusNotFound},
 	}
 
