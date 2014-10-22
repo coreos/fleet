@@ -236,7 +236,7 @@ func (ar *AgentReconciler) calculateTaskChainForUnit(dState *AgentState, cState 
 			reason: taskReasonScheduledButUnloaded,
 		})
 
-		// as an optimization, queue the job for launching immediately after loading
+		// as an optimization, queue the unit for launching immediately after loading
 		if dJob.TargetState == job.JobStateLaunched {
 			tc.Add(task{
 				typ:    taskTypeStartUnit,
@@ -249,14 +249,26 @@ func (ar *AgentReconciler) calculateTaskChainForUnit(dState *AgentState, cState 
 
 	if cJHash != dJHash {
 		log.V(1).Infof("Desired hash %q differs to current hash %s of Job(%s) - unloading", dJHash, cJHash, jName)
-		t := task{
+		tc := newTaskChain(u)
+		tc.Add(task{
 			typ:    taskTypeUnloadUnit,
 			reason: taskReasonLoadedButHashDiffers,
+		})
+
+		// queue the correct unit for loading immediately after unloading the old one
+		tc.Add(task{
+			typ:    taskTypeLoadUnit,
+			reason: taskReasonScheduledButUnloaded,
+		})
+
+		// as an optimization, queue the unit for launching immediately after loading
+		if dJob.TargetState == job.JobStateLaunched {
+			tc.Add(task{
+				typ:    taskTypeStartUnit,
+				reason: taskReasonLoadedDesiredStateLaunched,
+			})
 		}
-		u := &job.Unit{
-			Name: jName,
-		}
-		tc := newTaskChain(u, t)
+
 		return &tc
 	}
 

@@ -137,23 +137,23 @@ func (a *Agent) units() (unitStates, error) {
 		loaded.Add(jName)
 	}
 
-	unitFiles, err := a.um.Units()
+	units, err := a.um.Units()
 	if err != nil {
 		return nil, fmt.Errorf("failed fetching loaded units from UnitManager: %v", err)
 	}
 
 	filter := pkg.NewUnsafeSet()
-	for _, u := range unitFiles {
+	for _, u := range units {
 		filter.Add(u)
 	}
 
-	units, err := a.um.GetUnitStates(filter)
+	uStates, err := a.um.GetUnitStates(filter)
 	if err != nil {
 		return nil, fmt.Errorf("failed fetching unit states from UnitManager: %v", err)
 	}
 
 	states := make(unitStates)
-	for uName, state := range units {
+	for uName, uState := range uStates {
 		js := job.JobStateInactive
 		if loaded.Contains(uName) {
 			js = job.JobStateLoaded
@@ -162,7 +162,7 @@ func (a *Agent) units() (unitStates, error) {
 		}
 		us := unitState{
 			state: js,
-			hash:  state.UnitHash,
+			hash:  uState.UnitHash,
 		}
 		states[uName] = us
 	}
