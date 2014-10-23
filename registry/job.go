@@ -203,10 +203,15 @@ func (r *EtcdRegistry) ScheduledUnit(name string) (*job.ScheduledUnit, error) {
 		TargetMachineID: dirToTargetMachineID(res.Node),
 	}
 
-	js := determineJobState(
-		dirToHeartbeat(res.Node),
-		su.TargetMachineID,
-		r.getUnitState(name))
+	var us *unit.UnitState
+	if len(su.TargetMachineID) > 0 {
+		us, err = r.getUnitState(name, su.TargetMachineID)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	js := determineJobState(dirToHeartbeat(res.Node), su.TargetMachineID, us)
 	su.State = &js
 
 	return &su, nil
