@@ -31,7 +31,7 @@ type BlockedFakeRegistry struct {
 	registry.FakeRegistry
 }
 
-func (b BlockedFakeRegistry) Unit(name string) (*job.Unit, error) {
+func (b *BlockedFakeRegistry) Unit(name string) (*job.Unit, error) {
 	if name == "hello.service" {
 		time.Sleep(500 * time.Millisecond)
 	}
@@ -92,5 +92,5 @@ func setupRegistryForStart(echoAttempts int) {
 	reg.SetMachines(machines)
 	reg.SetUnitStates(states)
 
-	cAPI = &client.RegistryClient{&BlockedFakeRegistry{echoAttempts, *reg}}
+	cAPI = &client.RegistryClient{Registry: &BlockedFakeRegistry{EchoAttempts: echoAttempts, FakeRegistry: *reg}}
 }

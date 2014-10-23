@@ -44,7 +44,7 @@ func newUnit(t *testing.T, str string) unit.UnitFile {
 
 func TestUnitsSubResourceNotFound(t *testing.T) {
 	fr := registry.NewFakeRegistry()
-	fAPI := &client.RegistryClient{fr}
+	fAPI := &client.RegistryClient{Registry: fr}
 	ur := &unitsResource{fAPI, "/units"}
 	rr := httptest.NewRecorder()
 
@@ -67,7 +67,7 @@ func TestUnitsList(t *testing.T) {
 		{Name: "XXX.service"},
 		{Name: "YYY.service"},
 	})
-	fAPI := &client.RegistryClient{fr}
+	fAPI := &client.RegistryClient{Registry: fr}
 	resource := &unitsResource{fAPI, "/units"}
 	rw := httptest.NewRecorder()
 	req, err := http.NewRequest("GET", "http://example.com/units", nil)
@@ -104,7 +104,7 @@ func TestUnitsList(t *testing.T) {
 
 func TestUnitsListBadNextPageToken(t *testing.T) {
 	fr := registry.NewFakeRegistry()
-	fAPI := &client.RegistryClient{fr}
+	fAPI := &client.RegistryClient{Registry: fr}
 	resource := &unitsResource{fAPI, "/units"}
 	rw := httptest.NewRecorder()
 	req, err := http.NewRequest("GET", "http://example.com/units?nextPageToken=EwBMLg==", nil)
@@ -147,12 +147,12 @@ func TestExtractUnitPage(t *testing.T) {
 
 		first := items[0].Name
 		if first != strconv.FormatInt(int64(tt.idxStart), 10) {
-			t.Errorf("case %d: first element in first page should have ID %d, got %d", i, tt.idxStart, first)
+			t.Errorf("case %d: first element in first page should have ID %d, got %s", i, tt.idxStart, first)
 		}
 
 		last := items[len(items)-1].Name
 		if last != strconv.FormatInt(int64(tt.idxEnd), 10) {
-			t.Errorf("case %d: first element in first page should have ID %d, got %d", i, tt.idxEnd, last)
+			t.Errorf("case %d: first element in first page should have ID %d, got %s", i, tt.idxEnd, last)
 		}
 
 		if tt.next == nil && next != nil {
@@ -185,7 +185,7 @@ func TestUnitGet(t *testing.T) {
 		{Name: "XXX.service"},
 		{Name: "YYY.service"},
 	})
-	fAPI := &client.RegistryClient{fr}
+	fAPI := &client.RegistryClient{Registry: fr}
 	resource := &unitsResource{fAPI, "/units"}
 
 	for i, tt := range tests {
@@ -248,7 +248,7 @@ func TestUnitsDestroy(t *testing.T) {
 			continue
 		}
 
-		fAPI := &client.RegistryClient{fr}
+		fAPI := &client.RegistryClient{Registry: fr}
 		resource := &unitsResource{fAPI, "/units"}
 		rw := httptest.NewRecorder()
 		resource.destroy(rw, req, tt.arg)
@@ -399,7 +399,7 @@ func TestUnitsSetDesiredState(t *testing.T) {
 		req.Body = ioutil.NopCloser(bytes.NewBuffer(enc))
 		req.Header.Set("Content-Type", "application/json")
 
-		fAPI := &client.RegistryClient{fr}
+		fAPI := &client.RegistryClient{Registry: fr}
 		resource := &unitsResource{fAPI, "/units"}
 		rw := httptest.NewRecorder()
 		resource.set(rw, req, tt.item)
@@ -702,7 +702,7 @@ func TestValidateName(t *testing.T) {
 
 func TestUnitsSetDesiredStateBadContentType(t *testing.T) {
 	fr := registry.NewFakeRegistry()
-	fAPI := &client.RegistryClient{fr}
+	fAPI := &client.RegistryClient{Registry: fr}
 	resource := &unitsResource{fAPI, "/units"}
 	rr := httptest.NewRecorder()
 

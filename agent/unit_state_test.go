@@ -35,7 +35,7 @@ func TestUpdateCache(t *testing.T) {
 	name := "blah.service"
 	mID := "mymachine"
 	mach := &machine.FakeMachine{
-		machine.MachineState{ID: mID},
+		MachineState: machine.MachineState{ID: mID},
 	}
 	us1 := &unit.UnitState{
 		ActiveState: "active",
@@ -156,7 +156,7 @@ func TestPruneCache(t *testing.T) {
 
 	for i, tt := range tests {
 		mach := &machine.FakeMachine{
-			machine.MachineState{ID: "XXX"},
+			MachineState: machine.MachineState{ID: "XXX"},
 		}
 		usp := NewUnitStatePublisher(nil, mach, 0)
 		usp.cache = tt.cacheBefore
@@ -275,7 +275,7 @@ func TestDefaultPublisher(t *testing.T) {
 		usp.publisher(tt.name, tt.state)
 		us, err := freg.UnitStates()
 		if err != nil {
-			t.Errorf("case %d: unexpected error retrieving unit states: %v", err)
+			t.Errorf("case %d: unexpected error retrieving unit states: %v", i, err)
 			continue
 		}
 		if !reflect.DeepEqual(us, tt.want) {
@@ -699,7 +699,7 @@ func TestMarshalJSON(t *testing.T) {
 	usp := NewUnitStatePublisher(&registry.FakeRegistry{}, &machine.FakeMachine{}, 0)
 	got, err := json.Marshal(usp)
 	if err != nil {
-		t.Fatalf("unexpected error marshalling: %#v")
+		t.Fatalf("unexpected error marshalling: %#v", err)
 	}
 	want := `{"Cache":{},"ToPublish":{}}`
 	if string(got) != want {
