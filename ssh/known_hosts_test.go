@@ -158,7 +158,7 @@ func TestWrongHostKeyFile(t *testing.T) {
 		t.Fatal("should fail to read wrong host file")
 	}
 	if _, ok := err.(*os.PathError); !ok {
-		t.Fatal("should fail to read wrong host file due to file miss, but got %v")
+		t.Fatalf("should fail to read wrong host file due to file miss, but got %v", err)
 	}
 
 	// Create a host key file we do not have permission to read
@@ -176,7 +176,7 @@ func TestWrongHostKeyFile(t *testing.T) {
 		t.Fatal("should fail to write wrong host file")
 	}
 	if !os.IsPermission(err) {
-		t.Fatal("should fail to write wrong host file due to permission denied, but got %v", err)
+		t.Fatalf("should fail to write wrong host file due to permission denied, but got %v", err)
 	}
 }
 

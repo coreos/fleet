@@ -34,8 +34,8 @@ func TestMachinesList(t *testing.T) {
 		{ID: "XXX", PublicIP: "", Metadata: nil},
 		{ID: "YYY", PublicIP: "1.2.3.4", Metadata: map[string]string{"ping": "pong"}},
 	})
-	fAPI := &client.RegistryClient{fr}
-	resource := &machinesResource{fAPI}
+	fAPI := &client.RegistryClient{Registry: fr}
+	resource := &machinesResource{cAPI: fAPI}
 	rw := httptest.NewRecorder()
 	req, err := http.NewRequest("GET", "http://example.com", nil)
 	if err != nil {
@@ -67,7 +67,7 @@ func TestMachinesList(t *testing.T) {
 
 func TestMachinesListBadNextPageToken(t *testing.T) {
 	fr := registry.NewFakeRegistry()
-	fAPI := &client.RegistryClient{fr}
+	fAPI := &client.RegistryClient{Registry: fr}
 	resource := &machinesResource{fAPI}
 	rw := httptest.NewRecorder()
 	req, err := http.NewRequest("GET", "http://example.com/machines?nextPageToken=EwBMLg==", nil)
@@ -109,12 +109,12 @@ func TestExtractMachinePage(t *testing.T) {
 
 		first := page.Machines[0].Id
 		if first != strconv.FormatInt(int64(tt.idxStart), 10) {
-			t.Errorf("case %d: first element in page should have ID %d, got %d", i, tt.idxStart, first)
+			t.Errorf("case %d: first element in page should have ID %d, got %s", i, tt.idxStart, first)
 		}
 
 		last := page.Machines[len(page.Machines)-1].Id
 		if last != strconv.FormatInt(int64(tt.idxEnd), 10) {
-			t.Errorf("case %d: first element in page should have ID %d, got %d", i, tt.idxEnd, last)
+			t.Errorf("case %d: first element in page should have ID %d, got %s", i, tt.idxEnd, last)
 		}
 
 		if tt.next == nil && page.NextPageToken != "" {

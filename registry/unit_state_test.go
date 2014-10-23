@@ -184,17 +184,56 @@ func TestUnitStateToModel(t *testing.T) {
 		{
 			// Unit state with no hash and no machineID is OK
 			// See https://github.com/coreos/fleet/issues/720
-			in:   &unit.UnitState{"foo", "bar", "baz", "", "", "name"},
-			want: &unitStateModel{"foo", "bar", "baz", nil, ""},
+			in: &unit.UnitState{
+				LoadState:   "foo",
+				ActiveState: "bar",
+				SubState:    "baz",
+				MachineID:   "",
+				UnitHash:    "",
+				UnitName:    "name",
+			},
+			want: &unitStateModel{
+				LoadState:    "foo",
+				ActiveState:  "bar",
+				SubState:     "baz",
+				MachineState: nil,
+				UnitHash:     "",
+			},
 		},
 		{
 			// Unit state with hash but no machineID is OK
-			in:   &unit.UnitState{"foo", "bar", "baz", "", "heh", "name"},
-			want: &unitStateModel{"foo", "bar", "baz", nil, "heh"},
+			in: &unit.UnitState{
+				LoadState:   "foo",
+				ActiveState: "bar",
+				SubState:    "baz",
+				MachineID:   "",
+				UnitHash:    "heh",
+				UnitName:    "name",
+			},
+			want: &unitStateModel{
+				LoadState:    "foo",
+				ActiveState:  "bar",
+				SubState:     "baz",
+				MachineState: nil,
+				UnitHash:     "heh",
+			},
 		},
 		{
-			in:   &unit.UnitState{"foo", "bar", "baz", "woof", "miaow", "name"},
-			want: &unitStateModel{"foo", "bar", "baz", &machine.MachineState{ID: "woof"}, "miaow"},
+			in: &unit.UnitState{
+				LoadState:   "foo",
+				ActiveState: "bar",
+				SubState:    "baz",
+				MachineID:   "woof",
+				UnitHash:    "miaow",
+				UnitName:    "name",
+			},
+			want: &unitStateModel{
+				LoadState:    "foo",
+				ActiveState:  "bar",
+				SubState:     "baz",
+				MachineState: &machine.MachineState{ID: "woof"},
+				UnitHash:     "miaow",
+			},
 		},
 	} {
 		got := unitStateToModel(tt.in)
@@ -260,21 +299,42 @@ func TestGetUnitState(t *testing.T) {
 	}{
 		{
 			// Unit state with no UnitHash should be OK
-			res:    makeResult(`{"loadState":"abc","activeState":"def","subState":"ghi","machineState":{"ID":"mymachine","PublicIP":"","Metadata":null,"Version":"","TotalResources":{"Cores":0,"Memory":0,"Disk":0},"FreeResources":{"Cores":0,"Memory":0,"Disk":0}}}`),
-			err:    nil,
-			wantUS: &unit.UnitState{"abc", "def", "ghi", "mymachine", "", "foo.service"},
+			res: makeResult(`{"loadState":"abc","activeState":"def","subState":"ghi","machineState":{"ID":"mymachine","PublicIP":"","Metadata":null,"Version":"","TotalResources":{"Cores":0,"Memory":0,"Disk":0},"FreeResources":{"Cores":0,"Memory":0,"Disk":0}}}`),
+			err: nil,
+			wantUS: &unit.UnitState{
+				LoadState:   "abc",
+				ActiveState: "def",
+				SubState:    "ghi",
+				MachineID:   "mymachine",
+				UnitHash:    "",
+				UnitName:    "foo.service",
+			},
 		},
 		{
 			// Unit state with UnitHash should be OK
-			res:    makeResult(`{"loadState":"abc","activeState":"def","subState":"ghi","machineState":{"ID":"mymachine","PublicIP":"","Metadata":null,"Version":"","TotalResources":{"Cores":0,"Memory":0,"Disk":0},"FreeResources":{"Cores":0,"Memory":0,"Disk":0}},"unitHash":"quickbrownfox"}`),
-			err:    nil,
-			wantUS: &unit.UnitState{"abc", "def", "ghi", "mymachine", "quickbrownfox", "foo.service"},
+			res: makeResult(`{"loadState":"abc","activeState":"def","subState":"ghi","machineState":{"ID":"mymachine","PublicIP":"","Metadata":null,"Version":"","TotalResources":{"Cores":0,"Memory":0,"Disk":0},"FreeResources":{"Cores":0,"Memory":0,"Disk":0}},"unitHash":"quickbrownfox"}`),
+			err: nil,
+			wantUS: &unit.UnitState{
+				LoadState:   "abc",
+				ActiveState: "def",
+				SubState:    "ghi",
+				MachineID:   "mymachine",
+				UnitHash:    "quickbrownfox",
+				UnitName:    "foo.service",
+			},
 		},
 		{
 			// Unit state with no MachineState should be OK
-			res:    makeResult(`{"loadState":"abc","activeState":"def","subState":"ghi"}`),
-			err:    nil,
-			wantUS: &unit.UnitState{"abc", "def", "ghi", "", "", "foo.service"},
+			res: makeResult(`{"loadState":"abc","activeState":"def","subState":"ghi"}`),
+			err: nil,
+			wantUS: &unit.UnitState{
+				LoadState:   "abc",
+				ActiveState: "def",
+				SubState:    "ghi",
+				MachineID:   "",
+				UnitHash:    "",
+				UnitName:    "foo.service",
+			},
 		},
 		{
 			// Bad unit state object should simply result in nil returned
@@ -334,8 +394,22 @@ func usToJson(t *testing.T, us *unit.UnitState) string {
 }
 
 func TestUnitStates(t *testing.T) {
-	fus1 := unit.UnitState{"abc", "def", "ghi", "mID1", "zzz", "foo"}
-	fus2 := unit.UnitState{"cat", "dog", "cow", "mID2", "xxx", "foo"}
+	fus1 := unit.UnitState{
+		LoadState:   "abc",
+		ActiveState: "def",
+		SubState:    "ghi",
+		MachineID:   "mID1",
+		UnitHash:    "zzz",
+		UnitName:    "foo",
+	}
+	fus2 := unit.UnitState{
+		LoadState:   "cat",
+		ActiveState: "dog",
+		SubState:    "cow",
+		MachineID:   "mID2",
+		UnitHash:    "xxx",
+		UnitName:    "foo",
+	}
 	// Multiple new unit states reported for the same unit
 	foo := etcd.Node{
 		Key: "/fleet/states/foo",

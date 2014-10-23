@@ -64,7 +64,7 @@ func TestAgentLoadUnloadUnit(t *testing.T) {
 	uManager := unit.NewFakeUnitManager()
 	usGenerator := unit.NewUnitStateGenerator(uManager)
 	fReg := registry.NewFakeRegistry()
-	mach := &machine.FakeMachine{machine.MachineState{ID: "XXX"}}
+	mach := &machine.FakeMachine{MachineState: machine.MachineState{ID: "XXX"}}
 	a := New(uManager, usGenerator, fReg, mach, time.Second)
 
 	u := newTestUnitFromUnitContents(t, "foo.service", "")
@@ -104,7 +104,7 @@ func TestAgentLoadStartStopUnit(t *testing.T) {
 	uManager := unit.NewFakeUnitManager()
 	usGenerator := unit.NewUnitStateGenerator(uManager)
 	fReg := registry.NewFakeRegistry()
-	mach := &machine.FakeMachine{machine.MachineState{ID: "XXX"}}
+	mach := &machine.FakeMachine{MachineState: machine.MachineState{ID: "XXX"}}
 	a := New(uManager, usGenerator, fReg, mach, time.Second)
 
 	u := newTestUnitFromUnitContents(t, "foo.service", "")

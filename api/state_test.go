@@ -82,7 +82,7 @@ func TestUnitStateList(t *testing.T) {
 	} {
 		fr := registry.NewFakeRegistry()
 		fr.SetUnitStates([]unit.UnitState{us1, us2, us3, us4})
-		fAPI := &client.RegistryClient{fr}
+		fAPI := &client.RegistryClient{Registry: fr}
 		resource := &stateResource{fAPI, "/state"}
 		rw := httptest.NewRecorder()
 		req, err := http.NewRequest("GET", tt.url, nil)
@@ -131,7 +131,7 @@ func TestUnitStateList(t *testing.T) {
 		unit.UnitState{UnitName: "XXX", ActiveState: "active"},
 		unit.UnitState{UnitName: "YYY", ActiveState: "inactive"},
 	})
-	fAPI := &client.RegistryClient{fr}
+	fAPI := &client.RegistryClient{Registry: fr}
 	resource := &stateResource{fAPI, "/state"}
 	rw := httptest.NewRecorder()
 	req, err := http.NewRequest("GET", "http://example.com/state", nil)
@@ -179,7 +179,7 @@ func TestUnitStateList(t *testing.T) {
 
 func TestUnitStateListBadNextPageToken(t *testing.T) {
 	fr := registry.NewFakeRegistry()
-	fAPI := &client.RegistryClient{fr}
+	fAPI := &client.RegistryClient{Registry: fr}
 	resource := &stateResource{fAPI, "/state"}
 	rw := httptest.NewRecorder()
 	req, err := http.NewRequest("GET", "http://example.com/state?nextPageToken=EwBMLg==", nil)
@@ -222,12 +222,12 @@ func TestExtractUnitStatePage(t *testing.T) {
 
 		first := items[0].Name
 		if first != strconv.FormatInt(int64(tt.idxStart), 10) {
-			t.Errorf("case %d: first element in first page should have ID %d, got %d", i, tt.idxStart, first)
+			t.Errorf("case %d: first element in first page should have ID %d, got %s", i, tt.idxStart, first)
 		}
 
 		last := items[len(items)-1].Name
 		if last != strconv.FormatInt(int64(tt.idxEnd), 10) {
-			t.Errorf("case %d: first element in first page should have ID %d, got %d", i, tt.idxEnd, last)
+			t.Errorf("case %d: first element in first page should have ID %d, got %s", i, tt.idxEnd, last)
 		}
 
 		if tt.next == nil && next != nil {

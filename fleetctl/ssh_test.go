@@ -78,7 +78,7 @@ func newFakeRegistryForSsh() client.API {
 	reg.SetUnitStates(states)
 	reg.SetJobs(jobs)
 
-	return &client.RegistryClient{reg}
+	return &client.RegistryClient{Registry: reg}
 }
 
 func TestSshUnknownMachine(t *testing.T) {

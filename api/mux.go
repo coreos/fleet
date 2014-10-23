@@ -27,7 +27,7 @@ import (
 
 func NewServeMux(reg registry.Registry) http.Handler {
 	sm := http.NewServeMux()
-	cAPI := &client.RegistryClient{reg}
+	cAPI := &client.RegistryClient{Registry: reg}
 
 	prefix := "/v1-alpha"
 	wireUpDiscoveryResource(sm, prefix)

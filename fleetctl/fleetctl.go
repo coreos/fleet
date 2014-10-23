@@ -306,7 +306,7 @@ func getHTTPClient() (client.API, error) {
 	}
 
 	trans := pkg.LoggingHTTPTransport{
-		http.Transport{
+		Transport: http.Transport{
 			Dial: dialFunc,
 		},
 	}
@@ -366,7 +366,7 @@ func getRegistryClient() (client.API, error) {
 		stderr(msg)
 	}
 
-	return &client.RegistryClient{reg}, nil
+	return &client.RegistryClient{Registry: reg}, nil
 }
 
 // getChecker creates and returns a HostKeyChecker, or nil if any error is encountered
