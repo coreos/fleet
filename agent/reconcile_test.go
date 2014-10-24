@@ -26,6 +26,10 @@ import (
 	"github.com/coreos/fleet/unit"
 )
 
+// Represents the hash of e.g. an empty unit
+// echo -n "" | sha1sum
+const emptyStringHash = "da39a3ee5e6b4b0d3255bfef95601890afd80709"
+
 var (
 	jsInactive = job.JobStateInactive
 	jsLoaded   = job.JobStateLoaded
@@ -398,7 +402,7 @@ func TestCalculateTasksForJob(t *testing.T) {
 	tests := []struct {
 		dState *AgentState
 		cState unitStates
-		jName  string
+		uName  string
 
 		chain *taskChain
 	}{
@@ -407,7 +411,7 @@ func TestCalculateTasksForJob(t *testing.T) {
 		{
 			dState: nil,
 			cState: nil,
-			jName:  "foo.service",
+			uName:  "foo.service",
 			chain:  nil,
 		},
 
@@ -415,7 +419,7 @@ func TestCalculateTasksForJob(t *testing.T) {
 		{
 			dState: NewAgentState(&machine.MachineState{ID: "XXX"}),
 			cState: unitStates{},
-			jName:  "foo.service",
+			uName:  "foo.service",
 			chain:  nil,
 		},
 
@@ -427,9 +431,14 @@ func TestCalculateTasksForJob(t *testing.T) {
 					"foo.service": &job.Unit{TargetState: jsLoaded},
 				},
 			},
-			cState: unitStates{"foo.service": jsLoaded},
-			jName:  "foo.service",
-			chain:  nil,
+			cState: unitStates{
+				"foo.service": unitState{
+					state: jsLoaded,
+					hash:  emptyStringHash,
+				},
+			},
+			uName: "foo.service",
+			chain: nil,
 		},
 
 		// no work needs to be done when current state == desired state
@@ -440,9 +449,121 @@ func TestCalculateTasksForJob(t *testing.T) {
 					"foo.service": &job.Unit{TargetState: jsLaunched},
 				},
 			},
-			cState: unitStates{"foo.service": jsLaunched},
-			jName:  "foo.service",
-			chain:  nil,
+			cState: unitStates{
+				"foo.service": unitState{
+					state: jsLaunched,
+					hash:  emptyStringHash,
+				},
+			},
+			uName: "foo.service",
+			chain: nil,
+		},
+
+		// when current state == desired state but hash differs, unit should be unloaded and then reloaded
+		{
+			dState: &AgentState{
+				MState: &machine.MachineState{ID: "XXX"},
+				Units: map[string]*job.Unit{
+					"foo.service": &job.Unit{TargetState: jsLaunched},
+				},
+			},
+			cState: unitStates{
+				"foo.service": unitState{
+					state: jsLaunched,
+					hash:  "abcdefg",
+				},
+			},
+			uName: "foo.service",
+			chain: &taskChain{
+				unit: &job.Unit{
+					Name: "foo.service",
+					Unit: unit.UnitFile{},
+				},
+				tasks: []task{
+					task{
+						typ:    taskTypeUnloadUnit,
+						reason: taskReasonLoadedButHashDiffers,
+					},
+					task{
+						typ:    taskTypeLoadUnit,
+						reason: taskReasonScheduledButUnloaded,
+					},
+					task{
+						typ:    taskTypeStartUnit,
+						reason: taskReasonLoadedDesiredStateLaunched,
+					},
+				},
+			},
+		},
+
+		// when current state != desired state and hash differs, unit should be unloaded and then reloaded
+		{
+			dState: &AgentState{
+				MState: &machine.MachineState{ID: "XXX"},
+				Units: map[string]*job.Unit{
+					"foo.service": &job.Unit{TargetState: jsLoaded},
+				},
+			},
+			cState: unitStates{
+				"foo.service": unitState{
+					state: jsLaunched,
+					hash:  "abcdefg",
+				},
+			},
+			uName: "foo.service",
+			chain: &taskChain{
+				unit: &job.Unit{
+					Name: "foo.service",
+					Unit: unit.UnitFile{},
+				},
+				tasks: []task{
+					task{
+						typ:    taskTypeUnloadUnit,
+						reason: taskReasonLoadedButHashDiffers,
+					},
+					task{
+						typ:    taskTypeLoadUnit,
+						reason: taskReasonScheduledButUnloaded,
+					},
+				},
+			},
+		},
+
+		// when current state != desired state and hash differs, unit should be unloaded and then reloaded
+		{
+			dState: &AgentState{
+				MState: &machine.MachineState{ID: "XXX"},
+				Units: map[string]*job.Unit{
+					"foo.service": &job.Unit{TargetState: jsLaunched},
+				},
+			},
+			cState: unitStates{
+				"foo.service": unitState{
+					state: jsLoaded,
+					hash:  "abcdefg",
+				},
+			},
+			uName: "foo.service",
+			chain: &taskChain{
+				unit: &job.Unit{
+					Name: "foo.service",
+					Unit: unit.UnitFile{},
+				},
+				tasks: []task{
+					task{
+						typ:    taskTypeUnloadUnit,
+						reason: taskReasonLoadedButHashDiffers,
+					},
+					task{
+						typ:    taskTypeLoadUnit,
+						reason: taskReasonScheduledButUnloaded,
+					},
+					task{
+						typ:    taskTypeStartUnit,
+						reason: taskReasonLoadedDesiredStateLaunched,
+					},
+				},
+			},
 		},
 
 		// no work needs to be done when desired state == inactive and current state == nil
@@ -454,7 +575,7 @@ func TestCalculateTasksForJob(t *testing.T) {
 				},
 			},
 			cState: unitStates{},
-			jName:  "foo.service",
+			uName:  "foo.service",
 			chain:  nil,
 		},
 
@@ -467,7 +588,7 @@ func TestCalculateTasksForJob(t *testing.T) {
 				},
 			},
 			cState: unitStates{},
-			jName:  "foo.service",
+			uName:  "foo.service",
 			chain: &taskChain{
 				unit: &job.Unit{
 					Name: "foo.service",
@@ -491,7 +612,7 @@ func TestCalculateTasksForJob(t *testing.T) {
 				},
 			},
 			cState: unitStates{},
-			jName:  "foo.service",
+			uName:  "foo.service",
 			chain: &taskChain{
 				unit: &job.Unit{
 					Name: "foo.service",
@@ -512,8 +633,13 @@ func TestCalculateTasksForJob(t *testing.T) {
 		// unload jobs that are no longer scheduled locally
 		{
 			dState: NewAgentState(&machine.MachineState{ID: "XXX"}),
-			cState: unitStates{"foo.service": jsLoaded},
-			jName:  "foo.service",
+			cState: unitStates{
+				"foo.service": unitState{
+					state: jsLoaded,
+					hash:  emptyStringHash,
+				},
+			},
+			uName: "foo.service",
 			chain: &taskChain{
 				unit: &job.Unit{
 					Name: "foo.service",
@@ -530,8 +656,13 @@ func TestCalculateTasksForJob(t *testing.T) {
 		// unload jobs that are no longer scheduled locally
 		{
 			dState: NewAgentState(&machine.MachineState{ID: "XXX"}),
-			cState: unitStates{"foo.service": jsLaunched},
-			jName:  "foo.service",
+			cState: unitStates{
+				"foo.service": unitState{
+					state: jsLaunched,
+					hash:  emptyStringHash,
+				},
+			},
+			uName: "foo.service",
 			chain: &taskChain{
 				unit: &job.Unit{
 					Name: "foo.service",
@@ -555,8 +686,13 @@ func TestCalculateTasksForJob(t *testing.T) {
 					},
 				},
 			},
-			cState: unitStates{"foo.service": jsLoaded},
-			jName:  "foo.service",
+			cState: unitStates{
+				"foo.service": unitState{
+					state: jsLoaded,
+					hash:  emptyStringHash,
+				},
+			},
+			uName: "foo.service",
 			chain: &taskChain{
 				unit: &job.Unit{
 					Name: "foo.service",
@@ -573,11 +709,15 @@ func TestCalculateTasksForJob(t *testing.T) {
 
 	for i, tt := range tests {
 		ar := NewReconciler(registry.NewFakeRegistry(), nil)
-		chain := ar.calculateTaskChainForJob(tt.dState, tt.cState, tt.jName)
+		chain := ar.calculateTaskChainForUnit(tt.dState, tt.cState, tt.uName)
 		if !reflect.DeepEqual(tt.chain, chain) {
 			t.Errorf("case %d: calculated incorrect task chain\nexpected=%#v\nreceived=%#v\n", i, tt.chain, chain)
-			t.Logf("expected Unit: %#v", *tt.chain.unit)
-			t.Logf("received Unit: %#v", *chain.unit)
+			if c := tt.chain; c != nil {
+				t.Logf("expected Unit: %#v", *c.unit)
+			}
+			if c := chain; c != nil {
+				t.Logf("received Unit: %#v", *c.unit)
+			}
 		}
 	}
 }
