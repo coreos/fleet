@@ -51,11 +51,11 @@ func main() {
 	}
 
 	if *printVersion {
-		fmt.Println("fleet version", version.Version)
+		fmt.Println("fleetd version", version.Version)
 		os.Exit(0)
 	}
 
-	log.Infof("Starting fleet version %v", version.Version)
+	log.Infof("Starting fleetd version %v", version.Version)
 
 	cfgset := flag.NewFlagSet("fleet", flag.ExitOnError)
 	cfgset.Int("verbosity", 0, "Logging level")
