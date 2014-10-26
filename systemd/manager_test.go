@@ -94,7 +94,7 @@ func TestHashUnitFileDirectory(t *testing.T) {
 		}
 	}
 
-	hashes, err := hashUnitFileDirectory(dir)
+	hashes, err := hashUnitFiles(dir)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
