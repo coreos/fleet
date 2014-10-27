@@ -19,7 +19,7 @@ Description=Announce nginx1.service
 BindsTo=nginx1.service
 
 [Service]
-ExecStart=/bin/sh -c "while true; do etcdctl set /services/website/nginx1 '{ \"host\": \"10.10.10.2\", \"port\": 8080, \"version\": \"52c7248a14\" }' --ttl 60;sleep 45;done"
+ExecStart=/bin/sh -c "while true; do etcdctl set /services/website/nginx1 '{ \"host\": \"%H\", \"port\": 8080, \"version\": \"52c7248a14\" }' --ttl 60;sleep 45;done"
 ExecStop=/usr/bin/etcdctl delete /services/website/nginx1
 
 [X-Fleet]
