@@ -9,3 +9,6 @@ install:
 
 script:
  - ./test
+
+notifications:
+  email: false
