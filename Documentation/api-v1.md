@@ -1,8 +1,6 @@
-# fleet API v1-alpha (EXPERIMENTAL)
+# fleet API v1
 
-The API this document describes is not yet finalized, so clients should expect it to change.
-This document describes only what has been implemented, not the final state.
-The version of the API will transition from "v1-alpha" to "v1" when it has been finalized, and the EXPERIMENTAL label will be removed.
+The fleet API allows you to manage the state of the cluster using JSON over HTTP.
 
 ## Managing Units
 
