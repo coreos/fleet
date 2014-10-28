@@ -6,10 +6,10 @@ package schema
 //
 const DiscoveryJSON = `{
   "kind": "discovery#restDescription",
-  "discoveryVersion": "v1-alpha",
-  "id": "fleet:v1-alpha",
+  "discoveryVersion": "v1",
+  "id": "fleet:v1",
   "name": "schema",
-  "version": "v1-alpha",
+  "version": "v1",
   "title": "Fleet API",
   "description": "",
   "documentationLink": "http://github.com/coreos/fleet",
@@ -19,10 +19,10 @@ const DiscoveryJSON = `{
     "x32": ""
   },
   "labels": [],
-  "baseUrl": "$ENDPOINT/v1-alpha/",
-  "basePath": "/v1-alpha/",
+  "baseUrl": "$ENDPOINT/fleet/v1/",
+  "basePath": "/fleet/v1/",
   "rootUrl": "$ENDPOINT/",
-  "servicePath": "v1-alpha/",
+  "servicePath": "fleet/v1/",
   "batchPath": "batch",
   "parameters": {},
   "auth": {},
