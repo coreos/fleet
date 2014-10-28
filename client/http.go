@@ -34,7 +34,7 @@ func NewHTTPClient(c *http.Client, ep url.URL) (API, error) {
 	}
 
 	// append a slash so the schema.Service knows this is the root path
-	ep.Path = path.Join(ep.Path, "v1-alpha") + "/"
+	ep.Path = path.Join(ep.Path, "fleet", "v1") + "/"
 	svc.BasePath = ep.String()
 
 	return &HTTPClient{svc: svc}, nil
