@@ -20,7 +20,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
-	"runtime"
 	"sync"
 	"testing"
 	"time"
@@ -324,7 +323,7 @@ func TestUnitStatePublisherRunTiming(t *testing.T) {
 	}()
 
 	// yield so Run() is definitely waiting on After()
-	runtime.Gosched()
+	fclock.BlockUntil(1)
 
 	// tick less than the publish interval
 	fclock.Advance(time.Second)
@@ -361,7 +360,7 @@ func TestUnitStatePublisherRunTiming(t *testing.T) {
 	states = []*unit.UnitState{}
 
 	// yield so Run() is definitely waiting on After()
-	runtime.Gosched()
+	fclock.BlockUntil(1)
 
 	// tick less than the publish interval, again
 	fclock.Advance(4 * time.Second)
@@ -404,7 +403,7 @@ func TestUnitStatePublisherRunTiming(t *testing.T) {
 	states = []*unit.UnitState{}
 
 	// yield so Run() is definitely waiting on After()
-	runtime.Gosched()
+	fclock.BlockUntil(1)
 
 	// tick way past the publish interval
 	fclock.Advance(time.Hour)
