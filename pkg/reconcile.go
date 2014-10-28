@@ -19,6 +19,8 @@ package pkg
 import (
 	"time"
 
+	"github.com/coreos/fleet/Godeps/_workspace/src/github.com/jonboulle/clockwork"
+
 	"github.com/coreos/fleet/log"
 )
 
@@ -42,7 +44,7 @@ func NewPeriodicReconciler(interval time.Duration, recFunc func(), eStream Event
 		ival:    interval,
 		rFunc:   recFunc,
 		eStream: eStream,
-		clock:   NewRealClock(),
+		clock:   clockwork.NewRealClock(),
 	}
 }
 
@@ -50,7 +52,7 @@ type reconciler struct {
 	ival    time.Duration
 	rFunc   func()
 	eStream EventStream
-	clock   Clock
+	clock   clockwork.Clock
 }
 
 func (r *reconciler) Run(stop chan bool) {
