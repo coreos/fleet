@@ -20,13 +20,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
-	"runtime"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/coreos/fleet/Godeps/_workspace/src/github.com/jonboulle/clockwork"
+
 	"github.com/coreos/fleet/machine"
-	"github.com/coreos/fleet/pkg"
 	"github.com/coreos/fleet/registry"
 	"github.com/coreos/fleet/unit"
 )
@@ -288,7 +288,7 @@ func TestDefaultPublisher(t *testing.T) {
 }
 
 func TestUnitStatePublisherRunTiming(t *testing.T) {
-	fclock := &pkg.FakeClock{}
+	fclock := clockwork.NewFakeClock()
 	states := make([]*unit.UnitState, 0)
 	published := make(chan struct{})
 	pf := func(name string, us *unit.UnitState) {
@@ -323,10 +323,10 @@ func TestUnitStatePublisherRunTiming(t *testing.T) {
 	}()
 
 	// yield so Run() is definitely waiting on After()
-	runtime.Gosched()
+	fclock.BlockUntil(1)
 
 	// tick less than the publish interval
-	fclock.Tick(time.Second)
+	fclock.Advance(time.Second)
 
 	select {
 	case <-published:
@@ -339,7 +339,7 @@ func TestUnitStatePublisherRunTiming(t *testing.T) {
 	}
 
 	// now up to the publish interval
-	fclock.Tick(4 * time.Second)
+	fclock.Advance(4 * time.Second)
 	want = []*unit.UnitState{
 		&unit.UnitState{
 			UnitName:    "foo.service",
@@ -360,10 +360,10 @@ func TestUnitStatePublisherRunTiming(t *testing.T) {
 	states = []*unit.UnitState{}
 
 	// yield so Run() is definitely waiting on After()
-	runtime.Gosched()
+	fclock.BlockUntil(1)
 
 	// tick less than the publish interval, again
-	fclock.Tick(4 * time.Second)
+	fclock.Advance(4 * time.Second)
 
 	// no more should be published
 	select {
@@ -377,7 +377,7 @@ func TestUnitStatePublisherRunTiming(t *testing.T) {
 	}
 
 	// tick way past the publish interval
-	fclock.Tick(time.Hour)
+	fclock.Advance(time.Hour)
 	want = []*unit.UnitState{
 		&unit.UnitState{
 			UnitName:    "foo.service",
@@ -403,10 +403,10 @@ func TestUnitStatePublisherRunTiming(t *testing.T) {
 	states = []*unit.UnitState{}
 
 	// yield so Run() is definitely waiting on After()
-	runtime.Gosched()
+	fclock.BlockUntil(1)
 
 	// tick way past the publish interval
-	fclock.Tick(time.Hour)
+	fclock.Advance(time.Hour)
 
 	// no more states should be published
 	select {
@@ -443,7 +443,7 @@ func TestUnitStatePublisherRunQueuing(t *testing.T) {
 		toPublish:       make(chan string),
 		toPublishStates: make(map[string]*unit.UnitState),
 		toPublishMutex:  sync.RWMutex{},
-		clock:           &pkg.FakeClock{},
+		clock:           clockwork.NewFakeClock(),
 	}
 	bc := make(chan *unit.UnitStateHeartbeat)
 	sc := make(chan bool)
@@ -542,7 +542,7 @@ func TestUnitStatePublisherRunQueuing(t *testing.T) {
 
 func TestUnitStatePublisherRunWithDelays(t *testing.T) {
 	states := make([]string, 0)
-	fclock := &pkg.FakeClock{}
+	fclock := clockwork.NewFakeClock()
 	var wgs, wgf sync.WaitGroup // track starting and stopping of publishers
 	slowpf := func(name string, us *unit.UnitState) {
 		wgs.Done()
@@ -561,7 +561,7 @@ func TestUnitStatePublisherRunWithDelays(t *testing.T) {
 		toPublish:       make(chan string),
 		toPublishStates: make(map[string]*unit.UnitState),
 		toPublishMutex:  sync.RWMutex{},
-		clock:           &pkg.FakeClock{},
+		clock:           clockwork.NewFakeClock(),
 	}
 
 	bc := make(chan *unit.UnitStateHeartbeat)
@@ -617,7 +617,7 @@ func TestUnitStatePublisherRunWithDelays(t *testing.T) {
 	// end the registry delay by ticking past it just once -
 	// expect three more publishers to start, and block
 	wgs.Add(3)
-	fclock.Tick(3 * time.Second)
+	fclock.Advance(3 * time.Second)
 
 	// wait for the original publishers to finish
 	wgf.Wait()
@@ -649,7 +649,7 @@ func TestUnitStatePublisherRunWithDelays(t *testing.T) {
 	wgf.Add(3)
 
 	// tick past the registry delay again so the new publishers continue
-	fclock.Tick(10 * time.Second)
+	fclock.Advance(10 * time.Second)
 
 	// wait for them to complete
 	wgf.Wait()

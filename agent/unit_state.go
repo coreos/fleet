@@ -22,9 +22,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/coreos/fleet/Godeps/_workspace/src/github.com/jonboulle/clockwork"
+
 	"github.com/coreos/fleet/log"
 	"github.com/coreos/fleet/machine"
-	"github.com/coreos/fleet/pkg"
 	"github.com/coreos/fleet/registry"
 	"github.com/coreos/fleet/unit"
 )
@@ -41,7 +42,7 @@ func NewUnitStatePublisher(reg registry.Registry, mach machine.Machine, ttl time
 		toPublish:       make(chan string),
 		toPublishStates: make(map[string]*unit.UnitState),
 		toPublishMutex:  sync.RWMutex{},
-		clock:           pkg.NewRealClock(),
+		clock:           clockwork.NewRealClock(),
 	}
 }
 
@@ -65,7 +66,7 @@ type UnitStatePublisher struct {
 
 	publisher publishFunc
 
-	clock pkg.Clock
+	clock clockwork.Clock
 }
 
 // Run caches all of the heartbeat objects from the provided channel, publishing

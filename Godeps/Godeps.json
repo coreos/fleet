@@ -50,6 +50,10 @@
 			"Rev": "cfab99a9500db4ba03067996059d2fc425090bf3"
 		},
 		{
+			"ImportPath": "github.com/jonboulle/clockwork",
+			"Rev": "b473f398c464f1988327f67c9e6aa7fba62f80d2"
+		},
+		{
 			"ImportPath": "github.com/rakyll/globalconf",
 			"Rev": "fd9ff89130a682478a0c94e893ff4affe570b002"
 		},
