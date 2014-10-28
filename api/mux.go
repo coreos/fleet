@@ -29,13 +29,14 @@ func NewServeMux(reg registry.Registry) http.Handler {
 	sm := http.NewServeMux()
 	cAPI := &client.RegistryClient{Registry: reg}
 
-	prefix := "/v1-alpha"
-	wireUpDiscoveryResource(sm, prefix)
-	wireUpMachinesResource(sm, prefix, cAPI)
-	wireUpStateResource(sm, prefix, cAPI)
-	wireUpUnitsResource(sm, prefix, cAPI)
+	for _, prefix := range []string{"/v1-alpha", "/fleet/v1"} {
+		wireUpDiscoveryResource(sm, prefix)
+		wireUpMachinesResource(sm, prefix, cAPI)
+		wireUpStateResource(sm, prefix, cAPI)
+		wireUpUnitsResource(sm, prefix, cAPI)
+		sm.HandleFunc(prefix, methodNotAllowedHandler)
+	}
 
-	sm.HandleFunc(prefix, methodNotAllowedHandler)
 	sm.HandleFunc("/", baseHandler)
 
 	hdlr := http.Handler(sm)
