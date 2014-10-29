@@ -207,7 +207,7 @@ A successful response will contain a page of zero or more Machine entities.
 ## Capability Discovery
 
 The v1 fleet API is described by a [discovery document][disco]. Users should generate their client bindings from this document using the appropriate language generator.
-This document is available in the [fleet source][schema] and served directly from the API itself, at the `/discovery.json` endpoint.
+This document is available in the [fleet source][schema] and served directly from the API itself, at the `/discovery` endpoint.
 Note that this discovery document intentionally ships with an unusable `rootUrl`; clients *must* initialize this as appropriate.
 
 An extremely simplified example client can be found [here][example].

@@ -26,7 +26,7 @@ import (
 )
 
 func wireUpDiscoveryResource(mux *http.ServeMux, prefix string) {
-	base := path.Join(prefix, "discovery.json")
+	base := path.Join(prefix, "discovery")
 	dr := discoveryResource{}
 	mux.Handle(base, &dr)
 }

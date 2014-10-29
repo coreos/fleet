@@ -22,7 +22,7 @@ import pprint
 
 # Step 1: Fetch Discovery document.
 ROOT_URL = "http://localhost:8080/"
-DISCOVERY_URI = ROOT_URL + "fleet/v1/discovery.json"
+DISCOVERY_URI = ROOT_URL + "fleet/v1/discovery"
 h = httplib2.Http()
 resp, content = h.request(DISCOVERY_URI)
 discovery = json.loads(content)
