@@ -1,10 +1,10 @@
-// Package schema provides access to the Fleet API.
+// Package schema provides access to the fleet API.
 //
 // See http://github.com/coreos/fleet
 //
 // Usage example:
 //
-//   import "github.com/coreos/fleet/Godeps/_workspace/src/code.google.com/p/google-api-go-client/schema/v1-alpha"
+//   import "github.com/coreos/fleet/Godeps/_workspace/src/code.google.com/p/google-api-go-client/schema/v1"
 //   ...
 //   schemaService, err := schema.New(oauthHttpClient)
 package schema
@@ -35,10 +35,10 @@ var _ = googleapi.Version
 var _ = errors.New
 var _ = strings.Replace
 
-const apiId = "fleet:v1-alpha"
+const apiId = "fleet:v1"
 const apiName = "schema"
-const apiVersion = "v1-alpha"
-const basePath = "$ENDPOINT/v1-alpha/"
+const apiVersion = "v1"
+const basePath = "$ENDPOINT/fleet/v1/"
 
 func New(client *http.Client) (*Service, error) {
 	if client == nil {

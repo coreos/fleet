@@ -60,10 +60,10 @@ If you're on a machine without Go 1.3+ but you have Docker installed, run `./bui
 
 ### API
 
-An HTTP API is currently being implemented, but it is not yet stable and may change.
+The fleet API uses JSON over HTTP to manage units in a fleet cluster.
 See the [API documentation][api-doc] for more information.
 
-[api-doc]: https://github.com/coreos/fleet/blob/master/Documentation/api-v1-alpha.md
+[api-doc]: https://github.com/coreos/fleet/blob/master/Documentation/api-v1.md
 
 ### Contributing
 
