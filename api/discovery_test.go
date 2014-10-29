@@ -25,7 +25,7 @@ import (
 )
 
 func TestDiscoveryJson(t *testing.T) {
-	url := "http://example.com/discovery.json"
+	url := "http://example.com/discovery"
 	for _, verb := range []string{"POST", "PUT", "DELETE"} {
 		res := &discoveryResource{}
 		rw := httptest.NewRecorder()
