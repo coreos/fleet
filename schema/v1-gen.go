@@ -1,4 +1,4 @@
-// Package schema provides access to the Fleet API.
+// Package schema provides access to the fleet API.
 //
 // See http://github.com/coreos/fleet
 //

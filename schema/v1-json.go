@@ -10,7 +10,7 @@ const DiscoveryJSON = `{
   "id": "fleet:v1",
   "name": "schema",
   "version": "v1",
-  "title": "Fleet API",
+  "title": "fleet API",
   "description": "",
   "documentationLink": "http://github.com/coreos/fleet",
   "protocol": "rest",
