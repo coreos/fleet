@@ -66,6 +66,13 @@ func TestHasMetadata(t *testing.T) {
 			},
 			false,
 		},
+		{
+			map[string]string{},
+			map[string]pkg.Set{
+				"groups": pkg.NewUnsafeSet("pong"),
+			},
+			false,
+		},
 	}
 
 	for i, tt := range testCases {
