@@ -35,6 +35,10 @@ import (
 	"github.com/coreos/fleet/functional/util"
 )
 
+const (
+	fleetAPIPort = 54728
+)
+
 var fleetdBinPath string
 
 func init() {
@@ -164,11 +168,17 @@ authorized_keys_file=%s
 		return err
 	}
 
-	unitContents := `[Service]
+	socketContents := fmt.Sprintf("[Socket]\nListenStream=%d\n", fleetAPIPort)
+	socketPath := path.Join(dir, "opt", "fleet", "fleet.socket")
+	if err := ioutil.WriteFile(socketPath, []byte(socketContents), 0644); err != nil {
+		return err
+	}
+
+	serviceContents := `[Service]
 ExecStart=/opt/fleet/fleetd -config /opt/fleet/fleet.conf
 `
-	unitPath := path.Join(dir, "opt", "fleet", "fleet.service")
-	if err := ioutil.WriteFile(unitPath, []byte(unitContents), 0644); err != nil {
+	servicePath := path.Join(dir, "opt", "fleet", "fleet.service")
+	if err := ioutil.WriteFile(servicePath, []byte(serviceContents), 0644); err != nil {
 		return err
 	}
 
@@ -337,15 +347,21 @@ UseDNS no
 		return
 	}
 
+	_, _, err = nc.nsenter(pid, "ln -s /opt/fleet/fleet.socket /etc/systemd/system/fleet.socket")
+	if err != nil {
+		log.Printf("Failed symlinking fleet.socket: %v", err)
+		return
+	}
+
 	_, _, err = nc.nsenter(pid, "ln -s /opt/fleet/fleet.service /etc/systemd/system/fleet.service")
 	if err != nil {
 		log.Printf("Failed symlinking fleet.service: %v", err)
 		return
 	}
 
-	_, _, err = nc.nsenter(pid, "systemctl start fleet.service")
+	_, _, err = nc.nsenter(pid, "systemctl start fleet.socket fleet.service")
 	if err != nil {
-		log.Printf("Failed starting fleet.service: %v", err)
+		log.Printf("Failed starting fleet units: %v", err)
 		return
 	}
 
