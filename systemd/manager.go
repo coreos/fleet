@@ -244,10 +244,17 @@ func (m *systemdUnitManager) GetUnitStates(filter pkg.Set) (map[string]*unit.Uni
 			continue
 		}
 
-		us, err := m.getUnitState(name)
-		if err != nil {
-			log.Errorf("Failed fetching current unit state for %s: %v", name, err)
-			continue
+		var us *unit.UnitState
+		nu := unit.NewUnitNameInfo(name)
+		if nu.IsTemplate() {
+			// instances have no state
+			us = &unit.UnitState{}
+		} else {
+			us, err = m.getUnitState(name)
+			if err != nil {
+				log.Errorf("Failed fetching current unit state for %s: %v", name, err)
+				continue
+			}
 		}
 		if h, ok := m.hashes[name]; ok {
 			us.UnitHash = h.String()
