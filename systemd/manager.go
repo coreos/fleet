@@ -246,7 +246,8 @@ func (m *systemdUnitManager) GetUnitStates(filter pkg.Set) (map[string]*unit.Uni
 
 		us, err := m.getUnitState(name)
 		if err != nil {
-			return nil, err
+			log.Errorf("Failed fetching current unit state for %s: %v", name, err)
+			continue
 		}
 		if h, ok := m.hashes[name]; ok {
 			us.UnitHash = h.String()
