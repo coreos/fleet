@@ -83,6 +83,7 @@ var (
 		StrictHostKeyChecking bool
 		Tunnel                string
 		RequestTimeout        float64
+		SSHTimeout            float64
 	}{}
 
 	// flags used by multiple commands
@@ -119,6 +120,7 @@ func init() {
 	globalFlagset.BoolVar(&globalFlags.StrictHostKeyChecking, "strict-host-key-checking", true, "Verify host keys presented by remote machines before initiating SSH connections.")
 	globalFlagset.StringVar(&globalFlags.Tunnel, "tunnel", "", "Establish an SSH tunnel through the provided address for communication with fleet and etcd.")
 	globalFlagset.Float64Var(&globalFlags.RequestTimeout, "request-timeout", 3.0, "Amount of time in seconds to allow a single request before considering it failed.")
+	globalFlagset.Float64Var(&globalFlags.SSHTimeout, "ssh-timeout", 10.0, "Amount of time in seconds to allow for SSH connection initialization before failing.")
 }
 
 type Command struct {
@@ -295,9 +297,10 @@ func getHTTPClient() (client.API, error) {
 	}
 
 	tunnelFunc := net.Dial
+	sshTimeout := time.Duration(globalFlags.SSHTimeout*1000) * time.Millisecond
 	tun := getTunnelFlag()
 	if tun != "" {
-		sshClient, err := ssh.NewSSHClient("core", tun, getChecker(), false)
+		sshClient, err := ssh.NewSSHClient("core", tun, getChecker(), false, sshTimeout)
 		if err != nil {
 			return nil, fmt.Errorf("failed initializing SSH client: %v", err)
 		}
@@ -349,9 +352,10 @@ func getHTTPClient() (client.API, error) {
 
 func getRegistryClient() (client.API, error) {
 	var dial func(string, string) (net.Conn, error)
+	sshTimeout := time.Duration(globalFlags.SSHTimeout*1000) * time.Millisecond
 	tun := getTunnelFlag()
 	if tun != "" {
-		sshClient, err := ssh.NewSSHClient("core", tun, getChecker(), false)
+		sshClient, err := ssh.NewSSHClient("core", tun, getChecker(), false, sshTimeout)
 		if err != nil {
 			return nil, fmt.Errorf("failed initializing SSH client: %v", err)
 		}
