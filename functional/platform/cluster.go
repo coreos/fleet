@@ -28,7 +28,7 @@ type Member interface {
 }
 
 type Cluster interface {
-	CreateMember(string, MachineConfig) (Member, error)
+	CreateMember(string) (Member, error)
 	DestroyMember(string) error
 	PoweroffMember(string) error
 	Members() []string
@@ -42,16 +42,10 @@ type Cluster interface {
 	WaitForNMachines(count int) ([]string, error)
 }
 
-// MachineConfig defines the parameters that should
-// be considered when creating a new cluster member.
-type MachineConfig struct {
-	VerifyUnits bool
-}
-
-func CreateNClusterMembers(cl Cluster, count int, cfg MachineConfig) error {
+func CreateNClusterMembers(cl Cluster, count int) error {
 	for i := 0; i < count; i++ {
 		name := strconv.Itoa(i)
-		if _, err := cl.CreateMember(name, cfg); err != nil {
+		if _, err := cl.CreateMember(name); err != nil {
 			return err
 		}
 	}

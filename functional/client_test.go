@@ -33,7 +33,7 @@ func TestKnownHostsVerification(t *testing.T) {
 	}
 	defer cluster.Destroy()
 
-	if _, err := cluster.CreateMember("1", platform.MachineConfig{}); err != nil {
+	if _, err := cluster.CreateMember("1"); err != nil {
 		t.Fatal(err)
 	}
 	machines, err := cluster.WaitForNMachines(1)
@@ -64,7 +64,7 @@ func TestKnownHostsVerification(t *testing.T) {
 	}
 
 	cluster.DestroyMember("1")
-	cluster.CreateMember("1", platform.MachineConfig{})
+	cluster.CreateMember("1")
 	machines, err = cluster.WaitForNMachines(1)
 	if err != nil {
 		t.Fatal(err)

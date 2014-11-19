@@ -34,7 +34,7 @@ func TestDynamicClusterNewMemberUnitMigration(t *testing.T) {
 	defer cluster.Destroy()
 
 	// Start with a 4-node cluster
-	if err := platform.CreateNClusterMembers(cluster, 4, platform.MachineConfig{}); err != nil {
+	if err := platform.CreateNClusterMembers(cluster, 4); err != nil {
 		t.Fatal(err)
 	}
 	if _, err = cluster.WaitForNMachines(4); err != nil {
@@ -114,7 +114,7 @@ func TestDynamicClusterMemberReboot(t *testing.T) {
 	defer cluster.Destroy()
 
 	// Start with a simple three-node cluster
-	if err := platform.CreateNClusterMembers(cluster, 3, platform.MachineConfig{}); err != nil {
+	if err := platform.CreateNClusterMembers(cluster, 3); err != nil {
 		t.Fatal(err)
 	}
 	if _, err = cluster.WaitForNMachines(3); err != nil {
@@ -163,7 +163,7 @@ func TestDynamicClusterMemberReboot(t *testing.T) {
 	if _, err := cluster.WaitForNActiveUnits(2); err != nil {
 		t.Fatal(err)
 	}
-	if _, err = cluster.CreateMember(member, platform.MachineConfig{}); err != nil {
+	if _, err = cluster.CreateMember(member); err != nil {
 		t.Fatal(err)
 	}
 	if _, err = cluster.WaitForNMachines(3); err != nil {

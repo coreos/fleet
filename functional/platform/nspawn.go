@@ -148,7 +148,7 @@ func (nc *nspawnCluster) prepCluster() (err error) {
 	return nil
 }
 
-func (nc *nspawnCluster) prepFleet(dir, ip, sshKeySrc, fleetdBinSrc string, cfg MachineConfig) error {
+func (nc *nspawnCluster) prepFleet(dir, ip, sshKeySrc, fleetdBinSrc string) error {
 	cmd := fmt.Sprintf("mkdir -p %s/opt/fleet", dir)
 	if _, _, err := run(cmd); err != nil {
 		return err
@@ -229,7 +229,7 @@ ip:
 	return "", errors.New("unable to find unused IP address")
 }
 
-func (nc *nspawnCluster) CreateMember(name string, cfg MachineConfig) (m Member, err error) {
+func (nc *nspawnCluster) CreateMember(name string) (m Member, err error) {
 	log.Printf("Creating nspawn machine %s in cluster %s", name, nc.name)
 
 	nm := &nspawnMember{id: name}
@@ -300,7 +300,7 @@ UseDNS no
 	}
 
 	sshKeySrc := path.Join("fixtures", "id_rsa.pub")
-	if err = nc.prepFleet(fsdir, nm.ip, sshKeySrc, fleetdBinPath, cfg); err != nil {
+	if err = nc.prepFleet(fsdir, nm.ip, sshKeySrc, fleetdBinPath); err != nil {
 		log.Printf("Failed preparing fleetd in filesystem: %v", err)
 		return
 	}

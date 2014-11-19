@@ -38,7 +38,7 @@ func TestScheduleMachineOf(t *testing.T) {
 	defer cluster.Destroy()
 
 	// Start with a simple three-node cluster
-	if err := platform.CreateNClusterMembers(cluster, 3, platform.MachineConfig{}); err != nil {
+	if err := platform.CreateNClusterMembers(cluster, 3); err != nil {
 		t.Fatal(err)
 	}
 	machines, err := cluster.WaitForNMachines(3)
@@ -148,7 +148,7 @@ func TestScheduleConflicts(t *testing.T) {
 	defer cluster.Destroy()
 
 	// Start with a simple three-node cluster
-	if err := platform.CreateNClusterMembers(cluster, 3, platform.MachineConfig{}); err != nil {
+	if err := platform.CreateNClusterMembers(cluster, 3); err != nil {
 		t.Fatal(err)
 	}
 	machines, err := cluster.WaitForNMachines(3)
@@ -213,7 +213,7 @@ func TestScheduleOneWayConflict(t *testing.T) {
 	defer cluster.Destroy()
 
 	// Start with a simple three-node cluster
-	if err := platform.CreateNClusterMembers(cluster, 1, platform.MachineConfig{}); err != nil {
+	if err := platform.CreateNClusterMembers(cluster, 1); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := cluster.WaitForNMachines(1); err != nil {
@@ -308,7 +308,7 @@ func TestScheduleConditionMachineID(t *testing.T) {
 	defer cluster.Destroy()
 
 	// Start with a simple three-node cluster
-	if err := platform.CreateNClusterMembers(cluster, 3, platform.MachineConfig{}); err != nil {
+	if err := platform.CreateNClusterMembers(cluster, 3); err != nil {
 		t.Fatal(err)
 	}
 	machines, err := cluster.WaitForNMachines(3)
@@ -365,7 +365,7 @@ func TestScheduleGlobalUnits(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer cluster.Destroy()
-	if err := platform.CreateNClusterMembers(cluster, 3, platform.MachineConfig{}); err != nil {
+	if err := platform.CreateNClusterMembers(cluster, 3); err != nil {
 		t.Fatal(err)
 	}
 	machines, err := cluster.WaitForNMachines(3)

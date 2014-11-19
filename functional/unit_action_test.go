@@ -32,7 +32,7 @@ func TestUnitRunnable(t *testing.T) {
 	}
 	defer cluster.Destroy()
 
-	if err := platform.CreateNClusterMembers(cluster, 1, platform.MachineConfig{}); err != nil {
+	if err := platform.CreateNClusterMembers(cluster, 1); err != nil {
 		t.Fatal(err)
 	}
 	_, err = cluster.WaitForNMachines(1)
@@ -61,7 +61,7 @@ func TestUnitSubmit(t *testing.T) {
 	}
 	defer cluster.Destroy()
 
-	if err := platform.CreateNClusterMembers(cluster, 1, platform.MachineConfig{}); err != nil {
+	if err := platform.CreateNClusterMembers(cluster, 1); err != nil {
 		t.Fatal(err)
 	}
 	_, err = cluster.WaitForNMachines(1)
@@ -120,7 +120,7 @@ func TestUnitRestart(t *testing.T) {
 	}
 	defer cluster.Destroy()
 
-	if err := platform.CreateNClusterMembers(cluster, 1, platform.MachineConfig{}); err != nil {
+	if err := platform.CreateNClusterMembers(cluster, 1); err != nil {
 		t.Fatal(err)
 	}
 	_, err = cluster.WaitForNMachines(1)
@@ -173,7 +173,7 @@ func TestUnitSSHActions(t *testing.T) {
 	}
 	defer cluster.Destroy()
 
-	if err := platform.CreateNClusterMembers(cluster, 1, platform.MachineConfig{}); err != nil {
+	if err := platform.CreateNClusterMembers(cluster, 1); err != nil {
 		t.Fatal(err)
 	}
 	_, err = cluster.WaitForNMachines(1)
