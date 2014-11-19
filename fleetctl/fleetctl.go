@@ -70,19 +70,23 @@ var (
 
 	// flags used by all commands
 	globalFlags = struct {
-		Debug                 bool
-		Version               bool
-		Help                  bool
-		Endpoint              string
-		EtcdKeyPrefix         string
-		EtcdKeyFile           string
-		EtcdCertFile          string
-		EtcdCAFile            string
-		UseAPI                bool
+		Debug   bool
+		Version bool
+		Help    bool
+
+		UseAPI         bool
+		Endpoint       string
+		RequestTimeout float64
+
+		KeyFile  string
+		CertFile string
+		CAFile   string
+
+		Tunnel                string
 		KnownHostsFile        string
 		StrictHostKeyChecking bool
-		Tunnel                string
-		RequestTimeout        float64
+
+		EtcdKeyPrefix string
 	}{}
 
 	// flags used by multiple commands
@@ -111,14 +115,21 @@ func init() {
 	globalFlagset.BoolVar(&globalFlags.Version, "version", false, "Print the version and exit")
 	globalFlagset.StringVar(&globalFlags.Endpoint, "endpoint", "http://127.0.0.1:4001", "etcd endpoint for fleet")
 	globalFlagset.StringVar(&globalFlags.EtcdKeyPrefix, "etcd-key-prefix", registry.DefaultKeyPrefix, "Keyspace for fleet data in etcd (development use only!)")
-	globalFlagset.StringVar(&globalFlags.EtcdKeyFile, "etcd-keyfile", "", "etcd key file authentication")
-	globalFlagset.StringVar(&globalFlags.EtcdCertFile, "etcd-certfile", "", "etcd cert file authentication")
-	globalFlagset.StringVar(&globalFlags.EtcdCAFile, "etcd-cafile", "", "etcd CA file authentication")
+
+	globalFlagset.StringVar(&globalFlags.KeyFile, "keyfile", "", "Location of TLS key file used to secure communication with the fleet API or etcd")
+	globalFlagset.StringVar(&globalFlags.CertFile, "certfile", "", "Location of TLS cert file used to secure communication with the fleet API or etcd")
+	globalFlagset.StringVar(&globalFlags.CAFile, "cafile", "", "Location of TLS CA file used to secure communication with the fleet API or etcd")
+
 	globalFlagset.BoolVar(&globalFlags.UseAPI, "experimental-api", false, "Use the experimental HTTP API. This flag will be removed when the API is no longer considered experimental.")
 	globalFlagset.StringVar(&globalFlags.KnownHostsFile, "known-hosts-file", ssh.DefaultKnownHostsFile, "File used to store remote machine fingerprints. Ignored if strict host key checking is disabled.")
 	globalFlagset.BoolVar(&globalFlags.StrictHostKeyChecking, "strict-host-key-checking", true, "Verify host keys presented by remote machines before initiating SSH connections.")
 	globalFlagset.StringVar(&globalFlags.Tunnel, "tunnel", "", "Establish an SSH tunnel through the provided address for communication with fleet and etcd.")
 	globalFlagset.Float64Var(&globalFlags.RequestTimeout, "request-timeout", 3.0, "Amount of time in seconds to allow a single request before considering it failed.")
+
+	// deprecated flags
+	globalFlagset.StringVar(&globalFlags.KeyFile, "etcd-keyfile", "", hidden)
+	globalFlagset.StringVar(&globalFlags.CertFile, "etcd-certfile", "", hidden)
+	globalFlagset.StringVar(&globalFlags.CAFile, "etcd-cafile", "", hidden)
 }
 
 type Command struct {
@@ -365,7 +376,7 @@ func getRegistryClient() (client.API, error) {
 		}
 	}
 
-	tlsConfig, err := pkg.ReadTLSConfigFiles(globalFlags.EtcdCAFile, globalFlags.EtcdCertFile, globalFlags.EtcdKeyFile)
+	tlsConfig, err := pkg.ReadTLSConfigFiles(globalFlags.CAFile, globalFlags.CertFile, globalFlags.KeyFile)
 	if err != nil {
 		return nil, err
 	}
