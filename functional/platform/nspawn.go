@@ -74,10 +74,14 @@ func (m *nspawnMember) IP() string {
 	return m.ip
 }
 
+func (m *nspawnMember) Endpoint() string {
+	return fmt.Sprintf("http://%s:%d", m.ip, fleetAPIPort)
+}
+
 type nspawnCluster struct {
 	name    string
 	maxID   int
-	members map[string]*nspawnMember
+	members map[string]nspawnMember
 }
 
 func (nc *nspawnCluster) nextID() string {
@@ -90,22 +94,92 @@ func (nc *nspawnCluster) keyspace() string {
 	return fmt.Sprintf("/fleet_functional/%s", nc.name)
 }
 
-func (nc *nspawnCluster) Fleetctl(args ...string) (string, string, error) {
-	args = append([]string{"--etcd-key-prefix=" + nc.keyspace()}, args...)
+func (nc *nspawnCluster) Fleetctl(m Member, args ...string) (string, string, error) {
+	args = append([]string{"--experimental-api", "--endpoint=" + m.Endpoint()}, args...)
 	return util.RunFleetctl(args...)
 }
 
-func (nc *nspawnCluster) FleetctlWithInput(input string, args ...string) (string, string, error) {
-	args = append([]string{"--etcd-key-prefix=" + nc.keyspace()}, args...)
+func (nc *nspawnCluster) FleetctlWithInput(m Member, input string, args ...string) (string, string, error) {
+	args = append([]string{"--experimental-api", "--endpoint=" + m.Endpoint()}, args...)
 	return util.RunFleetctlWithInput(input, args...)
 }
 
-func (nc *nspawnCluster) WaitForNMachines(count int) ([]string, error) {
-	return util.WaitForNMachines(nc.Fleetctl, count)
+func (nc *nspawnCluster) WaitForNActiveUnits(m Member, count int) (map[string][]util.UnitState, error) {
+	var nactive int
+	states := make(map[string][]util.UnitState)
+
+	timeout := 15 * time.Second
+	alarm := time.After(timeout)
+
+	ticker := time.Tick(250 * time.Millisecond)
+loop:
+	for {
+		select {
+		case <-alarm:
+			return nil, fmt.Errorf("failed to find %d active units within %v (last found: %d)", count, timeout, nactive)
+		case <-ticker:
+			stdout, _, err := nc.Fleetctl(m, "list-units", "--no-legend", "--full", "--fields", "unit,active,machine")
+			stdout = strings.TrimSpace(stdout)
+			if err != nil {
+				continue
+			}
+
+			lines := strings.Split(stdout, "\n")
+			allStates := util.ParseUnitStates(lines)
+			active := util.FilterActiveUnits(allStates)
+			nactive = len(active)
+			if nactive != count {
+				continue
+			}
+
+			for _, state := range active {
+				name := state.Name
+				if _, ok := states[name]; !ok {
+					states[name] = []util.UnitState{}
+				}
+				states[name] = append(states[name], state)
+			}
+			break loop
+		}
+	}
+
+	return states, nil
 }
 
-func (nc *nspawnCluster) WaitForNActiveUnits(count int) (map[string][]util.UnitState, error) {
-	return util.WaitForNActiveUnits(nc.Fleetctl, count)
+func (nc *nspawnCluster) WaitForNMachines(m Member, count int) ([]string, error) {
+	var machines []string
+	timeout := 10 * time.Second
+	alarm := time.After(timeout)
+
+	ticker := time.Tick(250 * time.Millisecond)
+loop:
+	for {
+		select {
+		case <-alarm:
+			return machines, fmt.Errorf("failed to find %d machines within %v", count, timeout)
+		case <-ticker:
+			stdout, _, err := nc.Fleetctl(m, "list-machines", "--no-legend", "--full", "--fields", "machine")
+			if err != nil {
+				continue
+			}
+
+			stdout = strings.TrimSpace(stdout)
+
+			found := 0
+			if stdout != "" {
+				machines = strings.Split(stdout, "\n")
+				found = len(machines)
+			}
+
+			if found != count {
+				continue
+			}
+
+			break loop
+		}
+	}
+
+	return machines, nil
 }
 
 func (nc *nspawnCluster) prepCluster() (err error) {
@@ -202,9 +276,9 @@ ExecStart=/opt/fleet/fleetd -config /opt/fleet/fleet.conf
 
 func (nc *nspawnCluster) Members() []Member {
 	ms := make([]Member, 0)
-	for _, m := range nc.members {
-		m := m
-		ms = append(ms, Member(m))
+	for _, nm := range nc.members {
+		nm := nm
+		ms = append(ms, Member(&nm))
 	}
 	return ms
 }
@@ -227,7 +301,7 @@ func (nc *nspawnCluster) CreateMember() (m Member, err error) {
 }
 
 func (nc *nspawnCluster) createMember(id string) (m Member, err error) {
-	nm := &nspawnMember{
+	nm := nspawnMember{
 		id: id,
 		ip: fmt.Sprintf("172.17.1.%s", id),
 	}
@@ -368,11 +442,11 @@ UseDNS no
 		return
 	}
 
-	return Member(nm), nil
+	return Member(&nm), nil
 }
 
 func (nc *nspawnCluster) Destroy() error {
-	for _, m := range nc.members {
+	for _, m := range nc.Members() {
 		log.Printf("Destroying nspawn machine %s", m.ID())
 		nc.DestroyMember(m)
 	}
@@ -392,7 +466,7 @@ func (nc *nspawnCluster) Destroy() error {
 	return nil
 }
 
-func (nc *nspawnCluster) ReplaceMember(m Member) error {
+func (nc *nspawnCluster) ReplaceMember(m Member) (Member, error) {
 	count := len(nc.members)
 	label := fmt.Sprintf("%s%s", nc.name, m.ID())
 
@@ -400,23 +474,34 @@ func (nc *nspawnCluster) ReplaceMember(m Member) error {
 	// the nspawn container, so we must use systemctl
 	cmd := fmt.Sprintf("systemctl -M %s poweroff", label)
 	if _, stderr, _ := run(cmd); !strings.Contains(stderr, "Success") {
-		return errors.New("poweroff failed")
+		return nil, errors.New("poweroff failed")
 	}
 
-	if _, err := nc.WaitForNMachines(count - 1); err != nil {
-		return err
+	var nm nspawnMember
+	if m.ID() == "1" {
+		nm = nc.members["2"]
+	} else {
+		nm = nc.members["1"]
+	}
+	mN := Member(&nm)
+
+	if _, err := nc.WaitForNMachines(mN, count-1); err != nil {
+		return nil, err
 	}
 	if err := nc.DestroyMember(m); err != nil {
-		return err
-	}
-	if _, err := nc.createMember(m.ID()); err != nil {
-		return err
-	}
-	if _, err := nc.WaitForNMachines(count); err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	m, err := nc.createMember(m.ID())
+	if err != nil {
+		return nil, err
+	}
+
+	if _, err := nc.WaitForNMachines(mN, count); err != nil {
+		return nil, err
+	}
+
+	return m, nil
 }
 
 func (nc *nspawnCluster) DestroyMember(m Member) error {
@@ -514,7 +599,7 @@ func (nc *nspawnCluster) nsenter(pid int, cmd string) (string, string, error) {
 }
 
 func NewNspawnCluster(name string) (Cluster, error) {
-	nc := &nspawnCluster{name: name, members: map[string]*nspawnMember{}}
+	nc := &nspawnCluster{name: name, members: map[string]nspawnMember{}}
 	err := nc.prepCluster()
 	return nc, err
 }

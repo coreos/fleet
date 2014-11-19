@@ -23,28 +23,32 @@ import (
 type Member interface {
 	ID() string
 	IP() string
+	Endpoint() string
 }
 
 type Cluster interface {
 	CreateMember() (Member, error)
 	DestroyMember(Member) error
-	ReplaceMember(Member) error
+	ReplaceMember(Member) (Member, error)
 	Members() []Member
 	MemberCommand(Member, ...string) (string, error)
 	Destroy() error
 
 	// client operations
-	Fleetctl(args ...string) (string, string, error)
-	FleetctlWithInput(input string, args ...string) (string, string, error)
-	WaitForNActiveUnits(count int) (map[string][]util.UnitState, error)
-	WaitForNMachines(count int) ([]string, error)
+	Fleetctl(m Member, args ...string) (string, string, error)
+	FleetctlWithInput(m Member, input string, args ...string) (string, string, error)
+	WaitForNActiveUnits(Member, int) (map[string][]util.UnitState, error)
+	WaitForNMachines(Member, int) ([]string, error)
 }
 
-func CreateNClusterMembers(cl Cluster, count int) error {
+func CreateNClusterMembers(cl Cluster, count int) ([]Member, error) {
+	ms := make([]Member, 0)
 	for i := 0; i < count; i++ {
-		if _, err := cl.CreateMember(); err != nil {
-			return err
+		m, err := cl.CreateMember()
+		if err != nil {
+			return nil, err
 		}
+		ms = append(ms, m)
 	}
-	return nil
+	return ms, nil
 }
