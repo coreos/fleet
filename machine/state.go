@@ -26,6 +26,7 @@ type MachineState struct {
 	ID       string
 	PublicIP string
 	Metadata map[string]string
+	Statdata map[string]float32
 	Version  string
 }
 

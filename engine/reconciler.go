@@ -41,7 +41,7 @@ func (t *task) String() string {
 
 func NewReconciler() *Reconciler {
 	return &Reconciler{
-		sched: &leastLoadedScheduler{},
+		sched: &selectingScheduler{defaultSchedulerMap},
 	}
 }
 

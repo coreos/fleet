@@ -29,6 +29,8 @@ import (
 
 	"github.com/coreos/fleet/log"
 	"github.com/coreos/fleet/unit"
+
+	"bitbucket.org/bertimus9/systemstat"
 )
 
 const (
@@ -50,6 +52,8 @@ type CoreOSMachine struct {
 	um           unit.UnitManager
 	staticState  MachineState
 	dynamicState *MachineState
+
+	lastCpuSample systemstat.CPUSample
 }
 
 func (m *CoreOSMachine) String() string {
@@ -108,11 +112,29 @@ func (m *CoreOSMachine) currentState() *MachineState {
 		log.Errorf("Error retrieving machineID: %v\n", err)
 		return nil
 	}
+
+	cpu := systemstat.GetCPUSample()
+	cpuavg := systemstat.GetCPUAverage(m.lastCpuSample, cpu)
+
+	m.lastCpuSample = cpu
+
+	mem := systemstat.GetMemSample()
+	load := systemstat.GetLoadAvgSample()
+
 	publicIP := getLocalIP()
 	return &MachineState{
 		ID:       id,
 		PublicIP: publicIP,
 		Metadata: make(map[string]string, 0),
+		Statdata: map[string]float32{
+			"cpu_used":  float32(100 - cpuavg.IdlePct),
+			"mem_total": float32(mem.MemTotal / 1024),
+			"mem_used":  float32(mem.MemUsed / 1024),
+			"mem_free":  float32((mem.MemTotal - mem.MemUsed) / 1024),
+			"load1":     float32(load.One),
+			"load5":     float32(load.Five),
+			"load15":    float32(load.Fifteen),
+		},
 	}
 }
 
