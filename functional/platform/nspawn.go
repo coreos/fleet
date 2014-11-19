@@ -60,14 +60,23 @@ func init() {
 	}
 }
 
-type member struct {
+type nspawnMember struct {
+	id  string
 	ip  string
 	pid int
 }
 
+func (m *nspawnMember) ID() string {
+	return m.id
+}
+
+func (m *nspawnMember) IP() string {
+	return m.ip
+}
+
 type nspawnCluster struct {
 	name    string
-	members map[string]*member
+	members map[string]*nspawnMember
 }
 
 func (nc *nspawnCluster) keyspace() string {
@@ -220,13 +229,17 @@ ip:
 	return "", errors.New("unable to find unused IP address")
 }
 
-func (nc *nspawnCluster) CreateMember(name string, cfg MachineConfig) (err error) {
+func (nc *nspawnCluster) CreateMember(name string, cfg MachineConfig) (m Member, err error) {
 	log.Printf("Creating nspawn machine %s in cluster %s", name, nc.name)
-	ip, err := nc.findUsableIP()
+
+	nm := &nspawnMember{id: name}
+	nc.members[name] = nm
+	m = nm
+
+	nm.ip, err = nc.findUsableIP()
 	if err != nil {
-		return err
+		return
 	}
-	nc.members[name] = &member{ip: ip}
 
 	basedir := path.Join(os.TempDir(), nc.name)
 	fsdir := path.Join(basedir, name, "fs")
@@ -283,10 +296,11 @@ UseDNS no
 	ExecStart=/usr/bin/ssh-keygen -t rsa -f /etc/ssh/ssh_host_rsa_key -N "" -b 768`
 	if err = ioutil.WriteFile(path.Join(fsdir, "/etc/systemd/system/sshd-keygen.service"), []byte(sshd_keygen), 0644); err != nil {
 		log.Printf("Failed writing sshd-keygen.service: %v", err)
+		return
 	}
 
 	sshKeySrc := path.Join("fixtures", "id_rsa.pub")
-	if err = nc.prepFleet(fsdir, ip, sshKeySrc, fleetdBinPath, cfg); err != nil {
+	if err = nc.prepFleet(fsdir, nm.ip, sshKeySrc, fleetdBinPath, cfg); err != nil {
 		log.Printf("Failed preparing fleetd in filesystem: %v", err)
 		return
 	}
@@ -307,10 +321,10 @@ UseDNS no
 		return
 	}
 
-	pid, err := nc.machinePID(name)
+	nm.pid, err = nc.machinePID(name)
 	if err != nil {
 		log.Printf("Failed detecting machine %s%s PID: %v", nc.name, name, err)
-		return err
+		return
 	}
 
 	alarm := time.After(10 * time.Second)
@@ -322,50 +336,47 @@ UseDNS no
 		default:
 		}
 		// TODO(jonboulle): probably a cleaner way to check here
-		if _, _, e := nc.nsenter(pid, "systemd-analyze"); e == nil {
+		if _, _, e := nc.nsenter(nm.pid, "systemd-analyze"); e == nil {
 			break
 		}
 		time.Sleep(100 * time.Millisecond)
 
 	}
 
-	nc.members[name].pid = pid
-
 	var stderr string
-
-	cmd := fmt.Sprintf("ip addr add %s/16 dev host0", ip)
-	_, stderr, err = nc.nsenter(pid, cmd)
+	cmd := fmt.Sprintf("ip addr add %s/16 dev host0", nm.ip)
+	_, stderr, err = nc.nsenter(nm.pid, cmd)
 	if err != nil {
 		log.Printf("Failed adding IP address to container: %s", stderr)
 		return
 	}
 
 	cmd = fmt.Sprintf("update-ssh-keys -u core -a fleet /opt/fleet/id_rsa.pub")
-	_, _, err = nc.nsenter(pid, cmd)
+	_, _, err = nc.nsenter(nm.pid, cmd)
 	if err != nil {
 		log.Printf("Failed authorizing SSH key in container")
 		return
 	}
 
-	_, _, err = nc.nsenter(pid, "ln -s /opt/fleet/fleet.socket /etc/systemd/system/fleet.socket")
+	_, _, err = nc.nsenter(nm.pid, "ln -s /opt/fleet/fleet.socket /etc/systemd/system/fleet.socket")
 	if err != nil {
 		log.Printf("Failed symlinking fleet.socket: %v", err)
 		return
 	}
 
-	_, _, err = nc.nsenter(pid, "ln -s /opt/fleet/fleet.service /etc/systemd/system/fleet.service")
+	_, _, err = nc.nsenter(nm.pid, "ln -s /opt/fleet/fleet.service /etc/systemd/system/fleet.service")
 	if err != nil {
 		log.Printf("Failed symlinking fleet.service: %v", err)
 		return
 	}
 
-	_, _, err = nc.nsenter(pid, "systemctl start fleet.socket fleet.service")
+	_, _, err = nc.nsenter(nm.pid, "systemctl start fleet.socket fleet.service")
 	if err != nil {
 		log.Printf("Failed starting fleet units: %v", err)
 		return
 	}
 
-	return nil
+	return
 }
 
 func (nc *nspawnCluster) Destroy() error {
@@ -496,7 +507,7 @@ func (nc *nspawnCluster) nsenter(pid int, cmd string) (string, string, error) {
 }
 
 func NewNspawnCluster(name string) (Cluster, error) {
-	nc := &nspawnCluster{name, map[string]*member{}}
+	nc := &nspawnCluster{name, map[string]*nspawnMember{}}
 	err := nc.prepCluster()
 	return nc, err
 }

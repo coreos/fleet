@@ -22,8 +22,13 @@ import (
 	"github.com/coreos/fleet/functional/util"
 )
 
+type Member interface {
+	ID() string
+	IP() string
+}
+
 type Cluster interface {
-	CreateMember(string, MachineConfig) error
+	CreateMember(string, MachineConfig) (Member, error)
 	DestroyMember(string) error
 	PoweroffMember(string) error
 	Members() []string
@@ -46,7 +51,7 @@ type MachineConfig struct {
 func CreateNClusterMembers(cl Cluster, count int, cfg MachineConfig) error {
 	for i := 0; i < count; i++ {
 		name := strconv.Itoa(i)
-		if err := cl.CreateMember(name, cfg); err != nil {
+		if _, err := cl.CreateMember(name, cfg); err != nil {
 			return err
 		}
 	}

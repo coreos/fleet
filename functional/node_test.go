@@ -32,7 +32,7 @@ func TestNodeShutdown(t *testing.T) {
 	defer cluster.Destroy()
 
 	// Start with a single-node cluster
-	if err := cluster.CreateMember("1", platform.MachineConfig{}); err != nil {
+	if _, err := cluster.CreateMember("1", platform.MachineConfig{}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err = cluster.WaitForNMachines(1); err != nil {
