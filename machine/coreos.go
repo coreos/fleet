@@ -30,7 +30,7 @@ import (
 	"github.com/coreos/fleet/log"
 	"github.com/coreos/fleet/unit"
 
-	"bitbucket.org/bertimus9/systemstat"
+	"github.com/coreos/fleet/Godeps/_workspace/src/bitbucket.org/bertimus9/systemstat"
 )
 
 const (

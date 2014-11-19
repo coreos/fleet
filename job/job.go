@@ -293,7 +293,7 @@ func (j *Job) RequiredTargetMetadata() map[string]pkg.Set {
 }
 
 // RequiredSchedulerMetadata return the metadata for RequiredScheduler
-// to use at runtime. Valid metadata fields are strings of the 
+// to use at runtime. Valid metadata fields are strings of the
 // form `key=value`, where both key and value are not the empty string.
 func (j *Job) RequiredSchedulerMetadata() map[string]pkg.Set {
 	return j.parseMetadata([]string{

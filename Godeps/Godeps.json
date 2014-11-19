@@ -6,6 +6,10 @@
 	],
 	"Deps": [
 		{
+			"ImportPath": "bitbucket.org/bertimus9/systemstat",
+			"Rev": "1468fd0db20598383c9393cccaa547de6ad99e5e"
+		},
+		{
 			"ImportPath": "code.google.com/p/go.crypto/ssh",
 			"Comment": "null-218",
 			"Rev": "f3cebac2bd11c2bf03c15bfa4c66688ad02a0a40"
