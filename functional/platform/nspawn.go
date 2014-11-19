@@ -67,7 +67,7 @@ type nspawnMember struct {
 }
 
 func (m *nspawnMember) ID() string {
-	return m.id
+	return string(m.id)
 }
 
 func (m *nspawnMember) IP() string {
@@ -76,7 +76,13 @@ func (m *nspawnMember) IP() string {
 
 type nspawnCluster struct {
 	name    string
+	maxID   int
 	members map[string]*nspawnMember
+}
+
+func (nc *nspawnCluster) nextID() string {
+	nc.maxID++
+	return strconv.Itoa(nc.maxID)
 }
 
 func (nc *nspawnCluster) keyspace() string {
@@ -214,35 +220,21 @@ func (nc *nspawnCluster) MemberCommand(m Member, args ...string) (string, error)
 	return stdoutBytes.String(), err
 }
 
-func (nc *nspawnCluster) findUsableIP() (string, error) {
-	base := 100
-ip:
-	for octet := base; octet < 256; octet++ {
-		ip := fmt.Sprintf("172.17.1.%d", octet)
-		for _, member := range nc.members {
-			if ip == member.ip {
-				continue ip
-			}
-		}
-		return ip, nil
-	}
-	return "", errors.New("unable to find unused IP address")
+func (nc *nspawnCluster) CreateMember() (m Member, err error) {
+	id := nc.nextID()
+	log.Printf("Creating nspawn machine %d in cluster %s", id, nc.name)
+	return nc.createMember(id)
 }
 
-func (nc *nspawnCluster) CreateMember(name string) (m Member, err error) {
-	log.Printf("Creating nspawn machine %s in cluster %s", name, nc.name)
-
-	nm := &nspawnMember{id: name}
-	nc.members[name] = nm
-	m = nm
-
-	nm.ip, err = nc.findUsableIP()
-	if err != nil {
-		return
+func (nc *nspawnCluster) createMember(id string) (m Member, err error) {
+	nm := &nspawnMember{
+		id: id,
+		ip: fmt.Sprintf("172.17.1.%s", id),
 	}
+	nc.members[id] = nm
 
 	basedir := path.Join(os.TempDir(), nc.name)
-	fsdir := path.Join(basedir, name, "fs")
+	fsdir := path.Join(basedir, nm.ID(), "fs")
 	cmds := []string{
 		// set up directory for fleet service
 		fmt.Sprintf("mkdir -p %s/etc/systemd/system", fsdir),
@@ -300,7 +292,7 @@ UseDNS no
 	}
 
 	sshKeySrc := path.Join("fixtures", "id_rsa.pub")
-	if err = nc.prepFleet(fsdir, nm.ip, sshKeySrc, fleetdBinPath); err != nil {
+	if err = nc.prepFleet(fsdir, nm.IP(), sshKeySrc, fleetdBinPath); err != nil {
 		log.Printf("Failed preparing fleetd in filesystem: %v", err)
 		return
 	}
@@ -309,21 +301,21 @@ UseDNS no
 		"/usr/bin/systemd-nspawn",
 		"--bind-ro=/usr",
 		"-b",
-		fmt.Sprintf("-M %s%s", nc.name, name),
+		fmt.Sprintf("-M %s%s", nc.name, nm.ID()),
 		"--capability=CAP_NET_BIND_SERVICE,CAP_SYS_TIME", // needed for ntpd
 		"--network-bridge fleet0",
 		fmt.Sprintf("-D %s", fsdir),
 	}, " ")
 	log.Printf("Creating nspawn container: %s", exec)
-	err = nc.systemd(fmt.Sprintf("%s%s.service", nc.name, name), exec)
+	err = nc.systemd(fmt.Sprintf("%s%s.service", nc.name, nm.ID()), exec)
 	if err != nil {
 		log.Printf("Failed creating nspawn container: %v", err)
 		return
 	}
 
-	nm.pid, err = nc.machinePID(name)
+	nm.pid, err = nc.machinePID(nm.ID())
 	if err != nil {
-		log.Printf("Failed detecting machine %s%s PID: %v", nc.name, name, err)
+		log.Printf("Failed detecting machine %s%s PID: %v", nc.name, nm.ID(), err)
 		return
 	}
 
@@ -344,7 +336,7 @@ UseDNS no
 	}
 
 	var stderr string
-	cmd := fmt.Sprintf("ip addr add %s/16 dev host0", nm.ip)
+	cmd := fmt.Sprintf("ip addr add %s/16 dev host0", nm.IP())
 	_, stderr, err = nc.nsenter(nm.pid, cmd)
 	if err != nil {
 		log.Printf("Failed adding IP address to container: %s", stderr)
@@ -376,7 +368,7 @@ UseDNS no
 		return
 	}
 
-	return
+	return Member(nm), nil
 }
 
 func (nc *nspawnCluster) Destroy() error {
@@ -400,16 +392,31 @@ func (nc *nspawnCluster) Destroy() error {
 	return nil
 }
 
-func (nc *nspawnCluster) PoweroffMember(m Member) (err error) {
+func (nc *nspawnCluster) ReplaceMember(m Member) error {
+	count := len(nc.members)
 	label := fmt.Sprintf("%s%s", nc.name, m.ID())
+
 	// The `machinectl poweroff` command does not cleanly shut down
 	// the nspawn container, so we must use systemctl
 	cmd := fmt.Sprintf("systemctl -M %s poweroff", label)
-	_, _, err = run(cmd)
-	if err != nil {
-		log.Printf("Command '%s' failed: %v", cmd, err)
+	if _, stderr, _ := run(cmd); !strings.Contains(stderr, "Success") {
+		return errors.New("poweroff failed")
 	}
-	return
+
+	if _, err := nc.WaitForNMachines(count - 1); err != nil {
+		return err
+	}
+	if err := nc.DestroyMember(m); err != nil {
+		return err
+	}
+	if _, err := nc.createMember(m.ID()); err != nil {
+		return err
+	}
+	if _, err := nc.WaitForNMachines(count); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (nc *nspawnCluster) DestroyMember(m Member) error {
@@ -507,7 +514,7 @@ func (nc *nspawnCluster) nsenter(pid int, cmd string) (string, string, error) {
 }
 
 func NewNspawnCluster(name string) (Cluster, error) {
-	nc := &nspawnCluster{name, map[string]*nspawnMember{}}
+	nc := &nspawnCluster{name: name, members: map[string]*nspawnMember{}}
 	err := nc.prepCluster()
 	return nc, err
 }

@@ -151,23 +151,8 @@ func TestDynamicClusterMemberReboot(t *testing.T) {
 
 	// Simulate a reboot by recreating one of the cluster members
 	member := cluster.Members()[1]
-	if _, err = cluster.MemberCommand(member, "sudo", "systemctl", "stop", "fleet"); err != nil {
-		t.Fatal(err)
-	}
-	if err = cluster.DestroyMember(member); err != nil {
-		t.Fatal(err)
-	}
-	if _, err = cluster.WaitForNMachines(2); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := cluster.WaitForNActiveUnits(2); err != nil {
-		t.Fatal(err)
-	}
-	if _, err = cluster.CreateMember(member.ID()); err != nil {
-		t.Fatal(err)
-	}
-	if _, err = cluster.WaitForNMachines(3); err != nil {
-		t.Fatal(err)
+	if err := cluster.ReplaceMember(member); err != nil {
+		t.Fatalf("replace failed: %v", err)
 	}
 	newActive, err := cluster.WaitForNActiveUnits(3)
 	if err != nil {

@@ -33,7 +33,7 @@ func TestKnownHostsVerification(t *testing.T) {
 	}
 	defer cluster.Destroy()
 
-	m, err := cluster.CreateMember("1")
+	m, err := cluster.CreateMember()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -56,16 +56,10 @@ func TestKnownHostsVerification(t *testing.T) {
 		t.Errorf("Unable to SSH into fleet machine: \nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)
 	}
 
-	// Gracefully poweroff the machine to allow fleet to purge its state.
-	cluster.PoweroffMember(m)
-
-	machines, err = cluster.WaitForNMachines(0)
-	if err != nil {
-		t.Fatal(err)
+	if err := cluster.ReplaceMember(m); err != nil {
+		t.Fatalf("Failed replacing machine: %v", err)
 	}
 
-	cluster.DestroyMember(m)
-	cluster.CreateMember("1")
 	machines, err = cluster.WaitForNMachines(1)
 	if err != nil {
 		t.Fatal(err)

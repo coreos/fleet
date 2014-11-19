@@ -17,8 +17,6 @@
 package platform
 
 import (
-	"strconv"
-
 	"github.com/coreos/fleet/functional/util"
 )
 
@@ -28,9 +26,9 @@ type Member interface {
 }
 
 type Cluster interface {
-	CreateMember(string) (Member, error)
+	CreateMember() (Member, error)
 	DestroyMember(Member) error
-	PoweroffMember(Member) error
+	ReplaceMember(Member) error
 	Members() []Member
 	MemberCommand(Member, ...string) (string, error)
 	Destroy() error
@@ -44,8 +42,7 @@ type Cluster interface {
 
 func CreateNClusterMembers(cl Cluster, count int) error {
 	for i := 0; i < count; i++ {
-		name := strconv.Itoa(i)
-		if _, err := cl.CreateMember(name); err != nil {
+		if _, err := cl.CreateMember(); err != nil {
 			return err
 		}
 	}
