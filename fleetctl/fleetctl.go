@@ -365,7 +365,7 @@ func getRegistryClient() (client.API, error) {
 		}
 	}
 
-	tlsConfig, err := etcd.ReadTLSConfigFiles(globalFlags.EtcdCAFile, globalFlags.EtcdCertFile, globalFlags.EtcdKeyFile)
+	tlsConfig, err := pkg.ReadTLSConfigFiles(globalFlags.EtcdCAFile, globalFlags.EtcdCertFile, globalFlags.EtcdKeyFile)
 	if err != nil {
 		return nil, err
 	}
