@@ -345,9 +345,15 @@ func getHTTPClient() (client.API, error) {
 		ep.Host = "domain-sock"
 	}
 
+	tlsConfig, err := pkg.ReadTLSConfigFiles(globalFlags.CAFile, globalFlags.CertFile, globalFlags.KeyFile)
+	if err != nil {
+		return nil, err
+	}
+
 	trans := pkg.LoggingHTTPTransport{
 		Transport: http.Transport{
-			Dial: dialFunc,
+			Dial:            dialFunc,
+			TLSClientConfig: tlsConfig,
 		},
 	}
 
