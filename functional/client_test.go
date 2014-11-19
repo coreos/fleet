@@ -33,7 +33,8 @@ func TestKnownHostsVerification(t *testing.T) {
 	}
 	defer cluster.Destroy()
 
-	if _, err := cluster.CreateMember("1"); err != nil {
+	m, err := cluster.CreateMember("1")
+	if err != nil {
 		t.Fatal(err)
 	}
 	machines, err := cluster.WaitForNMachines(1)
@@ -56,14 +57,14 @@ func TestKnownHostsVerification(t *testing.T) {
 	}
 
 	// Gracefully poweroff the machine to allow fleet to purge its state.
-	cluster.PoweroffMember("1")
+	cluster.PoweroffMember(m)
 
 	machines, err = cluster.WaitForNMachines(0)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	cluster.DestroyMember("1")
+	cluster.DestroyMember(m)
 	cluster.CreateMember("1")
 	machines, err = cluster.WaitForNMachines(1)
 	if err != nil {

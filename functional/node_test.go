@@ -32,7 +32,8 @@ func TestNodeShutdown(t *testing.T) {
 	defer cluster.Destroy()
 
 	// Start with a single-node cluster
-	if _, err := cluster.CreateMember("1"); err != nil {
+	m, err := cluster.CreateMember("1")
+	if err != nil {
 		t.Fatal(err)
 	}
 	if _, err = cluster.WaitForNMachines(1); err != nil {
@@ -49,7 +50,7 @@ func TestNodeShutdown(t *testing.T) {
 	}
 
 	// Stop the fleet process on our sole member
-	if _, err = cluster.MemberCommand("1", "sudo", "systemctl", "stop", "fleet"); err != nil {
+	if _, err = cluster.MemberCommand(m, "sudo", "systemctl", "stop", "fleet"); err != nil {
 		t.Fatal(err)
 	}
 
@@ -65,7 +66,7 @@ func TestNodeShutdown(t *testing.T) {
 	}
 
 	// The members units should actually stop running, too
-	stdout, _ := cluster.MemberCommand("1", "sudo", "systemctl", "status", "hello.service")
+	stdout, _ := cluster.MemberCommand(m, "sudo", "systemctl", "status", "hello.service")
 	if !strings.Contains(stdout, "Active: inactive") {
 		t.Fatalf("Unit hello.service not reported as inactive:\n%s\n", stdout)
 	}

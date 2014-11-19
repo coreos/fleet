@@ -194,17 +194,17 @@ ExecStart=/opt/fleet/fleetd -config /opt/fleet/fleet.conf
 	return nil
 }
 
-func (nc *nspawnCluster) Members() []string {
-	names := make([]string, 0)
-	for member := range nc.members {
-		names = append(names, member)
+func (nc *nspawnCluster) Members() []Member {
+	ms := make([]Member, 0)
+	for _, m := range nc.members {
+		m := m
+		ms = append(ms, Member(m))
 	}
-	return names
+	return ms
 }
 
-func (nc *nspawnCluster) MemberCommand(member string, args ...string) (string, error) {
-	ip := nc.members[member].ip
-	baseArgs := []string{"-o", "UserKnownHostsFile=/dev/null", "-o", "StrictHostKeyChecking=no", fmt.Sprintf("core@%s", ip)}
+func (nc *nspawnCluster) MemberCommand(m Member, args ...string) (string, error) {
+	baseArgs := []string{"-o", "UserKnownHostsFile=/dev/null", "-o", "StrictHostKeyChecking=no", fmt.Sprintf("core@%s", m.IP())}
 	args = append(baseArgs, args...)
 	log.Printf("ssh %s", strings.Join(args, " "))
 	var stdoutBytes bytes.Buffer
@@ -380,9 +380,9 @@ UseDNS no
 }
 
 func (nc *nspawnCluster) Destroy() error {
-	for name := range nc.members {
-		log.Printf("Destroying nspawn machine %s", name)
-		nc.DestroyMember(name)
+	for _, m := range nc.members {
+		log.Printf("Destroying nspawn machine %s", m.ID())
+		nc.DestroyMember(m)
 	}
 
 	dir := path.Join(os.TempDir(), nc.name)
@@ -400,8 +400,8 @@ func (nc *nspawnCluster) Destroy() error {
 	return nil
 }
 
-func (nc *nspawnCluster) PoweroffMember(name string) (err error) {
-	label := fmt.Sprintf("%s%s", nc.name, name)
+func (nc *nspawnCluster) PoweroffMember(m Member) (err error) {
+	label := fmt.Sprintf("%s%s", nc.name, m.ID())
 	// The `machinectl poweroff` command does not cleanly shut down
 	// the nspawn container, so we must use systemctl
 	cmd := fmt.Sprintf("systemctl -M %s poweroff", label)
@@ -412,9 +412,9 @@ func (nc *nspawnCluster) PoweroffMember(name string) (err error) {
 	return
 }
 
-func (nc *nspawnCluster) DestroyMember(name string) error {
-	dir := path.Join(os.TempDir(), nc.name, name)
-	label := fmt.Sprintf("%s%s", nc.name, name)
+func (nc *nspawnCluster) DestroyMember(m Member) error {
+	dir := path.Join(os.TempDir(), nc.name, m.ID())
+	label := fmt.Sprintf("%s%s", nc.name, m.ID())
 	cmds := []string{
 		fmt.Sprintf("machinectl terminate %s", label),
 		fmt.Sprintf("rm -f /run/systemd/system/machine-%s.scope", label),
@@ -438,7 +438,7 @@ func (nc *nspawnCluster) DestroyMember(name string) error {
 		log.Printf("Failed systemd daemon-reload: %v", err)
 	}
 
-	delete(nc.members, name)
+	delete(nc.members, m.ID())
 
 	return nil
 }

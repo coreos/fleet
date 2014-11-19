@@ -29,10 +29,10 @@ type Member interface {
 
 type Cluster interface {
 	CreateMember(string) (Member, error)
-	DestroyMember(string) error
-	PoweroffMember(string) error
-	Members() []string
-	MemberCommand(string, ...string) (string, error)
+	DestroyMember(Member) error
+	PoweroffMember(Member) error
+	Members() []Member
+	MemberCommand(Member, ...string) (string, error)
 	Destroy() error
 
 	// client operations
