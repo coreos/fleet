@@ -308,10 +308,9 @@ func getHTTPClient() (client.API, error) {
 	}
 
 	tunnelFunc := net.Dial
-	sshTimeout := time.Duration(globalFlags.SSHTimeout*1000) * time.Millisecond
 	tun := getTunnelFlag()
 	if tun != "" {
-		sshClient, err := ssh.NewSSHClient("core", tun, getChecker(), false, sshTimeout)
+		sshClient, err := ssh.NewSSHClient("core", tun, getChecker(), false, getSSHTimeoutFlag())
 		if err != nil {
 			return nil, fmt.Errorf("failed initializing SSH client: %v", err)
 		}
@@ -369,10 +368,9 @@ func getHTTPClient() (client.API, error) {
 
 func getRegistryClient() (client.API, error) {
 	var dial func(string, string) (net.Conn, error)
-	sshTimeout := time.Duration(globalFlags.SSHTimeout*1000) * time.Millisecond
 	tun := getTunnelFlag()
 	if tun != "" {
-		sshClient, err := ssh.NewSSHClient("core", tun, getChecker(), false, sshTimeout)
+		sshClient, err := ssh.NewSSHClient("core", tun, getChecker(), false, getSSHTimeoutFlag())
 		if err != nil {
 			return nil, fmt.Errorf("failed initializing SSH client: %v", err)
 		}
@@ -442,6 +440,10 @@ func getTunnelFlag() string {
 		tun += ":22"
 	}
 	return tun
+}
+
+func getSSHTimeoutFlag() time.Duration {
+	return time.Duration(globalFlags.SSHTimeout*1000) * time.Millisecond
 }
 
 func machineIDLegend(ms machine.MachineState, full bool) string {
