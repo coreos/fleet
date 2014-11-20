@@ -322,8 +322,10 @@ func getHTTPClient() (client.API, error) {
 	}
 
 	tunnelFunc := net.Dial
+	var tunneling bool
 	tun := getTunnelFlag()
 	if tun != "" {
+		tunneling = true
 		sshClient, err := ssh.NewSSHClient("core", tun, getChecker(), false, getSSHTimeoutFlag())
 		if err != nil {
 			return nil, fmt.Errorf("failed initializing SSH client: %v", err)
@@ -336,6 +338,10 @@ func getHTTPClient() (client.API, error) {
 
 	dialFunc := tunnelFunc
 	if ep.Scheme == "unix" || ep.Scheme == "file" {
+		if tunneling {
+			return nil, errors.New("unable to dial unix socket through SSH tunnel")
+		}
+
 		// This commonly happens if the user misses the leading slash after the scheme.
 		// For example, "unix://var/run/fleet.sock" would be parsed as host "var".
 		if len(ep.Host) > 0 {
