@@ -24,9 +24,9 @@ import (
 	"strings"
 	"time"
 
-	gossh "github.com/coreos/fleet/Godeps/_workspace/src/code.google.com/p/go.crypto/ssh"
-	gosshagent "github.com/coreos/fleet/Godeps/_workspace/src/code.google.com/p/go.crypto/ssh/agent"
-	"github.com/coreos/fleet/Godeps/_workspace/src/code.google.com/p/go.crypto/ssh/terminal"
+	gossh "github.com/coreos/fleet/Godeps/_workspace/src/golang.org/x/crypto/ssh"
+	gosshagent "github.com/coreos/fleet/Godeps/_workspace/src/golang.org/x/crypto/ssh/agent"
+	"github.com/coreos/fleet/Godeps/_workspace/src/golang.org/x/crypto/ssh/terminal"
 )
 
 type SSHForwardingClient struct {
