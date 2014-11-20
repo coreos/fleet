@@ -117,9 +117,9 @@ func init() {
 	globalFlagset.StringVar(&globalFlags.Endpoint, "endpoint", "http://127.0.0.1:4001", "etcd endpoint for fleet")
 	globalFlagset.StringVar(&globalFlags.EtcdKeyPrefix, "etcd-key-prefix", registry.DefaultKeyPrefix, "Keyspace for fleet data in etcd (development use only!)")
 
-	globalFlagset.StringVar(&globalFlags.KeyFile, "keyfile", "", "Location of TLS key file used to secure communication with the fleet API or etcd")
-	globalFlagset.StringVar(&globalFlags.CertFile, "certfile", "", "Location of TLS cert file used to secure communication with the fleet API or etcd")
-	globalFlagset.StringVar(&globalFlags.CAFile, "cafile", "", "Location of TLS CA file used to secure communication with the fleet API or etcd")
+	globalFlagset.StringVar(&globalFlags.KeyFile, "key-file", "", "Location of TLS key file used to secure communication with the fleet API or etcd")
+	globalFlagset.StringVar(&globalFlags.CertFile, "cert-file", "", "Location of TLS cert file used to secure communication with the fleet API or etcd")
+	globalFlagset.StringVar(&globalFlags.CAFile, "ca-file", "", "Location of TLS CA file used to secure communication with the fleet API or etcd")
 
 	globalFlagset.BoolVar(&globalFlags.UseAPI, "experimental-api", false, "Use the experimental HTTP API. This flag will be removed when the API is no longer considered experimental.")
 	globalFlagset.StringVar(&globalFlags.KnownHostsFile, "known-hosts-file", ssh.DefaultKnownHostsFile, "File used to store remote machine fingerprints. Ignored if strict host key checking is disabled.")
