@@ -25,6 +25,11 @@ import (
 	"github.com/coreos/fleet/version"
 )
 
+const (
+	// used to indicate flag usage should not be printed
+	hidden = "hidden"
+)
+
 var (
 	cmdHelp = &Command{
 		Name:        "help",
@@ -42,11 +47,14 @@ var (
 			return strings.Split(strings.Trim(s, "\n\t "), "\n")
 		},
 		"printOption": func(name, defvalue, usage string) string {
+			if usage == hidden {
+				return ""
+			}
 			prefix := "--"
 			if len(name) == 1 {
 				prefix = "-"
 			}
-			return fmt.Sprintf("\t%s%s=%s\t%s", prefix, name, defvalue, usage)
+			return fmt.Sprintf("\n\t%s%s=%s\t%s", prefix, name, defvalue, usage)
 		},
 	}
 )
@@ -65,8 +73,7 @@ VERSION:
 COMMANDS:{{range .Commands}}
 {{printf "\t%s\t%s" .Name .Summary}}{{end}}
 
-GLOBAL OPTIONS:{{range .Flags}}
-{{printOption .Name .DefValue .Usage}}{{end}}
+GLOBAL OPTIONS:{{range .Flags}}{{printOption .Name .DefValue .Usage}}{{end}}
 
 Global options can also be configured via upper-case environment variables prefixed with "FLEETCTL_"
 For example, "some-flag" => "FLEETCTL_SOME_FLAG"

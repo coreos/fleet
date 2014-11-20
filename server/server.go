@@ -78,7 +78,7 @@ func New(cfg config.Config) (*Server, error) {
 		return nil, err
 	}
 
-	tlsConfig, err := etcd.ReadTLSConfigFiles(cfg.EtcdCAFile, cfg.EtcdCertFile, cfg.EtcdKeyFile)
+	tlsConfig, err := pkg.ReadTLSConfigFiles(cfg.EtcdCAFile, cfg.EtcdCertFile, cfg.EtcdKeyFile)
 	if err != nil {
 		return nil, err
 	}
