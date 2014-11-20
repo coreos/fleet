@@ -85,6 +85,7 @@ var (
 		Tunnel                string
 		KnownHostsFile        string
 		StrictHostKeyChecking bool
+		SSHTimeout            float64
 
 		EtcdKeyPrefix string
 	}{}
@@ -123,6 +124,7 @@ func init() {
 	globalFlagset.BoolVar(&globalFlags.UseAPI, "experimental-api", false, "Use the experimental HTTP API. This flag will be removed when the API is no longer considered experimental.")
 	globalFlagset.StringVar(&globalFlags.KnownHostsFile, "known-hosts-file", ssh.DefaultKnownHostsFile, "File used to store remote machine fingerprints. Ignored if strict host key checking is disabled.")
 	globalFlagset.BoolVar(&globalFlags.StrictHostKeyChecking, "strict-host-key-checking", true, "Verify host keys presented by remote machines before initiating SSH connections.")
+	globalFlagset.Float64Var(&globalFlags.SSHTimeout, "ssh-timeout", 10.0, "Amount of time in seconds to allow for SSH connection initialization before failing.")
 	globalFlagset.StringVar(&globalFlags.Tunnel, "tunnel", "", "Establish an SSH tunnel through the provided address for communication with fleet and etcd.")
 	globalFlagset.Float64Var(&globalFlags.RequestTimeout, "request-timeout", 3.0, "Amount of time in seconds to allow a single request before considering it failed.")
 
@@ -306,9 +308,10 @@ func getHTTPClient() (client.API, error) {
 	}
 
 	tunnelFunc := net.Dial
+	sshTimeout := time.Duration(globalFlags.SSHTimeout*1000) * time.Millisecond
 	tun := getTunnelFlag()
 	if tun != "" {
-		sshClient, err := ssh.NewSSHClient("core", tun, getChecker(), false)
+		sshClient, err := ssh.NewSSHClient("core", tun, getChecker(), false, sshTimeout)
 		if err != nil {
 			return nil, fmt.Errorf("failed initializing SSH client: %v", err)
 		}
@@ -366,9 +369,10 @@ func getHTTPClient() (client.API, error) {
 
 func getRegistryClient() (client.API, error) {
 	var dial func(string, string) (net.Conn, error)
+	sshTimeout := time.Duration(globalFlags.SSHTimeout*1000) * time.Millisecond
 	tun := getTunnelFlag()
 	if tun != "" {
-		sshClient, err := ssh.NewSSHClient("core", tun, getChecker(), false)
+		sshClient, err := ssh.NewSSHClient("core", tun, getChecker(), false, sshTimeout)
 		if err != nil {
 			return nil, fmt.Errorf("failed initializing SSH client: %v", err)
 		}

@@ -201,7 +201,7 @@ func maybeAddDefaultPort(addr string) string {
 	return net.JoinHostPort(addr, strconv.Itoa(sshDefaultPort))
 }
 
-func NewSSHClient(user, addr string, checker *HostKeyChecker, agentForwarding bool) (*SSHForwardingClient, error) {
+func NewSSHClient(user, addr string, checker *HostKeyChecker, agentForwarding bool, timeout time.Duration) (*SSHForwardingClient, error) {
 	clientConfig, err := sshClientConfig(user, checker)
 	if err != nil {
 		return nil, err
@@ -215,7 +215,7 @@ func NewSSHClient(user, addr string, checker *HostKeyChecker, agentForwarding bo
 		client, err = gossh.Dial("tcp", addr, clientConfig)
 		echan <- err
 	}
-	err = timeoutSSHDial(dialFunc)
+	err = timeoutSSHDial(dialFunc, timeout)
 	if err != nil {
 		return nil, err
 	}
@@ -223,7 +223,7 @@ func NewSSHClient(user, addr string, checker *HostKeyChecker, agentForwarding bo
 	return newSSHForwardingClient(client, agentForwarding)
 }
 
-func NewTunnelledSSHClient(user, tunaddr, tgtaddr string, checker *HostKeyChecker, agentForwarding bool) (*SSHForwardingClient, error) {
+func NewTunnelledSSHClient(user, tunaddr, tgtaddr string, checker *HostKeyChecker, agentForwarding bool, timeout time.Duration) (*SSHForwardingClient, error) {
 	clientConfig, err := sshClientConfig(user, checker)
 	if err != nil {
 		return nil, err
@@ -238,7 +238,7 @@ func NewTunnelledSSHClient(user, tunaddr, tgtaddr string, checker *HostKeyChecke
 		tunnelClient, err = gossh.Dial("tcp", tunaddr, clientConfig)
 		echan <- err
 	}
-	err = timeoutSSHDial(dialFunc)
+	err = timeoutSSHDial(dialFunc, timeout)
 	if err != nil {
 		return nil, err
 	}
@@ -253,7 +253,7 @@ func NewTunnelledSSHClient(user, tunaddr, tgtaddr string, checker *HostKeyChecke
 		targetConn, err = tunnelClient.DialTCP("tcp", nil, tgtTCPAddr)
 		echan <- err
 	}
-	err = timeoutSSHDial(dialFunc)
+	err = timeoutSSHDial(dialFunc, timeout)
 	if err != nil {
 		return nil, err
 	}
@@ -265,14 +265,14 @@ func NewTunnelledSSHClient(user, tunaddr, tgtaddr string, checker *HostKeyChecke
 	return newSSHForwardingClient(gossh.NewClient(c, chans, reqs), agentForwarding)
 }
 
-func timeoutSSHDial(dial func(chan error)) error {
+func timeoutSSHDial(dial func(chan error), timeout time.Duration) error {
 	var err error
 
 	echan := make(chan error)
 	go dial(echan)
 
 	select {
-	case <-time.After(time.Duration(time.Second * 10)):
+	case <-time.After(timeout):
 		return errors.New("timed out while initiating SSH connection")
 	case err = <-echan:
 		return err
