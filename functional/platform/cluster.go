@@ -17,38 +17,38 @@
 package platform
 
 import (
-	"strconv"
-
 	"github.com/coreos/fleet/functional/util"
 )
 
+type Member interface {
+	ID() string
+	IP() string
+	Endpoint() string
+}
+
 type Cluster interface {
-	CreateMember(string, MachineConfig) error
-	DestroyMember(string) error
-	PoweroffMember(string) error
-	Members() []string
-	MemberCommand(string, ...string) (string, error)
+	CreateMember() (Member, error)
+	DestroyMember(Member) error
+	ReplaceMember(Member) (Member, error)
+	Members() []Member
+	MemberCommand(Member, ...string) (string, error)
 	Destroy() error
 
 	// client operations
-	Fleetctl(args ...string) (string, string, error)
-	FleetctlWithInput(input string, args ...string) (string, string, error)
-	WaitForNActiveUnits(count int) (map[string][]util.UnitState, error)
-	WaitForNMachines(count int) ([]string, error)
+	Fleetctl(m Member, args ...string) (string, string, error)
+	FleetctlWithInput(m Member, input string, args ...string) (string, string, error)
+	WaitForNActiveUnits(Member, int) (map[string][]util.UnitState, error)
+	WaitForNMachines(Member, int) ([]string, error)
 }
 
-// MachineConfig defines the parameters that should
-// be considered when creating a new cluster member.
-type MachineConfig struct {
-	VerifyUnits bool
-}
-
-func CreateNClusterMembers(cl Cluster, count int, cfg MachineConfig) error {
+func CreateNClusterMembers(cl Cluster, count int) ([]Member, error) {
+	ms := make([]Member, 0)
 	for i := 0; i < count; i++ {
-		name := strconv.Itoa(i)
-		if err := cl.CreateMember(name, cfg); err != nil {
-			return err
+		m, err := cl.CreateMember()
+		if err != nil {
+			return nil, err
 		}
+		ms = append(ms, m)
 	}
-	return nil
+	return ms, nil
 }
