@@ -6,11 +6,6 @@
 	],
 	"Deps": [
 		{
-			"ImportPath": "code.google.com/p/go.crypto/ssh",
-			"Comment": "null-218",
-			"Rev": "f3cebac2bd11c2bf03c15bfa4c66688ad02a0a40"
-		},
-		{
 			"ImportPath": "code.google.com/p/google-api-go-client/google-api-go-generator",
 			"Comment": "release-87",
 			"Rev": "c99e2061b8c60e8c9066434f77bb0d0ac5b34377"
@@ -60,6 +55,11 @@
 		{
 			"ImportPath": "github.com/rakyll/goini",
 			"Rev": "907cca0f578a5316fb864ec6992dc3d9730ec58c"
+		},
+		{
+			"ImportPath": "golang.org/x/crypto/ssh",
+			"Comment": "null-234",
+			"Rev": "60a80aaa50ff0e8506f61b1fa35078a24941be50"
 		}
 	]
 }

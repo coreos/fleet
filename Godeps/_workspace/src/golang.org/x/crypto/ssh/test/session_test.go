@@ -10,8 +10,8 @@ package test
 
 import (
 	"bytes"
-	"github.com/coreos/fleet/Godeps/_workspace/src/code.google.com/p/go.crypto/ssh"
 	"errors"
+	"github.com/coreos/fleet/Godeps/_workspace/src/golang.org/x/crypto/ssh"
 	"io"
 	"strings"
 	"testing"

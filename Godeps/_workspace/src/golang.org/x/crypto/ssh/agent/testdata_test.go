@@ -6,14 +6,14 @@
 // ssh/, ssh/agent, and ssh/test/. It should be kept in sync across all three
 // instances.
 
-package test
+package agent
 
 import (
 	"crypto/rand"
 	"fmt"
 
-	"github.com/coreos/fleet/Godeps/_workspace/src/code.google.com/p/go.crypto/ssh"
-	"github.com/coreos/fleet/Godeps/_workspace/src/code.google.com/p/go.crypto/ssh/testdata"
+	"github.com/coreos/fleet/Godeps/_workspace/src/golang.org/x/crypto/ssh"
+	"github.com/coreos/fleet/Godeps/_workspace/src/golang.org/x/crypto/ssh/testdata"
 )
 
 var (
