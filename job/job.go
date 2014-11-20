@@ -48,6 +48,10 @@ const (
 	fleetMachineMetadata = "MachineMetadata"
 	// Require that the unit be scheduled on every machine in the cluster
 	fleetGlobal = "Global"
+	// which Scheduler to sched this job
+	fleetScheduler = "Scheduler"
+	// metadata for Scheduler to sched this job
+	fleetSchedulerMetadata = "SchedulerMetadata"
 
 	deprecatedXPrefix          = "X-"
 	deprecatedXConditionPrefix = "X-Condition"
@@ -65,6 +69,8 @@ var validRequirements = pkg.NewUnsafeSet(
 	deprecatedXConditionPrefix+fleetMachineMetadata,
 	fleetMachineMetadata,
 	fleetGlobal,
+	fleetScheduler,
+	fleetSchedulerMetadata,
 )
 
 func ParseJobState(s string) (JobState, error) {
@@ -251,16 +257,10 @@ func (j *Job) RequiredTarget() (string, bool) {
 	return "", false
 }
 
-// RequiredTargetMetadata return all machine-related metadata from a Job's
-// requirements. Valid metadata fields are strings of the form `key=value`,
-// where both key and value are not the empty string.
-func (j *Job) RequiredTargetMetadata() map[string]pkg.Set {
+func (j *Job) parseMetadata(keys []string) map[string]pkg.Set {
 	metadata := make(map[string]pkg.Set)
 
-	for _, key := range []string{
-		deprecatedXConditionPrefix + fleetMachineMetadata,
-		fleetMachineMetadata,
-	} {
+	for _, key := range keys {
 		for _, valuePair := range j.requirements()[key] {
 			s := strings.Split(valuePair, "=")
 
@@ -280,6 +280,38 @@ func (j *Job) RequiredTargetMetadata() map[string]pkg.Set {
 	}
 
 	return metadata
+}
+
+// RequiredTargetMetadata return all machine-related metadata from a Job's
+// requirements. Valid metadata fields are strings of the form `key=value`,
+// where both key and value are not the empty string.
+func (j *Job) RequiredTargetMetadata() map[string]pkg.Set {
+	return j.parseMetadata([]string{
+		deprecatedXConditionPrefix + fleetMachineMetadata,
+		fleetMachineMetadata,
+	})
+}
+
+// RequiredSchedulerMetadata return the metadata for RequiredScheduler
+// to use at runtime. Valid metadata fields are strings of the
+// form `key=value`, where both key and value are not the empty string.
+func (j *Job) RequiredSchedulerMetadata() map[string]pkg.Set {
+	return j.parseMetadata([]string{
+		fleetSchedulerMetadata,
+	})
+}
+
+// RequiredScheduler return the Scheduler'name
+// that indicates which Scheduler to use
+func (j *Job) RequiredScheduler() (string, bool) {
+	requirements := j.requirements()
+
+	schedulers, ok := requirements[fleetScheduler]
+	if ok && len(schedulers) != 0 {
+		return schedulers[0], true
+	}
+
+	return "", false
 }
 
 func (j *Job) Scheduled() bool {

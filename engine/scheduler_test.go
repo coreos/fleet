@@ -17,16 +17,69 @@
 package engine
 
 import (
+	"fmt"
 	"reflect"
-	"sort"
 	"testing"
 
 	"github.com/coreos/fleet/agent"
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/machine"
+	"github.com/coreos/fleet/unit"
 )
 
-func TestSchedulerDecisions(t *testing.T) {
+func newUnitWithSchedulerMetadata(t *testing.T, scheduler, metadata string) unit.UnitFile {
+	contents := fmt.Sprintf("[X-Fleet]\nScheduler=%s\nSchedulerMetadata=%s", scheduler, metadata)
+	u, err := unit.NewUnitFile(contents)
+	if err != nil {
+		t.Fatalf("error creating unit from %q: %v", contents, err)
+	}
+	return *u
+}
+
+func TestSchedulerSelection(t *testing.T) {
+
+	sched := &selectingScheduler{
+		map[string]Scheduler{
+			"test":  &fakeSpecMachineIdScheduler{"test"},
+			"test2": &fakeSpecMachineIdScheduler{"test2"},
+		},
+	}
+
+	tests := []struct {
+		job *job.Job
+		dec *decision
+	}{
+
+		// choose test Scheduler
+		{
+			job: &job.Job{
+				Name: "foo.service",
+				Unit: newUnitWithSchedulerMetadata(t, "test", ""),
+			},
+			dec: &decision{
+				machineID: "test",
+			},
+		},
+	}
+
+	for i, tt := range tests {
+		dec, err := sched.Decide(nil, tt.job)
+
+		if err != nil && tt.dec != nil {
+			t.Errorf("case %d: unexpected error: %v", i, err)
+			continue
+		} else if err == nil && tt.dec == nil {
+			t.Errorf("case %d: expected error", i)
+			continue
+		}
+
+		if !reflect.DeepEqual(tt.dec, dec) {
+			t.Errorf("case %d: expected decision %#v, got %#v", i, tt.dec, dec)
+		}
+	}
+}
+
+func TestDefaultSchedulerDecisions(t *testing.T) {
 	tests := []struct {
 		clust *clusterState
 		job   *job.Job
@@ -50,7 +103,7 @@ func TestSchedulerDecisions(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		sched := &leastLoadedScheduler{}
+		sched := &selectingScheduler{}
 		dec, err := sched.Decide(tt.clust, tt.job)
 
 		if err != nil && tt.dec != nil {
@@ -68,17 +121,25 @@ func TestSchedulerDecisions(t *testing.T) {
 }
 
 func TestAgentStateSorting(t *testing.T) {
+
+	_leastLoadedSorter := &leastLoadedSorter{}
+	_leastSystemStatFieldSorter := &leastSystemStatFieldSorter{}
+
 	tests := []struct {
-		in  []*agent.AgentState
-		out []*agent.AgentState
+		sorter agentSorter
+		job    *job.Job
+		in     []*agent.AgentState
+		out    []*agent.AgentState
 	}{
 		{
-			in:  []*agent.AgentState{},
-			out: []*agent.AgentState{},
+			sorter: _leastLoadedSorter,
+			in:     []*agent.AgentState{},
+			out:    []*agent.AgentState{},
 		},
 
 		// sort by number of jobs scheduled to agent
 		{
+			sorter: _leastLoadedSorter,
 			in: []*agent.AgentState{
 				&agent.AgentState{
 					MState: &machine.MachineState{ID: "A"},
@@ -121,6 +182,7 @@ func TestAgentStateSorting(t *testing.T) {
 
 		// fall back to sorting alphabetically by machine ID when # jobs is equal
 		{
+			sorter: _leastLoadedSorter,
 			in: []*agent.AgentState{
 				&agent.AgentState{
 					MState: &machine.MachineState{ID: "B"},
@@ -154,6 +216,43 @@ func TestAgentStateSorting(t *testing.T) {
 				},
 			},
 		},
+
+		// sort by sysstat field specified by job
+		{
+			sorter: _leastSystemStatFieldSorter,
+			job: &job.Job{
+				Name: "foo.service",
+				Unit: newUnitWithSchedulerMetadata(t, "", "sysstatfield=load1"),
+			},
+			in: []*agent.AgentState{
+				&agent.AgentState{
+					MState: &machine.MachineState{
+						ID:       "A",
+						Statdata: map[string]float32{"load1": 100.0},
+					},
+				},
+				&agent.AgentState{
+					MState: &machine.MachineState{
+						ID:       "B",
+						Statdata: map[string]float32{"load1": 1.0},
+					},
+				},
+			},
+			out: []*agent.AgentState{
+				&agent.AgentState{
+					MState: &machine.MachineState{
+						ID:       "B",
+						Statdata: map[string]float32{"load1": 1.0},
+					},
+				},
+				&agent.AgentState{
+					MState: &machine.MachineState{
+						ID:       "A",
+						Statdata: map[string]float32{"load1": 100.0},
+					},
+				},
+			},
+		},
 	}
 
 	for i, tt := range tests {
@@ -163,7 +262,7 @@ func TestAgentStateSorting(t *testing.T) {
 			sortable[i] = ms
 		}
 
-		sort.Sort(sortable)
+		tt.sorter.sortedAgents(sortable, tt.job)
 		sorted := []*agent.AgentState(sortable)
 
 		if !reflect.DeepEqual(tt.out, sorted) {

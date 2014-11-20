@@ -110,7 +110,7 @@ func TestSaveUnitState(t *testing.T) {
 	us.UnitHash = "quickbrownfox"
 	r.SaveUnitState(j, us, time.Second)
 
-	json := `{"loadState":"abc","activeState":"def","subState":"ghi","machineState":{"ID":"mymachine","PublicIP":"","Metadata":null,"Version":""},"unitHash":"quickbrownfox"}`
+	json := `{"loadState":"abc","activeState":"def","subState":"ghi","machineState":{"ID":"mymachine","PublicIP":"","Metadata":null,"Statdata":null,"Version":""},"unitHash":"quickbrownfox"}`
 	p1 := "/fleet/state/foo.service"
 	p2 := "/fleet/states/foo.service/mymachine"
 	want := []action{
