@@ -29,7 +29,7 @@ package main
 // even if your samples occur when the CPU is temporarily idle.
 
 import (
-	"_/home/tgic/workspace/fleet/Godeps/_workspace/src/bitbucket.org/bertimus9/systemstat"
+	"github.com/coreos/fleet/Godeps/_workspace/src/bitbucket.org/bertimus9/systemstat"
 	"bytes"
 	"encoding/json"
 	"flag"
