@@ -56,6 +56,9 @@ version of fleet found in the cluster (%s). You are strongly
 recommended to upgrade fleetctl to prevent incompatibility issues.
 ####################################################################
 `
+
+	clientDriverAPI  = "API"
+	clientDriverEtcd = "etcd"
 )
 
 var (
@@ -74,9 +77,10 @@ var (
 		Version bool
 		Help    bool
 
-		UseAPI         bool
-		Endpoint       string
-		RequestTimeout float64
+		ClientDriver    string
+		ExperimentalAPI bool
+		Endpoint        string
+		RequestTimeout  float64
 
 		KeyFile  string
 		CertFile string
@@ -114,14 +118,14 @@ func init() {
 
 	globalFlagset.BoolVar(&globalFlags.Debug, "debug", false, "Print out more debug information to stderr")
 	globalFlagset.BoolVar(&globalFlags.Version, "version", false, "Print the version and exit")
-	globalFlagset.StringVar(&globalFlags.Endpoint, "endpoint", "http://127.0.0.1:4001", "etcd endpoint for fleet")
+	globalFlagset.StringVar(&globalFlags.ClientDriver, "driver", clientDriverEtcd, fmt.Sprintf("Adapter used to execute fleetctl commands. Options include %q and %q.", clientDriverAPI, clientDriverEtcd))
+	globalFlagset.StringVar(&globalFlags.Endpoint, "endpoint", "http://127.0.0.1:4001", fmt.Sprintf("Location of the fleet API if --driver=%s. Alternatively, if --driver=%s, location of the etcd API.", clientDriverAPI, clientDriverEtcd))
 	globalFlagset.StringVar(&globalFlags.EtcdKeyPrefix, "etcd-key-prefix", registry.DefaultKeyPrefix, "Keyspace for fleet data in etcd (development use only!)")
 
 	globalFlagset.StringVar(&globalFlags.KeyFile, "keyfile", "", "Location of TLS key file used to secure communication with the fleet API or etcd")
 	globalFlagset.StringVar(&globalFlags.CertFile, "certfile", "", "Location of TLS cert file used to secure communication with the fleet API or etcd")
 	globalFlagset.StringVar(&globalFlags.CAFile, "cafile", "", "Location of TLS CA file used to secure communication with the fleet API or etcd")
 
-	globalFlagset.BoolVar(&globalFlags.UseAPI, "experimental-api", false, "Use the experimental HTTP API. This flag will be removed when the API is no longer considered experimental.")
 	globalFlagset.StringVar(&globalFlags.KnownHostsFile, "known-hosts-file", ssh.DefaultKnownHostsFile, "File used to store remote machine fingerprints. Ignored if strict host key checking is disabled.")
 	globalFlagset.BoolVar(&globalFlags.StrictHostKeyChecking, "strict-host-key-checking", true, "Verify host keys presented by remote machines before initiating SSH connections.")
 	globalFlagset.Float64Var(&globalFlags.SSHTimeout, "ssh-timeout", 10.0, "Amount of time in seconds to allow for SSH connection initialization before failing.")
@@ -129,6 +133,7 @@ func init() {
 	globalFlagset.Float64Var(&globalFlags.RequestTimeout, "request-timeout", 3.0, "Amount of time in seconds to allow a single request before considering it failed.")
 
 	// deprecated flags
+	globalFlagset.BoolVar(&globalFlags.ExperimentalAPI, "experimental-api", false, hidden)
 	globalFlagset.StringVar(&globalFlags.KeyFile, "etcd-keyfile", "", hidden)
 	globalFlagset.StringVar(&globalFlags.CertFile, "etcd-certfile", "", hidden)
 	globalFlagset.StringVar(&globalFlags.CAFile, "etcd-cafile", "", hidden)
@@ -290,11 +295,20 @@ func getFlagsFromEnv(prefix string, fs *flag.FlagSet) {
 
 // getClient initializes a client of fleet based on CLI flags
 func getClient() (client.API, error) {
-	if globalFlags.UseAPI {
+	// The user explicitly set --experimental-api=true, so it trumps the
+	// --driver flag. This behavior exists for backwards-compatibilty.
+	if globalFlags.ExperimentalAPI {
 		return getHTTPClient()
-	} else {
+	}
+
+	switch globalFlags.ClientDriver {
+	case clientDriverAPI:
+		return getHTTPClient()
+	case clientDriverEtcd:
 		return getRegistryClient()
 	}
+
+	return nil, fmt.Errorf("unrecognized driver %q", globalFlags.ClientDriver)
 }
 
 func getHTTPClient() (client.API, error) {
