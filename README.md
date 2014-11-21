@@ -65,6 +65,10 @@ See the [API documentation][api-doc] for more information.
 
 [api-doc]: https://github.com/coreos/fleet/blob/master/Documentation/api-v1.md
 
+### Release Notes
+
+See the [releases tab](https://github.com/coreos/fleet/releases) for more information on each release.
+
 ### Contributing
 
 See [CONTRIBUTING](CONTRIBUTING.md) for details on submitting patches and contacting developers via IRC and mailing lists.
