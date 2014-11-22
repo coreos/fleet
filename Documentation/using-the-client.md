@@ -44,7 +44,7 @@ See more about [configuring remote access](#remote-fleet-access).
 
 ## Interacting with units
 
-For information regarding the additional unit file parameters that modify fleet's behavior, see [this documentation](https://github.com/coreos/fleet/blob/master/Documentation/unit-files.md).
+For information regarding the additional unit file parameters that modify fleet's behavior, see [this documentation](https://github.com/coreos/fleet/blob/master/Documentation/unit-files-and-scheduling.md).
 
 ### Explore existing units
 
