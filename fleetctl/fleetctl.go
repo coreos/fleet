@@ -414,7 +414,7 @@ func getRegistryClient() (client.API, error) {
 		TLSClientConfig: tlsConfig,
 	}
 
-	timeout := time.Duration(globalFlags.RequestTimeout*1000) * time.Millisecond
+	timeout := getRequestTimeoutFlag()
 	machines := []string{globalFlags.Endpoint}
 	eClient, err := etcd.NewClient(machines, trans, timeout)
 	if err != nil {
@@ -464,6 +464,10 @@ func getTunnelFlag() string {
 
 func getSSHTimeoutFlag() time.Duration {
 	return time.Duration(globalFlags.SSHTimeout*1000) * time.Millisecond
+}
+
+func getRequestTimeoutFlag() time.Duration {
+	return time.Duration(globalFlags.RequestTimeout*1000) * time.Millisecond
 }
 
 func machineIDLegend(ms machine.MachineState, full bool) string {
