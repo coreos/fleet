@@ -21,4 +21,4 @@ else
 fi
 
 echo "Building fleetctl..."
-go install ${REPO_PATH}/fleetctl
+CGO_ENABLED=0 go install -a -ldflags '-s' ${REPO_PATH}/fleetctl
