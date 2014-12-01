@@ -65,12 +65,16 @@ When working with instance units, it is strongly recommended that all units be _
 
 When evaluating the `[X-Fleet]` section, fleet supports a subset of systemd's [specifiers][systemd specifiers] to perform variable substitution. The following specifiers are currently supported:
 
-* `%n`
-* `%N`
-* `%p`
-* `%i`
 
-For the meaning of the specifiers, refer to the official [systemd documentation][systemd specifiers].
+| Specifier   | Description              |
+|-------------|--------------------------|
+|    `%n`     | Full unit name           |
+|    `%N`     | Unescaped full unit name |
+|    `%p`     | Unescaped prefix name    |
+|    `%i`     | Instance name            |
+
+
+For more information, refer to the official [systemd documentation][systemd specifiers].
 
 [systemd instances]: http://0pointer.de/blog/projects/instances.html
 [systemd specifiers]: http://www.freedesktop.org/software/systemd/man/systemd.unit.html#Specifiers
