@@ -50,7 +50,7 @@ func (s *Server) Serve() {
 		go func() {
 			err := http.Serve(l, s)
 			if err != nil {
-				log.Errorf("Failed serving HTTP on listener: %v", l.Addr)
+				log.Errorf("Failed serving HTTP on listener: %v", l.Addr())
 			}
 		}()
 	}
