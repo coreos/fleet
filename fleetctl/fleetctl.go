@@ -156,6 +156,7 @@ func init() {
 	commands = []*Command{
 		cmdCatUnit,
 		cmdDestroyUnit,
+		cmdFDForward,
 		cmdHelp,
 		cmdJournal,
 		cmdListMachines,
@@ -321,27 +322,32 @@ func getHTTPClient() (client.API, error) {
 		return nil, errors.New("URL scheme undefined")
 	}
 
-	tunnelFunc := net.Dial
-	var tunneling bool
 	tun := getTunnelFlag()
-	if tun != "" {
-		tunneling = true
-		sshClient, err := ssh.NewSSHClient("core", tun, getChecker(), false, getSSHTimeoutFlag())
+	tunneling := tun != ""
+
+	dialUnix := ep.Scheme == "unix" || ep.Scheme == "file"
+
+	tunnelFunc := net.Dial
+	if tunneling {
+		sshClient, err := ssh.NewSSHClient("core", tun, getChecker(), true, getSSHTimeoutFlag())
 		if err != nil {
 			return nil, fmt.Errorf("failed initializing SSH client: %v", err)
 		}
 
-		tunnelFunc = func(net, addr string) (net.Conn, error) {
-			return sshClient.Dial(net, addr)
+		if dialUnix {
+			tgt := ep.Path
+			tunnelFunc = func(string, string) (net.Conn, error) {
+				log.V(1).Infof("Establishing remote fleetctl proxy to %s", tgt)
+				cmd := fmt.Sprintf(`fleetctl fd-forward %s`, tgt)
+				return ssh.DialCommand(sshClient, cmd)
+			}
+		} else {
+			tunnelFunc = sshClient.Dial
 		}
 	}
 
 	dialFunc := tunnelFunc
-	if ep.Scheme == "unix" || ep.Scheme == "file" {
-		if tunneling {
-			return nil, errors.New("unable to dial unix socket through SSH tunnel")
-		}
-
+	if dialUnix {
 		// This commonly happens if the user misses the leading slash after the scheme.
 		// For example, "unix://var/run/fleet.sock" would be parsed as host "var".
 		if len(ep.Host) > 0 {
@@ -353,10 +359,13 @@ func getHTTPClient() (client.API, error) {
 		sockPath := ep.Path
 		ep.Path = ""
 
+		// If not tunneling to the unix socket, http.Client will dial it directly.
 		// http.Client does not natively support dialing a unix domain socket, so the
 		// dial function must be overridden.
-		dialFunc = func(net, addr string) (net.Conn, error) {
-			return tunnelFunc("unix", sockPath)
+		if !tunneling {
+			dialFunc = func(string, string) (net.Conn, error) {
+				return net.Dial("unix", sockPath)
+			}
 		}
 
 		// http.Client doesn't support the schemes "unix" or "file", but it
@@ -414,7 +423,7 @@ func getRegistryClient() (client.API, error) {
 		TLSClientConfig: tlsConfig,
 	}
 
-	timeout := time.Duration(globalFlags.RequestTimeout*1000) * time.Millisecond
+	timeout := getRequestTimeoutFlag()
 	machines := []string{globalFlags.Endpoint}
 	eClient, err := etcd.NewClient(machines, trans, timeout)
 	if err != nil {
@@ -464,6 +473,10 @@ func getTunnelFlag() string {
 
 func getSSHTimeoutFlag() time.Duration {
 	return time.Duration(globalFlags.SSHTimeout*1000) * time.Millisecond
+}
+
+func getRequestTimeoutFlag() time.Duration {
+	return time.Duration(globalFlags.RequestTimeout*1000) * time.Millisecond
 }
 
 func machineIDLegend(ms machine.MachineState, full bool) string {
