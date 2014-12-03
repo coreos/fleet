@@ -565,6 +565,7 @@ func lazyCreateUnits(args []string) error {
 	for _, arg := range args {
 		// TODO(jonboulle): this loop is getting too unwieldy; factor it out
 
+		arg = maybeAppendDefaultUnitType(arg)
 		name := unitNameMangle(arg)
 
 		// First, check if there already exists a Unit by the given name in the Registry
@@ -582,7 +583,7 @@ func lazyCreateUnits(args []string) error {
 		if _, err := os.Stat(arg); !os.IsNotExist(err) {
 			unit, err := getUnitFromFile(arg)
 			if err != nil {
-				return fmt.Errorf("failed getting Unit(%s) from file: %v", name, err)
+				return fmt.Errorf("failed getting Unit(%s) from file: %v", arg, err)
 			}
 			u, err = createUnit(name, unit)
 			if err != nil {
@@ -630,17 +631,17 @@ func lazyCreateUnits(args []string) error {
 	return nil
 }
 
-func warnOnDifferentLocalUnit(name string, su *schema.Unit) {
+func warnOnDifferentLocalUnit(loc string, su *schema.Unit) {
 	suf := schema.MapSchemaUnitOptionsToUnitFile(su.Options)
-	if _, err := os.Stat(name); !os.IsNotExist(err) {
-		luf, err := getUnitFromFile(name)
+	if _, err := os.Stat(loc); !os.IsNotExist(err) {
+		luf, err := getUnitFromFile(loc)
 		if err == nil && luf.Hash() != suf.Hash() {
-			stderr("WARNING: Unit %s in registry differs from local unit file %s", su.Name, name)
+			stderr("WARNING: Unit %s in registry differs from local unit file %s", su.Name, loc)
 			return
 		}
 	}
-	if uni := unit.NewUnitNameInfo(path.Base(name)); uni != nil && uni.IsInstance() {
-		file := path.Join(path.Dir(name), uni.Template)
+	if uni := unit.NewUnitNameInfo(path.Base(loc)); uni != nil && uni.IsInstance() {
+		file := path.Join(path.Dir(loc), uni.Template)
 		if _, err := os.Stat(file); !os.IsNotExist(err) {
 			tmpl, err := getUnitFromFile(file)
 			if err == nil && tmpl.Hash() != suf.Hash() {
@@ -793,14 +794,15 @@ func cachedMachineState(machID string) (ms *machine.MachineState) {
 
 // unitNameMangle tries to turn a string that might not be a unit name into a
 // sensible unit name.
-func unitNameMangle(baseName string) string {
-	name := path.Base(baseName)
+func unitNameMangle(arg string) string {
+	return maybeAppendDefaultUnitType(path.Base(arg))
+}
 
-	if !unit.RecognizedUnitType(name) {
-		return unit.DefaultUnitType(name)
+func maybeAppendDefaultUnitType(arg string) string {
+	if !unit.RecognizedUnitType(arg) {
+		arg = unit.DefaultUnitType(arg)
 	}
-
-	return name
+	return arg
 }
 
 // suToGlobal returns whether or not a schema.Unit refers to a global unit
