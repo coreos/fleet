@@ -73,7 +73,7 @@ func (r *reconciler) Run(stop chan bool) {
 	ticker := r.clock.After(r.ival)
 
 	// When starting up, reconcile once immediately
-	log.V(1).Info("Initial reconcilation commencing")
+	log.V(1).Info("Initial reconciliation commencing")
 	r.rFunc()
 
 	for {
