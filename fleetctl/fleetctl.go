@@ -297,7 +297,7 @@ func getFlagsFromEnv(prefix string, fs *flag.FlagSet) {
 // getClient initializes a client of fleet based on CLI flags
 func getClient() (client.API, error) {
 	// The user explicitly set --experimental-api=true, so it trumps the
-	// --driver flag. This behavior exists for backwards-compatibilty.
+	// --driver flag. This behavior exists for backwards-compatibility.
 	if globalFlags.ExperimentalAPI {
 		return getHTTPClient()
 	}

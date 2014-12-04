@@ -105,7 +105,7 @@ Default: ""
 
 #### metadata
 
-Comma-delimited key/value pairs that are published with the local to the fleet registry. This data can be used directly by a client of fleet to make scheduling descisions. An example set of metadata could look like:  
+Comma-delimited key/value pairs that are published with the local to the fleet registry. This data can be used directly by a client of fleet to make scheduling decisions. An example set of metadata could look like:  
 
 	metadata="region=us-west,az=us-west-1"
 
