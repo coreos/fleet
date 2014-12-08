@@ -51,8 +51,6 @@ Conflicts=monitor*
 
 ## Template unit files
 
-_New in version 0.5.0_
-
 fleet provides support for using systemd's [instances](systemd instances) feature to dynamically create _instance_ units from a common _template_ unit file. This allows you to have a single unit configuration and easily and dynamically create new instances of the unit as necessary.
 
 To use instance units, simply create a unit file whose name matches the `<name>@.<suffix>` format - for example, `hello@.service` - and submit it to fleet. You can then instantiate units by creating new units that match the instance pattern `<name>@<instance>.<suffix>` - in this case, for example, `hello@world.service` or `hello@1.service` - and fleet will automatically utilize the relevant template unit. For a detailed example, see the [example deployment].
