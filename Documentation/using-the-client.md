@@ -217,7 +217,7 @@ $ fleetctl ssh 113f16a7
 ```
 
 Alternatively, a unit name can be provided.
-`fleetctl ssh` will connecto to the machine to-which the given unit is scheduled:
+`fleetctl ssh` will connect to the machine to-which the given unit is scheduled:
 
 ```
 $ fleetctl ssh hello.service
