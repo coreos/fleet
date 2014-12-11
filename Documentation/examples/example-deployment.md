@@ -24,15 +24,15 @@ ENV SUBGUN_LISTEN 127.0.0.1:8080
 CMD /bin/subgun
 ```
 
-**coreos/elb-presence**
+**quay.io/coreos/elb-presence**
 
 ```
-FROM stackbrew/ubuntu:precise
+FROM ubuntu:14.04
 
 RUN apt-get update
-RUN apt-get install -y python-requests python-boto
+RUN apt-get install -y python-boto
 
-ADD bin/elb-presence /bin/elb-presence
+ADD elb-presence /bin/elb-presence
 
 CMD /bin/elb-presence
 ```
@@ -69,7 +69,7 @@ BindsTo=subgun-http@%i.service
 [Service]
 ExecStartPre=-/usr/bin/docker kill subgun-presence-%i
 ExecStartPre=-/usr/bin/docker rm subgun-presence-%i
-ExecStart=/usr/bin/docker run --rm --name subgun-presence-%i -e AWS_ACCESS_KEY=AKIAIBC5MW3ONCW6J2XQ -e AWS_SECRET_KEY=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 -e AWS_REGION=us-east-1 -e ELB_NAME=bcwaldon-fleet-lb coreos/elb-presence
+ExecStart=/usr/bin/docker run --rm --name subgun-presence-%i -e AWS_ACCESS_KEY=AKIAIBC5MW3ONCW6J2XQ -e AWS_SECRET_KEY=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 -e AWS_REGION=us-east-1 -e ELB_NAME=bcwaldon-fleet-lb quay.io/coreos/elb-presence
 ExecStop=/usr/bin/docker stop subgun-presence-%i
 
 [X-Fleet]
