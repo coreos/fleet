@@ -18,6 +18,8 @@ import (
 	"net/url"
 	"os"
 	"strings"
+
+	"github.com/coreos/fleet/Godeps/_workspace/src/google.golang.org/api/googleapi/internal/uritemplates"
 )
 
 // ContentTyper is an interface for Readers which know (or would like
@@ -40,13 +42,39 @@ type Error struct {
 	// Body is the raw response returned by the server.
 	// It is often but not always JSON, depending on how the request fails.
 	Body string
+
+	Errors []ErrorItem
+}
+
+// ErrorItem is a detailed error code & message from the Google API frontend.
+type ErrorItem struct {
+	// Reason is the typed error code. For example: "some_example".
+	Reason string `json:"reason"`
+	// Message is the human-readable description of the error.
+	Message string `json:"message"`
 }
 
 func (e *Error) Error() string {
-	if e.Message != "" {
-		return fmt.Sprintf("googleapi: Error %d: %v", e.Code, e.Message)
+	if len(e.Errors) == 0 && e.Message == "" {
+		return fmt.Sprintf("googleapi: got HTTP response code %d with body: %v", e.Code, e.Body)
 	}
-	return fmt.Sprintf("googleapi: got HTTP response code %d with body: %v", e.Code, e.Body)
+	var buf bytes.Buffer
+	fmt.Fprintf(&buf, "googleapi: Error %d: ", e.Code)
+	if e.Message != "" {
+		fmt.Fprintf(&buf, "%s", e.Message)
+	}
+	if len(e.Errors) == 0 {
+		return strings.TrimSpace(buf.String())
+	}
+	if len(e.Errors) == 1 && e.Errors[0].Message == e.Message {
+		fmt.Fprintf(&buf, ", %s", e.Errors[0].Reason)
+		return buf.String()
+	}
+	fmt.Fprintln(&buf, "\nMore details:")
+	for _, v := range e.Errors {
+		fmt.Fprintf(&buf, "Reason: %s, Message: %s\n", v.Reason, v.Message)
+	}
+	return buf.String()
 }
 
 type errorReply struct {
@@ -283,6 +311,18 @@ func SetOpaque(u *url.URL) {
 	}
 }
 
+// Expand subsitutes any {encoded} strings in the URL passed in using
+// the map supplied.
+//
+// This calls SetOpaque to avoid encoding of the parameters in the URL path.
+func Expand(u *url.URL, expansions map[string]string) {
+	expanded, err := uritemplates.Expand(u.Path, expansions)
+	if err == nil {
+		u.Path = expanded
+		SetOpaque(u)
+	}
+}
+
 // CloseBody is used to close res.Body.
 // Prior to calling Close, it also tries to Read a small amount to see an EOF.
 // Not seeing an EOF can prevent HTTP Transports from reusing connections.
@@ -304,4 +344,58 @@ func CloseBody(res *http.Response) {
 	}
 	res.Body.Close()
 
+}
+
+// VariantType returns the type name of the given variant.
+// If the map doesn't contain the named key or the value is not a []interface{}, "" is returned.
+// This is used to support "variant" APIs that can return one of a number of different types.
+func VariantType(t map[string]interface{}) string {
+	s, _ := t["type"].(string)
+	return s
+}
+
+// ConvertVariant uses the JSON encoder/decoder to fill in the struct 'dst' with the fields found in variant 'v'.
+// This is used to support "variant" APIs that can return one of a number of different types.
+// It reports whether the conversion was successful.
+func ConvertVariant(v map[string]interface{}, dst interface{}) bool {
+	var buf bytes.Buffer
+	err := json.NewEncoder(&buf).Encode(v)
+	if err != nil {
+		return false
+	}
+	return json.Unmarshal(buf.Bytes(), dst) == nil
+}
+
+// A Field names a field to be retrieved with a partial response.
+// See https://developers.google.com/gdata/docs/2.0/basics#PartialResponse
+//
+// Partial responses can dramatically reduce the amount of data that must be sent to your application.
+// In order to request partial responses, you can specify the full list of fields
+// that your application needs by adding the Fields option to your request.
+//
+// Field strings use camelCase with leading lower-case characters to identify fields within the response.
+//
+// For example, if your response has a "NextPageToken" and a slice of "Items" with "Id" fields,
+// you could request just those fields like this:
+//
+//     svc.Events.List().Fields("nextPageToken", "items/id").Do()
+//
+// or if you were also interested in each Item's "Updated" field, you can combine them like this:
+//
+//     svc.Events.List().Fields("nextPageToken", "items(id,updated)").Do()
+//
+// More information about field formatting can be found here:
+// https://developers.google.com/+/api/#fields-syntax
+//
+// Another way to find field names is through the Google API explorer:
+// https://developers.google.com/apis-explorer/#p/
+type Field string
+
+// CombineFields combines fields into a single string.
+func CombineFields(s []Field) string {
+	r := make([]string, len(s))
+	for i, v := range s {
+		r[i] = string(v)
+	}
+	return strings.Join(r, ",")
 }
