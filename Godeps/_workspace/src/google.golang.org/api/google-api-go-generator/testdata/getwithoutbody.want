@@ -2,14 +2,14 @@
 //
 // Usage example:
 //
-//   import "code.google.com/p/google-api-go-client/getwithoutbody/v1"
+//   import "google.golang.org/api/getwithoutbody/v1"
 //   ...
 //   getwithoutbodyService, err := getwithoutbody.New(oauthHttpClient)
 package getwithoutbody
 
 import (
 	"bytes"
-	"code.google.com/p/google-api-go-client/googleapi"
+	"google.golang.org/api/googleapi"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -117,6 +117,14 @@ func (c *MetricDescriptorsListCall) PageToken(pageToken string) *MetricDescripto
 	return c
 }
 
+// Fields allows partial responses to be retrieved.
+// See https://developers.google.com/gdata/docs/2.0/basics#PartialResponse
+// for more information.
+func (c *MetricDescriptorsListCall) Fields(s ...googleapi.Field) *MetricDescriptorsListCall {
+	c.opt_["fields"] = googleapi.CombineFields(s)
+	return c
+}
+
 func (c *MetricDescriptorsListCall) Do() (*ListMetricResponse, error) {
 	var body io.Reader = nil
 	params := make(url.Values)
@@ -127,11 +135,15 @@ func (c *MetricDescriptorsListCall) Do() (*ListMetricResponse, error) {
 	if v, ok := c.opt_["pageToken"]; ok {
 		params.Set("pageToken", fmt.Sprintf("%v", v))
 	}
+	if v, ok := c.opt_["fields"]; ok {
+		params.Set("fields", fmt.Sprintf("%v", v))
+	}
 	urls := googleapi.ResolveRelative(c.s.BasePath, "{project}/metricDescriptors")
 	urls += "?" + params.Encode()
 	req, _ := http.NewRequest("GET", urls, body)
-	req.URL.Path = strings.Replace(req.URL.Path, "{project}", url.QueryEscape(c.project), 1)
-	googleapi.SetOpaque(req.URL)
+	googleapi.Expand(req.URL, map[string]string{
+		"project": c.project,
+	})
 	req.Header.Set("User-Agent", "google-api-go-client/0.5")
 	res, err := c.s.client.Do(req)
 	if err != nil {

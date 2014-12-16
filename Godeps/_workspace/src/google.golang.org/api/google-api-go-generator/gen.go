@@ -18,6 +18,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"unicode"
@@ -38,7 +39,7 @@ var (
 
 	jsonFile     = flag.String("api_json_file", "", "If non-empty, the path to a local file on disk containing the API to generate. Exclusive with setting --api.")
 	output       = flag.String("output", "", "(optional) Path to source output file. If not specified, the API name and version are used to construct an output path (e.g. tasks/v1).")
-	googleAPIPkg = flag.String("googleapi_pkg", "code.google.com/p/google-api-go-client/googleapi", "Go package path of the 'googleapi' support package.")
+	googleAPIPkg = flag.String("googleapi_pkg", "google.golang.org/api/googleapi", "Go package path of the 'googleapi' support package.")
 )
 
 // API represents an API to generate, as well as its state while it's
@@ -213,10 +214,19 @@ func apiFromFile(file string) (*API, error) {
 func writeFile(file string, contents []byte) error {
 	// Don't write it if the contents are identical.
 	existing, err := ioutil.ReadFile(file)
-	if err == nil && bytes.Equal(existing, contents) {
+	if err == nil && (bytes.Equal(existing, contents) || basicallyEqual(existing, contents)) {
 		return nil
 	}
 	return ioutil.WriteFile(file, contents, 0644)
+}
+
+var etagLine = regexp.MustCompile(`(?m)^\s+"etag": ".+\n`)
+
+// basicallyEqual reports whether a and b are equal except for boring
+// differences like ETag updates.
+func basicallyEqual(a, b []byte) bool {
+	return etagLine.Match(a) && etagLine.Match(b) &&
+		bytes.Equal(etagLine.ReplaceAll(a, nil), etagLine.ReplaceAll(b, nil))
 }
 
 func slurpURL(urlStr string) []byte {
@@ -279,7 +289,7 @@ func (a *API) SourceDir() string {
 	if *genDir == "" {
 		paths := filepath.SplitList(os.Getenv("GOPATH"))
 		if len(paths) > 0 && paths[0] != "" {
-			*genDir = filepath.Join(paths[0], "src", "code.google.com", "p", "google-api-go-client")
+			*genDir = filepath.Join(paths[0], "src", "google.golang.org", "api")
 		}
 	}
 	return filepath.Join(*genDir, a.Package(), a.Version)
@@ -302,7 +312,7 @@ func (a *API) Package() string {
 }
 
 func (a *API) Target() string {
-	return fmt.Sprintf("code.google.com/p/google-api-go-client/%s/%s", a.Package(), a.Version)
+	return fmt.Sprintf("google.golang.org/api/%s/%s", a.Package(), a.Version)
 }
 
 // GetName returns a free top-level function/type identifier in the package.
@@ -459,7 +469,7 @@ func (a *API) GenerateCode() ([]byte, error) {
 	a.PopulateSchemas()
 
 	for _, name := range a.sortedSchemaNames() {
-		a.schemas[name].writeSchemaCode()
+		a.schemas[name].writeSchemaCode(a)
 	}
 
 	for _, meth := range a.APIMethods() {
@@ -512,7 +522,12 @@ func (a *API) generateScopeConstants() {
 func scopeIdentifierFromURL(urlStr string) string {
 	const prefix = "https://www.googleapis.com/auth/"
 	if !strings.HasPrefix(urlStr, prefix) {
-		log.Fatalf("Unexpected oauth2 scope %q doesn't start with %q", urlStr, prefix)
+		const https = "https://"
+		if !strings.HasPrefix(urlStr, https) {
+			log.Fatalf("Unexpected oauth2 scope %q doesn't start with %q", urlStr, https)
+		}
+		ident := validGoIdentifer(depunct(urlStr[len(https):], true)) + "Scope"
+		return ident
 	}
 	ident := validGoIdentifer(initialCap(urlStr[len(prefix):])) + "Scope"
 	return ident
@@ -629,6 +644,9 @@ func (t *Type) AsGo() string {
 				panic(fmt.Sprintf("in Type.AsGo, _apiName of %q didn't point to a valid schema; json: %s",
 					apiName, prettyJSON(t.m)))
 			}
+			if v := jobj(s.m, "variant"); v != nil {
+				return s.GoName()
+			}
 			return "*" + s.GoName()
 		}
 		panic("in Type.AsGo, no _apiName found for struct type " + prettyJSON(t.m))
@@ -667,7 +685,12 @@ func (t *Type) MapType() (typ string, ok bool) {
 		return "map[string]string", true
 	}
 	if s != "array" {
-		// TODO(gmlewis): support maps to any type.
+		if s == "" { // Check for reference
+			s = jstr(props, "$ref")
+			if s != "" {
+				return "map[string]" + s, true
+			}
+		}
 		log.Printf("Warning: found map to type %q which is not implemented yet.", s)
 		return "", false
 	}
@@ -677,7 +700,12 @@ func (t *Type) MapType() (typ string, ok bool) {
 	}
 	s = jstr(items, "type")
 	if s != "string" {
-		// TODO(gmlewis): support maps to any type.
+		if s == "" { // Check for reference
+			s = jstr(items, "$ref")
+			if s != "" {
+				return "map[string][]" + s, true
+			}
+		}
 		log.Printf("Warning: found map of arrays of type %q which is not implemented yet.", s)
 		return "", false
 	}
@@ -858,9 +886,9 @@ func (s *Schema) GoReturnType() string {
 	return s.goReturnType
 }
 
-func (s *Schema) writeSchemaCode() {
+func (s *Schema) writeSchemaCode(api *API) {
 	if s.Type().IsStruct() && !s.Type().IsMap() {
-		s.writeSchemaStruct()
+		s.writeSchemaStruct(api)
 		return
 	}
 
@@ -877,7 +905,14 @@ func (s *Schema) writeSchemaCode() {
 		return
 	}
 
-	if s.Type().IsSimple() || s.Type().IsMap() {
+	if s.Type().IsSimple() {
+		apitype := jstr(s.m, "type")
+		typ := mustSimpleTypeConvert(apitype, jstr(s.m, "format"))
+		s.api.p("\ntype %s %s\n", s.GoName(), typ)
+		return
+	}
+
+	if s.Type().IsMap() {
 		return
 	}
 
@@ -885,7 +920,44 @@ func (s *Schema) writeSchemaCode() {
 	panicf("writeSchemaCode: unsupported type for schema %q", s.apiName)
 }
 
-func (s *Schema) writeSchemaStruct() {
+func (s *Schema) writeVariant(api *API, v map[string]interface{}) {
+	s.api.p("\ntype %s map[string]interface{}\n\n", s.GoName())
+
+	// Write out the "Type" method that identifies the variant type.
+	s.api.p("func (t %s) Type() string {\n", s.GoName())
+	s.api.p("  return googleapi.VariantType(t)\n")
+	s.api.p("}\n\n")
+
+	// Write out helper methods to convert each possible variant.
+	for _, m := range jobjlist(v, "map") {
+		val := jstr(m, "type_value")
+		reftype := jstr(m, "$ref")
+		if val == "" && reftype == "" {
+			log.Printf("TODO variant %s ref %s not yet supported.", val, reftype)
+			continue
+		}
+
+		_, ok := api.schemas[reftype]
+		if !ok {
+			log.Printf("TODO variant %s ref %s not yet supported.", val, reftype)
+			continue
+		}
+
+		s.api.p("func (t %s) %s() (r %s, ok bool) {\n", s.GoName(), initialCap(val), reftype)
+		s.api.p("  if t.Type() != %q {\n", initialCap(val))
+		s.api.p("    return r, false\n")
+		s.api.p("  }\n")
+		s.api.p("  ok = googleapi.ConvertVariant(map[string]interface{}(t), &r)\n")
+		s.api.p("  return r, ok\n")
+		s.api.p("}\n\n")
+	}
+}
+
+func (s *Schema) writeSchemaStruct(api *API) {
+	if v := jobj(s.m, "variant"); v != nil {
+		s.writeVariant(api, v)
+		return
+	}
 	// TODO: description
 	s.api.p("\ntype %s struct {\n", s.GoName())
 	for i, p := range s.properties() {
@@ -1154,6 +1226,14 @@ func (meth *Method) generateCode() {
 		p("}\n")
 	}
 
+	pn("\n// Fields allows partial responses to be retrieved.")
+	pn("// See https://developers.google.com/gdata/docs/2.0/basics#PartialResponse")
+	pn("// for more information.")
+	pn("func (c *%s) Fields(s ...googleapi.Field) *%s {", callName, callName)
+	pn(`c.opt_["fields"] = googleapi.CombineFields(s)`)
+	pn("return c")
+	pn("}")
+
 	pn("\nfunc (c *%s) Do() (%serror) {", callName, retTypeComma)
 
 	nilRet := ""
@@ -1184,7 +1264,9 @@ func (meth *Method) generateCode() {
 		pn("for _, v := range c.%s { params.Add(%q, fmt.Sprintf(\"%%v\", v)) }",
 			p.name, p.name)
 	}
-	for _, p := range meth.OptParams() {
+	opts := meth.OptParams()
+	opts = append(opts, &Param{name: "fields"})
+	for _, p := range opts {
 		pn("if v, ok := c.opt_[%q]; ok { params.Set(%q, fmt.Sprintf(\"%%v\", v)) }",
 			p.name, p.name)
 	}
@@ -1211,11 +1293,17 @@ func (meth *Method) generateCode() {
 	pn("req, _ := http.NewRequest(%q, urls, body)", httpMethod)
 	// Replace param values after NewRequest to avoid reencoding them.
 	// E.g. Cloud Storage API requires '%2F' in entity param to be kept, but url.Parse replaces it with '/'.
-	for _, arg := range args.forLocation("path") {
-		pn(`req.URL.Path = strings.Replace(req.URL.Path, "{%s}", %s, 1)`, arg.apiname, arg.cleanExpr("c."))
+	argsForLocation := args.forLocation("path")
+	if len(argsForLocation) > 0 {
+		pn(`googleapi.Expand(req.URL, map[string]string{`)
+		for _, arg := range argsForLocation {
+			pn(`"%s": %s,`, arg.apiname, arg.exprAsString("c."))
+		}
+		pn(`})`)
+	} else {
+		// Just call SetOpaque since we aren't calling Expand
+		pn(`googleapi.SetOpaque(req.URL)`)
 	}
-	// Set opaque to avoid encoding of the parameters in the URL path.
-	pn("googleapi.SetOpaque(req.URL)")
 
 	if meth.supportsMedia() {
 		pn("if hasMedia_ { req.ContentLength = contentLength_ }")
@@ -1386,13 +1474,13 @@ func (a *argument) String() string {
 	return a.goname + " " + a.gotype
 }
 
-func (a *argument) cleanExpr(prefix string) string {
+func (a *argument) exprAsString(prefix string) string {
 	switch a.gotype {
 	case "[]string":
 		log.Printf("TODO(bradfitz): only including the first parameter in path query.")
-		return "url.QueryEscape(" + prefix + a.goname + "[0])"
+		return prefix + a.goname + `[0]`
 	case "string":
-		return "url.QueryEscape(" + prefix + a.goname + ")"
+		return prefix + a.goname
 	case "integer", "int64":
 		return "strconv.FormatInt(" + prefix + a.goname + ", 10)"
 	case "uint64":
@@ -1612,6 +1700,18 @@ func jobj(m map[string]interface{}, key string) map[string]interface{} {
 		return m
 	}
 	return nil
+}
+
+func jobjlist(m map[string]interface{}, key string) []map[string]interface{} {
+	si, ok := m[key].([]interface{})
+	if !ok {
+		return nil
+	}
+	var sl []map[string]interface{}
+	for _, si := range si {
+		sl = append(sl, si.(map[string]interface{}))
+	}
+	return sl
 }
 
 func jstrlist(m map[string]interface{}, key string) []string {

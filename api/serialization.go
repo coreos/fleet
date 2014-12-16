@@ -62,7 +62,7 @@ func sendResponse(rw http.ResponseWriter, code int, resp interface{}) {
 	}
 }
 
-// errorEntity is a fork of "code.google.com/p/google-api-go-client/googleapi".Error
+// errorEntity is a fork of "google.golang.org/api/googleapi".Error
 type errorEntity struct {
 	// Code is the HTTP response status code and will always be populated.
 	Code int `json:"code"`

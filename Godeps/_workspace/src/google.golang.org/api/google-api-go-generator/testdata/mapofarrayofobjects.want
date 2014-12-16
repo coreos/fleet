@@ -2,14 +2,14 @@
 //
 // Usage example:
 //
-//   import "code.google.com/p/google-api-go-client/additionalprops/v1"
+//   import "google.golang.org/api/additionalprops/v1"
 //   ...
 //   additionalpropsService, err := additionalprops.New(oauthHttpClient)
 package additionalprops
 
 import (
 	"bytes"
-	"code.google.com/p/google-api-go-client/googleapi"
+	"google.golang.org/api/googleapi"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -74,7 +74,7 @@ type TimeseriesDescriptor struct {
 	Project string `json:"project,omitempty"`
 
 	// Tags: A map of additional information.
-	Tags map[string][]string `json:"tags,omitempty"`
+	Tags map[string][]Property `json:"tags,omitempty"`
 }
 
 // method id "mapofstrings.getMap":
@@ -90,10 +90,21 @@ func (r *AtlasService) GetMap() *AtlasGetMapCall {
 	return c
 }
 
+// Fields allows partial responses to be retrieved.
+// See https://developers.google.com/gdata/docs/2.0/basics#PartialResponse
+// for more information.
+func (c *AtlasGetMapCall) Fields(s ...googleapi.Field) *AtlasGetMapCall {
+	c.opt_["fields"] = googleapi.CombineFields(s)
+	return c
+}
+
 func (c *AtlasGetMapCall) Do() (map[string]string, error) {
 	var body io.Reader = nil
 	params := make(url.Values)
 	params.Set("alt", "json")
+	if v, ok := c.opt_["fields"]; ok {
+		params.Set("fields", fmt.Sprintf("%v", v))
+	}
 	urls := googleapi.ResolveRelative(c.s.BasePath, "map")
 	urls += "?" + params.Encode()
 	req, _ := http.NewRequest("GET", urls, body)

@@ -1,15 +1,15 @@
-// Package arrayofarray provides access to the Example API.
+// Package mapofany provides access to the Example API.
 //
 // Usage example:
 //
-//   import "code.google.com/p/google-api-go-client/arrayofarray/v1"
+//   import "google.golang.org/api/mapofany/v1"
 //   ...
-//   arrayofarrayService, err := arrayofarray.New(oauthHttpClient)
-package arrayofarray
+//   mapofanyService, err := mapofany.New(oauthHttpClient)
+package mapofany
 
 import (
 	"bytes"
-	"code.google.com/p/google-api-go-client/googleapi"
+	"google.golang.org/api/googleapi"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -32,8 +32,8 @@ var _ = googleapi.Version
 var _ = errors.New
 var _ = strings.Replace
 
-const apiId = "arrayofarray:v1"
-const apiName = "arrayofarray"
+const apiId = "mapofany:v1"
+const apiName = "mapofany"
 const apiVersion = "v1"
 const basePath = "https://www.googleapis.com/discovery/v1/apis"
 
@@ -50,10 +50,19 @@ type Service struct {
 	BasePath string // API endpoint base URL
 }
 
-type GeoJsonMultiPolygon struct {
-	// Coordinates: Coordinate arrays.
-	Coordinates [][][][]float64 `json:"coordinates,omitempty"`
+type JsonValue interface{}
 
-	// Type: Identifies this object as a multi-polygon.
-	Type string `json:"type,omitempty"`
+type TableDataInsertAllRequest struct {
+	// Kind: The resource type of the response.
+	Kind string `json:"kind,omitempty"`
+
+	// Rows: The rows to insert.
+	Rows []*TableDataInsertAllRequestRows `json:"rows,omitempty"`
+}
+
+type TableDataInsertAllRequestRows struct {
+	// Json: [Required] A JSON object that contains a row of data. The
+	// object's properties and values must match the destination table's
+	// schema.
+	Json map[string]JsonValue `json:"json,omitempty"`
 }
