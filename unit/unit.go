@@ -204,6 +204,12 @@ type UnitNameInfo struct {
 	Instance string // Instance name (e.g. bar)
 }
 
+// IsTemplate returns a boolean indicating whether the UnitNameInfo appears to be
+// a Template unit
+func (nu UnitNameInfo) IsTemplate() bool {
+	return len(nu.Template) > 0 && !nu.IsInstance()
+}
+
 // IsInstance returns a boolean indicating whether the UnitNameInfo appears to be
 // an Instance of a Template unit
 func (nu UnitNameInfo) IsInstance() bool {
