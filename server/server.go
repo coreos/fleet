@@ -17,6 +17,7 @@ package server
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -57,7 +58,8 @@ type Server struct {
 
 	engineReconcileInterval time.Duration
 
-	stop chan bool
+	killc chan bool // used to signal monitor to shutdown server
+	stopc chan bool // used to terminate all other goroutines
 }
 
 func New(cfg config.Config) (*Server, error) {
@@ -129,7 +131,7 @@ func New(cfg config.Config) (*Server, error) {
 		hrt:         hrt,
 		mon:         mon,
 		api:         apiServer,
-		stop:        nil,
+		stopc:       nil,
 		engineReconcileInterval: eIval,
 	}
 
@@ -167,34 +169,45 @@ func (s *Server) Run() {
 
 	log.Infof("Starting server components")
 
-	s.stop = make(chan bool)
+	s.stopc = make(chan bool)
 
 	go s.Monitor()
-	go s.api.Available(s.stop)
-	go s.mach.PeriodicRefresh(machineStateRefreshInterval, s.stop)
-	go s.agent.Heartbeat(s.stop)
-	go s.aReconciler.Run(s.agent, s.stop)
-	go s.engine.Run(s.engineReconcileInterval, s.stop)
+	go s.api.Available(s.stopc)
+	go s.mach.PeriodicRefresh(machineStateRefreshInterval, s.stopc)
+	go s.agent.Heartbeat(s.stopc)
+	go s.aReconciler.Run(s.agent, s.stopc)
+	go s.engine.Run(s.engineReconcileInterval, s.stopc)
 
 	beatchan := make(chan *unit.UnitStateHeartbeat)
-	go s.usGen.Run(beatchan, s.stop)
-	go s.usPub.Run(beatchan, s.stop)
+	go s.usGen.Run(beatchan, s.stopc)
+	go s.usPub.Run(beatchan, s.stopc)
 }
 
-// Monitor tracks the health of the Server. If the Server is ever deemed
-// unhealthy, the Server is restarted.
+// Monitor tracks the health of the Server and coordinates its shutdown. If the
+// Server is ever deemed unhealthy, the Server is restarted.
 func (s *Server) Monitor() {
-	err := s.mon.Monitor(s.hrt, s.stop)
-	if err != nil {
+	err := s.mon.Monitor(s.hrt, s.killc)
+	s.stop()
+	switch {
+	case err == heart.ErrShutdown:
+		log.Infof("Server monitor triggered: %v", err)
+	case err != nil:
 		log.Errorf("Server monitor triggered: %v", err)
-
-		s.Stop()
+		// Restart the server
 		s.Run()
+	default:
+		panic(fmt.Errorf("unexpected err from Monitor: %v", err))
 	}
 }
 
+// stop is used by Monitor to terminate all other server goroutines
+func (s *Server) stop() {
+	close(s.stopc)
+}
+
+// Stop is used to gracefully terminate the server by triggering the Monitor
 func (s *Server) Stop() {
-	close(s.stop)
+	close(s.killc)
 }
 
 func (s *Server) Purge() {
