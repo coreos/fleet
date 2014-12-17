@@ -19,8 +19,10 @@ package main
 import (
 	"errors"
 	"fmt"
+	"net"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"syscall"
 
@@ -36,11 +38,11 @@ var (
 	cmdSSH                 = &Command{
 		Name:    "ssh",
 		Summary: "Open interactive shell on a machine in the cluster",
-		Usage:   "[-A|--forward-agent] [--machine|--unit] {MACHINE|UNIT}",
-		Description: `Open an interactive shell on a specific machine in the cluster or on the machine 
+		Usage:   "[-A|--forward-agent] [--ssh-port=N] [--machine|--unit] {MACHINE|UNIT}",
+		Description: `Open an interactive shell on a specific machine in the cluster or on the machine
 where the specified unit is located.
 
-fleetctl tries to detect whether your first argument is a machine or a unit. 
+fleetctl tries to detect whether your first argument is a machine or a unit.
 To skip this check use the --machine or --unit flags.
 
 Open a shell on a machine:
@@ -68,6 +70,7 @@ func init() {
 	cmdSSH.Flags.StringVar(&flagUnit, "unit", "", "Open SSH connection to machine running provided unit.")
 	cmdSSH.Flags.BoolVar(&flagSSHAgentForwarding, "forward-agent", false, "Forward local ssh-agent to target machine.")
 	cmdSSH.Flags.BoolVar(&flagSSHAgentForwarding, "A", false, "Shorthand for --forward-agent")
+	cmdSSH.Flags.IntVar(&sharedFlags.sshPort, "ssh-port", 22, "Use this SSH port to connect to host machine.")
 }
 
 func runSSH(args []string) (exit int) {
@@ -102,6 +105,8 @@ func runSSH(args []string) (exit int) {
 		return 1
 	}
 
+	addr = findSSHPort(addr)
+
 	args = pkg.TrimToDashes(args)
 
 	var sshClient *ssh.SSHForwardingClient
@@ -131,6 +136,15 @@ func runSSH(args []string) (exit int) {
 		}
 	}
 	return
+}
+
+func findSSHPort(addr string) string {
+	sshPort := sharedFlags.sshPort
+	if sshPort != 22 && !strings.Contains(addr, ":") {
+		return net.JoinHostPort(addr, strconv.Itoa(sshPort))
+	} else {
+		return addr
+	}
 }
 
 func globalMachineLookup(args []string) (string, error) {
@@ -215,7 +229,8 @@ func runCommand(cmd string, machID string) (retcode int) {
 		if err != nil || ms == nil {
 			stderr("Error getting machine IP: %v", err)
 		} else {
-			err, retcode = runRemoteCommand(cmd, ms.PublicIP)
+			addr := findSSHPort(ms.PublicIP)
+			err, retcode = runRemoteCommand(cmd, addr)
 			if err != nil {
 				stderr("Error running remote command: %v", err)
 			}
