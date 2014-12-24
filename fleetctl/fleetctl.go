@@ -90,6 +90,7 @@ var (
 		KnownHostsFile        string
 		StrictHostKeyChecking bool
 		SSHTimeout            float64
+		SSHUserName           string
 
 		EtcdKeyPrefix string
 	}{}
@@ -131,6 +132,7 @@ func init() {
 	globalFlagset.Float64Var(&globalFlags.SSHTimeout, "ssh-timeout", 10.0, "Amount of time in seconds to allow for SSH connection initialization before failing.")
 	globalFlagset.StringVar(&globalFlags.Tunnel, "tunnel", "", "Establish an SSH tunnel through the provided address for communication with fleet and etcd.")
 	globalFlagset.Float64Var(&globalFlags.RequestTimeout, "request-timeout", 3.0, "Amount of time in seconds to allow a single request before considering it failed.")
+	globalFlagset.StringVar(&globalFlags.SSHUserName, "ssh-username", "core", "Username to use when connecting to CoreOS instance.")
 
 	// deprecated flags
 	globalFlagset.BoolVar(&globalFlags.ExperimentalAPI, "experimental-api", false, hidden)
@@ -329,7 +331,7 @@ func getHTTPClient() (client.API, error) {
 
 	tunnelFunc := net.Dial
 	if tunneling {
-		sshClient, err := ssh.NewSSHClient("core", tun, getChecker(), true, getSSHTimeoutFlag())
+		sshClient, err := ssh.NewSSHClient(globalFlags.SSHUserName, tun, getChecker(), true, getSSHTimeoutFlag())
 		if err != nil {
 			return nil, fmt.Errorf("failed initializing SSH client: %v", err)
 		}
@@ -399,7 +401,7 @@ func getRegistryClient() (client.API, error) {
 	var dial func(string, string) (net.Conn, error)
 	tun := getTunnelFlag()
 	if tun != "" {
-		sshClient, err := ssh.NewSSHClient("core", tun, getChecker(), false, getSSHTimeoutFlag())
+		sshClient, err := ssh.NewSSHClient(globalFlags.SSHUserName, tun, getChecker(), false, getSSHTimeoutFlag())
 		if err != nil {
 			return nil, fmt.Errorf("failed initializing SSH client: %v", err)
 		}
