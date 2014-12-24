@@ -33,6 +33,7 @@ var (
 	flagMachine            string
 	flagUnit               string
 	flagSSHAgentForwarding bool
+	flagSSHUserName        string
 	cmdSSH                 = &Command{
 		Name:    "ssh",
 		Summary: "Open interactive shell on a machine in the cluster",
@@ -68,6 +69,7 @@ func init() {
 	cmdSSH.Flags.StringVar(&flagUnit, "unit", "", "Open SSH connection to machine running provided unit.")
 	cmdSSH.Flags.BoolVar(&flagSSHAgentForwarding, "forward-agent", false, "Forward local ssh-agent to target machine.")
 	cmdSSH.Flags.BoolVar(&flagSSHAgentForwarding, "A", false, "Shorthand for --forward-agent")
+	cmdSSH.Flags.StringVar(&flagSSHUserName, "ssh-username", "core", "Username to use when connecting to CoreOS instance.")
 }
 
 func runSSH(args []string) (exit int) {
@@ -107,9 +109,9 @@ func runSSH(args []string) (exit int) {
 	var sshClient *ssh.SSHForwardingClient
 	timeout := getSSHTimeoutFlag()
 	if tun := getTunnelFlag(); tun != "" {
-		sshClient, err = ssh.NewTunnelledSSHClient("core", tun, addr, getChecker(), flagSSHAgentForwarding, timeout)
+		sshClient, err = ssh.NewTunnelledSSHClient(flagSSHUserName, tun, addr, getChecker(), flagSSHAgentForwarding, timeout)
 	} else {
-		sshClient, err = ssh.NewSSHClient("core", addr, getChecker(), flagSSHAgentForwarding, timeout)
+		sshClient, err = ssh.NewSSHClient(flagSSHUserName, addr, getChecker(), flagSSHAgentForwarding, timeout)
 	}
 	if err != nil {
 		stderr("Failed building SSH client: %v", err)
@@ -251,9 +253,9 @@ func runRemoteCommand(cmd string, addr string) (err error, exit int) {
 	var sshClient *ssh.SSHForwardingClient
 	timeout := getSSHTimeoutFlag()
 	if tun := getTunnelFlag(); tun != "" {
-		sshClient, err = ssh.NewTunnelledSSHClient("core", tun, addr, getChecker(), false, timeout)
+		sshClient, err = ssh.NewTunnelledSSHClient(flagSSHUserName, tun, addr, getChecker(), false, timeout)
 	} else {
-		sshClient, err = ssh.NewSSHClient("core", addr, getChecker(), false, timeout)
+		sshClient, err = ssh.NewSSHClient(flagSSHUserName, addr, getChecker(), false, timeout)
 	}
 	if err != nil {
 		return err, -1
