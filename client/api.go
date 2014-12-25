@@ -21,6 +21,8 @@ import (
 
 type API interface {
 	Machines() ([]machine.MachineState, error)
+	SetMachineMetadata(machID, key, value string) error
+	DeleteMachineMetadata(machID, key string) error
 
 	Unit(string) (*schema.Unit, error)
 	Units() ([]*schema.Unit, error)

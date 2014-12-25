@@ -15,14 +15,20 @@
 package api
 
 import (
-	"fmt"
+	"encoding/json"
+	"errors"
 	"net/http"
 	"path"
+	"regexp"
 
 	"github.com/coreos/fleet/client"
 	"github.com/coreos/fleet/log"
 	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/schema"
+)
+
+var (
+	metadataPathRegex = regexp.MustCompile("^/([^/]+)/metadata/([A-Za-z0-9_.-]+$)")
 )
 
 func wireUpMachinesResource(mux *http.ServeMux, prefix string, cAPI client.API) {
@@ -35,12 +41,24 @@ type machinesResource struct {
 	cAPI client.API
 }
 
-func (mr *machinesResource) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
-	if req.Method != "GET" {
-		sendError(rw, http.StatusBadRequest, fmt.Errorf("only HTTP GET supported against this resource"))
-		return
-	}
+type machineMetadataOp struct {
+	Operation string `json:"op"`
+	Path      string
+	Value     string
+}
 
+func (mr *machinesResource) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
+	switch req.Method {
+	case "GET":
+		mr.list(rw, req)
+	case "PATCH":
+		mr.patch(rw, req)
+	default:
+		sendError(rw, http.StatusMethodNotAllowed, errors.New("only GET and PATCH supported against this resource"))
+	}
+}
+
+func (mr *machinesResource) list(rw http.ResponseWriter, req *http.Request) {
 	token, err := findNextPageToken(req.URL)
 	if err != nil {
 		sendError(rw, http.StatusBadRequest, err)
@@ -60,6 +78,54 @@ func (mr *machinesResource) ServeHTTP(rw http.ResponseWriter, req *http.Request)
 	}
 
 	sendResponse(rw, http.StatusOK, page)
+}
+
+func (mr *machinesResource) patch(rw http.ResponseWriter, req *http.Request) {
+	var ops []machineMetadataOp
+	dec := json.NewDecoder(req.Body)
+	if err := dec.Decode(&ops); err != nil {
+		sendError(rw, http.StatusBadRequest, err)
+		return
+	}
+
+	for _, op := range ops {
+		if op.Operation != "add" && op.Operation != "remove" && op.Operation != "replace" {
+			sendError(rw, http.StatusBadRequest, errors.New("invalid op: expect add, remove, or replace"))
+			return
+		}
+
+		if metadataPathRegex.FindStringSubmatch(op.Path) == nil {
+			sendError(rw, http.StatusBadRequest, errors.New("machine metadata path invalid"))
+			return
+		}
+
+		if op.Operation != "remove" && len(op.Value) == 0 {
+			sendError(rw, http.StatusBadRequest, errors.New("invalid value: add and replace require a value"))
+			return
+		}
+	}
+
+	for _, op := range ops {
+		// regex already validated above
+		s := metadataPathRegex.FindStringSubmatch(op.Path)
+		machID := s[1]
+		key := s[2]
+
+		if op.Operation == "remove" {
+			err := mr.cAPI.DeleteMachineMetadata(machID, key)
+			if err != nil {
+				sendError(rw, http.StatusInternalServerError, err)
+				return
+			}
+		} else {
+			err := mr.cAPI.SetMachineMetadata(machID, key, op.Value)
+			if err != nil {
+				sendError(rw, http.StatusInternalServerError, err)
+				return
+			}
+		}
+	}
+	sendResponse(rw, http.StatusNoContent, "")
 }
 
 func getMachinePage(cAPI client.API, tok PageToken) (*schema.MachinePage, error) {

@@ -43,17 +43,26 @@ func (r *EtcdRegistry) Machines() (machines []machine.MachineState, err error) {
 	}
 
 	for _, node := range resp.Node.Nodes {
+		var mach machine.MachineState
+		var metadata map[string]string
+
 		for _, obj := range node.Nodes {
-			if !strings.HasSuffix(obj.Key, "/object") {
-				continue
+			if strings.HasSuffix(obj.Key, "/object") {
+				err = unmarshal(obj.Value, &mach)
+				if err != nil {
+					return
+				}
+			} else if strings.HasSuffix(obj.Key, "/metadata") {
+				// Load metadata into a separate map to avoid stepping on it when deserializing the object key
+				metadata = make(map[string]string, len(obj.Nodes))
+				for _, mdnode := range obj.Nodes {
+					metadata[path.Base(mdnode.Key)] = mdnode.Value
+				}
 			}
+		}
 
-			var mach machine.MachineState
-			err = unmarshal(obj.Value, &mach)
-			if err != nil {
-				return
-			}
-
+		if mach.ID != "" {
+			mach.Metadata = mergeMetadata(mach.Metadata, metadata)
 			machines = append(machines, mach)
 		}
 	}
@@ -94,6 +103,23 @@ func (r *EtcdRegistry) SetMachineState(ms machine.MachineState, ttl time.Duratio
 	return resp.Node.ModifiedIndex, nil
 }
 
+func (r *EtcdRegistry) SetMachineMetadata(machID string, key string, value string) error {
+	update := etcd.Set{
+		Key:   path.Join(r.keyPrefix, machinePrefix, machID, "metadata", key),
+		Value: value,
+	}
+
+	_, err := r.etcd.Do(&update)
+	return err
+}
+
+func (r *EtcdRegistry) DeleteMachineMetadata(machID string, key string) error {
+	// Deleting a key sets its value to "" to allow for intelligent merging
+	// between the machine-defined metadata and the dynamic metadata.
+	// See mergeMetadata for more detail.
+	return r.SetMachineMetadata(machID, key, "")
+}
+
 func (r *EtcdRegistry) RemoveMachineState(machID string) error {
 	req := etcd.Delete{
 		Key: path.Join(r.keyPrefix, machinePrefix, machID, "object"),
@@ -103,4 +129,29 @@ func (r *EtcdRegistry) RemoveMachineState(machID string) error {
 		err = nil
 	}
 	return err
+}
+
+// mergeMetadata merges the machine-set metadata with the dynamic metadata to better facilitate
+// machines leaving and rejoining a cluster.
+// Merging metadata uses the following rules:
+// - Any keys that are only in one collection are added as-is
+// - Any keys that exist in both, the dynamic value takes precence
+// - Any keys that have a zero-value string in the dynamic metadata are considered deleted
+//   and are not included in the final collection
+func mergeMetadata(machineMetadata, dynamicMetadata map[string]string) map[string]string {
+	if dynamicMetadata == nil {
+		return machineMetadata
+	}
+	finalMetadata := make(map[string]string, len(dynamicMetadata))
+	for k, v := range machineMetadata {
+		finalMetadata[k] = v
+	}
+	for k, v := range dynamicMetadata {
+		if v == "" {
+			delete(finalMetadata, k)
+		} else {
+			finalMetadata[k] = v
+		}
+	}
+	return finalMetadata
 }
