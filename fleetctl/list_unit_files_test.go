@@ -113,7 +113,7 @@ func TestMapTargetField(t *testing.T) {
 					&schema.UnitOption{Section: "X-Fleet", Name: "Global", Value: "true"},
 				},
 			},
-			want: "-",
+			want: "global",
 		},
 	}
 
