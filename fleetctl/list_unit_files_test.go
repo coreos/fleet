@@ -83,3 +83,45 @@ func TestListUnitFilesFieldsToStrings(t *testing.T) {
 	assertEqual(t, "hash", uh, fuh)
 	assertEqual(t, "hash", uh[:7], suh)
 }
+
+func TestMapTargetField(t *testing.T) {
+	// seeding the cache for the following test cases
+	machineStates = map[string]*machine.MachineState{
+		"XXX": &machine.MachineState{ID: "XXX"},
+	}
+
+	tests := []struct {
+		unit schema.Unit
+		want string
+	}{
+		// already scheduled
+		{
+			unit: schema.Unit{
+				MachineID: "XXX",
+			},
+			want: "XXX",
+		},
+		// not yet scheduled
+		{
+			unit: schema.Unit{},
+			want: "-",
+		},
+		// global unit
+		{
+			unit: schema.Unit{
+				Options: []*schema.UnitOption{
+					&schema.UnitOption{Section: "X-Fleet", Name: "Global", Value: "true"},
+				},
+			},
+			want: "-",
+		},
+	}
+
+	for i, tt := range tests {
+		// eliminate the "full" variable from test cases by hard-coding "true" below
+		got := mapTargetField(tt.unit, true)
+		if tt.want != got {
+			t.Errorf("case %d: want=%q got=%q", i, tt.want, got)
+		}
+	}
+}
