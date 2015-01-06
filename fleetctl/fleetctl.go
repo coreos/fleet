@@ -166,6 +166,7 @@ func init() {
 		cmdSSH,
 		cmdStartUnit,
 		cmdStatusUnits,
+		cmdRestartUnit,
 		cmdStopUnit,
 		cmdSubmitUnit,
 		cmdUnloadUnit,

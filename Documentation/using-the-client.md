@@ -75,11 +75,16 @@ Start and stop units with the `start` and `stop` commands:
 $ fleetctl start goodbye.service
 Unit goodbye.service launched on 85c0c595.../172.17.8.102
 
+$ fleetctl restart goodbye.service
+Unit goodbye.service loaded on 85c0c595.../172.17.8.102
+Unit goodbye.service launched on 85c0c595.../172.17.8.102
+
 $ fleetctl stop goodbye.service
 Unit goodbye.service loaded on 85c0c595.../172.17.8.102
 ```
 
 If the unit does not exist when calling `start`, fleetctl will first search for a local unit file, submit it and schedule it.
+If the unit is stopped when calling `restart`, fleetctl will start it.
 
 ### Scheduling units
 
