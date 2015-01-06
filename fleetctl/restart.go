@@ -73,7 +73,6 @@ func runRestartUnit(args []string) (exit int) {
 			if exit == 1 {
 				return exit
 			}
-
 			continue
 		} else {
 			//stop and start it
@@ -86,10 +85,8 @@ func runRestartUnit(args []string) (exit int) {
 				return exit
 			}
 		}
-
 		log.V(1).Infof("Unit(%s) was restarted.", u.Name)
 	}
-
 	return
 }
 
