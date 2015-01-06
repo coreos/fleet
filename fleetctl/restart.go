@@ -97,9 +97,7 @@ func setUnitStateAndWait(unit schema.Unit, targetState job.JobState, blockAttemp
 	cAPI.SetUnitTargetState(unit.Name, string(targetState))
 
 	if !suToGlobal(unit) {
-		unitArr := make([]string, 1)
-		unitArr[0] = unit.Name
-		errchan := waitForUnitStates(unitArr, targetState, blockAttempts, os.Stdout)
+		errchan := waitForUnitStates([]string{unit.Name}, targetState, blockAttempts, os.Stdout)
 		for err := range errchan {
 			stderr("Error waiting for unit %s to change states: %v", unit.Name, err)
 			return 1
