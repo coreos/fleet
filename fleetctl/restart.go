@@ -87,7 +87,7 @@ func runRestartUnit(args []string) (exit int) {
 			}
 		}
 
-		stdout("Unit(%s) was restarted.", u.Name)
+		log.V(1).Infof("Unit(%s) was restarted.", u.Name)
 	}
 
 	return
