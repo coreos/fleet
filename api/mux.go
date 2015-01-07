@@ -51,7 +51,7 @@ type loggingMiddleware struct {
 }
 
 func (lm *loggingMiddleware) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
-	log.V(1).Infof("HTTP %s %v", req.Method, req.URL)
+	log.Debugf("HTTP %s %v", req.Method, req.URL)
 	lm.next.ServeHTTP(rw, req)
 }
 

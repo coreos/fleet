@@ -50,7 +50,7 @@ type Reconciler struct {
 }
 
 func (r *Reconciler) Reconcile(e *Engine, stop chan struct{}) {
-	log.V(1).Infof("Polling Registry for actionable work")
+	log.Debugf("Polling Registry for actionable work")
 
 	clust, err := e.clusterState()
 	if err != nil {
@@ -133,7 +133,7 @@ func (r *Reconciler) calculateClusterTasks(clust *clusterState, stopchan chan st
 
 			dec, err := r.sched.Decide(clust, j)
 			if err != nil {
-				log.V(1).Infof("Unable to schedule Job(%s): %v", j.Name, err)
+				log.Debugf("Unable to schedule Job(%s): %v", j.Name, err)
 				continue
 			}
 

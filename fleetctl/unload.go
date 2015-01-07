@@ -48,12 +48,12 @@ func runUnloadUnit(args []string) (exit int) {
 	for _, s := range units {
 		if !suToGlobal(s) {
 			if job.JobState(s.CurrentState) == job.JobStateInactive {
-				log.V(1).Infof("Target state of Unit(%s) already %s, skipping.", s.Name, job.JobStateInactive)
+				log.Debugf("Target state of Unit(%s) already %s, skipping.", s.Name, job.JobStateInactive)
 				continue
 			}
 		}
 
-		log.V(1).Infof("Setting target state of Unit(%s) to %s", s.Name, job.JobStateInactive)
+		log.Debugf("Setting target state of Unit(%s) to %s", s.Name, job.JobStateInactive)
 		cAPI.SetUnitTargetState(s.Name, string(job.JobStateInactive))
 		if suToGlobal(s) {
 			stdout("Triggered global unit %s unload", s.Name)

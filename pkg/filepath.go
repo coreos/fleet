@@ -40,7 +40,7 @@ func ParseFilepath(path string) string {
 		if home = os.Getenv("HOME"); home == "" {
 			usr, err := user.Current()
 			if err != nil {
-				log.V(1).Infof("Failed to get current home directory: %v", err)
+				log.Debugf("Failed to get current home directory: %v", err)
 				return path
 			}
 			home = usr.HomeDir
@@ -48,7 +48,7 @@ func ParseFilepath(path string) string {
 	} else {
 		usr, err := user.Lookup(path[1:i])
 		if err != nil {
-			log.V(1).Infof("Failed to get %v's home directory: %v", path[1:i], err)
+			log.Debugf("Failed to get %v's home directory: %v", path[1:i], err)
 			return path
 		}
 		home = usr.HomeDir

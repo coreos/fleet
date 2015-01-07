@@ -158,13 +158,13 @@ func (kc *HostKeyChecker) addrToHostPort(a string) (string, error) {
 	}
 	host, p, err := net.SplitHostPort(a)
 	if err != nil {
-		log.V(1).Infof("Unable to parse addr %s: %v", a, err)
+		log.Debugf("Unable to parse addr %s: %v", a, err)
 		return "", err
 	}
 
 	port, err := strconv.Atoi(p)
 	if err != nil {
-		log.V(1).Infof("Error parsing port %s: %v", p, err)
+		log.Debugf("Error parsing port %s: %v", p, err)
 		return "", err
 	}
 

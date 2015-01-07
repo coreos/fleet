@@ -39,7 +39,7 @@ func (m *Monitor) Monitor(hrt Heart, stop chan bool) error {
 	for {
 		select {
 		case <-stop:
-			log.V(1).Info("Monitor exiting due to stop signal")
+			log.Debug("Monitor exiting due to stop signal")
 			return nil
 		case <-ticker:
 			if _, err := m.check(hrt); err != nil {
@@ -67,7 +67,7 @@ func (m *Monitor) check(hrt Heart) (idx uint64, err error) {
 		case <-next:
 			idx, err = hrt.Beat(m.TTL)
 			if err != nil {
-				log.V(1).Infof("Monitor heartbeat function returned err, retrying in %v: %v", interval, err)
+				log.Debugf("Monitor heartbeat function returned err, retrying in %v: %v", interval, err)
 			}
 
 			next = time.After(interval)

@@ -74,7 +74,8 @@ $ FLEET_ETCD_SERVERS=http://192.0.2.12:4001 /usr/bin/fleetd
 
 #### verbosity
 
-Increase the amount of log information. Acceptable values are 0, 1, and 2 - higher values are more verbose.
+Enable debug logging by setting this to an integer value greater than zero.
+Only a single debug level exists, so all values greater than zero are considered equivalent.
 
 Default: 0
 
