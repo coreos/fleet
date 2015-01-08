@@ -73,21 +73,21 @@ func (r *reconciler) Run(stop chan bool) {
 	ticker := r.clock.After(r.ival)
 
 	// When starting up, reconcile once immediately
-	log.V(1).Info("Initial reconciliation commencing")
+	log.Debug("Initial reconciliation commencing")
 	r.rFunc()
 
 	for {
 		select {
 		case <-stop:
-			log.V(1).Info("Reconciler exiting due to stop signal")
+			log.Debug("Reconciler exiting due to stop signal")
 			return
 		case <-ticker:
 			ticker = r.clock.After(r.ival)
-			log.V(1).Info("Reconciler tick")
+			log.Debug("Reconciler tick")
 			r.rFunc()
 		case <-trigger:
 			ticker = r.clock.After(r.ival)
-			log.V(1).Info("Reconciler triggered")
+			log.Debug("Reconciler triggered")
 			r.rFunc()
 		}
 	}

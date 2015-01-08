@@ -77,10 +77,10 @@ func (a *Agent) heartbeatJobs(ttl time.Duration, stop chan bool) {
 	for {
 		select {
 		case <-stop:
-			log.V(1).Info("HeartbeatJobs exiting due to stop signal")
+			log.Debug("HeartbeatJobs exiting due to stop signal")
 			return
 		case <-ticker:
-			log.V(1).Info("HeartbeatJobs tick")
+			log.Debug("HeartbeatJobs tick")
 			heartbeat()
 		}
 	}

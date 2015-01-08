@@ -67,12 +67,12 @@ func runStopUnit(args []string) (exit int) {
 				stderr("Unable to stop unit %s in state %s", u.Name, job.JobStateInactive)
 				return 1
 			} else if job.JobState(u.CurrentState) == job.JobStateLoaded {
-				log.V(1).Infof("Unit(%s) already %s, skipping.", u.Name, job.JobStateLoaded)
+				log.Debugf("Unit(%s) already %s, skipping.", u.Name, job.JobStateLoaded)
 				continue
 			}
 		}
 
-		log.V(1).Infof("Setting target state of Unit(%s) to %s", u.Name, job.JobStateLoaded)
+		log.Debugf("Setting target state of Unit(%s) to %s", u.Name, job.JobStateLoaded)
 		cAPI.SetUnitTargetState(u.Name, string(job.JobStateLoaded))
 		if suToGlobal(u) {
 			stdout("Triggered global unit %s stop", u.Name)

@@ -90,7 +90,7 @@ func watch(client etcd.Client, key string, stop chan struct{}) (res *etcd.Result
 	for res == nil {
 		select {
 		case <-stop:
-			log.V(1).Infof("Gracefully closing etcd watch loop: key=%s", key)
+			log.Debugf("Gracefully closing etcd watch loop: key=%s", key)
 			return
 		default:
 			req := &etcd.Watch{
@@ -99,7 +99,7 @@ func watch(client etcd.Client, key string, stop chan struct{}) (res *etcd.Result
 				Recursive: true,
 			}
 
-			log.V(1).Infof("Creating etcd watcher: %v", req)
+			log.Debugf("Creating etcd watcher: %v", req)
 
 			var err error
 			res, err = client.Wait(req, stop)

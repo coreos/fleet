@@ -225,7 +225,7 @@ func main() {
 	getFlagsFromEnv(cliName, globalFlagset)
 
 	if globalFlags.Debug {
-		log.SetVerbosity(1)
+		log.EnableDebug()
 	}
 
 	if globalFlags.Version {
@@ -337,7 +337,7 @@ func getHTTPClient() (client.API, error) {
 		if dialUnix {
 			tgt := ep.Path
 			tunnelFunc = func(string, string) (net.Conn, error) {
-				log.V(1).Infof("Establishing remote fleetctl proxy to %s", tgt)
+				log.Debugf("Establishing remote fleetctl proxy to %s", tgt)
 				cmd := fmt.Sprintf(`fleetctl fd-forward %s`, tgt)
 				return ssh.DialCommand(sshClient, cmd)
 			}
@@ -458,7 +458,7 @@ func getUnitFromFile(file string) (*unit.UnitFile, error) {
 	}
 
 	unitName := path.Base(file)
-	log.V(1).Infof("Unit(%s) found in local filesystem", unitName)
+	log.Debugf("Unit(%s) found in local filesystem", unitName)
 
 	return unit.NewUnitFile(string(out))
 }
@@ -547,7 +547,7 @@ func createUnit(name string, uf *unit.UnitFile) (*schema.Unit, error) {
 		return nil, fmt.Errorf("failed creating unit %s: %v", name, err)
 	}
 
-	log.V(1).Infof("Created Unit(%s) in Registry", name)
+	log.Debugf("Created Unit(%s) in Registry", name)
 	return &u, nil
 }
 
@@ -574,7 +574,7 @@ func lazyCreateUnits(args []string) error {
 			return fmt.Errorf("error retrieving Unit(%s) from Registry: %v", name, err)
 		}
 		if u != nil {
-			log.V(1).Infof("Found Unit(%s) in Registry, no need to recreate it", name)
+			log.Debugf("Found Unit(%s) in Registry, no need to recreate it", name)
 			warnOnDifferentLocalUnit(arg, u)
 			continue
 		}
@@ -680,11 +680,11 @@ func setTargetStateOfUnits(units []string, state job.JobState) ([]*schema.Unit, 
 		} else if u == nil {
 			return nil, fmt.Errorf("unable to find unit %s", name)
 		} else if job.JobState(u.DesiredState) == state {
-			log.V(1).Infof("Unit(%s) already %s, skipping.", u.Name, u.DesiredState)
+			log.Debugf("Unit(%s) already %s, skipping.", u.Name, u.DesiredState)
 			continue
 		}
 
-		log.V(1).Infof("Setting Unit(%s) target state to %s", u.Name, state)
+		log.Debugf("Setting Unit(%s) target state to %s", u.Name, state)
 		cAPI.SetUnitTargetState(u.Name, string(state))
 		triggered = append(triggered, u)
 	}

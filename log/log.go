@@ -22,8 +22,6 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"strconv"
-	"sync/atomic"
 )
 
 const (
@@ -31,60 +29,27 @@ const (
 )
 
 var (
-	logger    = log.New(os.Stderr, "", 0)
-	verbosity = VLevel(0)
+	logger = log.New(os.Stderr, "", 0)
+	debug  = false
 )
 
 func EnableTimestamps() {
 	logger.SetFlags(logger.Flags() | log.Ldate | log.Ltime)
 }
 
-func SetVerbosity(lvl int) {
-	verbosity.set(int32(lvl))
+func EnableDebug() {
+	debug = true
 }
 
-type VLevel int32
-
-func (l *VLevel) get() VLevel {
-	return VLevel(atomic.LoadInt32((*int32)(l)))
-}
-
-func (l *VLevel) String() string {
-	return strconv.FormatInt(int64(*l), 10)
-}
-
-func (l *VLevel) Get() interface{} {
-	return l.get()
-}
-
-func (l *VLevel) Set(val string) error {
-	vi, err := strconv.Atoi(val)
-	if err != nil {
-		return err
-	}
-	l.set(int32(vi))
-	return nil
-}
-
-func (l *VLevel) set(lvl int32) {
-	atomic.StoreInt32((*int32)(l), lvl)
-}
-
-type VLogger bool
-
-func V(level VLevel) VLogger {
-	return VLogger(verbosity.get() >= level)
-}
-
-func (vl VLogger) Info(v ...interface{}) {
-	if vl {
-		logger.Output(calldepth, header("INFO", fmt.Sprint(v...)))
+func Debug(v ...interface{}) {
+	if debug {
+		logger.Output(calldepth, header("DEBUG", fmt.Sprint(v...)))
 	}
 }
 
-func (vl VLogger) Infof(format string, v ...interface{}) {
-	if vl {
-		logger.Output(calldepth, header("INFO", fmt.Sprintf(format, v...)))
+func Debugf(format string, v ...interface{}) {
+	if debug {
+		logger.Output(calldepth, header("DEBUG", fmt.Sprintf(format, v...)))
 	}
 }
 

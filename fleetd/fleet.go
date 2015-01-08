@@ -78,7 +78,7 @@ func main() {
 		log.Fatalf(err.Error())
 	}
 
-	log.V(1).Infof("Creating Server")
+	log.Debugf("Creating Server")
 	srv, err := server.New(*cfg)
 	if err != nil {
 		log.Fatalf("Failed creating Server: %v", err.Error())
@@ -126,7 +126,7 @@ func main() {
 
 		os.Stdout.Write([]byte("\n"))
 
-		log.V(1).Infof("Finished dumping server state")
+		log.Debugf("Finished dumping server state")
 	}
 
 	signals := map[os.Signal]func(){
@@ -192,7 +192,10 @@ func getConfig(flagset *flag.FlagSet, userCfgFile string) (*config.Config, error
 		log.Error("Config option authorized_keys_file is no longer supported - ignoring")
 	}
 
-	log.SetVerbosity(cfg.Verbosity)
+	if cfg.Verbosity > 0 {
+		log.EnableDebug()
+	}
+
 	return &cfg, nil
 }
 

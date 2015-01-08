@@ -71,7 +71,7 @@ func (as *AgentState) hasConflict(pUnitName string, pConflicts []string) (found 
 func globMatches(pattern, target string) bool {
 	matched, err := path.Match(pattern, target)
 	if err != nil {
-		log.V(1).Infof("Received error while matching pattern '%s': %v", pattern, err)
+		log.Debugf("Received error while matching pattern '%s': %v", pattern, err)
 	}
 	return matched
 }

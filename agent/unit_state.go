@@ -200,7 +200,7 @@ func (p *UnitStatePublisher) Purge() {
 func newPublisher(reg registry.Registry, ttl time.Duration) publishFunc {
 	return func(name string, us *unit.UnitState) {
 		if us == nil {
-			log.V(1).Infof("Destroying UnitState(%s) in Registry", name)
+			log.Debugf("Destroying UnitState(%s) in Registry", name)
 			err := reg.RemoveUnitState(name)
 			if err != nil {
 				log.Errorf("Failed to destroy UnitState(%s) in Registry: %v", name, err)
@@ -217,7 +217,7 @@ func newPublisher(reg registry.Registry, ttl time.Duration) publishFunc {
 			if len(us.MachineID) == 0 {
 				log.Errorf("Refusing to push UnitState(%s), no MachineID: %#v", name, us)
 			} else {
-				log.V(1).Infof("Pushing UnitState(%s) to Registry: %#v", name, us)
+				log.Debugf("Pushing UnitState(%s) to Registry: %#v", name, us)
 				reg.SaveUnitState(name, us, ttl)
 			}
 		}

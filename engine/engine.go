@@ -115,7 +115,7 @@ func (e *Engine) Run(ival time.Duration, stop chan bool) {
 		if elapsed > ival {
 			log.Warning(msg)
 		} else {
-			log.V(1).Info(msg)
+			log.Debug(msg)
 		}
 	}
 
@@ -159,7 +159,7 @@ func ensureEngineVersionMatch(cReg registry.ClusterRegistry, expect int) bool {
 		}
 		log.Infof("Updated cluster engine version from %d to %d", v, expect)
 	} else if v > expect {
-		log.V(1).Infof("Cluster engine version higher than local engine version (%d > %d), unable to participate", v, expect)
+		log.Debugf("Cluster engine version higher than local engine version (%d > %d), unable to participate", v, expect)
 		return false
 	}
 
@@ -180,7 +180,7 @@ func acquireLeadership(lReg registry.LeaseRegistry, machID string, ver int, ttl 
 			log.Errorf("Engine leadership acquisition failed: %v", err)
 			return nil
 		} else if l == nil {
-			log.V(1).Infof("Unable to acquire engine leadership")
+			log.Debugf("Unable to acquire engine leadership")
 			return nil
 		}
 		log.Infof("Engine leadership acquired")
@@ -188,7 +188,7 @@ func acquireLeadership(lReg registry.LeaseRegistry, machID string, ver int, ttl 
 	}
 
 	if existing.Version() >= ver {
-		log.V(1).Infof("Lease already held by Machine(%s) operating at acceptable version %d", existing.MachineID(), existing.Version())
+		log.Debugf("Lease already held by Machine(%s) operating at acceptable version %d", existing.MachineID(), existing.Version())
 		return existing
 	}
 
@@ -198,7 +198,7 @@ func acquireLeadership(lReg registry.LeaseRegistry, machID string, ver int, ttl 
 		log.Errorf("Engine leadership steal failed: %v", err)
 		return nil
 	} else if l == nil {
-		log.V(1).Infof("Unable to steal engine leadership")
+		log.Debugf("Unable to steal engine leadership")
 		return nil
 	}
 
@@ -219,7 +219,7 @@ func renewLeadership(l registry.Lease, ttl time.Duration) registry.Lease {
 		return nil
 	}
 
-	log.V(1).Infof("Engine leadership renewed")
+	log.Debugf("Engine leadership renewed")
 	return l
 }
 

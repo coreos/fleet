@@ -27,10 +27,10 @@ type LoggingHTTPTransport struct {
 }
 
 func (lt *LoggingHTTPTransport) RoundTrip(req *http.Request) (resp *http.Response, err error) {
-	log.V(1).Infof("HTTP %s %s", req.Method, req.URL.String())
+	log.Debugf("HTTP %s %s", req.Method, req.URL.String())
 	resp, err = lt.Transport.RoundTrip(req)
 	if err == nil {
-		log.V(1).Infof("HTTP %s %s %s", req.Method, req.URL.String(), resp.Status)
+		log.Debugf("HTTP %s %s %s", req.Method, req.URL.String(), resp.Status)
 	}
 	return
 }

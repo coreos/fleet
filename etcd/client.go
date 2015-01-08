@@ -363,13 +363,13 @@ func (ar *actionResolver) next(resp *http.Response) (*http.Request, error) {
 }
 
 func (ar *actionResolver) one(req *http.Request, cancel <-chan struct{}) (resp *http.Response, body []byte, err error) {
-	log.V(1).Infof("etcd: sending HTTP request %s %s", req.Method, req.URL)
+	log.Debugf("etcd: sending HTTP request %s %s", req.Method, req.URL)
 	resp, body, err = ar.requestFunc(req, cancel)
 	if err != nil {
-		log.V(1).Infof("etcd: recv error response from %s %s: %v", req.Method, req.URL, err)
+		log.Debugf("etcd: recv error response from %s %s: %v", req.Method, req.URL, err)
 		return
 	}
 
-	log.V(1).Infof("etcd: recv response from %s %s: %s", req.Method, req.URL, resp.Status)
+	log.Debugf("etcd: recv response from %s %s: %s", req.Method, req.URL, resp.Status)
 	return
 }
