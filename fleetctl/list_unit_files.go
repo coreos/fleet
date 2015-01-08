@@ -31,7 +31,10 @@ const (
 )
 
 func mapTargetField(u schema.Unit, full bool) string {
-	if suToGlobal(u) || u.MachineID == "" {
+	if suToGlobal(u) {
+		return "global"
+	}
+	if u.MachineID == "" {
 		return "-"
 	}
 	ms := cachedMachineState(u.MachineID)
