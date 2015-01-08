@@ -170,7 +170,7 @@ func usableAddress(ip net.IP) bool {
 }
 
 func getDefaultGatewayIface() *net.Interface {
-	log.Debugf("Attempting to retrieve IP route info from netlink")
+	log.Debug("Attempting to retrieve IP route info from netlink")
 
 	routes, err := netlink.NetworkGetRoutes()
 	if err != nil {
