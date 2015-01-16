@@ -48,7 +48,6 @@ func init() {
 	cmdJournal.Flags.BoolVar(&flagFollow, "follow", false, "Continuously print new entries as they are appended to the journal.")
 	cmdJournal.Flags.BoolVar(&flagFollow, "f", false, "Shorthand for --follow")
 	cmdJournal.Flags.BoolVar(&flagSudo, "sudo", false, "Execute journal command with sudo")
-	cmdJournal.Flags.BoolVar(&flagSudo, "s", false, "Shorthand for --sudo")
 }
 
 func runJournal(args []string) (exit int) {
