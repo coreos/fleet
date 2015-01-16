@@ -41,7 +41,7 @@ Or
     FLEETCTL_SSH_USERNAME=elroy fleetctl list-units
 
 Note: Custom users are not by default part of the `systemd-journal` group which will cause you to see `No journal files were found.`
-To use the `journal` command please add your users to the `systemd-journal` group.
+To use the `journal` command please add your users to the `systemd-journal` group or use the `--sudo` flag with journal.
 
 Be sure to install one of the [tagged releases](https://github.com/coreos/fleet/releases) of `fleetctl` that matches the version of fleet running on the CoreOS machine.
 Find the version on the server with:
