@@ -25,6 +25,7 @@ import (
 var (
 	flagLines  int
 	flagFollow bool
+	flagSudo   bool
 	cmdJournal = &Command{
 		Name:    "journal",
 		Summary: "Print the journal of a unit in the cluster to stdout",
@@ -46,6 +47,7 @@ func init() {
 	cmdJournal.Flags.IntVar(&flagLines, "lines", 10, "Number of recent log lines to return")
 	cmdJournal.Flags.BoolVar(&flagFollow, "follow", false, "Continuously print new entries as they are appended to the journal.")
 	cmdJournal.Flags.BoolVar(&flagFollow, "f", false, "Shorthand for --follow")
+	cmdJournal.Flags.BoolVar(&flagSudo, "sudo", false, "Execute journal command with sudo")
 }
 
 func runJournal(args []string) (exit int) {
@@ -71,6 +73,11 @@ func runJournal(args []string) (exit int) {
 	}
 
 	command := fmt.Sprintf("journalctl --unit %s --no-pager -n %d", name, flagLines)
+
+	if flagSudo {
+		command = "sudo " + command
+	}
+
 	if flagFollow {
 		command += " -f"
 	}
