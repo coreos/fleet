@@ -22,8 +22,6 @@ import (
 	"github.com/coreos/fleet/log"
 )
 
-var ErrShutdown = errors.New("monitor told to shut down")
-
 func NewMonitor(ttl time.Duration) *Monitor {
 	return &Monitor{ttl, ttl / 2}
 }
@@ -36,16 +34,16 @@ type Monitor struct {
 // Monitor periodically checks the given Heart to make sure it
 // beats successfully. If the heartbeat check fails for any
 // reason, an error is returned. If the supplied channel is
-// closed, Monitor returns ErrShutdown.
-func (m *Monitor) Monitor(hrt heart.Heart, sdc <-chan struct{}) error {
+// closed, Monitor returns true and a nil error.
+func (m *Monitor) Monitor(hrt heart.Heart, sdc <-chan struct{}) (bool, error) {
 	ticker := time.Tick(m.ival)
 	for {
 		select {
 		case <-sdc:
-			return ErrShutdown
+			return true, nil
 		case <-ticker:
 			if _, err := check(hrt, m.TTL); err != nil {
-				return err
+				return false, err
 			}
 		}
 	}
