@@ -48,7 +48,7 @@ type AgentReconciler struct {
 // Run periodically attempts to reconcile the provided Agent until the stop
 // channel is closed. Run will also reconcile in reaction to events on the
 // AgentReconciler's rStream.
-func (ar *AgentReconciler) Run(a *Agent, stop chan bool) {
+func (ar *AgentReconciler) Run(a *Agent, stop <-chan struct{}) {
 	reconcile := func() {
 		start := time.Now()
 		ar.Reconcile(a)

@@ -61,8 +61,8 @@ type Server struct {
 
 	engineReconcileInterval time.Duration
 
-	killc chan bool      // used to signal monitor to shutdown server
-	stopc chan bool      // used to terminate all other goroutines
+	killc chan struct{}  // used to signal monitor to shutdown server
+	stopc chan struct{}  // used to terminate all other goroutines
 	wg    sync.WaitGroup // used to co-ordinate shutdown
 }
 
@@ -182,7 +182,7 @@ func (s *Server) Run() {
 	go s.Supervise()
 
 	log.Infof("Starting server components")
-	s.stopc = make(chan bool)
+	s.stopc = make(chan struct{})
 	s.wg = sync.WaitGroup{}
 	beatc := make(chan *unit.UnitStateHeartbeat)
 

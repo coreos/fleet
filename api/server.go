@@ -57,7 +57,7 @@ func (s *Server) Serve() {
 // Available switches the Server's HTTP handler from a generic 503 Unavailable
 // response to the actual API. Once the provided channel is closed, the API is
 // torn back down and 503 responses are served.
-func (s *Server) Available(stop chan bool) {
+func (s *Server) Available(stop <-chan struct{}) {
 	s.cur = s.api
 	<-stop
 	s.cur = unavailable
