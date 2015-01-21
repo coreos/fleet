@@ -17,8 +17,8 @@ package server
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
+	"sync"
 	"time"
 
 	etcd "github.com/coreos/fleet/Godeps/_workspace/src/github.com/coreos/etcd/client"
@@ -43,6 +43,8 @@ const (
 	// machineStateRefreshInterval is the amount of time the server will
 	// wait before each attempt to refresh the local machine state
 	machineStateRefreshInterval = time.Minute
+
+	shutdownTimeout = time.Minute
 )
 
 type Server struct {
@@ -53,13 +55,14 @@ type Server struct {
 	engine      *engine.Engine
 	mach        *machine.CoreOSMachine
 	hrt         heart.Heart
-	mon         *heart.Monitor
+	mon         *Monitor
 	api         *api.Server
 
 	engineReconcileInterval time.Duration
 
-	killc chan bool // used to signal monitor to shutdown server
-	stopc chan bool // used to terminate all other goroutines
+	killc chan bool      // used to signal monitor to shutdown server
+	stopc chan bool      // used to terminate all other goroutines
+	wg    sync.WaitGroup // used to co-ordinate shutdown
 }
 
 func New(cfg config.Config) (*Server, error) {
@@ -114,7 +117,10 @@ func New(cfg config.Config) (*Server, error) {
 	}
 
 	hrt := heart.New(reg, mach)
-	mon := heart.NewMonitor(agentTTL)
+	mon := &Monitor{
+		TTL:  agentTTL,
+		ival: agentTTL / 2,
+	}
 
 	apiServer := api.NewServer(listeners, api.NewServeMux(reg))
 	apiServer.Serve()
@@ -167,45 +173,66 @@ func (s *Server) Run() {
 		time.Sleep(sleep)
 	}
 
+	go s.Supervise()
+
 	log.Infof("Starting server components")
-
 	s.stopc = make(chan bool)
+	s.wg = sync.WaitGroup{}
+	beatc := make(chan *unit.UnitStateHeartbeat)
 
-	go s.Monitor()
-	go s.api.Available(s.stopc)
-	go s.mach.PeriodicRefresh(machineStateRefreshInterval, s.stopc)
-	go s.agent.Heartbeat(s.stopc)
-	go s.aReconciler.Run(s.agent, s.stopc)
-	go s.engine.Run(s.engineReconcileInterval, s.stopc)
-
-	beatchan := make(chan *unit.UnitStateHeartbeat)
-	go s.usGen.Run(beatchan, s.stopc)
-	go s.usPub.Run(beatchan, s.stopc)
-}
-
-// Monitor tracks the health of the Server and coordinates its shutdown. If the
-// Server is ever deemed unhealthy, the Server is restarted.
-func (s *Server) Monitor() {
-	err := s.mon.Monitor(s.hrt, s.killc)
-	s.stop()
-	switch {
-	case err == heart.ErrShutdown:
-		log.Infof("Server monitor triggered: %v", err)
-	case err != nil:
-		log.Errorf("Server monitor triggered: %v", err)
-		// Restart the server
-		s.Run()
-	default:
-		panic(fmt.Errorf("unexpected err from Monitor: %v", err))
+	for _, f := range []func(){
+		func() { s.api.Available(s.stopc) },
+		func() { s.mach.PeriodicRefresh(machineStateRefreshInterval, s.stopc) },
+		func() { s.agent.Heartbeat(s.stopc) },
+		func() { s.aReconciler.Run(s.agent, s.stopc) },
+		func() { s.engine.Run(s.engineReconcileInterval, s.stopc) },
+		func() { s.usGen.Run(beatc, s.stopc) },
+		func() { s.usPub.Run(beatc, s.stopc) },
+	} {
+		s.wg.Add(1)
+		go func() {
+			f()
+			s.wg.Done()
+		}()
 	}
 }
 
-// stop is used by Monitor to terminate all other server goroutines
-func (s *Server) stop() {
+// Supervise monitors the life of the Server and coordinates its shutdown.
+// A shutdown occurs when the monitor returns, either because a health check
+// fails or a user triggers a shutdown. If the shutdown is due to a health
+// check failure, the Server is restarted. Supervise will block shutdown until
+// all components have finished shutting down or a timeout occurs; if this
+// happens, the Server will not automatically be restarted.
+func (s *Server) Supervise() {
+	err := s.mon.Monitor(s.hrt, s.killc)
+	switch {
+	case err == ErrShutdown:
+		log.Infof("Server monitor triggered: %v", err)
+		err = nil
+	case err != nil:
+		log.Errorf("Server monitor triggered: %v", err)
+	default:
+		panic("unexpected nil err from Monitor")
+	}
 	close(s.stopc)
+	done := make(chan struct{})
+	go func() {
+		s.wg.Done()
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(shutdownTimeout):
+		log.Errorf("Timed out waiting for server to shut down")
+		err = nil
+	}
+	if err != nil {
+		log.Infof("Restarting server")
+		s.Run()
+	}
 }
 
-// Stop is used to gracefully terminate the server by triggering the Monitor
+// Stop is used to gracefully terminate the server by triggering the Monitor to shut down
 func (s *Server) Stop() {
 	close(s.killc)
 }
