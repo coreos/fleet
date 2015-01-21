@@ -37,7 +37,7 @@ type Monitor struct {
 // beats successfully. If the heartbeat check fails for any
 // reason, an error is returned. If the supplied channel is
 // closed, Monitor returns ErrShutdown.
-func (m *Monitor) Monitor(hrt heart.Heart, sdc <-chan bool) error {
+func (m *Monitor) Monitor(hrt heart.Heart, sdc <-chan struct{}) error {
 	ticker := time.Tick(m.ival)
 	for {
 		select {
