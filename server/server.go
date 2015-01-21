@@ -216,15 +216,11 @@ func (s *Server) Run() {
 // all components have finished shutting down or a timeout occurs; if this
 // happens, the Server will not automatically be restarted.
 func (s *Server) Supervise() {
-	err := s.mon.Monitor(s.hrt, s.killc)
-	switch {
-	case err == ErrShutdown:
-		log.Infof("Server monitor triggered: %v", err)
-		err = nil
-	case err != nil:
+	sd, err := s.mon.Monitor(s.hrt, s.killc)
+	if sd {
+		log.Infof("Server monitor triggered: told to shut down")
+	} else {
 		log.Errorf("Server monitor triggered: %v", err)
-	default:
-		panic("unexpected nil err from Monitor")
 	}
 	close(s.stopc)
 	done := make(chan struct{})
@@ -236,9 +232,9 @@ func (s *Server) Supervise() {
 	case <-done:
 	case <-time.After(shutdownTimeout):
 		log.Errorf("Timed out waiting for server to shut down")
-		err = nil
+		sd = true
 	}
-	if err != nil {
+	if !sd {
 		log.Infof("Restarting server")
 		s.Run()
 	}
