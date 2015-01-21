@@ -228,8 +228,8 @@ func (s *Server) Supervise() {
 	}
 }
 
-// Stop is used to gracefully terminate the server by triggering the Monitor to shut down
-func (s *Server) Stop() {
+// Kill is used to gracefully terminate the server by triggering the Monitor to shut down
+func (s *Server) Kill() {
 	close(s.killc)
 }
 
