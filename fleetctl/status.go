@@ -81,7 +81,7 @@ func runStatusUnits(args []string) (exit int) {
 		}
 
 		cmd := fmt.Sprintf("systemctl status -l %s", name)
-		if exit := runCommand(cmd, uMap[name].MachineID); exit != 0 {
+		if exit = runCommand(cmd, uMap[name].MachineID); exit != 0 {
 			break
 		}
 	}
