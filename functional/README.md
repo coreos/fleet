@@ -45,7 +45,7 @@ export PATH="${GOROOT}/bin:$PATH"
 cd fleet
 ssh-add functional/fixtures/id_rsa
 export GOPATH="$(pwd)/gopath"
-export FLEETD_BIN="$(pwd)/bin/fleet"
+export FLEETD_BIN="$(pwd)/bin/fleetd"
 export FLEETCTL_BIN="$(pwd)/bin/fleetctl"
 sudo -E env PATH=$PATH go test github.com/coreos/fleet/functional -v
 ```
