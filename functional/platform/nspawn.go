@@ -16,7 +16,6 @@ package platform
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -472,7 +471,7 @@ func (nc *nspawnCluster) ReplaceMember(m Member) (Member, error) {
 	// the nspawn container, so we must use systemctl
 	cmd := fmt.Sprintf("systemctl -M %s poweroff", label)
 	if _, stderr, _ := run(cmd); !strings.Contains(stderr, "Success") {
-		return nil, errors.New("poweroff failed")
+		return nil, fmt.Errorf("poweroff failed: %s", stderr)
 	}
 
 	var nm nspawnMember
