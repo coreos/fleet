@@ -20,6 +20,7 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"net"
 	"os"
 	"os/exec"
 	"path"
@@ -233,38 +234,35 @@ func (nc *nspawnCluster) prepFleet(dir string) error {
 		return err
 	}
 
-	sshKeySrc := path.Join("fixtures", "id_rsa.pub")
-	sshKeyDst := path.Join(dir, "opt", "fleet", "id_rsa.pub")
-	if err := copyFile(sshKeySrc, sshKeyDst, 0644); err != nil {
-		return err
-	}
-
 	fleetdBinDst := path.Join(dir, "opt", "fleet", "fleetd")
 	if err := copyFile(fleetdBinPath, fleetdBinDst, 0755); err != nil {
 		return err
 	}
 
-	cfgTmpl := `verbosity=2
-etcd_servers=["http://172.17.0.1:4001"]	
-etcd_key_prefix=%s
-`
-	cfgContents := fmt.Sprintf(cfgTmpl, nc.keyspace())
-	cfgPath := path.Join(dir, "opt", "fleet", "fleet.conf")
-	if err := ioutil.WriteFile(cfgPath, []byte(cfgContents), 0644); err != nil {
+	return nil
+}
+
+func (nc *nspawnCluster) buildConfigDrive(dir, ip string) error {
+	latest := path.Join(dir, "media/configdrive/openstack/latest")
+	userPath := path.Join(latest, "user_data")
+	if err := os.MkdirAll(latest, 0755); err != nil {
 		return err
 	}
 
-	socketContents := fmt.Sprintf("[Socket]\nListenStream=%d\n", fleetAPIPort)
-	socketPath := path.Join(dir, "opt", "fleet", "fleet.socket")
-	if err := ioutil.WriteFile(socketPath, []byte(socketContents), 0644); err != nil {
+	userFile, err := os.OpenFile(userPath, os.O_WRONLY|os.O_CREATE, 0644)
+	if err != nil {
 		return err
 	}
+	defer userFile.Close()
 
-	serviceContents := `[Service]
-ExecStart=/opt/fleet/fleetd -config /opt/fleet/fleet.conf
-`
-	servicePath := path.Join(dir, "opt", "fleet", "fleet.service")
-	if err := ioutil.WriteFile(servicePath, []byte(serviceContents), 0644); err != nil {
+	network := fmt.Sprintf(`[Match]
+Name=host0
+[Network]
+Address=%s/16
+`, ip)
+	etcd := "http://172.17.0.1:4001"
+	err = util.BuildCloudConfig(userFile, network, etcd, nc.keyspace(), false)
+	if err != nil {
 		return err
 	}
 
@@ -373,6 +371,11 @@ UseDNS no
 		return
 	}
 
+	if err = nc.buildConfigDrive(fsdir, nm.IP()); err != nil {
+		log.Printf("Failed building config drive: %v", err)
+		return
+	}
+
 	exec := strings.Join([]string{
 		"/usr/bin/systemd-nspawn",
 		"--bind-ro=/usr",
@@ -397,52 +400,22 @@ UseDNS no
 	}
 
 	alarm := time.After(10 * time.Second)
+	addr := fmt.Sprintf("%s:%d", nm.IP(), fleetAPIPort)
 	for {
 		select {
 		case <-alarm:
-			log.Printf("Timed out waiting for machine to start")
+			err = fmt.Errorf("Timed out waiting for machine to start")
+			log.Printf("Starting %s%s failed: %v", nc.name, nm.ID(), err)
 			return
 		default:
 		}
-		// TODO(jonboulle): probably a cleaner way to check here
-		if _, _, e := nc.nsenter(nm.pid, "systemd-analyze"); e == nil {
+		c, err := net.DialTimeout("tcp", addr, 100*time.Millisecond)
+		if err == nil {
+			c.Close()
 			break
 		}
 		time.Sleep(100 * time.Millisecond)
 
-	}
-
-	var stderr string
-	cmd := fmt.Sprintf("ip addr add %s/16 dev host0", nm.IP())
-	_, stderr, err = nc.nsenter(nm.pid, cmd)
-	if err != nil {
-		log.Printf("Failed adding IP address to container: %s", stderr)
-		return
-	}
-
-	cmd = fmt.Sprintf("update-ssh-keys -u core -a fleet /opt/fleet/id_rsa.pub")
-	_, _, err = nc.nsenter(nm.pid, cmd)
-	if err != nil {
-		log.Printf("Failed authorizing SSH key in container")
-		return
-	}
-
-	_, _, err = nc.nsenter(nm.pid, "ln -s /opt/fleet/fleet.socket /etc/systemd/system/fleet.socket")
-	if err != nil {
-		log.Printf("Failed symlinking fleet.socket: %v", err)
-		return
-	}
-
-	_, _, err = nc.nsenter(nm.pid, "ln -s /opt/fleet/fleet.service /etc/systemd/system/fleet.service")
-	if err != nil {
-		log.Printf("Failed symlinking fleet.service: %v", err)
-		return
-	}
-
-	_, _, err = nc.nsenter(nm.pid, "systemctl start fleet.socket fleet.service")
-	if err != nil {
-		log.Printf("Failed starting fleet units: %v", err)
-		return
 	}
 
 	return Member(&nm), nil
