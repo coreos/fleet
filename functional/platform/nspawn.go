@@ -296,7 +296,7 @@ func (nc *nspawnCluster) MemberCommand(m Member, args ...string) (string, error)
 
 func (nc *nspawnCluster) CreateMember() (m Member, err error) {
 	id := nc.nextID()
-	log.Printf("Creating nspawn machine %d in cluster %s", id, nc.name)
+	log.Printf("Creating nspawn machine %s in cluster %s", id, nc.name)
 	return nc.createMember(id)
 }
 
