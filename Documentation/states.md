@@ -8,7 +8,7 @@ There are currently three cluster-level states for a unit:
 
 Units may only transition directly between these states. For example, for a unit to transition from `inactive` to `launched` it must first go state `loaded`.
 
-The desired and last known states are exposed in the `DSTATE` and `STATE` columns of the output from `fleetctl show-schedule`.
+The desired and last known states are exposed in the `DSTATE` and `STATE` columns of the output from `fleetctl list-unit-files`.
 
 The `fleetctl` commands to act on units change the *desired state* of a unit. fleet itself is then responsible for performing the necessary state transitions to move a unit to the desired state. The following table explains the relationship between each `fleetctl` command and unit states.
 
