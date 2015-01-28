@@ -27,6 +27,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/coreos/fleet/Godeps/_workspace/src/code.google.com/p/go-uuid/uuid"
 	"github.com/coreos/fleet/Godeps/_workspace/src/github.com/coreos/go-systemd/dbus"
 
 	"github.com/coreos/fleet/functional/util"
@@ -58,9 +59,10 @@ func init() {
 }
 
 type nspawnMember struct {
-	id  string
-	ip  string
-	pid int
+	uuid string
+	id   string
+	ip   string
+	pid  int
 }
 
 func (m *nspawnMember) ID() string {
@@ -297,10 +299,16 @@ func (nc *nspawnCluster) CreateMember() (m Member, err error) {
 	return nc.createMember(id)
 }
 
+func newMachineID() string {
+	// drop the standard separators to match systemd
+	return strings.Replace(uuid.New(), "-", "", -1)
+}
+
 func (nc *nspawnCluster) createMember(id string) (m Member, err error) {
 	nm := nspawnMember{
-		id: id,
-		ip: fmt.Sprintf("172.17.1.%s", id),
+		uuid: newMachineID(),
+		id:   id,
+		ip:   fmt.Sprintf("172.17.1.%s", id),
 	}
 	nc.members[id] = nm
 
@@ -372,6 +380,7 @@ UseDNS no
 		"/usr/bin/systemd-nspawn",
 		"--bind-ro=/usr",
 		"-b",
+		"--uuid=" + nm.uuid,
 		fmt.Sprintf("-M %s%s", nc.name, nm.ID()),
 		"--capability=CAP_NET_BIND_SERVICE,CAP_SYS_TIME", // needed for ntpd
 		"--network-bridge fleet0",
