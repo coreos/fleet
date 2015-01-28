@@ -75,12 +75,11 @@ func TestDynamicClusterNewMemberUnitMigration(t *testing.T) {
 	// Kill one of the machines and make sure the unit migrates somewhere else
 	unit := "conflict.1.service"
 	oldMach := states[unit].Machine
-	oldIP := states[unit].IP
 	if _, _, err = cluster.Fleetctl(m0, "--strict-host-key-checking=false", "ssh", oldMach, "sudo", "systemctl", "stop", "fleet"); err != nil {
 		t.Fatal(err)
 	}
 	var mN platform.Member
-	if m0.IP() == oldIP {
+	if m0.ID() == oldMach {
 		mN = members[1]
 	} else {
 		mN = m0
