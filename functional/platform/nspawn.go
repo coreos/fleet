@@ -471,7 +471,11 @@ func (nc *nspawnCluster) ReplaceMember(m Member) (Member, error) {
 	// the nspawn container, so we must use systemctl
 	cmd := fmt.Sprintf("systemctl -M %s poweroff", label)
 	if _, stderr, _ := run(cmd); !strings.Contains(stderr, "Success") {
-		return nil, fmt.Errorf("poweroff failed: %s", stderr)
+		if strings.Contains(stderr, "Warning! D-Bus connection terminated.") {
+			log.Printf("poweroff failed: %s", stderr)
+		} else {
+			return nil, fmt.Errorf("poweroff failed: %s", stderr)
+		}
 	}
 
 	var nm nspawnMember
