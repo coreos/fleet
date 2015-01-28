@@ -98,7 +98,7 @@ func (r *EtcdRegistry) statesByMUSKey() (map[MUSKey]*unit.UnitState, error) {
 		Recursive: true,
 	}
 	res, err := r.etcd.Do(&req)
-	if err != nil && !isKeyNotFound(err) {
+	if err != nil && !etcd.IsKeyNotFound(err) {
 		return nil, err
 	}
 	if res != nil {
@@ -131,7 +131,7 @@ func (r *EtcdRegistry) getUnitState(uName, machID string) (*unit.UnitState, erro
 	res, err := r.etcd.Do(&req)
 
 	if err != nil {
-		if isKeyNotFound(err) {
+		if etcd.IsKeyNotFound(err) {
 			err = nil
 		}
 		return nil, err
@@ -184,7 +184,7 @@ func (r *EtcdRegistry) RemoveUnitState(jobName string) error {
 		Key: legacyKey,
 	}
 	_, err := r.etcd.Do(&req)
-	if err != nil && !isKeyNotFound(err) {
+	if err != nil && !etcd.IsKeyNotFound(err) {
 		return err
 	}
 
@@ -195,7 +195,7 @@ func (r *EtcdRegistry) RemoveUnitState(jobName string) error {
 		Recursive: true,
 	}
 	_, err = r.etcd.Do(&req)
-	if err != nil && !isKeyNotFound(err) {
+	if err != nil && !etcd.IsKeyNotFound(err) {
 		return err
 	}
 	return nil

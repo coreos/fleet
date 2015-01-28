@@ -12,14 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package registry
+package etcd
 
 import (
 	"reflect"
 	"testing"
 	"time"
-
-	"github.com/coreos/fleet/etcd"
 )
 
 func TestSerializeLeaseMetadata(t *testing.T) {
@@ -54,13 +52,13 @@ func TestSerializeLeaseMetadata(t *testing.T) {
 
 func TestLeaseFromResult(t *testing.T) {
 	tests := []struct {
-		res  etcd.Result
+		res  Result
 		want etcdLease
 	}{
 		// typical case
 		{
-			res: etcd.Result{
-				Node: &etcd.Node{
+			res: Result{
+				Node: &Node{
 					Key:           "/foo/bar",
 					ModifiedIndex: 12,
 					TTL:           9,
@@ -80,8 +78,8 @@ func TestLeaseFromResult(t *testing.T) {
 
 		// backwards-compatibility with unversioned engines
 		{
-			res: etcd.Result{
-				Node: &etcd.Node{
+			res: Result{
+				Node: &Node{
 					Key:           "/foo/bar",
 					ModifiedIndex: 12,
 					TTL:           9,
@@ -101,8 +99,8 @@ func TestLeaseFromResult(t *testing.T) {
 
 		// json decode failures are treated like a nonversioned lease
 		{
-			res: etcd.Result{
-				Node: &etcd.Node{
+			res: Result{
+				Node: &Node{
 					Key:           "/foo/bar",
 					ModifiedIndex: 12,
 					TTL:           9,

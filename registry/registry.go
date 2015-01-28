@@ -30,7 +30,10 @@ type EtcdRegistry struct {
 }
 
 func NewEtcdRegistry(client etcd.Client, keyPrefix string) *EtcdRegistry {
-	return &EtcdRegistry{client, keyPrefix}
+	return &EtcdRegistry{
+		etcd:      client,
+		keyPrefix: keyPrefix,
+	}
 }
 
 func marshal(obj interface{}) (string, error) {
@@ -47,14 +50,4 @@ func unmarshal(val string, obj interface{}) error {
 		return nil
 	}
 	return fmt.Errorf("unable to JSON-deserialize object: %s", err)
-}
-
-func isKeyNotFound(err error) bool {
-	e, ok := err.(etcd.Error)
-	return ok && e.ErrorCode == etcd.ErrorKeyNotFound
-}
-
-func isNodeExist(err error) bool {
-	e, ok := err.(etcd.Error)
-	return ok && e.ErrorCode == etcd.ErrorNodeExist
 }
