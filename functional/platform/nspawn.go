@@ -66,7 +66,7 @@ type nspawnMember struct {
 }
 
 func (m *nspawnMember) ID() string {
-	return string(m.id)
+	return m.uuid
 }
 
 func (m *nspawnMember) IP() string {
