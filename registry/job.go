@@ -40,7 +40,7 @@ func (r *EtcdRegistry) Schedule() ([]job.ScheduledUnit, error) {
 
 	res, err := r.etcd.Do(&req)
 	if err != nil {
-		if isKeyNotFound(err) {
+		if etcd.IsKeyNotFound(err) {
 			err = nil
 		}
 		return nil, err
@@ -96,7 +96,7 @@ func (r *EtcdRegistry) Units() ([]job.Unit, error) {
 
 	res, err := r.etcd.Do(&req)
 	if err != nil {
-		if isKeyNotFound(err) {
+		if etcd.IsKeyNotFound(err) {
 			err = nil
 		}
 		return nil, err
@@ -139,7 +139,7 @@ func (r *EtcdRegistry) Unit(name string) (*job.Unit, error) {
 
 	res, err := r.etcd.Do(&req)
 	if err != nil {
-		if isKeyNotFound(err) {
+		if etcd.IsKeyNotFound(err) {
 			err = nil
 		}
 		return nil, err
@@ -190,7 +190,7 @@ func (r *EtcdRegistry) ScheduledUnit(name string) (*job.ScheduledUnit, error) {
 
 	res, err := r.etcd.Do(&req)
 	if err != nil {
-		if isKeyNotFound(err) {
+		if etcd.IsKeyNotFound(err) {
 			err = nil
 		}
 		return nil, err
@@ -222,7 +222,7 @@ func (r *EtcdRegistry) UnscheduleUnit(name, machID string) error {
 	}
 
 	_, err := r.etcd.Do(&req)
-	if isKeyNotFound(err) {
+	if etcd.IsKeyNotFound(err) {
 		err = nil
 	}
 
@@ -297,7 +297,7 @@ func (r *EtcdRegistry) DestroyUnit(name string) error {
 
 	_, err := r.etcd.Do(&req)
 	if err != nil {
-		if isKeyNotFound(err) {
+		if etcd.IsKeyNotFound(err) {
 			err = errors.New("job does not exist")
 		}
 
@@ -330,7 +330,7 @@ func (r *EtcdRegistry) CreateUnit(u *job.Unit) (err error) {
 
 	_, err = r.etcd.Do(&req)
 	if err != nil {
-		if isNodeExist(err) {
+		if etcd.IsNodeExist(err) {
 			err = errors.New("job already exists")
 		}
 		return

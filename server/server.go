@@ -95,10 +95,11 @@ func New(cfg config.Config) (*Server, error) {
 	a := agent.New(mgr, gen, reg, mach, agentTTL)
 
 	rStream := registry.NewEtcdEventStream(eClient, cfg.EtcdKeyPrefix)
+	lManager := etcd.NewLeaseManager(eClient, cfg.EtcdKeyPrefix)
 
 	ar := agent.NewReconciler(reg, rStream)
 
-	e := engine.New(reg, rStream, mach)
+	e := engine.New(reg, lManager, rStream, mach)
 
 	listeners, err := activation.Listeners(false)
 	if err != nil {

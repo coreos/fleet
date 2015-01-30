@@ -66,7 +66,7 @@ func (t *testEtcdClient) Wait(req etcd.Action, ch <-chan struct{}) (*etcd.Result
 }
 
 func TestUnitStatePaths(t *testing.T) {
-	r := &EtcdRegistry{nil, "/fleet/"}
+	r := &EtcdRegistry{etcd: nil, keyPrefix: "/fleet/"}
 	j := "foo.service"
 	want := "/fleet/state/foo.service"
 	got := r.legacyUnitStatePath(j)
@@ -83,7 +83,7 @@ func TestUnitStatePaths(t *testing.T) {
 
 func TestSaveUnitState(t *testing.T) {
 	e := &testEtcdClient{}
-	r := &EtcdRegistry{e, "/fleet/"}
+	r := &EtcdRegistry{etcd: e, keyPrefix: "/fleet/"}
 	j := "foo.service"
 	mID := "mymachine"
 	us := unit.NewUnitState("abc", "def", "ghi", mID)
@@ -129,7 +129,7 @@ func TestSaveUnitState(t *testing.T) {
 
 func TestRemoveUnitState(t *testing.T) {
 	e := &testEtcdClient{}
-	r := &EtcdRegistry{e, "/fleet/"}
+	r := &EtcdRegistry{etcd: e, keyPrefix: "/fleet/"}
 	j := "foo.service"
 	err := r.RemoveUnitState(j)
 	if err != nil {
@@ -162,7 +162,7 @@ func TestRemoveUnitState(t *testing.T) {
 		{[]error{nil, errors.New("ur registry don't work")}, true},
 	} {
 		e = &testEtcdClient{err: tt.errs}
-		r = &EtcdRegistry{e, "/fleet"}
+		r = &EtcdRegistry{etcd: e, keyPrefix: "/fleet"}
 		err = r.RemoveUnitState("foo.service")
 		if (err != nil) != tt.fail {
 			t.Errorf("case %d: unexpected error state calling UnitStates(): got %v, want %v", i, err, tt.fail)
@@ -362,7 +362,7 @@ func TestGetUnitState(t *testing.T) {
 			res: []*etcd.Result{tt.res},
 			err: []error{tt.err},
 		}
-		r := &EtcdRegistry{e, "/fleet/"}
+		r := &EtcdRegistry{etcd: e, keyPrefix: "/fleet/"}
 		j := "foo.service"
 		us, err := r.getUnitState(j, "XXX")
 		if tt.wantErr != (err != nil) {
@@ -442,7 +442,7 @@ func TestUnitStates(t *testing.T) {
 	e := &testEtcdClient{
 		res: []*etcd.Result{res2},
 	}
-	r := &EtcdRegistry{e, "/fleet/"}
+	r := &EtcdRegistry{etcd: e, keyPrefix: "/fleet/"}
 
 	got, err := r.UnitStates()
 	if err != nil {
@@ -477,7 +477,7 @@ func TestUnitStates(t *testing.T) {
 		{[]error{errors.New("ur registry don't work")}, true},
 	} {
 		e = &testEtcdClient{err: tt.errs}
-		r = &EtcdRegistry{e, "/fleet"}
+		r = &EtcdRegistry{etcd: e, keyPrefix: "/fleet"}
 		got, err = r.UnitStates()
 		if (err != nil) != tt.fail {
 			t.Errorf("case %d: unexpected error state calling UnitStates(): got %v, want %v", i, err, tt.fail)

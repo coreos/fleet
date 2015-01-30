@@ -29,7 +29,7 @@ import (
 func (r *EtcdRegistry) LatestDaemonVersion() (*semver.Version, error) {
 	machs, err := r.Machines()
 	if err != nil {
-		if isKeyNotFound(err) {
+		if etcd.IsKeyNotFound(err) {
 			err = nil
 		}
 		return nil, err
@@ -56,7 +56,7 @@ func (r *EtcdRegistry) EngineVersion() (int, error) {
 	if err != nil {
 		// no big deal, either the cluster is new or is just
 		// upgrading from old unversioned code
-		if isKeyNotFound(err) {
+		if etcd.IsKeyNotFound(err) {
 			err = nil
 		}
 		return 0, err
@@ -82,7 +82,7 @@ func (r *EtcdRegistry) UpdateEngineVersion(from, to int) error {
 	_, err := r.etcd.Do(req)
 	if err == nil {
 		return nil
-	} else if !isKeyNotFound(err) {
+	} else if !etcd.IsKeyNotFound(err) {
 		return err
 	}
 

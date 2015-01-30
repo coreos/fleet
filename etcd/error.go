@@ -46,3 +46,13 @@ func unmarshalFailedResponse(resp *http.Response, body []byte) (*Result, error) 
 
 	return nil, etcdErr
 }
+
+func IsKeyNotFound(err error) bool {
+	e, ok := err.(Error)
+	return ok && e.ErrorCode == ErrorKeyNotFound
+}
+
+func IsNodeExist(err error) bool {
+	e, ok := err.(Error)
+	return ok && e.ErrorCode == ErrorNodeExist
+}

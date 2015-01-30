@@ -36,7 +36,7 @@ func (r *EtcdRegistry) Machines() (machines []machine.MachineState, err error) {
 
 	resp, err := r.etcd.Do(&req)
 	if err != nil {
-		if isKeyNotFound(err) {
+		if etcd.IsKeyNotFound(err) {
 			err = nil
 		}
 		return
@@ -99,7 +99,7 @@ func (r *EtcdRegistry) RemoveMachineState(machID string) error {
 		Key: path.Join(r.keyPrefix, machinePrefix, machID, "object"),
 	}
 	_, err := r.etcd.Do(&req)
-	if isKeyNotFound(err) {
+	if etcd.IsKeyNotFound(err) {
 		err = nil
 	}
 	return err

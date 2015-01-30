@@ -21,9 +21,9 @@ import (
 	"time"
 
 	"github.com/coreos/fleet/Godeps/_workspace/src/github.com/coreos/go-semver/semver"
-
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/machine"
+	"github.com/coreos/fleet/pkg/lease"
 	"github.com/coreos/fleet/unit"
 )
 
@@ -366,19 +366,19 @@ func (l *fakeLease) Release() error {
 
 func NewFakeLeaseRegistry() *FakeLeaseRegistry {
 	return &FakeLeaseRegistry{
-		leaseMap: make(map[string]Lease),
+		leaseMap: make(map[string]lease.Lease),
 	}
 }
 
 type FakeLeaseRegistry struct {
-	leaseMap map[string]Lease
+	leaseMap map[string]lease.Lease
 }
 
-func (fl *FakeLeaseRegistry) GetLease(name string) (Lease, error) {
+func (fl *FakeLeaseRegistry) GetLease(name string) (lease.Lease, error) {
 	return fl.leaseMap[name], nil
 }
 
-func (fl *FakeLeaseRegistry) AcquireLease(name, machID string, ver int, ttl time.Duration) (Lease, error) {
+func (fl *FakeLeaseRegistry) AcquireLease(name, machID string, ver int, ttl time.Duration) (lease.Lease, error) {
 	if _, ok := fl.leaseMap[name]; ok {
 		return nil, errors.New("already exists")
 	}
@@ -395,7 +395,7 @@ func (fl *FakeLeaseRegistry) AcquireLease(name, machID string, ver int, ttl time
 	return l, nil
 }
 
-func (fl *FakeLeaseRegistry) StealLease(name, machID string, ver int, ttl time.Duration, idx uint64) (Lease, error) {
+func (fl *FakeLeaseRegistry) StealLease(name, machID string, ver int, ttl time.Duration, idx uint64) (lease.Lease, error) {
 	if idx != 0 {
 		panic("unable to test StealLease with index other than zero")
 	}

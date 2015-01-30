@@ -42,7 +42,7 @@ func (r *EtcdRegistry) storeOrGetUnitFile(u unit.UnitFile) (err error) {
 	}
 	_, err = r.etcd.Do(&req)
 	// unit is already stored
-	if err != nil && isNodeExist(err) {
+	if err != nil && etcd.IsNodeExist(err) {
 		// TODO(jonboulle): verify more here?
 		err = nil
 	}
@@ -57,7 +57,7 @@ func (r *EtcdRegistry) getUnitByHash(hash unit.Hash) *unit.UnitFile {
 	}
 	resp, err := r.etcd.Do(&req)
 	if err != nil {
-		if isKeyNotFound(err) {
+		if etcd.IsKeyNotFound(err) {
 			err = nil
 		}
 		return nil
