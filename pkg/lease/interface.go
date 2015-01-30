@@ -38,7 +38,7 @@ type Lease interface {
 	// be correct.
 	MachineID() string
 
-	// Version returns the current version at which the lesse is operating.
+	// Version returns the current version at which the lessee is operating.
 	// This value has the same correctness guarantees as MachineID.
 	// It is up to the caller to determine what this Version means.
 	Version() int
