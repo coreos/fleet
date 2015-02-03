@@ -53,6 +53,12 @@ ListenStream=127.0.0.1:49153
 
 After you've written the file, call `systemctl daemon-reload` to load the new drop-in, followed by `systemctl stop fleet.service; systemctl restart fleet.socket; systemctl start fleet.service`.
 
+Once the socket is running, the fleet API will be available at `http://${ListenStream}/fleet/v1`, where `${ListenStream}` is the value of the `ListenStream` option used in your socket file.
+This endpoint is accessible directly using tools such as curl and wget, or you can use fleetctl like so: `fleetctl --driver API --endpoint http://${ListenStream} <command>`.
+For more information, see the [official API documentation][api-doc].
+
+[api-doc]: https://github.com/coreos/fleet/blob/master/Documentation/api-v1.md
+
 # Configuration
 
 The `fleetd` daemon uses two sources for configuration parameters:
