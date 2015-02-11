@@ -227,30 +227,28 @@ func (nc *nspawnCluster) prepCluster() (err error) {
 	return nil
 }
 
-func (nc *nspawnCluster) prepFleet(dir, ip, sshKeySrc, fleetdBinSrc string) error {
+func (nc *nspawnCluster) prepFleet(dir string) error {
 	cmd := fmt.Sprintf("mkdir -p %s/opt/fleet", dir)
 	if _, _, err := run(cmd); err != nil {
 		return err
 	}
 
-	relSSHKeyDst := path.Join("opt", "fleet", "id_rsa.pub")
-	sshKeyDst := path.Join(dir, relSSHKeyDst)
+	sshKeySrc := path.Join("fixtures", "id_rsa.pub")
+	sshKeyDst := path.Join(dir, "opt", "fleet", "id_rsa.pub")
 	if err := copyFile(sshKeySrc, sshKeyDst, 0644); err != nil {
 		return err
 	}
 
 	fleetdBinDst := path.Join(dir, "opt", "fleet", "fleetd")
-	if err := copyFile(fleetdBinSrc, fleetdBinDst, 0755); err != nil {
+	if err := copyFile(fleetdBinPath, fleetdBinDst, 0755); err != nil {
 		return err
 	}
 
 	cfgTmpl := `verbosity=2
 etcd_servers=["http://172.17.0.1:4001"]	
 etcd_key_prefix=%s
-public_ip=%s
-authorized_keys_file=%s
 `
-	cfgContents := fmt.Sprintf(cfgTmpl, nc.keyspace(), ip, relSSHKeyDst)
+	cfgContents := fmt.Sprintf(cfgTmpl, nc.keyspace())
 	cfgPath := path.Join(dir, "opt", "fleet", "fleet.conf")
 	if err := ioutil.WriteFile(cfgPath, []byte(cfgContents), 0644); err != nil {
 		return err
@@ -370,8 +368,7 @@ UseDNS no
 		return
 	}
 
-	sshKeySrc := path.Join("fixtures", "id_rsa.pub")
-	if err = nc.prepFleet(fsdir, nm.IP(), sshKeySrc, fleetdBinPath); err != nil {
+	if err = nc.prepFleet(fsdir); err != nil {
 		log.Printf("Failed preparing fleetd in filesystem: %v", err)
 		return
 	}
