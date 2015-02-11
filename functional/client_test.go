@@ -36,11 +36,11 @@ func TestKnownHostsVerification(t *testing.T) {
 		t.Fatal(err)
 	}
 	m0 := members[0]
-	machines, err := cluster.WaitForNMachines(m0, 2)
+	m1 := members[1]
+	_, err = cluster.WaitForNMachines(m0, 2)
 	if err != nil {
 		t.Fatal(err)
 	}
-	machine := machines[0]
 
 	tmp, err := ioutil.TempFile(os.TempDir(), "known-hosts")
 	if err != nil {
@@ -51,23 +51,22 @@ func TestKnownHostsVerification(t *testing.T) {
 
 	khFile := tmp.Name()
 
-	if stdout, stderr, err := cluster.FleetctlWithInput(m0, "yes", "--strict-host-key-checking=true", fmt.Sprintf("--known-hosts-file=%s", khFile), "ssh", machine, "uptime"); err != nil {
+	if stdout, stderr, err := cluster.FleetctlWithInput(m0, "yes", "--strict-host-key-checking=true", fmt.Sprintf("--known-hosts-file=%s", khFile), "ssh", m1.ID(), "uptime"); err != nil {
 		t.Errorf("Unable to SSH into fleet machine: \nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)
 	}
 
-	_, err = cluster.ReplaceMember(members[1])
+	m1, err = cluster.ReplaceMember(members[1])
 	if err != nil {
 		t.Fatalf("Failed replacing machine: %v", err)
 	}
 
-	machines, err = cluster.WaitForNMachines(m0, 2)
+	_, err = cluster.WaitForNMachines(m0, 2)
 	if err != nil {
 		t.Fatal(err)
 	}
-	machine = machines[0]
 
 	// SSH'ing to the cluster member should now fail with a host key mismatch
-	if _, _, err := cluster.Fleetctl(m0, "--strict-host-key-checking=true", fmt.Sprintf("--known-hosts-file=%s", khFile), "ssh", machine, "uptime"); err == nil {
+	if _, _, err := cluster.Fleetctl(m0, "--strict-host-key-checking=true", fmt.Sprintf("--known-hosts-file=%s", khFile), "ssh", m1.ID(), "uptime"); err == nil {
 		t.Errorf("Expected error while SSH'ing to fleet machine")
 	}
 
@@ -77,7 +76,7 @@ func TestKnownHostsVerification(t *testing.T) {
 	}
 
 	// And SSH should work again
-	if stdout, stderr, err := cluster.FleetctlWithInput(m0, "yes", "--strict-host-key-checking=true", fmt.Sprintf("--known-hosts-file=%s", khFile), "ssh", machine, "uptime"); err != nil {
+	if stdout, stderr, err := cluster.FleetctlWithInput(m0, "yes", "--strict-host-key-checking=true", fmt.Sprintf("--known-hosts-file=%s", khFile), "ssh", m1.ID(), "uptime"); err != nil {
 		t.Errorf("Unable to SSH into fleet machine: \nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)
 	}
 
