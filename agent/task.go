@@ -15,12 +15,9 @@
 package agent
 
 import (
-	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/coreos/fleet/job"
-	"github.com/coreos/fleet/pkg"
 )
 
 const (
@@ -38,33 +35,25 @@ const (
 	taskReasonPurgingAgent               = "purging agent"
 )
 
-type taskChain struct {
-	unit  *job.Unit
-	tasks []task
-}
-
-func newTaskChain(u *job.Unit, t ...task) taskChain {
-	return taskChain{
-		unit:  u,
-		tasks: t,
-	}
-}
-
-func (tc *taskChain) Add(t task) {
-	tc.tasks = append(tc.tasks, t)
-}
-
-func (tc taskChain) String() (out string) {
-	tasks := make([]string, len(tc.tasks))
-	for i, t := range tc.tasks {
-		tasks[i] = fmt.Sprintf("(%s, %q)", t.typ, t.reason)
-	}
-	return fmt.Sprintf("{%s %s}", tc.unit.Name, strings.Join(tasks, ", "))
-}
-
 type task struct {
 	typ    string
 	reason string
+	unit   *job.Unit
+}
+
+var taskTypeSortOrder = map[string]int{
+	taskTypeUnloadUnit: 1,
+	taskTypeLoadUnit:   2,
+	taskTypeStopUnit:   3,
+	taskTypeStartUnit:  4,
+}
+
+type sortableTasks []task
+
+func (st sortableTasks) Len() int      { return len(st) }
+func (st sortableTasks) Swap(i, j int) { st[i], st[j] = st[j], st[i] }
+func (st sortableTasks) Less(i, j int) bool {
+	return taskTypeSortOrder[st[i].typ] < taskTypeSortOrder[st[j].typ]
 }
 
 type taskResult struct {
@@ -73,72 +62,50 @@ type taskResult struct {
 }
 
 type taskManager struct {
-	processing pkg.Set
-	mapper     taskMapperFunc
+	mapper taskMapperFunc
 }
 
 func newTaskManager() *taskManager {
 	return &taskManager{
-		processing: pkg.NewUnsafeSet(),
-		mapper:     mapTaskToFunc,
+		mapper: mapTaskToFunc,
 	}
 }
 
-// Do attempts to complete a task against an Agent. If the task is unable
-// to be attempted, an error is returned. A task is unable to be attempted
-// if there exists in-flight any task with the same unit name. The returned
-// error channel will be non-nil only if the task could be attempted. The
-// channel will be closed when the task completes. If the task failed, an
-// error will be sent to the channel. Do is not threadsafe.
-func (tm *taskManager) Do(tc taskChain, a *Agent) (chan taskResult, error) {
-	if tc.unit == nil {
-		return nil, errors.New("unable to handle task with nil Job")
-	}
-
-	if tm.processing.Contains(tc.unit.Name) {
-		return nil, errors.New("task already in flight")
-	}
-
-	// Do is not threadsafe due to the race between Contains and Add
-	tm.processing.Add(tc.unit.Name)
-
-	reschan := make(chan taskResult, len(tc.tasks))
-	go func() {
-		defer tm.processing.Remove(tc.unit.Name)
-		for _, t := range tc.tasks {
-			t := t
-			res := taskResult{
-				task: t,
-			}
-
-			taskFunc, err := tm.mapper(t, tc.unit, a)
-			if err != nil {
-				res.err = err
-			} else {
-				res.err = taskFunc()
-			}
-
-			reschan <- res
+// Do attempts to complete a series of tasks against an Agent. Each task
+// is executed in order. If any task is unable to be attempted, or is able
+// to be attempted but fails, Do will halt execution. The returned slice
+// will contain a taskResult for every task that was attempted. Do is not
+// threadsafe.
+func (tm *taskManager) Do(tasks []task, a *Agent) []taskResult {
+	results := make([]taskResult, 0, len(tasks))
+	for _, t := range tasks {
+		taskFunc, err := tm.mapper(t, a)
+		if err == nil {
+			err = taskFunc()
 		}
 
-		close(reschan)
-	}()
+		results = append(results, taskResult{task: t, err: err})
 
-	return reschan, nil
+		if err != nil {
+			break
+		}
+	}
+
+	return results
 }
 
-type taskMapperFunc func(t task, u *job.Unit, a *Agent) (func() error, error)
+type taskMapperFunc func(t task, a *Agent) (func() error, error)
 
-func mapTaskToFunc(t task, u *job.Unit, a *Agent) (fn func() error, err error) {
+func mapTaskToFunc(t task, a *Agent) (fn func() error, err error) {
 	switch t.typ {
 	case taskTypeLoadUnit:
-		fn = func() error { return a.loadUnit(u) }
+		fn = func() error { return a.loadUnit(t.unit) }
 	case taskTypeUnloadUnit:
-		fn = func() error { a.unloadUnit(u.Name); return nil }
+		fn = func() error { a.unloadUnit(t.unit.Name); return nil }
 	case taskTypeStartUnit:
-		fn = func() error { a.startUnit(u.Name); return nil }
+		fn = func() error { a.startUnit(t.unit.Name); return nil }
 	case taskTypeStopUnit:
-		fn = func() error { a.stopUnit(u.Name); return nil }
+		fn = func() error { a.stopUnit(t.unit.Name); return nil }
 	default:
 		err = fmt.Errorf("unrecognized task type %q", t.typ)
 	}
