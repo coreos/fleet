@@ -44,25 +44,12 @@ func (r *EtcdRegistry) Machines() (machines []machine.MachineState, err error) {
 
 	for _, node := range resp.Node.Nodes {
 		var mach machine.MachineState
-		var metadata map[string]string
-
-		for _, obj := range node.Nodes {
-			if strings.HasSuffix(obj.Key, "/object") {
-				err = unmarshal(obj.Value, &mach)
-				if err != nil {
-					return
-				}
-			} else if strings.HasSuffix(obj.Key, "/metadata") {
-				// Load metadata into a separate map to avoid stepping on it when deserializing the object key
-				metadata = make(map[string]string, len(obj.Nodes))
-				for _, mdnode := range obj.Nodes {
-					metadata[path.Base(mdnode.Key)] = mdnode.Value
-				}
-			}
+		mach, err = readMachineState(&node)
+		if err != nil {
+			return
 		}
 
 		if mach.ID != "" {
-			mach.Metadata = mergeMetadata(mach.Metadata, metadata)
 			machines = append(machines, mach)
 		}
 	}
@@ -101,6 +88,21 @@ func (r *EtcdRegistry) SetMachineState(ms machine.MachineState, ttl time.Duratio
 	}
 
 	return resp.Node.ModifiedIndex, nil
+}
+
+func (r *EtcdRegistry) MachineState(machID string) (machine.MachineState, error) {
+	req := etcd.Get{
+		Key:       path.Join(r.keyPrefix, machinePrefix, machID),
+		Sorted:    true,
+		Recursive: true,
+	}
+
+	resp, err := r.etcd.Do(&req)
+	if err != nil {
+		return machine.MachineState{}, err
+	}
+
+	return readMachineState(resp.Node)
 }
 
 func (r *EtcdRegistry) SetMachineMetadata(machID string, key string, value string) error {
@@ -154,4 +156,27 @@ func mergeMetadata(machineMetadata, dynamicMetadata map[string]string) map[strin
 		}
 	}
 	return finalMetadata
+}
+
+// readMachineState reads machine state from an etcd node
+func readMachineState(node *etcd.Node) (mach machine.MachineState, err error) {
+	var metadata map[string]string
+
+	for _, obj := range node.Nodes {
+		if strings.HasSuffix(obj.Key, "/object") {
+			err = unmarshal(obj.Value, &mach)
+			if err != nil {
+				return
+			}
+		} else if strings.HasSuffix(obj.Key, "/metadata") {
+			// Load metadata into a separate map to avoid stepping on it when deserializing the object key
+			metadata = make(map[string]string, len(obj.Nodes))
+			for _, mdnode := range obj.Nodes {
+				metadata[path.Base(mdnode.Key)] = mdnode.Value
+			}
+		}
+	}
+
+	mach.Metadata = mergeMetadata(mach.Metadata, metadata)
+	return
 }

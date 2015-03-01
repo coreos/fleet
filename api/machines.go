@@ -125,7 +125,7 @@ func (mr *machinesResource) patch(rw http.ResponseWriter, req *http.Request) {
 			}
 		}
 	}
-	sendResponse(rw, http.StatusNoContent, "")
+	sendResponse(rw, http.StatusNoContent, nil)
 }
 
 func getMachinePage(cAPI client.API, tok PageToken) (*schema.MachinePage, error) {
