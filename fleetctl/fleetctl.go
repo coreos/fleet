@@ -101,6 +101,7 @@ var (
 		NoBlock       bool
 		BlockAttempts int
 		Fields        string
+		SSHPort       int
 	}{}
 
 	// used to cache MachineStates
