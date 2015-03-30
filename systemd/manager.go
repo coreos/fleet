@@ -98,8 +98,7 @@ func hashUnitFile(loc string) (unit.Hash, error) {
 }
 
 // Load writes the given Unit to disk, subscribing to relevant dbus
-// events, caching the Unit's Hash, and, if necessary, instructing the systemd
-// daemon to reload.
+// events and caching the Unit's Hash.
 func (m *systemdUnitManager) Load(name string, u unit.UnitFile) error {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
@@ -108,15 +107,11 @@ func (m *systemdUnitManager) Load(name string, u unit.UnitFile) error {
 		return err
 	}
 	m.hashes[name] = u.Hash()
-	if m.unitRequiresDaemonReload(name) {
-		return m.ReloadUnitFiles()
-	}
 	return nil
 }
 
 // Unload removes the indicated unit from the filesystem, deletes its
-// associated Hash from the cache, clears its unit status in systemd, and
-// performs a systemd daemon-reload
+// associated Hash from the cache and clears its unit status in systemd
 func (m *systemdUnitManager) Unload(name string) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
@@ -181,15 +176,6 @@ func (m *systemdUnitManager) readUnit(name string) (string, error) {
 		return string(contents), nil
 	}
 	return "", fmt.Errorf("no unit file at local path %s", path)
-}
-
-func (m *systemdUnitManager) unitRequiresDaemonReload(name string) bool {
-	prop, err := m.systemd.GetUnitProperty(name, "NeedDaemonReload")
-	if prop == nil || err != nil {
-		return false
-	}
-
-	return prop.Value.Value().(bool)
 }
 
 func (m *systemdUnitManager) ReloadUnitFiles() error {
