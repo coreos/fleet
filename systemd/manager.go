@@ -111,7 +111,7 @@ func (m *systemdUnitManager) Load(name string, u unit.UnitFile) error {
 	}
 	m.hashes[name] = u.Hash()
 	if m.unitRequiresDaemonReload(name) {
-		return m.daemonReload()
+		return m.ReloadUnitFiles()
 	}
 	return nil
 }
@@ -194,7 +194,7 @@ func (m *systemdUnitManager) unitRequiresDaemonReload(name string) bool {
 	return prop.Value.Value().(bool)
 }
 
-func (m *systemdUnitManager) daemonReload() error {
+func (m *systemdUnitManager) ReloadUnitFiles() error {
 	log.Infof("Instructing systemd to reload units")
 	return m.systemd.Reload()
 }
