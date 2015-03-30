@@ -173,8 +173,11 @@ func (ar *AgentReconciler) calculateTasksForUnits(dState *AgentState, cState uni
 		jobs.Add(dName)
 	}
 
+	sorted := sort.StringSlice(jobs.Values())
+	sorted.Sort()
+
 	var tasks []task
-	for _, name := range jobs.Values() {
+	for _, name := range sorted {
 		tasks = append(tasks, ar.calculateTasksForUnit(dState, cState, name)...)
 	}
 
