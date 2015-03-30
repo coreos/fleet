@@ -84,6 +84,10 @@ func (a *Agent) heartbeatJobs(ttl time.Duration, stop chan bool) {
 	}
 }
 
+func (a *Agent) reloadUnitFiles() error {
+	return a.um.ReloadUnitFiles()
+}
+
 func (a *Agent) loadUnit(u *job.Unit) error {
 	a.cache.setTargetState(u.Name, job.JobStateLoaded)
 	a.uGen.Subscribe(u.Name)

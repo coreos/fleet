@@ -176,7 +176,20 @@ func (ar *AgentReconciler) calculateTasksForUnits(dState *AgentState, cState uni
 		tasks = append(tasks, ar.calculateTasksForUnit(dState, cState, name)...)
 	}
 
+	if len(tasks) == 0 {
+		return nil
+	}
+
+	reloadTask := task{typ: taskTypeReloadUnitFiles, reason: taskReasonAlwaysReloadUnitFiles}
+	tasks = append(tasks, reloadTask)
+
 	sort.Sort(sortableTasks(tasks))
+
+	// reload unnecessary if no UnloadUnit/LoadUnit tasks
+	if tasks[0].typ == taskTypeReloadUnitFiles {
+		tasks = tasks[1:]
+	}
+
 	return tasks
 }
 
@@ -305,10 +318,15 @@ func (ar *AgentReconciler) launchTasks(tasks []task, a *Agent) {
 	log.Debugf("AgentReconciler attempting tasks %s", tasks)
 	results := ar.tManager.Do(tasks, a)
 	for _, res := range results {
+		unitName := "N/A"
+		if res.task.unit != nil {
+			unitName = res.task.unit.Name
+		}
+
 		if res.err == nil {
-			log.Infof("AgentReconciler completed task: type=%s job=%s reason=%q", res.task.typ, res.task.unit.Name, res.task.reason)
+			log.Infof("AgentReconciler completed task: type=%s job=%s reason=%q", res.task.typ, unitName, res.task.reason)
 		} else {
-			log.Infof("AgentReconciler task failed: type=%s job=%s reason=%q err=%v", res.task.typ, res.task.unit.Name, res.task.reason, res.err)
+			log.Infof("AgentReconciler task failed: type=%s job=%s reason=%q err=%v", res.task.typ, unitName, res.task.reason, res.err)
 		}
 	}
 }
