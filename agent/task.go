@@ -23,10 +23,11 @@ import (
 )
 
 const (
-	taskTypeLoadUnit   = "LoadUnit"
-	taskTypeUnloadUnit = "UnloadUnit"
-	taskTypeStartUnit  = "StartUnit"
-	taskTypeStopUnit   = "StopUnit"
+	taskTypeLoadUnit        = "LoadUnit"
+	taskTypeUnloadUnit      = "UnloadUnit"
+	taskTypeStartUnit       = "StartUnit"
+	taskTypeStopUnit        = "StopUnit"
+	taskTypeReloadUnitFiles = "ReloadUnitFiles"
 
 	taskReasonScheduledButNotRunnable    = "unit scheduled locally but unable to run"
 	taskReasonScheduledButUnloaded       = "unit scheduled here but not loaded"
@@ -35,6 +36,7 @@ const (
 	taskReasonLoadedDesiredStateLaunched = "unit currently loaded but desired state is launched"
 	taskReasonLaunchedDesiredStateLoaded = "unit currently launched but desired state is loaded"
 	taskReasonPurgingAgent               = "purging agent"
+	taskReasonAlwaysReloadUnitFiles      = "always reload unit files"
 )
 
 type task struct {
@@ -44,10 +46,11 @@ type task struct {
 }
 
 var taskTypeSortOrder = map[string]int{
-	taskTypeUnloadUnit: 1,
-	taskTypeLoadUnit:   2,
-	taskTypeStopUnit:   3,
-	taskTypeStartUnit:  4,
+	taskTypeUnloadUnit:      1,
+	taskTypeLoadUnit:        2,
+	taskTypeReloadUnitFiles: 3,
+	taskTypeStopUnit:        4,
+	taskTypeStartUnit:       5,
 }
 
 type sortableTasks []task
@@ -108,6 +111,8 @@ func mapTaskToFunc(t task, a *Agent) (fn func() error, err error) {
 		fn = func() error { a.startUnit(t.unit.Name); return nil }
 	case taskTypeStopUnit:
 		fn = func() error { a.stopUnit(t.unit.Name); return nil }
+	case taskTypeReloadUnitFiles:
+		fn = func() error { return a.reloadUnitFiles() }
 	default:
 		err = fmt.Errorf("unrecognized task type %q", t.typ)
 	}
