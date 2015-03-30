@@ -37,6 +37,10 @@ func (fum *FakeUnitManager) Load(name string, u UnitFile) error {
 	return nil
 }
 
+func (fum *FakeUnitManager) ReloadUnitFiles() error {
+	return nil
+}
+
 func (fum *FakeUnitManager) Unload(name string) {
 	fum.Lock()
 	defer fum.Unlock()
