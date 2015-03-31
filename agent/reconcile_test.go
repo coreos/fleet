@@ -720,3 +720,175 @@ func TestCalculateTasksForJob(t *testing.T) {
 		}
 	}
 }
+
+func TestCalculateTasksForUnitsReloadUnitFilesTask(t *testing.T) {
+	tests := []struct {
+		dState *AgentState
+		cState unitStates
+
+		want []task
+	}{
+		// no work needs to be done when current state == desired state
+		{
+			dState: &AgentState{
+				MState: &machine.MachineState{ID: "XXX"},
+				Units: map[string]*job.Unit{
+					"foo.service": &job.Unit{TargetState: jsLoaded},
+				},
+			},
+			cState: unitStates{
+				"foo.service": unitState{
+					state: jsLoaded,
+					hash:  emptyStringHash,
+				},
+			},
+			want: nil,
+		},
+
+		// need ReloadUnitFiles task after LoadUnit tasks
+		{
+			dState: &AgentState{
+				MState: &machine.MachineState{ID: "XXX"},
+				Units: map[string]*job.Unit{
+					"bar.service": &job.Unit{TargetState: jsLoaded},
+					"foo.service": &job.Unit{TargetState: jsLoaded},
+				},
+			},
+			cState: unitStates{},
+			want: []task{
+				task{
+					typ:    taskTypeLoadUnit,
+					reason: taskReasonScheduledButUnloaded,
+					unit: &job.Unit{
+						Name: "bar.service",
+						Unit: unit.UnitFile{},
+					},
+				},
+				task{
+					typ:    taskTypeLoadUnit,
+					reason: taskReasonScheduledButUnloaded,
+					unit: &job.Unit{
+						Name: "foo.service",
+						Unit: unit.UnitFile{},
+					},
+				},
+				task{
+					typ:    taskTypeReloadUnitFiles,
+					reason: taskReasonAlwaysReloadUnitFiles,
+				},
+			},
+		},
+
+		// need ReloadUnitFiles task after UnloadUnit task
+		{
+			dState: &AgentState{
+				MState: &machine.MachineState{ID: "XXX"},
+				Units:  map[string]*job.Unit{},
+			},
+			cState: unitStates{
+				"foo.service": unitState{
+					state: jsLaunched,
+					hash:  emptyStringHash,
+				},
+			},
+			want: []task{
+				task{
+					typ:    taskTypeUnloadUnit,
+					reason: taskReasonLoadedButNotScheduled,
+					unit: &job.Unit{
+						Name: "foo.service",
+						Unit: unit.UnitFile{},
+					},
+				},
+				task{
+					typ:    taskTypeReloadUnitFiles,
+					reason: taskReasonAlwaysReloadUnitFiles,
+				},
+			},
+		},
+
+		// wedge ReloadUnitFiles tasks between LoadUnit and StartUnit
+		{
+			dState: &AgentState{
+				MState: &machine.MachineState{ID: "XXX"},
+				Units: map[string]*job.Unit{
+					"foo.service": &job.Unit{TargetState: jsLaunched},
+				},
+			},
+			cState: unitStates{},
+			want: []task{
+				task{
+					typ:    taskTypeLoadUnit,
+					reason: taskReasonScheduledButUnloaded,
+					unit: &job.Unit{
+						Name: "foo.service",
+					},
+				},
+				task{
+					typ:    taskTypeReloadUnitFiles,
+					reason: taskReasonAlwaysReloadUnitFiles,
+				},
+				task{
+					typ:    taskTypeStartUnit,
+					reason: taskReasonLoadedDesiredStateLaunched,
+					unit: &job.Unit{
+						Name: "foo.service",
+					},
+				},
+			},
+		},
+
+		// no need for ReloadUnitFiles if no LoadUnit or UnloadUnit operations necessary
+		{
+			dState: &AgentState{
+				MState: &machine.MachineState{ID: "XXX"},
+				Units: map[string]*job.Unit{
+					"bar.service": &job.Unit{TargetState: jsLaunched},
+					"foo.service": &job.Unit{TargetState: jsLoaded},
+				},
+			},
+			cState: unitStates{
+				"bar.service": unitState{
+					state: jsLoaded,
+					hash:  emptyStringHash,
+				},
+				"foo.service": unitState{
+					state: jsLaunched,
+					hash:  emptyStringHash,
+				},
+			},
+			want: []task{
+				task{
+					typ:    taskTypeStopUnit,
+					reason: taskReasonLaunchedDesiredStateLoaded,
+					unit: &job.Unit{
+						Name: "foo.service",
+					},
+				},
+				task{
+					typ:    taskTypeStartUnit,
+					reason: taskReasonLoadedDesiredStateLaunched,
+					unit: &job.Unit{
+						Name: "bar.service",
+					},
+				},
+			},
+		},
+	}
+
+	for i, tt := range tests {
+		ar := NewReconciler(registry.NewFakeRegistry(), nil)
+		got := ar.calculateTasksForUnits(tt.dState, tt.cState)
+		if !reflect.DeepEqual(tt.want, got) {
+			t.Errorf("case %d: calculated incorrect tasks", i)
+			t.Errorf("case %d:   want=%#v", i, tt.want)
+			for ii, tsk := range tt.want {
+				t.Errorf("case %d:    task %d: unit=%#v", i, ii, tsk.unit)
+			}
+			t.Errorf("case %d:   got=%#v", i, got)
+			for ii, tsk := range got {
+				t.Errorf("case %d:    task %d: unit=%#v", i, ii, tsk.unit)
+			}
+		}
+	}
+}
