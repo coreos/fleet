@@ -18,7 +18,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/coreos/fleet/pkg"
+	"github.com/coreos/flt/pkg"
 )
 
 func TestFakeUnitManagerEmpty(t *testing.T) {

@@ -20,7 +20,7 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/coreos/fleet/version"
+	"github.com/coreos/flt/version"
 )
 
 const (

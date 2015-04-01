@@ -17,17 +17,17 @@ package api
 import (
 	"net/http"
 
-	"github.com/coreos/fleet/client"
-	"github.com/coreos/fleet/log"
-	"github.com/coreos/fleet/registry"
-	"github.com/coreos/fleet/version"
+	"github.com/coreos/flt/client"
+	"github.com/coreos/flt/log"
+	"github.com/coreos/flt/registry"
+	"github.com/coreos/flt/version"
 )
 
 func NewServeMux(reg registry.Registry) http.Handler {
 	sm := http.NewServeMux()
 	cAPI := &client.RegistryClient{Registry: reg}
 
-	for _, prefix := range []string{"/v1-alpha", "/fleet/v1"} {
+	for _, prefix := range []string{"/v1-alpha", "/flt/v1"} {
 		wireUpDiscoveryResource(sm, prefix)
 		wireUpMachinesResource(sm, prefix, cAPI)
 		wireUpStateResource(sm, prefix, cAPI)
@@ -58,7 +58,7 @@ type serverInfoMiddleware struct {
 }
 
 func (si *serverInfoMiddleware) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
-	rw.Header().Set("Server", "fleetd/"+version.Version)
+	rw.Header().Set("Server", "fltd/"+version.Version)
 	si.next.ServeHTTP(rw, req)
 }
 

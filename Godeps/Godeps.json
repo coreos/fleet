@@ -1,5 +1,5 @@
 {
-	"ImportPath": "github.com/coreos/fleet",
+	"ImportPath": "github.com/coreos/flt",
 	"GoVersion": "go1.3.3",
 	"Packages": [
 		"./..."

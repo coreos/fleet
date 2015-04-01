@@ -17,10 +17,10 @@ package main
 import (
 	"testing"
 
-	"github.com/coreos/fleet/job"
-	"github.com/coreos/fleet/machine"
-	"github.com/coreos/fleet/registry"
-	"github.com/coreos/fleet/schema"
+	"github.com/coreos/flt/job"
+	"github.com/coreos/flt/machine"
+	"github.com/coreos/flt/registry"
+	"github.com/coreos/flt/schema"
 )
 
 func newFakeRegistryForListUnits(t *testing.T, jobs []job.Job) registry.Registry {

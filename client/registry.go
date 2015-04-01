@@ -15,9 +15,9 @@
 package client
 
 import (
-	"github.com/coreos/fleet/job"
-	"github.com/coreos/fleet/registry"
-	"github.com/coreos/fleet/schema"
+	"github.com/coreos/flt/job"
+	"github.com/coreos/flt/registry"
+	"github.com/coreos/flt/schema"
 )
 
 type RegistryClient struct {

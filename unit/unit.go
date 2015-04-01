@@ -21,7 +21,7 @@ import (
 	"io/ioutil"
 	"strings"
 
-	"github.com/coreos/fleet/Godeps/_workspace/src/github.com/coreos/go-systemd/unit"
+	"github.com/coreos/flt/Godeps/_workspace/src/github.com/coreos/go-systemd/unit"
 )
 
 func NewUnitFile(raw string) (*UnitFile, error) {
@@ -50,8 +50,8 @@ func mapOptions(opts []*unit.UnitOption) map[string]map[string][]string {
 		}
 
 		var vals []string
-		if opt.Section == "X-Fleet" {
-			// The go-systemd parser does not know that our X-Fleet options support
+		if opt.Section == "X-Flt" {
+			// The go-systemd parser does not know that our X-Flt options support
 			// multivalue options, so we have to manually parse them here
 			vals = parseMultivalueLine(opt.Value)
 		} else {
@@ -98,11 +98,11 @@ func parseMultivalueLine(line string) (values []string) {
 }
 
 // A UnitFile represents a systemd configuration which encodes information about any of the unit
-// types that fleet supports (as defined in SupportedUnitTypes()).
+// types that flt supports (as defined in SupportedUnitTypes()).
 // UnitFiles are linked to Units by the Hash of their contents.
 // Similar to systemd, a UnitFile configuration has no inherent name, but is rather
 // named through the reference to it; in the case of systemd, the reference is
-// the filename, and in the case of fleet, the reference is the name of the Unit
+// the filename, and in the case of flt, the reference is the name of the Unit
 // that references this UnitFile.
 type UnitFile struct {
 	// Contents represents the parsed unit file.
@@ -169,7 +169,7 @@ func (h *Hash) Empty() bool {
 	return *h == Hash{}
 }
 
-// UnitState encodes the current state of a unit loaded into a fleet agent
+// UnitState encodes the current state of a unit loaded into a flt agent
 type UnitState struct {
 	LoadState   string
 	ActiveState string

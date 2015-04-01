@@ -23,7 +23,7 @@ import (
 	"syscall"
 	"testing"
 
-	gossh "github.com/coreos/fleet/Godeps/_workspace/src/golang.org/x/crypto/ssh"
+	gossh "github.com/coreos/flt/Godeps/_workspace/src/golang.org/x/crypto/ssh"
 )
 
 const (

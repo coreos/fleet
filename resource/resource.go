@@ -37,7 +37,7 @@ const (
 	HostDisk   = 0
 )
 
-// HostResources represents a set of resources that fleet considers reserved
+// HostResources represents a set of resources that flt considers reserved
 // for the host, i.e. outside of any units it is running
 var HostResources = ResourceTuple{
 	HostCores,

@@ -25,11 +25,11 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/coreos/fleet/client"
-	"github.com/coreos/fleet/job"
-	"github.com/coreos/fleet/registry"
-	"github.com/coreos/fleet/schema"
-	"github.com/coreos/fleet/unit"
+	"github.com/coreos/flt/client"
+	"github.com/coreos/flt/job"
+	"github.com/coreos/flt/registry"
+	"github.com/coreos/flt/schema"
+	"github.com/coreos/flt/unit"
 )
 
 func newUnit(t *testing.T, str string) unit.UnitFile {
@@ -431,7 +431,7 @@ func TestUnitsSetDesiredState(t *testing.T) {
 
 func makeConflictUO(name string) *schema.UnitOption {
 	return &schema.UnitOption{
-		Section: "X-Fleet",
+		Section: "X-Flt",
 		Name:    "Conflicts",
 		Value:   name,
 	}
@@ -439,7 +439,7 @@ func makeConflictUO(name string) *schema.UnitOption {
 
 func makePeerUO(name string) *schema.UnitOption {
 	return &schema.UnitOption{
-		Section: "X-Fleet",
+		Section: "X-Flt",
 		Name:    "MachineOf",
 		Value:   name,
 	}
@@ -447,7 +447,7 @@ func makePeerUO(name string) *schema.UnitOption {
 
 func makeIDUO(name string) *schema.UnitOption {
 	return &schema.UnitOption{
-		Section: "X-Fleet",
+		Section: "X-Flt",
 		Name:    "MachineID",
 		Value:   name,
 	}
@@ -567,7 +567,7 @@ func TestValidateOptions(t *testing.T) {
 		{
 			[]*schema.UnitOption{
 				&schema.UnitOption{
-					Section: "X-Fleet",
+					Section: "X-Flt",
 					Name:    "Global",
 					Value:   "true",
 				},
@@ -578,7 +578,7 @@ func TestValidateOptions(t *testing.T) {
 		{
 			[]*schema.UnitOption{
 				&schema.UnitOption{
-					Section: "X-Fleet",
+					Section: "X-Flt",
 					Name:    "Global",
 					Value:   "true",
 				},
@@ -589,7 +589,7 @@ func TestValidateOptions(t *testing.T) {
 		{
 			[]*schema.UnitOption{
 				&schema.UnitOption{
-					Section: "X-Fleet",
+					Section: "X-Flt",
 					Name:    "Global",
 					Value:   "true",
 				},
@@ -600,7 +600,7 @@ func TestValidateOptions(t *testing.T) {
 		{
 			[]*schema.UnitOption{
 				&schema.UnitOption{
-					Section: "X-Fleet",
+					Section: "X-Flt",
 					Name:    "Global",
 					Value:   "true",
 				},
@@ -613,7 +613,7 @@ func TestValidateOptions(t *testing.T) {
 		{
 			[]*schema.UnitOption{
 				&schema.UnitOption{
-					Section: "X-Fleet",
+					Section: "X-Flt",
 					Name:    "Global",
 					Value:   "true",
 				},
@@ -625,7 +625,7 @@ func TestValidateOptions(t *testing.T) {
 			[]*schema.UnitOption{
 				makeIDUO("abcdefghi"),
 				&schema.UnitOption{
-					Section: "X-Fleet",
+					Section: "X-Flt",
 					Name:    "Global",
 					Value:   "true",
 				},

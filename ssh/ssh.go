@@ -22,9 +22,9 @@ import (
 	"strings"
 	"time"
 
-	gossh "github.com/coreos/fleet/Godeps/_workspace/src/golang.org/x/crypto/ssh"
-	gosshagent "github.com/coreos/fleet/Godeps/_workspace/src/golang.org/x/crypto/ssh/agent"
-	"github.com/coreos/fleet/Godeps/_workspace/src/golang.org/x/crypto/ssh/terminal"
+	gossh "github.com/coreos/flt/Godeps/_workspace/src/golang.org/x/crypto/ssh"
+	gosshagent "github.com/coreos/flt/Godeps/_workspace/src/golang.org/x/crypto/ssh/agent"
+	"github.com/coreos/flt/Godeps/_workspace/src/golang.org/x/crypto/ssh/terminal"
 )
 
 type SSHForwardingClient struct {
@@ -156,7 +156,7 @@ func Shell(client *SSHForwardingClient) error {
 func SSHAgentClient() (gosshagent.Agent, error) {
 	sock := os.Getenv("SSH_AUTH_SOCK")
 	if sock == "" {
-		return nil, errors.New("SSH_AUTH_SOCK environment variable is not set. Verify ssh-agent is running. See https://github.com/coreos/fleet/blob/master/Documentation/using-the-client.md for help.")
+		return nil, errors.New("SSH_AUTH_SOCK environment variable is not set. Verify ssh-agent is running. See https://github.com/coreos/flt/blob/master/Documentation/using-the-client.md for help.")
 	}
 
 	agent, err := net.Dial("unix", sock)

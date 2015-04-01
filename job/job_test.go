@@ -19,8 +19,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/coreos/fleet/pkg"
-	"github.com/coreos/fleet/unit"
+	"github.com/coreos/flt/pkg"
+	"github.com/coreos/flt/unit"
 )
 
 func newUnit(t *testing.T, str string) *unit.UnitFile {
@@ -47,11 +47,11 @@ func TestJobPeers(t *testing.T) {
 		// no values should be fine
 		{``, []string{}},
 		// single value should be fine
-		{`[X-Fleet]
+		{`[X-Flt]
 MachineOf="lol.service"
 `, []string{"lol.service"}},
 		// multiple values should be fine
-		{`[X-Fleet]
+		{`[X-Flt]
 MachineOf="foo.service" "bar.service"
 `, []string{"foo.service", "bar.service"}},
 	}
@@ -74,7 +74,7 @@ func TestJobConflicts(t *testing.T) {
 		{`[Unit]
 Description=Testing
 
-[X-Fleet]
+[X-Flt]
 Conflicts=*bar*
 `, []string{"*bar*"}},
 	}
@@ -95,24 +95,24 @@ func TestParseRequirements(t *testing.T) {
 	}{
 		// No reqs should be fine
 		{``, map[string][]string{}},
-		{`[X-Fleet]`, map[string][]string{}},
+		{`[X-Flt]`, map[string][]string{}},
 		// Simple req is fine
 		{
-			"[X-Fleet]\nFoo=bar",
+			"[X-Flt]\nFoo=bar",
 			map[string][]string{"Foo": []string{"bar"}},
 		},
 		// Deprecated prefixes should be unmutated
 		{
-			"[X-Fleet]\nX-Foo=bar",
+			"[X-Flt]\nX-Foo=bar",
 			map[string][]string{"X-Foo": []string{"bar"}},
 		},
 		{
-			"[X-Fleet]\nX-ConditionFoo=bar",
+			"[X-Flt]\nX-ConditionFoo=bar",
 			map[string][]string{"X-ConditionFoo": []string{"bar"}},
 		},
 		// Multiple values are fine
 		{
-			`[X-Fleet]
+			`[X-Flt]
 Foo=asdf
 Foo=qwer
 `,
@@ -120,7 +120,7 @@ Foo=qwer
 		},
 		// Multiple values with different prefixes
 		{
-			`[X-Fleet]
+			`[X-Flt]
 Dog=Woof
 X-Dog=Yap
 X-ConditionDog=Howl
@@ -133,7 +133,7 @@ X-ConditionDog=Howl
 		},
 		// Multiple values stacking with the same key
 		{
-			`[X-Fleet]
+			`[X-Flt]
 Foo=Bar
 Foo=Baz
 Ping=Pong
@@ -156,7 +156,7 @@ Ping=Pang
 
 func TestParseRequirementsInstanceUnit(t *testing.T) {
 	contents := `
-[X-Fleet]
+[X-Flt]
 Foo=%n
 Bar=%N
 Baz=%p
@@ -217,13 +217,13 @@ func TestJobConditionMachineID(t *testing.T) {
 	}{
 		// No value provided
 		{
-			`[X-Fleet]`,
+			`[X-Flt]`,
 			"",
 			false,
 		},
 		// Simplest case
 		{
-			`[X-Fleet]
+			`[X-Flt]
 MachineID=123
 `,
 			"123",
@@ -233,7 +233,7 @@ MachineID=123
 		// First value wins
 		// TODO(bcwaldon): maybe the last one should win?
 		{
-			`[X-Fleet]
+			`[X-Flt]
 MachineID="123" "456"
 `,
 			"123",
@@ -241,7 +241,7 @@ MachineID="123" "456"
 		},
 		// Ensure we fall back to the deprecated prefix
 		{
-			`[X-Fleet]
+			`[X-Flt]
 X-ConditionMachineID="123" "456"
 `,
 			"123",
@@ -249,7 +249,7 @@ X-ConditionMachineID="123" "456"
 		},
 		// Fall back to the deprecated prefix only if the modern syntax is absent
 		{
-			`[X-Fleet]
+			`[X-Flt]
 X-ConditionMachineID="456"
 MachineID="123"
 `,
@@ -257,7 +257,7 @@ MachineID="123"
 			true,
 		},
 		{
-			`[X-Fleet]
+			`[X-Flt]
 MachineID="123"
 X-ConditionMachineID="456"
 `,
@@ -267,7 +267,7 @@ X-ConditionMachineID="456"
 
 		// Ensure we fall back to the legacy boot ID option
 		{
-			`[X-Fleet]
+			`[X-Flt]
 X-ConditionMachineBootID=123
 `,
 			"123",
@@ -276,7 +276,7 @@ X-ConditionMachineBootID=123
 
 		// Fall back to legacy option only if non-boot ID is absent
 		{
-			`[X-Fleet]
+			`[X-Flt]
 X-ConditionMachineBootID=123
 X-ConditionMachineID=456
 `,
@@ -284,7 +284,7 @@ X-ConditionMachineID=456
 			true,
 		},
 		{
-			`[X-Fleet]
+			`[X-Flt]
 X-ConditionMachineBootID=123
 MachineID=456
 `,
@@ -314,12 +314,12 @@ func TestJobRequiredMetadata(t *testing.T) {
 	}{
 		// no metadata
 		{
-			`[X-Fleet]`,
+			`[X-Flt]`,
 			map[string]pkg.Set{},
 		},
 		// simplest case - one key/value
 		{
-			`[X-Fleet]
+			`[X-Flt]
 MachineMetadata=foo=bar`,
 			map[string]pkg.Set{
 				"foo": pkg.NewUnsafeSet("bar"),
@@ -327,7 +327,7 @@ MachineMetadata=foo=bar`,
 		},
 		// multiple different values for a key in one line
 		{
-			`[X-Fleet]
+			`[X-Flt]
 MachineMetadata="foo=bar" "foo=baz"`,
 			map[string]pkg.Set{
 				"foo": pkg.NewUnsafeSet("bar", "baz"),
@@ -335,7 +335,7 @@ MachineMetadata="foo=bar" "foo=baz"`,
 		},
 		// multiple different values for a key in different lines
 		{
-			`[X-Fleet]
+			`[X-Flt]
 MachineMetadata=foo=bar
 MachineMetadata=foo=baz
 MachineMetadata=foo=asdf`,
@@ -345,7 +345,7 @@ MachineMetadata=foo=asdf`,
 		},
 		// multiple different key-value pairs in a single line
 		{
-			`[X-Fleet]
+			`[X-Flt]
 MachineMetadata="foo=bar" "duck=quack"`,
 			map[string]pkg.Set{
 				"foo":  pkg.NewUnsafeSet("bar"),
@@ -354,7 +354,7 @@ MachineMetadata="foo=bar" "duck=quack"`,
 		},
 		// multiple different key-value pairs in different lines
 		{
-			`[X-Fleet]
+			`[X-Flt]
 MachineMetadata=foo=bar
 MachineMetadata=dog=woof
 MachineMetadata=cat=miaow`,
@@ -366,7 +366,7 @@ MachineMetadata=cat=miaow`,
 		},
 		// support deprecated prefixed syntax
 		{
-			`[X-Fleet]
+			`[X-Flt]
 X-ConditionMachineMetadata=foo=bar`,
 			map[string]pkg.Set{
 				"foo": pkg.NewUnsafeSet("bar"),
@@ -374,7 +374,7 @@ X-ConditionMachineMetadata=foo=bar`,
 		},
 		// support deprecated prefixed syntax mixed with modern syntax
 		{
-			`[X-Fleet]
+			`[X-Flt]
 MachineMetadata=foo=bar
 X-ConditionMachineMetadata=foo=asdf`,
 			map[string]pkg.Set{
@@ -383,23 +383,23 @@ X-ConditionMachineMetadata=foo=asdf`,
 		},
 		// bad fields just get ignored
 		{
-			`[X-Fleet]
+			`[X-Flt]
 MachineMetadata=foo=`,
 			map[string]pkg.Set{},
 		},
 		{
-			`[X-Fleet]
+			`[X-Flt]
 MachineMetadata==asdf`,
 			map[string]pkg.Set{},
 		},
 		{
-			`[X-Fleet]
+			`[X-Flt]
 MachineMetadata=foo=asdf=WHAT`,
 			map[string]pkg.Set{},
 		},
 		// mix everything up
 		{
-			`[X-Fleet]
+			`[X-Flt]
 MachineMetadata=ignored=
 MachineMetadata=oh=yeah
 MachineMetadata=whynot=zoidberg
@@ -492,21 +492,21 @@ func TestUnitIsGlobal(t *testing.T) {
 		// no relevant sections
 		{"foobarbaz", false},
 		{"[Service]\nExecStart=/bin/true", false},
-		{"[X-Fleet]\nMachineOf=bar", false},
+		{"[X-Flt]\nMachineOf=bar", false},
 		{"Global=true", false},
 		// specified in wrong section
 		{"[Service]\nGlobal=true", false},
 		// bad values
-		{"[X-Fleet]\nMachineOf=bar\nGlobal=false", false},
-		{"[X-Fleet]\nMachineOf=bar\nGlobal=what", false},
-		{"[X-Fleet]\nX-Global=true", false},
-		{"[X-Fleet]\nX-ConditionGlobal=true", false},
+		{"[X-Flt]\nMachineOf=bar\nGlobal=false", false},
+		{"[X-Flt]\nMachineOf=bar\nGlobal=what", false},
+		{"[X-Flt]\nX-Global=true", false},
+		{"[X-Flt]\nX-ConditionGlobal=true", false},
 		// correct specifications
-		{"[X-Fleet]\nMachineOf=foo\nGlobal=true", true},
-		{"[X-Fleet]\nMachineOf=foo\nGlobal=True", true},
+		{"[X-Flt]\nMachineOf=foo\nGlobal=true", true},
+		{"[X-Flt]\nMachineOf=foo\nGlobal=True", true},
 		// multiple parameters - last wins
-		{"[X-Fleet]\nGlobal=true\nGlobal=false", false},
-		{"[X-Fleet]\nGlobal=false\nGlobal=true", true},
+		{"[X-Flt]\nGlobal=true\nGlobal=false", false},
+		{"[X-Flt]\nGlobal=false\nGlobal=true", true},
 	} {
 		u := Unit{
 			Unit: *newUnit(t, tt.contents),
@@ -532,7 +532,7 @@ func TestValidateRequirements(t *testing.T) {
 		"Global=true",
 	}
 	for i, req := range tests {
-		contents := fmt.Sprintf("[X-Fleet]\n%s", req)
+		contents := fmt.Sprintf("[X-Flt]\n%s", req)
 		j := NewJob("echo.service", *newUnit(t, contents))
 		if err := j.ValidateRequirements(); err != nil {
 			t.Errorf("case %d: unexpected non-nil error for req %q: %v", i, req, err)
@@ -553,7 +553,7 @@ func TestBadValidateRequirements(t *testing.T) {
 		"X-ConditionMetadata=foo=foo",
 	}
 	for i, req := range tests {
-		contents := fmt.Sprintf("[X-Fleet]\n%s", req)
+		contents := fmt.Sprintf("[X-Flt]\n%s", req)
 		j := NewJob("echo.service", *newUnit(t, contents))
 		if err := j.ValidateRequirements(); err == nil {
 			t.Errorf("case %d: unexpected nil error for requirement: %q", i, req)

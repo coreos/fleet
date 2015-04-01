@@ -25,7 +25,7 @@ var (
 		Name:        "fd-forward",
 		Summary:     "Proxy stdin and stdout to a unix domain socket",
 		Usage:       "SOCKET",
-		Description: `fleetctl utilizes fd-forward when --tunnel is used and --endpoint is a unix socket. This command is not intended to be called by users directly.`,
+		Description: `fltctl utilizes fd-forward when --tunnel is used and --endpoint is a unix socket. This command is not intended to be called by users directly.`,
 		Run:         runFDForward,
 	}
 )

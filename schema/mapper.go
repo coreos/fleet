@@ -1,11 +1,11 @@
 package schema
 
 import (
-	gsunit "github.com/coreos/fleet/Godeps/_workspace/src/github.com/coreos/go-systemd/unit"
+	gsunit "github.com/coreos/flt/Godeps/_workspace/src/github.com/coreos/go-systemd/unit"
 
-	"github.com/coreos/fleet/job"
-	"github.com/coreos/fleet/machine"
-	"github.com/coreos/fleet/unit"
+	"github.com/coreos/flt/job"
+	"github.com/coreos/flt/machine"
+	"github.com/coreos/flt/unit"
 )
 
 func MapUnitFileToSchemaUnitOptions(uf *unit.UnitFile) []*UnitOption {

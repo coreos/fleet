@@ -17,7 +17,7 @@ package main
 import (
 	"os"
 
-	"github.com/coreos/fleet/job"
+	"github.com/coreos/flt/job"
 )
 
 var (
@@ -31,7 +31,7 @@ Select units to load by glob matching for units in the current working directory
 or matching the names of previously submitted units.
 
 For units which are not global, load operations are performed synchronously,
-which means fleetctl will block until it detects that the unit(s) have
+which means fltctl will block until it detects that the unit(s) have
 transitioned to a loaded state. This behaviour can be configured with the
 respective --block-attempts and --no-block options. Load operations on global
 units are always non-blocking.`,

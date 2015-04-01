@@ -23,10 +23,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/coreos/fleet/Godeps/_workspace/src/github.com/docker/libcontainer/netlink"
+	"github.com/coreos/flt/Godeps/_workspace/src/github.com/docker/libcontainer/netlink"
 
-	"github.com/coreos/fleet/log"
-	"github.com/coreos/fleet/unit"
+	"github.com/coreos/flt/log"
+	"github.com/coreos/flt/unit"
 )
 
 const (

@@ -18,7 +18,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/fleet/registry"
+	"github.com/coreos/flt/registry"
 )
 
 func TestEnsureEngineVersionMatch(t *testing.T) {

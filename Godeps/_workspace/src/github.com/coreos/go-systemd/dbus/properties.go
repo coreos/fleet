@@ -17,7 +17,7 @@ limitations under the License.
 package dbus
 
 import (
-	"github.com/coreos/fleet/Godeps/_workspace/src/github.com/godbus/dbus"
+	"github.com/coreos/flt/Godeps/_workspace/src/github.com/godbus/dbus"
 )
 
 // From the systemd docs:

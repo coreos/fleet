@@ -23,7 +23,7 @@ import (
 )
 
 func TestListDirectory(t *testing.T) {
-	dir, err := ioutil.TempDir("", "fleet-testing-")
+	dir, err := ioutil.TempDir("", "flt-testing-")
 	if err != nil {
 		t.Fatal(err.Error())
 	}

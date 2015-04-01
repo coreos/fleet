@@ -19,10 +19,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/coreos/fleet/functional/platform"
+	"github.com/coreos/flt/functional/platform"
 )
 
-// Simulate the shutdown of a single fleet node
+// Simulate the shutdown of a single flt node
 func TestNodeShutdown(t *testing.T) {
 	cluster, err := platform.NewNspawnCluster("smoke")
 	if err != nil {
@@ -42,7 +42,7 @@ func TestNodeShutdown(t *testing.T) {
 
 	// Start a unit and ensure it comes up quickly
 	unit := fmt.Sprintf("fixtures/units/pin@%s.service", machines[0])
-	_, _, err = cluster.Fleetctl(m0, "start", unit)
+	_, _, err = cluster.Fltctl(m0, "start", unit)
 	if err != nil {
 		t.Errorf("Failed starting unit: %v", err)
 	}
@@ -60,8 +60,8 @@ func TestNodeShutdown(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Stop the fleet process on the first member
-	if _, err = cluster.MemberCommand(m0, "sudo", "systemctl", "stop", "fleet"); err != nil {
+	// Stop the flt process on the first member
+	if _, err = cluster.MemberCommand(m0, "sudo", "systemctl", "stop", "flt"); err != nil {
 		t.Fatal(err)
 	}
 

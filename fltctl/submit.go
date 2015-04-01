@@ -24,10 +24,10 @@ for validating units before they are started.
 This operation is idempotent; if a named unit already exists in the cluster, it will not be resubmitted.
 
 Submit a single unit:
-	fleetctl submit foo.service
+	fltctl submit foo.service
 
 Submit a directory of units with glob matching:
-	fleetctl submit myservice/*`,
+	fltctl submit myservice/*`,
 	Run: runSubmitUnits,
 }
 

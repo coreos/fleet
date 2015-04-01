@@ -21,9 +21,9 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/coreos/fleet/client"
-	"github.com/coreos/fleet/machine"
-	"github.com/coreos/fleet/registry"
+	"github.com/coreos/flt/client"
+	"github.com/coreos/flt/machine"
+	"github.com/coreos/flt/registry"
 )
 
 func TestMachinesList(t *testing.T) {

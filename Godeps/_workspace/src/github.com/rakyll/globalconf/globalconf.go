@@ -8,7 +8,7 @@ import (
 	"path"
 	"strings"
 
-	ini "github.com/coreos/fleet/Godeps/_workspace/src/github.com/rakyll/goini"
+	ini "github.com/coreos/flt/Godeps/_workspace/src/github.com/rakyll/goini"
 )
 
 const (

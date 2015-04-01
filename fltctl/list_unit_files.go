@@ -20,8 +20,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/coreos/fleet/machine"
-	"github.com/coreos/fleet/schema"
+	"github.com/coreos/flt/machine"
+	"github.com/coreos/flt/schema"
 )
 
 const (

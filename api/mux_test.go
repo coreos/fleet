@@ -20,8 +20,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/coreos/fleet/registry"
-	"github.com/coreos/fleet/version"
+	"github.com/coreos/flt/registry"
+	"github.com/coreos/flt/version"
 )
 
 func TestDefaultHandlers(t *testing.T) {
@@ -32,7 +32,7 @@ func TestDefaultHandlers(t *testing.T) {
 	}{
 		{"GET", "/", http.StatusMethodNotAllowed},
 		{"GET", "/v1-alpha", http.StatusMethodNotAllowed},
-		{"GET", "/fleet/v1", http.StatusMethodNotAllowed},
+		{"GET", "/flt/v1", http.StatusMethodNotAllowed},
 		{"GET", "/bogus", http.StatusNotFound},
 	}
 
@@ -54,7 +54,7 @@ func TestDefaultHandlers(t *testing.T) {
 			t.Errorf("case %d: %v", i, err)
 		}
 
-		wantServer := fmt.Sprintf("fleetd/%s", version.Version)
+		wantServer := fmt.Sprintf("fltd/%s", version.Version)
 		gotServer := rr.HeaderMap["Server"][0]
 		if wantServer != gotServer {
 			t.Errorf("case %d: received incorrect Server header: want=%s, got=%s", i, wantServer, gotServer)

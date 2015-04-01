@@ -18,8 +18,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/coreos/fleet/pkg"
-	"github.com/coreos/fleet/unit"
+	"github.com/coreos/flt/pkg"
+	"github.com/coreos/flt/unit"
 )
 
 type JobState string
@@ -30,22 +30,22 @@ const (
 	JobStateLaunched = JobState("launched")
 )
 
-// fleet-specific unit file requirement keys.
+// flt-specific unit file requirement keys.
 // For certain values, the (optional, deprecated) "X-" or "X-Condition"
 // prefixes appear in unit files but are dropped in code before the value is used.
 const (
 	// Require the unit be scheduled to a specific machine identified by given ID.
-	fleetMachineID = "MachineID"
-	// Legacy form of fleetMachineID.
-	fleetMachineBootID = "MachineBootID"
+	fltMachineID = "MachineID"
+	// Legacy form of fltMachineID.
+	fltMachineBootID = "MachineBootID"
 	// Limit eligible machines to the one that hosts a specific unit.
-	fleetMachineOf = "MachineOf"
+	fltMachineOf = "MachineOf"
 	// Prevent a unit from being collocated with other units using glob-matching on the other unit names.
-	fleetConflicts = "Conflicts"
+	fltConflicts = "Conflicts"
 	// Machine metadata key in the unit file
-	fleetMachineMetadata = "MachineMetadata"
+	fltMachineMetadata = "MachineMetadata"
 	// Require that the unit be scheduled on every machine in the cluster
-	fleetGlobal = "Global"
+	fltGlobal = "Global"
 
 	deprecatedXPrefix          = "X-"
 	deprecatedXConditionPrefix = "X-Condition"
@@ -53,16 +53,16 @@ const (
 
 // validRequirements encapsulates all current and deprecated unit file requirement keys
 var validRequirements = pkg.NewUnsafeSet(
-	fleetMachineID,
-	deprecatedXConditionPrefix+fleetMachineID,
-	deprecatedXConditionPrefix+fleetMachineBootID,
-	deprecatedXConditionPrefix+fleetMachineOf,
-	fleetMachineOf,
-	deprecatedXPrefix+fleetConflicts,
-	fleetConflicts,
-	deprecatedXConditionPrefix+fleetMachineMetadata,
-	fleetMachineMetadata,
-	fleetGlobal,
+	fltMachineID,
+	deprecatedXConditionPrefix+fltMachineID,
+	deprecatedXConditionPrefix+fltMachineBootID,
+	deprecatedXConditionPrefix+fltMachineOf,
+	fltMachineOf,
+	deprecatedXPrefix+fltConflicts,
+	fltConflicts,
+	deprecatedXConditionPrefix+fltMachineMetadata,
+	fltMachineMetadata,
+	fltGlobal,
 )
 
 func ParseJobState(s string) (JobState, error) {
@@ -77,7 +77,7 @@ func ParseJobState(s string) (JobState, error) {
 	return js, err
 }
 
-// Job is a legacy construct encapsulating a scheduled unit in fleet
+// Job is a legacy construct encapsulating a scheduled unit in flt
 type Job struct {
 	Name            string
 	State           *JobState
@@ -86,14 +86,14 @@ type Job struct {
 	Unit            unit.UnitFile
 }
 
-// ScheduledUnit represents a Unit known by fleet and encapsulates its current scheduling state. This does not include Global units.
+// ScheduledUnit represents a Unit known by flt and encapsulates its current scheduling state. This does not include Global units.
 type ScheduledUnit struct {
 	Name            string
 	State           *JobState
 	TargetMachineID string
 }
 
-// Unit represents a Unit that has been submitted to fleet
+// Unit represents a Unit that has been submitted to flt
 // (list-unit-files)
 type Unit struct {
 	Name        string
@@ -107,7 +107,7 @@ func (u *Unit) IsGlobal() bool {
 		Name: u.Name,
 		Unit: u.Unit,
 	}
-	values := j.requirements()[fleetGlobal]
+	values := j.requirements()[fltGlobal]
 	if len(values) == 0 {
 		return false
 	}
@@ -162,14 +162,14 @@ func (u *Unit) RequiredTargetMetadata() map[string]pkg.Set {
 	return j.RequiredTargetMetadata()
 }
 
-// requirements returns all relevant options from the [X-Fleet] section of a unit file.
+// requirements returns all relevant options from the [X-Flt] section of a unit file.
 // Relevant options are identified with a `X-` prefix in the unit.
 // This prefix is stripped from relevant options before being returned.
 // Furthermore, specifier substitution (using unitPrintf) is performed on all requirements.
 func (j *Job) requirements() map[string][]string {
 	uni := unit.NewUnitNameInfo(j.Name)
 	requirements := make(map[string][]string)
-	for key, values := range j.Unit.Contents["X-Fleet"] {
+	for key, values := range j.Unit.Contents["X-Flt"] {
 		if _, ok := requirements[key]; !ok {
 			requirements[key] = make([]string, 0)
 		}
@@ -185,13 +185,13 @@ func (j *Job) requirements() map[string][]string {
 	return requirements
 }
 
-// ValidateRequirements ensures that all options in the [X-Fleet] section of
+// ValidateRequirements ensures that all options in the [X-Flt] section of
 // the job's associated unit file are known keys. If not, an error is
 // returned.
 func (j *Job) ValidateRequirements() error {
 	for key, _ := range j.requirements() {
 		if !validRequirements.Contains(key) {
-			return fmt.Errorf("unrecognized requirement in [X-Fleet] section: %q", key)
+			return fmt.Errorf("unrecognized requirement in [X-Flt] section: %q", key)
 		}
 	}
 	return nil
@@ -201,8 +201,8 @@ func (j *Job) ValidateRequirements() error {
 // machine as this Job.
 func (j *Job) Conflicts() []string {
 	conflicts := make([]string, 0)
-	conflicts = append(conflicts, j.requirements()[deprecatedXPrefix+fleetConflicts]...)
-	conflicts = append(conflicts, j.requirements()[fleetConflicts]...)
+	conflicts = append(conflicts, j.requirements()[deprecatedXPrefix+fltConflicts]...)
+	conflicts = append(conflicts, j.requirements()[fltConflicts]...)
 	return conflicts
 }
 
@@ -210,8 +210,8 @@ func (j *Job) Conflicts() []string {
 // machine as this Job.
 func (j *Job) Peers() []string {
 	peers := make([]string, 0)
-	peers = append(peers, j.requirements()[deprecatedXConditionPrefix+fleetMachineOf]...)
-	peers = append(peers, j.requirements()[fleetMachineOf]...)
+	peers = append(peers, j.requirements()[deprecatedXConditionPrefix+fltMachineOf]...)
+	peers = append(peers, j.requirements()[fltMachineOf]...)
 	return peers
 }
 
@@ -226,13 +226,13 @@ func (j *Job) RequiredTarget() (string, bool) {
 	var machIDs []string
 	var ok bool
 	// Best case: look for modern declaration
-	machIDs, ok = requirements[fleetMachineID]
+	machIDs, ok = requirements[fltMachineID]
 	if ok && len(machIDs) != 0 {
 		return machIDs[0], true
 	}
 
 	// First fall back to the deprecated syntax
-	machIDs, ok = requirements[deprecatedXConditionPrefix+fleetMachineID]
+	machIDs, ok = requirements[deprecatedXConditionPrefix+fltMachineID]
 	if ok && len(machIDs) != 0 {
 		return machIDs[0], true
 	}
@@ -241,7 +241,7 @@ func (j *Job) RequiredTarget() (string, bool) {
 	// unlikely to actually work as the user intends, but it's better to
 	// prevent a job from starting that has a legacy requirement than to
 	// ignore the requirement and let it start.
-	bootIDs, ok := requirements[deprecatedXConditionPrefix+fleetMachineBootID]
+	bootIDs, ok := requirements[deprecatedXConditionPrefix+fltMachineBootID]
 	if ok && len(bootIDs) != 0 {
 		return bootIDs[0], true
 	}
@@ -256,8 +256,8 @@ func (j *Job) RequiredTargetMetadata() map[string]pkg.Set {
 	metadata := make(map[string]pkg.Set)
 
 	for _, key := range []string{
-		deprecatedXConditionPrefix + fleetMachineMetadata,
-		fleetMachineMetadata,
+		deprecatedXConditionPrefix + fltMachineMetadata,
+		fltMachineMetadata,
 	} {
 		for _, valuePair := range j.requirements()[key] {
 			s := strings.Split(valuePair, "=")

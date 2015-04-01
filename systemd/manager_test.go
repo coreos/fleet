@@ -23,7 +23,7 @@ import (
 )
 
 func TestHashUnitFile(t *testing.T) {
-	f, err := ioutil.TempFile("", "fleet-testing-")
+	f, err := ioutil.TempFile("", "flt-testing-")
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
@@ -56,7 +56,7 @@ ExecStart=/usr/bin/sleep infinity
 }
 
 func TestHashUnitFileDirectory(t *testing.T) {
-	dir, err := ioutil.TempDir("", "fleet-testing-")
+	dir, err := ioutil.TempDir("", "flt-testing-")
 	if err != nil {
 		t.Fatal(err.Error())
 	}

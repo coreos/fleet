@@ -1,6 +1,6 @@
 #!/bin/bash -e
 #
-# Run all fleet tests (not including functional)
+# Run all flt tests (not including functional)
 #   ./test
 #   ./test -v
 #
@@ -14,8 +14,8 @@ COVER=${COVER:-"-cover"}
 
 source ./build
 
-TESTABLE="agent api config engine etcd fleetctl job machine pkg registry ssh systemd unit"
-FORMATTABLE="$TESTABLE client functional functional/platform heart server fleetd"
+TESTABLE="agent api config engine etcd fltctl job machine pkg registry ssh systemd unit"
+FORMATTABLE="$TESTABLE client functional functional/platform heart server fltd"
 
 # user has not provided PKG override
 if [ -z "$PKG" ]; then

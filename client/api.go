@@ -15,8 +15,8 @@
 package client
 
 import (
-	"github.com/coreos/fleet/machine"
-	"github.com/coreos/fleet/schema"
+	"github.com/coreos/flt/machine"
+	"github.com/coreos/flt/schema"
 )
 
 type API interface {

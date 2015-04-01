@@ -15,8 +15,8 @@
 package machine
 
 import (
-	"github.com/coreos/fleet/log"
-	"github.com/coreos/fleet/pkg"
+	"github.com/coreos/flt/log"
+	"github.com/coreos/flt/pkg"
 )
 
 type Machine interface {

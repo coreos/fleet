@@ -19,7 +19,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/coreos/fleet/Godeps/_workspace/src/google.golang.org/api/googleapi/internal/uritemplates"
+	"github.com/coreos/flt/Godeps/_workspace/src/google.golang.org/api/googleapi/internal/uritemplates"
 )
 
 // ContentTyper is an interface for Readers which know (or would like

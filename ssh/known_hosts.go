@@ -26,14 +26,14 @@ import (
 	"strconv"
 	"strings"
 
-	gossh "github.com/coreos/fleet/Godeps/_workspace/src/golang.org/x/crypto/ssh"
+	gossh "github.com/coreos/flt/Godeps/_workspace/src/golang.org/x/crypto/ssh"
 
-	"github.com/coreos/fleet/log"
-	"github.com/coreos/fleet/pkg"
+	"github.com/coreos/flt/log"
+	"github.com/coreos/flt/pkg"
 )
 
 const (
-	DefaultKnownHostsFile = "~/.fleetctl/known_hosts"
+	DefaultKnownHostsFile = "~/.fltctl/known_hosts"
 
 	sshDefaultPort = 22  // ssh.h
 	sshHashDelim   = "|" // hostfile.h

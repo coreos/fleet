@@ -18,7 +18,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/coreos/fleet/log"
+	"github.com/coreos/flt/log"
 )
 
 func NewMonitor(ttl time.Duration) *Monitor {

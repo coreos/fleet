@@ -18,10 +18,10 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/coreos/fleet/job"
-	"github.com/coreos/fleet/machine"
-	"github.com/coreos/fleet/registry"
-	"github.com/coreos/fleet/unit"
+	"github.com/coreos/flt/job"
+	"github.com/coreos/flt/machine"
+	"github.com/coreos/flt/registry"
+	"github.com/coreos/flt/unit"
 )
 
 // Represents the hash of e.g. an empty unit
@@ -111,13 +111,13 @@ func TestDesiredAgentState(t *testing.T) {
 			[]job.Job{
 				job.Job{
 					Name: "global.service",
-					Unit: newUF(t, "[X-Fleet]\nGlobal=true"),
+					Unit: newUF(t, "[X-Flt]\nGlobal=true"),
 				},
 			},
 			map[string]*job.Unit{
 				"global.service": &job.Unit{
 					Name: "global.service",
-					Unit: newUF(t, "[X-Fleet]\nGlobal=true"),
+					Unit: newUF(t, "[X-Flt]\nGlobal=true"),
 				},
 			},
 		},
@@ -128,7 +128,7 @@ func TestDesiredAgentState(t *testing.T) {
 				job.Job{
 					Name: "global.mount",
 					Unit: newUF(t, `
-[X-Fleet]
+[X-Flt]
 Global=true
 MachineMetadata=dog=woof`),
 				},
@@ -137,7 +137,7 @@ MachineMetadata=dog=woof`),
 				"global.mount": &job.Unit{
 					Name: "global.mount",
 					Unit: newUF(t, `
-[X-Fleet]
+[X-Flt]
 Global=true
 MachineMetadata=dog=woof`),
 				},
@@ -150,7 +150,7 @@ MachineMetadata=dog=woof`),
 				job.Job{
 					Name: "global.mount",
 					Unit: newUF(t, `
-[X-Fleet]
+[X-Flt]
 Global=true
 MachineMetadata=dog=woof`),
 				},
@@ -163,7 +163,7 @@ MachineMetadata=dog=woof`),
 				job.Job{
 					Name: "global.mount",
 					Unit: newUF(t, `
-[X-Fleet]
+[X-Flt]
 Global=true
 MachineMetadata=dog=woof`),
 				},
@@ -185,12 +185,12 @@ MachineMetadata=dog=woof`),
 				},
 				job.Job{
 					Name: "global.service",
-					Unit: newUF(t, "[X-Fleet]\nGlobal=true"),
+					Unit: newUF(t, "[X-Flt]\nGlobal=true"),
 				},
 				job.Job{
 					Name: "global.mount",
 					Unit: newUF(t, `
-[X-Fleet]
+[X-Flt]
 Global=true
 MachineMetadata=dog=woof`),
 				},
@@ -202,7 +202,7 @@ MachineMetadata=dog=woof`),
 				},
 				"global.service": &job.Unit{
 					Name: "global.service",
-					Unit: newUF(t, "[X-Fleet]\nGlobal=true"),
+					Unit: newUF(t, "[X-Flt]\nGlobal=true"),
 				},
 			},
 		},
@@ -220,12 +220,12 @@ MachineMetadata=dog=woof`),
 				},
 				job.Job{
 					Name: "global.service",
-					Unit: newUF(t, "[X-Fleet]\nGlobal=true"),
+					Unit: newUF(t, "[X-Flt]\nGlobal=true"),
 				},
 				job.Job{
 					Name: "global.mount",
 					Unit: newUF(t, `
-[X-Fleet]
+[X-Flt]
 Global=true
 MachineMetadata=dog=woof`),
 				},
@@ -237,12 +237,12 @@ MachineMetadata=dog=woof`),
 				},
 				"global.service": &job.Unit{
 					Name: "global.service",
-					Unit: newUF(t, "[X-Fleet]\nGlobal=true"),
+					Unit: newUF(t, "[X-Flt]\nGlobal=true"),
 				},
 				"global.mount": &job.Unit{
 					Name: "global.mount",
 					Unit: newUF(t, `
-[X-Fleet]
+[X-Flt]
 Global=true
 MachineMetadata=dog=woof`),
 				},
@@ -287,21 +287,21 @@ func TestAbleToRun(t *testing.T) {
 		// match MachineID
 		{
 			dState: NewAgentState(&machine.MachineState{ID: "XYZ"}),
-			job:    newTestJobWithXFleetValues(t, "MachineID=XYZ"),
+			job:    newTestJobWithXFltValues(t, "MachineID=XYZ"),
 			want:   true,
 		},
 
 		// mismatch MachineID
 		{
 			dState: NewAgentState(&machine.MachineState{ID: "123"}),
-			job:    newTestJobWithXFleetValues(t, "MachineID=XYZ"),
+			job:    newTestJobWithXFltValues(t, "MachineID=XYZ"),
 			want:   false,
 		},
 
 		// match MachineMetadata
 		{
 			dState: NewAgentState(&machine.MachineState{ID: "123", Metadata: map[string]string{"region": "us-west"}}),
-			job:    newTestJobWithXFleetValues(t, "MachineMetadata=region=us-west"),
+			job:    newTestJobWithXFltValues(t, "MachineMetadata=region=us-west"),
 			want:   true,
 		},
 
@@ -315,7 +315,7 @@ func TestAbleToRun(t *testing.T) {
 		// mismatch MachineMetadata
 		{
 			dState: NewAgentState(&machine.MachineState{ID: "123", Metadata: map[string]string{"region": "us-west"}}),
-			job:    newTestJobWithXFleetValues(t, "MachineMetadata=region=us-east"),
+			job:    newTestJobWithXFltValues(t, "MachineMetadata=region=us-east"),
 			want:   false,
 		},
 
@@ -327,7 +327,7 @@ func TestAbleToRun(t *testing.T) {
 					"pong.service": &job.Unit{Name: "pong.service"},
 				},
 			},
-			job:  newTestJobWithXFleetValues(t, "MachineOf=pong.service"),
+			job:  newTestJobWithXFltValues(t, "MachineOf=pong.service"),
 			want: true,
 		},
 
@@ -340,14 +340,14 @@ func TestAbleToRun(t *testing.T) {
 					"pong.service": &job.Unit{Name: "pong.service"},
 				},
 			},
-			job:  newTestJobWithXFleetValues(t, "MachineOf=pong.service\nMachineOf=ping.service"),
+			job:  newTestJobWithXFltValues(t, "MachineOf=pong.service\nMachineOf=ping.service"),
 			want: true,
 		},
 
 		// peer not scheduled locally
 		{
 			dState: NewAgentState(&machine.MachineState{ID: "123"}),
-			job:    newTestJobWithXFleetValues(t, "MachineOf=ping.service"),
+			job:    newTestJobWithXFltValues(t, "MachineOf=ping.service"),
 			want:   false,
 		},
 
@@ -359,7 +359,7 @@ func TestAbleToRun(t *testing.T) {
 					"ping.service": &job.Unit{Name: "ping.service"},
 				},
 			},
-			job:  newTestJobWithXFleetValues(t, "MachineOf=pong.service\nMachineOf=ping.service"),
+			job:  newTestJobWithXFltValues(t, "MachineOf=pong.service\nMachineOf=ping.service"),
 			want: false,
 		},
 
@@ -371,7 +371,7 @@ func TestAbleToRun(t *testing.T) {
 					"ping.service": &job.Unit{Name: "ping.service"},
 				},
 			},
-			job:  newTestJobWithXFleetValues(t, "Conflicts=pong.service"),
+			job:  newTestJobWithXFltValues(t, "Conflicts=pong.service"),
 			want: true,
 		},
 
@@ -383,7 +383,7 @@ func TestAbleToRun(t *testing.T) {
 					"ping.service": &job.Unit{Name: "ping.service"},
 				},
 			},
-			job:  newTestJobWithXFleetValues(t, "Conflicts=ping.service"),
+			job:  newTestJobWithXFltValues(t, "Conflicts=ping.service"),
 			want: false,
 		},
 	}

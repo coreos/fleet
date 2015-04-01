@@ -1,7 +1,7 @@
 #!/bin/bash -eu
 #
 # $1 = version string (e.g. 0.8.0)
-# $2 = remote configured to track github.com/coreos/fleet (defaults to "origin" if unset)
+# $2 = remote configured to track github.com/coreos/flt (defaults to "origin" if unset)
 
 VERSION="${1:?version must be set}"
 if [ "${VERSION:0:1}" == "v" ]; then

@@ -22,9 +22,9 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/coreos/fleet/machine"
-	"github.com/coreos/fleet/pkg"
-	"github.com/coreos/fleet/ssh"
+	"github.com/coreos/flt/machine"
+	"github.com/coreos/flt/pkg"
+	"github.com/coreos/flt/ssh"
 )
 
 var (
@@ -38,23 +38,23 @@ var (
 		Description: `Open an interactive shell on a specific machine in the cluster or on the machine
 where the specified unit is located.
 
-fleetctl tries to detect whether your first argument is a machine or a unit.
+fltctl tries to detect whether your first argument is a machine or a unit.
 To skip this check use the --machine or --unit flags.
 
 Open a shell on a machine:
-	fleetctl ssh 2444264c-eac2-4eff-a490-32d5e5e4af24
+	fltctl ssh 2444264c-eac2-4eff-a490-32d5e5e4af24
 
 Open a shell from your laptop, to the machine running a specific unit, using a
 cluster member as a bastion host:
-	fleetctl --tunnel 10.10.10.10 ssh foo.service
+	fltctl --tunnel 10.10.10.10 ssh foo.service
 
 Open a shell on a machine and forward the authentication agent connection:
-	fleetctl ssh --forward-agent 2444264c-eac2-4eff-a490-32d5e5e4af24
+	fltctl ssh --forward-agent 2444264c-eac2-4eff-a490-32d5e5e4af24
 
 
 Tip: Create an alias for --tunnel.
-	- Add "alias fleetctl=fleetctl --tunnel 10.10.10.10" to your bash profile.
-	- Now you can run all fleet commands locally.
+	- Add "alias fltctl=fltctl --tunnel 10.10.10.10" to your bash profile.
+	- Now you can run all flt commands locally.
 
 This command does not work with global units.`,
 		Run: runSSH,

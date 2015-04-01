@@ -18,8 +18,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/coreos/fleet/etcd"
-	"github.com/coreos/fleet/pkg"
+	"github.com/coreos/flt/etcd"
+	"github.com/coreos/flt/pkg"
 )
 
 func TestFilterEtcdEvents(t *testing.T) {
@@ -37,32 +37,32 @@ func TestFilterEtcdEvents(t *testing.T) {
 			ok: false,
 		},
 		{
-			in: "/fleet",
+			in: "/flt",
 			ok: false,
 		},
 		{
-			in: "/fleet/job",
+			in: "/flt/job",
 			ok: false,
 		},
 		{
-			in: "/fleet/job/foo/object",
+			in: "/flt/job/foo/object",
 			ok: false,
 		},
 		{
-			in: "/fleet/machine/asdf",
+			in: "/flt/machine/asdf",
 			ok: false,
 		},
 		{
-			in: "/fleet/state/asdf",
+			in: "/flt/state/asdf",
 			ok: false,
 		},
 		{
-			in: "/fleet/job/foobarbaz/target-state",
+			in: "/flt/job/foobarbaz/target-state",
 			ev: JobTargetStateChangeEvent,
 			ok: true,
 		},
 		{
-			in: "/fleet/job/asdf/target",
+			in: "/flt/job/asdf/target",
 			ev: JobTargetChangeEvent,
 			ok: true,
 		},
@@ -70,7 +70,7 @@ func TestFilterEtcdEvents(t *testing.T) {
 
 	for i, tt := range tests {
 		for _, action := range []string{"set", "update", "create", "delete"} {
-			prefix := "/fleet"
+			prefix := "/flt"
 
 			res := &etcd.Result{
 				Node: &etcd.Node{

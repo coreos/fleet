@@ -17,11 +17,11 @@ package main
 import (
 	"time"
 
-	"github.com/coreos/fleet/client"
-	"github.com/coreos/fleet/job"
-	"github.com/coreos/fleet/machine"
-	"github.com/coreos/fleet/registry"
-	"github.com/coreos/fleet/unit"
+	"github.com/coreos/flt/client"
+	"github.com/coreos/flt/job"
+	"github.com/coreos/flt/machine"
+	"github.com/coreos/flt/registry"
+	"github.com/coreos/flt/unit"
 )
 
 type BlockedFakeRegistry struct {

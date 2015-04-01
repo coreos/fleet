@@ -45,12 +45,12 @@ if [ "$GOOS" == "" ]; then
 	usage
 fi
 
-build fleet ${VER}
+build flt ${VER}
 
-TARGET="fleet-${VER}-${GOOS}-${GOARCH}"
+TARGET="flt-${VER}-${GOOS}-${GOARCH}"
 mkdir ${TARGET}
 
-package fleet ${TARGET}
+package flt ${TARGET}
 
 if [ ${GOOS} == "linux" ]; then
 	tar cvvfz ${TARGET}.tar.gz ${TARGET}

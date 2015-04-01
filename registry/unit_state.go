@@ -19,10 +19,10 @@ import (
 	"sort"
 	"time"
 
-	"github.com/coreos/fleet/etcd"
-	"github.com/coreos/fleet/log"
-	"github.com/coreos/fleet/machine"
-	"github.com/coreos/fleet/unit"
+	"github.com/coreos/flt/etcd"
+	"github.com/coreos/flt/log"
+	"github.com/coreos/flt/machine"
+	"github.com/coreos/flt/unit"
 )
 
 const (
@@ -34,7 +34,7 @@ const (
 
 // legacyUnitStatePath returns the path where UnitState objects were formerly
 // reported before being moved to a machine-specific namespace
-// https://github.com/coreos/fleet/issues/638
+// https://github.com/coreos/flt/issues/638
 func (r *EtcdRegistry) legacyUnitStatePath(jobName string) string {
 	return path.Join(r.keyPrefix, statePrefix, jobName)
 }
@@ -178,7 +178,7 @@ func (r *EtcdRegistry) SaveUnitState(jobName string, unitState *unit.UnitState, 
 
 // Delete the state from the Registry for the given Job's Unit
 func (r *EtcdRegistry) RemoveUnitState(jobName string) error {
-	// TODO(jonboulle): consider https://github.com/coreos/fleet/issues/465
+	// TODO(jonboulle): consider https://github.com/coreos/flt/issues/465
 	legacyKey := r.legacyUnitStatePath(jobName)
 	req := etcd.Delete{
 		Key: legacyKey,
@@ -235,7 +235,7 @@ func unitStateToModel(us *unit.UnitState) *unitStateModel {
 	}
 
 	// Refuse to create a UnitState without a Hash
-	// See https://github.com/coreos/fleet/issues/720
+	// See https://github.com/coreos/flt/issues/720
 	//if len(us.UnitHash) == 0 {
 	//	return nil
 	//}

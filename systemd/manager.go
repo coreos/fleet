@@ -21,15 +21,15 @@ import (
 	"path"
 	"sync"
 
-	"github.com/coreos/fleet/Godeps/_workspace/src/github.com/coreos/go-systemd/dbus"
+	"github.com/coreos/flt/Godeps/_workspace/src/github.com/coreos/go-systemd/dbus"
 
-	"github.com/coreos/fleet/log"
-	"github.com/coreos/fleet/pkg"
-	"github.com/coreos/fleet/unit"
+	"github.com/coreos/flt/log"
+	"github.com/coreos/flt/pkg"
+	"github.com/coreos/flt/unit"
 )
 
 const (
-	DefaultUnitsDirectory = "/run/fleet/units/"
+	DefaultUnitsDirectory = "/run/flt/units/"
 )
 
 type systemdUnitManager struct {

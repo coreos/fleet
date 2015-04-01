@@ -23,24 +23,24 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/coreos/fleet/Godeps/_workspace/src/github.com/rakyll/globalconf"
+	"github.com/coreos/flt/Godeps/_workspace/src/github.com/rakyll/globalconf"
 
-	"github.com/coreos/fleet/agent"
-	"github.com/coreos/fleet/config"
-	"github.com/coreos/fleet/log"
-	"github.com/coreos/fleet/registry"
-	"github.com/coreos/fleet/server"
-	"github.com/coreos/fleet/version"
+	"github.com/coreos/flt/agent"
+	"github.com/coreos/flt/config"
+	"github.com/coreos/flt/log"
+	"github.com/coreos/flt/registry"
+	"github.com/coreos/flt/server"
+	"github.com/coreos/flt/version"
 )
 
 const (
-	DefaultConfigFile = "/etc/fleet/fleet.conf"
+	DefaultConfigFile = "/etc/flt/flt.conf"
 )
 
 func main() {
-	userset := flag.NewFlagSet("fleet", flag.ExitOnError)
+	userset := flag.NewFlagSet("flt", flag.ExitOnError)
 	printVersion := userset.Bool("version", false, "Print the version and exit")
-	cfgPath := userset.String("config", "", fmt.Sprintf("Path to config file. Fleet will look for a config at %s by default.", DefaultConfigFile))
+	cfgPath := userset.String("config", "", fmt.Sprintf("Path to config file. Flt will look for a config at %s by default.", DefaultConfigFile))
 
 	err := userset.Parse(os.Args[1:])
 	if err == flag.ErrHelp {
@@ -49,24 +49,24 @@ func main() {
 	}
 
 	if *printVersion {
-		fmt.Println("fleetd version", version.Version)
+		fmt.Println("fltd version", version.Version)
 		os.Exit(0)
 	}
 
-	log.Infof("Starting fleetd version %v", version.Version)
+	log.Infof("Starting fltd version %v", version.Version)
 
-	cfgset := flag.NewFlagSet("fleet", flag.ExitOnError)
+	cfgset := flag.NewFlagSet("flt", flag.ExitOnError)
 	cfgset.Int("verbosity", 0, "Logging level")
 	cfgset.Var(&stringSlice{}, "etcd_servers", "List of etcd endpoints")
 	cfgset.String("etcd_keyfile", "", "SSL key file used to secure etcd communication")
 	cfgset.String("etcd_certfile", "", "SSL certification file used to secure etcd communication")
 	cfgset.String("etcd_cafile", "", "SSL Certificate Authority file used to secure etcd communication")
-	cfgset.String("etcd_key_prefix", registry.DefaultKeyPrefix, "Keyspace for fleet data in etcd")
+	cfgset.String("etcd_key_prefix", registry.DefaultKeyPrefix, "Keyspace for flt data in etcd")
 	cfgset.Float64("etcd_request_timeout", 1.0, "Amount of time in seconds to allow a single etcd request before considering it failed.")
 	cfgset.Float64("engine_reconcile_interval", 2.0, "Interval at which the engine should reconcile the cluster schedule in etcd.")
-	cfgset.String("public_ip", "", "IP address that fleet machine should publish")
-	cfgset.String("metadata", "", "List of key-value metadata to assign to the fleet machine")
-	cfgset.String("agent_ttl", agent.DefaultTTL, "TTL in seconds of fleet machine state in etcd")
+	cfgset.String("public_ip", "", "IP address that flt machine should publish")
+	cfgset.String("metadata", "", "List of key-value metadata to assign to the flt machine")
+	cfgset.String("agent_ttl", agent.DefaultTTL, "TTL in seconds of flt machine state in etcd")
 	cfgset.Bool("verify_units", false, "DEPRECATED - This option is ignored")
 	cfgset.String("authorized_keys_file", "", "DEPRECATED - This option is ignored")
 

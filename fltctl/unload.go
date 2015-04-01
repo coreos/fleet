@@ -17,8 +17,8 @@ package main
 import (
 	"os"
 
-	"github.com/coreos/fleet/job"
-	"github.com/coreos/fleet/log"
+	"github.com/coreos/flt/job"
+	"github.com/coreos/flt/log"
 )
 
 var (

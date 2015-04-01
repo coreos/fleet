@@ -19,9 +19,9 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/coreos/fleet/agent"
-	"github.com/coreos/fleet/job"
-	"github.com/coreos/fleet/machine"
+	"github.com/coreos/flt/agent"
+	"github.com/coreos/flt/job"
+	"github.com/coreos/flt/machine"
 )
 
 func TestSchedulerDecisions(t *testing.T) {

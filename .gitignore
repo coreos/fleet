@@ -2,4 +2,4 @@ bin/
 coverage/
 gopath/
 *.swp
-fleet.conf
+flt.conf

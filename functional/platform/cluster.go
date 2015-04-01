@@ -15,7 +15,7 @@
 package platform
 
 import (
-	"github.com/coreos/fleet/functional/util"
+	"github.com/coreos/flt/functional/util"
 )
 
 type Member interface {
@@ -33,8 +33,8 @@ type Cluster interface {
 	Destroy() error
 
 	// client operations
-	Fleetctl(m Member, args ...string) (string, string, error)
-	FleetctlWithInput(m Member, input string, args ...string) (string, string, error)
+	Fltctl(m Member, args ...string) (string, string, error)
+	FltctlWithInput(m Member, input string, args ...string) (string, string, error)
 	WaitForNActiveUnits(Member, int) (map[string][]util.UnitState, error)
 	WaitForNMachines(Member, int) ([]string, error)
 }

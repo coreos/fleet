@@ -27,23 +27,23 @@ import (
 	"strings"
 	"time"
 
-	"github.com/coreos/fleet/Godeps/_workspace/src/github.com/coreos/go-systemd/dbus"
+	"github.com/coreos/flt/Godeps/_workspace/src/github.com/coreos/go-systemd/dbus"
 
-	"github.com/coreos/fleet/functional/util"
+	"github.com/coreos/flt/functional/util"
 )
 
 const (
-	fleetAPIPort = 54728
+	fltAPIPort = 54728
 )
 
-var fleetdBinPath string
+var fltdBinPath string
 
 func init() {
-	fleetdBinPath = os.Getenv("FLEETD_BIN")
-	if fleetdBinPath == "" {
+	fltdBinPath = os.Getenv("FLEETD_BIN")
+	if fltdBinPath == "" {
 		fmt.Println("FLEETD_BIN environment variable must be set")
 		os.Exit(1)
-	} else if _, err := os.Stat(fleetdBinPath); err != nil {
+	} else if _, err := os.Stat(fltdBinPath); err != nil {
 		fmt.Printf("%v\n", err)
 		os.Exit(1)
 	}
@@ -72,7 +72,7 @@ func (m *nspawnMember) IP() string {
 }
 
 func (m *nspawnMember) Endpoint() string {
-	return fmt.Sprintf("http://%s:%d", m.ip, fleetAPIPort)
+	return fmt.Sprintf("http://%s:%d", m.ip, fltAPIPort)
 }
 
 type nspawnCluster struct {
@@ -88,17 +88,17 @@ func (nc *nspawnCluster) nextID() string {
 
 func (nc *nspawnCluster) keyspace() string {
 	// TODO(jonboulle): generate this dynamically with atomic in order keys?
-	return fmt.Sprintf("/fleet_functional/%s", nc.name)
+	return fmt.Sprintf("/flt_functional/%s", nc.name)
 }
 
-func (nc *nspawnCluster) Fleetctl(m Member, args ...string) (string, string, error) {
+func (nc *nspawnCluster) Fltctl(m Member, args ...string) (string, string, error) {
 	args = append([]string{"--experimental-api", "--endpoint=" + m.Endpoint()}, args...)
-	return util.RunFleetctl(args...)
+	return util.RunFltctl(args...)
 }
 
-func (nc *nspawnCluster) FleetctlWithInput(m Member, input string, args ...string) (string, string, error) {
+func (nc *nspawnCluster) FltctlWithInput(m Member, input string, args ...string) (string, string, error) {
 	args = append([]string{"--experimental-api", "--endpoint=" + m.Endpoint()}, args...)
-	return util.RunFleetctlWithInput(input, args...)
+	return util.RunFltctlWithInput(input, args...)
 }
 
 func (nc *nspawnCluster) WaitForNActiveUnits(m Member, count int) (map[string][]util.UnitState, error) {
@@ -115,7 +115,7 @@ loop:
 		case <-alarm:
 			return nil, fmt.Errorf("failed to find %d active units within %v (last found: %d)", count, timeout, nactive)
 		case <-ticker:
-			stdout, _, err := nc.Fleetctl(m, "list-units", "--no-legend", "--full", "--fields", "unit,active,machine")
+			stdout, _, err := nc.Fltctl(m, "list-units", "--no-legend", "--full", "--fields", "unit,active,machine")
 			stdout = strings.TrimSpace(stdout)
 			if err != nil {
 				continue
@@ -155,7 +155,7 @@ loop:
 		case <-alarm:
 			return machines, fmt.Errorf("failed to find %d machines within %v", count, timeout)
 		case <-ticker:
-			stdout, _, err := nc.Fleetctl(m, "list-machines", "--no-legend", "--full", "--fields", "machine")
+			stdout, _, err := nc.Fltctl(m, "list-machines", "--no-legend", "--full", "--fields", "machine")
 			if err != nil {
 				continue
 			}
@@ -192,53 +192,53 @@ func (nc *nspawnCluster) prepCluster() (err error) {
 		return
 	}
 
-	if !strings.Contains(stdout, "fleet0") {
-		_, _, err = run("brctl addbr fleet0")
+	if !strings.Contains(stdout, "flt0") {
+		_, _, err = run("brctl addbr flt0")
 		if err != nil {
-			log.Printf("Failed adding fleet0 bridge: %v", err)
+			log.Printf("Failed adding flt0 bridge: %v", err)
 			return
 		}
 	} else {
-		log.Printf("Bridge fleet0 already exists")
+		log.Printf("Bridge flt0 already exists")
 	}
 
-	stdout, _, err = run("ip addr list fleet0")
+	stdout, _, err = run("ip addr list flt0")
 	if err != nil {
-		log.Printf("Failed listing fleet0 addresses: %v", err)
+		log.Printf("Failed listing flt0 addresses: %v", err)
 		return
 	}
 
 	if !strings.Contains(stdout, "172.17.0.1/16") {
-		_, _, err = run("ip addr add 172.17.0.1/16 dev fleet0")
+		_, _, err = run("ip addr add 172.17.0.1/16 dev flt0")
 		if err != nil {
-			log.Printf("Failed adding 172.17.0.1/16 to fleet0: %v", err)
+			log.Printf("Failed adding 172.17.0.1/16 to flt0: %v", err)
 			return
 		}
 	}
 
-	_, _, err = run("ip link set fleet0 up")
+	_, _, err = run("ip link set flt0 up")
 	if err != nil {
-		log.Printf("Failed bringing up fleet0 bridge: %v", err)
+		log.Printf("Failed bringing up flt0 bridge: %v", err)
 		return
 	}
 
 	return nil
 }
 
-func (nc *nspawnCluster) prepFleet(dir, ip, sshKeySrc, fleetdBinSrc string) error {
-	cmd := fmt.Sprintf("mkdir -p %s/opt/fleet", dir)
+func (nc *nspawnCluster) prepFlt(dir, ip, sshKeySrc, fltdBinSrc string) error {
+	cmd := fmt.Sprintf("mkdir -p %s/opt/flt", dir)
 	if _, _, err := run(cmd); err != nil {
 		return err
 	}
 
-	relSSHKeyDst := path.Join("opt", "fleet", "id_rsa.pub")
+	relSSHKeyDst := path.Join("opt", "flt", "id_rsa.pub")
 	sshKeyDst := path.Join(dir, relSSHKeyDst)
 	if err := copyFile(sshKeySrc, sshKeyDst, 0644); err != nil {
 		return err
 	}
 
-	fleetdBinDst := path.Join(dir, "opt", "fleet", "fleetd")
-	if err := copyFile(fleetdBinSrc, fleetdBinDst, 0755); err != nil {
+	fltdBinDst := path.Join(dir, "opt", "flt", "fltd")
+	if err := copyFile(fltdBinSrc, fltdBinDst, 0755); err != nil {
 		return err
 	}
 
@@ -249,21 +249,21 @@ public_ip=%s
 authorized_keys_file=%s
 `
 	cfgContents := fmt.Sprintf(cfgTmpl, nc.keyspace(), ip, relSSHKeyDst)
-	cfgPath := path.Join(dir, "opt", "fleet", "fleet.conf")
+	cfgPath := path.Join(dir, "opt", "flt", "flt.conf")
 	if err := ioutil.WriteFile(cfgPath, []byte(cfgContents), 0644); err != nil {
 		return err
 	}
 
-	socketContents := fmt.Sprintf("[Socket]\nListenStream=%d\n", fleetAPIPort)
-	socketPath := path.Join(dir, "opt", "fleet", "fleet.socket")
+	socketContents := fmt.Sprintf("[Socket]\nListenStream=%d\n", fltAPIPort)
+	socketPath := path.Join(dir, "opt", "flt", "flt.socket")
 	if err := ioutil.WriteFile(socketPath, []byte(socketContents), 0644); err != nil {
 		return err
 	}
 
 	serviceContents := `[Service]
-ExecStart=/opt/fleet/fleetd -config /opt/fleet/fleet.conf
+ExecStart=/opt/flt/fltd -config /opt/flt/flt.conf
 `
-	servicePath := path.Join(dir, "opt", "fleet", "fleet.service")
+	servicePath := path.Join(dir, "opt", "flt", "flt.service")
 	if err := ioutil.WriteFile(servicePath, []byte(serviceContents), 0644); err != nil {
 		return err
 	}
@@ -307,7 +307,7 @@ func (nc *nspawnCluster) createMember(id string) (m Member, err error) {
 	basedir := path.Join(os.TempDir(), nc.name)
 	fsdir := path.Join(basedir, nm.ID(), "fs")
 	cmds := []string{
-		// set up directory for fleet service
+		// set up directory for flt service
 		fmt.Sprintf("mkdir -p %s/etc/systemd/system", fsdir),
 
 		// minimum requirements for running systemd/coreos in a container
@@ -363,8 +363,8 @@ UseDNS no
 	}
 
 	sshKeySrc := path.Join("fixtures", "id_rsa.pub")
-	if err = nc.prepFleet(fsdir, nm.IP(), sshKeySrc, fleetdBinPath); err != nil {
-		log.Printf("Failed preparing fleetd in filesystem: %v", err)
+	if err = nc.prepFlt(fsdir, nm.IP(), sshKeySrc, fltdBinPath); err != nil {
+		log.Printf("Failed preparing fltd in filesystem: %v", err)
 		return
 	}
 
@@ -374,7 +374,7 @@ UseDNS no
 		"-b",
 		fmt.Sprintf("-M %s%s", nc.name, nm.ID()),
 		"--capability=CAP_NET_BIND_SERVICE,CAP_SYS_TIME", // needed for ntpd
-		"--network-bridge fleet0",
+		"--network-bridge flt0",
 		fmt.Sprintf("-D %s", fsdir),
 	}, " ")
 	log.Printf("Creating nspawn container: %s", exec)
@@ -414,28 +414,28 @@ UseDNS no
 		return
 	}
 
-	cmd = fmt.Sprintf("update-ssh-keys -u core -a fleet /opt/fleet/id_rsa.pub")
+	cmd = fmt.Sprintf("update-ssh-keys -u core -a flt /opt/flt/id_rsa.pub")
 	_, _, err = nc.nsenter(nm.pid, cmd)
 	if err != nil {
 		log.Printf("Failed authorizing SSH key in container")
 		return
 	}
 
-	_, _, err = nc.nsenter(nm.pid, "ln -s /opt/fleet/fleet.socket /etc/systemd/system/fleet.socket")
+	_, _, err = nc.nsenter(nm.pid, "ln -s /opt/flt/flt.socket /etc/systemd/system/flt.socket")
 	if err != nil {
-		log.Printf("Failed symlinking fleet.socket: %v", err)
+		log.Printf("Failed symlinking flt.socket: %v", err)
 		return
 	}
 
-	_, _, err = nc.nsenter(nm.pid, "ln -s /opt/fleet/fleet.service /etc/systemd/system/fleet.service")
+	_, _, err = nc.nsenter(nm.pid, "ln -s /opt/flt/flt.service /etc/systemd/system/flt.service")
 	if err != nil {
-		log.Printf("Failed symlinking fleet.service: %v", err)
+		log.Printf("Failed symlinking flt.service: %v", err)
 		return
 	}
 
-	_, _, err = nc.nsenter(nm.pid, "systemctl start fleet.socket fleet.service")
+	_, _, err = nc.nsenter(nm.pid, "systemctl start flt.socket flt.service")
 	if err != nil {
-		log.Printf("Failed starting fleet units: %v", err)
+		log.Printf("Failed starting flt units: %v", err)
 		return
 	}
 
@@ -458,7 +458,7 @@ func (nc *nspawnCluster) Destroy() error {
 	// altogether until this is fixed.
 	run("etcdctl rm --recursive " + nc.keyspace())
 
-	run("ip link del fleet0")
+	run("ip link del flt0")
 
 	return nil
 }

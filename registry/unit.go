@@ -17,9 +17,9 @@ package registry
 import (
 	"path"
 
-	"github.com/coreos/fleet/etcd"
-	"github.com/coreos/fleet/log"
-	"github.com/coreos/fleet/unit"
+	"github.com/coreos/flt/etcd"
+	"github.com/coreos/flt/log"
+	"github.com/coreos/flt/unit"
 )
 
 const (
