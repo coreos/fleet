@@ -1,8 +1,8 @@
 # Architecture
 
-## fleetd
+## fltd
 
-Every system in the fleet cluster runs a single `fleetd` daemon. Each daemon encapsulates two roles: the *engine* and the *agent*. An engine primarily makes scheduling decisions while an agent executes units. Both the engine and agent use the _reconciliation model_, periodically generating a snapshot of "current state" and "desired state" and doing the necessary work to mutate the former towards the latter.
+Every system in the flt cluster runs a single `fltd` daemon. Each daemon encapsulates two roles: the *engine* and the *agent*. An engine primarily makes scheduling decisions while an agent executes units. Both the engine and agent use the _reconciliation model_, periodically generating a snapshot of "current state" and "desired state" and doing the necessary work to mutate the former towards the latter.
 
 ### Engine
 
@@ -19,9 +19,9 @@ Every system in the fleet cluster runs a single `fleetd` daemon. Each daemon enc
 
 ## etcd
 
-etcd is the sole datastore in a fleet cluster. All persistent and ephemeral data is stored in etcd: unit files, cluster presence, unit state, etc. 
+etcd is the sole datastore in a flt cluster. All persistent and ephemeral data is stored in etcd: unit files, cluster presence, unit state, etc. 
 
-etcd is also used for all internal communication between fleet engines and agents.
+etcd is also used for all internal communication between flt engines and agents.
 
 ## Object Model
 
@@ -33,27 +33,27 @@ A Unit represents a single systemd unit file. Once a Unit is pushed to the clust
 
 The Unit may define a set of requirements that must be fulfilled by a given host in order for that host to run the Unit. These requirements can include resources, host metadata, locality relative to other Units, etc.
 
-All Units are treated as services rather than batch processes: if a machine on which a Unit is running goes away, fleet will reschedule the Unit elsewhere.
+All Units are treated as services rather than batch processes: if a machine on which a Unit is running goes away, flt will reschedule the Unit elsewhere.
 
 #### State
 
 Both Units and Machines have dynamic state which is published both for the user and cluster to consume.
 
-A UnitState object represents the state of a Unit in the fleet engine. A UnitState object represents the state of a payload as reported by systemd on a given Machine. For more information on states, see the [states documentation](states.md).
+A UnitState object represents the state of a Unit in the flt engine. A UnitState object represents the state of a payload as reported by systemd on a given Machine. For more information on states, see the [states documentation](states.md).
 
 
 # Security
 
 ## Preview Release
 
-Current releases of fleet don't currently perform any authentication or authorization for submitted units. This means that any client that can access your etcd cluster can potentially run arbitrary code on many of your machines very easily.
+Current releases of flt don't currently perform any authentication or authorization for submitted units. This means that any client that can access your etcd cluster can potentially run arbitrary code on many of your machines very easily.
 
 ## Securing etcd
 
-You should avoid public access to etcd and instead run fleet [from your local laptop](using-the-client.md#get-up-and-running) with the `--tunnel` flag to run commands over an SSH tunnel. You can alias this flag for easier usage: `alias fleetctl=fleetctl --tunnel 10.10.10.10` - or use the environment variable `FLEETCTL_TUNNEL`.
+You should avoid public access to etcd and instead run flt [from your local laptop](using-the-client.md#get-up-and-running) with the `--tunnel` flag to run commands over an SSH tunnel. You can alias this flag for easier usage: `alias fltctl=fltctl --tunnel 10.10.10.10` - or use the environment variable `FLEETCTL_TUNNEL`.
 
 ## Other Notes
 
-Since it interacts directly with systemd over D-Bus, the fleetd daemon must be run with elevated privileges (i.e. as root) in order to perform operations like starting and stopping services. From the [systemd D-Bus documentation](http://www.freedesktop.org/wiki/Software/systemd/dbus/):
+Since it interacts directly with systemd over D-Bus, the fltd daemon must be run with elevated privileges (i.e. as root) in order to perform operations like starting and stopping services. From the [systemd D-Bus documentation](http://www.freedesktop.org/wiki/Software/systemd/dbus/):
 
 > In contrast to most of the other services of the systemd suite PID 1 does not use PolicyKit for controlling access to privileged operations, but relies exclusively on the low-level D-Bus policy language. (This is done in order to avoid a cyclic dependency between PolicyKit and systemd/PID 1.) This means that sensitive operations exposed by PID 1 on the bus are generally not available to unprivileged processes directly.

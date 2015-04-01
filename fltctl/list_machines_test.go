@@ -17,8 +17,8 @@ package main
 import (
 	"testing"
 
-	"github.com/coreos/fleet/machine"
-	"github.com/coreos/fleet/registry"
+	"github.com/coreos/flt/machine"
+	"github.com/coreos/flt/registry"
 )
 
 func newTestRegistryForListMachines() registry.Registry {

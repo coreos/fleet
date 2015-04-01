@@ -18,12 +18,12 @@ import (
 	"path"
 	"strconv"
 
-	"github.com/coreos/fleet/Godeps/_workspace/src/github.com/coreos/go-semver/semver"
+	"github.com/coreos/flt/Godeps/_workspace/src/github.com/coreos/go-semver/semver"
 
-	"github.com/coreos/fleet/etcd"
+	"github.com/coreos/flt/etcd"
 )
 
-// LatestDaemonVersion attempts to retrieve the latest version of fleetd
+// LatestDaemonVersion attempts to retrieve the latest version of fltd
 // that has been registered in the Registry. It returns the version if
 // it can be determined (or nil otherwise), and any error encountered.
 func (r *EtcdRegistry) LatestDaemonVersion() (*semver.Version, error) {

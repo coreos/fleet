@@ -2,7 +2,7 @@ package introspect
 
 import (
 	"encoding/xml"
-	"github.com/coreos/fleet/Godeps/_workspace/src/github.com/godbus/dbus"
+	"github.com/coreos/flt/Godeps/_workspace/src/github.com/godbus/dbus"
 	"reflect"
 	"strings"
 )

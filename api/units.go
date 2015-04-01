@@ -22,11 +22,11 @@ import (
 	"path"
 	"strings"
 
-	"github.com/coreos/fleet/client"
-	"github.com/coreos/fleet/job"
-	"github.com/coreos/fleet/log"
-	"github.com/coreos/fleet/pkg"
-	"github.com/coreos/fleet/schema"
+	"github.com/coreos/flt/client"
+	"github.com/coreos/flt/job"
+	"github.com/coreos/flt/log"
+	"github.com/coreos/flt/pkg"
+	"github.com/coreos/flt/schema"
 )
 
 func wireUpUnitsResource(mux *http.ServeMux, prefix string, cAPI client.API) {

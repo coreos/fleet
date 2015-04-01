@@ -17,13 +17,13 @@ package main
 import (
 	"testing"
 
-	"github.com/coreos/fleet/client"
-	"github.com/coreos/fleet/machine"
-	"github.com/coreos/fleet/registry"
-	"github.com/coreos/fleet/unit"
-	"github.com/coreos/fleet/version"
+	"github.com/coreos/flt/client"
+	"github.com/coreos/flt/machine"
+	"github.com/coreos/flt/registry"
+	"github.com/coreos/flt/unit"
+	"github.com/coreos/flt/version"
 
-	"github.com/coreos/fleet/Godeps/_workspace/src/github.com/coreos/go-semver/semver"
+	"github.com/coreos/flt/Godeps/_workspace/src/github.com/coreos/go-semver/semver"
 )
 
 func newFakeRegistryForCheckVersion(v string) registry.ClusterRegistry {
@@ -164,31 +164,31 @@ func TestCreateUnitFails(t *testing.T) {
 		},
 		{
 			"foo.service",
-			newUnitFile(t, `[X-Fleet]
+			newUnitFile(t, `[X-Flt]
 	MachineOf=abcd
 	Conflicts=abcd`),
 		},
 		{
 			"foo.service",
-			newUnitFile(t, `[X-Fleet]
+			newUnitFile(t, `[X-Flt]
 MachineOf=abcd
 Conflicts=abcd`),
 		},
 		{
 			"foo.service",
-			newUnitFile(t, `[X-Fleet]
+			newUnitFile(t, `[X-Flt]
 Global=true
 MachineOf=abcd`),
 		},
 		{
 			"foo.service",
-			newUnitFile(t, `[X-Fleet]
+			newUnitFile(t, `[X-Flt]
 Global=true
 MachineOf=zxcvq`),
 		},
 		{
 			"foo.service",
-			newUnitFile(t, `[X-Fleet]
+			newUnitFile(t, `[X-Flt]
 Global=true
 Conflicts=bar`),
 		},

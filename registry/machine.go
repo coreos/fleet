@@ -19,8 +19,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/coreos/fleet/etcd"
-	"github.com/coreos/fleet/machine"
+	"github.com/coreos/flt/etcd"
+	"github.com/coreos/flt/machine"
 )
 
 const (

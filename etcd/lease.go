@@ -19,7 +19,7 @@ import (
 	"path"
 	"time"
 
-	"github.com/coreos/fleet/pkg/lease"
+	"github.com/coreos/flt/pkg/lease"
 )
 
 const (

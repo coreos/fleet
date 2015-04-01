@@ -18,8 +18,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/coreos/fleet/functional/platform"
-	"github.com/coreos/fleet/functional/util"
+	"github.com/coreos/flt/functional/platform"
+	"github.com/coreos/flt/functional/util"
 )
 
 // Ensure an existing unit migrates to an unoccupied machine
@@ -42,7 +42,7 @@ func TestDynamicClusterNewMemberUnitMigration(t *testing.T) {
 	}
 
 	// Start 3 conflicting units on the 4-node cluster
-	_, _, err = cluster.Fleetctl(m0, "start",
+	_, _, err = cluster.Fltctl(m0, "start",
 		"fixtures/units/conflict.0.service",
 		"fixtures/units/conflict.1.service",
 		"fixtures/units/conflict.2.service",
@@ -53,7 +53,7 @@ func TestDynamicClusterNewMemberUnitMigration(t *testing.T) {
 
 	// All 3 services should be visible immediately, and all of them should
 	// become ACTIVE shortly thereafter
-	stdout, _, err := cluster.Fleetctl(m0, "list-units", "--no-legend")
+	stdout, _, err := cluster.Fltctl(m0, "list-units", "--no-legend")
 	if err != nil {
 		t.Fatalf("Failed to run list-units: %v", err)
 	}
@@ -76,7 +76,7 @@ func TestDynamicClusterNewMemberUnitMigration(t *testing.T) {
 	unit := "conflict.1.service"
 	oldMach := states[unit].Machine
 	oldIP := states[unit].IP
-	if _, _, err = cluster.Fleetctl(m0, "--strict-host-key-checking=false", "ssh", oldMach, "sudo", "systemctl", "stop", "fleet"); err != nil {
+	if _, _, err = cluster.Fltctl(m0, "--strict-host-key-checking=false", "ssh", oldMach, "sudo", "systemctl", "stop", "flt"); err != nil {
 		t.Fatal(err)
 	}
 	var mN platform.Member
@@ -114,7 +114,7 @@ func TestDynamicClusterNewMemberUnitMigration(t *testing.T) {
 	}
 }
 
-// Simulate rebooting a single member of a fleet cluster
+// Simulate rebooting a single member of a flt cluster
 func TestDynamicClusterMemberReboot(t *testing.T) {
 	cluster, err := platform.NewNspawnCluster("smoke")
 	if err != nil {
@@ -132,7 +132,7 @@ func TestDynamicClusterMemberReboot(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, _, err = cluster.Fleetctl(m0, "start",
+	_, _, err = cluster.Fltctl(m0, "start",
 		"fixtures/units/conflict.0.service",
 		"fixtures/units/conflict.1.service",
 		"fixtures/units/conflict.2.service",
@@ -143,7 +143,7 @@ func TestDynamicClusterMemberReboot(t *testing.T) {
 
 	// All 3 services should be visible immediately, and all of them should
 	// become ACTIVE shortly thereafter
-	stdout, _, err := cluster.Fleetctl(m0, "list-units", "--no-legend")
+	stdout, _, err := cluster.Fltctl(m0, "list-units", "--no-legend")
 	if err != nil {
 		t.Fatalf("Failed to run list-units: %v", err)
 	}

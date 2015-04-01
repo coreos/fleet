@@ -1,10 +1,10 @@
-# fleet API v1
+# flt API v1
 
-The fleet API allows you to manage the state of the cluster using JSON over HTTP.
+The flt API allows you to manage the state of the cluster using JSON over HTTP.
 
 ## Managing Units
 
-Create and modify Unit entities to communicate to fleet the desired state of the cluster.
+Create and modify Unit entities to communicate to flt the desired state of the cluster.
 This simply declares what *should* be happening; the backend system still has to react to the changes in this desired state.
 The actual state of the system is communicated with UnitState entities.
 
@@ -127,7 +127,7 @@ If the requested Unit does not exist, a `404 Not Found` will be returned.
 
 ### Destroy a Unit
 
-Completely remove a Unit from fleet.
+Completely remove a Unit from flt.
 
 #### Request
 
@@ -143,7 +143,7 @@ If the indicated Unit does not exist, a `404 Not Found` will be returned.
 
 ## Current Unit State
 
-Whereas Unit entities represent the desired state of units known by fleet, UnitStates represent the current states of units actually running in the cluster.
+Whereas Unit entities represent the desired state of units known by flt, UnitStates represent the current states of units actually running in the cluster.
 The information reported by UnitStates will not always align perfectly with the Units, as there is a delay between the declaration of desired state and the backend system making all of the necessary changes.
 
 ### UnitState Entity
@@ -206,8 +206,8 @@ A successful response will contain a page of zero or more Machine entities.
 
 ## Capability Discovery
 
-The v1 fleet API is described by a [discovery document][disco]. Users should generate their client bindings from this document using the appropriate language generator.
-This document is available in the [fleet source][schema] and served directly from the API itself, at the `/discovery` endpoint.
+The v1 flt API is described by a [discovery document][disco]. Users should generate their client bindings from this document using the appropriate language generator.
+This document is available in the [flt source][schema] and served directly from the API itself, at the `/discovery` endpoint.
 Note that this discovery document intentionally ships with an unusable `rootUrl`; clients *must* initialize this as appropriate.
 
 An extremely simplified example client can be found [here][example].

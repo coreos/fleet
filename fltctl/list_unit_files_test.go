@@ -17,9 +17,9 @@ package main
 import (
 	"testing"
 
-	"github.com/coreos/fleet/job"
-	"github.com/coreos/fleet/machine"
-	"github.com/coreos/fleet/schema"
+	"github.com/coreos/flt/job"
+	"github.com/coreos/flt/machine"
+	"github.com/coreos/flt/schema"
 )
 
 func TestListUnitFilesFieldsToStrings(t *testing.T) {
@@ -108,7 +108,7 @@ func TestMapTargetField(t *testing.T) {
 		{
 			unit: schema.Unit{
 				Options: []*schema.UnitOption{
-					&schema.UnitOption{Section: "X-Fleet", Name: "Global", Value: "true"},
+					&schema.UnitOption{Section: "X-Flt", Name: "Global", Value: "true"},
 				},
 			},
 			want: "global",

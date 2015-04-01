@@ -24,14 +24,14 @@ import (
 	"strings"
 )
 
-var fleetctlBinPath string
+var fltctlBinPath string
 
 func init() {
-	fleetctlBinPath = os.Getenv("FLEETCTL_BIN")
-	if fleetctlBinPath == "" {
+	fltctlBinPath = os.Getenv("FLEETCTL_BIN")
+	if fltctlBinPath == "" {
 		fmt.Println("FLEETCTL_BIN environment variable must be set")
 		os.Exit(1)
-	} else if _, err := os.Stat(fleetctlBinPath); err != nil {
+	} else if _, err := os.Stat(fltctlBinPath); err != nil {
 		fmt.Printf("%v\n", err)
 		os.Exit(1)
 	}
@@ -42,22 +42,22 @@ func init() {
 	}
 }
 
-type fleetfunc func(args ...string) (string, string, error)
+type fltfunc func(args ...string) (string, string, error)
 
-func RunFleetctl(args ...string) (string, string, error) {
-	log.Printf("%s %s", fleetctlBinPath, strings.Join(args, " "))
+func RunFltctl(args ...string) (string, string, error) {
+	log.Printf("%s %s", fltctlBinPath, strings.Join(args, " "))
 	var stdoutBytes, stderrBytes bytes.Buffer
-	cmd := exec.Command(fleetctlBinPath, args...)
+	cmd := exec.Command(fltctlBinPath, args...)
 	cmd.Stdout = &stdoutBytes
 	cmd.Stderr = &stderrBytes
 	err := cmd.Run()
 	return stdoutBytes.String(), stderrBytes.String(), err
 }
 
-func RunFleetctlWithInput(input string, args ...string) (string, string, error) {
-	log.Printf("%s %s", fleetctlBinPath, strings.Join(args, " "))
+func RunFltctlWithInput(input string, args ...string) (string, string, error) {
+	log.Printf("%s %s", fltctlBinPath, strings.Join(args, " "))
 	var stdoutBytes, stderrBytes bytes.Buffer
-	cmd := exec.Command(fleetctlBinPath, args...)
+	cmd := exec.Command(fltctlBinPath, args...)
 	cmd.Stdout = &stdoutBytes
 	cmd.Stderr = &stderrBytes
 	stdin, err := cmd.StdinPipe()
@@ -120,7 +120,7 @@ func FilterActiveUnits(states []UnitState) (filtered []UnitState) {
 // tempUnit creates a local unit file with the given contents, returning
 // the name of the file
 func TempUnit(contents string) (string, error) {
-	tmp, err := ioutil.TempFile(os.TempDir(), "fleet-test-unit-")
+	tmp, err := ioutil.TempFile(os.TempDir(), "flt-test-unit-")
 	if err != nil {
 		return "", err
 	}

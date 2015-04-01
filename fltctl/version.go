@@ -15,7 +15,7 @@
 package main
 
 import (
-	"github.com/coreos/fleet/version"
+	"github.com/coreos/flt/version"
 )
 
 var cmdVersion = &Command{
@@ -26,6 +26,6 @@ var cmdVersion = &Command{
 }
 
 func runVersion(args []string) (exit int) {
-	stdout("fleetctl version %s", version.Version)
+	stdout("fltctl version %s", version.Version)
 	return
 }

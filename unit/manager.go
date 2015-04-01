@@ -15,7 +15,7 @@
 package unit
 
 import (
-	"github.com/coreos/fleet/pkg"
+	"github.com/coreos/flt/pkg"
 )
 
 type UnitManager interface {

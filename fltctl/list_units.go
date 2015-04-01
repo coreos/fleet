@@ -19,8 +19,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/coreos/fleet/machine"
-	"github.com/coreos/fleet/schema"
+	"github.com/coreos/flt/machine"
+	"github.com/coreos/flt/schema"
 )
 
 const (
@@ -36,13 +36,13 @@ var (
 		Description: `Lists the state of all units in the cluster loaded onto a machine.
 
 For easily parsable output, you can remove the column headers:
-	fleetctl list-units --no-legend
+	fltctl list-units --no-legend
 
 Output the list without ellipses:
-	fleetctl list-units --full
+	fltctl list-units --full
 
 Or, choose the columns to display:
-	fleetctl list-units --fields=unit,machine`,
+	fltctl list-units --fields=unit,machine`,
 		Run: runListUnits,
 	}
 

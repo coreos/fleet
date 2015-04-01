@@ -4,5 +4,5 @@ Description=PONG
 [Service]
 ExecStart=/bin/bash -c "while true; do echo pong; sleep 1; done"
 
-[X-Fleet]
+[X-Flt]
 MachineOf=ping.0.service

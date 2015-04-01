@@ -20,12 +20,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/coreos/fleet/Godeps/_workspace/src/github.com/jonboulle/clockwork"
+	"github.com/coreos/flt/Godeps/_workspace/src/github.com/jonboulle/clockwork"
 
-	"github.com/coreos/fleet/log"
-	"github.com/coreos/fleet/machine"
-	"github.com/coreos/fleet/registry"
-	"github.com/coreos/fleet/unit"
+	"github.com/coreos/flt/log"
+	"github.com/coreos/flt/machine"
+	"github.com/coreos/flt/registry"
+	"github.com/coreos/flt/unit"
 )
 
 const numPublishers = 5
@@ -208,7 +208,7 @@ func newPublisher(reg registry.Registry, ttl time.Duration) publishFunc {
 			// TODO(jonboulle): consider teasing apart a separate UnitState-like struct
 			// so we can rely on a UnitState always being fully hydrated?
 
-			// See https://github.com/coreos/fleet/issues/720
+			// See https://github.com/coreos/flt/issues/720
 			//if len(us.UnitHash) == 0 {
 			//	log.Errorf("Refusing to push UnitState(%s), no UnitHash: %#v", name, us)
 

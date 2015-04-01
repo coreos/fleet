@@ -22,11 +22,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/fleet/Godeps/_workspace/src/github.com/jonboulle/clockwork"
+	"github.com/coreos/flt/Godeps/_workspace/src/github.com/jonboulle/clockwork"
 
-	"github.com/coreos/fleet/machine"
-	"github.com/coreos/fleet/registry"
-	"github.com/coreos/fleet/unit"
+	"github.com/coreos/flt/machine"
+	"github.com/coreos/flt/registry"
+	"github.com/coreos/flt/unit"
 )
 
 func TestUpdateCache(t *testing.T) {

@@ -17,7 +17,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/coreos/fleet/schema"
+	"github.com/coreos/flt/schema"
 )
 
 var (

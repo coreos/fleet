@@ -21,9 +21,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/fleet/etcd"
-	"github.com/coreos/fleet/machine"
-	"github.com/coreos/fleet/unit"
+	"github.com/coreos/flt/etcd"
+	"github.com/coreos/flt/machine"
+	"github.com/coreos/flt/unit"
 )
 
 type action struct {
@@ -66,15 +66,15 @@ func (t *testEtcdClient) Wait(req etcd.Action, ch <-chan struct{}) (*etcd.Result
 }
 
 func TestUnitStatePaths(t *testing.T) {
-	r := &EtcdRegistry{etcd: nil, keyPrefix: "/fleet/"}
+	r := &EtcdRegistry{etcd: nil, keyPrefix: "/flt/"}
 	j := "foo.service"
-	want := "/fleet/state/foo.service"
+	want := "/flt/state/foo.service"
 	got := r.legacyUnitStatePath(j)
 	if got != want {
 		t.Errorf("bad unit state path: got %v, want %v", got, want)
 	}
 	m := "abcdefghij"
-	want = "/fleet/states/foo.service/abcdefghij"
+	want = "/flt/states/foo.service/abcdefghij"
 	got = r.unitStatePath(m, j)
 	if got != want {
 		t.Errorf("bad unit state path: got %v, want %v", got, want)
@@ -83,7 +83,7 @@ func TestUnitStatePaths(t *testing.T) {
 
 func TestSaveUnitState(t *testing.T) {
 	e := &testEtcdClient{}
-	r := &EtcdRegistry{etcd: e, keyPrefix: "/fleet/"}
+	r := &EtcdRegistry{etcd: e, keyPrefix: "/flt/"}
 	j := "foo.service"
 	mID := "mymachine"
 	us := unit.NewUnitState("abc", "def", "ghi", mID)
@@ -97,7 +97,7 @@ func TestSaveUnitState(t *testing.T) {
 	}
 
 	// Saving unit state with no hash should succeed for now, but should fail
-	// in the future. See https://github.com/coreos/fleet/issues/720.
+	// in the future. See https://github.com/coreos/flt/issues/720.
 	//r.SaveUnitState(j, us, time.Second)
 	//if len(e.sets) != 1 || e.deletes == nil {
 	//	t.Logf("sets: %#v", e.sets)
@@ -109,8 +109,8 @@ func TestSaveUnitState(t *testing.T) {
 	r.SaveUnitState(j, us, time.Second)
 
 	json := `{"loadState":"abc","activeState":"def","subState":"ghi","machineState":{"ID":"mymachine","PublicIP":"","Metadata":null,"Version":""},"unitHash":"quickbrownfox"}`
-	p1 := "/fleet/state/foo.service"
-	p2 := "/fleet/states/foo.service/mymachine"
+	p1 := "/flt/state/foo.service"
+	p2 := "/flt/states/foo.service/mymachine"
 	want := []action{
 		action{key: p1, val: json},
 		action{key: p2, val: json},
@@ -129,15 +129,15 @@ func TestSaveUnitState(t *testing.T) {
 
 func TestRemoveUnitState(t *testing.T) {
 	e := &testEtcdClient{}
-	r := &EtcdRegistry{etcd: e, keyPrefix: "/fleet/"}
+	r := &EtcdRegistry{etcd: e, keyPrefix: "/flt/"}
 	j := "foo.service"
 	err := r.RemoveUnitState(j)
 	if err != nil {
 		t.Errorf("unexpected error from RemoveUnitState: %v", err)
 	}
 	want := []action{
-		action{key: "/fleet/state/foo.service", rec: false},
-		action{key: "/fleet/states/foo.service", rec: true},
+		action{key: "/flt/state/foo.service", rec: false},
+		action{key: "/flt/states/foo.service", rec: true},
 	}
 	got := e.deletes
 	if !reflect.DeepEqual(got, want) {
@@ -162,7 +162,7 @@ func TestRemoveUnitState(t *testing.T) {
 		{[]error{nil, errors.New("ur registry don't work")}, true},
 	} {
 		e = &testEtcdClient{err: tt.errs}
-		r = &EtcdRegistry{etcd: e, keyPrefix: "/fleet"}
+		r = &EtcdRegistry{etcd: e, keyPrefix: "/flt"}
 		err = r.RemoveUnitState("foo.service")
 		if (err != nil) != tt.fail {
 			t.Errorf("case %d: unexpected error state calling UnitStates(): got %v, want %v", i, err, tt.fail)
@@ -181,7 +181,7 @@ func TestUnitStateToModel(t *testing.T) {
 		},
 		{
 			// Unit state with no hash and no machineID is OK
-			// See https://github.com/coreos/fleet/issues/720
+			// See https://github.com/coreos/flt/issues/720
 			in: &unit.UnitState{
 				LoadState:   "foo",
 				ActiveState: "bar",
@@ -362,7 +362,7 @@ func TestGetUnitState(t *testing.T) {
 			res: []*etcd.Result{tt.res},
 			err: []error{tt.err},
 		}
-		r := &EtcdRegistry{etcd: e, keyPrefix: "/fleet/"}
+		r := &EtcdRegistry{etcd: e, keyPrefix: "/flt/"}
 		j := "foo.service"
 		us, err := r.getUnitState(j, "XXX")
 		if tt.wantErr != (err != nil) {
@@ -371,7 +371,7 @@ func TestGetUnitState(t *testing.T) {
 		}
 
 		want := []action{
-			action{key: "/fleet/states/foo.service/XXX", rec: false},
+			action{key: "/flt/states/foo.service/XXX", rec: false},
 		}
 		got := e.gets
 		if !reflect.DeepEqual(got, want) {
@@ -410,24 +410,24 @@ func TestUnitStates(t *testing.T) {
 	}
 	// Multiple new unit states reported for the same unit
 	foo := etcd.Node{
-		Key: "/fleet/states/foo",
+		Key: "/flt/states/foo",
 		Nodes: []etcd.Node{
 			etcd.Node{
-				Key:   "/fleet/states/foo/mID1",
+				Key:   "/flt/states/foo/mID1",
 				Value: usToJson(t, &fus1),
 			},
 			etcd.Node{
-				Key:   "/fleet/states/foo/mID2",
+				Key:   "/flt/states/foo/mID2",
 				Value: usToJson(t, &fus2),
 			},
 		},
 	}
 	// Bogus new unit state which we won't expect to see in results
 	bar := etcd.Node{
-		Key: "/fleet/states/bar",
+		Key: "/flt/states/bar",
 		Nodes: []etcd.Node{
 			etcd.Node{
-				Key:   "/fleet/states/bar/asdf",
+				Key:   "/flt/states/bar/asdf",
 				Value: `total garbage`,
 			},
 		},
@@ -435,14 +435,14 @@ func TestUnitStates(t *testing.T) {
 	// Result from crawling the new "states" namespace
 	res2 := &etcd.Result{
 		Node: &etcd.Node{
-			Key:   "/fleet/states",
+			Key:   "/flt/states",
 			Nodes: []etcd.Node{foo, bar},
 		},
 	}
 	e := &testEtcdClient{
 		res: []*etcd.Result{res2},
 	}
-	r := &EtcdRegistry{etcd: e, keyPrefix: "/fleet/"}
+	r := &EtcdRegistry{etcd: e, keyPrefix: "/flt/"}
 
 	got, err := r.UnitStates()
 	if err != nil {
@@ -477,7 +477,7 @@ func TestUnitStates(t *testing.T) {
 		{[]error{errors.New("ur registry don't work")}, true},
 	} {
 		e = &testEtcdClient{err: tt.errs}
-		r = &EtcdRegistry{etcd: e, keyPrefix: "/fleet"}
+		r = &EtcdRegistry{etcd: e, keyPrefix: "/flt"}
 		got, err = r.UnitStates()
 		if (err != nil) != tt.fail {
 			t.Errorf("case %d: unexpected error state calling UnitStates(): got %v, want %v", i, err, tt.fail)

@@ -18,11 +18,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/coreos/fleet/log"
-	"github.com/coreos/fleet/machine"
-	"github.com/coreos/fleet/pkg"
-	"github.com/coreos/fleet/pkg/lease"
-	"github.com/coreos/fleet/registry"
+	"github.com/coreos/flt/log"
+	"github.com/coreos/flt/machine"
+	"github.com/coreos/flt/pkg"
+	"github.com/coreos/flt/pkg/lease"
+	"github.com/coreos/flt/registry"
 )
 
 const (
@@ -88,7 +88,7 @@ func (e *Engine) Run(ival time.Duration, stop chan bool) {
 		}
 
 		// abort is closed when reconciliation must stop prematurely, either
-		// by a local timeout or the fleet server shutting down
+		// by a local timeout or the flt server shutting down
 		abort := make(chan struct{})
 
 		// monitor is used to shut down the following goroutine

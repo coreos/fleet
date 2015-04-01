@@ -15,7 +15,7 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/coreos/fleet/Godeps/_workspace/src/golang.org/x/crypto/ssh"
+	"github.com/coreos/flt/Godeps/_workspace/src/golang.org/x/crypto/ssh"
 )
 
 // startAgent executes ssh-agent, and returns a Agent interface to it.

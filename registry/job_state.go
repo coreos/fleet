@@ -18,9 +18,9 @@ import (
 	"path"
 	"time"
 
-	"github.com/coreos/fleet/etcd"
-	"github.com/coreos/fleet/job"
-	"github.com/coreos/fleet/unit"
+	"github.com/coreos/flt/etcd"
+	"github.com/coreos/flt/job"
+	"github.com/coreos/flt/unit"
 )
 
 // determineJobState decides what the State field of a Job object should

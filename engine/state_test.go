@@ -19,14 +19,14 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/coreos/fleet/agent"
-	"github.com/coreos/fleet/job"
-	"github.com/coreos/fleet/machine"
-	"github.com/coreos/fleet/unit"
+	"github.com/coreos/flt/agent"
+	"github.com/coreos/flt/job"
+	"github.com/coreos/flt/machine"
+	"github.com/coreos/flt/unit"
 )
 
 func newUnitWithMetadata(t *testing.T, metadata string) unit.UnitFile {
-	contents := fmt.Sprintf("[X-Fleet]\nMachineMetadata=%s", metadata)
+	contents := fmt.Sprintf("[X-Flt]\nMachineMetadata=%s", metadata)
 	u, err := unit.NewUnitFile(contents)
 	if err != nil {
 		t.Fatalf("error creating unit from %q: %v", contents, err)

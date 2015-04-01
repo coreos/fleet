@@ -18,10 +18,10 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/coreos/fleet/etcd"
+	"github.com/coreos/flt/etcd"
 )
 
-const DefaultKeyPrefix = "/_coreos.com/fleet/"
+const DefaultKeyPrefix = "/_coreos.com/flt/"
 
 // EtcdRegistry fulfils the Registry interface and uses etcd as a backend
 type EtcdRegistry struct {

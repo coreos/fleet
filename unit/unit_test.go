@@ -173,7 +173,7 @@ ExecStop=echo "pong"
 # ignore me, too
 ExecStop=echo post
 
-[X-Fleet]
+[X-Flt]
 MachineMetadata=foo=bar
 MachineMetadata=baz=qux
 `
@@ -186,7 +186,7 @@ MachineMetadata=baz=qux
 			"ExecStart": {`echo "ping";`},
 			"ExecStop":  {`echo "pong"`, "echo post"},
 		},
-		"X-Fleet": {
+		"X-Flt": {
 			"MachineMetadata": {"foo=bar", "baz=qux"},
 		},
 	}

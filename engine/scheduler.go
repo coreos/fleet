@@ -18,8 +18,8 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/coreos/fleet/agent"
-	"github.com/coreos/fleet/job"
+	"github.com/coreos/flt/agent"
+	"github.com/coreos/flt/job"
 )
 
 type decision struct {

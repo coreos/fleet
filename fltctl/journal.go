@@ -17,7 +17,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/coreos/fleet/job"
+	"github.com/coreos/flt/job"
 )
 
 var (
@@ -32,10 +32,10 @@ var (
 		Description: `Outputs the journal of a unit by connecting to the machine that the unit occupies.
 
 Read the last 10 lines:
-	fleetctl journal foo.service
+	fltctl journal foo.service
 
 Read the last 100 lines:
-	fleetctl journal --lines 100 foo.service
+	fltctl journal --lines 100 foo.service
 
 This command does not work with global units.`,
 	}

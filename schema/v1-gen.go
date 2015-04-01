@@ -1,10 +1,10 @@
-// Package schema provides access to the fleet API.
+// Package schema provides access to the flt API.
 //
-// See http://github.com/coreos/fleet
+// See http://github.com/coreos/flt
 //
 // Usage example:
 //
-//   import "github.com/coreos/fleet/Godeps/_workspace/src/google.golang.org/api/schema/v1"
+//   import "github.com/coreos/flt/Godeps/_workspace/src/google.golang.org/api/schema/v1"
 //   ...
 //   schemaService, err := schema.New(oauthHttpClient)
 package schema
@@ -20,7 +20,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/coreos/fleet/Godeps/_workspace/src/google.golang.org/api/googleapi"
+	"github.com/coreos/flt/Godeps/_workspace/src/google.golang.org/api/googleapi"
 )
 
 // Always reference these packages, just in case the auto-generated code
@@ -35,10 +35,10 @@ var _ = googleapi.Version
 var _ = errors.New
 var _ = strings.Replace
 
-const apiId = "fleet:v1"
+const apiId = "flt:v1"
 const apiName = "schema"
 const apiVersion = "v1"
-const basePath = "$ENDPOINT/fleet/v1/"
+const basePath = "$ENDPOINT/flt/v1/"
 
 func New(client *http.Client) (*Service, error) {
 	if client == nil {
@@ -149,7 +149,7 @@ type UnitStatePage struct {
 	States []*UnitState `json:"states,omitempty"`
 }
 
-// method id "fleet.Machine.List":
+// method id "flt.Machine.List":
 
 type MachinesListCall struct {
 	s    *Service
@@ -207,7 +207,7 @@ func (c *MachinesListCall) Do() (*MachinePage, error) {
 	// {
 	//   "description": "Retrieve a page of Machine objects.",
 	//   "httpMethod": "GET",
-	//   "id": "fleet.Machine.List",
+	//   "id": "flt.Machine.List",
 	//   "parameters": {
 	//     "nextPageToken": {
 	//       "location": "query",
@@ -222,7 +222,7 @@ func (c *MachinesListCall) Do() (*MachinePage, error) {
 
 }
 
-// method id "fleet.UnitState.List":
+// method id "flt.UnitState.List":
 
 type UnitStateListCall struct {
 	s    *Service
@@ -298,7 +298,7 @@ func (c *UnitStateListCall) Do() (*UnitStatePage, error) {
 	// {
 	//   "description": "Retrieve a page of UnitState objects.",
 	//   "httpMethod": "GET",
-	//   "id": "fleet.UnitState.List",
+	//   "id": "flt.UnitState.List",
 	//   "parameters": {
 	//     "machineID": {
 	//       "location": "query",
@@ -321,7 +321,7 @@ func (c *UnitStateListCall) Do() (*UnitStatePage, error) {
 
 }
 
-// method id "fleet.Unit.Delete":
+// method id "flt.Unit.Delete":
 
 type UnitsDeleteCall struct {
 	s        *Service
@@ -370,7 +370,7 @@ func (c *UnitsDeleteCall) Do() error {
 	// {
 	//   "description": "Delete the referenced Unit object.",
 	//   "httpMethod": "DELETE",
-	//   "id": "fleet.Unit.Delete",
+	//   "id": "flt.Unit.Delete",
 	//   "parameterOrder": [
 	//     "unitName"
 	//   ],
@@ -386,7 +386,7 @@ func (c *UnitsDeleteCall) Do() error {
 
 }
 
-// method id "fleet.Unit.Get":
+// method id "flt.Unit.Get":
 
 type UnitsGetCall struct {
 	s        *Service
@@ -439,7 +439,7 @@ func (c *UnitsGetCall) Do() (*Unit, error) {
 	// {
 	//   "description": "Retrieve a single Unit object.",
 	//   "httpMethod": "GET",
-	//   "id": "fleet.Unit.Get",
+	//   "id": "flt.Unit.Get",
 	//   "parameterOrder": [
 	//     "unitName"
 	//   ],
@@ -458,7 +458,7 @@ func (c *UnitsGetCall) Do() (*Unit, error) {
 
 }
 
-// method id "fleet.Unit.List":
+// method id "flt.Unit.List":
 
 type UnitsListCall struct {
 	s    *Service
@@ -516,7 +516,7 @@ func (c *UnitsListCall) Do() (*UnitPage, error) {
 	// {
 	//   "description": "Retrieve a page of Unit objects.",
 	//   "httpMethod": "GET",
-	//   "id": "fleet.Unit.List",
+	//   "id": "flt.Unit.List",
 	//   "parameters": {
 	//     "nextPageToken": {
 	//       "location": "query",
@@ -531,7 +531,7 @@ func (c *UnitsListCall) Do() (*UnitPage, error) {
 
 }
 
-// method id "fleet.Unit.Set":
+// method id "flt.Unit.Set":
 
 type UnitsSetCall struct {
 	s        *Service
@@ -588,7 +588,7 @@ func (c *UnitsSetCall) Do() error {
 	// {
 	//   "description": "Create or update a Unit.",
 	//   "httpMethod": "PUT",
-	//   "id": "fleet.Unit.Set",
+	//   "id": "flt.Unit.Set",
 	//   "parameterOrder": [
 	//     "unitName"
 	//   ],

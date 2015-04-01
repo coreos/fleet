@@ -21,7 +21,7 @@ import (
 	"syscall"
 	"testing"
 
-	"github.com/coreos/fleet/functional/platform"
+	"github.com/coreos/flt/functional/platform"
 )
 
 func TestKnownHostsVerification(t *testing.T) {
@@ -51,8 +51,8 @@ func TestKnownHostsVerification(t *testing.T) {
 
 	khFile := tmp.Name()
 
-	if stdout, stderr, err := cluster.FleetctlWithInput(m0, "yes", "--strict-host-key-checking=true", fmt.Sprintf("--known-hosts-file=%s", khFile), "ssh", machine, "uptime"); err != nil {
-		t.Errorf("Unable to SSH into fleet machine: \nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)
+	if stdout, stderr, err := cluster.FltctlWithInput(m0, "yes", "--strict-host-key-checking=true", fmt.Sprintf("--known-hosts-file=%s", khFile), "ssh", machine, "uptime"); err != nil {
+		t.Errorf("Unable to SSH into flt machine: \nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)
 	}
 
 	_, err = cluster.ReplaceMember(members[1])
@@ -67,8 +67,8 @@ func TestKnownHostsVerification(t *testing.T) {
 	machine = machines[0]
 
 	// SSH'ing to the cluster member should now fail with a host key mismatch
-	if _, _, err := cluster.Fleetctl(m0, "--strict-host-key-checking=true", fmt.Sprintf("--known-hosts-file=%s", khFile), "ssh", machine, "uptime"); err == nil {
-		t.Errorf("Expected error while SSH'ing to fleet machine")
+	if _, _, err := cluster.Fltctl(m0, "--strict-host-key-checking=true", fmt.Sprintf("--known-hosts-file=%s", khFile), "ssh", machine, "uptime"); err == nil {
+		t.Errorf("Expected error while SSH'ing to flt machine")
 	}
 
 	// Overwrite the known-hosts file to simulate removing the old host key
@@ -77,8 +77,8 @@ func TestKnownHostsVerification(t *testing.T) {
 	}
 
 	// And SSH should work again
-	if stdout, stderr, err := cluster.FleetctlWithInput(m0, "yes", "--strict-host-key-checking=true", fmt.Sprintf("--known-hosts-file=%s", khFile), "ssh", machine, "uptime"); err != nil {
-		t.Errorf("Unable to SSH into fleet machine: \nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)
+	if stdout, stderr, err := cluster.FltctlWithInput(m0, "yes", "--strict-host-key-checking=true", fmt.Sprintf("--known-hosts-file=%s", khFile), "ssh", machine, "uptime"); err != nil {
+		t.Errorf("Unable to SSH into flt machine: \nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)
 	}
 
 }

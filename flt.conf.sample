@@ -20,7 +20,7 @@
 # no IP address is published.
 # public_ip=""
 
-# Comma-delimited key/value pairs that are published to the fleet registry.
+# Comma-delimited key/value pairs that are published to the flt registry.
 # This data can be referenced in unit files to affect scheduling decisions.
 # An example could look like: metadata="region=us-west,az=us-west-1"
 # metadata=""

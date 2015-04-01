@@ -19,10 +19,10 @@ import (
 	"net/url"
 	"path"
 
-	"github.com/coreos/fleet/Godeps/_workspace/src/google.golang.org/api/googleapi"
+	"github.com/coreos/flt/Godeps/_workspace/src/google.golang.org/api/googleapi"
 
-	"github.com/coreos/fleet/machine"
-	"github.com/coreos/fleet/schema"
+	"github.com/coreos/flt/machine"
+	"github.com/coreos/flt/schema"
 )
 
 func NewHTTPClient(c *http.Client, ep url.URL) (API, error) {
@@ -32,7 +32,7 @@ func NewHTTPClient(c *http.Client, ep url.URL) (API, error) {
 	}
 
 	// append a slash so the schema.Service knows this is the root path
-	ep.Path = path.Join(ep.Path, "fleet", "v1") + "/"
+	ep.Path = path.Join(ep.Path, "flt", "v1") + "/"
 	svc.BasePath = ep.String()
 
 	return &HTTPClient{svc: svc}, nil

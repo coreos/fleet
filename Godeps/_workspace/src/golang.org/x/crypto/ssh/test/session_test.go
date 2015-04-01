@@ -11,7 +11,7 @@ package test
 import (
 	"bytes"
 	"errors"
-	"github.com/coreos/fleet/Godeps/_workspace/src/golang.org/x/crypto/ssh"
+	"github.com/coreos/flt/Godeps/_workspace/src/golang.org/x/crypto/ssh"
 	"io"
 	"strings"
 	"testing"

@@ -1,13 +1,13 @@
 #
 # This file provides an example of a very simple client library written in Python.
-# The client builds an interface for interacting with the fleet API, then retrieves
-# a list of Units currently loaded into fleet.
+# The client builds an interface for interacting with the flt API, then retrieves
+# a list of Units currently loaded into flt.
 #
 # Warning: the code below is a significally simplified version of a typical client
 # library. It is an incomplete implementation that is provided to demonstrate
 # some aspects of building a client library. It is not production-ready code.
 #
-# This example assumes that fleet is configured to listen on localhost:8080
+# This example assumes that flt is configured to listen on localhost:8080
 #
 # Requirements:
 #  httplib2 - https://github.com/jcgregorio/httplib2
@@ -22,7 +22,7 @@ import pprint
 
 # Step 1: Fetch Discovery document.
 ROOT_URL = "http://localhost:8080/"
-DISCOVERY_URI = ROOT_URL + "fleet/v1/discovery"
+DISCOVERY_URI = ROOT_URL + "flt/v1/discovery"
 h = httplib2.Http()
 resp, content = h.request(DISCOVERY_URI)
 discovery = json.loads(content)

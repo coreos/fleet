@@ -7,22 +7,22 @@ package schema
 const DiscoveryJSON = `{
   "kind": "discovery#restDescription",
   "discoveryVersion": "v1",
-  "id": "fleet:v1",
+  "id": "flt:v1",
   "name": "schema",
   "version": "v1",
-  "title": "fleet API",
+  "title": "flt API",
   "description": "",
-  "documentationLink": "http://github.com/coreos/fleet",
+  "documentationLink": "http://github.com/coreos/flt",
   "protocol": "rest",
   "icons": {
     "x16": "",
     "x32": ""
   },
   "labels": [],
-  "baseUrl": "$ENDPOINT/fleet/v1/",
-  "basePath": "/fleet/v1/",
+  "baseUrl": "$ENDPOINT/flt/v1/",
+  "basePath": "/flt/v1/",
   "rootUrl": "$ENDPOINT/",
-  "servicePath": "fleet/v1/",
+  "servicePath": "flt/v1/",
   "batchPath": "batch",
   "parameters": {},
   "auth": {},
@@ -170,7 +170,7 @@ const DiscoveryJSON = `{
     "Machines": {
       "methods": {
         "List": {
-          "id": "fleet.Machine.List",
+          "id": "flt.Machine.List",
           "description": "Retrieve a page of Machine objects.",
           "httpMethod": "GET",
           "path": "machines",
@@ -189,7 +189,7 @@ const DiscoveryJSON = `{
     "Units": {
       "methods": {
         "List": {
-          "id": "fleet.Unit.List",
+          "id": "flt.Unit.List",
           "description": "Retrieve a page of Unit objects.",
           "httpMethod": "GET",
           "path": "units",
@@ -204,7 +204,7 @@ const DiscoveryJSON = `{
           }
         },
         "Get": {
-          "id": "fleet.Unit.Get",
+          "id": "flt.Unit.Get",
           "description": "Retrieve a single Unit object.",
           "httpMethod": "GET",
           "path": "units/{unitName}",
@@ -223,7 +223,7 @@ const DiscoveryJSON = `{
           }
         },
         "Delete": {
-          "id": "fleet.Unit.Delete",
+          "id": "flt.Unit.Delete",
           "description": "Delete the referenced Unit object.",
           "httpMethod": "DELETE",
           "path": "units/{unitName}",
@@ -239,7 +239,7 @@ const DiscoveryJSON = `{
           ]
         },
         "Set": {
-          "id": "fleet.Unit.Set",
+          "id": "flt.Unit.Set",
           "description": "Create or update a Unit.",
           "httpMethod": "PUT",
           "path": "units/{unitName}",
@@ -262,7 +262,7 @@ const DiscoveryJSON = `{
     "UnitState": {
       "methods": {
         "List": {
-          "id": "fleet.UnitState.List",
+          "id": "flt.UnitState.List",
           "description": "Retrieve a page of UnitState objects.",
           "httpMethod": "GET",
           "path": "state",

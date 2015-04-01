@@ -17,7 +17,7 @@ package main
 import (
 	"os"
 
-	"github.com/coreos/fleet/job"
+	"github.com/coreos/flt/job"
 )
 
 var (
@@ -30,19 +30,19 @@ for units in the current working directory or matching names of previously
 submitted units.
 
 For units which are not global, start operations are performed synchronously,
-which means fleetctl will block until it detects that the unit(s) have
+which means fltctl will block until it detects that the unit(s) have
 transitioned to a started state. This behaviour can be configured with the
 respective --block-attempts and --no-block options. Start operations on global
 units are always non-blocking.
 
 Start a single unit:
-	fleetctl start foo.service
+	fltctl start foo.service
 
 Start an entire directory of units with glob matching:
-	fleetctl start myservice/*
+	fltctl start myservice/*
 
 You may filter suitable hosts based on metadata provided by the machine.
-Machine metadata is located in the fleet configuration file.`,
+Machine metadata is located in the flt configuration file.`,
 		Run: runStartUnit,
 	}
 )

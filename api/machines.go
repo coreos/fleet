@@ -19,10 +19,10 @@ import (
 	"net/http"
 	"path"
 
-	"github.com/coreos/fleet/client"
-	"github.com/coreos/fleet/log"
-	"github.com/coreos/fleet/machine"
-	"github.com/coreos/fleet/schema"
+	"github.com/coreos/flt/client"
+	"github.com/coreos/flt/log"
+	"github.com/coreos/flt/machine"
+	"github.com/coreos/flt/schema"
 )
 
 func wireUpMachinesResource(mux *http.ServeMux, prefix string, cAPI client.API) {

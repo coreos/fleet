@@ -1,4 +1,4 @@
-Portions of fleet's ssh package (particularly related to known_hosts handling)
+Portions of flt's ssh package (particularly related to known_hosts handling)
 are derived from the OpenSSH source, the copyright notices and licenses for
 which follow below.
 

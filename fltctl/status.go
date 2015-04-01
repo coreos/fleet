@@ -17,8 +17,8 @@ package main
 import (
 	"fmt"
 
-	"github.com/coreos/fleet/job"
-	"github.com/coreos/fleet/schema"
+	"github.com/coreos/flt/job"
+	"github.com/coreos/flt/schema"
 )
 
 var cmdStatusUnits = &Command{
@@ -30,10 +30,10 @@ Supports glob matching of units in the current working directory or matches
 previously started units.
 
 Show status of a single unit:
-	fleetctl status foo.service
+	fltctl status foo.service
 
 Show status of an entire directory with glob matching:
-fleetctl status myservice/*
+fltctl status myservice/*
 
 This command does not work with global units.`,
 	Run: runStatusUnits,

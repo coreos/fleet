@@ -17,9 +17,9 @@ package pkg
 import (
 	"time"
 
-	"github.com/coreos/fleet/Godeps/_workspace/src/github.com/jonboulle/clockwork"
+	"github.com/coreos/flt/Godeps/_workspace/src/github.com/jonboulle/clockwork"
 
-	"github.com/coreos/fleet/log"
+	"github.com/coreos/flt/log"
 )
 
 type Event string

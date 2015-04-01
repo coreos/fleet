@@ -23,13 +23,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/fleet/job"
-	"github.com/coreos/fleet/systemd"
-	"github.com/coreos/fleet/unit"
+	"github.com/coreos/flt/job"
+	"github.com/coreos/flt/systemd"
+	"github.com/coreos/flt/unit"
 )
 
 func TestSystemdUnitFlow(t *testing.T) {
-	uDir, err := ioutil.TempDir("", "fleet-")
+	uDir, err := ioutil.TempDir("", "flt-")
 	if err != nil {
 		t.Fatalf("Failed creating tempdir: %v", err)
 	}
@@ -52,7 +52,7 @@ func TestSystemdUnitFlow(t *testing.T) {
 	contents := `[Service]
 ExecStart=/usr/bin/sleep 3000
 `
-	name := fmt.Sprintf("fleet-unit-%d.service", rand.Int63())
+	name := fmt.Sprintf("flt-unit-%d.service", rand.Int63())
 	uf, err := unit.NewUnitFile(contents)
 	if err != nil {
 		t.Fatalf("Invalid unit file: %v", err)

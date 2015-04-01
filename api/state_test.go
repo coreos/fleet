@@ -22,10 +22,10 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/coreos/fleet/client"
-	"github.com/coreos/fleet/registry"
-	"github.com/coreos/fleet/schema"
-	"github.com/coreos/fleet/unit"
+	"github.com/coreos/flt/client"
+	"github.com/coreos/flt/registry"
+	"github.com/coreos/flt/schema"
+	"github.com/coreos/flt/unit"
 )
 
 func TestUnitStateList(t *testing.T) {

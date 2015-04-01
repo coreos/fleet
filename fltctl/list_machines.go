@@ -19,7 +19,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/coreos/fleet/machine"
+	"github.com/coreos/flt/machine"
 )
 
 const (
@@ -35,10 +35,10 @@ var (
 		Description: `Lists all active machines within the cluster. Previously active machines will not appear in this list.
 
 For easily parsable output, you can remove the column headers:
-	fleetctl list-machines --no-legend
+	fltctl list-machines --no-legend
 
 Output the list without truncation:
-	fleetctl list-machines --full`,
+	fltctl list-machines --full`,
 		Run: runListMachines,
 	}
 

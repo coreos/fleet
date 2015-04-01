@@ -20,17 +20,17 @@ import (
 	"path"
 	"sort"
 
-	"github.com/coreos/fleet/etcd"
-	"github.com/coreos/fleet/job"
-	"github.com/coreos/fleet/log"
-	"github.com/coreos/fleet/unit"
+	"github.com/coreos/flt/etcd"
+	"github.com/coreos/flt/job"
+	"github.com/coreos/flt/log"
+	"github.com/coreos/flt/unit"
 )
 
 const (
 	jobPrefix = "job"
 )
 
-// Schedule returns all ScheduledUnits known by fleet, ordered by name
+// Schedule returns all ScheduledUnits known by flt, ordered by name
 func (r *EtcdRegistry) Schedule() ([]job.ScheduledUnit, error) {
 	req := etcd.Get{
 		Key:       path.Join(r.keyPrefix, jobPrefix),

@@ -17,8 +17,8 @@ package main
 import (
 	"os"
 
-	"github.com/coreos/fleet/job"
-	"github.com/coreos/fleet/log"
+	"github.com/coreos/flt/job"
+	"github.com/coreos/flt/log"
 )
 
 var cmdStopUnit = &Command{
@@ -33,16 +33,16 @@ completely for any custom stop directives (i.e. ExecStop option in the unit
 file).
 
 For units which are not global, stop operations are performed synchronously,
-which means fleetctl will block until it detects that the unit(s) have
+which means fltctl will block until it detects that the unit(s) have
 transitioned to a stopped state. This behaviour can be configured with the
 respective --block-attempts and --no-block options. Stop operations on global
 units are always non-blocking.
 
 Stop a single unit:
-	fleetctl stop foo.service
+	fltctl stop foo.service
 
 Stop an entire directory of units with glob matching, without waiting:
-	fleetctl --no-block stop myservice/*`,
+	fltctl --no-block stop myservice/*`,
 	Run: runStopUnit,
 }
 

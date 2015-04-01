@@ -19,25 +19,25 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/coreos/fleet/functional/util"
-	"github.com/coreos/fleet/version"
+	"github.com/coreos/flt/functional/util"
+	"github.com/coreos/flt/version"
 )
 
 func TestClientVersionFlag(t *testing.T) {
-	stdout, _, err := util.RunFleetctl("--version")
+	stdout, _, err := util.RunFltctl("--version")
 	if err != nil {
-		t.Fatalf("Unexpected error while executing fleetctl: %v", err)
+		t.Fatalf("Unexpected error while executing fltctl: %v", err)
 	}
 
-	if strings.TrimSpace(stdout) != fmt.Sprintf("fleetctl version %s", version.Version) {
-		t.Fatalf("Received unexpected output for `fleetctl --version`: '%s'", stdout)
+	if strings.TrimSpace(stdout) != fmt.Sprintf("fltctl version %s", version.Version) {
+		t.Fatalf("Received unexpected output for `fltctl --version`: '%s'", stdout)
 	}
 }
 
 func TestClientVersionHelpOutput(t *testing.T) {
-	stdout, _, err := util.RunFleetctl()
+	stdout, _, err := util.RunFltctl()
 	if err != nil {
-		t.Fatalf("Unexpected error while executing fleetctl: %v", err)
+		t.Fatalf("Unexpected error while executing fltctl: %v", err)
 	}
 
 	if !strings.Contains(stdout, fmt.Sprintf("%s", version.Version)) {
@@ -50,9 +50,9 @@ func TestClientHelpFlag(t *testing.T) {
 	var fixture, stdout, stderr string
 	for i, tt := range []string{"--help", "-h", "help", ""} {
 		if tt == "" {
-			stdout, stderr, err = util.RunFleetctl()
+			stdout, stderr, err = util.RunFltctl()
 		} else {
-			stdout, stderr, err = util.RunFleetctl(tt)
+			stdout, stderr, err = util.RunFltctl(tt)
 		}
 
 		if err != nil {

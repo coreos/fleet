@@ -19,7 +19,7 @@ import (
 	"net"
 	"net/http"
 
-	"github.com/coreos/fleet/log"
+	"github.com/coreos/flt/log"
 )
 
 var unavailable = &unavailableHdlr{}
@@ -66,5 +66,5 @@ func (s *Server) Available(stop chan bool) {
 type unavailableHdlr struct{}
 
 func (uh *unavailableHdlr) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
-	sendError(rw, http.StatusServiceUnavailable, errors.New("fleet server currently unavailable"))
+	sendError(rw, http.StatusServiceUnavailable, errors.New("flt server currently unavailable"))
 }

@@ -17,7 +17,7 @@ package unit
 import (
 	"sync"
 
-	"github.com/coreos/fleet/pkg"
+	"github.com/coreos/flt/pkg"
 )
 
 func NewFakeUnitManager() *FakeUnitManager {

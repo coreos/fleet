@@ -20,10 +20,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/fleet/job"
-	"github.com/coreos/fleet/machine"
-	"github.com/coreos/fleet/registry"
-	"github.com/coreos/fleet/unit"
+	"github.com/coreos/flt/job"
+	"github.com/coreos/flt/machine"
+	"github.com/coreos/flt/registry"
+	"github.com/coreos/flt/unit"
 )
 
 func newTestUnitFromUnitContents(t *testing.T, name, contents string) *job.Unit {
@@ -46,16 +46,16 @@ func newTestJobFromUnitContents(t *testing.T, name, contents string) *job.Job {
 	return j
 }
 
-func newNamedTestJobWithXFleetValues(t *testing.T, name, metadata string) *job.Job {
+func newNamedTestJobWithXFltValues(t *testing.T, name, metadata string) *job.Job {
 	contents := fmt.Sprintf(`
-[X-Fleet]
+[X-Flt]
 %s
 `, metadata)
 	return newTestJobFromUnitContents(t, name, contents)
 }
 
-func newTestJobWithXFleetValues(t *testing.T, metadata string) *job.Job {
-	return newNamedTestJobWithXFleetValues(t, "pong.service", metadata)
+func newTestJobWithXFltValues(t *testing.T, metadata string) *job.Job {
+	return newNamedTestJobWithXFltValues(t, "pong.service", metadata)
 }
 
 func TestAgentLoadUnloadUnit(t *testing.T) {

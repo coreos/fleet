@@ -18,13 +18,13 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/coreos/fleet/job"
-	"github.com/coreos/fleet/machine"
-	"github.com/coreos/fleet/unit"
+	"github.com/coreos/flt/job"
+	"github.com/coreos/flt/machine"
+	"github.com/coreos/flt/unit"
 )
 
-func fleetUnit(t *testing.T, opts ...string) unit.UnitFile {
-	contents := "[X-Fleet]"
+func fltUnit(t *testing.T, opts ...string) unit.UnitFile {
+	contents := "[X-Flt]"
 	for _, v := range opts {
 		contents = fmt.Sprintf("%s\n%s", contents, v)
 	}
@@ -47,7 +47,7 @@ func TestHasConflicts(t *testing.T) {
 		// empty current state causes no conflicts
 		{
 			cState: NewAgentState(&machine.MachineState{ID: "XXX"}),
-			job:    &job.Job{Name: "foo.service", Unit: fleetUnit(t, "Conflicts=bar.service")},
+			job:    &job.Job{Name: "foo.service", Unit: fltUnit(t, "Conflicts=bar.service")},
 			want:   false,
 		},
 
@@ -58,7 +58,7 @@ func TestHasConflicts(t *testing.T) {
 				Units: map[string]*job.Unit{
 					"bar.service": &job.Unit{
 						Name: "bar.service",
-						Unit: fleetUnit(t, "Conflicts=foo.service"),
+						Unit: fltUnit(t, "Conflicts=foo.service"),
 					},
 				},
 			},
@@ -78,7 +78,7 @@ func TestHasConflicts(t *testing.T) {
 					},
 				},
 			},
-			job:      &job.Job{Name: "foo.service", Unit: fleetUnit(t, "Conflicts=bar.service")},
+			job:      &job.Job{Name: "foo.service", Unit: fltUnit(t, "Conflicts=bar.service")},
 			want:     true,
 			conflict: "bar.service",
 		},

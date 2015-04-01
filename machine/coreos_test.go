@@ -23,7 +23,7 @@ import (
 )
 
 func TestReadLocalMachineIDMissing(t *testing.T) {
-	dir, err := ioutil.TempDir(os.TempDir(), "fleet-")
+	dir, err := ioutil.TempDir(os.TempDir(), "flt-")
 	if err != nil {
 		t.Fatalf("Failed creating tempdir: %v", err)
 	}
@@ -39,7 +39,7 @@ func TestReadLocalMachineIDMissing(t *testing.T) {
 }
 
 func TestReadLocalMachineIDFound(t *testing.T) {
-	dir, err := ioutil.TempDir(os.TempDir(), "fleet-")
+	dir, err := ioutil.TempDir(os.TempDir(), "flt-")
 	if err != nil {
 		t.Fatalf("Failed creating tempdir: %v", err)
 	}

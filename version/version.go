@@ -15,7 +15,7 @@
 package version
 
 import (
-	"github.com/coreos/fleet/Godeps/_workspace/src/github.com/coreos/go-semver/semver"
+	"github.com/coreos/flt/Godeps/_workspace/src/github.com/coreos/go-semver/semver"
 )
 
 const Version = "0.9.2+git"

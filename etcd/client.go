@@ -22,7 +22,7 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/coreos/fleet/log"
+	"github.com/coreos/flt/log"
 )
 
 const (

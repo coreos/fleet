@@ -30,28 +30,28 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/coreos/fleet/api"
-	"github.com/coreos/fleet/client"
-	"github.com/coreos/fleet/etcd"
-	"github.com/coreos/fleet/job"
-	"github.com/coreos/fleet/log"
-	"github.com/coreos/fleet/machine"
-	"github.com/coreos/fleet/pkg"
-	"github.com/coreos/fleet/registry"
-	"github.com/coreos/fleet/schema"
-	"github.com/coreos/fleet/ssh"
-	"github.com/coreos/fleet/unit"
-	"github.com/coreos/fleet/version"
+	"github.com/coreos/flt/api"
+	"github.com/coreos/flt/client"
+	"github.com/coreos/flt/etcd"
+	"github.com/coreos/flt/job"
+	"github.com/coreos/flt/log"
+	"github.com/coreos/flt/machine"
+	"github.com/coreos/flt/pkg"
+	"github.com/coreos/flt/registry"
+	"github.com/coreos/flt/schema"
+	"github.com/coreos/flt/ssh"
+	"github.com/coreos/flt/unit"
+	"github.com/coreos/flt/version"
 )
 
 const (
-	cliName        = "fleetctl"
-	cliDescription = "fleetctl is a command-line interface to fleet, the cluster-wide CoreOS init system."
+	cliName        = "fltctl"
+	cliDescription = "fltctl is a command-line interface to flt, the cluster-wide CoreOS init system."
 
 	oldVersionWarning = `####################################################################
-WARNING: fleetctl (%s) is older than the latest registered
-version of fleet found in the cluster (%s). You are strongly
-recommended to upgrade fleetctl to prevent incompatibility issues.
+WARNING: fltctl (%s) is older than the latest registered
+version of flt found in the cluster (%s). You are strongly
+recommended to upgrade fltctl to prevent incompatibility issues.
 ####################################################################
 `
 
@@ -61,7 +61,7 @@ recommended to upgrade fleetctl to prevent incompatibility issues.
 
 var (
 	out           *tabwriter.Writer
-	globalFlagset = flag.NewFlagSet("fleetctl", flag.ExitOnError)
+	globalFlagset = flag.NewFlagSet("fltctl", flag.ExitOnError)
 
 	// set of top-level commands
 	commands []*Command
@@ -109,7 +109,7 @@ var (
 
 func init() {
 	// call this as early as possible to ensure we always have timestamps
-	// on fleetctl logs
+	// on fltctl logs
 	log.EnableTimestamps()
 
 	globalFlagset.BoolVar(&globalFlags.Help, "help", false, "Print usage information and exit")
@@ -117,18 +117,18 @@ func init() {
 
 	globalFlagset.BoolVar(&globalFlags.Debug, "debug", false, "Print out more debug information to stderr")
 	globalFlagset.BoolVar(&globalFlags.Version, "version", false, "Print the version and exit")
-	globalFlagset.StringVar(&globalFlags.ClientDriver, "driver", clientDriverEtcd, fmt.Sprintf("Adapter used to execute fleetctl commands. Options include %q and %q.", clientDriverAPI, clientDriverEtcd))
-	globalFlagset.StringVar(&globalFlags.Endpoint, "endpoint", "http://127.0.0.1:4001", fmt.Sprintf("Location of the fleet API if --driver=%s. Alternatively, if --driver=%s, location of the etcd API.", clientDriverAPI, clientDriverEtcd))
-	globalFlagset.StringVar(&globalFlags.EtcdKeyPrefix, "etcd-key-prefix", registry.DefaultKeyPrefix, "Keyspace for fleet data in etcd (development use only!)")
+	globalFlagset.StringVar(&globalFlags.ClientDriver, "driver", clientDriverEtcd, fmt.Sprintf("Adapter used to execute fltctl commands. Options include %q and %q.", clientDriverAPI, clientDriverEtcd))
+	globalFlagset.StringVar(&globalFlags.Endpoint, "endpoint", "http://127.0.0.1:4001", fmt.Sprintf("Location of the flt API if --driver=%s. Alternatively, if --driver=%s, location of the etcd API.", clientDriverAPI, clientDriverEtcd))
+	globalFlagset.StringVar(&globalFlags.EtcdKeyPrefix, "etcd-key-prefix", registry.DefaultKeyPrefix, "Keyspace for flt data in etcd (development use only!)")
 
-	globalFlagset.StringVar(&globalFlags.KeyFile, "key-file", "", "Location of TLS key file used to secure communication with the fleet API or etcd")
-	globalFlagset.StringVar(&globalFlags.CertFile, "cert-file", "", "Location of TLS cert file used to secure communication with the fleet API or etcd")
-	globalFlagset.StringVar(&globalFlags.CAFile, "ca-file", "", "Location of TLS CA file used to secure communication with the fleet API or etcd")
+	globalFlagset.StringVar(&globalFlags.KeyFile, "key-file", "", "Location of TLS key file used to secure communication with the flt API or etcd")
+	globalFlagset.StringVar(&globalFlags.CertFile, "cert-file", "", "Location of TLS cert file used to secure communication with the flt API or etcd")
+	globalFlagset.StringVar(&globalFlags.CAFile, "ca-file", "", "Location of TLS CA file used to secure communication with the flt API or etcd")
 
 	globalFlagset.StringVar(&globalFlags.KnownHostsFile, "known-hosts-file", ssh.DefaultKnownHostsFile, "File used to store remote machine fingerprints. Ignored if strict host key checking is disabled.")
 	globalFlagset.BoolVar(&globalFlags.StrictHostKeyChecking, "strict-host-key-checking", true, "Verify host keys presented by remote machines before initiating SSH connections.")
 	globalFlagset.Float64Var(&globalFlags.SSHTimeout, "ssh-timeout", 10.0, "Amount of time in seconds to allow for SSH connection initialization before failing.")
-	globalFlagset.StringVar(&globalFlags.Tunnel, "tunnel", "", "Establish an SSH tunnel through the provided address for communication with fleet and etcd.")
+	globalFlagset.StringVar(&globalFlags.Tunnel, "tunnel", "", "Establish an SSH tunnel through the provided address for communication with flt and etcd.")
 	globalFlagset.Float64Var(&globalFlags.RequestTimeout, "request-timeout", 3.0, "Amount of time in seconds to allow a single request before considering it failed.")
 	globalFlagset.StringVar(&globalFlags.SSHUserName, "ssh-username", "core", "Username to use when connecting to CoreOS instance.")
 
@@ -201,15 +201,15 @@ func stdout(format string, args ...interface{}) {
 	fmt.Fprintf(os.Stdout, maybeAddNewline(format), args...)
 }
 
-// checkVersion makes a best-effort attempt to verify that fleetctl is at least as new as the
-// latest fleet version found registered in the cluster. If any errors are encountered or fleetctl
+// checkVersion makes a best-effort attempt to verify that fltctl is at least as new as the
+// latest flt version found registered in the cluster. If any errors are encountered or fltctl
 // is >= the latest version found, it returns true. If it is < the latest found version, it returns
 // false and a scary warning to the user.
 func checkVersion(cReg registry.ClusterRegistry) (string, bool) {
 	fv := version.SemVersion
 	lv, err := cReg.LatestDaemonVersion()
 	if err != nil {
-		log.Errorf("error attempting to check latest fleet version in Registry: %v", err)
+		log.Errorf("error attempting to check latest flt version in Registry: %v", err)
 	} else if lv != nil && fv.LessThan(*lv) {
 		return fmt.Sprintf(oldVersionWarning, fv.String(), lv.String()), false
 	}
@@ -294,7 +294,7 @@ func getFlagsFromEnv(prefix string, fs *flag.FlagSet) {
 	})
 }
 
-// getClient initializes a client of fleet based on CLI flags
+// getClient initializes a client of flt based on CLI flags
 func getClient() (client.API, error) {
 	// The user explicitly set --experimental-api=true, so it trumps the
 	// --driver flag. This behavior exists for backwards-compatibility.
@@ -337,8 +337,8 @@ func getHTTPClient() (client.API, error) {
 		if dialUnix {
 			tgt := ep.Path
 			tunnelFunc = func(string, string) (net.Conn, error) {
-				log.Debugf("Establishing remote fleetctl proxy to %s", tgt)
-				cmd := fmt.Sprintf(`fleetctl fd-forward %s`, tgt)
+				log.Debugf("Establishing remote fltctl proxy to %s", tgt)
+				cmd := fmt.Sprintf(`fltctl fd-forward %s`, tgt)
 				return ssh.DialCommand(sshClient, cmd)
 			}
 		} else {
@@ -349,7 +349,7 @@ func getHTTPClient() (client.API, error) {
 	dialFunc := tunnelFunc
 	if dialUnix {
 		// This commonly happens if the user misses the leading slash after the scheme.
-		// For example, "unix://var/run/fleet.sock" would be parsed as host "var".
+		// For example, "unix://var/run/flt.sock" would be parsed as host "var".
 		if len(ep.Host) > 0 {
 			return nil, fmt.Errorf("unable to connect to host %q with scheme %q", ep.Host, ep.Scheme)
 		}
@@ -776,7 +776,7 @@ func machineState(machID string) (*machine.MachineState, error) {
 }
 
 // cachedMachineState makes a best-effort to retrieve the MachineState of the given machine ID.
-// It memoizes MachineState information for the life of a fleetctl invocation.
+// It memoizes MachineState information for the life of a fltctl invocation.
 // Any error encountered retrieving the list of machines is ignored.
 func cachedMachineState(machID string) (ms *machine.MachineState) {
 	if machineStates == nil {
