@@ -118,7 +118,7 @@ func init() {
 	globalFlagset.BoolVar(&globalFlags.Debug, "debug", false, "Print out more debug information to stderr")
 	globalFlagset.BoolVar(&globalFlags.Version, "version", false, "Print the version and exit")
 	globalFlagset.StringVar(&globalFlags.ClientDriver, "driver", clientDriverEtcd, fmt.Sprintf("Adapter used to execute fleetctl commands. Options include %q and %q.", clientDriverAPI, clientDriverEtcd))
-	globalFlagset.StringVar(&globalFlags.Endpoint, "endpoint", "http://127.0.0.1:4001", fmt.Sprintf("Location of the fleet API if --driver=%s. Alternatively, if --driver=%s, location of the etcd API.", clientDriverAPI, clientDriverEtcd))
+	globalFlagset.StringVar(&globalFlags.Endpoint, "endpoint", "http://127.0.0.1:2379,http://127.0.0.1:4001", fmt.Sprintf("Location of the fleet API if --driver=%s. Alternatively, if --driver=%s, location of the etcd API.", clientDriverAPI, clientDriverEtcd))
 	globalFlagset.StringVar(&globalFlags.EtcdKeyPrefix, "etcd-key-prefix", registry.DefaultKeyPrefix, "Keyspace for fleet data in etcd (development use only!)")
 
 	globalFlagset.StringVar(&globalFlags.KeyFile, "key-file", "", "Location of TLS key file used to secure communication with the fleet API or etcd")
@@ -313,7 +313,12 @@ func getClient() (client.API, error) {
 }
 
 func getHTTPClient() (client.API, error) {
-	ep, err := url.Parse(globalFlags.Endpoint)
+	endpoints := strings.Split(globalFlags.Endpoint, ",")
+	if len(endpoints) > 1 {
+		log.Warningf("multiple endpoints provided but only the first (%s) is used", endpoints[0])
+	}
+
+	ep, err := url.Parse(endpoints[0])
 	if err != nil {
 		return nil, err
 	}
@@ -424,7 +429,7 @@ func getRegistryClient() (client.API, error) {
 	}
 
 	timeout := getRequestTimeoutFlag()
-	machines := []string{globalFlags.Endpoint}
+	machines := strings.Split(globalFlags.Endpoint, ",")
 	eClient, err := etcd.NewClient(machines, trans, timeout)
 	if err != nil {
 		return nil, err
