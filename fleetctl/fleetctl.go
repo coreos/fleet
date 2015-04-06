@@ -477,11 +477,11 @@ func getTunnelFlag() string {
 }
 
 func getSSHTimeoutFlag() time.Duration {
-	return time.Duration(globalFlags.SSHTimeout*1000) * time.Millisecond
+	return time.Duration(globalFlags.SSHTimeout) * time.Second
 }
 
 func getRequestTimeoutFlag() time.Duration {
-	return time.Duration(globalFlags.RequestTimeout*1000) * time.Millisecond
+	return time.Duration(globalFlags.RequestTimeout) * time.Second
 }
 
 func machineIDLegend(ms machine.MachineState, full bool) string {
