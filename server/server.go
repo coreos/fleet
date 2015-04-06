@@ -60,7 +60,7 @@ type Server struct {
 }
 
 func New(cfg config.Config) (*Server, error) {
-	etcdRequestTimeout := time.Duration(cfg.EtcdRequestTimeout*1000) * time.Millisecond
+	etcdRequestTimeout := time.Duration(cfg.EtcdRequestTimeout) * time.Second
 	agentTTL, err := time.ParseDuration(cfg.AgentTTL)
 	if err != nil {
 		return nil, err
@@ -112,7 +112,7 @@ func New(cfg config.Config) (*Server, error) {
 	apiServer := api.NewServer(listeners, api.NewServeMux(reg))
 	apiServer.Serve()
 
-	eIval := time.Duration(cfg.EngineReconcileInterval*1000) * time.Millisecond
+	eIval := time.Duration(cfg.EngineReconcileInterval) * time.Second
 
 	srv := Server{
 		agent:       a,
