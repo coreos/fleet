@@ -243,7 +243,7 @@ func (nc *nspawnCluster) prepFleet(dir, ip, sshKeySrc, fleetdBinSrc string) erro
 	}
 
 	cfgTmpl := `verbosity=2
-etcd_servers=["http://172.17.0.1:4001"]	
+etcd_servers=["http://172.17.0.1:4001"]
 etcd_key_prefix=%s
 public_ip=%s
 authorized_keys_file=%s

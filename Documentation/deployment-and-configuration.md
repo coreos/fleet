@@ -2,11 +2,11 @@
 
 Deploying `fleet` is as simple as dropping the `fleetd` binary on a machine with access to etcd and starting it.
 
-Deploying `fleet` on CoreOS is even simpler: just run `systemctl start fleet`. The built-in configuration assumes each of your hosts is serving an etcd endpoint at the default location (http://127.0.0.1:4001). However, if your etcd cluster differs, you must make the corresponding configuration changes.
+Deploying `fleet` on CoreOS is even simpler: just run `systemctl start fleet`. The built-in configuration assumes each of your hosts is serving an etcd endpoint at one of the default locations (http://127.0.0.1:4001 or http://127.0.0.1:2379). However, if your etcd cluster differs, you must make the corresponding configuration changes.
 
 ## etcd
 
-Each `fleetd` daemon must be configured to talk to the same [etcd cluster][etcd]. By default, the `fleetd` daemon will connect to http://127.0.0.1:4001. Refer to the configuration documentation below for customization help.
+Each `fleetd` daemon must be configured to talk to the same [etcd cluster][etcd]. By default, the `fleetd` daemon will connect to either http://127.0.0.1:4001 or http://127.0.0.1:2379, depending on which endpoint responds. Refer to the configuration documentation below for customization help.
 
 `fleet` requires etcd be of version 0.3.0+.
 
@@ -70,10 +70,10 @@ The `fleetd` daemon uses two sources for configuration parameters:
 
 fleet will look at `/etc/fleet/fleet.conf` for this config file by default. The `--config` flag may be passed to the `fleetd` binary to use a custom config file location. The options that may be set are defined below. Note that each of the options should be defined at the global level, outside of any INI sections.
 
-Environment variables may also provide configuration options. Options provided in an environment variable will override the corresponding option provided in a config file. To use an environment variable, simply prefix the name of a given option with 'FLEET_', while uppercasing the rest of the name. For example, to set the `etcd_servers` option to 'http://192.0.2.12:4001' when running the fleetd binary:
+Environment variables may also provide configuration options. Options provided in an environment variable will override the corresponding option provided in a config file. To use an environment variable, simply prefix the name of a given option with 'FLEET_', while uppercasing the rest of the name. For example, to set the `etcd_servers` option to 'http://192.0.2.12:2379' when running the fleetd binary:
 
 ```
-$ FLEET_ETCD_SERVERS=http://192.0.2.12:4001 /usr/bin/fleetd
+$ FLEET_ETCD_SERVERS=http://192.0.2.12:2379 /usr/bin/fleetd
 ```
 
 ## General Options
@@ -89,7 +89,7 @@ Default: 0
 
 Provide a custom set of etcd endpoints.
 
-Default: ["http://127.0.0.1:4001"]
+Default: ["http://127.0.0.1:4001", "http://127.0.0.1:2379"]
 
 #### etcd_request_timeout
 
