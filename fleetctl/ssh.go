@@ -17,8 +17,10 @@ package main
 import (
 	"errors"
 	"fmt"
+	"net"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"syscall"
 
@@ -34,7 +36,7 @@ var (
 	cmdSSH                 = &Command{
 		Name:    "ssh",
 		Summary: "Open interactive shell on a machine in the cluster",
-		Usage:   "[-A|--forward-agent] [--machine|--unit] {MACHINE|UNIT}",
+		Usage:   "[-A|--forward-agent] [--ssh-port=N] [--machine|--unit] {MACHINE|UNIT}",
 		Description: `Open an interactive shell on a specific machine in the cluster or on the machine
 where the specified unit is located.
 
@@ -66,6 +68,7 @@ func init() {
 	cmdSSH.Flags.StringVar(&flagUnit, "unit", "", "Open SSH connection to machine running provided unit.")
 	cmdSSH.Flags.BoolVar(&flagSSHAgentForwarding, "forward-agent", false, "Forward local ssh-agent to target machine.")
 	cmdSSH.Flags.BoolVar(&flagSSHAgentForwarding, "A", false, "Shorthand for --forward-agent")
+	cmdSSH.Flags.IntVar(&sharedFlags.SSHPort, "ssh-port", 22, "Connect to remote hosts over SSH using this TCP port.")
 }
 
 func runSSH(args []string) (exit int) {
@@ -100,6 +103,8 @@ func runSSH(args []string) (exit int) {
 		return 1
 	}
 
+	addr = findSSHPort(addr)
+
 	args = pkg.TrimToDashes(args)
 
 	var sshClient *ssh.SSHForwardingClient
@@ -129,6 +134,14 @@ func runSSH(args []string) (exit int) {
 		}
 	}
 	return
+}
+
+func findSSHPort(addr string) string {
+	if sharedFlags.SSHPort != 22 && !strings.Contains(addr, ":") {
+		return net.JoinHostPort(addr, strconv.Itoa(sharedFlags.SSHPort))
+	} else {
+		return addr
+	}
 }
 
 func globalMachineLookup(args []string) (string, error) {

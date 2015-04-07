@@ -27,7 +27,7 @@ var (
 	cmdJournal = &Command{
 		Name:    "journal",
 		Summary: "Print the journal of a unit in the cluster to stdout",
-		Usage:   "[--lines=N] [-f|--follow] <unit>",
+		Usage:   "[--lines=N] [--ssh-port=N] [-f|--follow] <unit>",
 		Run:     runJournal,
 		Description: `Outputs the journal of a unit by connecting to the machine that the unit occupies.
 
@@ -45,6 +45,7 @@ func init() {
 	cmdJournal.Flags.IntVar(&flagLines, "lines", 10, "Number of recent log lines to return")
 	cmdJournal.Flags.BoolVar(&flagFollow, "follow", false, "Continuously print new entries as they are appended to the journal.")
 	cmdJournal.Flags.BoolVar(&flagFollow, "f", false, "Shorthand for --follow")
+	cmdJournal.Flags.IntVar(&sharedFlags.SSHPort, "ssh-port", 22, "Connect to remote hosts over SSH using this TCP port")
 	cmdJournal.Flags.BoolVar(&flagSudo, "sudo", false, "Execute journal command with sudo")
 }
 
