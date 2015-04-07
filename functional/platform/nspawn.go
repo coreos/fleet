@@ -20,6 +20,7 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"net"
 	"os"
 	"os/exec"
 	"path"
@@ -27,6 +28,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/coreos/fleet/Godeps/_workspace/src/code.google.com/p/go-uuid/uuid"
 	"github.com/coreos/fleet/Godeps/_workspace/src/github.com/coreos/go-systemd/dbus"
 
 	"github.com/coreos/fleet/functional/util"
@@ -58,13 +60,14 @@ func init() {
 }
 
 type nspawnMember struct {
-	id  string
-	ip  string
-	pid int
+	uuid string
+	id   string
+	ip   string
+	pid  int
 }
 
 func (m *nspawnMember) ID() string {
-	return string(m.id)
+	return m.uuid
 }
 
 func (m *nspawnMember) IP() string {
@@ -225,46 +228,41 @@ func (nc *nspawnCluster) prepCluster() (err error) {
 	return nil
 }
 
-func (nc *nspawnCluster) prepFleet(dir, ip, sshKeySrc, fleetdBinSrc string) error {
+func (nc *nspawnCluster) prepFleet(dir string) error {
 	cmd := fmt.Sprintf("mkdir -p %s/opt/fleet", dir)
 	if _, _, err := run(cmd); err != nil {
 		return err
 	}
 
-	relSSHKeyDst := path.Join("opt", "fleet", "id_rsa.pub")
-	sshKeyDst := path.Join(dir, relSSHKeyDst)
-	if err := copyFile(sshKeySrc, sshKeyDst, 0644); err != nil {
-		return err
-	}
-
 	fleetdBinDst := path.Join(dir, "opt", "fleet", "fleetd")
-	if err := copyFile(fleetdBinSrc, fleetdBinDst, 0755); err != nil {
+	if err := copyFile(fleetdBinPath, fleetdBinDst, 0755); err != nil {
 		return err
 	}
 
-	cfgTmpl := `verbosity=2
-etcd_servers=["http://172.17.0.1:4001"]	
-etcd_key_prefix=%s
-public_ip=%s
-authorized_keys_file=%s
-`
-	cfgContents := fmt.Sprintf(cfgTmpl, nc.keyspace(), ip, relSSHKeyDst)
-	cfgPath := path.Join(dir, "opt", "fleet", "fleet.conf")
-	if err := ioutil.WriteFile(cfgPath, []byte(cfgContents), 0644); err != nil {
+	return nil
+}
+
+func (nc *nspawnCluster) buildConfigDrive(dir, ip string) error {
+	latest := path.Join(dir, "media/configdrive/openstack/latest")
+	userPath := path.Join(latest, "user_data")
+	if err := os.MkdirAll(latest, 0755); err != nil {
 		return err
 	}
 
-	socketContents := fmt.Sprintf("[Socket]\nListenStream=%d\n", fleetAPIPort)
-	socketPath := path.Join(dir, "opt", "fleet", "fleet.socket")
-	if err := ioutil.WriteFile(socketPath, []byte(socketContents), 0644); err != nil {
+	userFile, err := os.OpenFile(userPath, os.O_WRONLY|os.O_CREATE, 0644)
+	if err != nil {
 		return err
 	}
+	defer userFile.Close()
 
-	serviceContents := `[Service]
-ExecStart=/opt/fleet/fleetd -config /opt/fleet/fleet.conf
-`
-	servicePath := path.Join(dir, "opt", "fleet", "fleet.service")
-	if err := ioutil.WriteFile(servicePath, []byte(serviceContents), 0644); err != nil {
+	network := fmt.Sprintf(`[Match]
+Name=host0
+[Network]
+Address=%s/16
+`, ip)
+	etcd := "http://172.17.0.1:4001"
+	err = util.BuildCloudConfig(userFile, network, etcd, nc.keyspace(), false)
+	if err != nil {
 		return err
 	}
 
@@ -297,12 +295,18 @@ func (nc *nspawnCluster) CreateMember() (m Member, err error) {
 	return nc.createMember(id)
 }
 
+func newMachineID() string {
+	// drop the standard separators to match systemd
+	return strings.Replace(uuid.New(), "-", "", -1)
+}
+
 func (nc *nspawnCluster) createMember(id string) (m Member, err error) {
 	nm := nspawnMember{
-		id: id,
-		ip: fmt.Sprintf("172.17.1.%s", id),
+		uuid: newMachineID(),
+		id:   id,
+		ip:   fmt.Sprintf("172.17.1.%s", id),
 	}
-	nc.members[id] = nm
+	nc.members[nm.ID()] = nm
 
 	basedir := path.Join(os.TempDir(), nc.name)
 	fsdir := path.Join(basedir, nm.ID(), "fs")
@@ -362,9 +366,13 @@ UseDNS no
 		return
 	}
 
-	sshKeySrc := path.Join("fixtures", "id_rsa.pub")
-	if err = nc.prepFleet(fsdir, nm.IP(), sshKeySrc, fleetdBinPath); err != nil {
+	if err = nc.prepFleet(fsdir); err != nil {
 		log.Printf("Failed preparing fleetd in filesystem: %v", err)
+		return
+	}
+
+	if err = nc.buildConfigDrive(fsdir, nm.IP()); err != nil {
+		log.Printf("Failed building config drive: %v", err)
 		return
 	}
 
@@ -372,6 +380,7 @@ UseDNS no
 		"/usr/bin/systemd-nspawn",
 		"--bind-ro=/usr",
 		"-b",
+		"--uuid=" + nm.uuid,
 		fmt.Sprintf("-M %s%s", nc.name, nm.ID()),
 		"--capability=CAP_NET_BIND_SERVICE,CAP_SYS_TIME", // needed for ntpd
 		"--network-bridge fleet0",
@@ -391,52 +400,22 @@ UseDNS no
 	}
 
 	alarm := time.After(10 * time.Second)
+	addr := fmt.Sprintf("%s:%d", nm.IP(), fleetAPIPort)
 	for {
 		select {
 		case <-alarm:
-			log.Printf("Timed out waiting for machine to start")
+			err = fmt.Errorf("Timed out waiting for machine to start")
+			log.Printf("Starting %s%s failed: %v", nc.name, nm.ID(), err)
 			return
 		default:
 		}
-		// TODO(jonboulle): probably a cleaner way to check here
-		if _, _, e := nc.nsenter(nm.pid, "systemd-analyze"); e == nil {
+		c, err := net.DialTimeout("tcp", addr, 100*time.Millisecond)
+		if err == nil {
+			c.Close()
 			break
 		}
 		time.Sleep(100 * time.Millisecond)
 
-	}
-
-	var stderr string
-	cmd := fmt.Sprintf("ip addr add %s/16 dev host0", nm.IP())
-	_, stderr, err = nc.nsenter(nm.pid, cmd)
-	if err != nil {
-		log.Printf("Failed adding IP address to container: %s", stderr)
-		return
-	}
-
-	cmd = fmt.Sprintf("update-ssh-keys -u core -a fleet /opt/fleet/id_rsa.pub")
-	_, _, err = nc.nsenter(nm.pid, cmd)
-	if err != nil {
-		log.Printf("Failed authorizing SSH key in container")
-		return
-	}
-
-	_, _, err = nc.nsenter(nm.pid, "ln -s /opt/fleet/fleet.socket /etc/systemd/system/fleet.socket")
-	if err != nil {
-		log.Printf("Failed symlinking fleet.socket: %v", err)
-		return
-	}
-
-	_, _, err = nc.nsenter(nm.pid, "ln -s /opt/fleet/fleet.service /etc/systemd/system/fleet.service")
-	if err != nil {
-		log.Printf("Failed symlinking fleet.service: %v", err)
-		return
-	}
-
-	_, _, err = nc.nsenter(nm.pid, "systemctl start fleet.socket fleet.service")
-	if err != nil {
-		log.Printf("Failed starting fleet units: %v", err)
-		return
 	}
 
 	return Member(&nm), nil
@@ -471,16 +450,20 @@ func (nc *nspawnCluster) ReplaceMember(m Member) (Member, error) {
 	// the nspawn container, so we must use systemctl
 	cmd := fmt.Sprintf("systemctl -M %s poweroff", label)
 	if _, stderr, _ := run(cmd); !strings.Contains(stderr, "Success") {
-		return nil, fmt.Errorf("poweroff failed: %s", stderr)
+		if strings.Contains(stderr, "Warning! D-Bus connection terminated.") {
+			log.Printf("poweroff failed: %s", stderr)
+		} else {
+			return nil, fmt.Errorf("poweroff failed: %s", stderr)
+		}
 	}
 
-	var nm nspawnMember
-	if m.ID() == "1" {
-		nm = nc.members["2"]
-	} else {
-		nm = nc.members["1"]
+	var mN Member
+	for id, nm := range nc.members {
+		if id != m.ID() {
+			mN = Member(&nm)
+			break
+		}
 	}
-	mN := Member(&nm)
 
 	if _, err := nc.WaitForNMachines(mN, count-1); err != nil {
 		return nil, err
@@ -489,7 +472,7 @@ func (nc *nspawnCluster) ReplaceMember(m Member) (Member, error) {
 		return nil, err
 	}
 
-	m, err := nc.createMember(m.ID())
+	m, err := nc.createMember(m.(*nspawnMember).id)
 	if err != nil {
 		return nil, err
 	}

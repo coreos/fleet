@@ -117,7 +117,7 @@ func TestScheduleMachineOf(t *testing.T) {
 	}
 
 	var mN platform.Member
-	if m0.IP() == states["ping.1.service"].IP {
+	if m0.ID() == states["ping.1.service"].Machine {
 		mN = members[1]
 	} else {
 		mN = m0
