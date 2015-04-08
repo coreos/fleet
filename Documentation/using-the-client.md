@@ -9,7 +9,7 @@ The `fleetctl` binary is included in all CoreOS distributions, so it is as simpl
 
 ### Custom etcd Endpoint
 
-fleetctl currently requires direct communication with the etcd cluster that your fleet machines are configured to use. Use the `--endpoint` flag to override the default of `http://127.0.0.1:4001`:
+fleetctl currently requires direct communication with the etcd cluster that your fleet machines are configured to use. Use the `--endpoint` flag to override the default of `http://127.0.0.1:2379,http://127.0.0.1:4001`:
 
     fleetctl --endpoint http://<IP:PORT> list-units
 

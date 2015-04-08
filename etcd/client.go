@@ -26,8 +26,11 @@ import (
 )
 
 const (
-	defaultEndpoint = "http://localhost:4001"
-	redirectMax     = 10
+	redirectMax = 10
+)
+
+var (
+	defaultEndpoints = []string{"http://localhost:4001", "http://localhost:2379"}
 )
 
 type Client interface {
@@ -45,7 +48,7 @@ type transport interface {
 
 func NewClient(endpoints []string, transport *http.Transport, actionTimeout time.Duration) (*client, error) {
 	if len(endpoints) == 0 {
-		endpoints = []string{defaultEndpoint}
+		endpoints = defaultEndpoints
 	}
 
 	parsed := make([]url.URL, len(endpoints))
