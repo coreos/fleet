@@ -233,7 +233,7 @@ func (nc *nspawnCluster) prepFleet(dir, ip, sshKeySrc, fleetdBinSrc string) erro
 		return err
 	}
 
-	relSSHKeyDst := path.Join("opt", "fleet", "id_rsa.pub")
+	relSSHKeyDst := path.Join("home", "core", ".ssh", "authorized_keys")
 	sshKeyDst := path.Join(dir, relSSHKeyDst)
 	if err := copyFile(sshKeySrc, sshKeyDst, 0644); err != nil {
 		return err
@@ -326,8 +326,8 @@ func (nc *nspawnCluster) createMember(id string) (m Member, err error) {
 		fmt.Sprintf("ln -s lib64 %s/lib", fsdir),
 		fmt.Sprintf("ln -s usr/bin %s/bin", fsdir),
 		fmt.Sprintf("ln -s usr/sbin %s/sbin", fsdir),
-		fmt.Sprintf("mkdir -p %s/home/core", fsdir),
-		fmt.Sprintf("chown core:core %s/home/core", fsdir),
+		fmt.Sprintf("mkdir -p %s/home/core/.ssh", fsdir),
+		fmt.Sprintf("chown -R core:core %s/home/core", fsdir),
 
 		// We don't need this, and it's slow, so mask it
 		fmt.Sprintf("ln -s /dev/null %s/etc/systemd/system/systemd-udev-hwdb-update.service", fsdir),
@@ -420,13 +420,6 @@ UseDNS no
 	_, stderr, err = nc.nsenter(nm.pid, cmd)
 	if err != nil {
 		log.Printf("Failed adding IP address to container: %s", stderr)
-		return
-	}
-
-	cmd = fmt.Sprintf("update-ssh-keys -u core -a fleet /opt/fleet/id_rsa.pub")
-	_, _, err = nc.nsenter(nm.pid, cmd)
-	if err != nil {
-		log.Printf("Failed authorizing SSH key in container")
 		return
 	}
 
