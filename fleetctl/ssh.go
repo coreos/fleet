@@ -226,7 +226,8 @@ func runCommand(cmd string, machID string) (retcode int) {
 		if err != nil || ms == nil {
 			stderr("Error getting machine IP: %v", err)
 		} else {
-			err, retcode = runRemoteCommand(cmd, ms.PublicIP)
+			addr := findSSHPort(ms.PublicIP)
+			err, retcode = runRemoteCommand(cmd, addr)
 			if err != nil {
 				stderr("Error running remote command: %v", err)
 			}
