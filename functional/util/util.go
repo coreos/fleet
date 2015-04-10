@@ -94,15 +94,14 @@ type UnitState struct {
 	Name        string
 	ActiveState string
 	Machine     string
-	IP          string
 }
 
 func ParseUnitStates(units []string) (states []UnitState) {
 	for _, unit := range units {
 		cols := strings.SplitN(unit, "\t", 3)
 		if len(cols) == 3 {
-			mParts := strings.SplitN(cols[2], "/", 2)
-			states = append(states, UnitState{cols[0], cols[1], mParts[0], mParts[1]})
+			machine := strings.SplitN(cols[2], "/", 2)[0]
+			states = append(states, UnitState{cols[0], cols[1], machine})
 		}
 	}
 	return states

@@ -27,6 +27,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/coreos/fleet/Godeps/_workspace/src/code.google.com/p/go-uuid/uuid"
 	"github.com/coreos/fleet/Godeps/_workspace/src/github.com/coreos/go-systemd/dbus"
 
 	"github.com/coreos/fleet/functional/util"
@@ -58,13 +59,14 @@ func init() {
 }
 
 type nspawnMember struct {
-	id  string
-	ip  string
-	pid int
+	uuid string
+	id   string
+	ip   string
+	pid  int
 }
 
 func (m *nspawnMember) ID() string {
-	return string(m.id)
+	return m.uuid
 }
 
 func (m *nspawnMember) IP() string {
@@ -297,12 +299,18 @@ func (nc *nspawnCluster) CreateMember() (m Member, err error) {
 	return nc.createMember(id)
 }
 
+func newMachineID() string {
+	// drop the standard separators to match systemd
+	return strings.Replace(uuid.New(), "-", "", -1)
+}
+
 func (nc *nspawnCluster) createMember(id string) (m Member, err error) {
 	nm := nspawnMember{
-		id: id,
-		ip: fmt.Sprintf("172.17.1.%s", id),
+		uuid: newMachineID(),
+		id:   id,
+		ip:   fmt.Sprintf("172.17.1.%s", id),
 	}
-	nc.members[id] = nm
+	nc.members[nm.ID()] = nm
 
 	basedir := path.Join(os.TempDir(), nc.name)
 	fsdir := path.Join(basedir, nm.ID(), "fs")
@@ -372,6 +380,7 @@ UseDNS no
 		"/usr/bin/systemd-nspawn",
 		"--bind-ro=/usr",
 		"-b",
+		"--uuid=" + nm.uuid,
 		fmt.Sprintf("-M %s%s", nc.name, nm.ID()),
 		"--capability=CAP_NET_BIND_SERVICE,CAP_SYS_TIME", // needed for ntpd
 		"--network-bridge fleet0",
@@ -474,13 +483,13 @@ func (nc *nspawnCluster) ReplaceMember(m Member) (Member, error) {
 		return nil, fmt.Errorf("poweroff failed: %s", stderr)
 	}
 
-	var nm nspawnMember
-	if m.ID() == "1" {
-		nm = nc.members["2"]
-	} else {
-		nm = nc.members["1"]
+	var mN Member
+	for id, nm := range nc.members {
+		if id != m.ID() {
+			mN = Member(&nm)
+			break
+		}
 	}
-	mN := Member(&nm)
 
 	if _, err := nc.WaitForNMachines(mN, count-1); err != nil {
 		return nil, err
@@ -489,7 +498,7 @@ func (nc *nspawnCluster) ReplaceMember(m Member) (Member, error) {
 		return nil, err
 	}
 
-	m, err := nc.createMember(m.ID())
+	m, err := nc.createMember(m.(*nspawnMember).id)
 	if err != nil {
 		return nil, err
 	}
