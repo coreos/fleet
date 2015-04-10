@@ -233,7 +233,7 @@ func (nc *nspawnCluster) prepFleet(dir, ip, sshKeySrc, fleetdBinSrc string) erro
 		return err
 	}
 
-	relSSHKeyDst := path.Join("opt", "fleet", "id_rsa.pub")
+	relSSHKeyDst := path.Join("home", "core", ".ssh", "authorized_keys")
 	sshKeyDst := path.Join(dir, relSSHKeyDst)
 	if err := copyFile(sshKeySrc, sshKeyDst, 0644); err != nil {
 		return err
@@ -257,7 +257,7 @@ authorized_keys_file=%s
 	}
 
 	socketContents := fmt.Sprintf("[Socket]\nListenStream=%d\n", fleetAPIPort)
-	socketPath := path.Join(dir, "opt", "fleet", "fleet.socket")
+	socketPath := path.Join(dir, "etc", "systemd", "system", "fleet.socket")
 	if err := ioutil.WriteFile(socketPath, []byte(socketContents), 0644); err != nil {
 		return err
 	}
@@ -265,7 +265,7 @@ authorized_keys_file=%s
 	serviceContents := `[Service]
 ExecStart=/opt/fleet/fleetd -config /opt/fleet/fleet.conf
 `
-	servicePath := path.Join(dir, "opt", "fleet", "fleet.service")
+	servicePath := path.Join(dir, "etc", "systemd", "system", "fleet.service")
 	if err := ioutil.WriteFile(servicePath, []byte(serviceContents), 0644); err != nil {
 		return err
 	}
@@ -326,8 +326,8 @@ func (nc *nspawnCluster) createMember(id string) (m Member, err error) {
 		fmt.Sprintf("ln -s lib64 %s/lib", fsdir),
 		fmt.Sprintf("ln -s usr/bin %s/bin", fsdir),
 		fmt.Sprintf("ln -s usr/sbin %s/sbin", fsdir),
-		fmt.Sprintf("mkdir -p %s/home/core", fsdir),
-		fmt.Sprintf("chown core:core %s/home/core", fsdir),
+		fmt.Sprintf("mkdir -p %s/home/core/.ssh", fsdir),
+		fmt.Sprintf("chown -R core:core %s/home/core", fsdir),
 
 		// We don't need this, and it's slow, so mask it
 		fmt.Sprintf("ln -s /dev/null %s/etc/systemd/system/systemd-udev-hwdb-update.service", fsdir),
@@ -412,7 +412,6 @@ UseDNS no
 			break
 		}
 		time.Sleep(100 * time.Millisecond)
-
 	}
 
 	var stderr string
@@ -423,29 +422,19 @@ UseDNS no
 		return
 	}
 
-	cmd = fmt.Sprintf("update-ssh-keys -u core -a fleet /opt/fleet/id_rsa.pub")
-	_, _, err = nc.nsenter(nm.pid, cmd)
-	if err != nil {
-		log.Printf("Failed authorizing SSH key in container")
-		return
-	}
-
-	_, _, err = nc.nsenter(nm.pid, "ln -s /opt/fleet/fleet.socket /etc/systemd/system/fleet.socket")
-	if err != nil {
-		log.Printf("Failed symlinking fleet.socket: %v", err)
-		return
-	}
-
-	_, _, err = nc.nsenter(nm.pid, "ln -s /opt/fleet/fleet.service /etc/systemd/system/fleet.service")
-	if err != nil {
-		log.Printf("Failed symlinking fleet.service: %v", err)
-		return
-	}
-
-	_, _, err = nc.nsenter(nm.pid, "systemctl start fleet.socket fleet.service")
-	if err != nil {
-		log.Printf("Failed starting fleet units: %v", err)
-		return
+	alarm = time.After(10 * time.Second)
+	for {
+		select {
+		case <-alarm:
+			log.Printf("Timed out waiting for fleet units to start - last error: %v", err)
+			return
+		default:
+		}
+		//NOTE(bcwaldon): dbus can be racy starting up - it can take a few tries to start the units
+		if _, _, err = nc.nsenter(nm.pid, "systemctl start fleet.socket fleet.service"); err == nil {
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
 	}
 
 	return Member(&nm), nil
