@@ -257,7 +257,7 @@ authorized_keys_file=%s
 	}
 
 	socketContents := fmt.Sprintf("[Socket]\nListenStream=%d\n", fleetAPIPort)
-	socketPath := path.Join(dir, "opt", "fleet", "fleet.socket")
+	socketPath := path.Join(dir, "etc", "systemd", "system", "fleet.socket")
 	if err := ioutil.WriteFile(socketPath, []byte(socketContents), 0644); err != nil {
 		return err
 	}
@@ -265,7 +265,7 @@ authorized_keys_file=%s
 	serviceContents := `[Service]
 ExecStart=/opt/fleet/fleetd -config /opt/fleet/fleet.conf
 `
-	servicePath := path.Join(dir, "opt", "fleet", "fleet.service")
+	servicePath := path.Join(dir, "etc", "systemd", "system", "fleet.service")
 	if err := ioutil.WriteFile(servicePath, []byte(serviceContents), 0644); err != nil {
 		return err
 	}
@@ -419,18 +419,6 @@ UseDNS no
 	_, stderr, err = nc.nsenter(nm.pid, cmd)
 	if err != nil {
 		log.Printf("Failed adding IP address to container: %s", stderr)
-		return
-	}
-
-	_, _, err = nc.nsenter(nm.pid, "ln -s /opt/fleet/fleet.socket /etc/systemd/system/fleet.socket")
-	if err != nil {
-		log.Printf("Failed symlinking fleet.socket: %v", err)
-		return
-	}
-
-	_, _, err = nc.nsenter(nm.pid, "ln -s /opt/fleet/fleet.service /etc/systemd/system/fleet.service")
-	if err != nil {
-		log.Printf("Failed symlinking fleet.service: %v", err)
 		return
 	}
 
