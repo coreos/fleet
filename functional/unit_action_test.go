@@ -215,7 +215,7 @@ func TestUnitSSHActions(t *testing.T) {
 		t.Errorf("Could not find expected string in status output:\n%s", stdout)
 	}
 
-	stdout, _, err = cluster.Fleetctl(m, "--strict-host-key-checking=false", "journal", "hello.service")
+	stdout, _, err = cluster.Fleetctl(m, "--strict-host-key-checking=false", "journal", "--sudo", "hello.service")
 	if err != nil {
 		t.Errorf("Failure occurred while calling fleetctl journal: %v", err)
 	}
