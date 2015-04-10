@@ -412,7 +412,6 @@ UseDNS no
 			break
 		}
 		time.Sleep(100 * time.Millisecond)
-
 	}
 
 	var stderr string
@@ -435,10 +434,19 @@ UseDNS no
 		return
 	}
 
-	_, _, err = nc.nsenter(nm.pid, "systemctl start fleet.socket fleet.service")
-	if err != nil {
-		log.Printf("Failed starting fleet units: %v", err)
-		return
+	alarm = time.After(10 * time.Second)
+	for {
+		select {
+		case <-alarm:
+			log.Printf("Timed out waiting for fleet units to start - last error: %v", err)
+			return
+		default:
+		}
+		//NOTE(bcwaldon): dbus can be racy starting up - it can take a few tries to start the units
+		if _, _, err = nc.nsenter(nm.pid, "systemctl start fleet.socket fleet.service"); err == nil {
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
 	}
 
 	return Member(&nm), nil
