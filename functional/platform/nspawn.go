@@ -20,6 +20,7 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"net"
 	"os"
 	"os/exec"
 	"path"
@@ -227,50 +228,31 @@ func (nc *nspawnCluster) prepCluster() (err error) {
 	return nil
 }
 
-func (nc *nspawnCluster) prepFleet(dir, ip, sshKeySrc, fleetdBinSrc string) error {
+func (nc *nspawnCluster) insertFleetd(dir string) error {
 	cmd := fmt.Sprintf("mkdir -p %s/opt/fleet", dir)
 	if _, _, err := run(cmd); err != nil {
 		return err
 	}
 
-	relSSHKeyDst := path.Join("home", "core", ".ssh", "authorized_keys")
-	sshKeyDst := path.Join(dir, relSSHKeyDst)
-	if err := copyFile(sshKeySrc, sshKeyDst, 0644); err != nil {
-		return err
-	}
-
 	fleetdBinDst := path.Join(dir, "opt", "fleet", "fleetd")
-	if err := copyFile(fleetdBinSrc, fleetdBinDst, 0755); err != nil {
+	return copyFile(fleetdBinPath, fleetdBinDst, 0755)
+}
+
+func (nc *nspawnCluster) buildConfigDrive(dir, ip string) error {
+	latest := path.Join(dir, "media/configdrive/openstack/latest")
+	userPath := path.Join(latest, "user_data")
+	if err := os.MkdirAll(latest, 0755); err != nil {
 		return err
 	}
 
-	cfgTmpl := `verbosity=2
-etcd_servers=["http://172.17.0.1:4001"]
-etcd_key_prefix=%s
-public_ip=%s
-authorized_keys_file=%s
-`
-	cfgContents := fmt.Sprintf(cfgTmpl, nc.keyspace(), ip, relSSHKeyDst)
-	cfgPath := path.Join(dir, "opt", "fleet", "fleet.conf")
-	if err := ioutil.WriteFile(cfgPath, []byte(cfgContents), 0644); err != nil {
+	userFile, err := os.OpenFile(userPath, os.O_WRONLY|os.O_CREATE, 0644)
+	if err != nil {
 		return err
 	}
+	defer userFile.Close()
 
-	socketContents := fmt.Sprintf("[Socket]\nListenStream=%d\n", fleetAPIPort)
-	socketPath := path.Join(dir, "etc", "systemd", "system", "fleet.socket")
-	if err := ioutil.WriteFile(socketPath, []byte(socketContents), 0644); err != nil {
-		return err
-	}
-
-	serviceContents := `[Service]
-ExecStart=/opt/fleet/fleetd -config /opt/fleet/fleet.conf
-`
-	servicePath := path.Join(dir, "etc", "systemd", "system", "fleet.service")
-	if err := ioutil.WriteFile(servicePath, []byte(serviceContents), 0644); err != nil {
-		return err
-	}
-
-	return nil
+	etcd := "http://172.17.0.1:4001"
+	return util.BuildCloudConfig(userFile, ip, etcd, nc.keyspace())
 }
 
 func (nc *nspawnCluster) Members() []Member {
@@ -370,9 +352,13 @@ UseDNS no
 		return
 	}
 
-	sshKeySrc := path.Join("fixtures", "id_rsa.pub")
-	if err = nc.prepFleet(fsdir, nm.IP(), sshKeySrc, fleetdBinPath); err != nil {
+	if err = nc.insertFleetd(fsdir); err != nil {
 		log.Printf("Failed preparing fleetd in filesystem: %v", err)
+		return
+	}
+
+	if err = nc.buildConfigDrive(fsdir, nm.IP()); err != nil {
+		log.Printf("Failed building config drive: %v", err)
 		return
 	}
 
@@ -400,38 +386,18 @@ UseDNS no
 	}
 
 	alarm := time.After(10 * time.Second)
+	addr := fmt.Sprintf("%s:%d", nm.IP(), fleetAPIPort)
 	for {
 		select {
 		case <-alarm:
-			log.Printf("Timed out waiting for machine to start")
+			err = fmt.Errorf("Timed out waiting for machine to start")
+			log.Printf("Starting %s%s failed: %v", nc.name, nm.ID(), err)
 			return
 		default:
 		}
-		// TODO(jonboulle): probably a cleaner way to check here
-		if _, _, e := nc.nsenter(nm.pid, "systemd-analyze"); e == nil {
-			break
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
-
-	var stderr string
-	cmd := fmt.Sprintf("ip addr add %s/16 dev host0", nm.IP())
-	_, stderr, err = nc.nsenter(nm.pid, cmd)
-	if err != nil {
-		log.Printf("Failed adding IP address to container: %s", stderr)
-		return
-	}
-
-	alarm = time.After(10 * time.Second)
-	for {
-		select {
-		case <-alarm:
-			log.Printf("Timed out waiting for fleet units to start - last error: %v", err)
-			return
-		default:
-		}
-		//NOTE(bcwaldon): dbus can be racy starting up - it can take a few tries to start the units
-		if _, _, err = nc.nsenter(nm.pid, "systemctl start fleet.socket fleet.service"); err == nil {
+		c, err := net.DialTimeout("tcp", addr, 100*time.Millisecond)
+		if err == nil {
+			c.Close()
 			break
 		}
 		time.Sleep(100 * time.Millisecond)
