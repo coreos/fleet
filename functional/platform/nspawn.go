@@ -95,12 +95,12 @@ func (nc *nspawnCluster) keyspace() string {
 }
 
 func (nc *nspawnCluster) Fleetctl(m Member, args ...string) (string, string, error) {
-	args = append([]string{"--experimental-api", "--endpoint=" + m.Endpoint()}, args...)
+	args = append([]string{"--endpoint=" + m.Endpoint()}, args...)
 	return util.RunFleetctl(args...)
 }
 
 func (nc *nspawnCluster) FleetctlWithInput(m Member, input string, args ...string) (string, string, error) {
-	args = append([]string{"--experimental-api", "--endpoint=" + m.Endpoint()}, args...)
+	args = append([]string{"--endpoint=" + m.Endpoint()}, args...)
 	return util.RunFleetctlWithInput(input, args...)
 }
 
