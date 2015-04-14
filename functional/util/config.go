@@ -15,9 +15,6 @@
 package util
 
 import (
-	"bytes"
-	"compress/gzip"
-	"encoding/base64"
 	"fmt"
 	"io"
 	"io/ioutil"
