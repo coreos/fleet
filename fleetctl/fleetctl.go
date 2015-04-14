@@ -57,6 +57,8 @@ recommended to upgrade fleetctl to prevent incompatibility issues.
 
 	clientDriverAPI  = "API"
 	clientDriverEtcd = "etcd"
+
+	defaultEndpoint = "unix:///var/run/fleet.sock"
 )
 
 var (
@@ -118,8 +120,8 @@ func init() {
 
 	globalFlagset.BoolVar(&globalFlags.Debug, "debug", false, "Print out more debug information to stderr")
 	globalFlagset.BoolVar(&globalFlags.Version, "version", false, "Print the version and exit")
-	globalFlagset.StringVar(&globalFlags.ClientDriver, "driver", clientDriverEtcd, fmt.Sprintf("Adapter used to execute fleetctl commands. Options include %q and %q.", clientDriverAPI, clientDriverEtcd))
-	globalFlagset.StringVar(&globalFlags.Endpoint, "endpoint", "http://127.0.0.1:2379,http://127.0.0.1:4001", fmt.Sprintf("Location of the fleet API if --driver=%s. Alternatively, if --driver=%s, location of the etcd API.", clientDriverAPI, clientDriverEtcd))
+	globalFlagset.StringVar(&globalFlags.ClientDriver, "driver", clientDriverAPI, fmt.Sprintf("Adapter used to execute fleetctl commands. Options include %q and %q.", clientDriverAPI, clientDriverEtcd))
+	globalFlagset.StringVar(&globalFlags.Endpoint, "endpoint", defaultEndpoint, fmt.Sprintf("Location of the fleet API if --driver=%s. Alternatively, if --driver=%s, location of the etcd API.", clientDriverAPI, clientDriverEtcd))
 	globalFlagset.StringVar(&globalFlags.EtcdKeyPrefix, "etcd-key-prefix", registry.DefaultKeyPrefix, "Keyspace for fleet data in etcd (development use only!)")
 
 	globalFlagset.StringVar(&globalFlags.KeyFile, "key-file", "", "Location of TLS key file used to secure communication with the fleet API or etcd")
@@ -134,7 +136,7 @@ func init() {
 	globalFlagset.StringVar(&globalFlags.SSHUserName, "ssh-username", "core", "Username to use when connecting to CoreOS instance.")
 
 	// deprecated flags
-	globalFlagset.BoolVar(&globalFlags.ExperimentalAPI, "experimental-api", false, hidden)
+	globalFlagset.BoolVar(&globalFlags.ExperimentalAPI, "experimental-api", true, hidden)
 	globalFlagset.StringVar(&globalFlags.KeyFile, "etcd-keyfile", "", hidden)
 	globalFlagset.StringVar(&globalFlags.CertFile, "etcd-certfile", "", hidden)
 	globalFlagset.StringVar(&globalFlags.CAFile, "etcd-cafile", "", hidden)
@@ -297,10 +299,16 @@ func getFlagsFromEnv(prefix string, fs *flag.FlagSet) {
 
 // getClient initializes a client of fleet based on CLI flags
 func getClient() (client.API, error) {
-	// The user explicitly set --experimental-api=true, so it trumps the
-	// --driver flag. This behavior exists for backwards-compatibility.
-	if globalFlags.ExperimentalAPI {
-		return getHTTPClient()
+	// The user explicitly set --experimental-api=false, so it trumps the
+	// --driver flag. This behavior exists for backwards-compatibilty.
+	if !globalFlags.ExperimentalAPI {
+		// Additionally, if the user set --experimental-api=false and did
+		// not change the value of --endpoint, they likely want to use the
+		// old default value.
+		if globalFlags.Endpoint == defaultEndpoint {
+			globalFlags.Endpoint = "http://127.0.0.1:2379,http://127.0.0.1:4001"
+		}
+		return getRegistryClient()
 	}
 
 	switch globalFlags.ClientDriver {
