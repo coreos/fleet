@@ -15,7 +15,7 @@ eval $(go env)
 
 if [ ${GOOS} = "linux" ]; then
 	echo "Building fleetd..."
-	go build -o bin/fleetd ${REPO_PATH}/fleetd
+	CGO_ENABLED=0 go build -o bin/fleetd -a -ldflags '-s' ${REPO_PATH}/fleetd
 else
 	echo "Not on Linux - skipping fleetd build"
 fi
