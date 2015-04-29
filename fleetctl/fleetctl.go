@@ -262,6 +262,20 @@ func main() {
 		os.Exit(2)
 	}
 
+	visited := make(map[string]bool, 0)
+	globalFlagset.Visit(func(f *flag.Flag) { visited[f.Name] = true })
+
+	// if --driver is not set, but --endpoint looks like an etcd
+	// server, set the driver to etcd
+	if visited["endpoint"] && !visited["driver"] {
+		if u, err := url.Parse(strings.Split(globalFlags.Endpoint, ",")[0]); err == nil {
+			if _, port, err := net.SplitHostPort(u.Host); err == nil && (port == "4001" || port == "2379") {
+				log.Debugf("Defaulting to --driver=%s as --endpoint appears to be etcd", clientDriverEtcd)
+				globalFlags.ClientDriver = clientDriverEtcd
+			}
+		}
+	}
+
 	if cmd.Name != "help" && cmd.Name != "version" {
 		var err error
 		cAPI, err = getClient()
