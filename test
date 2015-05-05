@@ -14,7 +14,7 @@ COVER=${COVER:-"-cover"}
 
 source ./build
 
-TESTABLE="agent api config engine etcd fleetctl job machine pkg registry ssh systemd unit"
+TESTABLE="agent api config engine etcd fleetctl job machine pkg pkg/lease registry ssh systemd unit"
 FORMATTABLE="$TESTABLE client functional functional/platform heart server fleetd"
 
 # user has not provided PKG override
