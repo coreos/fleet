@@ -30,9 +30,10 @@ import (
 	"text/tabwriter"
 	"time"
 
+	etcd "github.com/coreos/fleet/Godeps/_workspace/src/github.com/coreos/etcd/client"
+
 	"github.com/coreos/fleet/api"
 	"github.com/coreos/fleet/client"
-	"github.com/coreos/fleet/etcd"
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/log"
 	"github.com/coreos/fleet/machine"
@@ -451,14 +452,18 @@ func getRegistryClient() (client.API, error) {
 		TLSClientConfig: tlsConfig,
 	}
 
-	timeout := getRequestTimeoutFlag()
-	machines := strings.Split(globalFlags.Endpoint, ",")
-	eClient, err := etcd.NewClient(machines, trans, timeout)
+	eCfg := etcd.Config{
+		Endpoints: strings.Split(globalFlags.Endpoint, ","),
+		Transport: trans,
+	}
+
+	eClient, err := etcd.New(eCfg)
 	if err != nil {
 		return nil, err
 	}
 
-	reg := registry.NewEtcdRegistry(eClient, globalFlags.EtcdKeyPrefix)
+	kAPI := etcd.NewKeysAPI(eClient)
+	reg := registry.NewEtcdRegistry(kAPI, globalFlags.EtcdKeyPrefix, getRequestTimeoutFlag())
 
 	if msg, ok := checkVersion(reg); !ok {
 		stderr(msg)

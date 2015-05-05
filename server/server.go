@@ -20,17 +20,18 @@ import (
 	"net/http"
 	"time"
 
+	etcd "github.com/coreos/fleet/Godeps/_workspace/src/github.com/coreos/etcd/client"
 	"github.com/coreos/fleet/Godeps/_workspace/src/github.com/coreos/go-systemd/activation"
 
 	"github.com/coreos/fleet/agent"
 	"github.com/coreos/fleet/api"
 	"github.com/coreos/fleet/config"
 	"github.com/coreos/fleet/engine"
-	"github.com/coreos/fleet/etcd"
 	"github.com/coreos/fleet/heart"
 	"github.com/coreos/fleet/log"
 	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/pkg"
+	"github.com/coreos/fleet/pkg/lease"
 	"github.com/coreos/fleet/registry"
 	"github.com/coreos/fleet/systemd"
 	"github.com/coreos/fleet/unit"
@@ -60,7 +61,6 @@ type Server struct {
 }
 
 func New(cfg config.Config) (*Server, error) {
-	etcdRequestTimeout := time.Duration(cfg.EtcdRequestTimeout*1000) * time.Millisecond
 	agentTTL, err := time.ParseDuration(cfg.AgentTTL)
 	if err != nil {
 		return nil, err
@@ -81,21 +81,26 @@ func New(cfg config.Config) (*Server, error) {
 		return nil, err
 	}
 
-	eTrans := &http.Transport{TLSClientConfig: tlsConfig}
-	eClient, err := etcd.NewClient(cfg.EtcdServers, eTrans, etcdRequestTimeout)
+	eCfg := etcd.Config{
+		Transport: &http.Transport{TLSClientConfig: tlsConfig},
+		Endpoints: cfg.EtcdServers,
+	}
+	eClient, err := etcd.New(eCfg)
 	if err != nil {
 		return nil, err
 	}
 
-	reg := registry.NewEtcdRegistry(eClient, cfg.EtcdKeyPrefix)
+	etcdRequestTimeout := time.Duration(cfg.EtcdRequestTimeout*1000) * time.Millisecond
+	kAPI := etcd.NewKeysAPI(eClient)
+	reg := registry.NewEtcdRegistry(kAPI, cfg.EtcdKeyPrefix, etcdRequestTimeout)
 
 	pub := agent.NewUnitStatePublisher(reg, mach, agentTTL)
 	gen := unit.NewUnitStateGenerator(mgr)
 
 	a := agent.New(mgr, gen, reg, mach, agentTTL)
 
-	rStream := registry.NewEtcdEventStream(eClient, cfg.EtcdKeyPrefix)
-	lManager := etcd.NewLeaseManager(eClient, cfg.EtcdKeyPrefix)
+	rStream := registry.NewEtcdEventStream(kAPI, cfg.EtcdKeyPrefix)
+	lManager := lease.NewEtcdLeaseManager(kAPI, cfg.EtcdKeyPrefix, etcdRequestTimeout)
 
 	ar := agent.NewReconciler(reg, rStream)
 

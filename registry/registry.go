@@ -17,24 +17,7 @@ package registry
 import (
 	"encoding/json"
 	"fmt"
-
-	"github.com/coreos/fleet/etcd"
 )
-
-const DefaultKeyPrefix = "/_coreos.com/fleet/"
-
-// EtcdRegistry fulfils the Registry interface and uses etcd as a backend
-type EtcdRegistry struct {
-	etcd      etcd.Client
-	keyPrefix string
-}
-
-func NewEtcdRegistry(client etcd.Client, keyPrefix string) *EtcdRegistry {
-	return &EtcdRegistry{
-		etcd:      client,
-		keyPrefix: keyPrefix,
-	}
-}
 
 func marshal(obj interface{}) (string, error) {
 	encoded, err := json.Marshal(obj)

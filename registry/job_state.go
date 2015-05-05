@@ -15,10 +15,10 @@
 package registry
 
 import (
-	"path"
 	"time"
 
-	"github.com/coreos/fleet/etcd"
+	etcd "github.com/coreos/fleet/Godeps/_workspace/src/github.com/coreos/etcd/client"
+
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/unit"
 )
@@ -47,22 +47,19 @@ func determineJobState(heartbeat, tgt string, us *unit.UnitState) (state job.Job
 }
 
 func (r *EtcdRegistry) UnitHeartbeat(name, machID string, ttl time.Duration) error {
-	req := etcd.Set{
-		Key:   r.jobHeartbeatPath(name),
-		Value: machID,
-		TTL:   ttl,
+	key := r.jobHeartbeatPath(name)
+	opts := &etcd.SetOptions{
+		TTL: ttl,
 	}
-	_, err := r.etcd.Do(&req)
+	_, err := r.kAPI.Set(r.ctx(), key, machID, opts)
 	return err
 }
 
 func (r *EtcdRegistry) ClearUnitHeartbeat(name string) {
-	req := etcd.Delete{
-		Key: r.jobHeartbeatPath(name),
-	}
-	r.etcd.Do(&req)
+	key := r.jobHeartbeatPath(name)
+	r.kAPI.Delete(r.ctx(), key, nil)
 }
 
 func (r *EtcdRegistry) jobHeartbeatPath(jobName string) string {
-	return path.Join(r.keyPrefix, jobPrefix, jobName, "job-state")
+	return r.prefixed(jobPrefix, jobName, "job-state")
 }

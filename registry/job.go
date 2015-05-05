@@ -20,7 +20,8 @@ import (
 	"path"
 	"sort"
 
-	"github.com/coreos/fleet/etcd"
+	etcd "github.com/coreos/fleet/Godeps/_workspace/src/github.com/coreos/etcd/client"
+
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/log"
 	"github.com/coreos/fleet/unit"
@@ -32,15 +33,14 @@ const (
 
 // Schedule returns all ScheduledUnits known by fleet, ordered by name
 func (r *EtcdRegistry) Schedule() ([]job.ScheduledUnit, error) {
-	req := etcd.Get{
-		Key:       path.Join(r.keyPrefix, jobPrefix),
-		Sorted:    true,
+	key := r.prefixed(jobPrefix)
+	opts := &etcd.GetOptions{
+		Sort:      true,
 		Recursive: true,
 	}
-
-	res, err := r.etcd.Do(&req)
+	res, err := r.kAPI.Get(r.ctx(), key, opts)
 	if err != nil {
-		if etcd.IsKeyNotFound(err) {
+		if isEtcdError(err, etcd.ErrorCodeKeyNotFound) {
 			err = nil
 		}
 		return nil, err
@@ -53,9 +53,9 @@ func (r *EtcdRegistry) Schedule() ([]job.ScheduledUnit, error) {
 		_, name := path.Split(dir.Key)
 		u := &job.ScheduledUnit{
 			Name:            name,
-			TargetMachineID: dirToTargetMachineID(&dir),
+			TargetMachineID: dirToTargetMachineID(dir),
 		}
-		heartbeats[name] = dirToHeartbeat(&dir)
+		heartbeats[name] = dirToHeartbeat(dir)
 		uMap[name] = u
 	}
 
@@ -88,15 +88,14 @@ func (r *EtcdRegistry) Schedule() ([]job.ScheduledUnit, error) {
 
 // Units lists all Units stored in the Registry, ordered by name. This includes both global and non-global units.
 func (r *EtcdRegistry) Units() ([]job.Unit, error) {
-	req := etcd.Get{
-		Key:       path.Join(r.keyPrefix, jobPrefix),
-		Sorted:    true,
+	key := r.prefixed(jobPrefix)
+	opts := &etcd.GetOptions{
+		Sort:      true,
 		Recursive: true,
 	}
-
-	res, err := r.etcd.Do(&req)
+	res, err := r.kAPI.Get(r.ctx(), key, opts)
 	if err != nil {
-		if etcd.IsKeyNotFound(err) {
+		if isEtcdError(err, etcd.ErrorCodeKeyNotFound) {
 			err = nil
 		}
 		return nil, err
@@ -104,7 +103,7 @@ func (r *EtcdRegistry) Units() ([]job.Unit, error) {
 
 	uMap := make(map[string]*job.Unit)
 	for _, dir := range res.Node.Nodes {
-		u, err := r.dirToUnit(&dir)
+		u, err := r.dirToUnit(dir)
 		if err != nil {
 			log.Errorf("Failed to parse Unit from etcd: %v", err)
 			continue
@@ -132,14 +131,13 @@ func (r *EtcdRegistry) Units() ([]job.Unit, error) {
 // Unit retrieves the Unit by the given name from the Registry. Returns nil if
 // no such Unit exists, and any error encountered.
 func (r *EtcdRegistry) Unit(name string) (*job.Unit, error) {
-	req := etcd.Get{
-		Key:       path.Join(r.keyPrefix, jobPrefix, name),
+	key := r.prefixed(jobPrefix, name)
+	opts := &etcd.GetOptions{
 		Recursive: true,
 	}
-
-	res, err := r.etcd.Do(&req)
+	res, err := r.kAPI.Get(r.ctx(), key, opts)
 	if err != nil {
-		if etcd.IsKeyNotFound(err) {
+		if isEtcdError(err, etcd.ErrorCodeKeyNotFound) {
 			err = nil
 		}
 		return nil, err
@@ -156,7 +154,7 @@ func (r *EtcdRegistry) dirToUnit(dir *etcd.Node) (*job.Unit, error) {
 	for _, node := range dir.Nodes {
 		node := node
 		if node.Key == objKey {
-			objNode = &node
+			objNode = node
 		}
 	}
 	if objNode == nil {
@@ -183,14 +181,13 @@ func (r *EtcdRegistry) dirToUnit(dir *etcd.Node) (*job.Unit, error) {
 // ScheduledUnit retrieves the ScheduledUnit by the given name from the Registry.
 // Returns nil if no such ScheduledUnit exists, and any error encountered.
 func (r *EtcdRegistry) ScheduledUnit(name string) (*job.ScheduledUnit, error) {
-	req := etcd.Get{
-		Key:       path.Join(r.keyPrefix, jobPrefix, name),
+	key := r.prefixed(jobPrefix, name)
+	opts := &etcd.GetOptions{
 		Recursive: true,
 	}
-
-	res, err := r.etcd.Do(&req)
+	res, err := r.kAPI.Get(r.ctx(), key, opts)
 	if err != nil {
-		if etcd.IsKeyNotFound(err) {
+		if isEtcdError(err, etcd.ErrorCodeKeyNotFound) {
 			err = nil
 		}
 		return nil, err
@@ -216,13 +213,12 @@ func (r *EtcdRegistry) ScheduledUnit(name string) (*job.ScheduledUnit, error) {
 }
 
 func (r *EtcdRegistry) UnscheduleUnit(name, machID string) error {
-	req := etcd.Delete{
-		Key:           r.jobTargetAgentPath(name),
-		PreviousValue: machID,
+	key := r.jobTargetAgentPath(name)
+	opts := &etcd.DeleteOptions{
+		PrevValue: machID,
 	}
-
-	_, err := r.etcd.Do(&req)
-	if etcd.IsKeyNotFound(err) {
+	_, err := r.kAPI.Delete(r.ctx(), key, opts)
+	if isEtcdError(err, etcd.ErrorCodeKeyNotFound) {
 		err = nil
 	}
 
@@ -290,14 +286,13 @@ type jobModel struct {
 // DestroyUnit removes a Job object from the repository. It does not yet remove underlying
 // UnitFiles from the repository.
 func (r *EtcdRegistry) DestroyUnit(name string) error {
-	req := etcd.Delete{
-		Key:       path.Join(r.keyPrefix, jobPrefix, name),
+	key := r.prefixed(jobPrefix, name)
+	opts := &etcd.DeleteOptions{
 		Recursive: true,
 	}
-
-	_, err := r.etcd.Do(&req)
+	_, err := r.kAPI.Delete(r.ctx(), key, opts)
 	if err != nil {
-		if etcd.IsKeyNotFound(err) {
+		if isEtcdError(err, etcd.ErrorCodeKeyNotFound) {
 			err = errors.New("job does not exist")
 		}
 
@@ -318,19 +313,18 @@ func (r *EtcdRegistry) CreateUnit(u *job.Unit) (err error) {
 		Name:     u.Name,
 		UnitHash: u.Unit.Hash(),
 	}
-	json, err := marshal(jm)
+	val, err := marshal(jm)
 	if err != nil {
 		return
 	}
 
-	req := etcd.Create{
-		Key:   path.Join(r.keyPrefix, jobPrefix, u.Name, "object"),
-		Value: json,
+	opts := &etcd.SetOptions{
+		PrevExist: etcd.PrevNoExist,
 	}
-
-	_, err = r.etcd.Do(&req)
+	key := r.prefixed(jobPrefix, u.Name, "object")
+	_, err = r.kAPI.Set(r.ctx(), key, val, opts)
 	if err != nil {
-		if etcd.IsNodeExist(err) {
+		if isEtcdError(err, etcd.ErrorCodeNodeExist) {
 			err = errors.New("job already exists")
 		}
 		return
@@ -340,27 +334,24 @@ func (r *EtcdRegistry) CreateUnit(u *job.Unit) (err error) {
 }
 
 func (r *EtcdRegistry) SetUnitTargetState(name string, state job.JobState) error {
-	req := etcd.Set{
-		Key:   r.jobTargetStatePath(name),
-		Value: string(state),
-	}
-	_, err := r.etcd.Do(&req)
+	key := r.jobTargetStatePath(name)
+	_, err := r.kAPI.Set(r.ctx(), key, string(state), nil)
 	return err
 }
 
 func (r *EtcdRegistry) ScheduleUnit(name string, machID string) error {
-	req := etcd.Create{
-		Key:   r.jobTargetAgentPath(name),
-		Value: machID,
+	key := r.jobTargetAgentPath(name)
+	opts := &etcd.SetOptions{
+		PrevExist: etcd.PrevNoExist,
 	}
-	_, err := r.etcd.Do(&req)
+	_, err := r.kAPI.Set(r.ctx(), key, machID, opts)
 	return err
 }
 
 func (r *EtcdRegistry) jobTargetAgentPath(jobName string) string {
-	return path.Join(r.keyPrefix, jobPrefix, jobName, "target")
+	return r.prefixed(jobPrefix, jobName, "target")
 }
 
 func (r *EtcdRegistry) jobTargetStatePath(jobName string) string {
-	return path.Join(r.keyPrefix, jobPrefix, jobName, "target-state")
+	return r.prefixed(jobPrefix, jobName, "target-state")
 }

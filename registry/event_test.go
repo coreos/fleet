@@ -18,7 +18,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/coreos/fleet/etcd"
+	etcd "github.com/coreos/fleet/Godeps/_workspace/src/github.com/coreos/etcd/client"
+
 	"github.com/coreos/fleet/pkg"
 )
 
@@ -72,7 +73,7 @@ func TestFilterEtcdEvents(t *testing.T) {
 		for _, action := range []string{"set", "update", "create", "delete"} {
 			prefix := "/fleet"
 
-			res := &etcd.Result{
+			res := &etcd.Response{
 				Node: &etcd.Node{
 					Key: tt.in,
 				},
