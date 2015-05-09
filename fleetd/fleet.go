@@ -48,7 +48,15 @@ func main() {
 		os.Exit(1)
 	}
 
-	if *printVersion || userset.Args()[0] == "version" {
+	args := userset.Args()
+	if len(args) == 1 && args[0] == "version" {
+		*printVersion = true
+	} else if len(args) != 0 {
+		userset.Usage()
+		os.Exit(1)
+	}
+
+	if *printVersion {
 		fmt.Println("fleetd version", version.Version)
 		os.Exit(0)
 	}
