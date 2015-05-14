@@ -6,7 +6,7 @@ Since applications and networking environments vary widely between customer depl
 
 The sidekick model works in a very similar fashion to [Synapse](https://github.com/airbnb/synapse), which runs a separate discovery agent next to the main container that is being run. This can be easily accomplished in fleet with the `MachineOf` option.
 
-Instead of guessing when an application is healthy and ready to serve traffic, you can write agent to be as simple or complex as you see fit. For example, your agent might want to check the applications `/v1/health` endpoint after deployment before declaring the instance healthy and announcing it. For another application, you might want to announce each instance by public IP address intead of a private IP.
+Instead of guessing when an application is healthy and ready to serve traffic, you can write agent to be as simple or complex as you see fit. For example, your agent might want to check the applications `/v1/health` endpoint after deployment before declaring the instance healthy and announcing it. For another application, you might want to announce each instance by public IP address instead of a private IP.
 
 ## Sample Discovery Unit
 
