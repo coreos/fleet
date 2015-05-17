@@ -52,6 +52,10 @@ func init() {
 }
 
 func runStopUnit(args []string) (exit int) {
+	if len(args) == 0 {
+		stderr("One unit file must be provided.")
+		return 1
+	}
 	units, err := findUnits(args)
 	if err != nil {
 		stderr("%v", err)
