@@ -42,6 +42,11 @@ func runUnloadUnit(args []string) (exit int) {
 		return 1
 	}
 
+	if len(units) == 0 {
+		stderr("No correct unit is found.")
+		return 1
+	}
+
 	wait := make([]string, 0)
 	for _, s := range units {
 		if !suToGlobal(s) {

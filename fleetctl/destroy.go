@@ -33,6 +33,7 @@ func runDestroyUnits(args []string) (exit int) {
 		name := unitNameMangle(v)
 		err := cAPI.DestroyUnit(name)
 		if err != nil {
+			stderr("Error destroying unit %s: %v", name, err)
 			continue
 		}
 
