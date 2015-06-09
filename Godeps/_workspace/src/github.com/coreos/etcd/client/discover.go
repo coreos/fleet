@@ -1,4 +1,4 @@
-// Copyright 2014 CoreOS, Inc.
+// Copyright 2015 CoreOS, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,25 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package registry
+package client
 
-import (
-	"encoding/json"
-	"fmt"
-)
-
-func marshal(obj interface{}) (string, error) {
-	encoded, err := json.Marshal(obj)
-	if err == nil {
-		return string(encoded), nil
-	}
-	return "", fmt.Errorf("unable to JSON-serialize object: %s", err)
-}
-
-func unmarshal(val string, obj interface{}) error {
-	err := json.Unmarshal([]byte(val), &obj)
-	if err == nil {
-		return nil
-	}
-	return fmt.Errorf("unable to JSON-deserialize object: %s", err)
+// Discoverer is an interface that wraps the Discover method.
+type Discoverer interface {
+	// Dicover looks up the etcd servers for the domain.
+	Discover(domain string) ([]string, error)
 }

@@ -19,7 +19,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/coreos/fleet/etcd"
+	etcd "github.com/coreos/fleet/Godeps/_workspace/src/github.com/coreos/etcd/client"
+	"github.com/coreos/fleet/Godeps/_workspace/src/golang.org/x/net/context"
+
 	"github.com/coreos/fleet/log"
 	"github.com/coreos/fleet/pkg"
 )
@@ -32,12 +34,12 @@ const (
 )
 
 type etcdEventStream struct {
-	etcd       etcd.Client
+	kAPI       etcd.KeysAPI
 	rootPrefix string
 }
 
-func NewEtcdEventStream(client etcd.Client, rootPrefix string) pkg.EventStream {
-	return &etcdEventStream{client, rootPrefix}
+func NewEtcdEventStream(kAPI etcd.KeysAPI, rootPrefix string) pkg.EventStream {
+	return &etcdEventStream{kAPI, rootPrefix}
 }
 
 // Next returns a channel which will emit an Event as soon as one of interest occurs
@@ -51,7 +53,7 @@ func (es *etcdEventStream) Next(stop chan struct{}) chan pkg.Event {
 			default:
 			}
 
-			res := watch(es.etcd, path.Join(es.rootPrefix, jobPrefix), stop)
+			res := watch(es.kAPI, path.Join(es.rootPrefix, jobPrefix), stop)
 			if ev, ok := parse(res, es.rootPrefix); ok {
 				evchan <- ev
 				return
@@ -63,7 +65,7 @@ func (es *etcdEventStream) Next(stop chan struct{}) chan pkg.Event {
 	return evchan
 }
 
-func parse(res *etcd.Result, prefix string) (ev pkg.Event, ok bool) {
+func parse(res *etcd.Response, prefix string) (ev pkg.Event, ok bool) {
 	if res == nil || res.Node == nil {
 		return
 	}
@@ -84,25 +86,24 @@ func parse(res *etcd.Result, prefix string) (ev pkg.Event, ok bool) {
 	return
 }
 
-func watch(client etcd.Client, key string, stop chan struct{}) (res *etcd.Result) {
+func watch(kAPI etcd.KeysAPI, key string, stop chan struct{}) (res *etcd.Response) {
 	for res == nil {
 		select {
 		case <-stop:
 			log.Debugf("Gracefully closing etcd watch loop: key=%s", key)
 			return
 		default:
-			req := &etcd.Watch{
-				Key:       key,
-				WaitIndex: 0,
-				Recursive: true,
+			opts := &etcd.WatcherOptions{
+				AfterIndex: 0,
+				Recursive:  true,
 			}
-
-			log.Debugf("Creating etcd watcher: %v", req)
+			watcher := kAPI.Watcher(key, opts)
+			log.Debugf("Creating etcd watcher: %s", key)
 
 			var err error
-			res, err = client.Wait(req, stop)
+			res, err = watcher.Next(context.Background())
 			if err != nil {
-				log.Errorf("etcd watcher %v returned error: %v", req, err)
+				log.Errorf("etcd watcher %v returned error: %v", key, err)
 			}
 		}
 

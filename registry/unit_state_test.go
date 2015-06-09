@@ -21,7 +21,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/fleet/etcd"
+	etcd "github.com/coreos/fleet/Godeps/_workspace/src/github.com/coreos/etcd/client"
+	"github.com/coreos/fleet/Godeps/_workspace/src/golang.org/x/net/context"
+
 	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/unit"
 )
@@ -32,24 +34,41 @@ type action struct {
 	rec bool
 }
 
-type testEtcdClient struct {
+type testEtcdKeysAPI struct {
+	etcd.KeysAPI
 	gets    []action
 	sets    []action
 	deletes []action
-	res     []*etcd.Result // errors returned from subsequent calls to etcd
+	res     []*etcd.Response // errors returned from subsequent calls to etcd
 	ri      int
 	err     []error // results returned from subsequent calls to etcd
 	ei      int
 }
 
-func (t *testEtcdClient) Do(req etcd.Action) (r *etcd.Result, e error) {
-	if s, ok := req.(*etcd.Set); ok {
-		t.sets = append(t.sets, action{key: s.Key, val: s.Value})
-	} else if d, ok := req.(*etcd.Delete); ok {
-		t.deletes = append(t.deletes, action{key: d.Key, rec: d.Recursive})
-	} else if g, ok := req.(*etcd.Get); ok {
-		t.gets = append(t.gets, action{key: g.Key, rec: g.Recursive})
+func (t *testEtcdKeysAPI) Set(_ context.Context, key string, value string, _ *etcd.SetOptions) (*etcd.Response, error) {
+	t.sets = append(t.sets, action{key: key, val: value})
+	return t.next()
+}
+
+func (t *testEtcdKeysAPI) Get(_ context.Context, key string, opts *etcd.GetOptions) (*etcd.Response, error) {
+	act := action{key: key}
+	if opts != nil {
+		act.rec = opts.Recursive
 	}
+	t.gets = append(t.gets, act)
+	return t.next()
+}
+
+func (t *testEtcdKeysAPI) Delete(_ context.Context, key string, opts *etcd.DeleteOptions) (*etcd.Response, error) {
+	act := action{key: key}
+	if opts != nil {
+		act.rec = opts.Recursive
+	}
+	t.deletes = append(t.deletes, act)
+	return t.next()
+}
+
+func (t *testEtcdKeysAPI) next() (r *etcd.Response, e error) {
 	if t.ri < len(t.res) {
 		r = t.res[t.ri]
 		t.ri++
@@ -61,12 +80,8 @@ func (t *testEtcdClient) Do(req etcd.Action) (r *etcd.Result, e error) {
 	return r, e
 }
 
-func (t *testEtcdClient) Wait(req etcd.Action, ch <-chan struct{}) (*etcd.Result, error) {
-	return t.Do(req)
-}
-
 func TestUnitStatePaths(t *testing.T) {
-	r := &EtcdRegistry{etcd: nil, keyPrefix: "/fleet/"}
+	r := &EtcdRegistry{kAPI: nil, keyPrefix: "/fleet/"}
 	j := "foo.service"
 	want := "/fleet/state/foo.service"
 	got := r.legacyUnitStatePath(j)
@@ -82,8 +97,8 @@ func TestUnitStatePaths(t *testing.T) {
 }
 
 func TestSaveUnitState(t *testing.T) {
-	e := &testEtcdClient{}
-	r := &EtcdRegistry{etcd: e, keyPrefix: "/fleet/"}
+	e := &testEtcdKeysAPI{}
+	r := &EtcdRegistry{kAPI: e, keyPrefix: "/fleet/"}
 	j := "foo.service"
 	mID := "mymachine"
 	us := unit.NewUnitState("abc", "def", "ghi", mID)
@@ -128,8 +143,8 @@ func TestSaveUnitState(t *testing.T) {
 }
 
 func TestRemoveUnitState(t *testing.T) {
-	e := &testEtcdClient{}
-	r := &EtcdRegistry{etcd: e, keyPrefix: "/fleet/"}
+	e := &testEtcdKeysAPI{}
+	r := &EtcdRegistry{kAPI: e, keyPrefix: "/fleet/"}
 	j := "foo.service"
 	err := r.RemoveUnitState(j)
 	if err != nil {
@@ -155,14 +170,14 @@ func TestRemoveUnitState(t *testing.T) {
 		errs []error
 		fail bool
 	}{
-		{[]error{etcd.Error{ErrorCode: etcd.ErrorKeyNotFound}}, false},
-		{[]error{nil, etcd.Error{ErrorCode: etcd.ErrorKeyNotFound}}, false},
+		{[]error{etcd.Error{Code: etcd.ErrorCodeKeyNotFound}}, false},
+		{[]error{nil, etcd.Error{Code: etcd.ErrorCodeKeyNotFound}}, false},
 		{[]error{nil, nil}, false}, // No errors, no responses should succeed
 		{[]error{errors.New("ur registry don't work")}, true},
 		{[]error{nil, errors.New("ur registry don't work")}, true},
 	} {
-		e = &testEtcdClient{err: tt.errs}
-		r = &EtcdRegistry{etcd: e, keyPrefix: "/fleet"}
+		e = &testEtcdKeysAPI{err: tt.errs}
+		r = &EtcdRegistry{kAPI: e, keyPrefix: "/fleet"}
 		err = r.RemoveUnitState("foo.service")
 		if (err != nil) != tt.fail {
 			t.Errorf("case %d: unexpected error state calling UnitStates(): got %v, want %v", i, err, tt.fail)
@@ -280,8 +295,8 @@ func TestModelToUnitState(t *testing.T) {
 	}
 }
 
-func makeResult(val string) *etcd.Result {
-	return &etcd.Result{
+func makeResponse(val string) *etcd.Response {
+	return &etcd.Response{
 		Node: &etcd.Node{
 			Value: val,
 		},
@@ -290,14 +305,14 @@ func makeResult(val string) *etcd.Result {
 
 func TestGetUnitState(t *testing.T) {
 	tests := []struct {
-		res     *etcd.Result // result returned from etcd
-		err     error        // error returned from etcd
+		res     *etcd.Response // result returned from etcd
+		err     error          // error returned from etcd
 		wantUS  *unit.UnitState
 		wantErr bool
 	}{
 		{
 			// Unit state with no UnitHash should be OK
-			res: makeResult(`{"loadState":"abc","activeState":"def","subState":"ghi","machineState":{"ID":"mymachine","PublicIP":"","Metadata":null,"Version":"","TotalResources":{"Cores":0,"Memory":0,"Disk":0},"FreeResources":{"Cores":0,"Memory":0,"Disk":0}}}`),
+			res: makeResponse(`{"loadState":"abc","activeState":"def","subState":"ghi","machineState":{"ID":"mymachine","PublicIP":"","Metadata":null,"Version":"","TotalResources":{"Cores":0,"Memory":0,"Disk":0},"FreeResources":{"Cores":0,"Memory":0,"Disk":0}}}`),
 			err: nil,
 			wantUS: &unit.UnitState{
 				LoadState:   "abc",
@@ -310,7 +325,7 @@ func TestGetUnitState(t *testing.T) {
 		},
 		{
 			// Unit state with UnitHash should be OK
-			res: makeResult(`{"loadState":"abc","activeState":"def","subState":"ghi","machineState":{"ID":"mymachine","PublicIP":"","Metadata":null,"Version":"","TotalResources":{"Cores":0,"Memory":0,"Disk":0},"FreeResources":{"Cores":0,"Memory":0,"Disk":0}},"unitHash":"quickbrownfox"}`),
+			res: makeResponse(`{"loadState":"abc","activeState":"def","subState":"ghi","machineState":{"ID":"mymachine","PublicIP":"","Metadata":null,"Version":"","TotalResources":{"Cores":0,"Memory":0,"Disk":0},"FreeResources":{"Cores":0,"Memory":0,"Disk":0}},"unitHash":"quickbrownfox"}`),
 			err: nil,
 			wantUS: &unit.UnitState{
 				LoadState:   "abc",
@@ -323,7 +338,7 @@ func TestGetUnitState(t *testing.T) {
 		},
 		{
 			// Unit state with no MachineState should be OK
-			res: makeResult(`{"loadState":"abc","activeState":"def","subState":"ghi"}`),
+			res: makeResponse(`{"loadState":"abc","activeState":"def","subState":"ghi"}`),
 			err: nil,
 			wantUS: &unit.UnitState{
 				LoadState:   "abc",
@@ -336,7 +351,7 @@ func TestGetUnitState(t *testing.T) {
 		},
 		{
 			// Bad unit state object should simply result in nil returned
-			res:     makeResult(`garbage, not good proper json`),
+			res:     makeResponse(`garbage, not good proper json`),
 			err:     nil,
 			wantUS:  nil,
 			wantErr: true,
@@ -351,18 +366,18 @@ func TestGetUnitState(t *testing.T) {
 		{
 			// KeyNotFound should result in nil returned
 			res:     nil,
-			err:     etcd.Error{ErrorCode: etcd.ErrorKeyNotFound},
+			err:     etcd.Error{Code: etcd.ErrorCodeKeyNotFound},
 			wantUS:  nil,
 			wantErr: false,
 		},
 	}
 
 	for i, tt := range tests {
-		e := &testEtcdClient{
-			res: []*etcd.Result{tt.res},
+		e := &testEtcdKeysAPI{
+			res: []*etcd.Response{tt.res},
 			err: []error{tt.err},
 		}
-		r := &EtcdRegistry{etcd: e, keyPrefix: "/fleet/"}
+		r := &EtcdRegistry{kAPI: e, keyPrefix: "/fleet/"}
 		j := "foo.service"
 		us, err := r.getUnitState(j, "XXX")
 		if tt.wantErr != (err != nil) {
@@ -409,40 +424,40 @@ func TestUnitStates(t *testing.T) {
 		UnitName:    "foo",
 	}
 	// Multiple new unit states reported for the same unit
-	foo := etcd.Node{
+	foo := &etcd.Node{
 		Key: "/fleet/states/foo",
-		Nodes: []etcd.Node{
-			etcd.Node{
+		Nodes: []*etcd.Node{
+			&etcd.Node{
 				Key:   "/fleet/states/foo/mID1",
 				Value: usToJson(t, &fus1),
 			},
-			etcd.Node{
+			&etcd.Node{
 				Key:   "/fleet/states/foo/mID2",
 				Value: usToJson(t, &fus2),
 			},
 		},
 	}
 	// Bogus new unit state which we won't expect to see in results
-	bar := etcd.Node{
+	bar := &etcd.Node{
 		Key: "/fleet/states/bar",
-		Nodes: []etcd.Node{
-			etcd.Node{
+		Nodes: []*etcd.Node{
+			&etcd.Node{
 				Key:   "/fleet/states/bar/asdf",
 				Value: `total garbage`,
 			},
 		},
 	}
-	// Result from crawling the new "states" namespace
-	res2 := &etcd.Result{
+	// Response from crawling the new "states" namespace
+	res2 := &etcd.Response{
 		Node: &etcd.Node{
 			Key:   "/fleet/states",
-			Nodes: []etcd.Node{foo, bar},
+			Nodes: []*etcd.Node{foo, bar},
 		},
 	}
-	e := &testEtcdClient{
-		res: []*etcd.Result{res2},
+	e := &testEtcdKeysAPI{
+		res: []*etcd.Response{res2},
 	}
-	r := &EtcdRegistry{etcd: e, keyPrefix: "/fleet/"}
+	r := &EtcdRegistry{kAPI: e, keyPrefix: "/fleet/"}
 
 	got, err := r.UnitStates()
 	if err != nil {
@@ -470,14 +485,14 @@ func TestUnitStates(t *testing.T) {
 		errs []error
 		fail bool
 	}{
-		{[]error{etcd.Error{ErrorCode: etcd.ErrorKeyNotFound}}, false},
-		{[]error{etcd.Error{ErrorCode: etcd.ErrorKeyNotFound}}, false},
+		{[]error{etcd.Error{Code: etcd.ErrorCodeKeyNotFound}}, false},
+		{[]error{etcd.Error{Code: etcd.ErrorCodeKeyNotFound}}, false},
 		{[]error{nil}, false}, // No errors, no responses should succeed
 		{[]error{errors.New("ur registry don't work")}, true},
 		{[]error{errors.New("ur registry don't work")}, true},
 	} {
-		e = &testEtcdClient{err: tt.errs}
-		r = &EtcdRegistry{etcd: e, keyPrefix: "/fleet"}
+		e = &testEtcdKeysAPI{err: tt.errs}
+		r = &EtcdRegistry{kAPI: e, keyPrefix: "/fleet"}
 		got, err = r.UnitStates()
 		if (err != nil) != tt.fail {
 			t.Errorf("case %d: unexpected error state calling UnitStates(): got %v, want %v", i, err, tt.fail)

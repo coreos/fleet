@@ -12,14 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package etcd
+package lease
 
 import (
 	"encoding/json"
 	"path"
 	"time"
 
-	"github.com/coreos/fleet/pkg/lease"
+	etcd "github.com/coreos/fleet/Godeps/_workspace/src/github.com/coreos/etcd/client"
+	"github.com/coreos/fleet/Godeps/_workspace/src/golang.org/x/net/context"
 )
 
 const (
@@ -33,37 +34,33 @@ type etcdLeaseMetadata struct {
 
 // etcdLease implements the Lease interface
 type etcdLease struct {
-	key    string
-	meta   etcdLeaseMetadata
-	idx    uint64
-	ttl    time.Duration
-	client Client
+	mgr  *etcdLeaseManager
+	key  string
+	meta etcdLeaseMetadata
+	idx  uint64
+	ttl  time.Duration
 }
 
 func (l *etcdLease) Release() error {
-	req := Delete{
-		Key:           l.key,
-		PreviousIndex: l.idx,
+	opts := &etcd.DeleteOptions{
+		PrevIndex: l.idx,
 	}
-	_, err := l.client.Do(&req)
+	_, err := l.mgr.kAPI.Delete(l.mgr.ctx(), l.key, opts)
 	return err
 }
 
 func (l *etcdLease) Renew(period time.Duration) error {
 	val, err := serializeLeaseMetadata(l.meta.MachineID, l.meta.Version)
-	req := Set{
-		Key:           l.key,
-		Value:         val,
-		PreviousIndex: l.idx,
-		TTL:           period,
+	opts := &etcd.SetOptions{
+		PrevIndex: l.idx,
+		TTL:       period,
 	}
-
-	resp, err := l.client.Do(&req)
+	resp, err := l.mgr.kAPI.Set(l.mgr.ctx(), l.key, val, opts)
 	if err != nil {
 		return err
 	}
 
-	renewed := leaseFromResult(resp, l.client)
+	renewed := l.mgr.leaseFromResponse(resp)
 	*l = *renewed
 
 	return nil
@@ -99,92 +96,92 @@ func serializeLeaseMetadata(machID string, ver int) (string, error) {
 	return string(b), nil
 }
 
-type LeaseManager struct {
-	client    Client
-	keyPrefix string
+type etcdLeaseManager struct {
+	kAPI       etcd.KeysAPI
+	keyPrefix  string
+	reqTimeout time.Duration
 }
 
-func NewLeaseManager(client Client, keyPrefix string) *LeaseManager {
-	return &LeaseManager{client: client, keyPrefix: keyPrefix}
+func NewEtcdLeaseManager(kAPI etcd.KeysAPI, keyPrefix string, reqTimeout time.Duration) *etcdLeaseManager {
+	return &etcdLeaseManager{kAPI: kAPI, keyPrefix: keyPrefix, reqTimeout: reqTimeout}
 }
 
-func (r *LeaseManager) leasePath(name string) string {
+func (r *etcdLeaseManager) ctx() context.Context {
+	ctx, _ := context.WithTimeout(context.Background(), r.reqTimeout)
+	return ctx
+}
+
+func (r *etcdLeaseManager) leasePath(name string) string {
 	return path.Join(r.keyPrefix, leasePrefix, name)
 }
 
-func (r *LeaseManager) GetLease(name string) (lease.Lease, error) {
+func (r *etcdLeaseManager) GetLease(name string) (Lease, error) {
 	key := r.leasePath(name)
-	req := Get{
-		Key: key,
-	}
-
-	resp, err := r.client.Do(&req)
+	resp, err := r.kAPI.Get(r.ctx(), key, nil)
 	if err != nil {
-		if IsKeyNotFound(err) {
+		if isEtcdError(err, etcd.ErrorCodeKeyNotFound) {
 			err = nil
 		}
 		return nil, err
 	}
 
-	l := leaseFromResult(resp, r.client)
+	l := r.leaseFromResponse(resp)
 	return l, nil
 }
 
-func (r *LeaseManager) StealLease(name, machID string, ver int, period time.Duration, idx uint64) (lease.Lease, error) {
+func (r *etcdLeaseManager) StealLease(name, machID string, ver int, period time.Duration, idx uint64) (Lease, error) {
 	val, err := serializeLeaseMetadata(machID, ver)
 	if err != nil {
 		return nil, err
 	}
 
-	req := Set{
-		Key:           r.leasePath(name),
-		Value:         val,
-		PreviousIndex: idx,
-		TTL:           period,
+	key := r.leasePath(name)
+	opts := &etcd.SetOptions{
+		PrevIndex: idx,
+		TTL:       period,
 	}
-
-	resp, err := r.client.Do(&req)
+	resp, err := r.kAPI.Set(r.ctx(), key, val, opts)
 	if err != nil {
-		if IsNodeExist(err) {
+		if isEtcdError(err, etcd.ErrorCodeNodeExist) {
 			err = nil
 		}
 		return nil, err
 	}
 
-	l := leaseFromResult(resp, r.client)
+	l := r.leaseFromResponse(resp)
 	return l, nil
 }
 
-func (r *LeaseManager) AcquireLease(name string, machID string, ver int, period time.Duration) (lease.Lease, error) {
+func (r *etcdLeaseManager) AcquireLease(name string, machID string, ver int, period time.Duration) (Lease, error) {
 	val, err := serializeLeaseMetadata(machID, ver)
 	if err != nil {
 		return nil, err
 	}
 
-	req := Create{
-		Key:   r.leasePath(name),
-		Value: val,
-		TTL:   period,
+	key := r.leasePath(name)
+	opts := &etcd.SetOptions{
+		TTL:       period,
+		PrevExist: etcd.PrevNoExist,
 	}
 
-	resp, err := r.client.Do(&req)
+	resp, err := r.kAPI.Set(r.ctx(), key, val, opts)
 	if err != nil {
-		if IsNodeExist(err) {
+		if isEtcdError(err, etcd.ErrorCodeNodeExist) {
 			err = nil
 		}
 		return nil, err
 	}
 
-	l := leaseFromResult(resp, r.client)
+	l := r.leaseFromResponse(resp)
 	return l, nil
 }
 
-func leaseFromResult(res *Result, client Client) *etcdLease {
+func (r *etcdLeaseManager) leaseFromResponse(res *etcd.Response) *etcdLease {
 	l := &etcdLease{
-		key:    res.Node.Key,
-		idx:    res.Node.ModifiedIndex,
-		ttl:    res.Node.TTLDuration(),
-		client: client,
+		mgr: r,
+		key: res.Node.Key,
+		idx: res.Node.ModifiedIndex,
+		ttl: res.Node.TTLDuration(),
 	}
 
 	err := json.Unmarshal([]byte(res.Node.Value), &l.meta)
@@ -200,4 +197,9 @@ func leaseFromResult(res *Result, client Client) *etcdLease {
 	}
 
 	return l
+}
+
+func isEtcdError(err error, code int) bool {
+	eerr, ok := err.(etcd.Error)
+	return ok && eerr.Code == code
 }

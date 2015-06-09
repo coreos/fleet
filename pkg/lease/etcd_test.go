@@ -12,12 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package etcd
+package lease
 
 import (
 	"reflect"
 	"testing"
 	"time"
+
+	etcd "github.com/coreos/fleet/Godeps/_workspace/src/github.com/coreos/etcd/client"
 )
 
 func TestSerializeLeaseMetadata(t *testing.T) {
@@ -50,15 +52,15 @@ func TestSerializeLeaseMetadata(t *testing.T) {
 	}
 }
 
-func TestLeaseFromResult(t *testing.T) {
+func TestLeaseFromResponse(t *testing.T) {
 	tests := []struct {
-		res  Result
+		res  etcd.Response
 		want etcdLease
 	}{
 		// typical case
 		{
-			res: Result{
-				Node: &Node{
+			res: etcd.Response{
+				Node: &etcd.Node{
 					Key:           "/foo/bar",
 					ModifiedIndex: 12,
 					TTL:           9,
@@ -78,8 +80,8 @@ func TestLeaseFromResult(t *testing.T) {
 
 		// backwards-compatibility with unversioned engines
 		{
-			res: Result{
-				Node: &Node{
+			res: etcd.Response{
+				Node: &etcd.Node{
 					Key:           "/foo/bar",
 					ModifiedIndex: 12,
 					TTL:           9,
@@ -99,8 +101,8 @@ func TestLeaseFromResult(t *testing.T) {
 
 		// json decode failures are treated like a nonversioned lease
 		{
-			res: Result{
-				Node: &Node{
+			res: etcd.Response{
+				Node: &etcd.Node{
 					Key:           "/foo/bar",
 					ModifiedIndex: 12,
 					TTL:           9,
@@ -120,9 +122,10 @@ func TestLeaseFromResult(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		got := leaseFromResult(&tt.res, nil)
+		var r *etcdLeaseManager
+		got := r.leaseFromResponse(&tt.res)
 		if !reflect.DeepEqual(tt.want, *got) {
-			t.Errorf("case %d: incorrect output from leaseFromResult\nwant=%#v\ngot=%#vs", i, tt.want, *got)
+			t.Errorf("case %d: incorrect output from leaseFromResponse\nwant=%#v\ngot=%#vs", i, tt.want, *got)
 		}
 	}
 }

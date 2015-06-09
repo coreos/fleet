@@ -15,12 +15,10 @@
 package registry
 
 import (
-	"path"
 	"strconv"
 
+	etcd "github.com/coreos/fleet/Godeps/_workspace/src/github.com/coreos/etcd/client"
 	"github.com/coreos/fleet/Godeps/_workspace/src/github.com/coreos/go-semver/semver"
-
-	"github.com/coreos/fleet/etcd"
 )
 
 // LatestDaemonVersion attempts to retrieve the latest version of fleetd
@@ -29,7 +27,7 @@ import (
 func (r *EtcdRegistry) LatestDaemonVersion() (*semver.Version, error) {
 	machs, err := r.Machines()
 	if err != nil {
-		if etcd.IsKeyNotFound(err) {
+		if isEtcdError(err, etcd.ErrorCodeKeyNotFound) {
 			err = nil
 		}
 		return nil, err
@@ -48,15 +46,11 @@ func (r *EtcdRegistry) LatestDaemonVersion() (*semver.Version, error) {
 
 // EngineVersion implements the ClusterRegistry interface
 func (r *EtcdRegistry) EngineVersion() (int, error) {
-	req := etcd.Get{
-		Key: r.engineVersionPath(),
-	}
-
-	res, err := r.etcd.Do(&req)
+	res, err := r.kAPI.Get(r.ctx(), r.engineVersionPath(), nil)
 	if err != nil {
 		// no big deal, either the cluster is new or is just
 		// upgrading from old unversioned code
-		if etcd.IsKeyNotFound(err) {
+		if isEtcdError(err, etcd.ErrorCodeKeyNotFound) {
 			err = nil
 		}
 		return 0, err
@@ -72,29 +66,23 @@ func (r *EtcdRegistry) UpdateEngineVersion(from, to int) error {
 	strTo := strconv.Itoa(to)
 	strFrom := strconv.Itoa(from)
 
-	var req etcd.Action
-	req = &etcd.Set{
-		Key:           key,
-		Value:         strTo,
-		PreviousValue: strFrom,
+	opts := &etcd.SetOptions{
+		PrevValue: strFrom,
 	}
-
-	_, err := r.etcd.Do(req)
+	_, err := r.kAPI.Set(r.ctx(), key, strTo, opts)
 	if err == nil {
 		return nil
-	} else if !etcd.IsKeyNotFound(err) {
+	} else if !isEtcdError(err, etcd.ErrorCodeKeyNotFound) {
 		return err
 	}
 
-	req = &etcd.Create{
-		Key:   key,
-		Value: strTo,
+	opts = &etcd.SetOptions{
+		PrevExist: etcd.PrevNoExist,
 	}
-
-	_, err = r.etcd.Do(req)
+	_, err = r.kAPI.Set(r.ctx(), key, strTo, opts)
 	return err
 }
 
 func (r *EtcdRegistry) engineVersionPath() string {
-	return path.Join(r.keyPrefix, "/engine/version")
+	return r.prefixed("/engine/version")
 }

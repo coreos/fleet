@@ -11,6 +11,16 @@
 			"Rev": "35bc42037350f0078e3c974c6ea690f1926603ab"
 		},
 		{
+			"ImportPath": "github.com/coreos/etcd/client",
+			"Comment": "v2.1.0-alpha.0-49-geb930c3",
+			"Rev": "eb930c3298176a5a4c4ce8985506ab0988aca57e"
+		},
+		{
+			"ImportPath": "github.com/coreos/etcd/pkg/types",
+			"Comment": "v2.1.0-alpha.0-49-geb930c3",
+			"Rev": "eb930c3298176a5a4c4ce8985506ab0988aca57e"
+		},
+		{
 			"ImportPath": "github.com/coreos/go-semver/semver",
 			"Rev": "a9a0c39c7e4a2929f73d4b757d1860fbb8e66d06"
 		},
@@ -55,6 +65,10 @@
 			"ImportPath": "golang.org/x/crypto/ssh",
 			"Comment": "null-234",
 			"Rev": "60a80aaa50ff0e8506f61b1fa35078a24941be50"
+		},
+		{
+			"ImportPath": "golang.org/x/net/context",
+			"Rev": "a8c61998a557a37435f719980da368469c10bfed"
 		},
 		{
 			"ImportPath": "google.golang.org/api/google-api-go-generator",
