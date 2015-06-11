@@ -89,7 +89,7 @@ Default: 0
 
 Provide a custom set of etcd endpoints.
 
-Default: ["http://127.0.0.1:4001", "http://127.0.0.1:2379"]
+Default: "http://127.0.0.1:4001,http://127.0.0.1:2379"
 
 #### etcd_request_timeout
 
