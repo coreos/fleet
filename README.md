@@ -2,7 +2,11 @@
 
 [![Build Status](https://travis-ci.org/coreos/fleet.png?branch=master)](https://travis-ci.org/coreos/fleet)
 
-fleet ties together [systemd](http://coreos.com/using-coreos/systemd) and [etcd](https://github.com/coreos/etcd) into a distributed init system. Think of it as an extension of systemd that operates at the cluster level instead of the machine level. This project is very low level and is designed as a foundation for higher order orchestration.
+fleet ties together [systemd](http://coreos.com/using-coreos/systemd) and [etcd](https://github.com/coreos/etcd) into a simple distributed init system. Think of it as an extension of systemd that operates at the cluster level instead of the machine level. **This project is very low level and is designed as a foundation for higher order orchestration.**
+
+fleet is oriented around systemd units and is not a container manager or orchestration system. fleet supports very basic scheduling of systemd units in a cluster. Those looking for more complex scheduling requirements or a first-class container orchestration system should check out [Kubernetes](https://kubernetes.io).
+
+## Using fleet
 
 Launching a unit with fleet is as simple as running `fleetctl start`:
 
