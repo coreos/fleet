@@ -18,8 +18,10 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"syscall"
 
@@ -35,6 +37,7 @@ import (
 
 const (
 	DefaultConfigFile = "/etc/fleet/fleet.conf"
+	PidFile           = "/var/run/fleet.pid"
 )
 
 func main() {
@@ -59,6 +62,11 @@ func main() {
 	if *printVersion {
 		fmt.Println("fleetd version", version.Version)
 		os.Exit(0)
+	}
+
+	if err := createPidFile(PidFile); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
 	}
 
 	log.Infof("Starting fleetd version %v", version.Version)
@@ -113,6 +121,7 @@ func main() {
 		log.Infof("Gracefully shutting down")
 		srv.Stop()
 		srv.Purge()
+		removePidFile(PidFile)
 		os.Exit(0)
 	}
 
@@ -218,6 +227,40 @@ func listenForSignals(sigmap map[os.Signal]func()) {
 		if ok {
 			handler()
 		}
+	}
+}
+
+func createPidFile(pidfile string) error {
+	if pidstring, err := ioutil.ReadFile(pidfile); err == nil {
+		pid, err := strconv.Atoi(string(pidstring))
+		if err == nil {
+			filename := fmt.Sprintf("/proc/%d/comm", pid)
+			if _, err := os.Stat(filename); err == nil {
+				comm, err := ioutil.ReadFile(filename)
+
+				// The last char of /proc/%d/comm is '0x0A', so need trim it
+				if err == nil && strings.EqualFold(string(comm[0:len(comm)-1]), "fleetd") == true {
+					return fmt.Errorf(
+						"pid file found, ensure fleetd is not running or delete %s", pidfile)
+				}
+			}
+		}
+	}
+
+	file, err := os.Create(pidfile)
+	if err != nil {
+		return err
+	}
+
+	defer file.Close()
+
+	_, err = fmt.Fprintf(file, "%d", os.Getpid())
+	return err
+}
+
+func removePidFile(pidfile string) {
+	if err := os.Remove(pidfile); err != nil {
+		log.Error("Error removing %s: %s", pidfile, err)
 	}
 }
 
