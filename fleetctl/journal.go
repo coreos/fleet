@@ -15,7 +15,7 @@
 package main
 
 import (
-	"fmt"
+	"strconv"
 
 	"github.com/coreos/fleet/job"
 )
@@ -71,15 +71,15 @@ func runJournal(args []string) (exit int) {
 		return 1
 	}
 
-	command := fmt.Sprintf("journalctl --unit %s --no-pager -n %d", name, flagLines)
+	cmd := []string{"journalctl", "--unit", name, "--no-pager", "-n", strconv.Itoa(flagLines)}
 
 	if flagSudo {
-		command = "sudo " + command
+		cmd = append([]string{"sudo"}, cmd...)
 	}
 
 	if flagFollow {
-		command += " -f"
+		cmd = append(cmd, "-f")
 	}
 
-	return runCommand(command, u.MachineID)
+	return runCommand(u.MachineID, cmd[0], cmd[1:]...)
 }

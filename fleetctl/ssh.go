@@ -214,10 +214,10 @@ func findAddressInRunningUnits(name string) (string, bool, error) {
 
 // runCommand will attempt to run a command on a given machine. It will attempt
 // to SSH to the machine if it is identified as being remote.
-func runCommand(cmd string, machID string) (retcode int) {
+func runCommand(machID string, cmd string, args ...string) (retcode int) {
 	var err error
 	if machine.IsLocalMachineID(machID) {
-		err, retcode = runLocalCommand(cmd)
+		err, retcode = runLocalCommand(cmd, args...)
 		if err != nil {
 			stderr("Error running local command: %v", err)
 		}
@@ -227,7 +227,7 @@ func runCommand(cmd string, machID string) (retcode int) {
 			stderr("Error getting machine IP: %v", err)
 		} else {
 			addr := findSSHPort(ms.PublicIP)
-			err, retcode = runRemoteCommand(cmd, addr)
+			err, retcode = runRemoteCommand(addr, cmd, args...)
 			if err != nil {
 				stderr("Error running remote command: %v", err)
 			}
@@ -237,9 +237,8 @@ func runCommand(cmd string, machID string) (retcode int) {
 }
 
 // runLocalCommand runs the given command locally and returns any error encountered and the exit code of the command
-func runLocalCommand(cmd string) (error, int) {
-	cmdSlice := strings.Split(cmd, " ")
-	osCmd := exec.Command(cmdSlice[0], cmdSlice[1:]...)
+func runLocalCommand(cmd string, args ...string) (error, int) {
+	osCmd := exec.Command(cmd, args...)
 	osCmd.Stderr = os.Stderr
 	osCmd.Stdout = os.Stdout
 	osCmd.Start()
@@ -259,7 +258,7 @@ func runLocalCommand(cmd string) (error, int) {
 
 // runRemoteCommand runs the given command over SSH on the given IP, and returns
 // any error encountered and the exit status of the command
-func runRemoteCommand(cmd string, addr string) (err error, exit int) {
+func runRemoteCommand(addr string, cmd string, args ...string) (err error, exit int) {
 	var sshClient *ssh.SSHForwardingClient
 	timeout := getSSHTimeoutFlag()
 	if tun := getTunnelFlag(); tun != "" {
@@ -271,7 +270,12 @@ func runRemoteCommand(cmd string, addr string) (err error, exit int) {
 		return err, -1
 	}
 
+	cmdargs := cmd
+	for _, arg := range args {
+		cmdargs += fmt.Sprintf(" %q", arg)
+	}
+
 	defer sshClient.Close()
 
-	return ssh.Execute(sshClient, cmd)
+	return ssh.Execute(sshClient, cmdargs)
 }
