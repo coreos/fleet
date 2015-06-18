@@ -14,6 +14,10 @@
 
 package main
 
+import (
+	"path"
+)
+
 var cmdDestroyUnit = &Command{
 	Name:    "destroy",
 	Summary: "Destroy one or more units in the cluster",
@@ -29,14 +33,27 @@ Destroyed units are impossible to start unless re-submitted.`,
 }
 
 func runDestroyUnits(args []string) (exit int) {
+	states, err := cAPI.UnitStates()
+	if err != nil {
+		stderr("Error retrieving list of units from repository: %v", err)
+		return 1
+	}
+
 	for _, v := range args {
 		name := unitNameMangle(v)
-		err := cAPI.DestroyUnit(name)
-		if err != nil {
-			continue
-		}
+		for _, us := range states {
+			if match, _ := path.Match(name, us.Name); match == false {
+				continue
+			}
 
-		stdout("Destroyed %s", name)
+			err = cAPI.DestroyUnit(us.Name)
+			if err != nil {
+				stderr("Error destroying unit %s: %v", us.Name, err)
+				continue
+			}
+
+			stdout("Destroyed %s", us.Name)
+		}
 	}
 	return
 }
