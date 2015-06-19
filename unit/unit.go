@@ -17,6 +17,7 @@ package unit
 import (
 	"bytes"
 	"crypto/sha1"
+	"encoding/hex"
 	"fmt"
 	"io/ioutil"
 	"strings"
@@ -167,6 +168,19 @@ func (h Hash) Short() string {
 
 func (h *Hash) Empty() bool {
 	return *h == Hash{}
+}
+
+func HashFromHexString(key string) (Hash, error) {
+	h := Hash{}
+	out, err := hex.DecodeString(key)
+	if err != nil {
+		return h, err
+	}
+	if len(out) != sha1.Size {
+		return h, fmt.Errorf("size of key %q (%d) differs from SHA1 size (%d)", out, len(out), sha1.Size)
+	}
+	copy(h[:], out[:sha1.Size])
+	return h, nil
 }
 
 // UnitState encodes the current state of a unit loaded into a fleet agent
