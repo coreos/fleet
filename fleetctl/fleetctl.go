@@ -845,3 +845,28 @@ func suToGlobal(su schema.Unit) bool {
 	}
 	return u.IsGlobal()
 }
+
+// checkUnitNames sanity checks unit names
+func checkUnitNames(names []string, allowTemplate bool) error {
+	units := make([]string, 0, len(names))
+	for _, j := range names {
+		units = append(units, unitNameMangle(j))
+	}
+
+	for _, un := range units {
+		uni := unit.NewUnitNameInfo(un)
+		if uni == nil {
+			return fmt.Errorf("invalid unit name %v", un)
+		}
+
+		if allowTemplate {
+			continue
+		}
+
+		if uni.Template != "" && !uni.IsInstance() {
+			return fmt.Errorf("template unit %s missing instance parameter", un)
+		}
+	}
+
+	return nil
+}
