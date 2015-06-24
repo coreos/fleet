@@ -36,6 +36,11 @@ func init() {
 }
 
 func runSubmitUnits(args []string) (exit int) {
+	if err := checkUnitNames(args, true); err != nil {
+		stderr("Error creating units: %v", err)
+		return 1
+	}
+
 	if err := lazyCreateUnits(args); err != nil {
 		stderr("Error creating units: %v", err)
 		exit = 1
