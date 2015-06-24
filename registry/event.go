@@ -17,12 +17,9 @@ package registry
 import (
 	"path"
 	"strings"
-	"time"
 
 	etcd "github.com/coreos/fleet/Godeps/_workspace/src/github.com/coreos/etcd/client"
-	"github.com/coreos/fleet/Godeps/_workspace/src/golang.org/x/net/context"
 
-	"github.com/coreos/fleet/log"
 	"github.com/coreos/fleet/pkg"
 )
 
@@ -87,30 +84,31 @@ func parse(res *etcd.Response, prefix string) (ev pkg.Event, ok bool) {
 }
 
 func watch(kAPI etcd.KeysAPI, key string, stop chan struct{}) (res *etcd.Response) {
-	for res == nil {
-		select {
-		case <-stop:
-			log.Debugf("Gracefully closing etcd watch loop: key=%s", key)
-			return
-		default:
-			opts := &etcd.WatcherOptions{
-				AfterIndex: 0,
-				Recursive:  true,
-			}
-			watcher := kAPI.Watcher(key, opts)
-			log.Debugf("Creating etcd watcher: %s", key)
+	/*
+		for res == nil {
+			select {
+			case <-stop:
+				log.Debugf("Gracefully closing etcd watch loop: key=%s", key)
+				return
+			default:
+				opts := &etcd.WatcherOptions{
+					AfterIndex: 0,
+					Recursive:  true,
+				}
+				watcher := kAPI.Watcher(key, opts)
+				log.Debugf("Creating etcd watcher: %s", key)
 
-			var err error
-			res, err = watcher.Next(context.Background())
-			if err != nil {
-				log.Errorf("etcd watcher %v returned error: %v", key, err)
+				var err error
+				res, err = watcher.Next(context.Background())
+				if err != nil {
+					log.Errorf("etcd watcher %v returned error: %v", key, err)
+				}
 			}
+
+			// Let's not slam the etcd server in the event that we know
+			// an unexpected error occurred.
+			time.Sleep(time.Second)
 		}
-
-		// Let's not slam the etcd server in the event that we know
-		// an unexpected error occurred.
-		time.Sleep(time.Second)
-	}
-
+	*/
 	return
 }
