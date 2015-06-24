@@ -30,6 +30,7 @@ type Config struct {
 	Verbosity               int
 	RawMetadata             string
 	AgentTTL                string
+	TokenLimit              int
 	VerifyUnits             bool
 	AuthorizedKeysFile      string
 }

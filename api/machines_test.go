@@ -33,7 +33,7 @@ func TestMachinesList(t *testing.T) {
 		{ID: "YYY", PublicIP: "1.2.3.4", Metadata: map[string]string{"ping": "pong"}},
 	})
 	fAPI := &client.RegistryClient{Registry: fr}
-	resource := &machinesResource{cAPI: fAPI}
+	resource := &machinesResource{cAPI: fAPI, tokenLimit: testTokenLimit}
 	rw := httptest.NewRecorder()
 	req, err := http.NewRequest("GET", "http://example.com", nil)
 	if err != nil {
@@ -66,7 +66,7 @@ func TestMachinesList(t *testing.T) {
 func TestMachinesListBadNextPageToken(t *testing.T) {
 	fr := registry.NewFakeRegistry()
 	fAPI := &client.RegistryClient{Registry: fr}
-	resource := &machinesResource{fAPI}
+	resource := &machinesResource{fAPI, testTokenLimit}
 	rw := httptest.NewRecorder()
 	req, err := http.NewRequest("GET", "http://example.com/machines?nextPageToken=EwBMLg==", nil)
 	if err != nil {

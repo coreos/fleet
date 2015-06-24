@@ -43,7 +43,7 @@ func newUnit(t *testing.T, str string) unit.UnitFile {
 func TestUnitsSubResourceNotFound(t *testing.T) {
 	fr := registry.NewFakeRegistry()
 	fAPI := &client.RegistryClient{Registry: fr}
-	ur := &unitsResource{fAPI, "/units"}
+	ur := &unitsResource{fAPI, "/units", testTokenLimit}
 	rr := httptest.NewRecorder()
 
 	req, err := http.NewRequest("GET", "/units/foo/bar", nil)
@@ -66,7 +66,7 @@ func TestUnitsList(t *testing.T) {
 		{Name: "YYY.service"},
 	})
 	fAPI := &client.RegistryClient{Registry: fr}
-	resource := &unitsResource{fAPI, "/units"}
+	resource := &unitsResource{fAPI, "/units", testTokenLimit}
 	rw := httptest.NewRecorder()
 	req, err := http.NewRequest("GET", "http://example.com/units", nil)
 	if err != nil {
@@ -103,7 +103,7 @@ func TestUnitsList(t *testing.T) {
 func TestUnitsListBadNextPageToken(t *testing.T) {
 	fr := registry.NewFakeRegistry()
 	fAPI := &client.RegistryClient{Registry: fr}
-	resource := &unitsResource{fAPI, "/units"}
+	resource := &unitsResource{fAPI, "/units", testTokenLimit}
 	rw := httptest.NewRecorder()
 	req, err := http.NewRequest("GET", "http://example.com/units?nextPageToken=EwBMLg==", nil)
 	if err != nil {
@@ -184,7 +184,7 @@ func TestUnitGet(t *testing.T) {
 		{Name: "YYY.service"},
 	})
 	fAPI := &client.RegistryClient{Registry: fr}
-	resource := &unitsResource{fAPI, "/units"}
+	resource := &unitsResource{fAPI, "/units", testTokenLimit}
 
 	for i, tt := range tests {
 		rw := httptest.NewRecorder()
@@ -247,7 +247,7 @@ func TestUnitsDestroy(t *testing.T) {
 		}
 
 		fAPI := &client.RegistryClient{Registry: fr}
-		resource := &unitsResource{fAPI, "/units"}
+		resource := &unitsResource{fAPI, "/units", testTokenLimit}
 		rw := httptest.NewRecorder()
 		resource.destroy(rw, req, tt.arg)
 
@@ -415,7 +415,7 @@ func TestUnitsSetDesiredState(t *testing.T) {
 		req.Header.Set("Content-Type", "application/json")
 
 		fAPI := &client.RegistryClient{Registry: fr}
-		resource := &unitsResource{fAPI, "/units"}
+		resource := &unitsResource{fAPI, "/units", testTokenLimit}
 		rw := httptest.NewRecorder()
 		resource.set(rw, req, tt.item)
 
@@ -718,7 +718,7 @@ func TestValidateName(t *testing.T) {
 func TestUnitsSetDesiredStateBadContentType(t *testing.T) {
 	fr := registry.NewFakeRegistry()
 	fAPI := &client.RegistryClient{Registry: fr}
-	resource := &unitsResource{fAPI, "/units"}
+	resource := &unitsResource{fAPI, "/units", testTokenLimit}
 	rr := httptest.NewRecorder()
 
 	body := ioutil.NopCloser(bytes.NewBuffer([]byte(`{"foo":"bar"}`)))

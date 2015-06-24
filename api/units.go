@@ -30,16 +30,17 @@ import (
 	"github.com/coreos/fleet/unit"
 )
 
-func wireUpUnitsResource(mux *http.ServeMux, prefix string, cAPI client.API) {
+func wireUpUnitsResource(mux *http.ServeMux, prefix string, tokenLimit int, cAPI client.API) {
 	base := path.Join(prefix, "units")
-	ur := unitsResource{cAPI, base}
+	ur := unitsResource{cAPI, base, uint16(tokenLimit)}
 	mux.Handle(base, &ur)
 	mux.Handle(base+"/", &ur)
 }
 
 type unitsResource struct {
-	cAPI     client.API
-	basePath string
+	cAPI       client.API
+	basePath   string
+	tokenLimit uint16
 }
 
 func (ur *unitsResource) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
@@ -286,14 +287,14 @@ func (ur *unitsResource) get(rw http.ResponseWriter, req *http.Request, item str
 }
 
 func (ur *unitsResource) list(rw http.ResponseWriter, req *http.Request) {
-	token, err := findNextPageToken(req.URL)
+	token, err := findNextPageToken(req.URL, ur.tokenLimit)
 	if err != nil {
 		sendError(rw, http.StatusBadRequest, err)
 		return
 	}
 
 	if token == nil {
-		def := DefaultPageToken()
+		def := DefaultPageToken(ur.tokenLimit)
 		token = &def
 	}
 

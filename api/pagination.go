@@ -23,18 +23,13 @@ import (
 	"net/url"
 )
 
-const (
-	// Support a single value for PageToken.Limit to make life easy
-	tokenLimit = 100
-)
-
 type PageToken struct {
 	Limit uint16
 	Page  uint16
 }
 
-func DefaultPageToken() PageToken {
-	return PageToken{Limit: tokenLimit, Page: 1}
+func DefaultPageToken(limit uint16) PageToken {
+	return PageToken{Limit: limit, Page: 1}
 }
 
 func (tok PageToken) Next() PageToken {
@@ -63,7 +58,7 @@ func decodePageToken(value string) (*PageToken, error) {
 	return &tok, nil
 }
 
-func findNextPageToken(u *url.URL) (*PageToken, error) {
+func findNextPageToken(u *url.URL, limit uint16) (*PageToken, error) {
 	values := u.Query()["nextPageToken"]
 
 	if len(values) > 1 {
@@ -80,7 +75,7 @@ func findNextPageToken(u *url.URL) (*PageToken, error) {
 		return nil, err
 	}
 
-	err = validatePageToken(tok)
+	err = validatePageToken(tok, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -88,9 +83,9 @@ func findNextPageToken(u *url.URL) (*PageToken, error) {
 	return tok, nil
 }
 
-func validatePageToken(tok *PageToken) error {
-	if tok.Limit != tokenLimit {
-		return fmt.Errorf("token limit must be %d", tokenLimit)
+func validatePageToken(tok *PageToken, limit uint16) error {
+	if tok.Limit != limit {
+		return fmt.Errorf("token limit must be %d", limit)
 	}
 
 	if tok.Page == 0 {
