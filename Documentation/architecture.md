@@ -11,6 +11,10 @@ Every system in the fleet cluster runs a single `fleetd` daemon. Each daemon enc
 - The engine uses a _lease model_ to enforce that only one engine is running at a time. Every time a reconciliation is due, an engine will attempt to take a lease on etcd. If the lease succeeds, the reconciliation proceeds; otherwise, that engine will remain idle until the next reconciliation period begins.
 - The engine uses a simplistic "least-loaded" scheduling algorithm: when considering where to schedule a given unit, preference is given to agents running the smallest number of units.
 
+The reconciliation loop of the engine can be disabled with the `--disable-engine` flag. This means that
+this `fleetd` daemon will *never* become a cluster leader. If all running daemons have this setting,
+your cluster is dead; i.e. no jobs will be scheduled. Use with care.
+
 ### Agent
 
 - The agent is responsible for actually executing Units on systems. It communicates with the local systemd instance over D-Bus.
@@ -19,7 +23,7 @@ Every system in the fleet cluster runs a single `fleetd` daemon. Each daemon enc
 
 ## etcd
 
-etcd is the sole datastore in a fleet cluster. All persistent and ephemeral data is stored in etcd: unit files, cluster presence, unit state, etc. 
+etcd is the sole datastore in a fleet cluster. All persistent and ephemeral data is stored in etcd: unit files, cluster presence, unit state, etc.
 
 etcd is also used for all internal communication between fleet engines and agents.
 

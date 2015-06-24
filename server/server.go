@@ -45,15 +45,16 @@ const (
 )
 
 type Server struct {
-	agent       *agent.Agent
-	aReconciler *agent.AgentReconciler
-	usPub       *agent.UnitStatePublisher
-	usGen       *unit.UnitStateGenerator
-	engine      *engine.Engine
-	mach        *machine.CoreOSMachine
-	hrt         heart.Heart
-	mon         *heart.Monitor
-	api         *api.Server
+	agent         *agent.Agent
+	aReconciler   *agent.AgentReconciler
+	usPub         *agent.UnitStatePublisher
+	usGen         *unit.UnitStateGenerator
+	engine        *engine.Engine
+	mach          *machine.CoreOSMachine
+	hrt           heart.Heart
+	mon           *heart.Monitor
+	api           *api.Server
+	disableEngine bool
 
 	engineReconcileInterval time.Duration
 
@@ -131,6 +132,7 @@ func New(cfg config.Config) (*Server, error) {
 		api:         apiServer,
 		stop:        nil,
 		engineReconcileInterval: eIval,
+		disableEngine:           cfg.DisableEngine,
 	}
 
 	return &srv, nil
@@ -174,7 +176,11 @@ func (s *Server) Run() {
 	go s.mach.PeriodicRefresh(machineStateRefreshInterval, s.stop)
 	go s.agent.Heartbeat(s.stop)
 	go s.aReconciler.Run(s.agent, s.stop)
-	go s.engine.Run(s.engineReconcileInterval, s.stop)
+	if s.disableEngine {
+		log.Info("Not starting engine; disable-engine is set")
+	} else {
+		go s.engine.Run(s.engineReconcileInterval, s.stop)
+	}
 
 	beatchan := make(chan *unit.UnitStateHeartbeat)
 	go s.usGen.Run(beatchan, s.stop)

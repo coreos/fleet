@@ -5,6 +5,7 @@ minimizing the load it puts on etcd. This is true for reads, writes, and
 watches.
 
 ## Known issues
+
 Currently when fleet schedules a job *all* `fleetd`s are woken up (via a watch)
 and then do a recursive GET on the Unit file in etcd to figure out if it should
 schedule a job. This is a very expensive operation.
@@ -33,9 +34,8 @@ wins:
     this is an expensive operation. The fewer nodes that are engaged in this
     election, the better. Possible downside is that if there isn't a leader at
     all, the cluster is inoperable. However the (usually) 5 machines running
-    etcd are also a single point of failure. Proposal:
-    https://github.com/coreos/fleet/pull/1263
+    etcd are also a single point of failure. See the `--disable-engine` flag.
 
 * Making some defaults exported and allow them to be overridden. For instance
-    fleet's tokenLimit controls how many Units are listed per "page". Proposal:
-    https://github.com/coreos/fleet/pull/1265
+    fleet's tokenLimit controls how many Units are listed per "page". See the
+    `--token-limit` flag.
