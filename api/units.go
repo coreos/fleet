@@ -259,8 +259,6 @@ func ValidateOptions(opts []*schema.UnitOption) error {
 		return errors.New("MachineID cannot be used with Replaces")
 	case isGlobal && hasPeers:
 		return errors.New("Global cannot be used with Peers")
-	case isGlobal && hasConflicts:
-		return errors.New("Global cannot be used with Conflicts")
 	case isGlobal && hasReplaces:
 		return errors.New("Global cannot be used with Replaces")
 	case hasConflicts && hasReplaces:
