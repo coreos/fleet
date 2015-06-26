@@ -39,8 +39,8 @@ func (as *AgentState) unitScheduled(name string) bool {
 	return as.Units[name] != nil
 }
 
-// hasConflict determines whether there are any known conflicts with the given Unit
-func (as *AgentState) hasConflict(pUnitName string, pConflicts []string) (found bool, conflict string) {
+// HasConflict determines whether there are any known conflicts with the given Unit
+func (as *AgentState) HasConflict(pUnitName string, pConflicts []string) (found bool, conflict string) {
 	for _, eUnit := range as.Units {
 		if pUnitName == eUnit.Name {
 			continue
@@ -102,7 +102,7 @@ func (as *AgentState) AbleToRun(j *job.Job) (bool, string) {
 		}
 	}
 
-	if cExists, cJobName := as.hasConflict(j.Name, j.Conflicts()); cExists {
+	if cExists, cJobName := as.HasConflict(j.Name, j.Conflicts()); cExists {
 		return false, fmt.Sprintf("found conflict with locally-scheduled Unit(%s)", cJobName)
 	}
 

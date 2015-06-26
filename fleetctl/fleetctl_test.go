@@ -186,12 +186,6 @@ MachineOf=abcd`),
 Global=true
 MachineOf=zxcvq`),
 		},
-		{
-			"foo.service",
-			newUnitFile(t, `[X-Fleet]
-Global=true
-Conflicts=bar`),
-		},
 	}
 	for i, tt = range testCases {
 		un = tt.name
