@@ -27,6 +27,7 @@ import (
 	"github.com/coreos/fleet/log"
 	"github.com/coreos/fleet/pkg"
 	"github.com/coreos/fleet/schema"
+	"github.com/coreos/fleet/unit"
 )
 
 func wireUpUnitsResource(mux *http.ServeMux, prefix string, cAPI client.API) {
@@ -112,6 +113,13 @@ func (ur *unitsResource) set(rw http.ResponseWriter, req *http.Request, item str
 	if len(su.DesiredState) == 0 {
 		err := errors.New("must provide DesiredState to update existing unit")
 		sendError(rw, http.StatusConflict, err)
+		return
+	}
+
+	un := unit.NewUnitNameInfo(su.Name)
+	if un.IsTemplate() && job.JobState(su.DesiredState) != job.JobStateInactive {
+		err := fmt.Errorf("cannot activate template %q", su.Name)
+		sendError(rw, http.StatusBadRequest, err)
 		return
 	}
 

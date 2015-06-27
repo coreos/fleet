@@ -371,6 +371,23 @@ func TestUnitsSetDesiredState(t *testing.T) {
 				"YYY.service": "inactive",
 			},
 		},
+		// Attempts to load/launch a template unit should fail
+		{
+			initJobs: []job.Job{
+				job.Job{Name: "XXX@.service", Unit: newUnit(t, "[Service]\nFoo=Bar")},
+			},
+			initStates: map[string]job.JobState{
+				"XXX@.service": "inactive",
+			},
+			item: "XXX@.service",
+			arg: schema.Unit{
+				DesiredState: "launched",
+			},
+			code: http.StatusBadRequest,
+			finalStates: map[string]job.JobState{
+				"XXX@.service": "inactive",
+			},
+		},
 	}
 
 	for i, tt := range tests {
