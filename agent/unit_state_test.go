@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"sort"
 	"sync"
 	"testing"
 	"time"
@@ -659,6 +660,7 @@ func TestUnitStatePublisherRunWithDelays(t *testing.T) {
 	// now, all five original states should have been published
 	ws = wantPublished
 	mu.Lock()
+	sort.Strings(states)
 	if !reflect.DeepEqual(states, ws) {
 		t.Errorf("bad published UnitStates: got %#v, want %#v", states, ws)
 	}
@@ -677,6 +679,7 @@ func TestUnitStatePublisherRunWithDelays(t *testing.T) {
 
 	// but still not published
 	mu.Lock()
+	sort.Strings(states)
 	if !reflect.DeepEqual(states, ws) {
 		t.Errorf("bad published UnitStates: got %#v, want %#v", states, ws)
 	}
@@ -695,8 +698,9 @@ func TestUnitStatePublisherRunWithDelays(t *testing.T) {
 	wgf.Wait()
 
 	// and now the other states should be published
-	ws = []string{"foo.service", "bar.service", "baz.service"}
+	ws = []string{"bar.service", "baz.service", "foo.service"}
 	mu.Lock()
+	sort.Strings(states)
 	if !reflect.DeepEqual(states, ws) {
 		t.Errorf("bad UnitStates: got %#v, want %#v", states, ws)
 	}
