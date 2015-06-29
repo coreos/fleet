@@ -718,7 +718,9 @@ func setTargetStateOfUnits(units []string, state job.JobState) ([]*schema.Unit, 
 		}
 
 		log.Debugf("Setting Unit(%s) target state to %s", u.Name, state)
-		cAPI.SetUnitTargetState(u.Name, string(state))
+		if err := cAPI.SetUnitTargetState(u.Name, string(state)); err != nil {
+			return nil, err
+		}
 		triggered = append(triggered, u)
 	}
 

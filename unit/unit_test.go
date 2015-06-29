@@ -114,15 +114,16 @@ func TestNamedUnit(t *testing.T) {
 		tmpl   string
 		inst   string
 		isinst bool
+		istmpl bool
 	}{
-		{"foo.service", "foo", "foo", "", "", false},
-		{"foo@.service", "foo@", "foo", "foo@.service", "", false},
-		{"foo@bar.service", "foo@bar", "foo", "foo@.service", "bar", true},
-		{"foo@bar@baz.service", "foo@bar@baz", "foo", "foo@.service", "bar@baz", true},
-		{"foo.1@.service", "foo.1@", "foo.1", "foo.1@.service", "", false},
-		{"foo.1@2.service", "foo.1@2", "foo.1", "foo.1@.service", "2", true},
-		{"ssh@.socket", "ssh@", "ssh", "ssh@.socket", "", false},
-		{"ssh@1.socket", "ssh@1", "ssh", "ssh@.socket", "1", true},
+		{"foo.service", "foo", "foo", "", "", false, false},
+		{"foo@.service", "foo@", "foo", "foo@.service", "", false, true},
+		{"foo@bar.service", "foo@bar", "foo", "foo@.service", "bar", true, false},
+		{"foo@bar@baz.service", "foo@bar@baz", "foo", "foo@.service", "bar@baz", true, false},
+		{"foo.1@.service", "foo.1@", "foo.1", "foo.1@.service", "", false, true},
+		{"foo.1@2.service", "foo.1@2", "foo.1", "foo.1@.service", "2", true, false},
+		{"ssh@.socket", "ssh@", "ssh", "ssh@.socket", "", false, true},
+		{"ssh@1.socket", "ssh@1", "ssh", "ssh@.socket", "1", true, false},
 	}
 	for _, tt := range tts {
 		u := NewUnitNameInfo(tt.fname)
@@ -148,6 +149,10 @@ func TestNamedUnit(t *testing.T) {
 		i := u.IsInstance()
 		if i != tt.isinst {
 			t.Errorf("NewUnitNameInfo(%s).IsInstance returned %t, want %t", tt.name, i, tt.isinst)
+		}
+		i = u.IsTemplate()
+		if i != tt.istmpl {
+			t.Errorf("NewUnitNameInfo(%s).IsTemplate returned %t, want %t", tt.name, i, tt.istmpl)
 		}
 	}
 

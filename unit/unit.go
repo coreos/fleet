@@ -208,6 +208,12 @@ func (nu UnitNameInfo) IsInstance() bool {
 	return len(nu.Instance) > 0
 }
 
+// IsTemplate returns a boolean indicating whether the UnitNameInfo appears to be
+// a Template unit
+func (nu UnitNameInfo) IsTemplate() bool {
+	return len(nu.Template) > 0 && !nu.IsInstance()
+}
+
 // NewUnitNameInfo generates a UnitNameInfo from the given name. If the given string
 // is not a correct unit name, nil is returned.
 func NewUnitNameInfo(un string) *UnitNameInfo {
