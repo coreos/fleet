@@ -288,9 +288,12 @@ func TestDefaultPublisher(t *testing.T) {
 func TestUnitStatePublisherRunTiming(t *testing.T) {
 	fclock := clockwork.NewFakeClock()
 	states := make([]*unit.UnitState, 0)
+	mu := sync.Mutex{} // protects states from concurrent modification
 	published := make(chan struct{})
 	pf := func(name string, us *unit.UnitState) {
+		mu.Lock()
 		states = append(states, us)
+		mu.Unlock()
 		go func() {
 			published <- struct{}{}
 		}()
@@ -332,9 +335,11 @@ func TestUnitStatePublisherRunTiming(t *testing.T) {
 	default:
 	}
 	want := []*unit.UnitState{}
+	mu.Lock()
 	if !reflect.DeepEqual(states, want) {
 		t.Errorf("bad UnitStates: got %#v, want %#v", states, want)
 	}
+	mu.Unlock()
 
 	// now up to the publish interval
 	fclock.Advance(4 * time.Second)
@@ -347,15 +352,19 @@ func TestUnitStatePublisherRunTiming(t *testing.T) {
 	}
 	select {
 	case <-published:
+		mu.Lock()
 		if !reflect.DeepEqual(states, want) {
 			t.Errorf("bad UnitStates: got %#v, want %#v", states, want)
 		}
+		mu.Unlock()
 	case <-time.After(time.Second):
 		t.Fatalf("UnitState not published as expected!")
 	}
 
 	// reset states
+	mu.Lock()
 	states = []*unit.UnitState{}
+	mu.Unlock()
 
 	// yield so Run() is definitely waiting on After()
 	fclock.BlockUntil(1)
@@ -370,9 +379,11 @@ func TestUnitStatePublisherRunTiming(t *testing.T) {
 	default:
 	}
 	want = []*unit.UnitState{}
+	mu.Lock()
 	if !reflect.DeepEqual(states, want) {
 		t.Errorf("bad UnitStates: got %#v, want %#v", states, want)
 	}
+	mu.Unlock()
 
 	// tick way past the publish interval
 	fclock.Advance(time.Hour)
@@ -387,9 +398,11 @@ func TestUnitStatePublisherRunTiming(t *testing.T) {
 	// state should be published, but just once (since it's still just a single event)
 	select {
 	case <-published:
+		mu.Lock()
 		if !reflect.DeepEqual(states, want) {
 			t.Errorf("bad UnitStates: got %#v, want %#v", states, want)
 		}
+		mu.Unlock()
 	case <-time.After(time.Second):
 		t.Fatalf("UnitState not published as expected!")
 	}
@@ -398,7 +411,9 @@ func TestUnitStatePublisherRunTiming(t *testing.T) {
 	close(sc)
 
 	// reset states
+	mu.Lock()
 	states = []*unit.UnitState{}
+	mu.Unlock()
 
 	// yield so Run() is definitely waiting on After()
 	fclock.BlockUntil(1)
@@ -413,20 +428,25 @@ func TestUnitStatePublisherRunTiming(t *testing.T) {
 	default:
 	}
 	want = []*unit.UnitState{}
+	mu.Lock()
 	if !reflect.DeepEqual(states, want) {
 		t.Errorf("bad UnitStates: got %#v, want %#v", states, want)
 	}
+	mu.Unlock()
 }
 
 func TestUnitStatePublisherRunQueuing(t *testing.T) {
 	states := make([]string, 0)
+	mu := sync.Mutex{} // protects states from concurrent modification
 	var wg sync.WaitGroup
 	wg.Add(numPublishers)
 	block := make(chan struct{})
 	pf := func(name string, us *unit.UnitState) {
 		wg.Done()
 		<-block
+		mu.Lock()
 		states = append(states, name)
+		mu.Unlock()
 	}
 	usp := &UnitStatePublisher{
 		mach: &machine.FakeMachine{
@@ -467,10 +487,13 @@ func TestUnitStatePublisherRunQueuing(t *testing.T) {
 	wg.Wait()
 
 	// now the cache should contain them
+	usp.cacheMutex.RLock()
 	got := usp.cache
 	if !reflect.DeepEqual(got, wcache) {
 		t.Errorf("bad cache: got %#v, want %#v", got, wcache)
 	}
+	usp.cacheMutex.RUnlock()
+
 	// as should the toPublish queue
 	select {
 	case update := <-usp.toPublish:
@@ -478,6 +501,7 @@ func TestUnitStatePublisherRunQueuing(t *testing.T) {
 	default:
 	}
 
+	usp.cacheMutex.Lock()
 	// flush the cache
 	usp.cache = map[string]*unit.UnitState{
 		"foo.service": &unit.UnitState{
@@ -485,6 +509,7 @@ func TestUnitStatePublisherRunQueuing(t *testing.T) {
 			ActiveState: "active",
 		},
 	}
+	usp.cacheMutex.Unlock()
 
 	// now send a new UnitStateHeartbeat referencing something already in the cache
 	bc <- &unit.UnitStateHeartbeat{
@@ -505,6 +530,7 @@ func TestUnitStatePublisherRunQueuing(t *testing.T) {
 		t.Fatalf("change not added to toPublish queue as expected!")
 	}
 	// as should the cache
+	usp.cacheMutex.RLock()
 	got = usp.cache
 	wcache = map[string]*unit.UnitState{
 		"foo.service": &unit.UnitState{
@@ -516,6 +542,7 @@ func TestUnitStatePublisherRunQueuing(t *testing.T) {
 	if !reflect.DeepEqual(got, wcache) {
 		t.Errorf("cache not as expected: got %#v, want %#v", got, wcache)
 	}
+	usp.cacheMutex.RUnlock()
 
 	// finally, send another of the same update
 	bc <- &unit.UnitStateHeartbeat{
@@ -531,22 +558,26 @@ func TestUnitStatePublisherRunQueuing(t *testing.T) {
 		t.Errorf("unexpected change in toPublish queue: %#v", update)
 	default:
 	}
+	usp.cacheMutex.RLock()
 	got = usp.cache
 	if !reflect.DeepEqual(got, wcache) {
 		t.Errorf("cache not as expected: got %#v, want %#v", got, wcache)
 	}
-
+	usp.cacheMutex.RUnlock()
 }
 
 func TestUnitStatePublisherRunWithDelays(t *testing.T) {
 	states := make([]string, 0)
+	mu := sync.Mutex{} // protects states from concurrent modification
 	fclock := clockwork.NewFakeClock()
 	var wgs, wgf sync.WaitGroup // track starting and stopping of publishers
 	slowpf := func(name string, us *unit.UnitState) {
 		wgs.Done()
 		// simulate a delay in communication with the registry
 		fclock.Sleep(3 * time.Second)
+		mu.Lock()
 		states = append(states, name)
+		mu.Unlock()
 		wgf.Done()
 	}
 
@@ -596,9 +627,11 @@ func TestUnitStatePublisherRunWithDelays(t *testing.T) {
 
 	// so far, no states should be published, and the last three should be enqueued
 	ws := []string{}
+	mu.Lock()
 	if !reflect.DeepEqual(states, ws) {
 		t.Errorf("bad UnitStates: got %#v, want %#v", states, ws)
 	}
+	mu.Unlock()
 
 	wtps := map[string]*unit.UnitState{
 		"foo.service": &unit.UnitState{
@@ -608,9 +641,12 @@ func TestUnitStatePublisherRunWithDelays(t *testing.T) {
 		"bar.service": &unit.UnitState{},
 		"baz.service": &unit.UnitState{},
 	}
+
+	usp.toPublishMutex.RLock()
 	if !reflect.DeepEqual(usp.toPublishStates, wtps) {
 		t.Errorf("bad toPublishStates: got %#v, want %#v", usp.toPublishStates, wtps)
 	}
+	usp.toPublishMutex.RUnlock()
 
 	// end the registry delay by ticking past it just once -
 	// expect three more publishers to start, and block
@@ -622,26 +658,32 @@ func TestUnitStatePublisherRunWithDelays(t *testing.T) {
 
 	// now, all five original states should have been published
 	ws = wantPublished
+	mu.Lock()
 	if !reflect.DeepEqual(states, ws) {
 		t.Errorf("bad published UnitStates: got %#v, want %#v", states, ws)
 	}
+	mu.Unlock()
 
 	// wait for the new publishers to start
 	wgs.Wait()
 
 	// and the other states should be flushed from the toPublish queue
 	wtps = map[string]*unit.UnitState{}
+	usp.toPublishMutex.RLock()
 	if !reflect.DeepEqual(usp.toPublishStates, wtps) {
 		t.Errorf("bad toPublishStates: got %#v, want %#v", usp.toPublishStates, wtps)
 	}
+	usp.toPublishMutex.RUnlock()
 
 	// but still not published
+	mu.Lock()
 	if !reflect.DeepEqual(states, ws) {
 		t.Errorf("bad published UnitStates: got %#v, want %#v", states, ws)
 	}
 
 	// clear the published states
 	states = []string{}
+	mu.Unlock()
 
 	// prepare for the new publishers
 	wgf.Add(3)
@@ -654,15 +696,19 @@ func TestUnitStatePublisherRunWithDelays(t *testing.T) {
 
 	// and now the other states should be published
 	ws = []string{"foo.service", "bar.service", "baz.service"}
+	mu.Lock()
 	if !reflect.DeepEqual(states, ws) {
 		t.Errorf("bad UnitStates: got %#v, want %#v", states, ws)
 	}
+	mu.Unlock()
 
 	// and toPublish queue should still be empty
 	wtps = map[string]*unit.UnitState{}
+	usp.toPublishMutex.RLock()
 	if !reflect.DeepEqual(usp.toPublishStates, wtps) {
 		t.Errorf("bad toPublishStates: got %#v, want %#v", usp.toPublishStates, wtps)
 	}
+	usp.toPublishMutex.RUnlock()
 }
 
 func TestQueueForPublish(t *testing.T) {
