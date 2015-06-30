@@ -3,6 +3,9 @@
 # $1 = version string (e.g. 0.8.0)
 # $2 = remote configured to track github.com/coreos/fleet (defaults to "origin" if unset)
 
+# print commands, fail hard and fast
+set -xeo pipefail
+
 VERSION="${1:?version must be set}"
 if [ "${VERSION:0:1}" == "v" ]; then
 	echo "version tag shouldn't start with v" >> /dev/stderr
