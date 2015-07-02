@@ -596,14 +596,16 @@ func TestUnitStatePublisherRunWithDelays(t *testing.T) {
 
 	bc := make(chan *unit.UnitStateHeartbeat)
 	sc := make(chan bool)
+
+	wgs.Add(numPublishers)
+	wgf.Add(numPublishers)
+
 	go func() {
 		usp.Run(bc, sc)
 	}()
 
 	// queue a bunch of unit states for publishing - occupy all publish workers
 	wantPublished := make([]string, numPublishers)
-	wgs.Add(numPublishers)
-	wgf.Add(numPublishers)
 	for i := 0; i < numPublishers; i++ {
 		name := fmt.Sprintf("%d.service", i)
 		wantPublished[i] = name
