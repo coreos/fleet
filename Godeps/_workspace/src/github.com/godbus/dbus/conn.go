@@ -175,6 +175,13 @@ func (conn *Conn) BusObject() *Object {
 // not be called on shared connections.
 func (conn *Conn) Close() error {
 	conn.outLck.Lock()
+	if conn.closed {
+		// inWorker calls Close on read error, the read error may
+		// be caused by another caller calling Close to shutdown the
+		// dbus connection, a double-close scenario we prevent here.
+		conn.outLck.Unlock()
+		return nil
+	}
 	close(conn.out)
 	conn.closed = true
 	conn.outLck.Unlock()
