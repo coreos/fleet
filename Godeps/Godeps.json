@@ -46,8 +46,8 @@
 		},
 		{
 			"ImportPath": "github.com/godbus/dbus",
-			"Comment": "0-11-gcfab99a",
-			"Rev": "cfab99a9500db4ba03067996059d2fc425090bf3"
+			"Comment": "v2-6-ga5942de",
+			"Rev": "a5942dec6340eb0d57f43f2003c190ce06e43dea"
 		},
 		{
 			"ImportPath": "github.com/jonboulle/clockwork",
