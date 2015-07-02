@@ -1,6 +1,6 @@
 {
 	"ImportPath": "github.com/coreos/fleet",
-	"GoVersion": "go1.3.3",
+	"GoVersion": "go1.4.2",
 	"Packages": [
 		"./..."
 	],
@@ -26,18 +26,18 @@
 		},
 		{
 			"ImportPath": "github.com/coreos/go-systemd/activation",
-			"Comment": "v2-35-gcf3cdf7",
-			"Rev": "cf3cdf77462baaad163ad2d5d1984b9c1b493701"
+			"Comment": "v3-6-gcea488b",
+			"Rev": "cea488b4e6855fee89b6c22a811e3c5baca861b6"
 		},
 		{
 			"ImportPath": "github.com/coreos/go-systemd/dbus",
-			"Comment": "v2-35-gcf3cdf7",
-			"Rev": "cf3cdf77462baaad163ad2d5d1984b9c1b493701"
+			"Comment": "v3-6-gcea488b",
+			"Rev": "cea488b4e6855fee89b6c22a811e3c5baca861b6"
 		},
 		{
 			"ImportPath": "github.com/coreos/go-systemd/unit",
-			"Comment": "v2-35-gcf3cdf7",
-			"Rev": "cf3cdf77462baaad163ad2d5d1984b9c1b493701"
+			"Comment": "v3-6-gcea488b",
+			"Rev": "cea488b4e6855fee89b6c22a811e3c5baca861b6"
 		},
 		{
 			"ImportPath": "github.com/docker/libcontainer/netlink",
@@ -63,8 +63,7 @@
 		},
 		{
 			"ImportPath": "golang.org/x/crypto/ssh",
-			"Comment": "null-234",
-			"Rev": "60a80aaa50ff0e8506f61b1fa35078a24941be50"
+			"Rev": "cc04154d65fb9296747569b107cfd05380b1ea3e"
 		},
 		{
 			"ImportPath": "golang.org/x/net/context",

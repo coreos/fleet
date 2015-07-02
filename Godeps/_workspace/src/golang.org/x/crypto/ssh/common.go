@@ -53,7 +53,7 @@ var supportedHostKeyAlgos = []string{
 // This is based on RFC 4253, section 6.4, but with hmac-md5 variants removed
 // because they have reached the end of their useful life.
 var supportedMACs = []string{
-	"hmac-sha1", "hmac-sha1-96",
+	"hmac-sha2-256", "hmac-sha1", "hmac-sha1-96",
 }
 
 var supportedCompressions = []string{compressionNone}
@@ -206,6 +206,14 @@ func (c *Config) SetDefaults() {
 	if c.Ciphers == nil {
 		c.Ciphers = supportedCiphers
 	}
+	var ciphers []string
+	for _, c := range c.Ciphers {
+		if cipherModes[c] != nil {
+			// reject the cipher if we have no cipherModes definition
+			ciphers = append(ciphers, c)
+		}
+	}
+	c.Ciphers = ciphers
 
 	if c.KeyExchanges == nil {
 		c.KeyExchanges = supportedKexAlgos

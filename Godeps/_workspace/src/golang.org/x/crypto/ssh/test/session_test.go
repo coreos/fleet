@@ -11,10 +11,11 @@ package test
 import (
 	"bytes"
 	"errors"
-	"github.com/coreos/fleet/Godeps/_workspace/src/golang.org/x/crypto/ssh"
 	"io"
 	"strings"
 	"testing"
+
+	"github.com/coreos/fleet/Godeps/_workspace/src/golang.org/x/crypto/ssh"
 )
 
 func TestRunCommandSuccess(t *testing.T) {
@@ -279,6 +280,9 @@ func TestCiphers(t *testing.T) {
 	var config ssh.Config
 	config.SetDefaults()
 	cipherOrder := config.Ciphers
+	// This cipher will not be tested when commented out in cipher.go it will
+	// fallback to the next available as per line 292.
+	cipherOrder = append(cipherOrder, "aes128-cbc")
 
 	for _, ciph := range cipherOrder {
 		server := newServer(t)
