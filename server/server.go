@@ -158,10 +158,11 @@ func (s *Server) Run() {
 
 	var err error
 	for sleep := time.Second; ; sleep = pkg.ExpBackoff(sleep, time.Minute) {
-		_, err = s.hrt.Beat(s.mon.TTL)
+		_, err = s.hrt.Register(s.mon.TTL)
 		if err == nil {
 			break
 		}
+		log.Errorf("Server register machine failed: %v", err)
 		time.Sleep(sleep)
 	}
 
