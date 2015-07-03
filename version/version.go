@@ -18,7 +18,7 @@ import (
 	"github.com/coreos/fleet/Godeps/_workspace/src/github.com/coreos/go-semver/semver"
 )
 
-const Version = "0.10.2+git"
+const Version = "0.11.0+git"
 
 var SemVersion semver.Version
 
