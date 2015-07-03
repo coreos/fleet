@@ -26,6 +26,7 @@ import (
 
 type Registry interface {
 	ClearUnitHeartbeat(name string)
+	CreateMachineState(ms machine.MachineState, ttl time.Duration) (uint64, error)
 	CreateUnit(*job.Unit) error
 	DestroyUnit(string) error
 	UnitHeartbeat(name, machID string, ttl time.Duration) error

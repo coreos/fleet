@@ -24,6 +24,7 @@ import (
 type Heart interface {
 	Beat(time.Duration) (uint64, error)
 	Clear() error
+	Register(time.Duration) (uint64, error)
 }
 
 func New(reg registry.Registry, mach machine.Machine) Heart {
@@ -33,6 +34,10 @@ func New(reg registry.Registry, mach machine.Machine) Heart {
 type machineHeart struct {
 	reg  registry.Registry
 	mach machine.Machine
+}
+
+func (h *machineHeart) Register(ttl time.Duration) (uint64, error) {
+	return h.reg.CreateMachineState(h.mach.State(), ttl)
 }
 
 func (h *machineHeart) Beat(ttl time.Duration) (uint64, error) {
