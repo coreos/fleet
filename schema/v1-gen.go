@@ -294,6 +294,8 @@ type UnitState struct {
 
 	Name string `json:"name,omitempty"`
 
+	SystemdActiveEnterTimestamp string `json:"systemdActiveEnterTimestamp,omitempty"`
+
 	SystemdActiveState string `json:"systemdActiveState,omitempty"`
 
 	SystemdLoadState string `json:"systemdLoadState,omitempty"`

@@ -129,12 +129,13 @@ func MapUnitStatesToSchemaUnitStates(entities []*unit.UnitState) []*UnitState {
 
 func MapUnitStateToSchemaUnitState(entity *unit.UnitState) *UnitState {
 	us := UnitState{
-		Name:               entity.UnitName,
-		Hash:               entity.UnitHash,
-		MachineID:          entity.MachineID,
-		SystemdLoadState:   entity.LoadState,
-		SystemdActiveState: entity.ActiveState,
-		SystemdSubState:    entity.SubState,
+		Name:                        entity.UnitName,
+		Hash:                        entity.UnitHash,
+		MachineID:                   entity.MachineID,
+		SystemdLoadState:            entity.LoadState,
+		SystemdActiveState:          entity.ActiveState,
+		SystemdSubState:             entity.SubState,
+		SystemdActiveEnterTimestamp: entity.ActiveEnterTimestamp,
 	}
 
 	return &us
@@ -144,12 +145,13 @@ func MapSchemaUnitStatesToUnitStates(entities []*UnitState) []*unit.UnitState {
 	us := make([]*unit.UnitState, len(entities))
 	for i, e := range entities {
 		us[i] = &unit.UnitState{
-			UnitName:    e.Name,
-			UnitHash:    e.Hash,
-			MachineID:   e.MachineID,
-			LoadState:   e.SystemdLoadState,
-			ActiveState: e.SystemdActiveState,
-			SubState:    e.SystemdSubState,
+			UnitName:             e.Name,
+			UnitHash:             e.Hash,
+			MachineID:            e.MachineID,
+			LoadState:            e.SystemdLoadState,
+			ActiveState:          e.SystemdActiveState,
+			SubState:             e.SystemdSubState,
+			ActiveEnterTimestamp: e.SystemdActiveEnterTimestamp,
 		}
 	}
 

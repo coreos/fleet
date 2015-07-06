@@ -101,7 +101,7 @@ func TestSaveUnitState(t *testing.T) {
 	r := &EtcdRegistry{kAPI: e, keyPrefix: "/fleet/"}
 	j := "foo.service"
 	mID := "mymachine"
-	us := unit.NewUnitState("abc", "def", "ghi", mID)
+	us := unit.NewUnitState("abc", "def", "ghi", mID, 1234567890)
 
 	// Saving nil unit state should fail
 	r.SaveUnitState(j, nil, time.Second)
@@ -122,7 +122,7 @@ func TestSaveUnitState(t *testing.T) {
 	us.UnitHash = "quickbrownfox"
 	r.SaveUnitState(j, us, time.Second)
 
-	json := `{"loadState":"abc","activeState":"def","subState":"ghi","machineState":{"ID":"mymachine","PublicIP":"","Metadata":null,"Capabilities":null,"Version":""},"unitHash":"quickbrownfox"}`
+	json := `{"loadState":"abc","activeState":"def","subState":"ghi","machineState":{"ID":"mymachine","PublicIP":"","Metadata":null,"Capabilities":null,"Version":""},"unitHash":"quickbrownfox","ActiveEnterTimestamp":1234567890}`
 	p1 := "/fleet/state/foo.service"
 	p2 := "/fleet/states/foo.service/mymachine"
 	want := []action{
@@ -196,48 +196,53 @@ func TestUnitStateToModel(t *testing.T) {
 		{
 			// Unit state with no hash and no machineID is not OK
 			in: &unit.UnitState{
-				LoadState:   "foo",
-				ActiveState: "bar",
-				SubState:    "baz",
-				MachineID:   "",
-				UnitHash:    "",
-				UnitName:    "name",
+				LoadState:            "foo",
+				ActiveState:          "bar",
+				SubState:             "baz",
+				MachineID:            "",
+				UnitHash:             "",
+				UnitName:             "name",
+				ActiveEnterTimestamp: 0,
 			},
 			want: nil,
 		},
 		{
 			// Unit state with hash but no machineID is OK
 			in: &unit.UnitState{
-				LoadState:   "foo",
-				ActiveState: "bar",
-				SubState:    "baz",
-				MachineID:   "",
-				UnitHash:    "heh",
-				UnitName:    "name",
+				LoadState:            "foo",
+				ActiveState:          "bar",
+				SubState:             "baz",
+				MachineID:            "",
+				UnitHash:             "heh",
+				UnitName:             "name",
+				ActiveEnterTimestamp: 1234567890,
 			},
 			want: &unitStateModel{
-				LoadState:    "foo",
-				ActiveState:  "bar",
-				SubState:     "baz",
-				MachineState: nil,
-				UnitHash:     "heh",
+				LoadState:            "foo",
+				ActiveState:          "bar",
+				SubState:             "baz",
+				MachineState:         nil,
+				UnitHash:             "heh",
+				ActiveEnterTimestamp: 1234567890,
 			},
 		},
 		{
 			in: &unit.UnitState{
-				LoadState:   "foo",
-				ActiveState: "bar",
-				SubState:    "baz",
-				MachineID:   "woof",
-				UnitHash:    "miaow",
-				UnitName:    "name",
+				LoadState:            "foo",
+				ActiveState:          "bar",
+				SubState:             "baz",
+				MachineID:            "woof",
+				UnitHash:             "miaow",
+				UnitName:             "name",
+				ActiveEnterTimestamp: 54321,
 			},
 			want: &unitStateModel{
-				LoadState:    "foo",
-				ActiveState:  "bar",
-				SubState:     "baz",
-				MachineState: &machine.MachineState{ID: "woof"},
-				UnitHash:     "miaow",
+				LoadState:            "foo",
+				ActiveState:          "bar",
+				SubState:             "baz",
+				MachineState:         &machine.MachineState{ID: "woof"},
+				UnitHash:             "miaow",
+				ActiveEnterTimestamp: 54321,
 			},
 		},
 	} {
@@ -258,25 +263,27 @@ func TestModelToUnitState(t *testing.T) {
 			want: nil,
 		},
 		{
-			in: &unitStateModel{"foo", "bar", "baz", nil, ""},
+			in: &unitStateModel{"foo", "bar", "baz", nil, "", 1234567890},
 			want: &unit.UnitState{
-				LoadState:   "foo",
-				ActiveState: "bar",
-				SubState:    "baz",
-				MachineID:   "",
-				UnitHash:    "",
-				UnitName:    "name",
+				LoadState:            "foo",
+				ActiveState:          "bar",
+				SubState:             "baz",
+				MachineID:            "",
+				UnitHash:             "",
+				UnitName:             "name",
+				ActiveEnterTimestamp: 1234567890,
 			},
 		},
 		{
-			in: &unitStateModel{"z", "x", "y", &machine.MachineState{ID: "abcd"}, ""},
+			in: &unitStateModel{"z", "x", "y", &machine.MachineState{ID: "abcd"}, "", 987654321},
 			want: &unit.UnitState{
-				LoadState:   "z",
-				ActiveState: "x",
-				SubState:    "y",
-				MachineID:   "abcd",
-				UnitHash:    "",
-				UnitName:    "name",
+				LoadState:            "z",
+				ActiveState:          "x",
+				SubState:             "y",
+				MachineID:            "abcd",
+				UnitHash:             "",
+				UnitName:             "name",
+				ActiveEnterTimestamp: 987654321,
 			},
 		},
 	} {

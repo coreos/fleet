@@ -73,7 +73,7 @@ ExecStart=/usr/bin/sleep 3000
 		t.Fatalf("Expected [hello.service], got %v", units)
 	}
 
-	err = waitForUnitState(mgr, name, unit.UnitState{"loaded", "inactive", "dead", "", hash, ""})
+	err = waitForUnitState(mgr, name, unit.UnitState{"loaded", "inactive", "dead", "", hash, "", 0})
 	if err != nil {
 		t.Error(err)
 	}
@@ -83,7 +83,7 @@ ExecStart=/usr/bin/sleep 3000
 		t.Error(err)
 	}
 
-	err = waitForUnitState(mgr, name, unit.UnitState{"loaded", "active", "running", "", hash, ""})
+	err = waitForUnitState(mgr, name, unit.UnitState{"loaded", "active", "running", "", hash, "", 0})
 	if err != nil {
 		t.Error(err)
 	}
