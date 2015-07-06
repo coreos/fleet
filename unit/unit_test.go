@@ -93,15 +93,16 @@ func TestDefaultUnitType(t *testing.T) {
 
 func TestNewUnitState(t *testing.T) {
 	want := &UnitState{
-		LoadState:   "ls",
-		ActiveState: "as",
-		SubState:    "ss",
-		MachineID:   "id",
+		LoadState:            "ls",
+		ActiveState:          "as",
+		SubState:             "ss",
+		MachineID:            "id",
+		ActiveEnterTimestamp: 1234567890,
 	}
 
-	got := NewUnitState("ls", "as", "ss", "id")
+	got := NewUnitState("ls", "as", "ss", "id", 1234567890)
 	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("NewUnitState did not create a correct UnitState: got %s, want %s", got, want)
+		t.Fatalf("NewUnitState did not create a correct UnitState: got %v, want %v", got, want)
 	}
 
 }

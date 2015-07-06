@@ -141,6 +141,8 @@ type UnitState struct {
 	SystemdLoadState string `json:"systemdLoadState,omitempty"`
 
 	SystemdSubState string `json:"systemdSubState,omitempty"`
+
+	SystemdActiveEnterTimestamp uint64 `json:"systemdActiveEnterTimestamp,omitempty"`
 }
 
 type UnitStatePage struct {

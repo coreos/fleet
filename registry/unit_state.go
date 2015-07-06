@@ -190,11 +190,12 @@ func (r *EtcdRegistry) RemoveUnitState(jobName string) error {
 }
 
 type unitStateModel struct {
-	LoadState    string                `json:"loadState"`
-	ActiveState  string                `json:"activeState"`
-	SubState     string                `json:"subState"`
-	MachineState *machine.MachineState `json:"machineState"`
-	UnitHash     string                `json:"unitHash"`
+	LoadState            string                `json:"loadState"`
+	ActiveState          string                `json:"activeState"`
+	SubState             string                `json:"subState"`
+	MachineState         *machine.MachineState `json:"machineState"`
+	UnitHash             string                `json:"unitHash"`
+	ActiveEnterTimestamp uint64                `json:"ActiveEnterTimestamp"`
 }
 
 func modelToUnitState(usm *unitStateModel, name string) *unit.UnitState {
@@ -203,11 +204,12 @@ func modelToUnitState(usm *unitStateModel, name string) *unit.UnitState {
 	}
 
 	us := unit.UnitState{
-		LoadState:   usm.LoadState,
-		ActiveState: usm.ActiveState,
-		SubState:    usm.SubState,
-		UnitHash:    usm.UnitHash,
-		UnitName:    name,
+		LoadState:            usm.LoadState,
+		ActiveState:          usm.ActiveState,
+		SubState:             usm.SubState,
+		UnitHash:             usm.UnitHash,
+		UnitName:             name,
+		ActiveEnterTimestamp: usm.ActiveEnterTimestamp,
 	}
 
 	if usm.MachineState != nil {
@@ -229,10 +231,11 @@ func unitStateToModel(us *unit.UnitState) *unitStateModel {
 	//}
 
 	usm := unitStateModel{
-		LoadState:   us.LoadState,
-		ActiveState: us.ActiveState,
-		SubState:    us.SubState,
-		UnitHash:    us.UnitHash,
+		LoadState:            us.LoadState,
+		ActiveState:          us.ActiveState,
+		SubState:             us.SubState,
+		UnitHash:             us.UnitHash,
+		ActiveEnterTimestamp: us.ActiveEnterTimestamp,
 	}
 
 	if us.MachineID != "" {

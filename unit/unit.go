@@ -171,20 +171,22 @@ func (h *Hash) Empty() bool {
 
 // UnitState encodes the current state of a unit loaded into a fleet agent
 type UnitState struct {
-	LoadState   string
-	ActiveState string
-	SubState    string
-	MachineID   string
-	UnitHash    string
-	UnitName    string
+	LoadState            string
+	ActiveState          string
+	SubState             string
+	MachineID            string
+	UnitHash             string
+	UnitName             string
+	ActiveEnterTimestamp uint64
 }
 
-func NewUnitState(loadState, activeState, subState, mID string) *UnitState {
+func NewUnitState(loadState, activeState, subState, mID string, activeEnterTimestamp uint64) *UnitState {
 	return &UnitState{
-		LoadState:   loadState,
-		ActiveState: activeState,
-		SubState:    subState,
-		MachineID:   mID,
+		LoadState:            loadState,
+		ActiveState:          activeState,
+		SubState:             subState,
+		MachineID:            mID,
+		ActiveEnterTimestamp: activeEnterTimestamp,
 	}
 }
 

@@ -18,13 +18,14 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/schema"
 )
 
 const (
-	defaultListUnitsFields = "unit,machine,active,sub"
+	defaultListUnitsFields = "unit,machine,active,sub,uptime"
 )
 
 var (
@@ -89,6 +90,14 @@ Or, choose the columns to display:
 				return us.Hash[:7]
 			}
 			return us.Hash
+		},
+		"uptime": func(us *schema.UnitState, full bool) string {
+			if us == nil || us.SystemdActiveState != "active" {
+				return "-"
+			}
+			tm := time.Unix(0, int64(us.SystemdActiveEnterTimestamp)*1000)
+			duration := time.Now().Sub(tm)
+			return fmt.Sprintf("%s, Since %ss", tm.Format("2006-01-02 03:04:05 PM"), strings.Split(duration.String(), ".")[0])
 		},
 	}
 )
