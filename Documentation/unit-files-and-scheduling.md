@@ -125,6 +125,14 @@ MachineMetadata=region=us-west-1
 
 This would allow a machine to match just one of the provided values to be considered eligible to run.
 
+`MachineMetadata` also support relational operators, including `<=`, `>=`, `<`, `>` and `!=`:
+
+```
+[X-Fleet]
+MachineMetadata=ram<1024
+```
+This requires an eligible machine to have the `ram` less than 1024. The value must be numeral when using `<=`, `>=`, `<` or `>`.
+
 A machine is not automatically configured with metadata.
 A deployer may define machine metadata using the `metadata` [config option](https://github.com/coreos/fleet/blob/master/Documentation/deployment-and-configuration.md#metadata).
 
