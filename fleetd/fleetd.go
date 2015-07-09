@@ -224,11 +224,14 @@ func listenForSignals(sigmap map[os.Signal]func()) {
 type stringSlice []string
 
 func (f *stringSlice) Set(value string) error {
+	var s stringSlice
 	for _, item := range strings.Split(value, ",") {
 		item = strings.TrimLeft(item, " [\"")
 		item = strings.TrimRight(item, " \"]")
-		*f = append(*f, item)
+		s = append(s, item)
 	}
+
+	*f = s
 
 	return nil
 }
