@@ -65,7 +65,7 @@ func main() {
 
 	cfgset := flag.NewFlagSet("fleet", flag.ExitOnError)
 	cfgset.Int("verbosity", 0, "Logging level")
-	cfgset.Var(&stringSlice{}, "etcd_servers", "List of etcd endpoints")
+	cfgset.Var(&stringSlice{"http://127.0.0.1:2379", "http://127.0.0.1:4001"}, "etcd_servers", "List of etcd endpoints")
 	cfgset.String("etcd_keyfile", "", "SSL key file used to secure etcd communication")
 	cfgset.String("etcd_certfile", "", "SSL certification file used to secure etcd communication")
 	cfgset.String("etcd_cafile", "", "SSL Certificate Authority file used to secure etcd communication")
