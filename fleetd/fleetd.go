@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 
 	"github.com/coreos/fleet/Godeps/_workspace/src/github.com/rakyll/globalconf"
@@ -28,6 +27,7 @@ import (
 	"github.com/coreos/fleet/agent"
 	"github.com/coreos/fleet/config"
 	"github.com/coreos/fleet/log"
+	"github.com/coreos/fleet/pkg"
 	"github.com/coreos/fleet/registry"
 	"github.com/coreos/fleet/server"
 	"github.com/coreos/fleet/version"
@@ -65,7 +65,7 @@ func main() {
 
 	cfgset := flag.NewFlagSet("fleet", flag.ExitOnError)
 	cfgset.Int("verbosity", 0, "Logging level")
-	cfgset.Var(&stringSlice{}, "etcd_servers", "List of etcd endpoints")
+	cfgset.Var(&pkg.StringSlice{"http://127.0.0.1:2379", "http://127.0.0.1:4001"}, "etcd_servers", "List of etcd endpoints")
 	cfgset.String("etcd_keyfile", "", "SSL key file used to secure etcd communication")
 	cfgset.String("etcd_certfile", "", "SSL certification file used to secure etcd communication")
 	cfgset.String("etcd_cafile", "", "SSL Certificate Authority file used to secure etcd communication")
@@ -177,7 +177,7 @@ func getConfig(flagset *flag.FlagSet, userCfgFile string) (*config.Config, error
 
 	cfg := config.Config{
 		Verbosity:               (*flagset.Lookup("verbosity")).Value.(flag.Getter).Get().(int),
-		EtcdServers:             (*flagset.Lookup("etcd_servers")).Value.(flag.Getter).Get().(stringSlice),
+		EtcdServers:             (*flagset.Lookup("etcd_servers")).Value.(flag.Getter).Get().(pkg.StringSlice),
 		EtcdKeyPrefix:           (*flagset.Lookup("etcd_key_prefix")).Value.(flag.Getter).Get().(string),
 		EtcdKeyFile:             (*flagset.Lookup("etcd_keyfile")).Value.(flag.Getter).Get().(string),
 		EtcdCertFile:            (*flagset.Lookup("etcd_certfile")).Value.(flag.Getter).Get().(string),
@@ -219,28 +219,4 @@ func listenForSignals(sigmap map[os.Signal]func()) {
 			handler()
 		}
 	}
-}
-
-type stringSlice []string
-
-func (f *stringSlice) Set(value string) error {
-	for _, item := range strings.Split(value, ",") {
-		item = strings.TrimLeft(item, " [\"")
-		item = strings.TrimRight(item, " \"]")
-		*f = append(*f, item)
-	}
-
-	return nil
-}
-
-func (f *stringSlice) String() string {
-	return fmt.Sprintf("%v", *f)
-}
-
-func (f *stringSlice) Value() []string {
-	return *f
-}
-
-func (f *stringSlice) Get() interface{} {
-	return *f
 }
