@@ -574,7 +574,7 @@ func TestValidateOptions(t *testing.T) {
 			},
 			true,
 		},
-		// Global with Peers/Conflicts no good
+		// Global with Conflicts is ok
 		{
 			[]*schema.UnitOption{
 				&schema.UnitOption{
@@ -597,6 +597,7 @@ func TestValidateOptions(t *testing.T) {
 			},
 			true,
 		},
+		// Global with peer no good
 		{
 			[]*schema.UnitOption{
 				&schema.UnitOption{

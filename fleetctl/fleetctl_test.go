@@ -165,26 +165,26 @@ func TestCreateUnitFails(t *testing.T) {
 		{
 			"foo.service",
 			newUnitFile(t, `[X-Fleet]
-	MachineOf=abcd
-	Conflicts=abcd`),
+			MachineOf=abcd
+			Conflicts=abcd`),
 		},
 		{
 			"foo.service",
 			newUnitFile(t, `[X-Fleet]
-MachineOf=abcd
-Conflicts=abcd`),
+			MachineOf=abcd
+			Conflicts=abcd`),
 		},
 		{
 			"foo.service",
 			newUnitFile(t, `[X-Fleet]
-Global=true
-MachineOf=abcd`),
+			Global=true
+			MachineOf=abcd`),
 		},
 		{
 			"foo.service",
 			newUnitFile(t, `[X-Fleet]
-Global=true
-MachineOf=zxcvq`),
+			Global=true
+			MachineOf=zxcvq`),
 		},
 	}
 	for i, tt = range testCases {
