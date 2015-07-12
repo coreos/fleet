@@ -32,7 +32,7 @@ The options and desiredState fields are required, and all other Unit fields will
 The base request looks like this:
 
 ```
-PUT /units/<name> HTTP/1.1
+PUT /fleet/v1/units/<name> HTTP/1.1
 
 {"desiredState": <state>, "options": [<option>, ...]}
 ```
@@ -40,7 +40,7 @@ PUT /units/<name> HTTP/1.1
 For example, creating and launching a new unit "foo.service" could be done like so:
 
 ```
-PUT /units/foo.service HTTP/1.1
+PUT /fleet/v1/units/foo.service HTTP/1.1
 
 {
   "desiredState": "launched",
@@ -68,7 +68,7 @@ Modify the desired state of an existing Unit by providing a partial entity.
 The only required field is desiredState:
 
 ```
-PUT /units/<name> HTTP/1.1
+PUT /fleet/v1/units/<name> HTTP/1.1
 
 {"desiredState": <state>}
 ```
@@ -76,7 +76,7 @@ PUT /units/<name> HTTP/1.1
 For example, unloading an existing Unit called "bar.service" could look like this:
 
 ```
-PUT /units/bar.service HTTP/1.1
+PUT /fleet/v1/units/bar.service HTTP/1.1
 
 {
   "desiredState": "inactive"
@@ -98,7 +98,7 @@ Explore a paginated collection of Unit entities.
 #### Request
 
 ```
-GET /units HTTP/1.1
+GET /fleet/v1/units HTTP/1.1
 ```
 
 The request must not have a body.
@@ -114,7 +114,7 @@ View a particular Unit entity.
 #### Request
 
 ```
-GET /units/<name> HTTP/1.1
+GET /fleet/v1/units/<name> HTTP/1.1
 ```
 
 The request must not have a body.
@@ -132,7 +132,7 @@ Completely remove a Unit from fleet.
 #### Request
 
 ```
-DELETE /units/<name> HTTP/1.1
+DELETE /fleet/v1/units/<name> HTTP/1.1
 ```
 
 #### Response
@@ -162,7 +162,7 @@ Explore a paginated collection of UnitState entities.
 #### Request
 
 ```
-GET /state HTTP/1.1
+GET /fleet/v1/state HTTP/1.1
 ```
 
 The request must not have a body.
@@ -195,7 +195,7 @@ Explore a paginated collection of Machine entities.
 #### Request
 
 ```
-GET /machines HTTP/1.1
+GET /fleet/v1/machines HTTP/1.1
 ```
 
 The request must not have a body.
@@ -232,7 +232,7 @@ If a paginated response does not contain a `nextPageToken` field, a client may s
 The following series of HTTP request/response pairs demonstrates how pagination works against a fictional resource:
 
 ```
-GET /cats HTTP/1.1
+GET /fleet/v1/cats HTTP/1.1
 
 
 HTTP/1.1 200 OK
@@ -241,7 +241,7 @@ HTTP/1.1 200 OK
 ```
 
 ```
-GET /cats?nextPageToken=8fefec2c HTTP/1.1
+GET /fleet/v1/cats?nextPageToken=8fefec2c HTTP/1.1
 
 
 HTTP/1.1 200 OK
@@ -250,7 +250,7 @@ HTTP/1.1 200 OK
 ```
 
 ```
-GET /cats?nextPageToken=cbb06916 HTTP/1.1
+GET /fleet/v1/cats?nextPageToken=cbb06916 HTTP/1.1
 
 
 HTTP/1.1 200 OK
