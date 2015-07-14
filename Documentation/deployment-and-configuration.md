@@ -126,6 +126,6 @@ Default: "30s"
 
 #### engine_reconcile_interval
 
-Interval at which the engine should reconcile the cluster schedule in etcd.
+Interval in seconds at which the engine should reconcile the cluster schedule in etcd.
 
 Default: 2
