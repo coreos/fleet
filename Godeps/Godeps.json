@@ -12,13 +12,13 @@
 		},
 		{
 			"ImportPath": "github.com/coreos/etcd/client",
-			"Comment": "v2.1.0-alpha.0-201-gebb7677",
-			"Rev": "ebb767765e8f7475fdad8b0c37b28841b6346d3d"
+			"Comment": "v2.1.1-31-g93002ca",
+			"Rev": "93002caca591fb51e0796813903c4fc1239f3ce7"
 		},
 		{
 			"ImportPath": "github.com/coreos/etcd/pkg/types",
-			"Comment": "v2.1.0-alpha.0-201-gebb7677",
-			"Rev": "ebb767765e8f7475fdad8b0c37b28841b6346d3d"
+			"Comment": "v2.1.1-31-g93002ca",
+			"Rev": "93002caca591fb51e0796813903c4fc1239f3ce7"
 		},
 		{
 			"ImportPath": "github.com/coreos/go-semver/semver",

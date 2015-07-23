@@ -16,6 +16,7 @@ package client
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -59,6 +60,10 @@ type Error struct {
 func (e Error) Error() string {
 	return fmt.Sprintf("%v: %v (%v) [%v]", e.Code, e.Message, e.Cause, e.Index)
 }
+
+var (
+	ErrInvalidJSON = errors.New("client: response is invalid json. The endpoint is probably not valid etcd cluster endpoint.")
+)
 
 // PrevExistType is used to define an existence condition when setting
 // or deleting Nodes.
@@ -189,6 +194,11 @@ type GetOptions struct {
 	// not be sorted and the ordering used should not be considered
 	// predictable.
 	Sort bool
+
+	// Quorum specifies whether it gets the latest committed value that
+	// has been applied in quorum of members, which ensures external
+	// consistency (or linearizability).
+	Quorum bool
 }
 
 type DeleteOptions struct {
@@ -212,6 +222,9 @@ type DeleteOptions struct {
 	// or explicitly set to false, only a single Node will be
 	// deleted.
 	Recursive bool
+
+	// Dir specifies whether or not this Node should be removed as a directory.
+	Dir bool
 }
 
 type Watcher interface {
@@ -349,6 +362,7 @@ func (k *httpKeysAPI) Delete(ctx context.Context, key string, opts *DeleteOption
 	if opts != nil {
 		act.PrevValue = opts.PrevValue
 		act.PrevIndex = opts.PrevIndex
+		act.Dir = opts.Dir
 		act.Recursive = opts.Recursive
 	}
 
@@ -369,6 +383,7 @@ func (k *httpKeysAPI) Get(ctx context.Context, key string, opts *GetOptions) (*R
 	if opts != nil {
 		act.Recursive = opts.Recursive
 		act.Sorted = opts.Sort
+		act.Quorum = opts.Quorum
 	}
 
 	resp, body, err := k.client.Do(ctx, act)
@@ -433,6 +448,7 @@ type getAction struct {
 	Key       string
 	Recursive bool
 	Sorted    bool
+	Quorum    bool
 }
 
 func (g *getAction) HTTPRequest(ep url.URL) *http.Request {
@@ -441,6 +457,7 @@ func (g *getAction) HTTPRequest(ep url.URL) *http.Request {
 	params := u.Query()
 	params.Set("recursive", strconv.FormatBool(g.Recursive))
 	params.Set("sorted", strconv.FormatBool(g.Sorted))
+	params.Set("quorum", strconv.FormatBool(g.Quorum))
 	u.RawQuery = params.Encode()
 
 	req, _ := http.NewRequest("GET", u.String(), nil)
@@ -520,6 +537,7 @@ type deleteAction struct {
 	Key       string
 	PrevValue string
 	PrevIndex uint64
+	Dir       bool
 	Recursive bool
 }
 
@@ -532,6 +550,9 @@ func (a *deleteAction) HTTPRequest(ep url.URL) *http.Request {
 	}
 	if a.PrevIndex != 0 {
 		params.Set("prevIndex", strconv.FormatUint(a.PrevIndex, 10))
+	}
+	if a.Dir {
+		params.Set("dir", "true")
 	}
 	if a.Recursive {
 		params.Set("recursive", "true")
@@ -581,7 +602,7 @@ func unmarshalSuccessfulKeysResponse(header http.Header, body []byte) (*Response
 	var res Response
 	err := json.Unmarshal(body, &res)
 	if err != nil {
-		return nil, err
+		return nil, ErrInvalidJSON
 	}
 	if header.Get("X-Etcd-Index") != "" {
 		res.Index, err = strconv.ParseUint(header.Get("X-Etcd-Index"), 10, 64)
@@ -595,7 +616,7 @@ func unmarshalSuccessfulKeysResponse(header http.Header, body []byte) (*Response
 func unmarshalFailedKeysResponse(body []byte) error {
 	var etcdErr Error
 	if err := json.Unmarshal(body, &etcdErr); err != nil {
-		return err
+		return ErrInvalidJSON
 	}
 	return etcdErr
 }
