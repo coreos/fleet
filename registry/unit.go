@@ -53,6 +53,7 @@ func (r *EtcdRegistry) getUnitByHash(hash unit.Hash) *unit.UnitFile {
 	key := r.hashedUnitPath(hash)
 	opts := &etcd.GetOptions{
 		Recursive: true,
+		Quorum:    true,
 	}
 	resp, err := r.kAPI.Get(r.ctx(), key, opts)
 	if err != nil {

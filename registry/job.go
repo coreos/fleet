@@ -37,6 +37,7 @@ func (r *EtcdRegistry) Schedule() ([]job.ScheduledUnit, error) {
 	opts := &etcd.GetOptions{
 		Sort:      true,
 		Recursive: true,
+		Quorum:    true,
 	}
 	res, err := r.kAPI.Get(r.ctx(), key, opts)
 	if err != nil {
@@ -92,6 +93,7 @@ func (r *EtcdRegistry) Units() ([]job.Unit, error) {
 	opts := &etcd.GetOptions{
 		Sort:      true,
 		Recursive: true,
+		Quorum:    true,
 	}
 	res, err := r.kAPI.Get(r.ctx(), key, opts)
 	if err != nil {
@@ -134,6 +136,7 @@ func (r *EtcdRegistry) Unit(name string) (*job.Unit, error) {
 	key := r.prefixed(jobPrefix, name)
 	opts := &etcd.GetOptions{
 		Recursive: true,
+		Quorum:    true,
 	}
 	res, err := r.kAPI.Get(r.ctx(), key, opts)
 	if err != nil {
@@ -184,6 +187,7 @@ func (r *EtcdRegistry) ScheduledUnit(name string) (*job.ScheduledUnit, error) {
 	key := r.prefixed(jobPrefix, name)
 	opts := &etcd.GetOptions{
 		Recursive: true,
+		Quorum:    true,
 	}
 	res, err := r.kAPI.Get(r.ctx(), key, opts)
 	if err != nil {

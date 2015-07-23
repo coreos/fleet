@@ -32,6 +32,7 @@ func (r *EtcdRegistry) Machines() (machines []machine.MachineState, err error) {
 	opts := &etcd.GetOptions{
 		Sort:      true,
 		Recursive: true,
+		Quorum:    true,
 	}
 
 	resp, err := r.kAPI.Get(r.ctx(), key, opts)
