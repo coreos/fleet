@@ -595,6 +595,8 @@ func createUnit(name string, uf *unit.UnitFile) (*schema.Unit, error) {
 // subsequent Jobs are not acted on). An error is also returned if none of the
 // above conditions match a given Job.
 func lazyCreateUnits(args []string) error {
+	errchan := make(chan error)
+	var wg sync.WaitGroup
 	for _, arg := range args {
 		// TODO(jonboulle): this loop is getting too unwieldy; factor it out
 
@@ -660,7 +662,26 @@ func lazyCreateUnits(args []string) error {
 		if err != nil {
 			return err
 		}
+
+		wg.Add(1)
+		go checkUnitState(name, job.JobStateInactive, sharedFlags.BlockAttempts, os.Stdout, &wg, errchan)
 	}
+
+	go func() {
+		wg.Wait()
+		close(errchan)
+	}()
+
+	haserr := false
+	for msg := range errchan {
+		stderr("Error waiting on unit creation: %v", msg)
+		haserr = true
+	}
+
+	if haserr {
+		return fmt.Errorf("One or more errors creating units")
+	}
+
 	return nil
 }
 
