@@ -14,6 +14,10 @@
 
 package main
 
+import (
+	"time"
+)
+
 var cmdDestroyUnit = &Command{
 	Name:    "destroy",
 	Summary: "Destroy one or more units in the cluster",
@@ -33,7 +37,37 @@ func runDestroyUnits(args []string) (exit int) {
 		name := unitNameMangle(v)
 		err := cAPI.DestroyUnit(name)
 		if err != nil {
+			stderr("Error destroying units: %v", err)
+			exit = 1
 			continue
+		}
+
+		if !sharedFlags.NoBlock {
+			attempts := sharedFlags.BlockAttempts
+			retry := func() bool {
+				if sharedFlags.BlockAttempts < 1 {
+					return true
+				}
+				attempts--
+				if attempts == 0 {
+					return false
+				}
+				return true
+			}
+
+			for retry() {
+				u, err := cAPI.Unit(name)
+				if err != nil {
+					stderr("Error destroying units: %v", err)
+					exit = 1
+					break
+				}
+
+				if u == nil {
+					break
+				}
+				time.Sleep(500 * time.Millisecond)
+			}
 		}
 
 		stdout("Destroyed %s", name)
