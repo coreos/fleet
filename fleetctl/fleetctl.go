@@ -614,51 +614,48 @@ func lazyCreateUnits(args []string) error {
 			continue
 		}
 
+		var uf *unit.UnitFile
 		// Failing that, assume the name references a local unit file on disk, and attempt to load that, if it exists
+		// TODO(mischief): consolidate these two near-identical codepaths
 		if _, err := os.Stat(arg); !os.IsNotExist(err) {
-			unit, err := getUnitFromFile(arg)
+			uf, err = getUnitFromFile(arg)
 			if err != nil {
 				return fmt.Errorf("failed getting Unit(%s) from file: %v", arg, err)
 			}
-			u, err = createUnit(name, unit)
-			if err != nil {
-				return err
-			}
-			continue
-		}
-
-		// Otherwise (if the unit file does not exist), check if the name appears to be an instance unit,
-		// and if so, check for a corresponding template unit in the Registry
-		uni := unit.NewUnitNameInfo(name)
-		if uni == nil {
-			return fmt.Errorf("error extracting information from unit name %s", name)
-		} else if !uni.IsInstance() {
-			return fmt.Errorf("unable to find Unit(%s) in Registry or on filesystem", name)
-		}
-		tmpl, err := cAPI.Unit(uni.Template)
-		if err != nil {
-			return fmt.Errorf("error retrieving template Unit(%s) from Registry: %v", uni.Template, err)
-		}
-
-		// Finally, if we could not find a template unit in the Registry, check the local disk for one instead
-		var uf *unit.UnitFile
-		if tmpl == nil {
-			file := path.Join(path.Dir(arg), uni.Template)
-			if _, err := os.Stat(file); os.IsNotExist(err) {
-				return fmt.Errorf("unable to find Unit(%s) or template Unit(%s) in Registry or on filesystem", name, uni.Template)
-			}
-			uf, err = getUnitFromFile(file)
-			if err != nil {
-				return fmt.Errorf("failed getting template Unit(%s) from file: %v", uni.Template, err)
-			}
 		} else {
-			warnOnDifferentLocalUnit(arg, tmpl)
-			uf = schema.MapSchemaUnitOptionsToUnitFile(tmpl.Options)
+			// Otherwise (if the unit file does not exist), check if the name appears to be an instance unit,
+			// and if so, check for a corresponding template unit in the Registry
+			uni := unit.NewUnitNameInfo(name)
+			if uni == nil {
+				return fmt.Errorf("error extracting information from unit name %s", name)
+			} else if !uni.IsInstance() {
+				return fmt.Errorf("unable to find Unit(%s) in Registry or on filesystem", name)
+			}
+			tmpl, err := cAPI.Unit(uni.Template)
+			if err != nil {
+				return fmt.Errorf("error retrieving template Unit(%s) from Registry: %v", uni.Template, err)
+			}
+
+			// Finally, if we could not find a template unit in the Registry, check the local disk for one instead
+			if tmpl == nil {
+				file := path.Join(path.Dir(arg), uni.Template)
+				if _, err := os.Stat(file); os.IsNotExist(err) {
+					return fmt.Errorf("unable to find Unit(%s) or template Unit(%s) in Registry or on filesystem", name, uni.Template)
+				}
+				uf, err = getUnitFromFile(file)
+				if err != nil {
+					return fmt.Errorf("failed getting template Unit(%s) from file: %v", uni.Template, err)
+				}
+			} else {
+				warnOnDifferentLocalUnit(arg, tmpl)
+				uf = schema.MapSchemaUnitOptionsToUnitFile(tmpl.Options)
+			}
+
+			// If we found a template unit, create a near-identical instance unit in
+			// the Registry - same unit file as the template, but different name
 		}
 
-		// If we found a template unit, create a near-identical instance unit in
-		// the Registry - same unit file as the template, but different name
-		u, err = createUnit(name, uf)
+		_, err = createUnit(name, uf)
 		if err != nil {
 			return err
 		}
