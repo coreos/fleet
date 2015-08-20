@@ -792,6 +792,8 @@ func checkUnitState(name string, js job.JobState, maxAttempts int, out io.Writer
 }
 
 func assertUnitState(name string, js job.JobState, out io.Writer) (ret bool) {
+	var state string
+
 	u, err := cAPI.Unit(name)
 	if err != nil {
 		log.Warningf("Error retrieving Unit(%s) from Registry: %v", name, err)
@@ -801,8 +803,16 @@ func assertUnitState(name string, js job.JobState, out io.Writer) (ret bool) {
 		log.Warningf("Unit %s not found", name)
 		return
 	}
-	if job.JobState(u.CurrentState) != js {
-		log.Debugf("Waiting for Unit(%s) state(%s) to be %s", name, job.JobState(u.CurrentState), js)
+
+	// If this is a global unit, CurrentState will never be set. Instead, wait for DesiredState.
+	if suToGlobal(*u) {
+		state = u.DesiredState
+	} else {
+		state = u.CurrentState
+	}
+
+	if job.JobState(state) != js {
+		log.Debugf("Waiting for Unit(%s) state(%s) to be %s", name, job.JobState(state), js)
 		return
 	}
 
