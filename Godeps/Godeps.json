@@ -1,6 +1,6 @@
 {
 	"ImportPath": "github.com/coreos/fleet",
-	"GoVersion": "go1.3.3",
+	"GoVersion": "go1.4.2",
 	"Packages": [
 		"./..."
 	],
@@ -12,13 +12,18 @@
 		},
 		{
 			"ImportPath": "github.com/coreos/etcd/client",
-			"Comment": "v2.1.1-31-g93002ca",
-			"Rev": "93002caca591fb51e0796813903c4fc1239f3ce7"
+			"Comment": "v2.2.0-alpha.1-138-gb2d33e6",
+			"Rev": "b2d33e6dcb24cddc0395f1bbe2213a27aef0fb46"
+		},
+		{
+			"ImportPath": "github.com/coreos/etcd/pkg/pathutil",
+			"Comment": "v2.2.0-alpha.1-138-gb2d33e6",
+			"Rev": "b2d33e6dcb24cddc0395f1bbe2213a27aef0fb46"
 		},
 		{
 			"ImportPath": "github.com/coreos/etcd/pkg/types",
-			"Comment": "v2.1.1-31-g93002ca",
-			"Rev": "93002caca591fb51e0796813903c4fc1239f3ce7"
+			"Comment": "v2.2.0-alpha.1-138-gb2d33e6",
+			"Rev": "b2d33e6dcb24cddc0395f1bbe2213a27aef0fb46"
 		},
 		{
 			"ImportPath": "github.com/coreos/go-semver/semver",

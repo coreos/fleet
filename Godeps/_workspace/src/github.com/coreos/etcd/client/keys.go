@@ -20,22 +20,23 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"path"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/coreos/fleet/Godeps/_workspace/src/github.com/coreos/etcd/pkg/pathutil"
 	"github.com/coreos/fleet/Godeps/_workspace/src/golang.org/x/net/context"
 )
 
 const (
-	ErrorCodeKeyNotFound = 100
-	ErrorCodeTestFailed  = 101
-	ErrorCodeNotFile     = 102
-	ErrorCodeNotDir      = 104
-	ErrorCodeNodeExist   = 105
-	ErrorCodeRootROnly   = 107
-	ErrorCodeDirNotEmpty = 108
+	ErrorCodeKeyNotFound  = 100
+	ErrorCodeTestFailed   = 101
+	ErrorCodeNotFile      = 102
+	ErrorCodeNotDir       = 104
+	ErrorCodeNodeExist    = 105
+	ErrorCodeRootROnly    = 107
+	ErrorCodeDirNotEmpty  = 108
+	ErrorCodeUnauthorized = 110
 
 	ErrorCodePrevValueRequired = 201
 	ErrorCodeTTLNaN            = 202
@@ -63,6 +64,7 @@ func (e Error) Error() string {
 
 var (
 	ErrInvalidJSON = errors.New("client: response is invalid json. The endpoint is probably not valid etcd cluster endpoint.")
+	ErrEmptyBody   = errors.New("client: response body is empty")
 )
 
 // PrevExistType is used to define an existence condition when setting
@@ -135,7 +137,7 @@ type WatcherOptions struct {
 	// index, whatever that may be.
 	AfterIndex uint64
 
-	// Recursive specifices whether or not the Watcher should emit
+	// Recursive specifies whether or not the Watcher should emit
 	// events that occur in children of the given keyspace. If set
 	// to false (default), events will be limited to those that
 	// occur for the exact key.
@@ -251,7 +253,7 @@ type Response struct {
 	Node *Node `json:"node"`
 
 	// PrevNode represents the previous state of the Node. PrevNode is non-nil
-	// only if the Node existed before the action occured and the action
+	// only if the Node existed before the action occurred and the action
 	// caused a change to the Node.
 	PrevNode *Node `json:"prevNode"`
 
@@ -419,18 +421,23 @@ type httpWatcher struct {
 }
 
 func (hw *httpWatcher) Next(ctx context.Context) (*Response, error) {
-	httpresp, body, err := hw.client.Do(ctx, &hw.nextWait)
-	if err != nil {
-		return nil, err
-	}
+	for {
+		httpresp, body, err := hw.client.Do(ctx, &hw.nextWait)
+		if err != nil {
+			return nil, err
+		}
 
-	resp, err := unmarshalHTTPResponse(httpresp.StatusCode, httpresp.Header, body)
-	if err != nil {
-		return nil, err
-	}
+		resp, err := unmarshalHTTPResponse(httpresp.StatusCode, httpresp.Header, body)
+		if err != nil {
+			if err == ErrEmptyBody {
+				continue
+			}
+			return nil, err
+		}
 
-	hw.nextWait.WaitIndex = resp.Node.ModifiedIndex + 1
-	return resp, nil
+		hw.nextWait.WaitIndex = resp.Node.ModifiedIndex + 1
+		return resp, nil
+	}
 }
 
 // v2KeysURL forms a URL representing the location of a key.
@@ -439,7 +446,16 @@ func (hw *httpWatcher) Next(ctx context.Context) (*Response, error) {
 // provided endpoint's path to the root of the keys API
 // (typically "/v2/keys").
 func v2KeysURL(ep url.URL, prefix, key string) *url.URL {
-	ep.Path = path.Join(ep.Path, prefix, key)
+	// We concatenate all parts together manually. We cannot use
+	// path.Join because it does not reserve trailing slash.
+	// We call CanonicalURLPath to further cleanup the path.
+	if prefix != "" && prefix[0] != '/' {
+		prefix = "/" + prefix
+	}
+	if key != "" && key[0] != '/' {
+		key = "/" + key
+	}
+	ep.Path = pathutil.CanonicalURLPath(ep.Path + prefix + key)
 	return &ep
 }
 
@@ -590,6 +606,9 @@ func (a *createInOrderAction) HTTPRequest(ep url.URL) *http.Request {
 func unmarshalHTTPResponse(code int, header http.Header, body []byte) (res *Response, err error) {
 	switch code {
 	case http.StatusOK, http.StatusCreated:
+		if len(body) == 0 {
+			return nil, ErrEmptyBody
+		}
 		res, err = unmarshalSuccessfulKeysResponse(header, body)
 	default:
 		err = unmarshalFailedKeysResponse(body)
