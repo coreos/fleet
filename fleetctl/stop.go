@@ -52,9 +52,19 @@ func init() {
 }
 
 func runStopUnit(args []string) (exit int) {
+	if len(args) == 0 {
+		stderr("One unit file must be provided.")
+		return 1
+	}
+
 	units, err := findUnits(args)
 	if err != nil {
 		stderr("%v", err)
+		return 1
+	}
+
+	if len(units) == 0 {
+		stderr("The units to be stopped are not found in registry.")
 		return 1
 	}
 

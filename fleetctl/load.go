@@ -46,6 +46,10 @@ func init() {
 }
 
 func runLoadUnits(args []string) (exit int) {
+	if len(args) == 0 {
+		stderr("One unit file must be provided.")
+		return 1
+	}
 	if err := lazyCreateUnits(args); err != nil {
 		stderr("Error creating units: %v", err)
 		return 1

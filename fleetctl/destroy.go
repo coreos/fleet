@@ -33,6 +33,10 @@ Destroyed units are impossible to start unless re-submitted.`,
 }
 
 func runDestroyUnits(args []string) (exit int) {
+	if len(args) == 0 {
+		stderr("One unit file must be provided.")
+		return 1
+	}
 	for _, v := range args {
 		name := unitNameMangle(v)
 		err := cAPI.DestroyUnit(name)

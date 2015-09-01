@@ -44,6 +44,10 @@ func init() {
 }
 
 func runStatusUnits(args []string) (exit int) {
+	if len(args) == 0 {
+		stderr("One unit file must be provided.")
+		return 1
+	}
 	units, err := cAPI.Units()
 	if err != nil {
 		stderr("Error retrieving unit: %v", err)
