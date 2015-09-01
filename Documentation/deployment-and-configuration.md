@@ -103,6 +103,12 @@ Provide TLS configuration when SSL certificate authentication is enabled in etcd
 
 Default: ""
 
+#### etcd_key_prefix
+
+Keyspace path for fleet data in etcd.
+
+Default: "/_coreos.com/fleet/"
+
 #### public_ip
 
 IP address that should be published with the local Machine's state and any socket information.
