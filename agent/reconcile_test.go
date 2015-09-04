@@ -254,6 +254,7 @@ MachineMetadata=dog=woof`),
 		reg := registry.NewFakeRegistry()
 		reg.SetJobs(tt.regJobs)
 		a := makeAgentWithMetadata(tt.metadata)
+		reg.SetMachines([]machine.MachineState{a.Machine.State()})
 		as, err := desiredAgentState(a, reg)
 		if err != nil {
 			t.Errorf("case %d: unexpected error: %v", i, err)

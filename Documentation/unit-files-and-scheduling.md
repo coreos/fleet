@@ -123,10 +123,10 @@ MachineMetadata=region=us-east-1
 MachineMetadata=region=us-west-1
 ```
 
-This would allow a machine to match just one of the provided values to be considered eligible to run.
+This would allow a machine to match just one of the provided values to be considered eligible to run. If the metadata of a machine is modified in such a way that the unit is no longer eligible, the scheduler will shut it down and attempt to restart it on an eligible machine. If no eligible machines are available, the unit will remain in an inactive state until a suitable machine is available.
 
 A machine is not automatically configured with metadata.
-A deployer may define machine metadata using the `metadata` [config option](https://github.com/coreos/fleet/blob/master/Documentation/deployment-and-configuration.md#metadata).
+A deployer may define machine metadata using the `metadata` [config option](https://github.com/coreos/fleet/blob/master/Documentation/deployment-and-configuration.md#metadata) or via the [HTTP api](api-v1.md#edit-machine-metadata).
 
 ##### Schedule unit next to another unit
 

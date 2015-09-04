@@ -19,6 +19,7 @@ import (
 	"net/http/httptest"
 	"reflect"
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/coreos/fleet/client"
@@ -26,16 +27,22 @@ import (
 	"github.com/coreos/fleet/registry"
 )
 
-func TestMachinesList(t *testing.T) {
+func fakeMachinesSetup() (*machinesResource, *httptest.ResponseRecorder) {
 	fr := registry.NewFakeRegistry()
 	fr.SetMachines([]machine.MachineState{
-		{ID: "XXX", PublicIP: "", Metadata: nil},
+		{ID: "XXX", PublicIP: "", Metadata: map[string]string{}},
 		{ID: "YYY", PublicIP: "1.2.3.4", Metadata: map[string]string{"ping": "pong"}},
 	})
 	fAPI := &client.RegistryClient{Registry: fr}
 	resource := &machinesResource{cAPI: fAPI}
 	rw := httptest.NewRecorder()
-	req, err := http.NewRequest("GET", "http://example.com", nil)
+
+	return resource, rw
+}
+
+func TestMachinesList(t *testing.T) {
+	resource, rw := fakeMachinesSetup()
+	req, err := http.NewRequest("GET", "http://example.com/machines", nil)
 	if err != nil {
 		t.Fatalf("Failed creating http.Request: %v", err)
 	}
@@ -63,11 +70,23 @@ func TestMachinesList(t *testing.T) {
 	}
 }
 
+func TestMachinesListBadMethod(t *testing.T) {
+	resource, rw := fakeMachinesSetup()
+	req, err := http.NewRequest("POST", "http://example.com/machines", nil)
+	if err != nil {
+		t.Fatalf("Failed creating http.Request: %v", err)
+	}
+
+	resource.ServeHTTP(rw, req)
+
+	err = assertErrorResponse(rw, http.StatusMethodNotAllowed)
+	if err != nil {
+		t.Error(err.Error())
+	}
+}
+
 func TestMachinesListBadNextPageToken(t *testing.T) {
-	fr := registry.NewFakeRegistry()
-	fAPI := &client.RegistryClient{Registry: fr}
-	resource := &machinesResource{fAPI}
-	rw := httptest.NewRecorder()
+	resource, rw := fakeMachinesSetup()
 	req, err := http.NewRequest("GET", "http://example.com/machines?nextPageToken=EwBMLg==", nil)
 	if err != nil {
 		t.Fatalf("Failed creating http.Request: %v", err)
@@ -134,5 +153,128 @@ func TestExtractMachinePage(t *testing.T) {
 		if !reflect.DeepEqual(next, tt.next) {
 			t.Errorf("case %d: expected PageToken %v, got %v", i, tt.next, next)
 		}
+	}
+}
+
+func TestMachinesPatchAddModify(t *testing.T) {
+	reqBody := `
+	[{"op": "add", "path": "/XXX/metadata/foo", "value": "bar"},
+	 {"op": "replace", "path": "/YYY/metadata/ping", "value": "splat"}]
+	`
+
+	resource, rw := fakeMachinesSetup()
+	req, err := http.NewRequest("PATCH", "http://example.com/machines", strings.NewReader(reqBody))
+	if err != nil {
+		t.Fatalf("Failed creating http.Request: %v", err)
+	}
+
+	resource.ServeHTTP(rw, req)
+	if rw.Code != http.StatusNoContent {
+		t.Errorf("Expected 204, got %d", rw.Code)
+	}
+
+	// fetch machine to make sure data has been added
+	req, err = http.NewRequest("GET", "http://example.com/machines", nil)
+	if err != nil {
+		t.Fatalf("Failed creating http.Request: %v", err)
+	}
+	rw.Body.Reset()
+	resource.ServeHTTP(rw, req)
+
+	if rw.Body == nil {
+		t.Error("Received nil response body")
+	} else {
+		body := rw.Body.String()
+		expected := `{"machines":[{"id":"XXX","metadata":{"foo":"bar"}},{"id":"YYY","metadata":{"ping":"splat"},"primaryIP":"1.2.3.4"}]}`
+		if body != expected {
+			t.Errorf("Expected body:\n%s\n\nReceived body:\n%s\n", expected, body)
+		}
+	}
+}
+
+func TestMachinesPatchDelete(t *testing.T) {
+	reqBody := `
+	[{"op": "remove", "path": "/XXX/metadata/foo"},
+	 {"op": "remove", "path": "/YYY/metadata/ping"}]
+	`
+
+	resource, rw := fakeMachinesSetup()
+	req, err := http.NewRequest("PATCH", "http://example.com/machines", strings.NewReader(reqBody))
+	if err != nil {
+		t.Fatalf("Failed creating http.Request: %v", err)
+	}
+
+	resource.ServeHTTP(rw, req)
+	if rw.Code != http.StatusNoContent {
+		t.Errorf("Expected 204, got %d", rw.Code)
+	}
+
+	// fetch machine to make sure data has been added
+	req, err = http.NewRequest("GET", "http://example.com/machines", nil)
+	if err != nil {
+		t.Fatalf("Failed creating http.Request: %v", err)
+	}
+	rw.Body.Reset()
+	resource.ServeHTTP(rw, req)
+
+	if rw.Body == nil {
+		t.Error("Received nil response body")
+	} else {
+		body := rw.Body.String()
+		expected := `{"machines":[{"id":"XXX"},{"id":"YYY","primaryIP":"1.2.3.4"}]}`
+		if body != expected {
+			t.Errorf("Expected body:\n%s\n\nReceived body:\n%s\n", expected, body)
+		}
+	}
+}
+
+func TestMachinesPatchBadOp(t *testing.T) {
+	reqBody := `
+	[{"op": "noop", "path": "/XXX/metadata/foo", "value": "bar"}]
+	`
+
+	resource, rw := fakeMachinesSetup()
+	req, err := http.NewRequest("PATCH", "http://example.com/machines", strings.NewReader(reqBody))
+	if err != nil {
+		t.Fatalf("Failed creating http.Request: %v", err)
+	}
+
+	resource.ServeHTTP(rw, req)
+	if rw.Code != http.StatusBadRequest {
+		t.Errorf("Expected 400, got %d", rw.Code)
+	}
+}
+
+func TestMachinesPatchBadPath(t *testing.T) {
+	reqBody := `
+	[{"op": "add", "path": "/XXX/foo", "value": "bar"}]
+	`
+
+	resource, rw := fakeMachinesSetup()
+	req, err := http.NewRequest("PATCH", "http://example.com/machines", strings.NewReader(reqBody))
+	if err != nil {
+		t.Fatalf("Failed creating http.Request: %v", err)
+	}
+
+	resource.ServeHTTP(rw, req)
+	if rw.Code != http.StatusBadRequest {
+		t.Errorf("Expected 400, got %d", rw.Code)
+	}
+}
+
+func TestMachinesPatchBadValue(t *testing.T) {
+	reqBody := `
+	[{"op": "add", "path": "/XXX/foo"}]
+	`
+
+	resource, rw := fakeMachinesSetup()
+	req, err := http.NewRequest("PATCH", "http://example.com/machines", strings.NewReader(reqBody))
+	if err != nil {
+		t.Fatalf("Failed creating http.Request: %v", err)
+	}
+
+	resource.ServeHTTP(rw, req)
+	if rw.Code != http.StatusBadRequest {
+		t.Errorf("Expected 400, got %d", rw.Code)
 	}
 }
