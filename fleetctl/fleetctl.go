@@ -528,31 +528,6 @@ func machineFullLegend(ms machine.MachineState, full bool) string {
 	return legend
 }
 
-func findUnits(args []string) (sus []schema.Unit, err error) {
-	units, err := cAPI.Units()
-	if err != nil {
-		return nil, err
-	}
-
-	uMap := make(map[string]*schema.Unit, len(units))
-	for _, u := range units {
-		u := u
-		uMap[u.Name] = u
-	}
-
-	filtered := make([]schema.Unit, 0)
-	for _, v := range args {
-		v = unitNameMangle(v)
-		u, ok := uMap[v]
-		if !ok {
-			continue
-		}
-		filtered = append(filtered, *u)
-	}
-
-	return filtered, nil
-}
-
 func createUnit(name string, uf *unit.UnitFile) (*schema.Unit, error) {
 	if uf == nil {
 		return nil, fmt.Errorf("nil unit provided")

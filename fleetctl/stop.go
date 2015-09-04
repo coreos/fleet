@@ -52,30 +52,37 @@ func init() {
 }
 
 func runStopUnit(args []string) (exit int) {
-	units, err := findUnits(args)
-	if err != nil {
-		stderr("%v", err)
-		return 1
-	}
-
 	stopping := make([]string, 0)
-	for _, u := range units {
-		if !suToGlobal(u) {
-			if job.JobState(u.CurrentState) == job.JobStateInactive {
-				stderr("Unable to stop unit %s in state %s", u.Name, job.JobStateInactive)
+
+	for _, arg := range args {
+		name := unitNameMangle(arg)
+		unit, err := cAPI.Unit(name)
+		if err != nil {
+			stderr("Error retrieving unit: %v", err)
+			return 1
+		}
+
+		if unit == nil {
+			stderr("Unit %s does not exist.", name)
+			continue
+		}
+
+		if !suToGlobal(*unit) {
+			if job.JobState(unit.CurrentState) == job.JobStateInactive {
+				stderr("Unable to stop unit %s in state %s", unit.Name, job.JobStateInactive)
 				return 1
-			} else if job.JobState(u.CurrentState) == job.JobStateLoaded {
-				log.Debugf("Unit(%s) already %s, skipping.", u.Name, job.JobStateLoaded)
+			} else if job.JobState(unit.CurrentState) == job.JobStateLoaded {
+				log.Debugf("Unit(%s) already %s, skipping.", unit.Name, job.JobStateLoaded)
 				continue
 			}
 		}
 
-		log.Debugf("Setting target state of Unit(%s) to %s", u.Name, job.JobStateLoaded)
-		cAPI.SetUnitTargetState(u.Name, string(job.JobStateLoaded))
-		if suToGlobal(u) {
-			stdout("Triggered global unit %s stop", u.Name)
+		log.Debugf("Setting target state of Unit(%s) to %s", unit.Name, job.JobStateLoaded)
+		cAPI.SetUnitTargetState(unit.Name, string(job.JobStateLoaded))
+		if suToGlobal(*unit) {
+			stdout("Triggered global unit %s stop", unit.Name)
 		} else {
-			stopping = append(stopping, u.Name)
+			stopping = append(stopping, unit.Name)
 		}
 	}
 
