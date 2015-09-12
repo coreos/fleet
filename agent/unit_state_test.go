@@ -647,7 +647,15 @@ func TestUnitStatePublisherRunWithDelays(t *testing.T) {
 
 	usp.toPublishMutex.RLock()
 	if !reflect.DeepEqual(usp.toPublishStates, wtps) {
-		t.Errorf("bad toPublishStates: got %#v, want %#v", usp.toPublishStates, wtps)
+		t.Errorf("bad toPublishStates")
+		t.Logf("got:\n")
+		for k, v := range usp.toPublishStates {
+			t.Logf("  %v = %#v", k, v)
+		}
+		t.Logf("want:\n")
+		for k, v := range wtps {
+			t.Logf("  %v = %#v", k, v)
+		}
 	}
 	usp.toPublishMutex.RUnlock()
 
