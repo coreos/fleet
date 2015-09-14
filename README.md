@@ -2,9 +2,17 @@
 
 [![Build Status](https://travis-ci.org/coreos/fleet.png?branch=master)](https://travis-ci.org/coreos/fleet)
 
-fleet ties together [systemd](http://coreos.com/using-coreos/systemd) and [etcd](https://github.com/coreos/etcd) into a simple distributed init system. Think of it as an extension of systemd that operates at the cluster level instead of the machine level. **This project is very low level and is designed as a foundation for higher order orchestration.**
+fleet ties together [systemd](http://coreos.com/using-coreos/systemd) and [etcd](https://github.com/coreos/etcd) into a simple distributed init system. Think of it as an extension of systemd that operates at the cluster level instead of the machine level.
 
-fleet is oriented around systemd units and is not a container manager or orchestration system. fleet supports very basic scheduling of systemd units in a cluster. Those looking for more complex scheduling requirements or a first-class container orchestration system should check out [Kubernetes](http://kubernetes.io).
+**This project is very low level and is designed as a foundation for higher order orchestration.** fleet is oriented around systemd units and is not a container manager or orchestration system. fleet supports very basic scheduling of systemd units in a cluster. Those looking for more complex scheduling requirements or a first-class container orchestration system should check out [Kubernetes](http://kubernetes.io).
+
+## Current status
+
+The fleet project is currently being maintained for bug fixes only, and has known [scalability limitations](Documentation/fleet-scaling.md) with its architecture.
+As such, it is not recommended to run fleet clusters larger than 100 nodes.
+The existing maintainers do not intend to add additional major features or significantly rework fleet to address these limitations.
+
+If you are a developer and wish to help maintain fleet and improve its scalability, please email the [maintainers](MAINTAINERS).
 
 ## Using fleet
 
@@ -33,6 +41,8 @@ hello.service   113f16a7.../172.17.8.103   active   running
 ```
 
 ## Supported Deployment Patterns
+
+fleet is not intended to be an all-purpose orchestration system, and as such supports only a few simple deployment patterns:
 
 * Deploy a single unit anywhere on the cluster
 * Deploy a unit globally everywhere in the cluster
