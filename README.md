@@ -8,9 +8,10 @@ fleet ties together [systemd](http://coreos.com/using-coreos/systemd) and [etcd]
 
 ## Current status
 
-The fleet project is currently being maintained for bug fixes only, and has known [scalability limitations](Documentation/fleet-scaling.md) with its architecture.
-As such, it is not recommended to run fleet clusters larger than 100 nodes.
-The existing maintainers do not intend to add additional major features or significantly rework fleet to address these limitations.
+fleet has seen production use for some time and is largely considered stable. 
+However, there are known [scalability limitations](Documentation/fleet-scaling.md) with its architecture.
+As such, it is not recommended to run fleet clusters larger than 100 nodes or with more than 1000 services.
+The fleet project is being maintained for bug fixes but the existing maintainers do not intend to add additional major features or significantly rework fleet to address these limitations.
 
 If you are a developer and wish to help maintain fleet and improve its scalability, please email the [maintainers](MAINTAINERS).
 
