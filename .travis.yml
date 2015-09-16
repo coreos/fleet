@@ -1,11 +1,11 @@
 language: go
 matrix:
   include:
-    - go: 1.4
+    - go: 1.4.2
       install:
         - go get golang.org/x/tools/cmd/cover
         - go get golang.org/x/tools/cmd/vet
-    - go: 1.5
+    - go: 1.5.1
 
 script:
  - ./test
