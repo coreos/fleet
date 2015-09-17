@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"runtime"
 	"sort"
 	"sync"
 	"testing"
@@ -568,6 +569,9 @@ func TestUnitStatePublisherRunQueuing(t *testing.T) {
 }
 
 func TestUnitStatePublisherRunWithDelays(t *testing.T) {
+	if runtime.GOMAXPROCS(-1) != 1 {
+		t.Skipf("Broken for GOMAXPROCS != 1, currently %d", runtime.GOMAXPROCS(-1))
+	}
 	states := make([]string, 0)
 	mu := sync.Mutex{} // protects states from concurrent modification
 	fclock := clockwork.NewFakeClock()
