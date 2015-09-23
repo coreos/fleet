@@ -81,7 +81,7 @@ func TestUnitStateList(t *testing.T) {
 		fr := registry.NewFakeRegistry()
 		fr.SetUnitStates([]unit.UnitState{us1, us2, us3, us4})
 		fAPI := &client.RegistryClient{Registry: fr}
-		resource := &stateResource{fAPI, "/state"}
+		resource := &stateResource{fAPI, "/state", testTokenLimit}
 		rw := httptest.NewRecorder()
 		req, err := http.NewRequest("GET", tt.url, nil)
 		if err != nil {
@@ -130,7 +130,7 @@ func TestUnitStateList(t *testing.T) {
 		unit.UnitState{UnitName: "YYY", ActiveState: "inactive"},
 	})
 	fAPI := &client.RegistryClient{Registry: fr}
-	resource := &stateResource{fAPI, "/state"}
+	resource := &stateResource{fAPI, "/state", testTokenLimit}
 	rw := httptest.NewRecorder()
 	req, err := http.NewRequest("GET", "http://example.com/state", nil)
 	if err != nil {
@@ -178,7 +178,7 @@ func TestUnitStateList(t *testing.T) {
 func TestUnitStateListBadNextPageToken(t *testing.T) {
 	fr := registry.NewFakeRegistry()
 	fAPI := &client.RegistryClient{Registry: fr}
-	resource := &stateResource{fAPI, "/state"}
+	resource := &stateResource{fAPI, "/state", testTokenLimit}
 	rw := httptest.NewRecorder()
 	req, err := http.NewRequest("GET", "http://example.com/state?nextPageToken=EwBMLg==", nil)
 	if err != nil {

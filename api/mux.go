@@ -23,15 +23,16 @@ import (
 	"github.com/coreos/fleet/version"
 )
 
-func NewServeMux(reg registry.Registry) http.Handler {
+func NewServeMux(reg registry.Registry, tokenLimit int) http.Handler {
 	sm := http.NewServeMux()
 	cAPI := &client.RegistryClient{Registry: reg}
 
 	for _, prefix := range []string{"/v1-alpha", "/fleet/v1"} {
 		wireUpDiscoveryResource(sm, prefix)
-		wireUpMachinesResource(sm, prefix, cAPI)
-		wireUpStateResource(sm, prefix, cAPI)
-		wireUpUnitsResource(sm, prefix, cAPI)
+
+		wireUpMachinesResource(sm, prefix, tokenLimit, cAPI)
+		wireUpStateResource(sm, prefix, tokenLimit, cAPI)
+		wireUpUnitsResource(sm, prefix, tokenLimit, cAPI)
 		sm.HandleFunc(prefix, methodNotAllowedHandler)
 	}
 

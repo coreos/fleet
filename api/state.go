@@ -24,15 +24,16 @@ import (
 	"github.com/coreos/fleet/schema"
 )
 
-func wireUpStateResource(mux *http.ServeMux, prefix string, cAPI client.API) {
+func wireUpStateResource(mux *http.ServeMux, prefix string, tokenLimit int, cAPI client.API) {
 	base := path.Join(prefix, "state")
-	sr := stateResource{cAPI, base}
+	sr := stateResource{cAPI, base, uint16(tokenLimit)}
 	mux.Handle(base, &sr)
 }
 
 type stateResource struct {
-	cAPI     client.API
-	basePath string
+	cAPI       client.API
+	basePath   string
+	tokenLimit uint16
 }
 
 func (sr *stateResource) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
@@ -45,14 +46,14 @@ func (sr *stateResource) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 }
 
 func (sr *stateResource) list(rw http.ResponseWriter, req *http.Request) {
-	token, err := findNextPageToken(req.URL)
+	token, err := findNextPageToken(req.URL, sr.tokenLimit)
 	if err != nil {
 		sendError(rw, http.StatusBadRequest, err)
 		return
 	}
 
 	if token == nil {
-		def := DefaultPageToken()
+		def := DefaultPageToken(sr.tokenLimit)
 		token = &def
 	}
 

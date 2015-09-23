@@ -114,7 +114,7 @@ func New(cfg config.Config) (*Server, error) {
 	hrt := heart.New(reg, mach)
 	mon := heart.NewMonitor(agentTTL)
 
-	apiServer := api.NewServer(listeners, api.NewServeMux(reg))
+	apiServer := api.NewServer(listeners, api.NewServeMux(reg, cfg.TokenLimit))
 	apiServer.Serve()
 
 	eIval := time.Duration(cfg.EngineReconcileInterval*1000) * time.Millisecond

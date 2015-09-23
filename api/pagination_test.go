@@ -21,7 +21,7 @@ import (
 )
 
 func TestDefaultPageToken(t *testing.T) {
-	tok := DefaultPageToken()
+	tok := DefaultPageToken(testTokenLimit)
 	expect := PageToken{Limit: 100, Page: 1}
 	if !reflect.DeepEqual(expect, tok) {
 		t.Errorf("Unexpected default PageToken: expect=%v, got=%v", expect, tok)
@@ -108,7 +108,7 @@ func TestFindNextPageToken(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		next, err := findNextPageToken(&tt.input)
+		next, err := findNextPageToken(&tt.input, testTokenLimit)
 
 		if tt.pass != (err == nil) {
 			t.Errorf("case %d: pass=%t, err=%v", i, tt.pass, err)
@@ -135,7 +135,7 @@ func TestValidatePageToken(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		err := validatePageToken(&tt.input)
+		err := validatePageToken(&tt.input, testTokenLimit)
 
 		if tt.pass != (err == nil) {
 			t.Errorf("case %d: pass=%t, err=%v", i, tt.pass, err)

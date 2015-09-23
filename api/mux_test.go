@@ -24,6 +24,8 @@ import (
 	"github.com/coreos/fleet/version"
 )
 
+const testTokenLimit = 100
+
 func TestDefaultHandlers(t *testing.T) {
 	tests := []struct {
 		method string
@@ -38,7 +40,7 @@ func TestDefaultHandlers(t *testing.T) {
 
 	for i, tt := range tests {
 		fr := registry.NewFakeRegistry()
-		hdlr := NewServeMux(fr)
+		hdlr := NewServeMux(fr, testTokenLimit)
 		rr := httptest.NewRecorder()
 
 		req, err := http.NewRequest(tt.method, tt.path, nil)
