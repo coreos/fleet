@@ -12,12 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package heart
+package server
 
 import (
 	"errors"
 	"time"
 
+	"github.com/coreos/fleet/heart"
 	"github.com/coreos/fleet/log"
 )
 
@@ -30,18 +31,19 @@ type Monitor struct {
 	ival time.Duration
 }
 
-// Monitor ensures a Heart is still beating until a channel is closed, returning
-// an error if the heartbeats fail.
-func (m *Monitor) Monitor(hrt Heart, stop chan bool) error {
+// Monitor periodically checks the given Heart to make sure it
+// beats successfully. If the heartbeat check fails for any
+// reason, an error is returned. If the supplied channel is
+// closed, Monitor returns true and a nil error.
+func (m *Monitor) Monitor(hrt heart.Heart, sdc <-chan struct{}) (bool, error) {
 	ticker := time.Tick(m.ival)
 	for {
 		select {
-		case <-stop:
-			log.Debug("Monitor exiting due to stop signal")
-			return nil
+		case <-sdc:
+			return true, nil
 		case <-ticker:
-			if _, err := m.check(hrt); err != nil {
-				return err
+			if _, err := check(hrt, m.TTL); err != nil {
+				return false, err
 			}
 		}
 	}
@@ -49,10 +51,10 @@ func (m *Monitor) Monitor(hrt Heart, stop chan bool) error {
 
 // check attempts to beat a Heart several times within a timeout, returning the
 // log index at which the beat succeeded or an error
-func (m *Monitor) check(hrt Heart) (idx uint64, err error) {
+func check(hrt heart.Heart, ttl time.Duration) (idx uint64, err error) {
 	// time out after a third of the machine presence TTL, attempting
 	// the heartbeat up to four times
-	timeout := m.TTL / 3
+	timeout := ttl / 3
 	interval := timeout / 4
 
 	tchan := time.After(timeout)
@@ -63,7 +65,7 @@ func (m *Monitor) check(hrt Heart) (idx uint64, err error) {
 			err = errors.New("Monitor timed out before successful heartbeat")
 			return
 		case <-next:
-			idx, err = hrt.Beat(m.TTL)
+			idx, err = hrt.Beat(ttl)
 			if err != nil {
 				log.Debugf("Monitor heartbeat function returned err, retrying in %v: %v", interval, err)
 			}
