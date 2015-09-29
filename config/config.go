@@ -31,6 +31,7 @@ type Config struct {
 	RawMetadata             string
 	AgentTTL                string
 	TokenLimit              int
+	DisableEngine           bool
 	VerifyUnits             bool
 	AuthorizedKeysFile      string
 }
