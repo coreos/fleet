@@ -1,4 +1,4 @@
-#!/bin/bash -e
+#!/bin/bash 
 #
 # Run all fleet tests (not including functional)
 #   ./test
@@ -35,22 +35,33 @@ fi
 # split TEST into an array and prepend REPO_PATH to each local package
 split=(${TEST// / })
 TEST=${split[@]/#/${REPO_PATH}/}
+RET=0
 
 echo "Running tests..."
-go test ${COVER} $@ ${TEST}
+testRes=$(go test $COVER $@ $TEST)
+if [ $? != 0 ]; then
+	echo -e "go test checking failed:\n\n${testRes}"
+	RET=255
+else
+	echo -e "go test succeeds:\n\n${testRes}"
+fi
 
-echo "Checking gofmt..."
+echo -e "\nChecking gofmt..."
 fmtRes=$(gofmt -l $FMT)
 if [ -n "${fmtRes}" ]; then
 	echo -e "gofmt checking failed:\n${fmtRes}"
-	exit 255
+	RET=255
+else
+	echo "gofmt succeeds."
 fi
 
 echo "Checking govet..."
 vetRes=$(go vet $TEST)
 if [ -n "${vetRes}" ]; then
 	echo -e "govet checking failed:\n${vetRes}"
-	exit 255
+	RET=255
+else
+	echo "go vet succeeds."
 fi
 
-echo "Success"
+exit $RET
