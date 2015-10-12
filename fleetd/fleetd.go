@@ -42,8 +42,13 @@ func main() {
 	printVersion := userset.Bool("version", false, "Print the version and exit")
 	cfgPath := userset.String("config", "", fmt.Sprintf("Path to config file. Fleet will look for a config at %s by default.", DefaultConfigFile))
 
+	userset.Usage = func() {
+		fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])
+		userset.PrintDefaults()
+	}
+
 	err := userset.Parse(os.Args[1:])
-	if err == flag.ErrHelp {
+	if err != nil {
 		userset.Usage()
 		os.Exit(1)
 	}
