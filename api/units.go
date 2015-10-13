@@ -28,6 +28,8 @@ import (
 	"github.com/coreos/fleet/pkg"
 	"github.com/coreos/fleet/schema"
 	"github.com/coreos/fleet/unit"
+
+	gsunit "github.com/coreos/fleet/Godeps/_workspace/src/github.com/coreos/go-systemd/unit"
 )
 
 func wireUpUnitsResource(mux *http.ServeMux, prefix string, tokenLimit int, cAPI client.API) {
@@ -190,6 +192,13 @@ func ValidateName(name string) error {
 // with a set of options, only the first is returned.
 func ValidateOptions(opts []*schema.UnitOption) error {
 	uf := schema.MapSchemaUnitOptionsToUnitFile(opts)
+	// Sanity check using go-systemd's deserializer, which will do things
+	// like check for excessive line lengths
+	_, err := gsunit.Deserialize(gsunit.Serialize(uf.Options))
+	if err != nil {
+		return err
+	}
+
 	j := &job.Job{
 		Unit: *uf,
 	}
