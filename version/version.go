@@ -15,17 +15,21 @@
 package version
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/coreos/fleet/Godeps/_workspace/src/github.com/coreos/go-semver/semver"
 )
 
-const Version = "0.11.5+git"
-
-var SemVersion semver.Version
+var (
+	Version = "0.0.0+wasnotbuiltproperly"
+	SemVersion semver.Version
+)
 
 func init() {
-	sv, err := semver.NewVersion(Version)
+	sv, err := semver.NewVersion(strings.TrimPrefix(Version, "v"))
 	if err != nil {
-		panic("bad version string!")
+		panic(fmt.Sprintf("bad version string: %v", err))
 	}
 	SemVersion = *sv
 }
