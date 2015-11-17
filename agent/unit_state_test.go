@@ -24,7 +24,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/fleet/Godeps/_workspace/src/github.com/jonboulle/clockwork"
+	"github.com/jonboulle/clockwork"
 
 	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/registry"

@@ -22,7 +22,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/coreos/fleet/Godeps/_workspace/src/github.com/rakyll/globalconf"
+	"github.com/rakyll/globalconf"
 
 	"github.com/coreos/fleet/agent"
 	"github.com/coreos/fleet/config"

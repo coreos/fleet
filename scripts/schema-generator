@@ -35,5 +35,5 @@ GOPATH=${PWD}/gopath ./bin/google-api-go-generator \
 
 
 # Finally, fix the import in the bindings to refer to the vendored google-api package
-sed -i -e "s%google.golang.org%github.com/coreos/fleet/Godeps/_workspace/src/google.golang.org%" "${GEN}"
+sed -i -e "s%google.golang.org%google.golang.org%" "${GEN}"
 goimports -w ${GEN}

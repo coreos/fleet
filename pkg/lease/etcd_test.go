@@ -19,7 +19,7 @@ import (
 	"testing"
 	"time"
 
-	etcd "github.com/coreos/fleet/Godeps/_workspace/src/github.com/coreos/etcd/client"
+	etcd "github.com/coreos/etcd/client"
 )
 
 func TestSerializeLeaseMetadata(t *testing.T) {

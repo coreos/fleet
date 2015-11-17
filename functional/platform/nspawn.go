@@ -28,8 +28,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/coreos/fleet/Godeps/_workspace/src/code.google.com/p/go-uuid/uuid"
-	"github.com/coreos/fleet/Godeps/_workspace/src/github.com/coreos/go-systemd/dbus"
+	"code.google.com/p/go-uuid/uuid"
+	"github.com/coreos/go-systemd/dbus"
 
 	"github.com/coreos/fleet/functional/util"
 )
