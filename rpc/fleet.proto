@@ -1,0 +1,111 @@
+syntax = "proto3";
+
+package rpc;
+
+service Registry {
+	rpc GetScheduledUnits(UnitFilter) returns (ScheduledUnits);
+	rpc GetScheduledUnit(UnitName) returns (ScheduledUnit);
+	rpc GetUnit(UnitName) returns (Unit);
+	rpc GetUnits(UnitFilter) returns (Units);
+	rpc GetUnitStates(UnitStateFilter) returns (UnitStates);
+	rpc ClearUnitHeartbeat(UnitName) returns (GenericReply);
+	rpc CreateUnit(Unit) returns (GenericReply);
+	rpc DestroyUnit(UnitName) returns (GenericReply);
+	rpc UnitHeartbeat(Heartbeat) returns (GenericReply);
+	rpc RemoveUnitState(UnitName) returns (GenericReply);
+	rpc SaveUnitState(SaveUnitStateReq) returns (GenericReply);
+	rpc ScheduleUnit(ScheduledUnit) returns (GenericReply);
+	rpc SetUnitTargetState(ScheduledUnit) returns (GenericReply);
+	rpc UnscheduleUnit(ScheduledUnit) returns (GenericReply);
+}
+
+enum TargetState {
+	INACTIVE = 0;
+	LOADED   = 1;
+	LAUNCHED = 2;
+}
+
+
+message UnitStateFilter {
+	string name         = 1;
+	string hash         = 2;
+	string load_state   = 3;
+	string active_state = 4;
+	string sub_state    = 5;
+	string machineid    = 6;
+}
+
+message UnitFilter {
+	string name = 1;
+	TargetState current_state = 2;
+	string target_machine = 3;
+}
+
+message SaveUnitStateReq {
+	string    name  = 1;
+	UnitState state = 2;
+	int32     ttl   = 3;
+}
+
+message Heartbeat {
+	string name      = 1;
+	string machineid = 2;
+	int32  ttl       = 3;
+}
+
+message GenericReply {
+
+}
+
+message Units {
+	repeated Unit units = 1;
+}
+
+message UnitStates {
+	repeated UnitState unit_states = 1;
+}
+
+message UnitState {
+	string name         = 1;
+	string hash         = 2;
+	string load_state   = 3;
+	string active_state = 4;
+	string sub_state    = 5;
+	string machineid    = 6;
+}
+
+message ScheduledUnits {
+	repeated ScheduledUnit units = 1;
+}
+
+message ScheduledUnit {
+	string      name           = 1;
+	TargetState current_state  = 2;
+	string      target_machine = 3;
+}
+
+message UnitName {
+	string name = 1;
+}
+
+message Unit {
+	string      name         = 1;
+	UnitFile    unit         = 2;
+	TargetState target_state = 3;
+}
+
+message UnitFile {
+	repeated UnitSection sections = 1;
+}
+
+message UnitSection {
+	string name = 1;
+	repeated UnitSectionOption options = 2;
+}
+
+message UnitSectionOption {
+	string name    = 2;
+	string value   = 3;
+}
+
+
