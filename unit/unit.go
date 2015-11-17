@@ -23,6 +23,8 @@ import (
 	"strings"
 
 	"github.com/coreos/go-systemd/unit"
+	pb "github.com/coreos/fleet/rpc"
+
 )
 
 func NewUnitFile(raw string) (*UnitFile, error) {
@@ -136,6 +138,34 @@ func (u *UnitFile) Hash() Hash {
 	return Hash(sha1.Sum(u.Bytes()))
 }
 
+func (unitFile *UnitFile) ToPB() *pb.UnitFile{
+	sections := map[string]*pb.UnitSection{}
+	for _, unitOption := range unitFile.Options {
+		unitSectionOption := &pb.UnitSectionOption{
+			Name:  unitOption.Name,
+			Value: unitOption.Value,
+		}
+
+		if _, exists := sections[unitOption.Section]; !exists {
+			sections[unitOption.Section] = &pb.UnitSection{
+				Name: unitOption.Section,
+				Options: []*pb.UnitSectionOption{
+					unitSectionOption,
+				},
+			}
+		} else {
+			sections[unitOption.Section].Options = append(sections[unitOption.Section].Options, unitSectionOption)
+		}
+	}
+
+	unitFileSections := []*pb.UnitSection{}
+	for _, section := range sections {
+		unitFileSections = append(unitFileSections, section)
+	}
+
+	return &pb.UnitFile{Sections: unitFileSections}
+}
+
 // RecognizedUnitType determines whether or not the given unit name represents
 // a recognized unit type.
 func RecognizedUnitType(name string) bool {
@@ -199,6 +229,17 @@ func NewUnitState(loadState, activeState, subState, mID string) *UnitState {
 		ActiveState: activeState,
 		SubState:    subState,
 		MachineID:   mID,
+	}
+}
+
+func (s UnitState) ToPB() *pb.UnitState {
+	return &pb.UnitState{
+		Name: s.UnitHash,
+		Hash:        s.UnitHash,
+		LoadState:   s.LoadState,
+		ActiveState: s.ActiveState,
+		SubState:    s.SubState,
+		Machineid:   s.MachineID,
 	}
 }
 

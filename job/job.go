@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"strings"
 
+	pb "github.com/coreos/fleet/rpc"
 	"github.com/coreos/fleet/pkg"
 	"github.com/coreos/fleet/unit"
 )
@@ -99,6 +100,22 @@ type Unit struct {
 	Name        string
 	Unit        unit.UnitFile
 	TargetState JobState
+}
+
+func (u *Unit) ToPB() *pb.Unit {
+	return &pb.Unit{
+		Name:        u.Name,
+		Unit:        u.Unit.ToPB(),
+		TargetState: u.TargetState.ToPB(),
+	}
+}
+
+func (u *ScheduledUnit) ToPB() *pb.ScheduledUnit {
+	return &pb.ScheduledUnit{
+		Name: u.Name,
+		CurrentState: u.State.ToPB(),
+		TargetMachine: u.TargetMachineID,
+	}
 }
 
 // IsGlobal returns whether a Unit is considered a global unit
@@ -297,4 +314,16 @@ func unitPrintf(s string, nu unit.UnitNameInfo) (out string) {
 	out = strings.Replace(out, "%p", nu.Prefix, -1)
 	out = strings.Replace(out, "%i", nu.Instance, -1)
 	return
+}
+
+func (state JobState) ToPB() pb.TargetState {
+	switch state {
+	case JobStateInactive:
+		return pb.TargetState_INACTIVE
+	case JobStateLoaded:
+		return pb.TargetState_LOADED
+	case JobStateLaunched:
+		return pb.TargetState_LAUNCHED
+	}
+	return pb.TargetState_LOADED
 }
