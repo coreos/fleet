@@ -29,16 +29,20 @@ type Registry interface {
 	CreateUnit(*job.Unit) error
 	DestroyUnit(string) error
 	UnitHeartbeat(name, machID string, ttl time.Duration) error
-	Machines() ([]machine.MachineState, error)
 	RemoveMachineState(machID string) error
 	RemoveUnitState(jobName string) error
 	SaveUnitState(jobName string, unitState *unit.UnitState, ttl time.Duration)
 	ScheduleUnit(name, machID string) error
 	SetUnitTargetState(name string, state job.JobState) error
-	SetMachineState(ms machine.MachineState, ttl time.Duration) (uint64, error)
 	UnscheduleUnit(name, machID string) error
 
 	UnitRegistry
+	MachineRegistry
+}
+
+type MachineRegistry interface {
+	Machines() ([]machine.MachineState, error)
+	SetMachineState(ms machine.MachineState, ttl time.Duration) (uint64, error)
 }
 
 type UnitRegistry interface {

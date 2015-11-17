@@ -43,18 +43,20 @@ type Engine struct {
 
 	lease   lease.Lease
 	trigger chan struct{}
+
+	leaderNotifier chan string
 }
 
-func New(reg *registry.EtcdRegistry, lManager lease.Manager, rStream pkg.EventStream, mach machine.Machine) *Engine {
+func New(reg *registry.RPCRegistry, lManager lease.Manager, mach machine.Machine, leaderNotifier chan string) *Engine {
 	rec := NewReconciler()
 	return &Engine{
-		rec:       rec,
-		registry:  reg,
-		cRegistry: reg,
-		lManager:  lManager,
-		rStream:   rStream,
-		machine:   mach,
-		trigger:   make(chan struct{}),
+		rec:            rec,
+		registry:       reg,
+		cRegistry:      reg,
+		lManager:       lManager,
+		machine:        mach,
+		trigger:        make(chan struct{}),
+		leaderNotifier: leaderNotifier,
 	}
 }
 

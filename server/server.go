@@ -54,6 +54,7 @@ type Server struct {
 	hrt           heart.Heart
 	mon           *heart.Monitor
 	api           *api.Server
+	rpcRegistry   *registry.RPCRegistry
 	disableEngine bool
 
 	engineReconcileInterval time.Duration
@@ -93,7 +94,10 @@ func New(cfg config.Config) (*Server, error) {
 
 	etcdRequestTimeout := time.Duration(cfg.EtcdRequestTimeout*1000) * time.Millisecond
 	kAPI := etcd.NewKeysAPI(eClient)
-	reg := registry.NewEtcdRegistry(kAPI, cfg.EtcdKeyPrefix, etcdRequestTimeout)
+	etcdRegistry := registry.NewEtcdRegistry(kAPI, cfg.EtcdKeyPrefix, etcdRequestTimeout)
+
+	leaderUpdateNotifier := make(chan string)
+	reg := registry.NewRPCRegistry(etcdRegistry, leaderUpdateNotifier, mach)
 
 	pub := agent.NewUnitStatePublisher(reg, mach, agentTTL)
 	gen := unit.NewUnitStateGenerator(mgr)
@@ -127,6 +131,7 @@ func New(cfg config.Config) (*Server, error) {
 		usPub:       pub,
 		engine:      e,
 		mach:        mach,
+		rpcRegistry: reg,
 		hrt:         hrt,
 		mon:         mon,
 		api:         apiServer,
@@ -171,6 +176,7 @@ func (s *Server) Run() {
 
 	s.stop = make(chan bool)
 
+	go s.rpcRegistry.Start()
 	go s.Monitor()
 	go s.api.Available(s.stop)
 	go s.mach.PeriodicRefresh(machineStateRefreshInterval, s.stop)
