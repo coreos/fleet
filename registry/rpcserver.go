@@ -3,6 +3,7 @@ package registry
 import (
 	"fmt"
 	"net"
+	"sync"
 	"time"
 
 	"golang.org/x/net/context"
@@ -13,10 +14,16 @@ import (
 	"google.golang.org/grpc"
 
 	sdunit "github.com/coreos/go-systemd/unit"
+	"strings"
 )
 
+
+type machineChan chan []string
+
 type rpcserver struct {
-	etcdRegistry *EtcdRegistry
+	etcdRegistry      *EtcdRegistry
+	machinesDirectory map[string]machineChan
+	mu                *sync.Mutex
 }
 
 func (r *RPCRegistry) startServer() {
@@ -29,7 +36,11 @@ func (r *RPCRegistry) startServer() {
 		panic(err)
 	}
 	s := grpc.NewServer()
-	pb.RegisterRegistryServer(s, &rpcserver{r.etcdRegistry})
+	pb.RegisterRegistryServer(s, &rpcserver{
+		etcdRegistry:      r.etcdRegistry,
+		machinesDirectory: map[string]machineChan{},
+		mu:                new(sync.Mutex),
+	})
 	go s.Serve(r.listener)
 }
 
@@ -57,13 +68,16 @@ func (s *rpcserver) GetScheduledUnit(ctx context.Context, name *pb.UnitName) (*p
 	return scheduledUnit.ToPB(), nil
 }
 
-func (s *rpcserver) GetUnit(ctx context.Context, name *pb.UnitName) (*pb.Unit, error) {
+func (s *rpcserver) GetUnit(ctx context.Context, name *pb.UnitName) (*pb.MaybeUnit, error) {
 	u, err := s.etcdRegistry.Unit(name.Name)
 	if err != nil {
 		return nil, err
 	}
 
-	return u.ToPB(), nil
+	if u == nil {
+		return &pb.MaybeUnit{HasUnit: &pb.MaybeUnit_Notfound{Notfound: &pb.NotFound{}}},nil
+	}
+	return &pb.MaybeUnit{HasUnit:&pb.MaybeUnit_Unit{u.ToPB()}}, nil
 }
 
 func (s *rpcserver) GetUnits(context.Context, *pb.UnitFilter) (*pb.Units, error) {
@@ -110,7 +124,7 @@ func (s *rpcserver) DestroyUnit(ctx context.Context, name *pb.UnitName) (*pb.Gen
 }
 
 func (s *rpcserver) UnitHeartbeat(ctx context.Context, heartbeat *pb.Heartbeat) (*pb.GenericReply, error) {
-	err := s.etcdRegistry.UnitHeartbeat(heartbeat.Name, heartbeat.Machineid, time.Duration(heartbeat.Ttl)*time.Second)
+	err := s.etcdRegistry.UnitHeartbeat(heartbeat.Name, heartbeat.Machine, time.Duration(heartbeat.Ttl)*time.Second)
 	return &pb.GenericReply{}, err
 }
 
@@ -119,24 +133,60 @@ func (s *rpcserver) RemoveUnitState(ctx context.Context, name *pb.UnitName) (*pb
 	return &pb.GenericReply{}, err
 }
 
-func (s *rpcserver) SaveUnitState(ctx context.Context, req *pb.SaveUnitStateReq) (*pb.GenericReply, error) {
+func (s *rpcserver) SaveUnitState(ctx context.Context, req *pb.SaveUnitStateRequest) (*pb.GenericReply, error) {
 	s.etcdRegistry.SaveUnitState(req.Name, rpcUnitStateToExtUnitState(req.State), time.Duration(req.Ttl)*time.Second)
 	return &pb.GenericReply{}, nil
 }
 
-func (s *rpcserver) ScheduleUnit(ctx context.Context, unit *pb.ScheduledUnit) (*pb.GenericReply, error) {
-	err := s.etcdRegistry.ScheduleUnit(unit.Name, unit.TargetMachine)
+func (s *rpcserver) ScheduleUnit(ctx context.Context, unit *pb.ScheduleUnitRequest) (*pb.GenericReply, error) {
+	err := s.etcdRegistry.ScheduleUnit(unit.Name, unit.Machine)
+	s.notifyMachine(unit.Machine, []string{unit.Name})
 	return &pb.GenericReply{}, err
 }
 
 func (s *rpcserver) SetUnitTargetState(ctx context.Context, unit *pb.ScheduledUnit) (*pb.GenericReply, error) {
-	err := s.etcdRegistry.SetUnitTargetState(unit.Name, rpcUnitStateToJobState(unit.CurrentState))
+	err := s.etcdRegistry.SetUnitTargetState(unit.Name, rpcUnitStateToJobState(unit.State))
+	s.notifyAllMachines([]string{unit.Name})
 	return &pb.GenericReply{}, err
 }
 
-func (s *rpcserver) UnscheduleUnit(ctx context.Context, unit *pb.ScheduledUnit) (*pb.GenericReply, error) {
-	err := s.etcdRegistry.UnscheduleUnit(unit.Name, unit.TargetMachine)
+func (s *rpcserver) UnscheduleUnit(ctx context.Context, unit *pb.UnscheduleUnitRequest) (*pb.GenericReply, error) {
+	err := s.etcdRegistry.UnscheduleUnit(unit.Name, unit.Machine)
+	s.notifyMachine(unit.Machine, []string{unit.Name})
 	return &pb.GenericReply{}, err
+}
+
+func (s *rpcserver) notifyMachine(machine string, units []string) {
+	if ch, exists := s.machinesDirectory[machine] ; exists {
+		ch <- units
+	}
+}
+
+func (s *rpcserver) notifyAllMachines(units []string) {
+	for _,ch := range s.machinesDirectory {
+		ch <- units
+	}
+}
+
+func (s *rpcserver) Identify(ctx context.Context, props *pb.MachineProperties) (*pb.GenericReply, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+//	s.machinesDirectory[props.Id] =
+	return nil,nil
+}
+
+func (s *rpcserver) AgentEvents(props *pb.MachineProperties, stream pb.Registry_AgentEventsServer) error {
+	s.mu.Lock()
+	ch := make(machineChan)
+	s.machinesDirectory[strings.ToLower(props.Id)] = ch
+	s.mu.Unlock()
+	for updatedUnits := range ch {
+		err := stream.Send(&pb.UpdatedState{updatedUnits})
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func rpcUnitStateToJobState(state pb.TargetState) job.JobState {
@@ -158,26 +208,24 @@ func rpcUnitStateToExtUnitState(state *pb.UnitState) *unit.UnitState {
 		LoadState:   state.LoadState,
 		ActiveState: state.ActiveState,
 		SubState:    state.SubState,
-		MachineID:   state.Machineid,
+		MachineID:   state.Machine,
 	}
 }
 
 func rpcUnitToJobUnit(u *pb.Unit) *job.Unit {
-	unitOptions := []*sdunit.UnitOption{}
+	unitOptions := make([]*sdunit.UnitOption, len(u.Unit.UnitOptions))
 
-	for _, section := range u.Unit.Sections {
-		for _, sectionOption := range section.Options {
-			unitOptions = append(unitOptions, &sdunit.UnitOption{
-				Section: section.Name,
-				Name:    sectionOption.Name,
-				Value:   sectionOption.Value,
-			})
+	for i, option := range u.Unit.UnitOptions {
+		unitOptions[i] = &sdunit.UnitOption{
+			Section: option.Section,
+			Name:    option.Name,
+			Value:   option.Value,
 		}
 	}
 
 	return &job.Unit{
 		Name:        u.Name,
 		Unit:        *unit.NewUnitFromOptions(unitOptions),
-		TargetState: rpcUnitStateToJobState(u.TargetState),
+		TargetState: rpcUnitStateToJobState(u.State),
 	}
 }

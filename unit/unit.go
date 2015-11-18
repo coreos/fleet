@@ -139,31 +139,16 @@ func (u *UnitFile) Hash() Hash {
 }
 
 func (unitFile *UnitFile) ToPB() *pb.UnitFile{
-	sections := map[string]*pb.UnitSection{}
-	for _, unitOption := range unitFile.Options {
-		unitSectionOption := &pb.UnitSectionOption{
-			Name:  unitOption.Name,
-			Value: unitOption.Value,
-		}
-
-		if _, exists := sections[unitOption.Section]; !exists {
-			sections[unitOption.Section] = &pb.UnitSection{
-				Name: unitOption.Section,
-				Options: []*pb.UnitSectionOption{
-					unitSectionOption,
-				},
-			}
-		} else {
-			sections[unitOption.Section].Options = append(sections[unitOption.Section].Options, unitSectionOption)
+	options := make([]*pb.UnitOption, len(unitFile.Options))
+	for i, opt := range unitFile.Options {
+		options[i] = &pb.UnitOption{
+			Name: opt.Name,
+			Section: opt.Section,
+			Value: opt.Value,
 		}
 	}
 
-	unitFileSections := []*pb.UnitSection{}
-	for _, section := range sections {
-		unitFileSections = append(unitFileSections, section)
-	}
-
-	return &pb.UnitFile{Sections: unitFileSections}
+	return &pb.UnitFile{UnitOptions: options}
 }
 
 // RecognizedUnitType determines whether or not the given unit name represents
@@ -239,7 +224,7 @@ func (s UnitState) ToPB() *pb.UnitState {
 		LoadState:   s.LoadState,
 		ActiveState: s.ActiveState,
 		SubState:    s.SubState,
-		Machineid:   s.MachineID,
+		Machine:     s.MachineID,
 	}
 }
 

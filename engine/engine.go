@@ -38,7 +38,6 @@ type Engine struct {
 	registry  registry.Registry
 	cRegistry registry.ClusterRegistry
 	lManager  lease.Manager
-	rStream   pkg.EventStream
 	machine   machine.Machine
 
 	lease   lease.Lease
@@ -85,6 +84,10 @@ func (e *Engine) Run(ival time.Duration, stop chan bool) {
 
 		e.lease = l
 
+		go func() {
+			e.leaderNotifier <- e.lease.MachineID()
+		}()
+
 		if !isLeader(e.lease, machID) {
 			return
 		}
@@ -120,7 +123,8 @@ func (e *Engine) Run(ival time.Duration, stop chan bool) {
 		}
 	}
 
-	rec := pkg.NewPeriodicReconciler(ival, reconcile, e.rStream)
+	events := make(chan struct{})
+	rec := pkg.NewPeriodicReconciler(ival, reconcile,events)
 	rec.Run(stop)
 }
 

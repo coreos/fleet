@@ -9,9 +9,13 @@ It is generated from these files:
 	fleet.proto
 
 It has these top-level messages:
+	MachineProperties
+	UpdatedState
 	UnitStateFilter
 	UnitFilter
-	SaveUnitStateReq
+	ScheduleUnitRequest
+	UnscheduleUnitRequest
+	SaveUnitStateRequest
 	Heartbeat
 	GenericReply
 	Units
@@ -21,9 +25,10 @@ It has these top-level messages:
 	ScheduledUnit
 	UnitName
 	Unit
+	MaybeUnit
+	NotFound
 	UnitFile
-	UnitSection
-	UnitSectionOption
+	UnitOption
 */
 package rpc
 
@@ -64,13 +69,29 @@ func (x TargetState) String() string {
 	return proto.EnumName(TargetState_name, int32(x))
 }
 
+type MachineProperties struct {
+	Id string `protobuf:"bytes,1,opt,name=id" json:"id,omitempty"`
+}
+
+func (m *MachineProperties) Reset()         { *m = MachineProperties{} }
+func (m *MachineProperties) String() string { return proto.CompactTextString(m) }
+func (*MachineProperties) ProtoMessage()    {}
+
+type UpdatedState struct {
+	UnitIds []string `protobuf:"bytes,1,rep,name=unit_ids" json:"unit_ids,omitempty"`
+}
+
+func (m *UpdatedState) Reset()         { *m = UpdatedState{} }
+func (m *UpdatedState) String() string { return proto.CompactTextString(m) }
+func (*UpdatedState) ProtoMessage()    {}
+
 type UnitStateFilter struct {
 	Name        string `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
 	Hash        string `protobuf:"bytes,2,opt,name=hash" json:"hash,omitempty"`
 	LoadState   string `protobuf:"bytes,3,opt,name=load_state" json:"load_state,omitempty"`
 	ActiveState string `protobuf:"bytes,4,opt,name=active_state" json:"active_state,omitempty"`
 	SubState    string `protobuf:"bytes,5,opt,name=sub_state" json:"sub_state,omitempty"`
-	Machineid   string `protobuf:"bytes,6,opt,name=machineid" json:"machineid,omitempty"`
+	Machine     string `protobuf:"bytes,6,opt,name=machine" json:"machine,omitempty"`
 }
 
 func (m *UnitStateFilter) Reset()         { *m = UnitStateFilter{} }
@@ -78,26 +99,44 @@ func (m *UnitStateFilter) String() string { return proto.CompactTextString(m) }
 func (*UnitStateFilter) ProtoMessage()    {}
 
 type UnitFilter struct {
-	Name          string      `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
-	CurrentState  TargetState `protobuf:"varint,2,opt,name=current_state,enum=rpc.TargetState" json:"current_state,omitempty"`
-	TargetMachine string      `protobuf:"bytes,3,opt,name=target_machine" json:"target_machine,omitempty"`
+	Name         string      `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
+	CurrentState TargetState `protobuf:"varint,2,opt,name=current_state,enum=rpc.TargetState" json:"current_state,omitempty"`
+	Machine      string      `protobuf:"bytes,3,opt,name=machine" json:"machine,omitempty"`
 }
 
 func (m *UnitFilter) Reset()         { *m = UnitFilter{} }
 func (m *UnitFilter) String() string { return proto.CompactTextString(m) }
 func (*UnitFilter) ProtoMessage()    {}
 
-type SaveUnitStateReq struct {
+type ScheduleUnitRequest struct {
+	Name    string `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
+	Machine string `protobuf:"bytes,2,opt,name=machine" json:"machine,omitempty"`
+}
+
+func (m *ScheduleUnitRequest) Reset()         { *m = ScheduleUnitRequest{} }
+func (m *ScheduleUnitRequest) String() string { return proto.CompactTextString(m) }
+func (*ScheduleUnitRequest) ProtoMessage()    {}
+
+type UnscheduleUnitRequest struct {
+	Name    string `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
+	Machine string `protobuf:"bytes,2,opt,name=machine" json:"machine,omitempty"`
+}
+
+func (m *UnscheduleUnitRequest) Reset()         { *m = UnscheduleUnitRequest{} }
+func (m *UnscheduleUnitRequest) String() string { return proto.CompactTextString(m) }
+func (*UnscheduleUnitRequest) ProtoMessage()    {}
+
+type SaveUnitStateRequest struct {
 	Name  string     `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
 	State *UnitState `protobuf:"bytes,2,opt,name=state" json:"state,omitempty"`
 	Ttl   int32      `protobuf:"varint,3,opt,name=ttl" json:"ttl,omitempty"`
 }
 
-func (m *SaveUnitStateReq) Reset()         { *m = SaveUnitStateReq{} }
-func (m *SaveUnitStateReq) String() string { return proto.CompactTextString(m) }
-func (*SaveUnitStateReq) ProtoMessage()    {}
+func (m *SaveUnitStateRequest) Reset()         { *m = SaveUnitStateRequest{} }
+func (m *SaveUnitStateRequest) String() string { return proto.CompactTextString(m) }
+func (*SaveUnitStateRequest) ProtoMessage()    {}
 
-func (m *SaveUnitStateReq) GetState() *UnitState {
+func (m *SaveUnitStateRequest) GetState() *UnitState {
 	if m != nil {
 		return m.State
 	}
@@ -105,9 +144,9 @@ func (m *SaveUnitStateReq) GetState() *UnitState {
 }
 
 type Heartbeat struct {
-	Name      string `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
-	Machineid string `protobuf:"bytes,2,opt,name=machineid" json:"machineid,omitempty"`
-	Ttl       int32  `protobuf:"varint,3,opt,name=ttl" json:"ttl,omitempty"`
+	Name    string `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
+	Machine string `protobuf:"bytes,2,opt,name=machine" json:"machine,omitempty"`
+	Ttl     int32  `protobuf:"varint,3,opt,name=ttl" json:"ttl,omitempty"`
 }
 
 func (m *Heartbeat) Reset()         { *m = Heartbeat{} }
@@ -157,7 +196,7 @@ type UnitState struct {
 	LoadState   string `protobuf:"bytes,3,opt,name=load_state" json:"load_state,omitempty"`
 	ActiveState string `protobuf:"bytes,4,opt,name=active_state" json:"active_state,omitempty"`
 	SubState    string `protobuf:"bytes,5,opt,name=sub_state" json:"sub_state,omitempty"`
-	Machineid   string `protobuf:"bytes,6,opt,name=machineid" json:"machineid,omitempty"`
+	Machine     string `protobuf:"bytes,6,opt,name=machine" json:"machine,omitempty"`
 }
 
 func (m *UnitState) Reset()         { *m = UnitState{} }
@@ -180,9 +219,9 @@ func (m *ScheduledUnits) GetUnits() []*ScheduledUnit {
 }
 
 type ScheduledUnit struct {
-	Name          string      `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
-	CurrentState  TargetState `protobuf:"varint,2,opt,name=current_state,enum=rpc.TargetState" json:"current_state,omitempty"`
-	TargetMachine string      `protobuf:"bytes,3,opt,name=target_machine" json:"target_machine,omitempty"`
+	Name    string      `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
+	State   TargetState `protobuf:"varint,2,opt,name=state,enum=rpc.TargetState" json:"state,omitempty"`
+	Machine string      `protobuf:"bytes,3,opt,name=machine" json:"machine,omitempty"`
 }
 
 func (m *ScheduledUnit) Reset()         { *m = ScheduledUnit{} }
@@ -198,9 +237,9 @@ func (m *UnitName) String() string { return proto.CompactTextString(m) }
 func (*UnitName) ProtoMessage()    {}
 
 type Unit struct {
-	Name        string      `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
-	Unit        *UnitFile   `protobuf:"bytes,2,opt,name=unit" json:"unit,omitempty"`
-	TargetState TargetState `protobuf:"varint,3,opt,name=target_state,enum=rpc.TargetState" json:"target_state,omitempty"`
+	Name  string      `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
+	Unit  *UnitFile   `protobuf:"bytes,2,opt,name=unit" json:"unit,omitempty"`
+	State TargetState `protobuf:"varint,3,opt,name=state,enum=rpc.TargetState" json:"state,omitempty"`
 }
 
 func (m *Unit) Reset()         { *m = Unit{} }
@@ -214,50 +253,145 @@ func (m *Unit) GetUnit() *UnitFile {
 	return nil
 }
 
+type MaybeUnit struct {
+	// Types that are valid to be assigned to HasUnit:
+	//	*MaybeUnit_Unit
+	//	*MaybeUnit_Notfound
+	HasUnit isMaybeUnit_HasUnit `protobuf_oneof:"has_unit"`
+}
+
+func (m *MaybeUnit) Reset()         { *m = MaybeUnit{} }
+func (m *MaybeUnit) String() string { return proto.CompactTextString(m) }
+func (*MaybeUnit) ProtoMessage()    {}
+
+type isMaybeUnit_HasUnit interface {
+	isMaybeUnit_HasUnit()
+}
+
+type MaybeUnit_Unit struct {
+	Unit *Unit `protobuf:"bytes,1,opt,name=unit,oneof"`
+}
+type MaybeUnit_Notfound struct {
+	Notfound *NotFound `protobuf:"bytes,2,opt,name=notfound,oneof"`
+}
+
+func (*MaybeUnit_Unit) isMaybeUnit_HasUnit()     {}
+func (*MaybeUnit_Notfound) isMaybeUnit_HasUnit() {}
+
+func (m *MaybeUnit) GetHasUnit() isMaybeUnit_HasUnit {
+	if m != nil {
+		return m.HasUnit
+	}
+	return nil
+}
+
+func (m *MaybeUnit) GetUnit() *Unit {
+	if x, ok := m.GetHasUnit().(*MaybeUnit_Unit); ok {
+		return x.Unit
+	}
+	return nil
+}
+
+func (m *MaybeUnit) GetNotfound() *NotFound {
+	if x, ok := m.GetHasUnit().(*MaybeUnit_Notfound); ok {
+		return x.Notfound
+	}
+	return nil
+}
+
+// XXX_OneofFuncs is for the internal use of the proto package.
+func (*MaybeUnit) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), []interface{}) {
+	return _MaybeUnit_OneofMarshaler, _MaybeUnit_OneofUnmarshaler, []interface{}{
+		(*MaybeUnit_Unit)(nil),
+		(*MaybeUnit_Notfound)(nil),
+	}
+}
+
+func _MaybeUnit_OneofMarshaler(msg proto.Message, b *proto.Buffer) error {
+	m := msg.(*MaybeUnit)
+	// has_unit
+	switch x := m.HasUnit.(type) {
+	case *MaybeUnit_Unit:
+		b.EncodeVarint(1<<3 | proto.WireBytes)
+		if err := b.EncodeMessage(x.Unit); err != nil {
+			return err
+		}
+	case *MaybeUnit_Notfound:
+		b.EncodeVarint(2<<3 | proto.WireBytes)
+		if err := b.EncodeMessage(x.Notfound); err != nil {
+			return err
+		}
+	case nil:
+	default:
+		return fmt.Errorf("MaybeUnit.HasUnit has unexpected type %T", x)
+	}
+	return nil
+}
+
+func _MaybeUnit_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error) {
+	m := msg.(*MaybeUnit)
+	switch tag {
+	case 1: // has_unit.unit
+		if wire != proto.WireBytes {
+			return true, proto.ErrInternalBadWireType
+		}
+		msg := new(Unit)
+		err := b.DecodeMessage(msg)
+		m.HasUnit = &MaybeUnit_Unit{msg}
+		return true, err
+	case 2: // has_unit.notfound
+		if wire != proto.WireBytes {
+			return true, proto.ErrInternalBadWireType
+		}
+		msg := new(NotFound)
+		err := b.DecodeMessage(msg)
+		m.HasUnit = &MaybeUnit_Notfound{msg}
+		return true, err
+	default:
+		return false, nil
+	}
+}
+
+type NotFound struct {
+}
+
+func (m *NotFound) Reset()         { *m = NotFound{} }
+func (m *NotFound) String() string { return proto.CompactTextString(m) }
+func (*NotFound) ProtoMessage()    {}
+
 type UnitFile struct {
-	Sections []*UnitSection `protobuf:"bytes,1,rep,name=sections" json:"sections,omitempty"`
+	UnitOptions []*UnitOption `protobuf:"bytes,1,rep,name=unit_options" json:"unit_options,omitempty"`
 }
 
 func (m *UnitFile) Reset()         { *m = UnitFile{} }
 func (m *UnitFile) String() string { return proto.CompactTextString(m) }
 func (*UnitFile) ProtoMessage()    {}
 
-func (m *UnitFile) GetSections() []*UnitSection {
+func (m *UnitFile) GetUnitOptions() []*UnitOption {
 	if m != nil {
-		return m.Sections
+		return m.UnitOptions
 	}
 	return nil
 }
 
-type UnitSection struct {
-	Name    string               `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
-	Options []*UnitSectionOption `protobuf:"bytes,2,rep,name=options" json:"options,omitempty"`
+type UnitOption struct {
+	Section string `protobuf:"bytes,1,opt,name=section" json:"section,omitempty"`
+	Name    string `protobuf:"bytes,2,opt,name=name" json:"name,omitempty"`
+	Value   string `protobuf:"bytes,3,opt,name=value" json:"value,omitempty"`
 }
 
-func (m *UnitSection) Reset()         { *m = UnitSection{} }
-func (m *UnitSection) String() string { return proto.CompactTextString(m) }
-func (*UnitSection) ProtoMessage()    {}
-
-func (m *UnitSection) GetOptions() []*UnitSectionOption {
-	if m != nil {
-		return m.Options
-	}
-	return nil
-}
-
-type UnitSectionOption struct {
-	Name  string `protobuf:"bytes,2,opt,name=name" json:"name,omitempty"`
-	Value string `protobuf:"bytes,3,opt,name=value" json:"value,omitempty"`
-}
-
-func (m *UnitSectionOption) Reset()         { *m = UnitSectionOption{} }
-func (m *UnitSectionOption) String() string { return proto.CompactTextString(m) }
-func (*UnitSectionOption) ProtoMessage()    {}
+func (m *UnitOption) Reset()         { *m = UnitOption{} }
+func (m *UnitOption) String() string { return proto.CompactTextString(m) }
+func (*UnitOption) ProtoMessage()    {}
 
 func init() {
+	proto.RegisterType((*MachineProperties)(nil), "rpc.MachineProperties")
+	proto.RegisterType((*UpdatedState)(nil), "rpc.UpdatedState")
 	proto.RegisterType((*UnitStateFilter)(nil), "rpc.UnitStateFilter")
 	proto.RegisterType((*UnitFilter)(nil), "rpc.UnitFilter")
-	proto.RegisterType((*SaveUnitStateReq)(nil), "rpc.SaveUnitStateReq")
+	proto.RegisterType((*ScheduleUnitRequest)(nil), "rpc.ScheduleUnitRequest")
+	proto.RegisterType((*UnscheduleUnitRequest)(nil), "rpc.UnscheduleUnitRequest")
+	proto.RegisterType((*SaveUnitStateRequest)(nil), "rpc.SaveUnitStateRequest")
 	proto.RegisterType((*Heartbeat)(nil), "rpc.Heartbeat")
 	proto.RegisterType((*GenericReply)(nil), "rpc.GenericReply")
 	proto.RegisterType((*Units)(nil), "rpc.Units")
@@ -267,9 +401,10 @@ func init() {
 	proto.RegisterType((*ScheduledUnit)(nil), "rpc.ScheduledUnit")
 	proto.RegisterType((*UnitName)(nil), "rpc.UnitName")
 	proto.RegisterType((*Unit)(nil), "rpc.Unit")
+	proto.RegisterType((*MaybeUnit)(nil), "rpc.MaybeUnit")
+	proto.RegisterType((*NotFound)(nil), "rpc.NotFound")
 	proto.RegisterType((*UnitFile)(nil), "rpc.UnitFile")
-	proto.RegisterType((*UnitSection)(nil), "rpc.UnitSection")
-	proto.RegisterType((*UnitSectionOption)(nil), "rpc.UnitSectionOption")
+	proto.RegisterType((*UnitOption)(nil), "rpc.UnitOption")
 	proto.RegisterEnum("rpc.TargetState", TargetState_name, TargetState_value)
 }
 
@@ -280,20 +415,26 @@ var _ grpc.ClientConn
 // Client API for Registry service
 
 type RegistryClient interface {
+	// agents should request only the locally scheduled jobs
 	GetScheduledUnits(ctx context.Context, in *UnitFilter, opts ...grpc.CallOption) (*ScheduledUnits, error)
+	// should _never_ be used? fleetctl only ?
 	GetScheduledUnit(ctx context.Context, in *UnitName, opts ...grpc.CallOption) (*ScheduledUnit, error)
-	GetUnit(ctx context.Context, in *UnitName, opts ...grpc.CallOption) (*Unit, error)
+	// should _never_ be used ?
+	GetUnit(ctx context.Context, in *UnitName, opts ...grpc.CallOption) (*MaybeUnit, error)
 	GetUnits(ctx context.Context, in *UnitFilter, opts ...grpc.CallOption) (*Units, error)
+	// global status <= pretty much like list-unit-files
 	GetUnitStates(ctx context.Context, in *UnitStateFilter, opts ...grpc.CallOption) (*UnitStates, error)
 	ClearUnitHeartbeat(ctx context.Context, in *UnitName, opts ...grpc.CallOption) (*GenericReply, error)
 	CreateUnit(ctx context.Context, in *Unit, opts ...grpc.CallOption) (*GenericReply, error)
 	DestroyUnit(ctx context.Context, in *UnitName, opts ...grpc.CallOption) (*GenericReply, error)
 	UnitHeartbeat(ctx context.Context, in *Heartbeat, opts ...grpc.CallOption) (*GenericReply, error)
+	// mix heartbeat with *ttl''
 	RemoveUnitState(ctx context.Context, in *UnitName, opts ...grpc.CallOption) (*GenericReply, error)
-	SaveUnitState(ctx context.Context, in *SaveUnitStateReq, opts ...grpc.CallOption) (*GenericReply, error)
-	ScheduleUnit(ctx context.Context, in *ScheduledUnit, opts ...grpc.CallOption) (*GenericReply, error)
+	SaveUnitState(ctx context.Context, in *SaveUnitStateRequest, opts ...grpc.CallOption) (*GenericReply, error)
+	ScheduleUnit(ctx context.Context, in *ScheduleUnitRequest, opts ...grpc.CallOption) (*GenericReply, error)
 	SetUnitTargetState(ctx context.Context, in *ScheduledUnit, opts ...grpc.CallOption) (*GenericReply, error)
-	UnscheduleUnit(ctx context.Context, in *ScheduledUnit, opts ...grpc.CallOption) (*GenericReply, error)
+	UnscheduleUnit(ctx context.Context, in *UnscheduleUnitRequest, opts ...grpc.CallOption) (*GenericReply, error)
+	AgentEvents(ctx context.Context, in *MachineProperties, opts ...grpc.CallOption) (Registry_AgentEventsClient, error)
 }
 
 type registryClient struct {
@@ -322,8 +463,8 @@ func (c *registryClient) GetScheduledUnit(ctx context.Context, in *UnitName, opt
 	return out, nil
 }
 
-func (c *registryClient) GetUnit(ctx context.Context, in *UnitName, opts ...grpc.CallOption) (*Unit, error) {
-	out := new(Unit)
+func (c *registryClient) GetUnit(ctx context.Context, in *UnitName, opts ...grpc.CallOption) (*MaybeUnit, error) {
+	out := new(MaybeUnit)
 	err := grpc.Invoke(ctx, "/rpc.Registry/GetUnit", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
@@ -394,7 +535,7 @@ func (c *registryClient) RemoveUnitState(ctx context.Context, in *UnitName, opts
 	return out, nil
 }
 
-func (c *registryClient) SaveUnitState(ctx context.Context, in *SaveUnitStateReq, opts ...grpc.CallOption) (*GenericReply, error) {
+func (c *registryClient) SaveUnitState(ctx context.Context, in *SaveUnitStateRequest, opts ...grpc.CallOption) (*GenericReply, error) {
 	out := new(GenericReply)
 	err := grpc.Invoke(ctx, "/rpc.Registry/SaveUnitState", in, out, c.cc, opts...)
 	if err != nil {
@@ -403,7 +544,7 @@ func (c *registryClient) SaveUnitState(ctx context.Context, in *SaveUnitStateReq
 	return out, nil
 }
 
-func (c *registryClient) ScheduleUnit(ctx context.Context, in *ScheduledUnit, opts ...grpc.CallOption) (*GenericReply, error) {
+func (c *registryClient) ScheduleUnit(ctx context.Context, in *ScheduleUnitRequest, opts ...grpc.CallOption) (*GenericReply, error) {
 	out := new(GenericReply)
 	err := grpc.Invoke(ctx, "/rpc.Registry/ScheduleUnit", in, out, c.cc, opts...)
 	if err != nil {
@@ -421,7 +562,7 @@ func (c *registryClient) SetUnitTargetState(ctx context.Context, in *ScheduledUn
 	return out, nil
 }
 
-func (c *registryClient) UnscheduleUnit(ctx context.Context, in *ScheduledUnit, opts ...grpc.CallOption) (*GenericReply, error) {
+func (c *registryClient) UnscheduleUnit(ctx context.Context, in *UnscheduleUnitRequest, opts ...grpc.CallOption) (*GenericReply, error) {
 	out := new(GenericReply)
 	err := grpc.Invoke(ctx, "/rpc.Registry/UnscheduleUnit", in, out, c.cc, opts...)
 	if err != nil {
@@ -430,23 +571,61 @@ func (c *registryClient) UnscheduleUnit(ctx context.Context, in *ScheduledUnit, 
 	return out, nil
 }
 
+func (c *registryClient) AgentEvents(ctx context.Context, in *MachineProperties, opts ...grpc.CallOption) (Registry_AgentEventsClient, error) {
+	stream, err := grpc.NewClientStream(ctx, &_Registry_serviceDesc.Streams[0], c.cc, "/rpc.Registry/AgentEvents", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &registryAgentEventsClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type Registry_AgentEventsClient interface {
+	Recv() (*UpdatedState, error)
+	grpc.ClientStream
+}
+
+type registryAgentEventsClient struct {
+	grpc.ClientStream
+}
+
+func (x *registryAgentEventsClient) Recv() (*UpdatedState, error) {
+	m := new(UpdatedState)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // Server API for Registry service
 
 type RegistryServer interface {
+	// agents should request only the locally scheduled jobs
 	GetScheduledUnits(context.Context, *UnitFilter) (*ScheduledUnits, error)
+	// should _never_ be used? fleetctl only ?
 	GetScheduledUnit(context.Context, *UnitName) (*ScheduledUnit, error)
-	GetUnit(context.Context, *UnitName) (*Unit, error)
+	// should _never_ be used ?
+	GetUnit(context.Context, *UnitName) (*MaybeUnit, error)
 	GetUnits(context.Context, *UnitFilter) (*Units, error)
+	// global status <= pretty much like list-unit-files
 	GetUnitStates(context.Context, *UnitStateFilter) (*UnitStates, error)
 	ClearUnitHeartbeat(context.Context, *UnitName) (*GenericReply, error)
 	CreateUnit(context.Context, *Unit) (*GenericReply, error)
 	DestroyUnit(context.Context, *UnitName) (*GenericReply, error)
 	UnitHeartbeat(context.Context, *Heartbeat) (*GenericReply, error)
+	// mix heartbeat with *ttl''
 	RemoveUnitState(context.Context, *UnitName) (*GenericReply, error)
-	SaveUnitState(context.Context, *SaveUnitStateReq) (*GenericReply, error)
-	ScheduleUnit(context.Context, *ScheduledUnit) (*GenericReply, error)
+	SaveUnitState(context.Context, *SaveUnitStateRequest) (*GenericReply, error)
+	ScheduleUnit(context.Context, *ScheduleUnitRequest) (*GenericReply, error)
 	SetUnitTargetState(context.Context, *ScheduledUnit) (*GenericReply, error)
-	UnscheduleUnit(context.Context, *ScheduledUnit) (*GenericReply, error)
+	UnscheduleUnit(context.Context, *UnscheduleUnitRequest) (*GenericReply, error)
+	AgentEvents(*MachineProperties, Registry_AgentEventsServer) error
 }
 
 func RegisterRegistryServer(s *grpc.Server, srv RegistryServer) {
@@ -574,7 +753,7 @@ func _Registry_RemoveUnitState_Handler(srv interface{}, ctx context.Context, dec
 }
 
 func _Registry_SaveUnitState_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
-	in := new(SaveUnitStateReq)
+	in := new(SaveUnitStateRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -586,7 +765,7 @@ func _Registry_SaveUnitState_Handler(srv interface{}, ctx context.Context, dec f
 }
 
 func _Registry_ScheduleUnit_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
-	in := new(ScheduledUnit)
+	in := new(ScheduleUnitRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -610,7 +789,7 @@ func _Registry_SetUnitTargetState_Handler(srv interface{}, ctx context.Context, 
 }
 
 func _Registry_UnscheduleUnit_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
-	in := new(ScheduledUnit)
+	in := new(UnscheduleUnitRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -619,6 +798,27 @@ func _Registry_UnscheduleUnit_Handler(srv interface{}, ctx context.Context, dec 
 		return nil, err
 	}
 	return out, nil
+}
+
+func _Registry_AgentEvents_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(MachineProperties)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(RegistryServer).AgentEvents(m, &registryAgentEventsServer{stream})
+}
+
+type Registry_AgentEventsServer interface {
+	Send(*UpdatedState) error
+	grpc.ServerStream
+}
+
+type registryAgentEventsServer struct {
+	grpc.ServerStream
+}
+
+func (x *registryAgentEventsServer) Send(m *UpdatedState) error {
+	return x.ServerStream.SendMsg(m)
 }
 
 var _Registry_serviceDesc = grpc.ServiceDesc{
@@ -682,5 +882,11 @@ var _Registry_serviceDesc = grpc.ServiceDesc{
 			Handler:    _Registry_UnscheduleUnit_Handler,
 		},
 	},
-	Streams: []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "AgentEvents",
+			Handler:       _Registry_AgentEvents_Handler,
+			ServerStreams: true,
+		},
+	},
 }

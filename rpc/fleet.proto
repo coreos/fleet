@@ -3,26 +3,44 @@ syntax = "proto3";
 package rpc;
 
 service Registry {
+// agents should request only the locally scheduled jobs
 	rpc GetScheduledUnits(UnitFilter) returns (ScheduledUnits);
+	// should _never_ be used? fleetctl only ?
 	rpc GetScheduledUnit(UnitName) returns (ScheduledUnit);
-	rpc GetUnit(UnitName) returns (Unit);
-	rpc GetUnits(UnitFilter) returns (Units);
+	// should _never_ be used ?
+	rpc GetUnit(UnitName) returns (MaybeUnit);
+	rpc GetUnits(UnitFilter) returns (Units); // => global status ? 
+	// global status <= pretty much like list-unit-files
 	rpc GetUnitStates(UnitStateFilter) returns (UnitStates);
 	rpc ClearUnitHeartbeat(UnitName) returns (GenericReply);
 	rpc CreateUnit(Unit) returns (GenericReply);
 	rpc DestroyUnit(UnitName) returns (GenericReply);
 	rpc UnitHeartbeat(Heartbeat) returns (GenericReply);
+	// mix heartbeat with *ttl'' 
 	rpc RemoveUnitState(UnitName) returns (GenericReply);
-	rpc SaveUnitState(SaveUnitStateReq) returns (GenericReply);
-	rpc ScheduleUnit(ScheduledUnit) returns (GenericReply);
+	rpc SaveUnitState(SaveUnitStateRequest) returns (GenericReply);
+	rpc ScheduleUnit(ScheduleUnitRequest) returns (GenericReply);
 	rpc SetUnitTargetState(ScheduledUnit) returns (GenericReply);
-	rpc UnscheduleUnit(ScheduledUnit) returns (GenericReply);
+	rpc UnscheduleUnit(UnscheduleUnitRequest) returns (GenericReply);
+
+	rpc AgentEvents(MachineProperties) returns (stream UpdatedState);
+
+	// list-unit-files
+	// 2 rtt, async status acq
 }
 
 enum TargetState {
 	INACTIVE = 0;
 	LOADED   = 1;
 	LAUNCHED = 2;
+}
+
+message MachineProperties {
+	string id = 1;
+}
+
+message UpdatedState {
+	repeated string unit_ids = 1;
 }
 
 
@@ -32,29 +50,41 @@ message UnitStateFilter {
 	string load_state   = 3;
 	string active_state = 4;
 	string sub_state    = 5;
-	string machineid    = 6;
+	string machine      = 6;
 }
 
 message UnitFilter {
-	string name = 1;
+	string name               = 1;
 	TargetState current_state = 2;
-	string target_machine = 3;
+	string machine            = 3;
 }
 
-message SaveUnitStateReq {
+message ScheduleUnitRequest {
+	string name = 1;
+	string machine = 2;
+}
+
+message UnscheduleUnitRequest {
+	string name    = 1;
+	string machine = 2;
+}
+
+message SaveUnitStateRequest {
 	string    name  = 1;
 	UnitState state = 2;
 	int32     ttl   = 3;
+	// machine 
 }
 
 message Heartbeat {
-	string name      = 1;
-	string machineid = 2;
-	int32  ttl       = 3;
+	string name    = 1;
+	string machine = 2;
+	int32  ttl     = 3;
 }
 
 message GenericReply {
-
+// XXX error enum
+// XXX error detail
 }
 
 message Units {
@@ -68,10 +98,10 @@ message UnitStates {
 message UnitState {
 	string name         = 1;
 	string hash         = 2;
-	string load_state   = 3;
-	string active_state = 4;
-	string sub_state    = 5;
-	string machineid    = 6;
+	string load_state   = 3; // enum  => err should be handled by fleet. sync ?
+	string active_state = 4; // enum
+	string sub_state    = 5; // enum
+	string machine      = 6;
 }
 
 message ScheduledUnits {
@@ -79,9 +109,9 @@ message ScheduledUnits {
 }
 
 message ScheduledUnit {
-	string      name           = 1;
-	TargetState current_state  = 2;
-	string      target_machine = 3;
+	string      name    = 1;
+	TargetState state   = 2;
+	string      machine = 3;
 }
 
 message UnitName {
@@ -91,19 +121,26 @@ message UnitName {
 message Unit {
 	string      name         = 1;
 	UnitFile    unit         = 2;
-	TargetState target_state = 3;
+	TargetState state = 3;
+}
+
+message MaybeUnit {
+	oneof has_unit {
+		Unit unit = 1;
+		NotFound notfound = 2;
+	}
+}
+
+message NotFound {
+
 }
 
 message UnitFile {
-	repeated UnitSection sections = 1;
+	repeated UnitOption unit_options = 1;
 }
 
-message UnitSection {
-	string name = 1;
-	repeated UnitSectionOption options = 2;
-}
-
-message UnitSectionOption {
+message UnitOption {
+	string section = 1;
 	string name    = 2;
 	string value   = 3;
 }

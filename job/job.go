@@ -106,16 +106,17 @@ func (u *Unit) ToPB() *pb.Unit {
 	return &pb.Unit{
 		Name:        u.Name,
 		Unit:        u.Unit.ToPB(),
-		TargetState: u.TargetState.ToPB(),
+		State: u.TargetState.ToPB(),
 	}
 }
 
 func (u *ScheduledUnit) ToPB() *pb.ScheduledUnit {
-	return &pb.ScheduledUnit{
+	unit := &pb.ScheduledUnit{
 		Name: u.Name,
-		CurrentState: u.State.ToPB(),
-		TargetMachine: u.TargetMachineID,
+		State: u.State.ToPB(),
+		Machine: u.TargetMachineID,
 	}
+	return unit
 }
 
 // IsGlobal returns whether a Unit is considered a global unit

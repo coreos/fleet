@@ -5,6 +5,7 @@ import (
 	"log"
 	"net"
 	"time"
+	"io"
 
 	"golang.org/x/net/context"
 
@@ -29,13 +30,15 @@ type RPCRegistry struct {
 	listener             net.Listener
 	registryClient       rpc.RegistryClient
 	registryConn         *grpc.ClientConn
+	rStream chan struct{}
 }
 
-func NewRPCRegistry(etcdRegistry *EtcdRegistry, leaderUpdateNotifier chan string, mach *machine.CoreOSMachine) *RPCRegistry {
+func NewRPCRegistry(etcdRegistry *EtcdRegistry, rStream chan struct{} ,leaderUpdateNotifier chan string, mach *machine.CoreOSMachine) *RPCRegistry {
 	return &RPCRegistry{
 		etcdRegistry:         etcdRegistry,
 		leaderUpdateNotifier: leaderUpdateNotifier,
 		localMachine:         mach,
+		rStream: rStream,
 	}
 }
 
@@ -62,6 +65,24 @@ func (r *RPCRegistry) Start() {
 				log.Fatalf("nope: %s", err)
 			}
 			r.registryClient = rpc.NewRegistryClient(r.registryConn)
+			go func() {
+				for {
+					eventsStream, err := r.registryClient.AgentEvents(context.Background(), &rpc.MachineProperties{r.localMachine.String()})
+					if err != nil {
+						continue
+					}
+					for {
+						_, err := eventsStream.Recv()
+						if err == io.EOF {
+							break
+						}
+						if err != nil {
+							break
+						}
+						r.rStream <- struct{}{}
+					}
+				}
+			}()
 		}
 	}
 }
@@ -81,49 +102,77 @@ func (r *RPCRegistry) findMachineAddr(machineID string) string {
 	return ""
 }
 
+func (r *RPCRegistry) getClient() rpc.RegistryClient{
+	for ;; time.Sleep(50*time.Millisecond) {
+		if r.registryClient != nil {
+			break
+		}
+	}
+	return r.registryClient
+}
+
 func (r *RPCRegistry) ClearUnitHeartbeat(name string) {
-	r.etcdRegistry.ClearUnitHeartbeat(name)
+	r.getClient().ClearUnitHeartbeat(context.Background(), &rpc.UnitName{name})
 }
 
 func (r *RPCRegistry) CreateUnit(j *job.Unit) error {
-	return r.etcdRegistry.CreateUnit(j)
+	_, err := r.getClient().CreateUnit(context.Background(), j.ToPB())
+	return err
 }
 
 func (r *RPCRegistry) DestroyUnit(name string) error {
-	return r.etcdRegistry.DestroyUnit(name)
+	_, err := r.getClient().DestroyUnit(context.Background(), &rpc.UnitName{name})
+	return err
 }
 
 func (r *RPCRegistry) UnitHeartbeat(name, machID string, ttl time.Duration) error {
-	return r.etcdRegistry.UnitHeartbeat(name, machID, ttl)
+	_, err := r.getClient().UnitHeartbeat(context.Background(), &rpc.Heartbeat{
+		Name:    name,
+		Machine: machID,
+		Ttl:     int32(ttl.Seconds()),
+	})
+	return err
 }
 
 func (r *RPCRegistry) RemoveMachineState(machID string) error {
 	return r.etcdRegistry.RemoveMachineState(machID)
 }
 
-func (r *RPCRegistry) RemoveUnitState(jobName string) error {
-	return r.etcdRegistry.RemoveUnitState(jobName)
+func (r *RPCRegistry) RemoveUnitState(name string) error {
+	_, err := r.getClient().RemoveUnitState(context.Background(), &rpc.UnitName{name})
+	return err
 }
 
-func (r *RPCRegistry) SaveUnitState(jobName string, unitState *unit.UnitState, ttl time.Duration) {
-	r.etcdRegistry.SaveUnitState(jobName, unitState, ttl)
+func (r *RPCRegistry) SaveUnitState(name string, unitState *unit.UnitState, ttl time.Duration) {
+	r.getClient().SaveUnitState(context.Background(), &rpc.SaveUnitStateRequest{
+		Name:  name,
+		State: unitState.ToPB(),
+		Ttl:   int32(ttl.Seconds()),
+	})
 }
 
 func (r *RPCRegistry) ScheduleUnit(name, machID string) error {
-	_, err := r.registryClient.ScheduleUnit(context.Background(), &rpc.ScheduledUnit{
-		Name:          name,
-		TargetMachine: machID,
+	_, err := r.getClient().ScheduleUnit(context.Background(), &rpc.ScheduleUnitRequest{
+		Name:    name,
+		Machine: machID,
 	})
 	return err
-	//return r.etcdRegistry.ScheduleUnit(name, machID)
 }
 
 func (r *RPCRegistry) SetUnitTargetState(name string, state job.JobState) error {
-	return r.etcdRegistry.SetUnitTargetState(name, state)
+	_, err := r.getClient().SetUnitTargetState(context.Background(), &rpc.ScheduledUnit{
+		Name:  name,
+		State: state.ToPB(),
+	})
+	return err
 }
 
 func (r *RPCRegistry) UnscheduleUnit(name, machID string) error {
-	return r.etcdRegistry.UnscheduleUnit(name, machID)
+	_, err := r.getClient().UnscheduleUnit(context.Background(), &rpc.UnscheduleUnitRequest{
+		Name:    name,
+		Machine: machID,
+	})
+	return err
 }
 
 func (r *RPCRegistry) Machines() ([]machine.MachineState, error) {
@@ -135,19 +184,55 @@ func (r *RPCRegistry) SetMachineState(ms machine.MachineState, ttl time.Duration
 }
 
 func (r *RPCRegistry) Schedule() ([]job.ScheduledUnit, error) {
-	return r.etcdRegistry.Schedule()
+	//if 1 == 1 {
+	//return r.etcdRegistry.Schedule()
+	//}
+	scheduledUnits, err := r.getClient().GetScheduledUnits(context.Background(), &rpc.UnitFilter{})
+	units := make([]job.ScheduledUnit, len(scheduledUnits.Units))
+
+	for i, unit := range scheduledUnits.Units {
+		state := rpcUnitStateToJobState(unit.State)
+		units[i] = job.ScheduledUnit{
+			Name:            unit.Name,
+			TargetMachineID: unit.Machine,
+			State:           &state,
+		}
+	}
+	return units, err
 }
 
 func (r *RPCRegistry) ScheduledUnit(name string) (*job.ScheduledUnit, error) {
-	return r.etcdRegistry.ScheduledUnit(name)
+	scheduledUnit, err := r.getClient().GetScheduledUnit(context.Background(), &rpc.UnitName{name})
+
+	state := rpcUnitStateToJobState(scheduledUnit.State)
+	return &job.ScheduledUnit{
+		Name:            scheduledUnit.Name,
+		TargetMachineID: scheduledUnit.Machine,
+		State:           &state,
+	}, err
 }
 
 func (r *RPCRegistry) Unit(name string) (*job.Unit, error) {
-	return r.etcdRegistry.Unit(name)
+	maybeUnit, err := r.getClient().GetUnit(context.Background(), &rpc.UnitName{name})
+	if err != nil {
+		return nil, err
+	}
+
+	if unit := maybeUnit.GetUnit(); unit != nil {
+		return rpcUnitToJobUnit(unit), err
+	}
+	return nil, nil
 }
 
 func (r *RPCRegistry) Units() ([]job.Unit, error) {
-	return r.etcdRegistry.Units()
+		units, err := r.getClient().GetUnits(context.Background(),&rpc.UnitFilter{})
+
+		jobUnits := make([]job.Unit,len(units.Units))
+		for i, u := range units.Units {
+			jobUnit := rpcUnitToJobUnit(u)
+			jobUnits[i] = *jobUnit
+		}
+		return jobUnits, err
 }
 
 func (r *RPCRegistry) UnitStates() ([]*unit.UnitState, error) {

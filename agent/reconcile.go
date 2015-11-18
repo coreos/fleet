@@ -31,18 +31,18 @@ const (
 	reconcileInterval = 5 * time.Second
 )
 
-func NewReconciler(reg registry.Registry, rStream pkg.EventStream) *AgentReconciler {
+func NewReconciler(reg registry.Registry,events chan struct{}) *AgentReconciler {
 	return &AgentReconciler{
 		reg:      reg,
-		rStream:  rStream,
 		tManager: newTaskManager(),
+		events: events,
 	}
 }
 
 type AgentReconciler struct {
 	reg      registry.Registry
-	rStream  pkg.EventStream
 	tManager *taskManager
+	events chan struct{}
 }
 
 // Run periodically attempts to reconcile the provided Agent until the stop
@@ -61,7 +61,7 @@ func (ar *AgentReconciler) Run(a *Agent, stop chan bool) {
 			log.Debug(msg)
 		}
 	}
-	reconciler := pkg.NewPeriodicReconciler(reconcileInterval, reconcile, ar.rStream)
+	reconciler := pkg.NewPeriodicReconciler(reconcileInterval, reconcile, ar.events)
 	reconciler.Run(stop)
 }
 
