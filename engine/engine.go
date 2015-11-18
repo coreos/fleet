@@ -41,7 +41,6 @@ type Engine struct {
 	machine   machine.Machine
 
 	lease   lease.Lease
-	trigger chan struct{}
 
 	leaderNotifier chan string
 }
@@ -54,7 +53,6 @@ func New(reg *registry.RPCRegistry, lManager lease.Manager, mach machine.Machine
 		cRegistry:      reg,
 		lManager:       lManager,
 		machine:        mach,
-		trigger:        make(chan struct{}),
 		leaderNotifier: leaderNotifier,
 	}
 }
@@ -123,8 +121,7 @@ func (e *Engine) Run(ival time.Duration, stop chan bool) {
 		}
 	}
 
-	events := make(chan struct{})
-	rec := pkg.NewPeriodicReconciler(ival, reconcile,events)
+	rec := pkg.NewPeriodicReconciler(ival, reconcile)
 	rec.Run(stop)
 }
 
@@ -226,10 +223,6 @@ func renewLeadership(l lease.Lease, ttl time.Duration) lease.Lease {
 
 	log.Debugf("Engine leadership renewed")
 	return l
-}
-
-func (e *Engine) Trigger() {
-	e.trigger <- struct{}{}
 }
 
 func (e *Engine) clusterState() (*clusterState, error) {

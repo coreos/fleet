@@ -97,9 +97,8 @@ func New(cfg config.Config) (*Server, error) {
 	etcdRegistry := registry.NewEtcdRegistry(kAPI, cfg.EtcdKeyPrefix, etcdRequestTimeout)
 
 	leaderUpdateNotifier := make(chan string)
-	registryEvents := make(chan struct{})
 
-	reg := registry.NewRPCRegistry(etcdRegistry, registryEvents, leaderUpdateNotifier, mach)
+	reg := registry.NewRPCRegistry(etcdRegistry, leaderUpdateNotifier, mach)
 
 	pub := agent.NewUnitStatePublisher(reg, mach, agentTTL)
 	gen := unit.NewUnitStateGenerator(mgr)
@@ -109,7 +108,7 @@ func New(cfg config.Config) (*Server, error) {
 	//rStream := registry.NewEtcdEventStream(kAPI, cfg.EtcdKeyPrefix)
 	lManager := lease.NewEtcdLeaseManager(kAPI, cfg.EtcdKeyPrefix, etcdRequestTimeout)
 
-	ar := agent.NewReconciler(reg, registryEvents)
+	ar := agent.NewReconciler(reg)
 
 	e := engine.New(reg, lManager, mach, leaderUpdateNotifier)
 

@@ -2,10 +2,11 @@ package registry
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"net"
+	"sync"
 	"time"
-	"io"
 
 	"golang.org/x/net/context"
 
@@ -30,15 +31,42 @@ type RPCRegistry struct {
 	listener             net.Listener
 	registryClient       rpc.RegistryClient
 	registryConn         *grpc.ClientConn
-	rStream chan struct{}
+
+	eventListeners map[chan agentEvent]struct{}
+	mu             *sync.Mutex
 }
 
-func NewRPCRegistry(etcdRegistry *EtcdRegistry, rStream chan struct{} ,leaderUpdateNotifier chan string, mach *machine.CoreOSMachine) *RPCRegistry {
+type agentEvent struct {
+	units []string
+}
+
+func NewRPCRegistry(etcdRegistry *EtcdRegistry, leaderUpdateNotifier chan string, mach *machine.CoreOSMachine) *RPCRegistry {
 	return &RPCRegistry{
 		etcdRegistry:         etcdRegistry,
 		leaderUpdateNotifier: leaderUpdateNotifier,
 		localMachine:         mach,
-		rStream: rStream,
+		eventListeners:       map[chan agentEvent]struct{}{},
+		mu:                   new(sync.Mutex),
+	}
+}
+
+func (r *RPCRegistry) EventStreamer(stop chan struct{}) chan agentEvent {
+	ch := make(chan agentEvent)
+	r.mu.Lock()
+	r.eventListeners[ch] = struct{}{}
+	r.mu.Unlock()
+	go func() {
+		<-stop
+		r.mu.Lock()
+		delete(r.eventListeners, ch)
+		r.mu.Unlock()
+	}()
+	return ch
+}
+
+func (r *RPCRegistry) broadcastEvent(ev agentEvent) {
+	for ch, _ := range r.eventListeners {
+		ch <- ev
 	}
 }
 
@@ -72,14 +100,14 @@ func (r *RPCRegistry) Start() {
 						continue
 					}
 					for {
-						_, err := eventsStream.Recv()
+						events, err := eventsStream.Recv()
 						if err == io.EOF {
 							break
 						}
 						if err != nil {
 							break
 						}
-						r.rStream <- struct{}{}
+						r.broadcastEvent(agentEvent{events.UnitIds})
 					}
 				}
 			}()
@@ -102,8 +130,8 @@ func (r *RPCRegistry) findMachineAddr(machineID string) string {
 	return ""
 }
 
-func (r *RPCRegistry) getClient() rpc.RegistryClient{
-	for ;; time.Sleep(50*time.Millisecond) {
+func (r *RPCRegistry) getClient() rpc.RegistryClient {
+	for ; ; time.Sleep(50 * time.Millisecond) {
 		if r.registryClient != nil {
 			break
 		}
@@ -225,14 +253,14 @@ func (r *RPCRegistry) Unit(name string) (*job.Unit, error) {
 }
 
 func (r *RPCRegistry) Units() ([]job.Unit, error) {
-		units, err := r.getClient().GetUnits(context.Background(),&rpc.UnitFilter{})
+	units, err := r.getClient().GetUnits(context.Background(), &rpc.UnitFilter{})
 
-		jobUnits := make([]job.Unit,len(units.Units))
-		for i, u := range units.Units {
-			jobUnit := rpcUnitToJobUnit(u)
-			jobUnits[i] = *jobUnit
-		}
-		return jobUnits, err
+	jobUnits := make([]job.Unit, len(units.Units))
+	for i, u := range units.Units {
+		jobUnit := rpcUnitToJobUnit(u)
+		jobUnits[i] = *jobUnit
+	}
+	return jobUnits, err
 }
 
 func (r *RPCRegistry) UnitStates() ([]*unit.UnitState, error) {

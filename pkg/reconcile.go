@@ -37,12 +37,11 @@ type PeriodicReconciler interface {
 
 // NewPeriodicReconciler creates a PeriodicReconciler that will run recFunc at least every
 // ival, or in response to anything emitted from EventStream.Next()
-func NewPeriodicReconciler(interval time.Duration, recFunc func(), events chan struct{}) PeriodicReconciler {
+func NewPeriodicReconciler(interval time.Duration, recFunc func()) PeriodicReconciler {
 	return &reconciler{
 		ival:  interval,
 		rFunc: recFunc,
 		clock: clockwork.NewRealClock(),
-		events: events,
 	}
 }
 
@@ -50,18 +49,11 @@ type reconciler struct {
 	ival  time.Duration
 	rFunc func()
 	clock clockwork.Clock
-	events chan struct{}
 }
 
 func (r *reconciler) Run(stop chan bool) {
 	trigger := make(chan struct{})
 
-	go func() {
-		for range r.events {
-			trigger <- struct{}{}
-			log.Info("XXX thing sare happening! <= XXX")
-		}
-	}()
 	ticker := r.clock.After(r.ival)
 
 	// When starting up, reconcile once immediately
@@ -83,5 +75,4 @@ func (r *reconciler) Run(stop chan bool) {
 			r.rFunc()
 		}
 	}
-
 }

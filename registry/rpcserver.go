@@ -17,7 +17,6 @@ import (
 	"strings"
 )
 
-
 type machineChan chan []string
 
 type rpcserver struct {
@@ -75,9 +74,9 @@ func (s *rpcserver) GetUnit(ctx context.Context, name *pb.UnitName) (*pb.MaybeUn
 	}
 
 	if u == nil {
-		return &pb.MaybeUnit{HasUnit: &pb.MaybeUnit_Notfound{Notfound: &pb.NotFound{}}},nil
+		return &pb.MaybeUnit{HasUnit: &pb.MaybeUnit_Notfound{Notfound: &pb.NotFound{}}}, nil
 	}
-	return &pb.MaybeUnit{HasUnit:&pb.MaybeUnit_Unit{u.ToPB()}}, nil
+	return &pb.MaybeUnit{HasUnit: &pb.MaybeUnit_Unit{u.ToPB()}}, nil
 }
 
 func (s *rpcserver) GetUnits(context.Context, *pb.UnitFilter) (*pb.Units, error) {
@@ -157,13 +156,13 @@ func (s *rpcserver) UnscheduleUnit(ctx context.Context, unit *pb.UnscheduleUnitR
 }
 
 func (s *rpcserver) notifyMachine(machine string, units []string) {
-	if ch, exists := s.machinesDirectory[machine] ; exists {
+	if ch, exists := s.machinesDirectory[machine]; exists {
 		ch <- units
 	}
 }
 
 func (s *rpcserver) notifyAllMachines(units []string) {
-	for _,ch := range s.machinesDirectory {
+	for _, ch := range s.machinesDirectory {
 		ch <- units
 	}
 }
@@ -171,8 +170,8 @@ func (s *rpcserver) notifyAllMachines(units []string) {
 func (s *rpcserver) Identify(ctx context.Context, props *pb.MachineProperties) (*pb.GenericReply, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-//	s.machinesDirectory[props.Id] =
-	return nil,nil
+	//	s.machinesDirectory[props.Id] =
+	return nil, nil
 }
 
 func (s *rpcserver) AgentEvents(props *pb.MachineProperties, stream pb.Registry_AgentEventsServer) error {
