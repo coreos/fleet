@@ -34,6 +34,7 @@ type Config struct {
 	DisableEngine           bool
 	DisableWatches          bool
 	VerifyUnits             bool
+	UnitsDirectory          string
 	AuthorizedKeysFile      string
 }
 

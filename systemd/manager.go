@@ -28,10 +28,6 @@ import (
 	"github.com/coreos/fleet/unit"
 )
 
-const (
-	DefaultUnitsDirectory = "/run/fleet/units/"
-)
-
 type systemdUnitManager struct {
 	systemd  *dbus.Conn
 	unitsDir string
