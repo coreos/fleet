@@ -16,6 +16,8 @@ package config
 
 import (
 	"strings"
+
+	"github.com/coreos/fleet/machine"
 )
 
 type Config struct {
@@ -35,10 +37,18 @@ type Config struct {
 	TokenLimit              int
 	DisableEngine           bool
 	DisableWatches          bool
+	EnableGRPC              bool
 	VerifyUnits             bool
 	UnitsDirectory          string
 	SystemdUser             bool
 	AuthorizedKeysFile      string
+}
+
+func (c *Config) Capabilities() machine.Capabilities {
+	return machine.Capabilities{
+		machine.CapDISABLE_ENGINE: c.DisableEngine,
+		machine.CapGRPC:           c.EnableGRPC,
+	}
 }
 
 func (c *Config) Metadata() map[string]string {

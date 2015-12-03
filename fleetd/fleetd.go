@@ -91,6 +91,7 @@ func main() {
 	cfgset.String("units_directory", "/run/fleet/units/", "Path to the fleet units directory")
 	cfgset.Bool("systemd_user", false, "When true use systemd --user)")
 	cfgset.Int("token_limit", 100, "Maximum number of entries per page returned from API requests")
+	cfgset.Bool("enable_grpc", true, "When possible, uses grpc to communicate between engine and agent")
 	cfgset.Bool("disable_engine", false, "Disable the engine entirely, use with care")
 	cfgset.Bool("disable_watches", false, "Disable the use of etcd watches. Increases scheduling latency")
 	cfgset.Bool("verify_units", false, "DEPRECATED - This option is ignored")
@@ -230,6 +231,7 @@ func getConfig(flagset *flag.FlagSet, userCfgFile string) (*config.Config, error
 		AgentTTL:                (*flagset.Lookup("agent_ttl")).Value.(flag.Getter).Get().(string),
 		DisableEngine:           (*flagset.Lookup("disable_engine")).Value.(flag.Getter).Get().(bool),
 		DisableWatches:          (*flagset.Lookup("disable_watches")).Value.(flag.Getter).Get().(bool),
+		EnableGRPC:              (*flagset.Lookup("enable_grpc")).Value.(flag.Getter).Get().(bool),
 		VerifyUnits:             (*flagset.Lookup("verify_units")).Value.(flag.Getter).Get().(bool),
 		UnitsDirectory:          (*flagset.Lookup("units_directory")).Value.(flag.Getter).Get().(string),
 		SystemdUser:             (*flagset.Lookup("systemd_user")).Value.(flag.Getter).Get().(bool),

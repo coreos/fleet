@@ -21,10 +21,11 @@ const (
 // MachineState represents a point-in-time snapshot of the
 // state of the local host.
 type MachineState struct {
-	ID       string
-	PublicIP string
-	Metadata map[string]string
-	Version  string
+	ID           string
+	PublicIP     string
+	Metadata     map[string]string
+	Capabilities Capabilities
+	Version      string
 }
 
 func (ms MachineState) ShortID() string {
@@ -56,6 +57,10 @@ func stackState(top, bottom MachineState) MachineState {
 	// metadata on the bottom.
 	if len(top.Metadata) > 0 {
 		state.Metadata = top.Metadata
+	}
+
+	if len(top.Capabilities) > 0 {
+		state.Capabilities = top.Capabilities
 	}
 
 	if top.Version != "" {
