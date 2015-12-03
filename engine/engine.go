@@ -44,19 +44,37 @@ type Engine struct {
 
 	lease   lease.Lease
 	trigger chan struct{}
+
+	engineChanged chan machine.MachineState
 }
 
-func New(reg *registry.EtcdRegistry, lManager lease.Manager, rStream pkg.EventStream, mach machine.Machine) *Engine {
+func New(reg *registry.EtcdRegistry, lManager lease.Manager, rStream pkg.EventStream, mach machine.Machine, engineChanged chan machine.MachineState) *Engine {
 	rec := NewReconciler()
 	return &Engine{
-		rec:       rec,
-		registry:  reg,
-		cRegistry: reg,
-		lManager:  lManager,
-		rStream:   rStream,
-		machine:   mach,
-		trigger:   make(chan struct{}),
+		rec:           rec,
+		registry:      reg,
+		cRegistry:     reg,
+		lManager:      lManager,
+		rStream:       rStream,
+		machine:       mach,
+		trigger:       make(chan struct{}),
+		engineChanged: engineChanged,
 	}
+}
+
+func (e *Engine) getMachineState(machID string) *machine.MachineState {
+	machines, err := e.registry.Machines()
+	if err != nil {
+		// LOG XXX me
+		return nil
+	}
+
+	for _, s := range machines {
+		if s.ID == machID {
+			return &s
+		}
+	}
+	return nil
 }
 
 func (e *Engine) Run(ival time.Duration, stop <-chan struct{}) {
@@ -66,6 +84,11 @@ func (e *Engine) Run(ival time.Duration, stop <-chan struct{}) {
 	reconcile := func() {
 		if !ensureEngineVersionMatch(e.cRegistry, engineVersion) {
 			return
+		}
+
+		var previousEngine string
+		if e.lease != nil {
+			previousEngine = e.lease.MachineID()
 		}
 
 		var l lease.Lease
@@ -83,6 +106,18 @@ func (e *Engine) Run(ival time.Duration, stop <-chan struct{}) {
 		}
 
 		e.lease = l
+
+		e.registry.Machines()
+
+		if e.lease != nil && previousEngine != e.lease.MachineID() {
+			engineState := e.getMachineState(e.lease.MachineID())
+			if engineState != nil {
+				go func() {
+					//TODO(htr) XXX synchronous delivery might be too asynchronous here.
+					e.engineChanged <- *engineState
+				}()
+			}
+		}
 
 		if !isLeader(e.lease, machID) {
 			return

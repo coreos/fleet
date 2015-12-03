@@ -119,7 +119,7 @@ func New(cfg config.Config, listeners []net.Listener) (*Server, error) {
 
 	ar := agent.NewReconciler(reg, rStream)
 
-	e := engine.New(reg, lManager, rStream, mach)
+	e := engine.New(reg, lManager, rStream, mach, engineChanged)
 
 	if len(listeners) == 0 {
 		listeners, err = activation.Listeners(false)
