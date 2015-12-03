@@ -103,8 +103,15 @@ func New(cfg config.Config, listeners []net.Listener) (*Server, error) {
 		return nil, err
 	}
 
+	// this needs some thought. a channel, being unidirectionally synchronous is probably
+	// not the best option to use here. TODO(htr)
+	engineChanged := make(chan machine.MachineState)
+
+	etcdRequestTimeout := time.Duration(cfg.EtcdRequestTimeout*1000) * time.Millisecond
 	kAPI := etcd.NewKeysAPI(eClient)
-	reg := registry.NewEtcdRegistry(kAPI, cfg.EtcdKeyPrefix)
+	etcdReg := registry.NewEtcdRegistry(kAPI, cfg.EtcdKeyPrefix, etcdRequestTimeout)
+	reg := registry.NewRegistryMux(etcdReg, engineChanged, mach)
+	reg.StartMux()
 
 	pub := agent.NewUnitStatePublisher(reg, mach, agentTTL)
 	gen := unit.NewUnitStateGenerator(mgr)

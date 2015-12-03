@@ -48,7 +48,12 @@ type Engine struct {
 	engineChanged chan machine.MachineState
 }
 
-func New(reg *registry.EtcdRegistry, lManager lease.Manager, rStream pkg.EventStream, mach machine.Machine, engineChanged chan machine.MachineState) *Engine {
+type CompleteRegistry interface {
+	registry.Registry
+	registry.ClusterRegistry
+}
+
+func New(reg CompleteRegistry, lManager lease.Manager, rStream pkg.EventStream, mach machine.Machine, engineChanged chan machine.MachineState) *Engine {
 	rec := NewReconciler()
 	return &Engine{
 		rec:           rec,
