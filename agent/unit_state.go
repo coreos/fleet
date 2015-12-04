@@ -71,12 +71,19 @@ type UnitStatePublisher struct {
 // them to the Registry every 5s. Heartbeat objects are also published as they
 // are received on the channel.
 func (p *UnitStatePublisher) Run(beatchan <-chan *unit.UnitStateHeartbeat, stop <-chan struct{}) {
+	var period time.Duration
+	if p.ttl > 10*time.Second {
+		period = p.ttl * 4 / 5
+	} else {
+		period = p.ttl / 2
+	}
+
 	go func() {
 		for {
 			select {
 			case <-stop:
 				return
-			case <-p.clock.After(p.ttl / 2):
+			case <-p.clock.After(period):
 				p.cacheMutex.Lock()
 				for name, us := range p.cache {
 					go p.queueForPublish(name, us)

@@ -70,7 +70,13 @@ func (a *Agent) heartbeatJobs(ttl time.Duration, stop <-chan struct{}) {
 		}
 	}
 
-	interval := ttl / 2
+	var interval time.Duration
+	if ttl > 10*time.Second {
+		interval = ttl * 4 / 5
+	} else {
+		interval = ttl / 2
+	}
+
 	ticker := time.Tick(interval)
 	for {
 		select {
