@@ -22,7 +22,7 @@ const (
 	port = 50059
 )
 
-var DebugRPCRegistry bool = true
+var DebugRPCRegistry bool = false
 
 type RPCRegistry struct {
 	registryClient pb.RegistryClient

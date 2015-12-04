@@ -13,7 +13,7 @@ import (
 	pb "github.com/coreos/fleet/protobuf"
 )
 
-var DebugRPCServer bool = true
+var DebugRPCServer bool = false
 
 type rpcserver struct {
 	etcdRegistry Registry
