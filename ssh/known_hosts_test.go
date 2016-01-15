@@ -169,7 +169,8 @@ func TestWrongHostKeyFile(t *testing.T) {
 		}
 		defer syscall.Setuid(id)
 	}
-	err = f.PutHostKey("", nil)
+	wrongKey, _, _, _, _ := gossh.ParseAuthorizedKey([]byte(wrongAuthorizedKey))
+	err = f.PutHostKey("", wrongKey)
 	if err == nil {
 		t.Fatal("should fail to write wrong host file")
 	}

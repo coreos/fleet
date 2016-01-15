@@ -77,7 +77,7 @@ func (s *rpcserver) GetScheduledUnit(ctx context.Context, name *pb.UnitName) (*p
 
 	su, exists := s.localRegistry.ScheduledUnit(name.Name)
 	if exists {
-		return &pb.MaybeScheduledUnit{IsScheduled: &pb.MaybeScheduledUnit_Unit{su}}, nil
+		return &pb.MaybeScheduledUnit{IsScheduled: &pb.MaybeScheduledUnit_Unit{Unit: su}}, nil
 	}
 	return &pb.MaybeScheduledUnit{IsScheduled: &pb.MaybeScheduledUnit_Notfound{Notfound: &pb.NotFound{}}}, nil
 }
@@ -89,7 +89,7 @@ func (s *rpcserver) GetUnit(ctx context.Context, name *pb.UnitName) (*pb.MaybeUn
 
 	unit, exists := s.localRegistry.Unit(name.Name)
 	if exists {
-		return &pb.MaybeUnit{HasUnit: &pb.MaybeUnit_Unit{&unit}}, nil
+		return &pb.MaybeUnit{HasUnit: &pb.MaybeUnit_Unit{Unit: &unit}}, nil
 	}
 	return &pb.MaybeUnit{HasUnit: &pb.MaybeUnit_Notfound{Notfound: &pb.NotFound{}}}, nil
 

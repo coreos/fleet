@@ -71,7 +71,7 @@ func (r *RegistryMux) EngineChanged(newEngine machine.MachineState) {
 			// start rpc server
 			rpcserver, err := newRPCServer(r.etcdRegistry, newEngine.PublicIP)
 			if err != nil {
-				log.Error("unable to create rpc server %+v", err)
+				log.Errorf("unable to create rpc server %+v", err)
 			}
 			r.rpcserver = rpcserver
 			r.rpcserver.Start()

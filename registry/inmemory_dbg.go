@@ -20,4 +20,3 @@ func dbgHandler(w http.ResponseWriter, r *http.Request) {
 
 	e.Encode(data)
 }
-

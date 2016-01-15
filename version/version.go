@@ -21,10 +21,9 @@ import (
 	"github.com/coreos/go-semver/semver"
 )
 
-var (
-	Version = "0.0.0+wasnotbuiltproperly"
-	SemVersion semver.Version
-)
+const Version = "0.0.0+wasnotbuiltproperly"
+
+var SemVersion semver.Version
 
 func init() {
 	sv, err := semver.NewVersion(strings.TrimPrefix(Version, "v"))
