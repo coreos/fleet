@@ -26,6 +26,8 @@ type RegistryMux struct {
 	handlingEngineChange *sync.RWMutex
 }
 
+const dialRegistryReconnectTimeout = 200 * time.Millisecond
+
 func NewRegistryMux(etcdRegistry *EtcdRegistry, engineChanged chan machine.MachineState, localMachine machine.Machine) *RegistryMux {
 	return &RegistryMux{
 		etcdRegistry:         etcdRegistry,
@@ -52,7 +54,7 @@ func (r *RegistryMux) rpcDialer(_ string, timeout time.Duration) (net.Conn, erro
 			return conn, nil
 		}
 		//log.Errorf("unable to connect to new engine: %+v", err)
-		time.Sleep(time.Millisecond * 200)
+		time.Sleep(dialRegistryReconnectTimeout)
 	}
 }
 

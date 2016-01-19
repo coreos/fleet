@@ -210,12 +210,6 @@ func (s *rpcserver) UnscheduleUnit(ctx context.Context, unit *pb.UnscheduleUnitR
 	}
 	return &pb.GenericReply{}, err
 }
-func (s *rpcserver) Identify(ctx context.Context, props *pb.MachineProperties) (*pb.GenericReply, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	//	TODO(htr)
-	return nil, nil
-}
 
 func (s *rpcserver) AgentEvents(props *pb.MachineProperties, stream pb.Registry_AgentEventsServer) error {
 	if DebugRPCServer {
