@@ -20,6 +20,7 @@ import (
 
 	"github.com/coreos/fleet/log"
 	"github.com/coreos/fleet/machine"
+	"github.com/coreos/fleet/metrics"
 	"github.com/coreos/fleet/pkg"
 	"github.com/coreos/fleet/pkg/lease"
 	"github.com/coreos/fleet/registry"
@@ -109,6 +110,7 @@ func (e *Engine) Run(ival time.Duration, stop chan bool) {
 		e.rec.Reconcile(e, abort)
 		close(monitor)
 		elapsed := time.Now().Sub(start)
+		metrics.EngineReconcileDuration(start)
 
 		msg := fmt.Sprintf("Engine completed reconciliation in %s", elapsed)
 		if elapsed > ival {

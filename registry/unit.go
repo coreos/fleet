@@ -73,7 +73,7 @@ func (r *EtcdRegistry) getUnitByHash(hash unit.Hash) *unit.UnitFile {
 		metrics.RegistryFailure(metrics.Get)
 		return nil
 	}
-	metrics.RegistrySucces(metrics.Get, start)
+	metrics.RegistrySuccess(metrics.Get, start)
 	return r.unitFromEtcdNode(hash, resp.Node)
 }
 
@@ -91,7 +91,7 @@ func (r *EtcdRegistry) getAllUnitsHashMap() (map[string]*unit.UnitFile, error) {
 		metrics.RegistryFailure(metrics.GetAll)
 		return nil, err
 	}
-	metrics.RegistrySucces(metrics.GetAll, start)
+	metrics.RegistrySuccess(metrics.GetAll, start)
 
 	for _, node := range resp.Node.Nodes {
 		parts := strings.Split(node.Key, "/")

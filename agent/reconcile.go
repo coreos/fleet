@@ -55,7 +55,7 @@ func (ar *AgentReconciler) Run(a *Agent, stop chan bool) {
 		ar.Reconcile(a)
 		elapsed := time.Now().Sub(start)
 
-		metrics.AgentScheduleDuration(metrics.Reconcile, start)
+		metrics.AgentReconcileDuration(start)
 
 		msg := fmt.Sprintf("AgentReconciler completed reconciliation in %s", elapsed)
 		if elapsed > reconcileInterval {
