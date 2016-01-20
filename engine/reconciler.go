@@ -19,6 +19,7 @@ import (
 
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/log"
+	"github.com/coreos/fleet/metrics"
 )
 
 const (
@@ -99,6 +100,7 @@ func (r *Reconciler) calculateClusterTasks(clust *clusterState, stopchan chan st
 				if !ok {
 					unschedule = true
 					reason = fmt.Sprintf("target Machine(%s) went away", j.TargetMachineID)
+					metrics.EngineScheduleFailure(metrics.MachineLeft)
 					return
 				}
 
@@ -106,6 +108,7 @@ func (r *Reconciler) calculateClusterTasks(clust *clusterState, stopchan chan st
 				if able, reason = as.AbleToRun(j); !able {
 					unschedule = true
 					reason = fmt.Sprintf("target Machine(%s) unable to run unit", j.TargetMachineID)
+					metrics.EngineScheduleFailure(metrics.UnitRun)
 					return
 				}
 
