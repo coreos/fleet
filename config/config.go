@@ -32,6 +32,7 @@ type Config struct {
 	AgentTTL                string
 	TokenLimit              int
 	DisableEngine           bool
+	DisableWatches          bool
 	VerifyUnits             bool
 	AuthorizedKeysFile      string
 }

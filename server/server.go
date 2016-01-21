@@ -100,7 +100,10 @@ func New(cfg config.Config) (*Server, error) {
 
 	a := agent.New(mgr, gen, reg, mach, agentTTL)
 
-	rStream := registry.NewEtcdEventStream(kAPI, cfg.EtcdKeyPrefix)
+	var rStream pkg.EventStream
+	if !cfg.DisableWatches {
+		rStream = registry.NewEtcdEventStream(kAPI, cfg.EtcdKeyPrefix)
+	}
 	lManager := lease.NewEtcdLeaseManager(kAPI, cfg.EtcdKeyPrefix, etcdRequestTimeout)
 
 	ar := agent.NewReconciler(reg, rStream)

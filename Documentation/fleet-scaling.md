@@ -1,6 +1,6 @@
 # fleet and scaling
 
-As fleet currently uses etcd for cluster wide coordination, making it scale 
+As fleet currently uses etcd for cluster wide coordination, making it scale
 requires minimizing the load it puts on etcd. This is true for reads, writes,
 and watches.
 
@@ -10,15 +10,15 @@ and watches.
 and then do a recursive GET on the Unit file in etcd to figure out if it should
 schedule a job. This is a very expensive operation.
 
-- With a large number of units (~500+), the `fleetd` agent exhibits significant 
+- With a large number of units (~500+), the `fleetd` agent exhibits significant
 CPU usage from parsing all D-Bus messages when interacting with systemd.
 
-- With a large number of units, `fleetd` exhibits significant CPU usage when 
+- With a large number of units, `fleetd` exhibits significant CPU usage when
   - a) parsing the JSON-encoded representations (stored in etcd)
   - b) parsing the unit file itself (using go-systemd)
 
 - The agent deals very poorly with inconsistent read/write latencies with etcdal
-  (*what is the actual behaviour?*) 
+  (*what is the actual behaviour?*)
 
 ## Improvements
 
@@ -29,20 +29,9 @@ problem](https://en.wikipedia.org/wiki/Thundering_herd_problem), but in a
 distributed fashion. Once such a change is in we can also drop the periodic
 wakeups (agent TTLs) that cause fleet wide wake-ups on a regular clock.
 
-Ultimately, fleet should move away from using etcd as an RPC mechanism. 
+Ultimately, fleet should move away from using etcd as an RPC mechanism.
 Instead, it should use etcd only for leader election and then perform direct
 RPCs between the engine and agent.
-
-## Quick wins
-
-The above proposed change is a large architectural change. However, scaling
-fleet to a couple of thousand machine is already possible with a few quick
-wins:
-
-* Removing watches from fleet: By removing the watches from fleet we stop
-    the entire cluster from walking up whenever a new job is to be scheduled.
-    The downside of this change is that fleet's responsiveness is lower.
-    Proposal: https://github.com/coreos/fleet/pull/1264
 
 ## Implemented quick wins
 
@@ -55,3 +44,8 @@ wins:
 * Making some defaults exported and allow them to be overridden. For instance
     fleet's tokenLimit controls how many Units are listed per "page". *See the
     `--token-limit` flag.*
+
+* Removing watches from fleet: By removing the watches from fleet we stop
+    the entire cluster from walking up whenever a new job is to be scheduled.
+    The downside of this change is that fleet's responsiveness is lower.
+    *See the `--disable-watches` flag.*
