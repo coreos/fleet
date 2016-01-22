@@ -22,7 +22,6 @@ import (
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/log"
 	"github.com/coreos/fleet/machine"
-	"github.com/coreos/fleet/metrics"
 	"github.com/coreos/fleet/pkg"
 	"github.com/coreos/fleet/registry"
 )
@@ -54,8 +53,6 @@ func (ar *AgentReconciler) Run(a *Agent, stop chan bool) {
 		start := time.Now()
 		ar.Reconcile(a)
 		elapsed := time.Now().Sub(start)
-
-		metrics.AgentReconcileDuration(start)
 
 		msg := fmt.Sprintf("AgentReconciler completed reconciliation in %s", elapsed)
 		if elapsed > reconcileInterval {

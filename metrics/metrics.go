@@ -15,6 +15,7 @@
 package metrics
 
 import (
+	"strings"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -22,91 +23,117 @@ import (
 
 type (
 	engineFailure string
-	operation     string
+	registryOp    string
 )
 
 const (
 	Namespace = "fleet"
 
-	MachineLeft engineFailure = "machine_left"
-	UnitRun     engineFailure = "unable_run_unit"
-	JobInactive engineFailure = "job_inactive"
-
-	Get    operation = "get"
-	Set    operation = "set"
-	GetAll operation = "get_all"
+	MachineAway     engineFailure = "machine_away"
+	RunFailure      engineFailure = "run"
+	ScheduleFailure engineFailure = "schedule"
+	Get             registryOp    = "get"
+	Set             registryOp    = "set"
+	GetAll          registryOp    = "get_all"
 )
 
 var (
+	leaderGauge = prometheus.NewGauge(prometheus.GaugeOpts{
+		Namespace: Namespace,
+		Subsystem: "engine",
+		Name:      "leader_start_time",
+		Help:      "Start time of becoming an engine leader since epoch in seconds.",
+	})
+
+	engineTaskCount = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Namespace: Namespace,
+		Subsystem: "engine",
+		Name:      "task_count_total",
+		Help:      "Counter of engine schedule tasks.",
+	}, []string{"type"})
+
+	engineTaskFailureCount = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Namespace: Namespace,
+		Subsystem: "engine",
+		Name:      "task_failure_count_total",
+		Help:      "Counter of engine schedule task failures.",
+	}, []string{"type"})
+
+	engineReconcileCount = prometheus.NewCounter(prometheus.CounterOpts{
+		Namespace: Namespace,
+		Subsystem: "engine",
+		Name:      "reconcile_count_total",
+		Help:      "Counter of reconcile rounds.",
+	})
+
 	engineReconcileFailureCount = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Namespace: Namespace,
 		Subsystem: "engine",
-		Name:      "schedule_failure_count_total",
+		Name:      "reconcile_failure_count_total",
 		Help:      "Counter of scheduling failures.",
 	}, []string{"type"})
 
-	engineReconcileDuration = prometheus.NewHistogram(prometheus.HistogramOpts{
-		Namespace: Namespace,
-		Subsystem: "engine",
-		Name:      "reconcile_duration_second",
-		Help:      "Historgram of time (in seconds) each reconcile round takes.",
-	})
-
-	agentReconcileDuration = prometheus.NewHistogram(prometheus.HistogramOpts{
-		Namespace: Namespace,
-		Subsystem: "agent",
-		Name:      "reconcile_duration_second",
-		Help:      "Historgram of time (in seconds) each reconcile round takes.",
-	})
-	// agentReconcileCount
-
-	registryCount = prometheus.NewCounterVec(prometheus.CounterOpts{
+	registryOpCount = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Namespace: Namespace,
 		Subsystem: "registry",
 		Name:      "operation_count_total",
 		Help:      "Counter of registry operations.",
 	}, []string{"type"})
 
-	registryFailureCount = prometheus.NewCounterVec(prometheus.CounterOpts{
-		Namespace: Namespace,
-		Subsystem: "registry",
-		Name:      "operation_failed_count_total",
-		Help:      "Counter of failed registry operations.",
-	}, []string{"type"})
-
-	registryDuration = prometheus.NewHistogramVec(prometheus.HistogramOpts{
+	registryOpDuration = prometheus.NewHistogramVec(prometheus.HistogramOpts{
 		Namespace: Namespace,
 		Subsystem: "registry",
 		Name:      "operation_duration_second",
 		Help:      "Historgram of time (in seconds) each schedule round takes.",
 	}, []string{"ops"})
+
+	registryOpFailureCount = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Namespace: Namespace,
+		Subsystem: "registry",
+		Name:      "operation_failed_count_total",
+		Help:      "Counter of failed registry operations.",
+	}, []string{"type"})
 )
 
 func init() {
-	prometheus.MustRegister(engineScheduleFailureCount)
-	prometheus.MustRegister(engineReconcileDuration)
-	prometheus.MustRegister(registryDuration)
-	prometheus.MustRegister(registryCount)
-	prometheus.MustRegister(registryFailureCount)
+	prometheus.MustRegister(leaderGauge)
+	prometheus.MustRegister(engineTaskCount)
+	prometheus.MustRegister(engineTaskFailureCount)
+	prometheus.MustRegister(engineReconcileCount)
+	prometheus.MustRegister(engineReconcileFailureCount)
+	/*
+		prometheus.MustRegister(engineReconcileCount)
+		prometheus.MustRegister(engineReconcileFailureCount)
+		prometheus.MustRegister(engineReconcileDuration)
+		prometheus.MustRegister(registryDuration)
+		prometheus.MustRegister(registryCount)
+		prometheus.MustRegister(registryFailureCount)
+	*/
 }
 
-func EngineReconcileFailure(reason engineFailure) {
-	engineReconcileFailureCount.WithLabelValues(string(reason)).Inc()
+func ReportEngineLeader() {
+	epoch := time.Now().Unix()
+	leaderGauge.Add(epoch)
 }
-
-func EngineReconcileDuration(start time.Time) {
+func ReportEngineTask(task string) {
+	task = strings.ToLower(task)
+	engineTaskCount.WithLabelValues(string(task)).Inc()
+}
+func ReportEngineTaskFailure(task string) {
+	task = strings.ToLower(task)
+	engineTaskFailureCount.WithLabelValues(string(task)).Inc()
+}
+func ReportEngineReconcileSuccess(start time.Time) {
+	engineReconcileCount.Inc()
 	engineReconcileDuration.Observe(float64(time.Since(start)) / float64(time.Second))
 }
-
-func AgentReconcileDuration(start time.Time) {
-	agentReconcileDuration.Observe(float64(time.Since(start)) / float64(time.Second))
+func ReportEngineReconcileFailure(reason engineFailure) {
+	engineReconcileFailureCount.WithLabelValues(string(reason)).Inc()
 }
-
-func RegistrySucces(ops operation, start time.Time) {
-	registryDuration.WithLabelValues(string(ops)).Observe(float64(time.Since(start)) / float64(time.Second))
-	registryCount.WithLabelValues(string(ops)).Inc()
+func ReportRegistryOpSucces(op registryOp, start time.Time) {
+	registryOpCount.WithLabelValues(string(op)).Inc()
+	registryOpDuration.WithLabelValues(string(op)).Observe(float64(time.Since(start)) / float64(time.Second))
 }
-
-func RegistryFailure(ops operation) {
-	registryFailureCount.WithLabelValues(string(ops)).Inc()
+func ReportRegistryOpFailure(op registryOp) {
+	registryOpFailureCount.WithLabelValues(string(op)).Inc()
 }

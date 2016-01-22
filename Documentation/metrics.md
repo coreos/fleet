@@ -19,11 +19,12 @@ fleet now exposes the following metrics:
 
 | Name                                    | Description                                      | Type      |
 |-----------------------------------------|--------------------------------------------------|-----------|
-| engine_schedule_count_total??
-| engine_schedule_failure_count_total     | The total number of failed engine schedules      | Counter   |
-  engine_reconcile_duration_second        | The latency distribution of reconcile rounds     | Histogram |
-| agent_schedule_count_total??
-| agent_reconcile_duration_second         | The latency distribution of reconcile rounds     | Histogram |
+| engine_leader_start_time                | Timestamp when this fleetd became leader         | Gauge     |
+| engine_task_count_total                 | The total number of executed tasks               | Counter   |
+| engine_task_failure_count_total         | The total number of failed tasks                 | Counter   |
+| engine_reconcile_count_total            | The total number of reconcile rounds             | Counter   |
+| engine_reconcile_duration_second        | The latency distribution of reconcile rounds     | Histogram |
+| engine_reconcile_failure_count_total    | The total number of reconcile failures           | Counter   |
 | registry_operation_count_total          | The total number of registry operations          | Counter   |
 | registry_operation_failed_count_total   | The total number of failed registry operations   | Counter   |
 | registry_operation_duration_second      | The latency distribution of registry operations  | Histogram |

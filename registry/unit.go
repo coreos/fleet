@@ -51,10 +51,10 @@ func (r *EtcdRegistry) storeOrGetUnitFile(u unit.UnitFile) (err error) {
 		err = nil
 	}
 	if err != nil {
-		metrics.RegistryFailure(metrics.Set)
-	} else {
-		metrics.RegistrySuccess(metrics.Set, start)
+		metrics.ReportRegistryOpFailure(metrics.Set)
+		return
 	}
+	metrics.ReportRegistryOpSuccess(metrics.Set, start)
 	return
 }
 
@@ -70,10 +70,10 @@ func (r *EtcdRegistry) getUnitByHash(hash unit.Hash) *unit.UnitFile {
 		if isEtcdError(err, etcd.ErrorCodeKeyNotFound) {
 			err = nil
 		}
-		metrics.RegistryFailure(metrics.Get)
+		metrics.ReportRegistryOpFailure(metrics.Get)
 		return nil
 	}
-	metrics.RegistrySuccess(metrics.Get, start)
+	metrics.ReportRegistryOpSuccess(metrics.Get, start)
 	return r.unitFromEtcdNode(hash, resp.Node)
 }
 
@@ -88,10 +88,10 @@ func (r *EtcdRegistry) getAllUnitsHashMap() (map[string]*unit.UnitFile, error) {
 	start := time.Now()
 	resp, err := r.kAPI.Get(r.ctx(), key, opts)
 	if err != nil {
-		metrics.RegistryFailure(metrics.GetAll)
+		metrics.RegistryOpFailure(metrics.GetAll)
 		return nil, err
 	}
-	metrics.RegistrySuccess(metrics.GetAll, start)
+	metrics.ReportRegistryOpSuccess(metrics.GetAll, start)
 
 	for _, node := range resp.Node.Nodes {
 		parts := strings.Split(node.Key, "/")
