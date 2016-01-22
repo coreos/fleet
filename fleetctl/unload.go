@@ -17,31 +17,25 @@ package main
 import (
 	"os"
 
-	"github.com/spf13/cobra"
-
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/log"
 )
 
-var cmdUnload = &cobra.Command{
-	Use:   "unload UNIT...",
-	Short: "Unschedule one or more units in the cluster.",
-	Run:   runWrapper(runUnloadUnit),
-}
+var (
+	cmdUnloadUnit = &Command{
+		Name:    "unload",
+		Summary: "Unschedule one or more units in the cluster.",
+		Usage:   "UNIT...",
+		Run:     runUnloadUnit,
+	}
+)
 
 func init() {
-	cmdFleet.AddCommand(cmdUnload)
-
-	cmdUnload.Flags().IntVar(&sharedFlags.BlockAttempts, "block-attempts", 0, "Wait until the units are inactive, performing up to N attempts before giving up. A value of 0 indicates no limit.")
-	cmdUnload.Flags().BoolVar(&sharedFlags.NoBlock, "no-block", false, "Do not wait until the units have become inactive before exiting.")
+	cmdUnloadUnit.Flags.IntVar(&sharedFlags.BlockAttempts, "block-attempts", 0, "Wait until the units are inactive, performing up to N attempts before giving up. A value of 0 indicates no limit.")
+	cmdUnloadUnit.Flags.BoolVar(&sharedFlags.NoBlock, "no-block", true, "Do not wait until the units have become inactive before exiting.")
 }
 
-func runUnloadUnit(cCmd *cobra.Command, args []string) (exit int) {
-	if len(args) == 0 {
-		stderr("No units given")
-		return 0
-	}
-
+func runUnloadUnit(args []string) (exit int) {
 	units, err := findUnits(args)
 	if err != nil {
 		stderr("%v", err)
@@ -71,11 +65,16 @@ func runUnloadUnit(cCmd *cobra.Command, args []string) (exit int) {
 		}
 	}
 
-	exit = tryWaitForUnitStates(wait, "unload", job.JobStateInactive, getBlockAttempts(cCmd), os.Stdout)
-	if exit == 0 {
-		stderr("Successfully unloaded units %v.", wait)
+	if !sharedFlags.NoBlock {
+		errchan := waitForUnitStates(wait, job.JobStateInactive, sharedFlags.BlockAttempts, os.Stdout)
+		for err := range errchan {
+			stderr("Error waiting for units: %v", err)
+			exit = 1
+		}
 	} else {
-		stderr("Failed to unload units %v. exit == %d.", wait, exit)
+		for _, name := range wait {
+			stdout("Triggered unit %s unload", name)
+		}
 	}
 
 	return

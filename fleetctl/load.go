@@ -17,15 +17,15 @@ package main
 import (
 	"os"
 
-	"github.com/spf13/cobra"
-
 	"github.com/coreos/fleet/job"
 )
 
-var cmdLoad = &cobra.Command{
-	Use:   "load [--no-block|--block-attempts=N] UNIT...",
-	Short: "Schedule one or more units in the cluster, first submitting them if necessary.",
-	Long: `Load one or many units in the cluster into systemd, but do not start.
+var (
+	cmdLoadUnits = &Command{
+		Name:    "load",
+		Summary: "Schedule one or more units in the cluster, first submitting them if necessary.",
+		Usage:   "[--no-block|--block-attempts=N] UNIT...",
+		Description: `Load one or many units in the cluster into systemd, but do not start.
 
 Select units to load by glob matching for units in the current working directory 
 or matching the names of previously submitted units.
@@ -35,25 +35,18 @@ which means fleetctl will block until it detects that the unit(s) have
 transitioned to a loaded state. This behaviour can be configured with the
 respective --block-attempts and --no-block options. Load operations on global
 units are always non-blocking.`,
-	Run: runWrapper(runLoadUnit),
-}
+		Run: runLoadUnits,
+	}
+)
 
 func init() {
-	cmdFleet.AddCommand(cmdLoad)
-
-	cmdLoad.Flags().BoolVar(&sharedFlags.Sign, "sign", false, "DEPRECATED - this option cannot be used")
-	cmdLoad.Flags().IntVar(&sharedFlags.BlockAttempts, "block-attempts", 0, "Wait until the jobs are loaded, performing up to N attempts before giving up. A value of 0 indicates no limit. Does not apply to global units.")
-	cmdLoad.Flags().BoolVar(&sharedFlags.NoBlock, "no-block", false, "Do not wait until the jobs have been loaded before exiting. Always the case for global units.")
-	cmdLoad.Flags().BoolVar(&sharedFlags.Replace, "replace", false, "Replace the old scheduled units in the cluster with new versions.")
+	cmdLoadUnits.Flags.BoolVar(&sharedFlags.Sign, "sign", false, "DEPRECATED - this option cannot be used")
+	cmdLoadUnits.Flags.IntVar(&sharedFlags.BlockAttempts, "block-attempts", 0, "Wait until the jobs are loaded, performing up to N attempts before giving up. A value of 0 indicates no limit. Does not apply to global units.")
+	cmdLoadUnits.Flags.BoolVar(&sharedFlags.NoBlock, "no-block", true, "Do not wait until the jobs have been loaded before exiting. Always the case for global units.")
 }
 
-func runLoadUnit(cCmd *cobra.Command, args []string) (exit int) {
-	if len(args) == 0 {
-		stderr("No units given")
-		return 0
-	}
-
-	if err := lazyCreateUnits(cCmd, args); err != nil {
+func runLoadUnits(args []string) (exit int) {
+	if err := lazyCreateUnits(args); err != nil {
 		stderr("Error creating units: %v", err)
 		return 1
 	}
@@ -73,11 +66,17 @@ func runLoadUnit(cCmd *cobra.Command, args []string) (exit int) {
 		}
 	}
 
-	exitVal := tryWaitForUnitStates(loading, "load", job.JobStateLoaded, getBlockAttempts(cCmd), os.Stdout)
-	if exitVal != 0 {
-		stderr("Error waiting for unit states, exit status: %d", exitVal)
-		return 1
+	if !sharedFlags.NoBlock {
+		errchan := waitForUnitStates(loading, job.JobStateLoaded, sharedFlags.BlockAttempts, os.Stdout)
+		for err := range errchan {
+			stderr("Error waiting for units: %v", err)
+			exit = 1
+		}
+	} else {
+		for _, name := range loading {
+			stdout("Triggered unit %s load", name)
+		}
 	}
 
-	return 0
+	return
 }
