@@ -71,7 +71,7 @@ Description = Foo
 `
 	unitFile, err := unit.NewUnitFile(contents)
 	if err != nil {
-		t.Fatalf("Unexpected error parsing unit %q: %v", contents, err)
+		t.Fatalf("unexpected error parsing unit %q: %v", contents, err)
 	}
 
 	want := &pb.Unit{

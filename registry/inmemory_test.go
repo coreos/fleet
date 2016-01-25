@@ -23,7 +23,7 @@ Description = Foo
 `
 	unitFile, err := unit.NewUnitFile(contents)
 	if err != nil {
-		t.Fatalf("Unexpected error parsing unit %q: %v", contents, err)
+		t.Fatalf("unexpected error parsing unit %q: %v", contents, err)
 	}
 	unit := &pb.Unit{
 		Name:         "foo",
@@ -37,25 +37,25 @@ Description = Foo
 
 	unitsLen := len(inmemoryRegistry.Units())
 	if unitsLen == 0 {
-		t.Fatalf("Unexpected amount of units in the in-memory registry got %d expected 1", unitsLen)
+		t.Fatalf("unexpected amount of units in the in-memory registry got %d expected 1", unitsLen)
 	}
 
 	if !inmemoryRegistry.isScheduled(unit.Name, machineID) {
-		t.Fatalf("Unexpected error unit should be scheduled %s %s", unit.Name, machineID)
+		t.Fatalf("unexpected error unit should be scheduled %s %s", unit.Name, machineID)
 	}
 
 	inmemoryRegistry.UnscheduleUnit(unit.Name, machineID)
 	if inmemoryRegistry.isScheduled("foo", "testMachine") {
-		t.Fatalf("Unexpected error unit should NOT be scheduled %s %s", unit.Name, machineID)
+		t.Fatalf("unexpected error unit should NOT be scheduled %s %s", unit.Name, machineID)
 	}
 
 	if !inmemoryRegistry.DestroyUnit(unit.Name) {
-		t.Fatalf("Unexpected error unit have to be destroy %s", unit.Name)
+		t.Fatalf("unexpected error unit have to be destroy %s", unit.Name)
 	}
 
 	unitsLen = len(inmemoryRegistry.Units())
 	if unitsLen > 0 {
-		t.Fatalf("Unexpected amount of units in the in-memory registry got %d expected 0", unitsLen)
+		t.Fatalf("unexpected amount of units in the in-memory registry got %d expected 0", unitsLen)
 	}
 }
 
@@ -74,7 +74,7 @@ Description = Foo
 `
 	unitFile, err := unit.NewUnitFile(contents)
 	if err != nil {
-		t.Fatalf("Unexpected error parsing unit %q: %v", contents, err)
+		t.Fatalf("unexpected error parsing unit %q: %v", contents, err)
 	}
 	unit := &pb.Unit{
 		Name:         "foo",
@@ -99,12 +99,12 @@ Description = Foo
 	if !inmemoryRegistry.isUnitLoaded(unit.Name, machineID) {
 		u, ok := inmemoryRegistry.Unit(unit.Name)
 		if !ok {
-			t.Fatalf("Unexpected error unit not found %s", unit.Name)
+			t.Fatalf("unexpected error unit not found %s", unit.Name)
 		}
-		t.Fatalf("Unexpected error unit expected to be loaded %v", u)
+		t.Fatalf("unexpected error unit expected to be loaded %v", u)
 	}
 
 	if len(inmemoryRegistry.UnitStates()) != 1 {
-		t.Fatalf("Unexpected amount of unit states in the in-memory registry got %d expected 1", len(inmemoryRegistry.UnitStates()))
+		t.Fatalf("unexpected amount of unit states in the in-memory registry got %d expected 1", len(inmemoryRegistry.UnitStates()))
 	}
 }

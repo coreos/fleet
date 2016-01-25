@@ -47,13 +47,13 @@ func (r *RegistryMux) StartMux() {
 
 func (r *RegistryMux) rpcDialer(_ string, timeout time.Duration) (net.Conn, error) {
 	for {
-		addr := fmt.Sprintf("%s:%d", r.currentEngine.PublicIP, port)
+		addr := fmt.Sprintf("%s:%d", r.currentEngine.PublicIP, rpcServerPort)
 		conn, err := net.Dial("tcp", addr)
 		if err == nil {
 			log.Infof("connected to engine on %s\n", r.currentEngine.PublicIP)
 			return conn, nil
 		}
-		//log.Errorf("unable to connect to new engine: %+v", err)
+		log.Errorf("unable to connect to new engine: %+v", err)
 		time.Sleep(dialRegistryReconnectTimeout)
 	}
 }

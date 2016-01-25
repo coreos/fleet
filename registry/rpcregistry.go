@@ -18,10 +18,7 @@ import (
 	"github.com/coreos/fleet/unit"
 )
 
-const (
-	port                  = 50059
-	grpcConnectionTimeout = 500 * time.Millisecond
-)
+const grpcConnectionTimeout = 500 * time.Millisecond
 
 var DebugRPCRegistry bool = false
 
@@ -56,7 +53,7 @@ func (r *RPCRegistry) Connect() {
 
 func (r *RPCRegistry) getClient() pb.RegistryClient {
 	for ; ; time.Sleep(100 * time.Millisecond) {
-		log.Infof("RegistryClient is not initialized, waiting for the connection...")
+		log.Infof("registry client is not initialized, waiting for the connection...")
 		if r.registryClient != nil {
 			break
 		}
@@ -105,7 +102,7 @@ func (r *RPCRegistry) UnitHeartbeat(unitName, machID string, ttl time.Duration) 
 }
 
 func (r *RPCRegistry) RemoveMachineState(machID string) error {
-	return errors.New("Remove machine state not implemented")
+	return errors.New("remove machine state function not implemented")
 }
 
 func (r *RPCRegistry) RemoveUnitState(unitName string) error {
@@ -166,11 +163,11 @@ func (r *RPCRegistry) UnscheduleUnit(unitName, machID string) error {
 }
 
 func (r *RPCRegistry) Machines() ([]machine.MachineState, error) {
-	panic("not implemented")
+	panic("machines function not implemented")
 }
 
 func (r *RPCRegistry) SetMachineState(ms machine.MachineState, ttl time.Duration) (uint64, error) {
-	panic("not implemented")
+	panic("set machine state function not implemented")
 }
 
 func (r *RPCRegistry) Schedule() ([]job.ScheduledUnit, error) {
@@ -281,13 +278,13 @@ func (r *RPCRegistry) UnitStates() ([]*unit.UnitState, error) {
 }
 
 func (r *RPCRegistry) EngineVersion() (int, error) {
-	return 0, errors.New("Engine version function not implemented")
+	return 0, errors.New("engine version function not implemented")
 }
 
 func (r *RPCRegistry) UpdateEngineVersion(from, to int) error {
-	return errors.New("Update engine version function not implemented")
+	return errors.New("update engine version function not implemented")
 }
 
 func (r *RPCRegistry) LatestDaemonVersion() (*semver.Version, error) {
-	return nil, errors.New("Latests daemon version function not implemented")
+	return nil, errors.New("latest daemon version function not implemented")
 }
