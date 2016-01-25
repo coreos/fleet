@@ -23,6 +23,7 @@ import (
 
 	"github.com/coreos/fleet/Godeps/_workspace/src/github.com/coreos/go-systemd/dbus"
 
+	"github.com/coreos/fleet/config"
 	"github.com/coreos/fleet/log"
 	"github.com/coreos/fleet/pkg"
 	"github.com/coreos/fleet/unit"
@@ -38,9 +39,24 @@ type systemdUnitManager struct {
 
 	hashes map[string]unit.Hash
 	mutex  sync.RWMutex
+
+	enableUnitStateCache bool
+	unitStateCache       *unitStateCache
 }
 
-func NewSystemdUnitManager(uDir string) (*systemdUnitManager, error) {
+type unitStateCache struct {
+	unitStates            map[string]*unit.UnitState
+	registerUnitOperation map[string]string
+}
+
+func NewSystemdUnitManager(cfg config.Config, uDir string) (*systemdUnitManager, error) {
+	statesCache := &unitStateCache{}
+	if cfg.EnableUnitStateCache {
+		statesCache = &unitStateCache{
+			unitStates:            make(map[string]*unit.UnitState),
+			registerUnitOperation: make(map[string]string),
+		}
+	}
 	systemd, err := dbus.New()
 	if err != nil {
 		return nil, err
@@ -56,10 +72,12 @@ func NewSystemdUnitManager(uDir string) (*systemdUnitManager, error) {
 	}
 
 	mgr := systemdUnitManager{
-		systemd:  systemd,
-		unitsDir: uDir,
-		hashes:   hashes,
-		mutex:    sync.RWMutex{},
+		systemd:              systemd,
+		unitsDir:             uDir,
+		hashes:               hashes,
+		mutex:                sync.RWMutex{},
+		enableUnitStateCache: cfg.EnableUnitStateCache,
+		unitStateCache:       statesCache,
 	}
 	return &mgr, nil
 }
@@ -107,6 +125,10 @@ func (m *systemdUnitManager) Load(name string, u unit.UnitFile) error {
 		return err
 	}
 	m.hashes[name] = u.Hash()
+	if m.enableUnitStateCache {
+		m.unitStateCache.registerUnitOperation[name] = "load"
+	}
+
 	return nil
 }
 
@@ -117,6 +139,10 @@ func (m *systemdUnitManager) Unload(name string) {
 	defer m.mutex.Unlock()
 	delete(m.hashes, name)
 	m.removeUnit(name)
+
+	if m.enableUnitStateCache {
+		m.unitStateCache.registerUnitOperation[name] = "unload"
+	}
 }
 
 // TriggerStart asynchronously starts the unit identified by the given name.
@@ -127,6 +153,10 @@ func (m *systemdUnitManager) TriggerStart(name string) {
 		log.Infof("Triggered systemd unit %s start: job=%d", name, jobID)
 	} else {
 		log.Errorf("Failed to trigger systemd unit %s start: %v", name, err)
+	}
+
+	if m.enableUnitStateCache {
+		m.unitStateCache.registerUnitOperation[name] = "start"
 	}
 }
 
@@ -139,6 +169,9 @@ func (m *systemdUnitManager) TriggerStop(name string) {
 	} else {
 		log.Errorf("Failed to trigger systemd unit %s stop: %v", name, err)
 	}
+	if m.enableUnitStateCache {
+		m.unitStateCache.registerUnitOperation[name] = "stop"
+	}
 }
 
 // GetUnitState generates a UnitState object representing the
@@ -146,6 +179,13 @@ func (m *systemdUnitManager) TriggerStop(name string) {
 func (m *systemdUnitManager) GetUnitState(name string) (*unit.UnitState, error) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
+
+	// If there is not any operation previously registered, we return the cached state
+	_, ok := m.unitStateCache.registerUnitOperation[name]
+	if m.enableUnitStateCache && !ok && m.unitStateCache.unitStates[name] != nil {
+		return m.unitStateCache.unitStates[name], nil
+	}
+
 	us, err := m.getUnitState(name)
 	if err != nil {
 		return nil, err
@@ -187,7 +227,6 @@ func (m *systemdUnitManager) ReloadUnitFiles() error {
 // this manager's units directory.
 func (m *systemdUnitManager) Units() ([]string, error) {
 	return lsUnitsDir(m.unitsDir)
-
 }
 
 func (m *systemdUnitManager) GetUnitStates(filter pkg.Set) (map[string]*unit.UnitState, error) {
@@ -198,13 +237,14 @@ func (m *systemdUnitManager) GetUnitStates(filter pkg.Set) (map[string]*unit.Uni
 	// present in the initial ListUnits() call.
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
-	dbusStatuses, err := m.systemd.ListUnits()
 
+	// Systemd units has to be queried as unit states can change at any time.
+	dbusStatuses, err := m.systemd.ListUnits()
 	if err != nil {
 		return nil, err
 	}
 
-	states := make(map[string]*unit.UnitState)
+	unitStates := make(map[string]*unit.UnitState)
 	for _, dus := range dbusStatuses {
 		if !filter.Contains(dus.Name) {
 			continue
@@ -218,27 +258,49 @@ func (m *systemdUnitManager) GetUnitStates(filter pkg.Set) (map[string]*unit.Uni
 		if h, ok := m.hashes[dus.Name]; ok {
 			us.UnitHash = h.String()
 		}
-		states[dus.Name] = us
+		unitStates[dus.Name] = us
+		if m.enableUnitStateCache {
+			delete(m.unitStateCache.registerUnitOperation, dus.Name)
+		}
 	}
 
-	// grab data on subscribed units that didn't show up in ListUnits, most
-	// likely due to being inactive
+	unitStates, err = m.inactiveUnitStates(filter, unitStates)
+
+	if m.enableUnitStateCache {
+		m.unitStateCache.unitStates = unitStates
+	}
+	return unitStates, nil
+}
+
+// This function grabs data on subscribed units that didn't show up in ListUnits, most
+// likely due to being an inactive state
+func (m *systemdUnitManager) inactiveUnitStates(filter pkg.Set, unitStates map[string]*unit.UnitState) (map[string]*unit.UnitState, error) {
 	for _, name := range filter.Values() {
-		if _, ok := states[name]; ok {
+		if _, ok := unitStates[name]; ok {
 			continue
 		}
 
-		us, err := m.getUnitState(name)
-		if err != nil {
-			return nil, err
+		// If there is any operation previously registered we collect the states from systemd
+		_, ok := m.unitStateCache.registerUnitOperation[name]
+		if m.enableUnitStateCache && !ok && m.unitStateCache.unitStates[name] != nil {
+			unitStates[name] = m.unitStateCache.unitStates[name]
+		} else {
+			us, err := m.getUnitState(name)
+			if err != nil {
+				return unitStates, err
+			}
+			if h, ok := m.hashes[name]; ok {
+				us.UnitHash = h.String()
+			}
+			unitStates[name] = us
+
+			if m.enableUnitStateCache {
+				delete(m.unitStateCache.registerUnitOperation, name)
+			}
 		}
-		if h, ok := m.hashes[name]; ok {
-			us.UnitHash = h.String()
-		}
-		states[name] = us
 	}
 
-	return states, nil
+	return unitStates, nil
 }
 
 func (m *systemdUnitManager) writeUnit(name string, contents string) error {
