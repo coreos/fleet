@@ -1,9 +1,25 @@
 #!/bin/bash -e
 
+# The -X format changed from go1.4 -> go1.5
+function go_linker_dashX {
+	local version=$(go version)
+	local regex="go([0-9]+).([0-9]+)."
+	if [[ $version =~ $regex ]]; then
+		if [ ${BASH_REMATCH[1]} -eq "1" -a ${BASH_REMATCH[2]} -le "4" ]; then
+			echo "$1 \"$2\""
+		else
+			echo "$1=$2"
+		fi
+	else
+		echo "could not determine Go version"
+		exit 1
+	fi
+}
+
 ORG_PATH="github.com/coreos"
 REPO_PATH="${ORG_PATH}/fleet"
 VERSION=$(git describe --dirty)
-GLDFLAGS="-X github.com/coreos/fleet/version.Version \"${VERSION}\""
+GLDFLAGS="-X $(go_linker_dashX github.com/coreos/fleet/version.Version ${VERSION})"
 
 if [ ! -h gopath/src/${REPO_PATH} ]; then
 	mkdir -p gopath/src/${ORG_PATH}
