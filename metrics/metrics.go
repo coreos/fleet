@@ -66,6 +66,13 @@ var (
 		Help:      "Counter of reconcile rounds.",
 	})
 
+	engineReconcileDuration = prometheus.NewHistogram(prometheus.HistogramOpts{
+		Namespace: Namespace,
+		Subsystem: "engine",
+		Name:      "reconcile_duration_second",
+		Help:      "Histogram of time (in seconds) each schedule round takes.",
+	})
+
 	engineReconcileFailureCount = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Namespace: Namespace,
 		Subsystem: "engine",
@@ -84,7 +91,7 @@ var (
 		Namespace: Namespace,
 		Subsystem: "registry",
 		Name:      "operation_duration_second",
-		Help:      "Historgram of time (in seconds) each schedule round takes.",
+		Help:      "Histogram of time (in seconds) each schedule round takes.",
 	}, []string{"ops"})
 
 	registryOpFailureCount = prometheus.NewCounterVec(prometheus.CounterOpts{
