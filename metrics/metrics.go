@@ -101,19 +101,11 @@ func init() {
 	prometheus.MustRegister(engineTaskFailureCount)
 	prometheus.MustRegister(engineReconcileCount)
 	prometheus.MustRegister(engineReconcileFailureCount)
-	/*
-		prometheus.MustRegister(engineReconcileCount)
-		prometheus.MustRegister(engineReconcileFailureCount)
-		prometheus.MustRegister(engineReconcileDuration)
-		prometheus.MustRegister(registryDuration)
-		prometheus.MustRegister(registryCount)
-		prometheus.MustRegister(registryFailureCount)
-	*/
 }
 
 func ReportEngineLeader() {
 	epoch := time.Now().Unix()
-	leaderGauge.Add(epoch)
+	leaderGauge.Add(float64(epoch))
 }
 func ReportEngineTask(task string) {
 	task = strings.ToLower(task)
