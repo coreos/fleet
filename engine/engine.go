@@ -21,7 +21,6 @@ import (
 	"github.com/coreos/fleet/log"
 	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/metrics"
-	"github.com/coreos/fleet/metrics"
 	"github.com/coreos/fleet/pkg"
 	"github.com/coreos/fleet/pkg/lease"
 	"github.com/coreos/fleet/registry"
@@ -111,7 +110,7 @@ func (e *Engine) Run(ival time.Duration, stop chan bool) {
 		e.rec.Reconcile(e, abort)
 		close(monitor)
 		elapsed := time.Now().Sub(start)
-		metrics.EngineReconcileDuration(start)
+		metrics.ReportEngineReconcileSuccess(start)
 
 		msg := fmt.Sprintf("Engine completed reconciliation in %s", elapsed)
 		if elapsed > ival {
@@ -186,7 +185,7 @@ func acquireLeadership(lManager lease.Manager, machID string, ver int, ttl time.
 			return nil
 		}
 		log.Infof("Engine leadership acquired")
-		metric.ReportEngineLeader()
+		metrics.ReportEngineLeader()
 		return l
 	}
 
@@ -206,7 +205,7 @@ func acquireLeadership(lManager lease.Manager, machID string, ver int, ttl time.
 	}
 
 	log.Infof("Stole engine leadership from Machine(%s)", existing.MachineID())
-	metric.ReportEngineLeader()
+	metrics.ReportEngineLeader()
 
 	if rem > 0 {
 		log.Infof("Waiting %v for previous lease to expire before continuing reconciliation", rem)

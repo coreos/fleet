@@ -88,7 +88,7 @@ func (r *EtcdRegistry) getAllUnitsHashMap() (map[string]*unit.UnitFile, error) {
 	start := time.Now()
 	resp, err := r.kAPI.Get(r.ctx(), key, opts)
 	if err != nil {
-		metrics.RegistryOpFailure(metrics.GetAll)
+		metrics.ReportRegistryOpFailure(metrics.GetAll)
 		return nil, err
 	}
 	metrics.ReportRegistryOpSuccess(metrics.GetAll, start)

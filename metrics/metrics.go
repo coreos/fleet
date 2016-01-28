@@ -129,7 +129,7 @@ func ReportEngineReconcileSuccess(start time.Time) {
 func ReportEngineReconcileFailure(reason engineFailure) {
 	engineReconcileFailureCount.WithLabelValues(string(reason)).Inc()
 }
-func ReportRegistryOpSucces(op registryOp, start time.Time) {
+func ReportRegistryOpSuccess(op registryOp, start time.Time) {
 	registryOpCount.WithLabelValues(string(op)).Inc()
 	registryOpDuration.WithLabelValues(string(op)).Observe(float64(time.Since(start)) / float64(time.Second))
 }

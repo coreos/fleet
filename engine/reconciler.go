@@ -161,10 +161,10 @@ func doTask(t *task, e *Engine) (err error) {
 	switch t.Type {
 	case taskTypeUnscheduleUnit:
 		err = e.unscheduleUnit(t.JobName, t.MachineID)
-		reportEngineTask(t.Type)
+		metrics.ReportEngineTask(t.Type)
 	case taskTypeAttemptScheduleUnit:
 		e.attemptScheduleUnit(t.JobName, t.MachineID)
-		reportEngineTask(t.Type)
+		metrics.ReportEngineTask(t.Type)
 	default:
 		err = fmt.Errorf("unrecognized task type %q", t.Type)
 	}
