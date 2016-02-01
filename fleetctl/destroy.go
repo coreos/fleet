@@ -33,9 +33,14 @@ Destroyed units are impossible to start unless re-submitted.`,
 }
 
 func runDestroyUnits(args []string) (exit int) {
-	for _, v := range args {
-		name := unitNameMangle(v)
-		err := cAPI.DestroyUnit(name)
+	units, err := findUnits(args)
+	if err != nil {
+		stderr("%v", err)
+		return 1
+	}
+
+	for _, v := range units {
+		err := cAPI.DestroyUnit(v.Name)
 		if err != nil {
 			stderr("Error destroying units: %v", err)
 			exit = 1
@@ -56,7 +61,7 @@ func runDestroyUnits(args []string) (exit int) {
 			}
 
 			for retry() {
-				u, err := cAPI.Unit(name)
+				u, err := cAPI.Unit(v.Name)
 				if err != nil {
 					stderr("Error destroying units: %v", err)
 					exit = 1
@@ -70,7 +75,7 @@ func runDestroyUnits(args []string) (exit int) {
 			}
 		}
 
-		stdout("Destroyed %s", name)
+		stdout("Destroyed %s", v.Name)
 	}
 	return
 }
