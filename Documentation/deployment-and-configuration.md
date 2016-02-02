@@ -2,15 +2,13 @@
 
 Deploying `fleet` is as simple as dropping the `fleetd` binary on a machine with access to etcd and starting it.
 
-Deploying `fleet` on CoreOS is even simpler: just run `systemctl start fleet`. The built-in configuration assumes each of your hosts is serving an etcd endpoint at one of the default locations (http://127.0.0.1:4001 or http://127.0.0.1:2379). However, if your etcd cluster differs, you must make the corresponding configuration changes.
+Deploying `fleet` on CoreOS is even simpler: just run `systemctl start fleet`. The built-in configuration assumes each of your hosts is serving an etcd endpoint at one of the default locations (http://127.0.0.1:2379 or http://127.0.0.1:4001). However, if your etcd cluster differs, you must make the corresponding configuration changes.
 
 ## etcd
 
-Each `fleetd` daemon must be configured to talk to the same [etcd cluster][etcd]. By default, the `fleetd` daemon will connect to either http://127.0.0.1:4001 or http://127.0.0.1:2379, depending on which endpoint responds. Refer to the configuration documentation below for customization help.
+Each `fleetd` daemon must be configured to talk to the same [etcd cluster][etcd]. By default, the `fleetd` daemon will connect to either http://127.0.0.1:2379 or http://127.0.0.1:4001, depending on which endpoint responds. Refer to the configuration documentation below for customization help.
 
 `fleet` requires etcd be of version 0.3.0+.
-
-[etcd]: https://coreos.com/docs/cluster-management/setup/getting-started-with-etcd
 
 ## systemd
 
@@ -22,7 +20,7 @@ The `fleetctl` client tool uses SSH to interact with a fleet cluster. This means
 
 Authorizing a public SSH key is typically as easy as appending it to the user's `~/.ssh/authorized_keys` file. This may not be true on your systemd, though. If running CoreOS, use the built-in `update-ssh-keys` utility - it helps manage multiple authorized keys.
 
-To make things incredibly easy, included in the [fleet source](../scripts/fleetctl-inject-ssh.sh) is a script that will distribute SSH keys across a fleet cluster running on CoreOS. Simply pipe the contents of a public SSH key into the script:
+To make things incredibly easy, included in the [fleet source][fleetctl-inject-ssh] is a script that will distribute SSH keys across a fleet cluster running on CoreOS. Simply pipe the contents of a public SSH key into the script:
 
 ```
 cat ~/.ssh/id_rsa.pub | ./fleetctl-inject-ssh.sh simon
@@ -40,24 +38,23 @@ fleet's API is served using systemd socket activation.
 At service startup, systemd passes fleet a set of file descriptors, preventing fleet from having to care on which interfaces it's serving the API.
 The configuration of these interfaces is managed through a [systemd socket unit][socket-unit].
 
-[socket-unit]: http://www.freedesktop.org/software/systemd/man/systemd.socket.html
-
-CoreOS ships a socket unit for fleet (`fleet.socket`) which binds to a Unix domain socket, `/var/run/fleet.sock`.
+CoreOS ships a socket unit for fleet (`fleet.socket`) which binds to a Unix domain socket, `/var/run/fleet.sock`. Unix socket is accessible using tool such as curl (v7.40 or greater): `curl --unix-socket /var/run/fleet.sock http:/fleet/v1/units`.
 To serve the fleet API over a network address, simply extend or replace this socket unit.
-For example, writing the following drop-in to `/etc/systemd/system/fleet.socket.d/30-ListenStream.conf` would enable fleet to be reached over the local port `49153` in addition to `/var/run/fleet.sock`:
+For example, writing the following [drop-in] to `/etc/systemd/system/fleet.socket.d/30-ListenStream.conf` would enable fleet to be reached over the local port `49153` in addition to `/var/run/fleet.sock`:
 
 ```
 [Socket]
 ListenStream=127.0.0.1:49153
 ```
 
-After you've written the file, call `systemctl daemon-reload` to load the new drop-in, followed by `systemctl stop fleet.service; systemctl restart fleet.socket; systemctl start fleet.service`.
+After you've written the file, call `systemctl daemon-reload` to load the new [drop-in], followed by `systemctl stop fleet.service; systemctl restart fleet.socket; systemctl start fleet.service`.
 
 Once the socket is running, the fleet API will be available at `http://${ListenStream}/fleet/v1`, where `${ListenStream}` is the value of the `ListenStream` option used in your socket file.
 This endpoint is accessible directly using tools such as curl and wget, or you can use fleetctl like so: `fleetctl --endpoint http://${ListenStream} <command>`.
-For more information, see the [official API documentation][api-doc].
 
-[api-doc]: https://github.com/coreos/fleet/blob/master/Documentation/api-v1.md
+*It is not recommended to listen fleet API TCP socket over public and even private networks.* Fleet API socket doesn't support encryption and authorization so it could cause full root access to your machine. Please use [ssh tunnel][ssh-tunnel] to access remote fleet API.
+
+For more information about fleet API, see the [official API documentation][api-doc].
 
 # Configuration
 
@@ -66,11 +63,9 @@ The `fleetd` daemon uses two sources for configuration parameters:
 1. an INI-formatted config file ([sample][config])
 2. environment variables
 
-[config]: https://github.com/coreos/fleet/blob/master/fleet.conf.sample
-
 fleet will look at `/etc/fleet/fleet.conf` for this config file by default. The `--config` flag may be passed to the `fleetd` binary to use a custom config file location. The options that may be set are defined below. Note that each of the options should be defined at the global level, outside of any INI sections.
 
-Environment variables may also provide configuration options. Options provided in an environment variable will override the corresponding option provided in a config file. To use an environment variable, simply prefix the name of a given option with 'FLEET_', while uppercasing the rest of the name. For example, to set the `etcd_servers` option to 'http://192.0.2.12:2379' when running the fleetd binary:
+Environment variables may also provide configuration options. Options provided in an environment variable will override the corresponding option provided in a config file. To use an environment variable, simply prefix the name of a given option with `FLEET_`, while uppercasing the rest of the name. For example, to set the `etcd_servers` option to 'http://192.0.2.12:2379' when running the fleetd binary:
 
 ```
 $ FLEET_ETCD_SERVERS=http://192.0.2.12:2379 /usr/bin/fleetd
@@ -89,7 +84,7 @@ Default: 0
 
 Provide a custom set of etcd endpoints.
 
-Default: "http://127.0.0.1:4001,http://127.0.0.1:2379"
+Default: "http://127.0.0.1:2379,http://127.0.0.1:4001"
 
 #### etcd_request_timeout
 
@@ -153,3 +148,11 @@ Default: "30s"
 Interval in seconds at which the engine should reconcile the cluster schedule in etcd.
 
 Default: 2
+
+[etcd]: https://github.com/coreos/docs/blob/master/etcd/getting-started-with-etcd.md
+[api-doc]: api-v1.md
+[fleetctl-inject-ssh]: /scripts/fleetctl-inject-ssh.sh
+[socket-unit]: http://www.freedesktop.org/software/systemd/man/systemd.socket.html
+[config]: /fleet.conf.sample
+[drop-in]: https://github.com/coreos/docs/blob/master/os/using-systemd-drop-in-units.md
+[ssh-tunnel]: using-the-client.md#from-an-external-host
