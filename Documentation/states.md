@@ -1,6 +1,6 @@
 ## Unit states
 
-There are currently three cluster-level states for a unit:
+fleet uses a _declarative model_ to evaluate unit state. This means that operations to change the state of units (e.g. `fleetctl` commands, or calls to the fleet API) change the desired state, rather than directly performing any state change. There are currently three cluster-level states for a unit:
 
 - `inactive`: known by fleet, but not assigned to a machine
 - `loaded`: assigned to a machine and loaded into systemd there, but not started
@@ -12,23 +12,21 @@ The desired and last known states are exposed in the `DSTATE` and `STATE` column
 
 The `fleetctl` commands to act on units change the *desired state* of a unit. fleet itself is then responsible for performing the necessary state transitions to move a unit to the desired state. The following table explains the relationship between each `fleetctl` command and unit states.
 
-| Command | Desired State | Valid Previous States |
-|---------|--------------|-----|
-| `fleetctl submit`  | `inactive`  | `(unknown)`
-| `fleetctl load`    | `loaded` | `(unknown)` or `inactive` |
-| `fleetctl start`   | `launched`  | `(unknown)` or `inactive` or `loaded` |
-| `fleetctl stop`    | `loaded`  | `launched`
-| `fleetctl unload`  | `inactive`| `launched` or `loaded` |
-| `fleetctl destroy` | `(unknown)` | `launched` or `loaded` or `inactive` |
+| Command | Description | Desired State | Valid Previous States | Is an alias for |
+|---------|-------------|--------------|-----|----|
+| `fleetctl submit`  | Submits unit file into etcd storage | `inactive`  | `none` | |
+| `fleetctl load`    | Submits and schedules unit file into machines' systemd but doesn't start it | `loaded` | `none` or `inactive` | `submit+load` |
+| `fleetctl start`   | Submits, schedules and starts unit file| `launched`  | `none` or `inactive` or `loaded` | `submit+load+start` |
+| `fleetctl stop`    | Stops scheduled unit file | `loaded`  | `launched` | |
+| `fleetctl unload`  | Stops and unschedules unit file from machines' systemd | `inactive`| `launched` or `loaded` | `stop+unload` |
+| `fleetctl destroy` | Stops, unschedules and removes unit file from etcd storage| `none` | `launched` or `loaded` or `inactive` | `stop+unload+destroy` |
 
-
-`(unknown)` indicates that the unit has not yet been submitted to fleet at all (or it previously existed in fleet but was destroyed).
+`none` indicates that the unit has not yet been submitted to fleet at all (or it previously existed in fleet but was destroyed).
 
 For example:
 - if a unit is `inactive`, then `fleetctl start` will cause it to be `loaded` and then `launched`
-- if a unit is `loaded`, then `fleetctl destroy` will cause it to be `inactive` and then `(unknown)`
+- if a unit is `loaded`, then `fleetctl destroy` will cause it to be `inactive` and then `none`
 - if a unit is `inactive`, then `fleetctl stop` is an invalid action
-
 
 ## systemd states
 
