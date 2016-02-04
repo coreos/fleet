@@ -43,7 +43,7 @@ All Units are treated as services rather than batch processes: if a machine on w
 
 Both Units and Machines have dynamic state which is published both for the user and cluster to consume.
 
-A UnitState object represents the state of a Unit in the fleet engine. A UnitState object represents the state of a payload as reported by systemd on a given Machine. For more information on states, see the [states documentation](states.md).
+A UnitState object represents the state of a Unit in the fleet engine. A UnitState object represents the state of a payload as reported by systemd on a given Machine. For more information on states, see the [states documentation].
 
 
 # Security
@@ -54,10 +54,14 @@ Current releases of fleet don't currently perform any authentication or authoriz
 
 ## Securing etcd
 
-You should avoid public access to etcd and instead run fleet [from your local laptop](using-the-client.md#get-up-and-running) with the `--tunnel` flag to run commands over an SSH tunnel. You can alias this flag for easier usage: `alias fleetctl=fleetctl --tunnel 10.10.10.10` - or use the environment variable `FLEETCTL_TUNNEL`.
+You should avoid public access to etcd and instead run fleet [from your local laptop][using-the-client] with the `--tunnel` flag to run commands over an SSH tunnel. You can alias this flag for easier usage: `alias fleetctl=fleetctl --tunnel 10.10.10.10` - or use the environment variable `FLEETCTL_TUNNEL`.
 
 ## Other Notes
 
-Since it interacts directly with systemd over D-Bus, the fleetd daemon must be run with elevated privileges (i.e. as root) in order to perform operations like starting and stopping services. From the [systemd D-Bus documentation](http://www.freedesktop.org/wiki/Software/systemd/dbus/):
+Since it interacts directly with systemd over D-Bus, the fleetd daemon must be run with elevated privileges (i.e. as root) in order to perform operations like starting and stopping services. From the [systemd D-Bus documentation][systemd-dbus]:
 
 > In contrast to most of the other services of the systemd suite PID 1 does not use PolicyKit for controlling access to privileged operations, but relies exclusively on the low-level D-Bus policy language. (This is done in order to avoid a cyclic dependency between PolicyKit and systemd/PID 1.) This means that sensitive operations exposed by PID 1 on the bus are generally not available to unprivileged processes directly.
+
+[states documentation]: states.md
+[using-the-client]: using-the-client.md#get-up-and-running
+[systemd-dbus]: http://www.freedesktop.org/wiki/Software/systemd/dbus/
