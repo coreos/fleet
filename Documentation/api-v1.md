@@ -182,8 +182,6 @@ A successful response will contain a single page of zero or more UnitState entit
 A Machine represents a host in the cluster.
 It uses the host's [machine-id][systemd-machine-id] as a unique identifier.
 
-[systemd-machine-id]: http://www.freedesktop.org/software/systemd/man/machine-id.html
-
 - **id**: unique identifier of Machine entity
 - **primaryIP**: IP address that should be used to communicate with this host
 - **metadata**: dictionary of key-value data published by the machine
@@ -211,10 +209,6 @@ This document is available in the [fleet source][schema] and served directly fro
 Note that this discovery document intentionally ships with an unusable `rootUrl`; clients *must* initialize this as appropriate.
 
 An extremely simplified example client can be found [here][example].
-
-[disco]: https://developers.google.com/discovery/v1/reference/apis
-[schema]: ../schema/v1.json
-[example]: ../Documentation/examples/api.py
 
 ## Media Types
 
@@ -277,3 +271,8 @@ Content-Length: 80
 
 {"error:{"code":400,"message":"invalid value of nextPageToken query parameter"}}
 ```
+
+[systemd-machine-id]: http://www.freedesktop.org/software/systemd/man/machine-id.html
+[disco]: https://developers.google.com/discovery/v1/reference/apis
+[schema]: /schema/v1.json
+[example]: examples/api.py
