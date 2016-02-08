@@ -6,7 +6,7 @@
 
 # Provide a custom set of etcd endpoints. The default value is determined
 # by the underlying go-etcd library.
-# etcd_servers=["http://127.0.0.1:4001", "http://127.0.0.1:2379"]
+# etcd_servers=["http://127.0.0.1:2379", "http://127.0.0.1:4001"]
 
 # Amount of time in seconds to allow a single etcd request before considering it failed.
 # etcd_request_timeout=1.0
