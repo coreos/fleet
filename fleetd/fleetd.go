@@ -35,6 +35,7 @@ import (
 
 const (
 	DefaultConfigFile = "/etc/fleet/fleet.conf"
+	FleetdDescription = "fleetd is the server component of fleet, a simple orchestration system for scheduling systemd units in a cluster."
 )
 
 func main() {
@@ -43,7 +44,7 @@ func main() {
 	cfgPath := userset.String("config", "", fmt.Sprintf("Path to config file. Fleet will look for a config at %s by default.", DefaultConfigFile))
 
 	userset.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "%s\nUsage of %s:\n", FleetdDescription, os.Args[0])
 		userset.PrintDefaults()
 	}
 
@@ -54,11 +55,15 @@ func main() {
 	}
 
 	args := userset.Args()
-	if len(args) == 1 && args[0] == "version" {
-		*printVersion = true
-	} else if len(args) != 0 {
-		userset.Usage()
-		os.Exit(1)
+	if len(args) > 0 {
+		// support `fleetd version` the same as `fleetd --version`
+		if args[0] == "version" {
+			*printVersion = true
+		} else {
+			fmt.Fprintf(os.Stderr, "%s takes no arguments. Did you mean to invoke fleetctl instead?\n", os.Args[0])
+			userset.Usage()
+			os.Exit(1)
+		}
 	}
 
 	if *printVersion {
