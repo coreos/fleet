@@ -14,12 +14,12 @@ The `fleetctl` commands to act on units change the *desired state* of a unit. fl
 
 | Command | Description | Desired State | Valid Previous States | Is an alias for |
 |---------|-------------|--------------|-----|----|
-| `fleetctl submit`  | Submits unit file into etcd storage | `inactive`  | `none` | |
+| `fleetctl submit`  | Submits unit file into etcd registry | `inactive`  | `none` | |
 | `fleetctl load`    | Submits and schedules unit file into machines' systemd but doesn't start it | `loaded` | `none` or `inactive` | `submit+load` |
 | `fleetctl start`   | Submits, schedules and starts unit file| `launched`  | `none` or `inactive` or `loaded` | `submit+load+start` |
 | `fleetctl stop`    | Stops scheduled unit file | `loaded`  | `launched` | |
 | `fleetctl unload`  | Stops and unschedules unit file from machines' systemd | `inactive`| `launched` or `loaded` | `stop+unload` |
-| `fleetctl destroy` | Stops, unschedules and removes unit file from etcd storage| `none` | `launched` or `loaded` or `inactive` | `stop+unload+destroy` |
+| `fleetctl destroy` | Stops, unschedules and removes unit file from etcd registry| `none` | `launched` or `loaded` or `inactive` | `stop+unload+destroy` |
 
 `none` indicates that the unit has not yet been submitted to fleet at all (or it previously existed in fleet but was destroyed).
 
