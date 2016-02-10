@@ -37,6 +37,11 @@ const (
 	DefaultConfigFile = "/etc/fleet/fleet.conf"
 )
 
+var fleetctlCmds = []string{"cat", "destroy", "fd-forward", "help", "journal",
+	"list-machines", "list-unit-files", "list-units", "load", "ssh", "start",
+	"status", "stop", "submit", "unload", "verify",
+}
+
 func main() {
 	userset := flag.NewFlagSet("fleet", flag.ExitOnError)
 	printVersion := userset.Bool("version", false, "Print the version and exit")
@@ -54,11 +59,23 @@ func main() {
 	}
 
 	args := userset.Args()
-	if len(args) == 1 && args[0] == "version" {
-		*printVersion = true
-	} else if len(args) != 0 {
-		userset.Usage()
-		os.Exit(1)
+	if len(args) > 0 {
+		// check for accidental fleetctl invocations
+		for _, cmd := range fleetctlCmds {
+			if cmd == args[0] {
+				fmt.Fprintf(os.Stderr, "%s: %q is a fleetctl command - did you mean to invoke that instead?\n", os.Args[0], cmd)
+				userset.Usage()
+				os.Exit(1)
+			}
+		}
+		// support `fleetd version` the same as `fleetd --version`
+		if args[0] == "version" {
+			*printVersion = true
+		} else {
+			// unrecognised command
+			userset.Usage()
+			os.Exit(1)
+		}
 	}
 
 	if *printVersion {
