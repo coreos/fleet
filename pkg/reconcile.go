@@ -15,6 +15,7 @@
 package pkg
 
 import (
+	"math/rand"
 	"time"
 
 	"github.com/coreos/fleet/Godeps/_workspace/src/github.com/jonboulle/clockwork"
@@ -54,7 +55,7 @@ type reconciler struct {
 }
 
 func (r *reconciler) Run(stop chan bool) {
-	trigger := make(chan struct{})
+	//	trigger := make(chan struct{})
 	go func() {
 		abort := make(chan struct{})
 		for {
@@ -62,13 +63,14 @@ func (r *reconciler) Run(stop chan bool) {
 			case <-stop:
 				close(abort)
 				return
-			case <-r.eStream.Next(abort):
-				trigger <- struct{}{}
+				// Kill with fire.
+				//			case <-r.eStream.Next(abort):
+				//				trigger <- struct{}{}
 			}
 		}
 	}()
 
-	ticker := r.clock.After(r.ival)
+	ticker := r.clock.After(r.ival + jitter(r.ival))
 
 	// When starting up, reconcile once immediately
 	log.Debug("Initial reconciliation commencing")
@@ -80,14 +82,16 @@ func (r *reconciler) Run(stop chan bool) {
 			log.Debug("Reconciler exiting due to stop signal")
 			return
 		case <-ticker:
-			ticker = r.clock.After(r.ival)
+			ticker = r.clock.After(r.ival + jitter(r.ival))
 			log.Debug("Reconciler tick")
-			r.rFunc()
-		case <-trigger:
-			ticker = r.clock.After(r.ival)
-			log.Debug("Reconciler triggered")
 			r.rFunc()
 		}
 	}
 
+}
+
+// jitter returns randomized jitter in the internal [0, ival/2).
+func jitter(ival time.Duration) time.Duration {
+	j := rand.Int63n(int64(ival / 2))
+	return time.Duration(j)
 }
