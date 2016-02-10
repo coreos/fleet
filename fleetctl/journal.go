@@ -24,10 +24,11 @@ var (
 	flagLines  int
 	flagFollow bool
 	flagSudo   bool
+	flagOutput string
 	cmdJournal = &Command{
 		Name:    "journal",
 		Summary: "Print the journal of a unit in the cluster to stdout",
-		Usage:   "[--lines=N] [--ssh-port=N] [-f|--follow] <unit>",
+		Usage:   "[--lines=N] [--ssh-port=N] [-f|--follow] [--output=STRING] <unit>",
 		Run:     runJournal,
 		Description: `Outputs the journal of a unit by connecting to the machine that the unit occupies.
 
@@ -47,6 +48,7 @@ func init() {
 	cmdJournal.Flags.BoolVar(&flagFollow, "f", false, "Shorthand for --follow")
 	cmdJournal.Flags.IntVar(&sharedFlags.SSHPort, "ssh-port", 22, "Connect to remote hosts over SSH using this TCP port")
 	cmdJournal.Flags.BoolVar(&flagSudo, "sudo", false, "Execute journal command with sudo")
+	cmdJournal.Flags.StringVar(&flagOutput, "output", "short", "Output mode. This will be passed unaltered to journalctl on the remote host, and hence supports the same modes as that command.")
 }
 
 func runJournal(args []string) (exit int) {
@@ -71,7 +73,7 @@ func runJournal(args []string) (exit int) {
 		return 1
 	}
 
-	cmd := []string{"journalctl", "--unit", name, "--no-pager", "-n", strconv.Itoa(flagLines)}
+	cmd := []string{"journalctl", "--unit", name, "--no-pager", "-n", strconv.Itoa(flagLines), "--output", flagOutput}
 
 	if flagSudo {
 		cmd = append([]string{"sudo"}, cmd...)
