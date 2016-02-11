@@ -1,0 +1,25 @@
+#!/bin/bash -e
+
+CDIR=$(cd `dirname $0` && pwd)
+USER_ID=${SUDO_UID:-$(id -u)}
+HOME=$(getent passwd "${USER_ID}" | cut -d: -f6)
+
+if [[ -z "${SUDO_UID}" && "${USER_ID}" != "0" ]]; then
+  echo "Script should be run using sudo"
+  exit 1
+fi
+
+if [ ! -f ${HOME}/setup-network-environment ]; then
+  # Remove unfinished file when you press Ctrl+C
+  trap "rm -f ${HOME}/setup-network-environment" INT TERM
+  wget --no-verbose https://github.com/kelseyhightower/setup-network-environment/releases/download/1.0.1/setup-network-environment -P ${HOME}
+fi
+
+if [ ! -x ${HOME}/setup-network-environment ]; then
+  chmod +x ${HOME}/setup-network-environment
+fi
+
+${HOME}/setup-network-environment
+source /etc/network-environment
+export COREOS_PRIVATE_IPV4=$DEFAULT_IPV4
+coreos-cloudinit --from-file=${CDIR}/user-data

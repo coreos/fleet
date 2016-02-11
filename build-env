@@ -1,0 +1,23 @@
+# The -X format changed from go1.4 -> go1.5
+function go_linker_dashX {
+  local version=$(go version)
+  local regex="go([0-9]+).([0-9]+)."
+  if [[ $version =~ $regex ]]; then
+    if [ ${BASH_REMATCH[1]} -eq "1" -a ${BASH_REMATCH[2]} -le "4" ]; then
+      echo "$1 \"$2\""
+    else
+      echo "$1=$2"
+    fi
+  else
+    echo "could not determine Go version"
+    exit 1
+  fi
+}
+
+export GOBIN=${PWD}/bin
+export GOPATH=${PWD}/gopath
+export GLDFLAGS="-X $(go_linker_dashX github.com/coreos/fleet/version.Version ${VERSION})"
+eval $(go env)
+export PATH="${GOROOT}/bin:${PATH}"
+export FLEETD_BIN="$(pwd)/bin/fleetd"
+export FLEETCTL_BIN="$(pwd)/bin/fleetctl"

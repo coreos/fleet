@@ -211,10 +211,10 @@ func (nc *nspawnCluster) prepCluster() (err error) {
 		return
 	}
 
-	if !strings.Contains(stdout, "172.17.0.1/16") {
-		_, _, err = run("ip addr add 172.17.0.1/16 dev fleet0")
+	if !strings.Contains(stdout, "172.18.0.1/16") {
+		_, _, err = run("ip addr add 172.18.0.1/16 dev fleet0")
 		if err != nil {
-			log.Printf("Failed adding 172.17.0.1/16 to fleet0: %v", err)
+			log.Printf("Failed adding 172.18.0.1/16 to fleet0: %v", err)
 			return
 		}
 	}
@@ -251,7 +251,7 @@ func (nc *nspawnCluster) buildConfigDrive(dir, ip string) error {
 	}
 	defer userFile.Close()
 
-	etcd := "http://172.17.0.1:4001"
+	etcd := "http://172.18.0.1:4001"
 	return util.BuildCloudConfig(userFile, ip, etcd, nc.keyspace())
 }
 
@@ -290,7 +290,7 @@ func (nc *nspawnCluster) createMember(id string) (m Member, err error) {
 	nm := nspawnMember{
 		uuid: newMachineID(),
 		id:   id,
-		ip:   fmt.Sprintf("172.17.1.%s", id),
+		ip:   fmt.Sprintf("172.18.1.%s", id),
 	}
 	nc.members[nm.ID()] = nm
 
@@ -303,13 +303,15 @@ func (nc *nspawnCluster) createMember(id string) (m Member, err error) {
 		// minimum requirements for running systemd/coreos in a container
 		fmt.Sprintf("mkdir -p %s/usr", fsdir),
 		fmt.Sprintf("cp /etc/os-release %s/etc", fsdir),
+		fmt.Sprintf("echo 'core:x:500:500:CoreOS Admin:/home/core:/bin/bash' > %s/etc/passwd", fsdir),
+		fmt.Sprintf("echo 'core:x:500:' > %s/etc/group", fsdir),
 		fmt.Sprintf("ln -s /proc/self/mounts %s/etc/mtab", fsdir),
 		fmt.Sprintf("ln -s usr/lib64 %s/lib64", fsdir),
 		fmt.Sprintf("ln -s lib64 %s/lib", fsdir),
 		fmt.Sprintf("ln -s usr/bin %s/bin", fsdir),
 		fmt.Sprintf("ln -s usr/sbin %s/sbin", fsdir),
 		fmt.Sprintf("mkdir -p %s/home/core/.ssh", fsdir),
-		fmt.Sprintf("chown -R core:core %s/home/core", fsdir),
+		fmt.Sprintf("chown -R 500:500 %s/home/core", fsdir),
 
 		// We don't need this, and it's slow, so mask it
 		fmt.Sprintf("ln -s /dev/null %s/etc/systemd/system/systemd-udev-hwdb-update.service", fsdir),
@@ -346,7 +348,7 @@ UseDNS no
 	[Service]
 	Type=oneshot
 	RemainAfterExit=yes
-	ExecStart=/usr/bin/ssh-keygen -t rsa -f /etc/ssh/ssh_host_rsa_key -N "" -b 768`
+	ExecStart=/usr/bin/ssh-keygen -t rsa -f /etc/ssh/ssh_host_rsa_key -N "" -b 1024`
 	if err = ioutil.WriteFile(path.Join(fsdir, "/etc/systemd/system/sshd-keygen.service"), []byte(sshd_keygen), 0644); err != nil {
 		log.Printf("Failed writing sshd-keygen.service: %v", err)
 		return
@@ -395,6 +397,7 @@ UseDNS no
 			return
 		default:
 		}
+		log.Printf("Dialing machine: %s", addr)
 		c, err := net.DialTimeout("tcp", addr, 100*time.Millisecond)
 		if err == nil {
 			c.Close()
