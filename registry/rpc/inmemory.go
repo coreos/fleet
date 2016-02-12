@@ -1,4 +1,4 @@
-package registry
+package rpc
 
 import (
 	"net/http"
@@ -8,6 +8,7 @@ import (
 
 	"github.com/coreos/fleet/debug"
 	pb "github.com/coreos/fleet/protobuf"
+	"github.com/coreos/fleet/registry"
 )
 
 var DebugInmemoryRegistry bool = false
@@ -45,7 +46,7 @@ func init() {
 
 var currentReg *inmemoryRegistry
 
-func (r *inmemoryRegistry) LoadFrom(reg UnitRegistry) error {
+func (r *inmemoryRegistry) LoadFrom(reg registry.UnitRegistry) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	units, err := reg.Units()
@@ -141,7 +142,7 @@ func (r *inmemoryRegistry) UnitStates() []*pb.UnitState {
 	states := []*pb.UnitState{}
 	mus := r.statesByMUSKey()
 
-	var sorted MUSKeys
+	var sorted registry.MUSKeys
 	for key := range mus {
 		sorted = append(sorted, key)
 	}
@@ -293,15 +294,15 @@ func (r *inmemoryRegistry) CreateUnit(u *pb.Unit) {
 	r.unitsCache[u.Name] = *u
 }
 
-func (r *inmemoryRegistry) statesByMUSKey() map[MUSKey]*pb.UnitState {
-	states := map[MUSKey]*pb.UnitState{}
+func (r *inmemoryRegistry) statesByMUSKey() map[registry.MUSKey]*pb.UnitState {
+	states := map[registry.MUSKey]*pb.UnitState{}
 
 	for unitname, unitStates := range r.unitStates {
 		for machineID, heartbeat := range unitStates {
 			if heartbeat.isValid() {
-				k := MUSKey{
-					name:   unitname,
-					machID: machineID,
+				k := registry.MUSKey{
+					Name:   unitname,
+					MachID: machineID,
 				}
 				s := *heartbeat.state
 				states[k] = &s

@@ -1,4 +1,4 @@
-package registry
+package rpc
 
 import (
 	"fmt"
@@ -11,14 +11,15 @@ import (
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/log"
 	"github.com/coreos/fleet/machine"
+	"github.com/coreos/fleet/registry"
 	"github.com/coreos/fleet/unit"
 )
 
 type RegistryMux struct {
-	etcdRegistry    *EtcdRegistry
+	etcdRegistry    *registry.EtcdRegistry
 	localMachine    machine.Machine
 	rpcserver       *rpcserver
-	currentRegistry Registry
+	currentRegistry registry.Registry
 	rpcRegistry     *RPCRegistry
 	currentEngine   machine.MachineState
 
@@ -27,7 +28,7 @@ type RegistryMux struct {
 
 const dialRegistryReconnectTimeout = 200 * time.Millisecond
 
-func NewRegistryMux(etcdRegistry *EtcdRegistry, localMachine machine.Machine) *RegistryMux {
+func NewRegistryMux(etcdRegistry *registry.EtcdRegistry, localMachine machine.Machine) *RegistryMux {
 	return &RegistryMux{
 		etcdRegistry:         etcdRegistry,
 		localMachine:         localMachine,
@@ -93,7 +94,7 @@ func (r *RegistryMux) EngineChanged(newEngine machine.MachineState) {
 	}
 }
 
-func (r *RegistryMux) getRegistry() Registry {
+func (r *RegistryMux) getRegistry() registry.Registry {
 	r.handlingEngineChange.RLock()
 	defer r.handlingEngineChange.RUnlock()
 	if r.currentRegistry == nil {

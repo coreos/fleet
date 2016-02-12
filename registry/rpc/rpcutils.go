@@ -1,4 +1,4 @@
-package registry
+package rpc
 
 import (
 	sdunit "github.com/coreos/fleet/Godeps/_workspace/src/github.com/coreos/go-systemd/unit"

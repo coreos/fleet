@@ -77,8 +77,8 @@ func (r *EtcdRegistry) UnitStates() (states []*unit.UnitState, err error) {
 
 // MUSKey is used to index UnitStates by name + machineID
 type MUSKey struct {
-	name   string
-	machID string
+	Name   string
+	MachID string
 }
 
 // MUSKeys provides for sorting of UnitStates by their MUSKey
@@ -88,7 +88,7 @@ func (mk MUSKeys) Len() int { return len(mk) }
 func (mk MUSKeys) Less(i, j int) bool {
 	mi := mk[i]
 	mj := mk[j]
-	return mi.name < mj.name || (mi.name == mj.name && mi.machID < mj.machID)
+	return mi.Name < mj.Name || (mi.Name == mj.Name && mi.MachID < mj.MachID)
 }
 func (mk MUSKeys) Swap(i, j int) { mk[i], mk[j] = mk[j], mk[i] }
 

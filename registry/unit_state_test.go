@@ -507,11 +507,11 @@ func TestMUSKeys(t *testing.T) {
 		}
 		return true
 	}
-	k1 := MUSKey{name: "abc", machID: "aaa"}
-	k2 := MUSKey{name: "abc", machID: "zzz"}
-	k3 := MUSKey{name: "def", machID: "bbb"}
-	k4 := MUSKey{name: "ppp", machID: "zzz"}
-	k5 := MUSKey{name: "xxx", machID: "aaa"}
+	k1 := MUSKey{Name: "abc", MachID: "aaa"}
+	k2 := MUSKey{Name: "abc", MachID: "zzz"}
+	k3 := MUSKey{Name: "def", MachID: "bbb"}
+	k4 := MUSKey{Name: "ppp", MachID: "zzz"}
+	k5 := MUSKey{Name: "xxx", MachID: "aaa"}
 	want := []MUSKey{k1, k2, k3, k4, k5}
 	ms := MUSKeys{k3, k4, k5, k2, k1}
 	if equal(ms, want) {

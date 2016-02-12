@@ -1,4 +1,4 @@
-package registry
+package rpc
 
 import (
 	"errors"
@@ -13,6 +13,7 @@ import (
 	"github.com/coreos/fleet/debug"
 	"github.com/coreos/fleet/log"
 	pb "github.com/coreos/fleet/protobuf"
+	"github.com/coreos/fleet/registry"
 )
 
 var debugRPCServer bool = false
@@ -24,7 +25,7 @@ const (
 )
 
 type rpcserver struct {
-	etcdRegistry Registry
+	etcdRegistry registry.Registry
 	mu           *sync.Mutex
 	listener     net.Listener
 	grpcserver   *grpc.Server
@@ -33,7 +34,7 @@ type rpcserver struct {
 	localRegistry *inmemoryRegistry
 }
 
-func NewRPCServer(reg Registry, addr string) (*rpcserver, error) {
+func NewRPCServer(reg registry.Registry, addr string) (*rpcserver, error) {
 	s := &rpcserver{
 		etcdRegistry:  reg,
 		mu:            new(sync.Mutex),

@@ -35,6 +35,7 @@ import (
 	"github.com/coreos/fleet/pkg"
 	"github.com/coreos/fleet/pkg/lease"
 	"github.com/coreos/fleet/registry"
+	"github.com/coreos/fleet/registry/rpc"
 	"github.com/coreos/fleet/systemd"
 	"github.com/coreos/fleet/unit"
 	"github.com/coreos/fleet/version"
@@ -105,8 +106,23 @@ func New(cfg config.Config, listeners []net.Listener) (*Server, error) {
 
 	etcdRequestTimeout := time.Duration(cfg.EtcdRequestTimeout*1000) * time.Millisecond
 	kAPI := etcd.NewKeysAPI(eClient)
-	etcdReg := registry.NewEtcdRegistry(kAPI, cfg.EtcdKeyPrefix, etcdRequestTimeout)
-	reg := registry.NewRegistryMux(etcdReg, mach)
+
+	var (
+		reg        engine.CompleteRegistry
+		genericReg interface{}
+	)
+	if !cfg.EnableGRPC {
+		genericReg = registry.NewEtcdRegistry(kAPI, cfg.EtcdKeyPrefix, etcdRequestTimeout)
+		if obj, ok := genericReg.(engine.CompleteRegistry); ok {
+			reg = obj
+		}
+	} else {
+		etcdReg := registry.NewEtcdRegistry(kAPI, cfg.EtcdKeyPrefix, etcdRequestTimeout)
+		genericReg = rpc.NewRegistryMux(etcdReg, mach)
+		if obj, ok := genericReg.(engine.CompleteRegistry); ok {
+			reg = obj
+		}
+	}
 
 	pub := agent.NewUnitStatePublisher(reg, mach, agentTTL)
 	gen := unit.NewUnitStateGenerator(mgr)
@@ -121,7 +137,13 @@ func New(cfg config.Config, listeners []net.Listener) (*Server, error) {
 
 	ar := agent.NewReconciler(reg, rStream)
 
-	e := engine.New(reg, lManager, rStream, mach, reg.EngineChanged)
+	var e *engine.Engine
+	if !cfg.EnableGRPC {
+		e = engine.New(reg, lManager, rStream, mach, nil, cfg.EnableGRPC)
+	} else {
+		regMux := genericReg.(*rpc.RegistryMux)
+		e = engine.New(reg, lManager, rStream, mach, regMux.EngineChanged, cfg.EnableGRPC)
+	}
 
 	if len(listeners) == 0 {
 		listeners, err = activation.Listeners(false)
