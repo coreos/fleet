@@ -670,8 +670,6 @@ func lazyCreateUnits(args []string) error {
 	errchan := make(chan error)
 	var wg sync.WaitGroup
 	for _, arg := range args {
-		// TODO(jonboulle): this loop is getting too unwieldy; factor it out
-
 		arg = maybeAppendDefaultUnitType(arg)
 		name := unitNameMangle(arg)
 
