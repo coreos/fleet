@@ -482,6 +482,31 @@ func getChecker() *ssh.HostKeyChecker {
 	return ssh.NewHostKeyChecker(keyFile)
 }
 
+func getUnitFile(file string) (*unit.UnitFile, error) {
+	var uf *unit.UnitFile
+
+	// Failing that, assume the name references a local unit file on disk,
+	// and attempt to load that, if it exists
+	if _, err := os.Stat(file); !os.IsNotExist(err) {
+		uf, err = getUnitFromFile(file)
+		if err != nil {
+			return nil, fmt.Errorf("failed getting Unit(%s) from file: %v", file, err)
+		}
+	} else {
+		// Otherwise (if the unit file does not exist), check if the name appears to be an instance unit,
+		// and if so, check for a corresponding template unit in the Registry
+		uf, err = getUnitFileFromTemplate(file)
+		if err != nil {
+			return nil, err
+		}
+
+		// If we found a template unit, create a near-identical instance unit in
+		// the Registry - same unit file as the template, but different name
+	}
+
+	return uf, nil
+}
+
 // getUnitFromFile attempts to load a Unit from a given filename
 // It returns the Unit or nil, and any error encountered
 func getUnitFromFile(file string) (*unit.UnitFile, error) {
@@ -655,24 +680,9 @@ func lazyCreateUnits(args []string) error {
 			continue
 		}
 
-		var uf *unit.UnitFile
-		// Failing that, assume the name references a local unit file on disk, and attempt to load that, if it exists
-		// TODO(mischief): consolidate these two near-identical codepaths
-		if _, err := os.Stat(arg); !os.IsNotExist(err) {
-			uf, err = getUnitFromFile(arg)
-			if err != nil {
-				return fmt.Errorf("failed getting Unit(%s) from file: %v", arg, err)
-			}
-		} else {
-			// Otherwise (if the unit file does not exist), check if the name appears to be an instance unit,
-			// and if so, check for a corresponding template unit in the Registry
-			uf, err = getUnitFileFromTemplate(arg)
-			if err != nil {
-				return err
-			}
-
-			// If we found a template unit, create a near-identical instance unit in
-			// the Registry - same unit file as the template, but different name
+		uf, err := getUnitFile(arg)
+		if err != nil {
+			return err
 		}
 
 		_, err = createUnit(name, uf)
