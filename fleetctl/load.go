@@ -46,8 +46,6 @@ func init() {
 }
 
 func runLoadUnits(args []string) (exit int) {
-	attempts := getBlockAttempts()
-
 	if err := lazyCreateUnits(args); err != nil {
 		stderr("Error creating units: %v", err)
 		return 1
@@ -68,7 +66,7 @@ func runLoadUnits(args []string) (exit int) {
 		}
 	}
 
-	exit = tryWaitForUnitStates(loading, "load", job.JobStateLoaded, attempts, os.Stdout)
+	exit = tryWaitForUnitStates(loading, "load", job.JobStateLoaded, getBlockAttempts(), os.Stdout)
 
 	return
 }
