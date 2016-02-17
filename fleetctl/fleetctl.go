@@ -746,6 +746,56 @@ func setTargetStateOfUnits(units []string, state job.JobState) ([]*schema.Unit, 
 	return triggered, nil
 }
 
+// getBlockAttempts gets the correct value of how many attempts to try
+// before giving up on an operation.
+// It returns a negative value which means try forever, if zero is
+// returned then do not make any attempt, and if a positive value is
+// returned then try up to that value
+func getBlockAttempts() int {
+	// By default we wait forever
+	var attempts int = -1
+
+	// Up to BlockAttempts
+	if sharedFlags.BlockAttempts > 0 {
+		attempts = sharedFlags.BlockAttempts
+	}
+
+	// NoBlock we do not wait
+	if sharedFlags.NoBlock {
+		attempts = 0
+	}
+
+	return attempts
+}
+
+// tryWaitForUnitStates tries to wait for units to reach the desired state.
+// It takes 5 arguments, the units to wait for, the desired state, the
+// desired JobState, how many attempts before timing out and a writer
+// interface.
+// tryWaitForUnitStates polls each of the indicated units until they
+// reach the desired state. If maxAttempts is zero, then it will not
+// wait, it will assume that all units reached their desired state.
+// If maxAttempts is negative tryWaitForUnitStates will retry forever, and
+// if it is greater than zero, it will retry up to the indicated value.
+// It returns 0 on success or 1 on errors.
+func tryWaitForUnitStates(units []string, state string, js job.JobState, maxAttempts int, out io.Writer) (ret int) {
+	// We do not wait just assume we reached the desired state
+	if maxAttempts == 0 {
+		for _, name := range units {
+			stdout("Triggered unit %s %s", name, state)
+		}
+		return
+	}
+
+	errchan := waitForUnitStates(units, js, maxAttempts, out)
+	for err := range errchan {
+		stderr("Error waiting for units: %v", err)
+		ret = 1
+	}
+
+	return
+}
+
 // waitForUnitStates polls each of the indicated units until each of their
 // states is equal to that which the caller indicates, or until the
 // polling operation times out. waitForUnitStates will retry forever, or
