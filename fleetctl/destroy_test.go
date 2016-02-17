@@ -75,6 +75,11 @@ func TestRunDestroyUnits(t *testing.T) {
 			0,
 		},
 		{
+			"destroy non-existent units",
+			[]string{"y1", "y2"},
+			0,
+		},
+		{
 			"attempt to destroy available and non-available units",
 			[]string{"j1", "j2", "j3"},
 			0,
