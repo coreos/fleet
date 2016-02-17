@@ -52,6 +52,8 @@ func init() {
 }
 
 func runStopUnit(args []string) (exit int) {
+	attempts := getBlockAttempts()
+
 	units, err := findUnits(args)
 	if err != nil {
 		stderr("%v", err)
@@ -79,17 +81,7 @@ func runStopUnit(args []string) (exit int) {
 		}
 	}
 
-	if !sharedFlags.NoBlock {
-		errchan := waitForUnitStates(stopping, job.JobStateLoaded, sharedFlags.BlockAttempts, os.Stdout)
-		for err := range errchan {
-			stderr("Error waiting for units: %v", err)
-			exit = 1
-		}
-	} else {
-		for _, name := range stopping {
-			stdout("Triggered unit %s stop", name)
-		}
-	}
+	exit = tryWaitForUnitStates(stopping, "stop", job.JobStateLoaded, attempts, os.Stdout)
 
 	return
 }
