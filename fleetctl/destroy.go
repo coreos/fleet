@@ -42,6 +42,11 @@ func runDestroyUnits(args []string) (exit int) {
 	for _, v := range units {
 		err := cAPI.DestroyUnit(v.Name)
 		if err != nil {
+			// If unit does not exist do not error out
+			u, _ := cAPI.Unit(v.Name)
+			if u == nil {
+				continue
+			}
 			stderr("Error destroying units: %v", err)
 			exit = 1
 			continue
