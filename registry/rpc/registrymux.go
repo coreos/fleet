@@ -56,33 +56,41 @@ func (r *RegistryMux) EngineChanged(newEngine machine.MachineState) {
 	r.currentEngine = newEngine
 	log.Infof("Engine changed, checking capabilities %+v", newEngine)
 	if r.localMachine.State().Capabilities.Has(machine.CapGRPC) {
-		if r.rpcserver != nil {
+		if r.rpcserver != nil && r.rpcRegistry != nil && !r.rpcRegistry.IsRegistryReady() {
 			// If the engine changed, we need to stop the rpc server
 			r.rpcserver.Stop()
 			r.rpcserver = nil
 		}
 		if newEngine.ID == r.localMachine.State().ID {
-			// start rpc server
-			log.Infof("Starting rpc server...\n")
-			var err error
-			r.rpcserver, err = NewRPCServer(r.etcdRegistry, newEngine.PublicIP)
-			if err != nil {
-				log.Fatalf("Unable to create rpc server %+v", err)
+			if r.rpcserver == nil {
+				// start rpc server
+				log.Infof("Starting rpc server...\n")
+				var err error
+				r.rpcserver, err = NewRPCServer(r.etcdRegistry, newEngine.PublicIP)
+				if err != nil {
+					log.Fatalf("Unable to create rpc server %+v", err)
+				}
+
+				go func() {
+					errc := make(chan error, 1)
+					if errc <- r.rpcserver.Start(); <-errc != nil {
+						log.Fatalf("Failed to serve gRPC requests on listener: %v", <-errc)
+					}
+				}()
 			}
 
-			go func() {
-				errc := make(chan error, 1)
-				if errc <- r.rpcserver.Start(); <-errc != nil {
-					log.Fatalf("Failed to serve gRPC requests on listener: %v", <-errc)
-				}
-			}()
 		}
 		if newEngine.Capabilities.Has(machine.CapGRPC) {
-			log.Infof("New engine supports gRPC, connecting\n")
-			r.rpcRegistry = NewRPCRegistry(r.rpcDialer)
-			// connect to rpc registry
-			r.rpcRegistry.Connect()
-			r.currentRegistry = r.rpcRegistry
+			if r.rpcRegistry != nil && r.rpcRegistry.IsRegistryReady() {
+				log.Infof("Reusing gRPC engine, connection is READY\n")
+				r.currentRegistry = r.rpcRegistry
+			} else {
+				log.Infof("New engine supports gRPC, connecting\n")
+				r.rpcRegistry = NewRPCRegistry(r.rpcDialer)
+				// connect to rpc registry
+				r.rpcRegistry.Connect()
+				r.currentRegistry = r.rpcRegistry
+			}
 		} else {
 			log.Infof("Falling back to etcd registry\n")
 			r.currentRegistry = r.etcdRegistry
@@ -101,6 +109,14 @@ func (r *RegistryMux) getRegistry() registry.Registry {
 		return r.etcdRegistry
 	}
 	return r.currentRegistry
+}
+
+func (r *RegistryMux) IsRegistryReady() bool {
+	return r.getRegistry().IsRegistryReady()
+}
+
+func (r *RegistryMux) UseEtcdRegistry() bool {
+	return r.getRegistry().UseEtcdRegistry()
 }
 
 func (r *RegistryMux) ClearUnitHeartbeat(name string) {

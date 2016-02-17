@@ -82,6 +82,18 @@ func (r *RPCRegistry) Connect() {
 	log.Info("Connected succesfully to fleet-engine via grpc!")
 }
 
+func (r *RPCRegistry) IsRegistryReady() bool {
+	if r.registryConn != nil {
+		log.Infof("IsReadyConnectionState %s", r.registryConn.State().String())
+		return r.registryConn.State().String() == grpcConnectionStateReady
+	}
+	return false
+}
+
+func (r *RPCRegistry) UseEtcdRegistry() bool {
+	return false
+}
+
 func (r *RPCRegistry) ClearUnitHeartbeat(unitName string) {
 	if DebugRPCRegistry {
 		defer debug.Exit_(debug.Enter_(unitName))

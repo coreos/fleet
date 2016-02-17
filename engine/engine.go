@@ -79,35 +79,25 @@ func (e *Engine) Run(ival time.Duration, stop <-chan struct{}) {
 			return
 		}
 
-		var previousEngine string
-		if e.enableGRPC && e.lease != nil {
-			previousEngine = e.lease.MachineID()
-		}
-
-		var l lease.Lease
-		if isLeader(e.lease, machID) {
-			l = renewLeadership(e.lease, leaseTTL)
+		if e.enableGRPC {
+			// rpcLeadership gets the lease (leader), and apply changes to the engine state if need it.
+			e.lease = e.rpcLeadership(leaseTTL, machID)
 		} else {
-			l = acquireLeadership(e.lManager, machID, engineVersion, leaseTTL)
-		}
-
-		// log all leadership changes
-		if l != nil && e.lease == nil && l.MachineID() != machID {
-			log.Infof("Engine leader is %s", l.MachineID())
-		} else if l != nil && e.lease != nil && l.MachineID() != e.lease.MachineID() {
-			log.Infof("Engine leadership changed from %s to %s", e.lease.MachineID(), l.MachineID())
-		}
-
-		e.lease = l
-		if e.enableGRPC && e.lease != nil && previousEngine != e.lease.MachineID() {
-			engineState, err := e.getMachineState(e.lease.MachineID())
-			if err != nil {
-				log.Errorf("Failed to get machine state for machine %s %v", e.lease.MachineID(), err)
+			var l lease.Lease
+			if isLeader(e.lease, machID) {
+				l = renewLeadership(e.lease, leaseTTL)
+			} else {
+				l = acquireLeadership(e.lManager, machID, engineVersion, leaseTTL)
 			}
-			if engineState != nil {
-				log.Infof("Updating engine state...")
-				go e.updateEngineState(*engineState)
+
+			// log all leadership changes
+			if l != nil && e.lease == nil && l.MachineID() != machID {
+				log.Infof("Engine leader is %s", l.MachineID())
+			} else if l != nil && e.lease != nil && l.MachineID() != e.lease.MachineID() {
+				log.Infof("Engine leadership changed from %s to %s", e.lease.MachineID(), l.MachineID())
 			}
+
+			e.lease = l
 		}
 
 		if !isLeader(e.lease, machID) {
@@ -300,19 +290,4 @@ func (e *Engine) attemptScheduleUnit(name, machID string) bool {
 
 	log.Infof("Scheduled Unit(%s) to Machine(%s)", name, machID)
 	return true
-}
-
-func (e *Engine) getMachineState(machID string) (*machine.MachineState, error) {
-	machines, err := e.registry.Machines()
-	if err != nil {
-		log.Errorf("Unable to get the list of machines from the registry: %v", err)
-		return nil, err
-	}
-
-	for _, s := range machines {
-		if s.ID == machID {
-			return &s, nil
-		}
-	}
-	return nil, nil
 }

@@ -81,6 +81,14 @@ func (f *FakeRegistry) SetUnitStates(states []unit.UnitState) {
 	}
 }
 
+func (f *FakeRegistry) IsRegistryReady() bool {
+	return true
+}
+
+func (f *FakeRegistry) UseEtcdRegistry() bool {
+	return false
+}
+
 func (f *FakeRegistry) Machines() ([]machine.MachineState, error) {
 	f.RLock()
 	defer f.RUnlock()
