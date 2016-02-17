@@ -36,8 +36,6 @@ func init() {
 }
 
 func runUnloadUnit(args []string) (exit int) {
-	attempts := getBlockAttempts()
-
 	units, err := findUnits(args)
 	if err != nil {
 		stderr("%v", err)
@@ -62,7 +60,7 @@ func runUnloadUnit(args []string) (exit int) {
 		}
 	}
 
-	exit = tryWaitForUnitStates(wait, "unload", job.JobStateInactive, attempts, os.Stdout)
+	exit = tryWaitForUnitStates(wait, "unload", job.JobStateInactive, getBlockAttempts(), os.Stdout)
 
 	return
 }

@@ -52,8 +52,6 @@ func init() {
 }
 
 func runStopUnit(args []string) (exit int) {
-	attempts := getBlockAttempts()
-
 	units, err := findUnits(args)
 	if err != nil {
 		stderr("%v", err)
@@ -81,7 +79,7 @@ func runStopUnit(args []string) (exit int) {
 		}
 	}
 
-	exit = tryWaitForUnitStates(stopping, "stop", job.JobStateLoaded, attempts, os.Stdout)
+	exit = tryWaitForUnitStates(stopping, "stop", job.JobStateLoaded, getBlockAttempts(), os.Stdout)
 
 	return
 }
