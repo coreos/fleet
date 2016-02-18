@@ -15,9 +15,11 @@
 package main
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/coreos/fleet/client"
+	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/registry"
 	"github.com/coreos/fleet/unit"
@@ -25,6 +27,19 @@ import (
 
 	"github.com/coreos/fleet/Godeps/_workspace/src/github.com/coreos/go-semver/semver"
 )
+
+func appendJobsForTests(jobs *[]job.Job, machine machine.MachineState, prefix string, unitCnt int) {
+	for i := 1; i <= unitCnt; i++ {
+		j := job.Job{
+			Name:            fmt.Sprintf("%s%d.service", prefix, i),
+			Unit:            unit.UnitFile{},
+			TargetMachineID: machine.ID,
+		}
+		*jobs = append(*jobs, j)
+	}
+
+	return
+}
 
 func newFakeRegistryForCheckVersion(v string) registry.ClusterRegistry {
 	sv, err := semver.NewVersion(v)
