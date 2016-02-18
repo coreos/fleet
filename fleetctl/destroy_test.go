@@ -15,7 +15,10 @@
 package main
 
 import (
+	"fmt"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/coreos/fleet/client"
 	"github.com/coreos/fleet/job"
@@ -24,7 +27,13 @@ import (
 	"github.com/coreos/fleet/unit"
 )
 
-func newFakeRegistryForDestroy() client.API {
+type DestroyTestResults struct {
+	Description  string
+	DestroyUnits []string
+	ExpectedExit int
+}
+
+func newFakeRegistryForDestroy(prefix string, unitCnt int) client.API {
 	// clear machineStates for every invocation
 	machineStates = nil
 	machines := []machine.MachineState{
@@ -32,26 +41,31 @@ func newFakeRegistryForDestroy() client.API {
 		newMachineState("595989bb-cbb7-49ce-8726-722d6e157b4e", "5.6.7.8", map[string]string{"foo": "bar"}),
 	}
 
-	jobs := []job.Job{
-		job.Job{Name: "j1.service", Unit: unit.UnitFile{}, TargetMachineID: machines[0].ID},
-		job.Job{Name: "j2.service", Unit: unit.UnitFile{}, TargetMachineID: machines[1].ID},
-	}
+	jobs := make([]job.Job, 0)
+	appendJobsForTests(&jobs, machines[0], prefix, unitCnt)
+	appendJobsForTests(&jobs, machines[1], prefix, unitCnt)
 
-	states := []unit.UnitState{
-		unit.UnitState{
-			UnitName:    "j1.service",
+	states := make([]unit.UnitState, 0)
+	for i := 1; i <= unitCnt; i++ {
+		state := unit.UnitState{
+			UnitName:    fmt.Sprintf("%s%d.service", prefix, i),
 			LoadState:   "loaded",
 			ActiveState: "active",
 			SubState:    "listening",
 			MachineID:   machines[0].ID,
-		},
-		unit.UnitState{
-			UnitName:    "j2.service",
+		}
+		states = append(states, state)
+	}
+
+	for i := 1; i <= unitCnt; i++ {
+		state := unit.UnitState{
+			UnitName:    fmt.Sprintf("%s%d.service", prefix, i),
 			LoadState:   "loaded",
 			ActiveState: "inactive",
 			SubState:    "dead",
 			MachineID:   machines[1].ID,
-		},
+		}
+		states = append(states, state)
 	}
 
 	reg := registry.NewFakeRegistry()
@@ -62,16 +76,26 @@ func newFakeRegistryForDestroy() client.API {
 	return &client.RegistryClient{Registry: reg}
 }
 
+func doDestroyUnits(r DestroyTestResults, errchan chan error) {
+	exit := runDestroyUnits(r.DestroyUnits)
+	if exit != r.ExpectedExit {
+		errchan <- fmt.Errorf("%s: expected exit code %d but received %d", r.Description, r.ExpectedExit, exit)
+	}
+	for _, destroyedUnit := range r.DestroyUnits {
+		u, _ := cAPI.Unit(destroyedUnit)
+		if u != nil {
+			errchan <- fmt.Errorf("%s: unit %s was not destroyed as requested", r.Description, destroyedUnit)
+		}
+	}
+}
+
 // TestRunDestroyUnits checks for correct unit destruction
 func TestRunDestroyUnits(t *testing.T) {
-	for _, s := range []struct {
-		Description  string
-		DestroyUnits []string
-		ExpectedExit int
-	}{
+	unitPrefix := "j"
+	results := []DestroyTestResults{
 		{
 			"destroy available units",
-			[]string{"j1", "j2"},
+			[]string{"j1", "j2", "j3", "j4", "j5"},
 			0,
 		},
 		{
@@ -81,22 +105,39 @@ func TestRunDestroyUnits(t *testing.T) {
 		},
 		{
 			"attempt to destroy available and non-available units",
-			[]string{"j1", "j2", "j3"},
+			[]string{"y1", "y2", "y3", "y4", "j1", "j2", "j3", "j4", "j5", "y0"},
 			0,
 		},
-	} {
-		cAPI = newFakeRegistryForDestroy()
-		exit := runDestroyUnits(s.DestroyUnits)
-		if exit != s.ExpectedExit {
-			t.Errorf("%s: expected exit code %d but received %d",
-				s.Description, s.ExpectedExit, exit)
-		}
-		for _, destroyedUnit := range s.DestroyUnits {
-			u, _ := cAPI.Unit(destroyedUnit)
-			if u != nil {
-				t.Errorf("%s: unit %s was not destroyed as requested",
-					s.Description, destroyedUnit)
-			}
+	}
+
+	// Check with two goroutines we don't care we should just get
+	// the right result. If you happen to inspect this code for
+	// errors then you probably got hit by a race condition in
+	// Destroy command that should not happen
+	for _, r := range results {
+		var wg sync.WaitGroup
+		errchan := make(chan error)
+
+		cAPI = newFakeRegistryForDestroy(unitPrefix, len(r.DestroyUnits))
+
+		wg.Add(2)
+		go func() {
+			defer wg.Done()
+			time.Sleep(2 * time.Microsecond)
+			doDestroyUnits(r, errchan)
+		}()
+		go func() {
+			defer wg.Done()
+			doDestroyUnits(r, errchan)
+		}()
+
+		go func() {
+			wg.Wait()
+			close(errchan)
+		}()
+
+		for err := range errchan {
+			t.Errorf("%v", err)
 		}
 	}
 }
