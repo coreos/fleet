@@ -1,6 +1,7 @@
 package rpc
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"sync"
@@ -37,15 +38,23 @@ func NewRegistryMux(etcdRegistry *registry.EtcdRegistry, localMachine machine.Ma
 }
 
 func (r *RegistryMux) rpcDialer(_ string, timeout time.Duration) (net.Conn, error) {
+	ticker := time.Tick(dialRegistryReconnectTimeout)
+	alert := time.After(timeout)
+
 	for {
-		addr := fmt.Sprintf("%s:%d", r.currentEngine.PublicIP, rpcServerPort)
-		conn, err := net.Dial("tcp", addr)
-		if err == nil {
-			log.Infof("Connected to engine on %s\n", r.currentEngine.PublicIP)
-			return conn, nil
+		select {
+		case <-alert:
+			log.Errorf("Unable to connect to engine %s\n", r.currentEngine.PublicIP)
+			return nil, errors.New("Unable to connect to new engine, the client connection is closing")
+		case <-ticker:
+			addr := fmt.Sprintf("%s:%d", r.currentEngine.PublicIP, rpcServerPort)
+			conn, err := net.Dial("tcp", addr)
+			if err == nil {
+				log.Infof("Connected to engine on %s\n", r.currentEngine.PublicIP)
+				return conn, nil
+			}
+			log.Errorf("Retry to connect to new engine: %+v", err)
 		}
-		log.Errorf("Unable to connect to new engine: %+v", err)
-		time.Sleep(dialRegistryReconnectTimeout)
 	}
 }
 

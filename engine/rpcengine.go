@@ -27,16 +27,13 @@ import (
 func (e *Engine) rpcLeadership(leaseTTL time.Duration, machID string) lease.Lease {
 	var previousEngine string
 	if e.lease != nil {
-		log.Infof(">> Previous Engine %v", e.lease.MachineID())
 		previousEngine = e.lease.MachineID()
 	}
 
 	var l lease.Lease
 	if isLeader(e.lease, machID) {
-		log.Infof(">> renewLeadership %v %v", e.lease, engineVersion, leaseTTL)
 		l = rpcRenewLeadership(e.lManager, e.lease, engineVersion, leaseTTL)
 	} else {
-		log.Infof(">> acquireLeadership %v %v %v", e.lManager, machID, leaseTTL)
 		l = rpcAcquireLeadership(e.registry, e.lManager, machID, engineVersion, leaseTTL)
 	}
 
@@ -68,7 +65,6 @@ func rpcAcquireLeadership(reg registry.Registry, lManager lease.Manager, machID 
 		log.Errorf("Unable to determine current lease: %v", err)
 		return nil
 	}
-	log.Infof("acquire leader get lease %v", existing)
 
 	var l lease.Lease
 	if (existing == nil && reg.UseEtcdRegistry()) || (existing == nil && !reg.IsRegistryReady()) {
@@ -89,8 +85,8 @@ func rpcAcquireLeadership(reg registry.Registry, lManager lease.Manager, machID 
 		return existing
 	}
 
-	// TODO(hector): Here we could check a possible SLA or too much busyness of the leader to
-	// determine if we steal the leadership or not
+	// TODO(hector): Here we could add a possible SLA to determine when the leader
+	// is too busy. In such a case, we can trigger a new leader election
 	if (existing != nil && reg.UseEtcdRegistry()) || (existing != nil && !reg.IsRegistryReady()) {
 		rem := existing.TimeRemaining()
 		l, err = lManager.StealLease(engineLeaseName, machID, ver, ttl+rem, existing.Index())

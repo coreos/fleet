@@ -19,7 +19,7 @@ import (
 )
 
 const (
-	grpcConnectionTimeout = 300 * time.Millisecond
+	grpcConnectionTimeout = 5000 * time.Millisecond
 
 	grpcConnectionStateReady      = "READY"
 	grpcConnectionStateConnecting = "CONNECTING"
@@ -73,7 +73,7 @@ func (r *RPCRegistry) getClient() pb.RegistryClient {
 func (r *RPCRegistry) Connect() {
 	// We want the connection operation to block and constantly reconnect using grpc backoff
 	log.Info("Starting gRPC connection to fleet-engine...")
-	connection, err := grpc.Dial(":fleet-engine:", grpc.WithInsecure(), grpc.WithDialer(r.dialer), grpc.WithBlock())
+	connection, err := grpc.Dial(":fleet-engine:", grpc.WithTimeout(12*time.Second), grpc.WithInsecure(), grpc.WithDialer(r.dialer), grpc.WithBlock())
 	if err != nil {
 		log.Fatalf("Unable to dial to registry: %s", err)
 	}
@@ -84,14 +84,41 @@ func (r *RPCRegistry) Connect() {
 
 func (r *RPCRegistry) IsRegistryReady() bool {
 	if r.registryConn != nil {
-		log.Infof("IsReadyConnectionState %s", r.registryConn.State().String())
-		return r.registryConn.State().String() == grpcConnectionStateReady
+		st, err := r.registryConn.State()
+		if err != nil {
+			log.Fatalf("Unable to get the state of rpc connection: %v", err)
+		}
+		connState := st.String()
+		log.Infof("Registry connection state: %s", connState)
+		if connState != grpcConnectionStateReady {
+			log.Errorf("unable to connect to registry connection state: %s", connState)
+			return false
+		}
+		log.Infof("Getting server status...")
+		status, err := r.Status()
+		if err != nil {
+			log.Errorf("unable to get the status of the registry service %v", err)
+			return false
+		}
+		log.Infof("Status of rpc service: %d, connection state: %s", status, connState)
+		return status == pb.HealthCheckResponse_SERVING && err == nil
 	}
 	return false
 }
 
 func (r *RPCRegistry) UseEtcdRegistry() bool {
 	return false
+}
+
+func (r *RPCRegistry) Status() (pb.HealthCheckResponse_ServingStatus, error) {
+	req := &pb.HealthCheckRequest{
+		Service: registryServiceName,
+	}
+	resp, err := r.getClient().Status(r.ctx(), req)
+	if err != nil {
+		return -1, err
+	}
+	return resp.Status, err
 }
 
 func (r *RPCRegistry) ClearUnitHeartbeat(unitName string) {

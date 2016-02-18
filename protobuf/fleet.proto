@@ -13,14 +13,14 @@ service Registry {
 	rpc GetScheduledUnit(UnitName) returns (MaybeScheduledUnit);
 	// should _never_ be used ?
 	rpc GetUnit(UnitName) returns (MaybeUnit);
-	rpc GetUnits(UnitFilter) returns (Units); // => global status ? 
+	rpc GetUnits(UnitFilter) returns (Units); // => global status ?
 	// global status <= pretty much like list-unit-files
 	rpc GetUnitStates(UnitStateFilter) returns (UnitStates);
 	rpc ClearUnitHeartbeat(UnitName) returns (GenericReply);
 	rpc CreateUnit(Unit) returns (GenericReply);
 	rpc DestroyUnit(UnitName) returns (GenericReply);
 	rpc UnitHeartbeat(Heartbeat) returns (GenericReply);
-	// mix heartbeat with *ttl'' 
+	// mix heartbeat with *ttl''
 	rpc RemoveUnitState(UnitName) returns (GenericReply);
 	rpc SaveUnitState(SaveUnitStateRequest) returns (GenericReply);
 	rpc ScheduleUnit(ScheduleUnitRequest) returns (GenericReply);
@@ -29,8 +29,24 @@ service Registry {
 
 	rpc AgentEvents(MachineProperties) returns (stream UpdatedState);
 
+	// Health check
+	rpc Status(HealthCheckRequest) returns (HealthCheckResponse);
+
 	// list-unit-files
 	// 2 rtt, async status acq
+}
+
+message HealthCheckRequest {
+  string service = 1;
+}
+
+message HealthCheckResponse {
+  enum ServingStatus {
+ 	UNKNOWN = 0;
+	SERVING = 1;
+	NOT_SERVING = 2;
+  }
+  ServingStatus status = 1;
 }
 
 enum TargetState {
@@ -75,7 +91,7 @@ message SaveUnitStateRequest {
 	string    name  = 1;
 	UnitState state = 2;
 	int32     ttl   = 3 [(gogoproto.customname) = "TTL"];
-	// machine 
+	// machine
 }
 
 message Heartbeat {
@@ -154,5 +170,3 @@ message UnitOption {
 	string name    = 2;
 	string value   = 3;
 }
-
-

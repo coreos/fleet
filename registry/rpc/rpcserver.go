@@ -10,6 +10,7 @@ import (
 	"github.com/coreos/fleet/Godeps/_workspace/src/golang.org/x/net/context"
 
 	"github.com/coreos/fleet/Godeps/_workspace/src/google.golang.org/grpc"
+	"github.com/coreos/fleet/Godeps/_workspace/src/google.golang.org/grpc/codes"
 	"github.com/coreos/fleet/debug"
 	"github.com/coreos/fleet/log"
 	pb "github.com/coreos/fleet/protobuf"
@@ -22,6 +23,8 @@ const (
 	rpcServerPort    = 50059
 	bindAddrMaxRetry = 5
 	bindRetryTimeout = 500 * time.Millisecond
+
+	registryServiceName = "rpc.Registry"
 )
 
 type rpcserver struct {
@@ -32,6 +35,9 @@ type rpcserver struct {
 
 	stop          chan struct{}
 	localRegistry *inmemoryRegistry
+
+	// serverStatus stores the serving status of this service.
+	serverStatus pb.HealthCheckResponse_ServingStatus
 }
 
 func NewRPCServer(reg registry.Registry, addr string) (*rpcserver, error) {
@@ -62,10 +68,31 @@ func NewRPCServer(reg registry.Registry, addr string) (*rpcserver, error) {
 	s.localRegistry.LoadFrom(s.etcdRegistry)
 	pb.RegisterRegistryServer(s.grpcserver, s)
 
+	s.SetServingStatus(pb.HealthCheckResponse_NOT_SERVING)
+
 	return s, nil
 }
 
+func (s *rpcserver) Status(ctx context.Context, in *pb.HealthCheckRequest) (*pb.HealthCheckResponse, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if in.Service != registryServiceName {
+		return nil, grpc.Errorf(codes.NotFound, "unknown rpc service to collect its status")
+	}
+	return &pb.HealthCheckResponse{
+		Status: s.serverStatus,
+	}, nil
+}
+
+// SetServingStatus is called when need to reset the serving status of the service
+func (s *rpcserver) SetServingStatus(status pb.HealthCheckResponse_ServingStatus) {
+	s.mu.Lock()
+	s.serverStatus = status
+	s.mu.Unlock()
+}
+
 func (s *rpcserver) Start() error {
+	s.SetServingStatus(pb.HealthCheckResponse_SERVING)
 	return s.grpcserver.Serve(s.listener)
 }
 
@@ -73,7 +100,7 @@ func (s *rpcserver) Stop() {
 	if s.listener != nil {
 		s.listener.Close()
 	}
-
+	s.SetServingStatus(pb.HealthCheckResponse_NOT_SERVING)
 	s.grpcserver.Stop()
 }
 
