@@ -785,19 +785,19 @@ func setTargetStateOfUnits(units []string, state job.JobState) ([]*schema.Unit, 
 
 // getBlockAttempts gets the correct value of how many attempts to try
 // before giving up on an operation.
-// It returns a negative value which means try forever, if zero is
-// returned then do not make any attempt, and if a positive value is
+// It returns a negative value which means do not block, if zero is
+// returned then it means try forever, and if a positive value is
 // returned then try up to that value
 func getBlockAttempts() int {
 	// By default we wait forever
-	var attempts int = -1
+	var attempts int = 0
 
 	if sharedFlags.BlockAttempts > 0 {
 		attempts = sharedFlags.BlockAttempts
 	}
 
 	if sharedFlags.NoBlock {
-		attempts = 0
+		attempts = -1
 	}
 
 	return attempts
@@ -808,14 +808,14 @@ func getBlockAttempts() int {
 // desired JobState, how many attempts before timing out and a writer
 // interface.
 // tryWaitForUnitStates polls each of the indicated units until they
-// reach the desired state. If maxAttempts is zero, then it will not
+// reach the desired state. If maxAttempts is negative, then it will not
 // wait, it will assume that all units reached their desired state.
-// If maxAttempts is negative tryWaitForUnitStates will retry forever, and
+// If maxAttempts is zero tryWaitForUnitStates will retry forever, and
 // if it is greater than zero, it will retry up to the indicated value.
 // It returns 0 on success or 1 on errors.
 func tryWaitForUnitStates(units []string, state string, js job.JobState, maxAttempts int, out io.Writer) (ret int) {
 	// We do not wait just assume we reached the desired state
-	if maxAttempts == 0 {
+	if maxAttempts <= -1 {
 		for _, name := range units {
 			stdout("Triggered unit %s %s", name, state)
 		}
