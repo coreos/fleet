@@ -83,10 +83,17 @@ func doStopUnits(r StopTestResults, errchan chan error) {
 	if exit != r.ExpectedExit {
 		errchan <- fmt.Errorf("%s: expected exit code %d but received %d", r.Description, r.ExpectedExit, exit)
 	}
-	for _, unit := range r.Units {
-		u, _ := cAPI.Unit(unit)
-		if u != nil {
-			errchan <- fmt.Errorf("%s: unit %s was not stopped as requested", r.Description, unit)
+
+	real_units, err := findUnits(r.Units)
+	if err != nil {
+		errchan <- fmt.Errorf("%v", err)
+		return
+	}
+
+	// We assume that we reached the desired state
+	for _, v := range real_units {
+		if job.JobState(v.DesiredState) != job.JobStateLoaded {
+			errchan <- fmt.Errorf("Error: unit %s was not stopped as requested", v.Name)
 		}
 	}
 }
