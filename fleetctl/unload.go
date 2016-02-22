@@ -36,6 +36,8 @@ func init() {
 }
 
 func runUnloadUnit(args []string) (exit int) {
+	attempts := getBlockAttempts()
+
 	units, err := findUnits(args)
 	if err != nil {
 		stderr("%v", err)
@@ -60,17 +62,7 @@ func runUnloadUnit(args []string) (exit int) {
 		}
 	}
 
-	if !sharedFlags.NoBlock {
-		errchan := waitForUnitStates(wait, job.JobStateInactive, sharedFlags.BlockAttempts, os.Stdout)
-		for err := range errchan {
-			stderr("Error waiting for units: %v", err)
-			exit = 1
-		}
-	} else {
-		for _, name := range wait {
-			stdout("Triggered unit %s unload", name)
-		}
-	}
+	exit = tryWaitForUnitStates(wait, "unload", job.JobStateInactive, attempts, os.Stdout)
 
 	return
 }
