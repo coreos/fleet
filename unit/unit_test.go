@@ -265,10 +265,17 @@ pung
 `
 	expected := map[string]map[string][]string{
 		"Service": {
-			"ExecStart":    {`echo    "pi   ng"`},
-			"ExecStop":     {`echo "po ng"`},
-			"ExecStopPre":  {`echo #pang`},
-			"ExecStopPost": {`echo #peng pung`},
+			"ExecStart": {`echo \
+  "pi\
+  ng"`},
+			"ExecStop": {`\
+echo "po\
+ng"`},
+			"ExecStopPre": {`echo\
+#pang`},
+			"ExecStopPost": {`echo\
+#peng\
+pung`},
 		},
 	}
 	unitFile, err := NewUnitFile(contents)

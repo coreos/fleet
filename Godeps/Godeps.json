@@ -31,18 +31,18 @@
 		},
 		{
 			"ImportPath": "github.com/coreos/go-systemd/activation",
-			"Comment": "v2-35-gcf3cdf7",
-			"Rev": "cf3cdf77462baaad163ad2d5d1984b9c1b493701"
+			"Comment": "v3-48-g1f2251651d19",
+			"Rev": "1f2251651d199b698a0be8c8bf2283178a2a97ed"
 		},
 		{
 			"ImportPath": "github.com/coreos/go-systemd/dbus",
-			"Comment": "v2-35-gcf3cdf7",
-			"Rev": "cf3cdf77462baaad163ad2d5d1984b9c1b493701"
+			"Comment": "v3-48-g1f2251651d19",
+			"Rev": "1f2251651d199b698a0be8c8bf2283178a2a97ed"
 		},
 		{
 			"ImportPath": "github.com/coreos/go-systemd/unit",
-			"Comment": "v2-35-gcf3cdf7",
-			"Rev": "cf3cdf77462baaad163ad2d5d1984b9c1b493701"
+			"Comment": "v3-48-g1f2251651d19",
+			"Rev": "1f2251651d199b698a0be8c8bf2283178a2a97ed"
 		},
 		{
 			"ImportPath": "github.com/docker/libcontainer/netlink",
@@ -51,8 +51,8 @@
 		},
 		{
 			"ImportPath": "github.com/godbus/dbus",
-			"Comment": "v2-6-ga5942de",
-			"Rev": "a5942dec6340eb0d57f43f2003c190ce06e43dea"
+			"Comment": "v2-18-g9bb9dbf",
+			"Rev": "9bb9dbf0e53309fa81d26e7230cbb6cff9373cad"
 		},
 		{
 			"ImportPath": "github.com/jonboulle/clockwork",
