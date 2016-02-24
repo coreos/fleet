@@ -23,8 +23,6 @@ import (
 )
 
 func doStopUnits(r commandTestResults, errchan chan error) {
-	sharedFlags.NoBlock = true
-
 	exit := runStopUnit(r.units)
 	if exit != r.expectedExit {
 		errchan <- fmt.Errorf("%s: expected exit code %d but received %d", r.description, r.expectedExit, exit)
@@ -46,6 +44,11 @@ func doStopUnits(r commandTestResults, errchan chan error) {
 
 func TestRunStopUnits(t *testing.T) {
 	unitPrefix := "stop"
+	oldNoBlock := sharedFlags.NoBlock
+	defer func() {
+		sharedFlags.NoBlock = oldNoBlock
+	}()
+
 	results := []commandTestResults{
 		{
 			"stop available units",
@@ -64,6 +67,7 @@ func TestRunStopUnits(t *testing.T) {
 		},
 	}
 
+	sharedFlags.NoBlock = true
 	for _, r := range results {
 		var wg sync.WaitGroup
 		errchan := make(chan error)

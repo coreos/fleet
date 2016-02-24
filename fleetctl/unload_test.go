@@ -23,8 +23,6 @@ import (
 )
 
 func doUnloadUnits(r commandTestResults, errchan chan error) {
-	sharedFlags.NoBlock = true
-
 	exit := runUnloadUnit(r.units)
 	if exit != r.expectedExit {
 		errchan <- fmt.Errorf("%s: expected exit code %d but received %d", r.description, r.expectedExit, exit)
@@ -46,6 +44,11 @@ func doUnloadUnits(r commandTestResults, errchan chan error) {
 
 func TestRunUnloadUnits(t *testing.T) {
 	unitPrefix := "unload"
+	oldNoBlock := sharedFlags.NoBlock
+	defer func() {
+		sharedFlags.NoBlock = oldNoBlock
+	}()
+
 	results := []commandTestResults{
 		{
 			"unload available units",
@@ -64,6 +67,7 @@ func TestRunUnloadUnits(t *testing.T) {
 		},
 	}
 
+	sharedFlags.NoBlock = true
 	for _, r := range results {
 		var wg sync.WaitGroup
 		errchan := make(chan error)
