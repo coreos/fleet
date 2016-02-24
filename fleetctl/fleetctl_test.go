@@ -28,8 +28,57 @@ import (
 	"github.com/coreos/fleet/Godeps/_workspace/src/github.com/coreos/go-semver/semver"
 )
 
-func appendJobsForTests(jobs *[]job.Job, machine machine.MachineState, prefix string, unitCnt int) {
-	for i := 1; i <= unitCnt; i++ {
+type commandTestResults struct {
+	description  string
+	units        []string
+	expectedExit int
+}
+
+func newFakeRegistryForCommands(unitPrefix string, unitCount int) client.API {
+	// clear machineStates for every invocation
+	machineStates = nil
+	machines := []machine.MachineState{
+		newMachineState("c31e44e1-f858-436e-933e-59c642517860", "1.2.3.4", map[string]string{"ping": "pong"}),
+		newMachineState("595989bb-cbb7-49ce-8726-722d6e157b4e", "5.6.7.8", map[string]string{"foo": "bar"}),
+	}
+
+	jobs := make([]job.Job, 0)
+	appendJobsForTests(&jobs, machines[0], unitPrefix, unitCount)
+	appendJobsForTests(&jobs, machines[1], unitPrefix, unitCount)
+
+	states := make([]unit.UnitState, 0)
+	for i := 1; i <= unitCount; i++ {
+		state := unit.UnitState{
+			UnitName:    fmt.Sprintf("%s%d.service", unitPrefix, i),
+			LoadState:   "loaded",
+			ActiveState: "active",
+			SubState:    "listening",
+			MachineID:   machines[0].ID,
+		}
+		states = append(states, state)
+	}
+
+	for i := 1; i <= unitCount; i++ {
+		state := unit.UnitState{
+			UnitName:    fmt.Sprintf("%s%d.service", unitPrefix, i),
+			LoadState:   "loaded",
+			ActiveState: "inactive",
+			SubState:    "dead",
+			MachineID:   machines[1].ID,
+		}
+		states = append(states, state)
+	}
+
+	reg := registry.NewFakeRegistry()
+	reg.SetMachines(machines)
+	reg.SetUnitStates(states)
+	reg.SetJobs(jobs)
+
+	return &client.RegistryClient{Registry: reg}
+}
+
+func appendJobsForTests(jobs *[]job.Job, machine machine.MachineState, prefix string, unitCount int) {
+	for i := 1; i <= unitCount; i++ {
 		j := job.Job{
 			Name:            fmt.Sprintf("%s%d.service", prefix, i),
 			Unit:            unit.UnitFile{},
