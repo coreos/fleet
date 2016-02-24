@@ -1,0 +1,7 @@
+#!/bin/bash -e
+
+CDIR=$(cd `dirname $0` && pwd)
+cd $CDIR
+
+vagrant up
+vagrant ssh core-01 -c "sudo ~/fleet/functional/test"

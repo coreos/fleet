@@ -1,0 +1,49 @@
+#!/bin/bash -e
+
+CDIR=$(cd `dirname $0` && pwd)
+USER_ID=${SUDO_UID:-$(id -u)}
+HOME=$(getent passwd "${USER_ID}" | cut -d: -f6)
+
+cd ${CDIR}/../
+export VERSION=$(git describe --dirty)
+export GOROOT=${HOME}/go
+export PATH=${HOME}/go/bin:${PATH}
+
+if [ ! -S "$SSH_AUTH_SOCK" ]; then
+  eval $(ssh-agent)
+fi
+
+# github doesn't support explicit file permission set, this is workaround
+chmod 0600 functional/fixtures/id_rsa
+ssh-add functional/fixtures/id_rsa
+sudo systemctl stop fleet || true
+
+if [[ ! $(go version 2>/dev/null) ]]; then
+  functional/provision/install_go.sh
+fi
+
+if [ ! -x "bin/fleetd" ] || \
+   [ ! -x "bin/fleetctl" ] || \
+   [ ! $(bin/fleetctl | grep "$VERSION") ]; then
+  ./build
+fi
+
+source build-env
+eval $(go env)
+go test github.com/coreos/fleet/functional -ldflags "${GLDFLAGS}" -v 2>&1 | tee functional/log
+
+total=$(grep -E '^--- (PASS|FAIL)' functional/log | wc -l)
+pass=$(grep '^--- PASS' functional/log | wc -l)
+fail=$(grep '^--- FAIL' functional/log | wc -l)
+
+echo ""
+grep -E '^--- (PASS|FAIL)' functional/log
+
+echo "==========================================================="
+echo "Functional test summary"
+echo "==========================================================="
+echo "# TOTAL: $total"
+echo "# PASS: $pass"
+echo "# FAIL: $fail"
+echo ""
+echo "See functional/log for the detailed output."
