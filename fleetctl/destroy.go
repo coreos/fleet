@@ -16,6 +16,8 @@ package main
 
 import (
 	"time"
+
+	"github.com/coreos/fleet/client"
 )
 
 var cmdDestroyUnit = &Command{
@@ -42,6 +44,10 @@ func runDestroyUnits(args []string) (exit int) {
 	for _, v := range units {
 		err := cAPI.DestroyUnit(v.Name)
 		if err != nil {
+			// Ignore 'Unit does not exist' error
+			if client.IsErrorUnitNotFound(err) {
+				continue
+			}
 			stderr("Error destroying units: %v", err)
 			exit = 1
 			continue
