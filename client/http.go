@@ -137,3 +137,7 @@ func is404(err error) bool {
 	googerr, ok := err.(*googleapi.Error)
 	return ok && googerr.Code == http.StatusNotFound
 }
+
+func IsErrorUnitNotFound(err error) bool {
+	return is404(err)
+}
