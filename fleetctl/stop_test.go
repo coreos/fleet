@@ -61,7 +61,7 @@ func TestRunStopUnits(t *testing.T) {
 			0,
 		},
 		{
-			"attempt to stop available and non-available units",
+			"stop available and non-available units",
 			[]string{"y1", "y2", "y3", "y4", "stop1", "stop2", "stop3", "stop4", "stop5", "y0"},
 			0,
 		},

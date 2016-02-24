@@ -61,7 +61,7 @@ func TestRunUnloadUnits(t *testing.T) {
 			0,
 		},
 		{
-			"attempt to unload available and non-available units",
+			"unload available and non-available units",
 			[]string{"y1", "y2", "y3", "y4", "unload1", "unload2", "unload3", "unload4", "unload5", "y0"},
 			0,
 		},
