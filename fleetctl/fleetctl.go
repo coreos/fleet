@@ -106,6 +106,7 @@ var (
 		BlockAttempts int
 		Fields        string
 		SSHPort       int
+		Replace       bool
 	}{}
 
 	// used to cache MachineStates
@@ -595,7 +596,7 @@ func createUnit(name string, uf *unit.UnitFile) (*schema.Unit, error) {
 // Any error encountered during these steps is returned immediately (i.e.
 // subsequent Jobs are not acted on). An error is also returned if none of the
 // above conditions match a given Job.
-func lazyCreateUnits(args []string) error {
+func lazyCreateUnits(args []string, replace bool) error {
 	errchan := make(chan error)
 	var wg sync.WaitGroup
 	for _, arg := range args {
@@ -609,7 +610,7 @@ func lazyCreateUnits(args []string) error {
 		if err != nil {
 			return fmt.Errorf("error retrieving Unit(%s) from Registry: %v", name, err)
 		}
-		if u != nil {
+		if !replace && u != nil {
 			log.Debugf("Found Unit(%s) in Registry, no need to recreate it", name)
 			warnOnDifferentLocalUnit(arg, u)
 			continue
@@ -647,7 +648,7 @@ func lazyCreateUnits(args []string) error {
 				if err != nil {
 					return fmt.Errorf("failed getting template Unit(%s) from file: %v", uni.Template, err)
 				}
-			} else {
+			} else if !replace {
 				warnOnDifferentLocalUnit(arg, tmpl)
 				uf = schema.MapSchemaUnitOptionsToUnitFile(tmpl.Options)
 			}

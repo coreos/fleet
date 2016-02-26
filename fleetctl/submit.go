@@ -17,7 +17,7 @@ package main
 var cmdSubmitUnit = &Command{
 	Name:    "submit",
 	Summary: "Upload one or more units to the cluster without starting them",
-	Usage:   "UNIT...",
+	Usage:   "[--replace] UNIT...",
 	Description: `Upload one or more units to the cluster without starting them. Useful
 for validating units before they are started.
 
@@ -33,10 +33,11 @@ Submit a directory of units with glob matching:
 
 func init() {
 	cmdSubmitUnit.Flags.BoolVar(&sharedFlags.Sign, "sign", false, "DEPRECATED - this option cannot be used")
+	cmdSubmitUnit.Flags.BoolVar(&sharedFlags.Replace, "replace", false, "replace (I need help with the text)")
 }
 
 func runSubmitUnits(args []string) (exit int) {
-	if err := lazyCreateUnits(args); err != nil {
+	if err := lazyCreateUnits(args, sharedFlags.Replace); err != nil {
 		stderr("Error creating units: %v", err)
 		exit = 1
 	}
