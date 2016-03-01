@@ -26,15 +26,6 @@ Environment="FLEET_METADATA=hostname=server1"
 Environment="FLEET_PUBLIC_IP=172.16.0.101"
 ```
 
-#### Using CLI paramenters
-
-```sh
-fleetd --etcd-cafile /etc/ssl/etcd/ca.pem \
-  --etcd-keyfile /etc/ssl/etcd/client-key.pem \
-  --etcd-certfile /etc/ssl/etcd/client.pem \
-  --etcd-servers https://192.0.2.12:2379
-```
-
 #### Using CoreOS Cloud Config
 
 ```yaml
@@ -112,7 +103,7 @@ The `fleetd` daemon uses two sources for configuration parameters:
 
 fleet will look at `/etc/fleet/fleet.conf` for this config file by default. The `--config` flag may be passed to the `fleetd` binary to use a custom config file location. The options that may be set are defined below. Note that each of the options should be defined at the global level, outside of any INI sections.
 
-Environment variables may also provide configuration options. Options provided in an environment variable will override the corresponding option provided in a config file. To use an environment variable, simply prefix the name of a given option with `FLEET_`, while uppercasing the rest of the name. For example, to set the `--etcd-servers` option to 'http://192.0.2.12:2379' when running the fleetd binary:
+Environment variables may also provide configuration options. Options provided in an environment variable will override the corresponding option provided in a config file. To use an environment variable, simply prefix the name of a given option with `FLEET_`, while uppercasing the rest of the name. For example, to set the `etcd_servers` option to 'http://192.0.2.12:2379' when running the fleetd binary:
 
 ```sh
 $ FLEET_ETCD_SERVERS=http://192.0.2.12:2379 /usr/bin/fleetd
@@ -120,45 +111,45 @@ $ FLEET_ETCD_SERVERS=http://192.0.2.12:2379 /usr/bin/fleetd
 
 ## General Options
 
-#### --verbosity
+#### verbosity
 
 Enable debug logging by setting this to an integer value greater than zero.
 Only a single debug level exists, so all values greater than zero are considered equivalent.
 
 Default: 0
 
-#### --etcd-servers
+#### etcd_servers
 
 Provide a custom set of etcd endpoints.
 
 Default: "http://127.0.0.1:2379,http://127.0.0.1:4001"
 
-#### --etcd-request-timeout
+#### etcd_request_timeout
 
 Amount of time in seconds to allow a single etcd request before considering it failed.
 
 Default: 1.0
 
-#### --etcd-cafile, --etcd-keyfile, --etcd-certfile 
+#### etcd_cafile, etcd_keyfile, etcd_certfile
 
 Provide TLS configuration when SSL certificate authentication is enabled in etcd endpoints
 
 Default: ""
 
-#### --etcd-key-prefix
+#### etcd_key_prefix
 
 Keyspace path for fleet data in etcd.
 
 Default: "/_coreos.com/fleet/"
 
-#### --public-ip
+#### public_ip
 
 IP address that should be published with the local Machine's state and any socket information.
 If not set, fleetd will attempt to detect the IP it should publish based on the machine's IP routing information.
 
 Default: ""
 
-#### --metadata
+#### metadata
 
 Comma-delimited key/value pairs that are published with the local to the fleet registry. This data can be used directly by a client of fleet to make scheduling decisions. An example set of metadata could look like:  
 
@@ -192,31 +183,31 @@ Space and tab characters will be stripped around the equals sign and around each
 
 Default: ""
 
-#### --agent-ttl
+#### agent_ttl
 
 An Agent will be considered dead if it exceeds this amount of time to communicate with the Registry. The agent will attempt a heartbeat at half of this value.
 
 Default: "30s"
 
-#### --engine-reconcile-interval
+#### engine_reconcile_interval
 
 Interval in seconds at which the engine should reconcile the cluster schedule in etcd.
 
 Default: 2
 
-#### --token-limit
+#### token_limit
 
 Maximum number of entries per page returned from API requests.
 
 Default: "100"
 
-### --disable-engine
+### disable_engine
 
 Disable the engine entirely, use with care. You can find more info about this option in [fleet scaling doc][fleet-scale].
 
 Default: false
 
-### --disable-watches
+### disable_watches
 
 Disable the use of etcd watches. Increases scheduling latency. You can find more info about this option in [fleet scaling doc][fleet-scale].
 

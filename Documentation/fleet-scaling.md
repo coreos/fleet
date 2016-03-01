@@ -39,13 +39,13 @@ RPCs between the engine and agent.
     this is an expensive operation. The fewer nodes that are engaged in this
     election, the better. Possible downside is that if there isn't a leader at
     all, the cluster is inoperable. However the (usually) 5 machines running
-    etcd are also a single point of failure. *See the `--disable-engine` flag.*
+    etcd are also a single point of failure. *See the `disable_engine` config flag.*
 
 * Making some defaults exported and allow them to be overridden. For instance
     fleet's tokenLimit controls how many Units are listed per "page". *See the
-    `--token-limit` flag.*
+    `token_limit` config flag.*
 
 * Removing watches from fleet: By removing the watches from fleet we stop
     the entire cluster from walking up whenever a new job is to be scheduled.
     The downside of this change is that fleet's responsiveness is lower.
-    *See the `--disable-watches` flag.*
+    *See the `disable_watches` config flag.*
