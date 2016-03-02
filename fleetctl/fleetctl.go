@@ -483,6 +483,13 @@ func getChecker() *ssh.HostKeyChecker {
 	return ssh.NewHostKeyChecker(keyFile)
 }
 
+// getUnitFile attempts to get a UnitFile configuration
+// It takes a unit file name as a parameter and tries first to lookup
+// the unit from the local disk. If it fails, it checks if the provided
+// file name may reference an instance of a template unit, if so, it
+// tries to get the template configuration either from the registry or
+// the local disk.
+// It returns a UnitFile configuration or nil; and any error ecountered
 func getUnitFile(file string) (*unit.UnitFile, error) {
 	var uf *unit.UnitFile
 	name := unitNameMangle(file)
@@ -509,7 +516,7 @@ func getUnitFile(file string) (*unit.UnitFile, error) {
 		// If we found a template unit, later we create a
 		// near-identical instance unit in the Registry - same
 		// unit file as the template, but different name
-		uf, err = getUnitFileFromTemplate(file, info)
+		uf, err = getUnitFileFromTemplate(info, file)
 		if err != nil {
 			return nil, fmt.Errorf("failed getting Unit(%s) from template: %v", file, err)
 		}
@@ -545,10 +552,11 @@ func getUnitInstanceInfo(name string) (*unit.UnitNameInfo, error) {
 	return uni, nil
 }
 
-// getUnitFileFromTemplate checks if the name appears to be an instance unit
-// and gets its corresponding template unit from the registry or local disk
+// getUnitFileFromTemplate attempts to get a Unit from a template unit that
+// is either in the registry or on the file system
+// It takes two arguments, the template information and the unit file name
 // It returns the Unit or nil; and any error encountered
-func getUnitFileFromTemplate(arg string, uni *unit.UnitNameInfo) (*unit.UnitFile, error) {
+func getUnitFileFromTemplate(uni *unit.UnitNameInfo, fileName string) (*unit.UnitFile, error) {
 	var uf *unit.UnitFile
 
 	tmpl, err := cAPI.Unit(uni.Template)
@@ -557,20 +565,20 @@ func getUnitFileFromTemplate(arg string, uni *unit.UnitNameInfo) (*unit.UnitFile
 	}
 
 	if tmpl != nil {
-		warnOnDifferentLocalUnit(arg, tmpl)
+		warnOnDifferentLocalUnit(fileName, tmpl)
 		uf = schema.MapSchemaUnitOptionsToUnitFile(tmpl.Options)
 		log.Debugf("Template Unit(%s) found in registry", uni.Template)
 	} else {
 		// Finally, if we could not find a template unit in the Registry,
 		// check the local disk for one instead
-		file := path.Join(path.Dir(arg), uni.Template)
-		if _, err := os.Stat(file); os.IsNotExist(err) {
+		filePath := path.Join(path.Dir(fileName), uni.Template)
+		if _, err := os.Stat(filePath); os.IsNotExist(err) {
 			return nil, fmt.Errorf("unable to find Unit(%s) in Registry or on filesystem", uni.Template)
 		}
 
-		uf, err = getUnitFromFile(file)
+		uf, err = getUnitFromFile(filePath)
 		if err != nil {
-			return nil, fmt.Errorf("unable to load Unit(%s) from file: %v", file, err)
+			return nil, fmt.Errorf("unable to load Unit(%s) from file: %v", filePath, err)
 		}
 	}
 
