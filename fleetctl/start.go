@@ -54,6 +54,8 @@ func init() {
 }
 
 func runStartUnit(args []string) (exit int) {
+	attempts := getBlockAttempts()
+
 	if err := lazyCreateUnits(args); err != nil {
 		stderr("Error creating units: %v", err)
 		return 1
@@ -74,17 +76,7 @@ func runStartUnit(args []string) (exit int) {
 		}
 	}
 
-	if !sharedFlags.NoBlock {
-		errchan := waitForUnitStates(starting, job.JobStateLaunched, sharedFlags.BlockAttempts, os.Stdout)
-		for err := range errchan {
-			stderr("Error waiting for units: %v", err)
-			exit = 1
-		}
-	} else {
-		for _, name := range starting {
-			stdout("Triggered unit %s start", name)
-		}
-	}
+	exit = tryWaitForUnitStates(starting, "start", job.JobStateLaunched, attempts, os.Stdout)
 
 	return
 }
