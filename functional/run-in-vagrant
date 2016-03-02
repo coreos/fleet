@@ -4,4 +4,5 @@ CDIR=$(cd `dirname $0` && pwd)
 cd $CDIR
 
 vagrant up
-vagrant ssh core-01 -c "sudo ~/fleet/functional/test"
+ARGS=`for i in "$@"; do printf '%q ' "$i"; done`
+vagrant ssh core-01 -c "sudo ~/fleet/functional/test $ARGS"
