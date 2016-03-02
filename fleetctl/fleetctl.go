@@ -487,7 +487,7 @@ func getUnitFile(file string) (*unit.UnitFile, error) {
 	var uf *unit.UnitFile
 	name := unitNameMangle(file)
 
-	log.Debugf("Looking up for Unit(%s) or its corresponding template", name)
+	log.Debugf("Looking for Unit(%s) or its corresponding template", name)
 
 	// Assume that the file references a local unit file on disk and
 	// attempt to load it, if it exists
@@ -499,14 +499,14 @@ func getUnitFile(file string) (*unit.UnitFile, error) {
 	} else {
 		// Otherwise (if the unit file does not exist), check if the
 		// name appears to be an instance unit, and if so, check for
-		// a corresponding template unit in the Registry or disk
+		// a corresponding template unit in the Registry or disk.
+		// If we found a template unit, later we create a
+		// near-identical instance unit in the Registry - same
+		// unit file as the template, but different name
 		uf, err = getUnitFileFromTemplate(file)
 		if err != nil {
 			return nil, err
 		}
-
-		// If we found a template unit, create a near-identical instance unit in
-		// the Registry - same unit file as the template, but different name
 	}
 
 	log.Debugf("Found Unit(%s)", name)
@@ -792,12 +792,10 @@ func getBlockAttempts() int {
 	// By default we wait forever
 	var attempts int = -1
 
-	// Up to BlockAttempts
 	if sharedFlags.BlockAttempts > 0 {
 		attempts = sharedFlags.BlockAttempts
 	}
 
-	// NoBlock we do not wait
 	if sharedFlags.NoBlock {
 		attempts = 0
 	}
