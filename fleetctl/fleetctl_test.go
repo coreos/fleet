@@ -221,6 +221,37 @@ func TestUnitNameMangle(t *testing.T) {
 	}
 }
 
+func TestGetBlockAttempts(t *testing.T) {
+	oldNoBlock := sharedFlags.NoBlock
+	oldBlockAttempts := sharedFlags.BlockAttempts
+
+	defer func() {
+		sharedFlags.NoBlock = oldNoBlock
+		sharedFlags.BlockAttempts = oldBlockAttempts
+	}()
+
+	var blocktests = []struct {
+		noBlock       bool
+		blockAttempts int
+		expected      int
+	}{
+		{true, 0, -1},
+		{true, -1, -1},
+		{true, 9999, -1},
+		{false, 0, 0},
+		{false, -1, 0},
+		{false, 9999, 9999},
+	}
+
+	for _, tt := range blocktests {
+		sharedFlags.NoBlock = tt.noBlock
+		sharedFlags.BlockAttempts = tt.blockAttempts
+		if n := getBlockAttempts(); n != tt.expected {
+			t.Errorf("got %d, want %d", n, tt.expected)
+		}
+	}
+}
+
 func newUnitFile(t *testing.T, contents string) *unit.UnitFile {
 	uf, err := unit.NewUnitFile(contents)
 	if err != nil {
