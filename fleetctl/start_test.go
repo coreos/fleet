@@ -39,6 +39,7 @@ func doStartUnits(r commandTestResults, errchan chan error) {
 	exit := runStartUnit(r.units)
 	if exit != r.expectedExit {
 		errchan <- fmt.Errorf("%s: expected exit code %d but received %d", r.description, r.expectedExit, exit)
+		return
 	}
 
 	real_units, err := findUnits(r.units)
@@ -65,11 +66,7 @@ func runStartUnits(t *testing.T, unitPrefix string, results []commandTestResults
 
 		cAPI = newFakeRegistryForCommands(unitPrefix, unitsCount, template)
 
-		wg.Add(2)
-		go func() {
-			defer wg.Done()
-			doStartUnits(r, errchan)
-		}()
+		wg.Add(1)
 		go func() {
 			defer wg.Done()
 			doStartUnits(r, errchan)
@@ -96,7 +93,7 @@ func TestRunStartUnits(t *testing.T) {
 	results := []commandTestResults{
 		{
 			"start available units",
-			[]string{"start1", "start2", "start3", "start4", "start5"},
+			[]string{"start1", "start2", "start3", "start4", "start5", "start6"},
 			0,
 		},
 		{
@@ -110,12 +107,31 @@ func TestRunStartUnits(t *testing.T) {
 			1,
 		},
 		{
-			"start non-existent template",
+			"start a unit from a non-available template",
 			[]string{"foo-template@1"},
 			1,
 		},
 	}
 
+	templateResults := []commandTestResults{
+		{
+			"start a unit from a non-available template",
+			[]string{"start-foo@1"},
+			1,
+		},
+		{
+			"start units from an available template",
+			[]string{"start@1", "start@100", "start@1000"},
+			0,
+		},
+		{
+			"start same unit from an available template",
+			[]string{"start@1", "start@1", "start@1"},
+			0,
+		},
+	}
+
 	sharedFlags.NoBlock = true
 	runStartUnits(t, unitPrefix, results, false)
+	runStartUnits(t, unitPrefix, templateResults, true)
 }

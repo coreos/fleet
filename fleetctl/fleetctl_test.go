@@ -22,6 +22,7 @@ import (
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/registry"
+	"github.com/coreos/fleet/schema"
 	"github.com/coreos/fleet/unit"
 	"github.com/coreos/fleet/version"
 
@@ -92,9 +93,26 @@ func newFakeRegistryForCommands(unitPrefix string, unitCount int, template bool)
 
 func appendJobsForTests(jobs *[]job.Job, machine machine.MachineState, prefix string, unitCount int, template bool) {
 	if template {
+		// for start or load operations we may need to wait
+		// during the creation of units, and since this is a
+		// faked registry just set the 'Global' flag so we don't
+		// block forever
+		Options := []*schema.UnitOption{
+			&schema.UnitOption{
+				Section: "Unit",
+				Name:    "Description",
+				Value:   fmt.Sprintf("Template %s@.service", prefix),
+			},
+			&schema.UnitOption{
+				Section: "X-Fleet",
+				Name:    "Global",
+				Value:   "true",
+			},
+		}
+		uf := schema.MapSchemaUnitOptionsToUnitFile(Options)
 		j := job.Job{
 			Name:            fmt.Sprintf("%s@.service", prefix),
-			Unit:            unit.UnitFile{},
+			Unit:            *uf,
 			TargetMachineID: machine.ID,
 		}
 		*jobs = append(*jobs, j)
