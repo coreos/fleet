@@ -10,4 +10,4 @@ sudo systemctl daemon-reload
 ip link show fleet0 &>/dev/null && sudo ip link del fleet0
 etcdctl rm --recursive /fleet_functional
 
-rm -f log
+rm -f functional-test.log
