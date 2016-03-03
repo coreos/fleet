@@ -1,4 +1,4 @@
-// Copyright 2014 CoreOS, Inc.
+// Copyright 2016 CoreOS, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,20 +23,20 @@ import (
 	"github.com/coreos/fleet/schema"
 )
 
-func checkStartUnitState(unit schema.Unit, startRet int, errchan chan error) {
-	if startRet == 0 {
-		if job.JobState(unit.DesiredState) != job.JobStateLaunched {
-			errchan <- fmt.Errorf("Error: unit %s was not started as requested", unit.Name)
+func checkLoadUnitState(unit schema.Unit, loadRet int, errchan chan error) {
+	if loadRet == 0 {
+		if job.JobState(unit.DesiredState) != job.JobStateLoaded {
+			errchan <- fmt.Errorf("Error: unit %s was not loaded as requested", unit.Name)
 		}
 	} else if unit.DesiredState != "" {
-		// if the whole start operation failed, then no unit
+		// if the whole load operation failed, then no unit
 		// should have a DesiredState set
 		errchan <- fmt.Errorf("Error: Unit(%s) DesiredState was set to (%s)", unit.Name, unit.DesiredState)
 	}
 }
 
-func doStartUnits(r commandTestResults, errchan chan error) {
-	exit := runStartUnit(r.units)
+func doLoadUnits(r commandTestResults, errchan chan error) {
+	exit := runLoadUnits(r.units)
 	if exit != r.expectedExit {
 		errchan <- fmt.Errorf("%s: expected exit code %d but received %d", r.description, r.expectedExit, exit)
 	}
@@ -48,25 +48,50 @@ func doStartUnits(r commandTestResults, errchan chan error) {
 	}
 
 	for _, v := range real_units {
-		checkStartUnitState(v, r.expectedExit, errchan)
+		checkLoadUnitState(v, r.expectedExit, errchan)
 	}
 }
 
-func runStartUnits(t *testing.T, unitPrefix string, results []commandTestResults, template bool) {
+func TestRunLoadUnits(t *testing.T) {
+	unitPrefix := "load"
+	oldNoBlock := sharedFlags.NoBlock
+	defer func() {
+		sharedFlags.NoBlock = oldNoBlock
+	}()
+
+	results := []commandTestResults{
+		{
+			"load available units",
+			[]string{"load1", "load2", "load3", "load4", "load5"},
+			0,
+		},
+		{
+			"load non-available units",
+			[]string{"y1", "y2"},
+			1,
+		},
+		{
+			"load available and non-available units",
+			[]string{"y1", "y2", "y3", "y4", "load1", "load2", "load3", "load4", "load5", "load6", "y0"},
+			1,
+		},
+	}
+
+	sharedFlags.NoBlock = true
 	for _, r := range results {
 		var wg sync.WaitGroup
 		errchan := make(chan error)
 
-		cAPI = newFakeRegistryForCommands(unitPrefix, len(r.units), template)
+		cAPI = newFakeRegistryForCommands(unitPrefix, len(r.units), false)
 
 		wg.Add(2)
 		go func() {
 			defer wg.Done()
-			doStartUnits(r, errchan)
+			doLoadUnits(r, errchan)
 		}()
 		go func() {
 			defer wg.Done()
-			doStartUnits(r, errchan)
+			doLoadUnits(r, errchan)
 		}()
 
 		go func() {
@@ -78,38 +103,4 @@ func runStartUnits(t *testing.T, unitPrefix string, results []commandTestResults
 			t.Errorf("%v", err)
 		}
 	}
-}
-
-func TestRunStartUnits(t *testing.T) {
-	unitPrefix := "start"
-	oldNoBlock := sharedFlags.NoBlock
-	defer func() {
-		sharedFlags.NoBlock = oldNoBlock
-	}()
-
-	results := []commandTestResults{
-		{
-			"start available units",
-			[]string{"start1", "start2", "start3", "start4", "start5"},
-			0,
-		},
-		{
-			"start non-available units",
-			[]string{"y1", "y2"},
-			1,
-		},
-		{
-			"start available and non-available units",
-			[]string{"y1", "y2", "y3", "y4", "start1", "start2", "start3", "start4", "start5", "start6", "y0"},
-			1,
-		},
-		{
-			"start non-existent template",
-			[]string{"foo-template@1"},
-			1,
-		},
-	}
-
-	sharedFlags.NoBlock = true
-	runStartUnits(t, unitPrefix, results, false)
 }
