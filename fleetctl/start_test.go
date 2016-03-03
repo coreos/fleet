@@ -53,11 +53,17 @@ func doStartUnits(r commandTestResults, errchan chan error) {
 }
 
 func runStartUnits(t *testing.T, unitPrefix string, results []commandTestResults, template bool) {
+	unitsCount := 0
+	sharedFlags.NoBlock = true
 	for _, r := range results {
 		var wg sync.WaitGroup
 		errchan := make(chan error)
 
-		cAPI = newFakeRegistryForCommands(unitPrefix, len(r.units), template)
+		if !template {
+			unitsCount = len(r.units)
+		}
+
+		cAPI = newFakeRegistryForCommands(unitPrefix, unitsCount, template)
 
 		wg.Add(2)
 		go func() {

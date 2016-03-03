@@ -58,28 +58,28 @@ func newFakeRegistryForCommands(unitPrefix string, unitCount int, template bool)
 		states = append(states, state)
 		state.MachineID = machines[1].ID
 		states = append(states, state)
-	}
-
-	for i := 1; i <= unitCount; i++ {
-		state := unit.UnitState{
-			UnitName:    fmt.Sprintf("%s%d.service", unitPrefix, i),
-			LoadState:   "loaded",
-			ActiveState: "active",
-			SubState:    "listening",
-			MachineID:   machines[0].ID,
+	} else {
+		for i := 1; i <= unitCount; i++ {
+			state := unit.UnitState{
+				UnitName:    fmt.Sprintf("%s%d.service", unitPrefix, i),
+				LoadState:   "loaded",
+				ActiveState: "active",
+				SubState:    "listening",
+				MachineID:   machines[0].ID,
+			}
+			states = append(states, state)
 		}
-		states = append(states, state)
-	}
 
-	for i := 1; i <= unitCount; i++ {
-		state := unit.UnitState{
-			UnitName:    fmt.Sprintf("%s%d.service", unitPrefix, i),
-			LoadState:   "loaded",
-			ActiveState: "inactive",
-			SubState:    "dead",
-			MachineID:   machines[1].ID,
+		for i := 1; i <= unitCount; i++ {
+			state := unit.UnitState{
+				UnitName:    fmt.Sprintf("%s%d.service", unitPrefix, i),
+				LoadState:   "loaded",
+				ActiveState: "inactive",
+				SubState:    "dead",
+				MachineID:   machines[1].ID,
+			}
+			states = append(states, state)
 		}
-		states = append(states, state)
 	}
 
 	reg := registry.NewFakeRegistry()
@@ -91,7 +91,6 @@ func newFakeRegistryForCommands(unitPrefix string, unitCount int, template bool)
 }
 
 func appendJobsForTests(jobs *[]job.Job, machine machine.MachineState, prefix string, unitCount int, template bool) {
-
 	if template {
 		j := job.Job{
 			Name:            fmt.Sprintf("%s@.service", prefix),
@@ -99,15 +98,15 @@ func appendJobsForTests(jobs *[]job.Job, machine machine.MachineState, prefix st
 			TargetMachineID: machine.ID,
 		}
 		*jobs = append(*jobs, j)
-	}
-
-	for i := 1; i <= unitCount; i++ {
-		j := job.Job{
-			Name:            fmt.Sprintf("%s%d.service", prefix, i),
-			Unit:            unit.UnitFile{},
-			TargetMachineID: machine.ID,
+	} else {
+		for i := 1; i <= unitCount; i++ {
+			j := job.Job{
+				Name:            fmt.Sprintf("%s%d.service", prefix, i),
+				Unit:            unit.UnitFile{},
+				TargetMachineID: machine.ID,
+			}
+			*jobs = append(*jobs, j)
 		}
-		*jobs = append(*jobs, j)
 	}
 
 	return
