@@ -52,6 +52,34 @@ func doStartUnits(r commandTestResults, errchan chan error) {
 	}
 }
 
+func runStartUnits(t *testing.T, unitPrefix string, results []commandTestResults, template bool) {
+	for _, r := range results {
+		var wg sync.WaitGroup
+		errchan := make(chan error)
+
+		cAPI = newFakeRegistryForCommands(unitPrefix, len(r.units), template)
+
+		wg.Add(2)
+		go func() {
+			defer wg.Done()
+			doStartUnits(r, errchan)
+		}()
+		go func() {
+			defer wg.Done()
+			doStartUnits(r, errchan)
+		}()
+
+		go func() {
+			wg.Wait()
+			close(errchan)
+		}()
+
+		for err := range errchan {
+			t.Errorf("%v", err)
+		}
+	}
+}
+
 func TestRunStartUnits(t *testing.T) {
 	unitPrefix := "start"
 	oldNoBlock := sharedFlags.NoBlock
@@ -75,32 +103,13 @@ func TestRunStartUnits(t *testing.T) {
 			[]string{"y1", "y2", "y3", "y4", "start1", "start2", "start3", "start4", "start5", "start6", "y0"},
 			1,
 		},
+		{
+			"start non-existent template",
+			[]string{"foo-template@1"},
+			1,
+		},
 	}
 
 	sharedFlags.NoBlock = true
-	for _, r := range results {
-		var wg sync.WaitGroup
-		errchan := make(chan error)
-
-		cAPI = newFakeRegistryForCommands(unitPrefix, len(r.units))
-
-		wg.Add(2)
-		go func() {
-			defer wg.Done()
-			doStartUnits(r, errchan)
-		}()
-		go func() {
-			defer wg.Done()
-			doStartUnits(r, errchan)
-		}()
-
-		go func() {
-			wg.Wait()
-			close(errchan)
-		}()
-
-		for err := range errchan {
-			t.Errorf("%v", err)
-		}
-	}
+	runStartUnits(t, unitPrefix, results, false)
 }
