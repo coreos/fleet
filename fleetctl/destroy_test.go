@@ -24,6 +24,7 @@ func doDestroyUnits(r commandTestResults, errchan chan error) {
 	exit := runDestroyUnits(r.units)
 	if exit != r.expectedExit {
 		errchan <- fmt.Errorf("%s: expected exit code %d but received %d", r.description, r.expectedExit, exit)
+		return
 	}
 	for _, destroyedUnit := range r.units {
 		u, _ := cAPI.Unit(destroyedUnit)

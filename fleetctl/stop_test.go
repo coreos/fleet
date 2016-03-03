@@ -26,6 +26,7 @@ func doStopUnits(r commandTestResults, errchan chan error) {
 	exit := runStopUnit(r.units)
 	if exit != r.expectedExit {
 		errchan <- fmt.Errorf("%s: expected exit code %d but received %d", r.description, r.expectedExit, exit)
+		return
 	}
 
 	real_units, err := findUnits(r.units)
