@@ -15,80 +15,92 @@
 package main
 
 import (
-	"time"
+	"fmt"
+	"sync"
+	"testing"
 
-	"github.com/coreos/fleet/client"
 	"github.com/coreos/fleet/job"
-	"github.com/coreos/fleet/machine"
-	"github.com/coreos/fleet/registry"
-	"github.com/coreos/fleet/unit"
+	"github.com/coreos/fleet/schema"
 )
 
-type BlockedFakeRegistry struct {
-	EchoAttempts int
-	registry.FakeRegistry
+func checkStartUnitState(unit schema.Unit, startRet int, errchan chan error) {
+	if startRet == 0 {
+		if job.JobState(unit.DesiredState) != job.JobStateLaunched {
+			errchan <- fmt.Errorf("Error: unit %s was not started as requested", unit.Name)
+		}
+	} else if unit.DesiredState != "" {
+		// if the whole start operation failed, then no unit
+		// should have a DesiredState set
+		errchan <- fmt.Errorf("Error: Unit(%s) DesiredState was set to (%s)", unit.Name, unit.DesiredState)
+	}
 }
 
-func (b *BlockedFakeRegistry) Unit(name string) (*job.Unit, error) {
-	if name == "hello.service" {
-		time.Sleep(500 * time.Millisecond)
+func doStartUnits(r commandTestResults, errchan chan error) {
+	exit := runStartUnit(r.units)
+	if exit != r.expectedExit {
+		errchan <- fmt.Errorf("%s: expected exit code %d but received %d", r.description, r.expectedExit, exit)
 	}
 
-	if name == "echo.service" {
-		if b.EchoAttempts != 0 {
-			b.EchoAttempts--
-			return nil, nil
+	real_units, err := findUnits(r.units)
+	if err != nil {
+		errchan <- err
+		return
+	}
+
+	for _, v := range real_units {
+		checkStartUnitState(v, r.expectedExit, errchan)
+	}
+}
+
+func TestRunStartUnits(t *testing.T) {
+	unitPrefix := "start"
+	oldNoBlock := sharedFlags.NoBlock
+	defer func() {
+		sharedFlags.NoBlock = oldNoBlock
+	}()
+
+	results := []commandTestResults{
+		{
+			"start available units",
+			[]string{"start1", "start2", "start3", "start4", "start5"},
+			0,
+		},
+		{
+			"start non-available units",
+			[]string{"y1", "y2"},
+			1,
+		},
+		{
+			"start available and non-available units",
+			[]string{"y1", "y2", "y3", "y4", "start1", "start2", "start3", "start4", "start5", "start6", "y0"},
+			1,
+		},
+	}
+
+	sharedFlags.NoBlock = true
+	for _, r := range results {
+		var wg sync.WaitGroup
+		errchan := make(chan error)
+
+		cAPI = newFakeRegistryForCommands(unitPrefix, len(r.units))
+
+		wg.Add(2)
+		go func() {
+			defer wg.Done()
+			doStartUnits(r, errchan)
+		}()
+		go func() {
+			defer wg.Done()
+			doStartUnits(r, errchan)
+		}()
+
+		go func() {
+			wg.Wait()
+			close(errchan)
+		}()
+
+		for err := range errchan {
+			t.Errorf("%v", err)
 		}
 	}
-
-	return b.FakeRegistry.Unit(name)
-}
-
-func setupRegistryForStart(echoAttempts int) {
-	m1 := machine.MachineState{
-		ID:       "c31e44e1-f858-436e-933e-59c642517860",
-		PublicIP: "1.2.3.4",
-		Metadata: map[string]string{"ping": "pong"},
-	}
-	m2 := machine.MachineState{
-		ID:       "595989bb-cbb7-49ce-8726-722d6e157b4e",
-		PublicIP: "5.6.7.8",
-		Metadata: map[string]string{"foo": "bar"},
-	}
-	m3 := machine.MachineState{
-		ID:       "520983A8-FB9C-4A68-B49C-CED5BB2E9D08",
-		Metadata: map[string]string{"foo": "bar"},
-	}
-
-	states := []unit.UnitState{
-		unit.UnitState{
-			UnitName:    "pong.service",
-			LoadState:   "loaded",
-			ActiveState: "active",
-			SubState:    "listening",
-			MachineID:   m1.ID,
-		},
-		unit.UnitState{
-			UnitName:    "hello.service",
-			LoadState:   "loaded",
-			ActiveState: "inactive",
-			SubState:    "dead",
-			MachineID:   m2.ID,
-		},
-		unit.UnitState{
-			UnitName:    "echo.service",
-			LoadState:   "loaded",
-			ActiveState: "inactive",
-			SubState:    "dead",
-			MachineID:   m2.ID,
-		},
-	}
-
-	machines := []machine.MachineState{m1, m2, m3}
-
-	reg := registry.NewFakeRegistry()
-	reg.SetMachines(machines)
-	reg.SetUnitStates(states)
-
-	cAPI = &client.RegistryClient{Registry: &BlockedFakeRegistry{EchoAttempts: echoAttempts, FakeRegistry: *reg}}
 }
