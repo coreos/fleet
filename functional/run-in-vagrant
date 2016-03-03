@@ -3,5 +3,10 @@
 CDIR=$(cd `dirname $0` && pwd)
 cd $CDIR
 
+if ! vagrant version > /dev/null 2>&1; then
+  echo "Please install vagrant first"
+  exit 1
+fi
+
 vagrant up
 vagrant ssh core-01 -c "sudo ~/fleet/functional/test"

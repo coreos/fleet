@@ -23,7 +23,19 @@ $ ./run-in-vagrant
 
 Vagrant's provision step includes go binaries download using `functional/provision/install_go.sh` script.
 
-### Run tests inside other CoreOS platforms (QEMU/BareMetal/libvirt/etc)
+### Run tests in QEMU
+
+If you don't want to use Vagrant or VirtualBox, you can run tests inside official CoreOS QEMU image. You have to make sure QEMU is installed on your system.
+
+```sh
+$ git clone https://github.com/coreos/fleet
+$ cd fleet/functional
+$ ./run-in-qemu
+```
+
+If you get `Could not access KVM kernel module: Permission denied` error message, please make sure your CPU supports hardware-assisted virtualization and try to run the script using `sudo`.
+
+### Run tests inside other CoreOS platforms (BareMetal/EC2/GCE/libvirt/etc)
 
 It's also possible to run the tests on CoreOS on other platforms. The following commands should be run *inside* the CoreOS instance.
 
@@ -65,7 +77,7 @@ sudo dpkg -i vagrant_1.8.1_x86_64.deb
 echo "deb http://download.virtualbox.org/virtualbox/debian $(lsb_release -sc) contrib" | sudo tee /etc/apt/sources.list.d/virtualbox.list
 wget -q https://www.virtualbox.org/download/oracle_vbox.asc -O- | sudo apt-key add -
 sudo apt-get update
-sudo apt-get install -y build-essential dkms
+sudo apt-get install -y build-essential linux-headers-`uname -r` dkms
 sudo apt-get install -y VirtualBox-5.0
 #Previous VirtualBox (if you have problems with nested virtualization, more info here: https://www.virtualbox.org/ticket/14965)
 #sudo apt-get install -y VirtualBox-4.3

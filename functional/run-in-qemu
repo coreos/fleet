@@ -1,0 +1,70 @@
+#!/bin/bash -e
+
+if ! qemu-system-x86_64 --version > /dev/null 2>&1; then
+  echo "Please install QEMU first"
+  exit 1
+fi
+
+CDIR=$(cd `dirname $0` && pwd)
+cd $CDIR
+
+ARGS=`for i in "$@"; do printf '%q ' "$i"; done`
+
+CONFIG_DIR=$(mktemp -t -d coreos-configdrive.XXXXXXXXXX)
+mkdir -p "${CONFIG_DIR}/openstack/latest"
+QEMU_DIR=$HOME/.qemu
+mkdir -p $QEMU_DIR
+MAX_SSH_TRIES=60
+SSH_KEYS=$(cat fixtures/id_rsa.pub)
+PID_FILE=$(mktemp)
+SSH_PORT=2222
+NAME=fleet-tester
+IMAGE=$QEMU_DIR/coreos_production_qemu_image.img
+CHANNEL=stable
+
+if [ ! -f "$IMAGE" ]; then
+  curl --progress-bar http://$CHANNEL.release.core-os.net/amd64-usr/current/coreos_production_qemu_image.img.bz2 | bzcat > $IMAGE
+fi
+
+trap 'kill $(cat $PID_FILE) && rm -f "$PID_FILE" && rm -rf "$CONFIG_DIR"' EXIT
+
+sed "s#---#ssh_authorized_keys:\n - $SSH_KEYS#" user-data > ${CONFIG_DIR}/openstack/latest/user_data
+
+qemu-system-x86_64 \
+  -name $NAME \
+  -m 512 \
+  -net nic,vlan=0,model=virtio \
+  -net user,vlan=0,hostfwd=tcp:127.0.0.1:$SSH_PORT-:22,hostname=$NAME \
+  -drive if=virtio,file=$IMAGE \
+  -fsdev local,id=conf,security_model=none,readonly,path=$CONFIG_DIR \
+  -fsdev local,id=fleet,security_model=none,path=$CDIR/../ \
+  -device virtio-9p-pci,fsdev=conf,mount_tag=config-2 \
+  -device virtio-9p-pci,fsdev=fleet,mount_tag=fleet \
+  -machine accel=kvm \
+  -cpu host \
+  -smp 1 \
+  -daemonize \
+  -display none \
+  -serial none \
+  -pidfile $PID_FILE
+
+TRY=0
+while true; do
+  TRY=$((TRY+1))
+  if [ $TRY -gt $MAX_SSH_TRIES ]; then
+    echo "Can not connect to ssh, exiting..."
+    exit 1
+  fi
+  echo "Trying to connect to qemu VM, #${TRY} of #${MAX_SSH_TRIES}..."
+  set +e
+  RES=$(ssh -l core -o ConnectTimeout=1 -o PasswordAuthentication=no -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -p $SSH_PORT -i fixtures/id_rsa 127.0.0.1 "ls ~/fleet/functional/test" 2>&1)
+  RES_CODE=$?
+  set -e
+  if [ $RES_CODE -eq 0 ]; then
+    break
+  else
+    echo "$RES" | grep -q "Connection refused" && sleep 1 || true
+  fi
+done
+
+ssh -l core -o PasswordAuthentication=no -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -p $SSH_PORT -i fixtures/id_rsa 127.0.0.1 "sudo ~/fleet/functional/test $ARGS"
