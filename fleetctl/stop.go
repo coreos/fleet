@@ -52,6 +52,11 @@ func init() {
 }
 
 func runStopUnit(args []string) (exit int) {
+	if len(args) == 0 {
+		stderr("No units given")
+		return 0
+	}
+
 	units, err := findUnits(args)
 	if err != nil {
 		stderr("%v", err)
