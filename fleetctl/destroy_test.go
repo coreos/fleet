@@ -53,6 +53,11 @@ func TestRunDestroyUnits(t *testing.T) {
 			[]string{"y1", "y2", "y3", "y4", "j1", "j2", "j3", "j4", "j5", "y0"},
 			0,
 		},
+		{
+			"destroy null input",
+			[]string{},
+			0,
+		},
 	}
 
 	// Check with two goroutines we don't care we should just get
