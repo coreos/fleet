@@ -20,10 +20,23 @@ import (
 	"testing"
 
 	"github.com/coreos/fleet/job"
+	"github.com/coreos/fleet/schema"
 )
 
-func doStopUnits(r commandTestResults, errchan chan error) {
-	exit := runStopUnit(r.units)
+func checkLoadUnitState(unit schema.Unit, loadRet int, errchan chan error) {
+	if loadRet == 0 {
+		if job.JobState(unit.DesiredState) != job.JobStateLoaded {
+			errchan <- fmt.Errorf("Error: unit %s was not loaded as requested", unit.Name)
+		}
+	} else if unit.DesiredState != "" {
+		// if the whole load operation failed, then no unit
+		// should have a DesiredState set
+		errchan <- fmt.Errorf("Error: Unit(%s) DesiredState was set to (%s)", unit.Name, unit.DesiredState)
+	}
+}
+
+func doLoadUnits(r commandTestResults, errchan chan error) {
+	exit := runLoadUnits(r.units)
 	if exit != r.expectedExit {
 		errchan <- fmt.Errorf("%s: expected exit code %d but received %d", r.description, r.expectedExit, exit)
 		return
@@ -35,16 +48,13 @@ func doStopUnits(r commandTestResults, errchan chan error) {
 		return
 	}
 
-	// We assume that we reached the desired state
 	for _, v := range real_units {
-		if job.JobState(v.DesiredState) != job.JobStateLoaded {
-			errchan <- fmt.Errorf("Error: unit %s was not stopped as requested", v.Name)
-		}
+		checkLoadUnitState(v, r.expectedExit, errchan)
 	}
 }
 
-func TestRunStopUnits(t *testing.T) {
-	unitPrefix := "stop"
+func TestRunLoadUnits(t *testing.T) {
+	unitPrefix := "load"
 	oldNoBlock := sharedFlags.NoBlock
 	defer func() {
 		sharedFlags.NoBlock = oldNoBlock
@@ -52,19 +62,19 @@ func TestRunStopUnits(t *testing.T) {
 
 	results := []commandTestResults{
 		{
-			"stop available units",
-			[]string{"stop1", "stop2", "stop3", "stop4", "stop5"},
+			"load available units",
+			[]string{"load1", "load2", "load3", "load4", "load5"},
 			0,
 		},
 		{
-			"stop non-available units",
+			"load non-available units",
 			[]string{"y1", "y2"},
-			0,
+			1,
 		},
 		{
-			"stop available and non-available units",
-			[]string{"y1", "y2", "y3", "y4", "stop1", "stop2", "stop3", "stop4", "stop5", "y0"},
-			0,
+			"load available and non-available units",
+			[]string{"y1", "y2", "y3", "y4", "load1", "load2", "load3", "load4", "load5", "load6", "y0"},
+			1,
 		},
 	}
 
@@ -78,11 +88,11 @@ func TestRunStopUnits(t *testing.T) {
 		wg.Add(2)
 		go func() {
 			defer wg.Done()
-			doStopUnits(r, errchan)
+			doLoadUnits(r, errchan)
 		}()
 		go func() {
 			defer wg.Done()
-			doStopUnits(r, errchan)
+			doLoadUnits(r, errchan)
 		}()
 
 		go func() {
