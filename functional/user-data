@@ -8,5 +8,16 @@ coreos:
   units:
   - name: etcd2.service
     command: start
+  - name: home-core-fleet.mount
+    command: start
+    content: |
+      [Unit]
+      Requires=systemd-networkd-wait-online.service
+      After=systemd-networkd-wait-online.service
+      [Mount]
+      What=fleet
+      Where=/home/core/fleet
+      Type=9p
+      Options=rw,trans=virtio,version=9p2000.L
   update:
     reboot-strategy: off
