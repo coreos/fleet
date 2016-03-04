@@ -30,7 +30,7 @@ fi
 
 source build-env
 eval $(go env)
-go test github.com/coreos/fleet/functional -ldflags "${GLDFLAGS}" -v 2>&1 | tee functional/log
+go test github.com/coreos/fleet/functional -ldflags "${GLDFLAGS}" -v "$@" 2>&1 | tee functional/log
 
 total=$(grep -E '^--- (PASS|FAIL)' functional/log | wc -l)
 pass=$(grep '^--- PASS' functional/log | wc -l)
