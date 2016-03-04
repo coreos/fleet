@@ -34,7 +34,7 @@ type commandTestResults struct {
 	expectedExit int
 }
 
-func newFakeRegistryForCommands(unitPrefix string, unitCount int) client.API {
+func newFakeRegistryForCommands(unitPrefix string, unitCount int, template bool) client.API {
 	// clear machineStates for every invocation
 	machineStates = nil
 	machines := []machine.MachineState{
@@ -43,30 +43,43 @@ func newFakeRegistryForCommands(unitPrefix string, unitCount int) client.API {
 	}
 
 	jobs := make([]job.Job, 0)
-	appendJobsForTests(&jobs, machines[0], unitPrefix, unitCount)
-	appendJobsForTests(&jobs, machines[1], unitPrefix, unitCount)
+	appendJobsForTests(&jobs, machines[0], unitPrefix, unitCount, template)
+	appendJobsForTests(&jobs, machines[1], unitPrefix, unitCount, template)
 
 	states := make([]unit.UnitState, 0)
-	for i := 1; i <= unitCount; i++ {
+	if template {
 		state := unit.UnitState{
-			UnitName:    fmt.Sprintf("%s%d.service", unitPrefix, i),
-			LoadState:   "loaded",
-			ActiveState: "active",
-			SubState:    "listening",
-			MachineID:   machines[0].ID,
-		}
-		states = append(states, state)
-	}
-
-	for i := 1; i <= unitCount; i++ {
-		state := unit.UnitState{
-			UnitName:    fmt.Sprintf("%s%d.service", unitPrefix, i),
+			UnitName:    fmt.Sprintf("%s@.service", unitPrefix),
 			LoadState:   "loaded",
 			ActiveState: "inactive",
 			SubState:    "dead",
-			MachineID:   machines[1].ID,
+			MachineID:   machines[0].ID,
 		}
 		states = append(states, state)
+		state.MachineID = machines[1].ID
+		states = append(states, state)
+	} else {
+		for i := 1; i <= unitCount; i++ {
+			state := unit.UnitState{
+				UnitName:    fmt.Sprintf("%s%d.service", unitPrefix, i),
+				LoadState:   "loaded",
+				ActiveState: "active",
+				SubState:    "listening",
+				MachineID:   machines[0].ID,
+			}
+			states = append(states, state)
+		}
+
+		for i := 1; i <= unitCount; i++ {
+			state := unit.UnitState{
+				UnitName:    fmt.Sprintf("%s%d.service", unitPrefix, i),
+				LoadState:   "loaded",
+				ActiveState: "inactive",
+				SubState:    "dead",
+				MachineID:   machines[1].ID,
+			}
+			states = append(states, state)
+		}
 	}
 
 	reg := registry.NewFakeRegistry()
@@ -77,14 +90,23 @@ func newFakeRegistryForCommands(unitPrefix string, unitCount int) client.API {
 	return &client.RegistryClient{Registry: reg}
 }
 
-func appendJobsForTests(jobs *[]job.Job, machine machine.MachineState, prefix string, unitCount int) {
-	for i := 1; i <= unitCount; i++ {
+func appendJobsForTests(jobs *[]job.Job, machine machine.MachineState, prefix string, unitCount int, template bool) {
+	if template {
 		j := job.Job{
-			Name:            fmt.Sprintf("%s%d.service", prefix, i),
+			Name:            fmt.Sprintf("%s@.service", prefix),
 			Unit:            unit.UnitFile{},
 			TargetMachineID: machine.ID,
 		}
 		*jobs = append(*jobs, j)
+	} else {
+		for i := 1; i <= unitCount; i++ {
+			j := job.Job{
+				Name:            fmt.Sprintf("%s%d.service", prefix, i),
+				Unit:            unit.UnitFile{},
+				TargetMachineID: machine.ID,
+			}
+			*jobs = append(*jobs, j)
+		}
 	}
 
 	return
