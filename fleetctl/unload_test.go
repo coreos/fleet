@@ -66,6 +66,11 @@ func TestRunUnloadUnits(t *testing.T) {
 			[]string{"y1", "y2", "y3", "y4", "unload1", "unload2", "unload3", "unload4", "unload5", "y0"},
 			0,
 		},
+		{
+			"unload null input",
+			[]string{},
+			0,
+		},
 	}
 
 	sharedFlags.NoBlock = true

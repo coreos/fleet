@@ -111,6 +111,11 @@ func TestRunStartUnits(t *testing.T) {
 			[]string{"foo-template@1"},
 			1,
 		},
+		{
+			"start null input",
+			[]string{},
+			0,
+		},
 	}
 
 	templateResults := []commandTestResults{

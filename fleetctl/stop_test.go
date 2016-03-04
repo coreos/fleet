@@ -66,6 +66,11 @@ func TestRunStopUnits(t *testing.T) {
 			[]string{"y1", "y2", "y3", "y4", "stop1", "stop2", "stop3", "stop4", "stop5", "y0"},
 			0,
 		},
+		{
+			"stop null input",
+			[]string{},
+			0,
+		},
 	}
 
 	sharedFlags.NoBlock = true
