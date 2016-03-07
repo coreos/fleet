@@ -1,8 +1,22 @@
 #!/bin/bash -e
 
-if ! qemu-system-x86_64 --version > /dev/null 2>&1; then
-  echo "Please install QEMU first"
+BASENAME=$(basename $0)
+
+function print_info {
+  echo "$BASENAME: INFO: $@"
+}
+
+function print_warning {
+  echo "$BASENAME: WARNING: $@"
+}
+
+function print_error {
+  echo "$BASENAME: ERROR: $@"
   exit 1
+}
+
+if ! qemu-system-x86_64 --version > /dev/null 2>&1; then
+  print_error "Please install QEMU first"
 fi
 
 CDIR=$(cd `dirname $0` && pwd)
@@ -17,18 +31,48 @@ mkdir -p $QEMU_DIR
 MAX_SSH_TRIES=60
 SSH_KEYS=$(cat fixtures/id_rsa.pub)
 PID_FILE=$(mktemp)
-SSH_PORT=2222
+SSH_PORT=2244
 NAME=fleet-tester
-IMAGE=$QEMU_DIR/coreos_production_qemu_image.img
+BASE_IMAGE=$QEMU_DIR/coreos_production_qemu_image.img
+IMAGE=$QEMU_DIR/coreos-fleet-test.qcow2
 CHANNEL=stable
+IMG_URL="http://${CHANNEL}.release.core-os.net/amd64-usr/current/coreos_production_qemu_image.img.bz2"
+SIG_URL="http://${CHANNEL}.release.core-os.net/amd64-usr/current/coreos_production_qemu_image.img.bz2.sig"
+GPG_PUB_KEY="https://coreos.com/security/image-signing-key/CoreOS_Image_Signing_Key.asc"
+GPG_PUB_KEY_ID="50E0885593D2DCB4"
 
-if [ ! -f "$IMAGE" ]; then
-  curl --progress-bar http://$CHANNEL.release.core-os.net/amd64-usr/current/coreos_production_qemu_image.img.bz2 | bzcat > $IMAGE
+set +e
+if gpg --version > /dev/null 2>&1; then
+  GPG=true
+  if ! gpg --list-sigs $GPG_PUB_KEY_ID > /dev/null; then
+    curl -s $GPG_PUB_KEY | gpg --import --keyid-format LONG || (GPG=false && print_warning "Can not import GPG public key")
+  fi
+else
+  GPG=false
+  print_warning "Please install GPG to verify CoreOS images' signatures"
 fi
+set -e
 
-trap 'kill $(cat $PID_FILE) && rm -f "$PID_FILE" && rm -rf "$CONFIG_DIR"' EXIT
+trap 'rm -f "$BASE_IMAGE" && rm -f "$PID_FILE" && rm -rf "$CONFIG_DIR"' INT TERM EXIT
+if [ ! -f "$BASE_IMAGE" ]; then
+  if [ $GPG ]; then
+    LANG=en_US gpg --enable-special-filenames \
+        --verify \
+        --batch \
+        <(curl -s $SIG_URL) \
+        <(curl --progress-bar $IMG_URL | tee >(bzcat > $BASE_IMAGE)) || (rm -f $BASE_IMAGE && print_error "Failed to download and verify the image")
+  else
+    curl --progress-bar $IMG_URL | bzcat > $BASE_IMAGE || (rm -f $BASE_IMAGE && print_error "Failed to download the image")
+  fi
+fi
+trap - INT TERM EXIT
+trap
 
-sed "s#---#ssh_authorized_keys:\n - $SSH_KEYS#" user-data > ${CONFIG_DIR}/openstack/latest/user_data
+trap 'kill $QEMU_PID; rm -f "$PID_FILE" && rm -rf "$CONFIG_DIR" && rm -f "$IMAGE"' EXIT
+
+sed "s#---#ssh_authorized_keys:\n - \"$SSH_KEYS\"#" user-data > ${CONFIG_DIR}/openstack/latest/user_data
+
+qemu-img create -f qcow2 -b $BASE_IMAGE $IMAGE || print_error "Failed to create $IMAGE disk image"
 
 qemu-system-x86_64 \
   -name $NAME \
@@ -48,22 +92,23 @@ qemu-system-x86_64 \
   -serial none \
   -pidfile $PID_FILE
 
+QEMU_PID=$(cat $PID_FILE)
+
 TRY=0
 while true; do
   TRY=$((TRY+1))
   if [ $TRY -gt $MAX_SSH_TRIES ]; then
-    echo "Can not connect to ssh, exiting..."
-    exit 1
+    print_error "Can not connect to ssh, exiting..."
   fi
-  echo "Trying to connect to qemu VM, #${TRY} of #${MAX_SSH_TRIES}..."
+  print_info "Trying to connect to qemu VM, #${TRY} of #${MAX_SSH_TRIES}..."
   set +e
-  RES=$(ssh -l core -o ConnectTimeout=1 -o PasswordAuthentication=no -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -p $SSH_PORT -i fixtures/id_rsa 127.0.0.1 "ls ~/fleet/functional/test" 2>&1)
+  RES=$(LANG=en_US ssh -l core -o ConnectTimeout=1 -o PasswordAuthentication=no -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -p $SSH_PORT -i fixtures/id_rsa 127.0.0.1 "ls ~/fleet/functional/test" 2>&1)
   RES_CODE=$?
   set -e
   if [ $RES_CODE -eq 0 ]; then
     break
   else
-    echo "$RES" | grep -q "Connection refused" && sleep 1 || true
+    echo "$RES" | grep -Eq "(refused|No such file or directory|reset by peer|closed by remote host|authentication failure)" && sleep 1 || true
   fi
 done
 
