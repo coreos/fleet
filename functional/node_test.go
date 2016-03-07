@@ -42,9 +42,9 @@ func TestNodeShutdown(t *testing.T) {
 
 	// Start a unit and ensure it comes up quickly
 	unit := fmt.Sprintf("fixtures/units/pin@%s.service", machines[0])
-	_, _, err = cluster.Fleetctl(m0, "start", unit)
+	stdout, stderr, err := cluster.Fleetctl(m0, "start", unit)
 	if err != nil {
-		t.Errorf("Failed starting unit: %v", err)
+		t.Errorf("Failed starting unit: \nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)
 	}
 	_, err = cluster.WaitForNActiveUnits(m0, 1)
 	if err != nil {
@@ -77,7 +77,7 @@ func TestNodeShutdown(t *testing.T) {
 	}
 
 	// The member's unit should actually stop running, too
-	stdout, _ := cluster.MemberCommand(m0, "sudo", "systemctl", "status", "hello.service")
+	stdout, _ = cluster.MemberCommand(m0, "sudo", "systemctl", "status", "hello.service")
 	if !strings.Contains(stdout, "Active: inactive") {
 		t.Fatalf("Unit hello.service not reported as inactive:\n%s\n", stdout)
 	}
