@@ -24,7 +24,7 @@ var (
 	cmdLoadUnits = &Command{
 		Name:    "load",
 		Summary: "Schedule one or more units in the cluster, first submitting them if necessary.",
-		Usage:   "[--no-block|--block-attempts=N] UNIT...",
+		Usage:   "[--no-block|--block-attempts=N|--replace] UNIT...",
 		Description: `Load one or many units in the cluster into systemd, but do not start.
 
 Select units to load by glob matching for units in the current working directory 
@@ -43,10 +43,11 @@ func init() {
 	cmdLoadUnits.Flags.BoolVar(&sharedFlags.Sign, "sign", false, "DEPRECATED - this option cannot be used")
 	cmdLoadUnits.Flags.IntVar(&sharedFlags.BlockAttempts, "block-attempts", 0, "Wait until the jobs are loaded, performing up to N attempts before giving up. A value of 0 indicates no limit. Does not apply to global units.")
 	cmdLoadUnits.Flags.BoolVar(&sharedFlags.NoBlock, "no-block", false, "Do not wait until the jobs have been loaded before exiting. Always the case for global units.")
+	cmdLoadUnits.Flags.BoolVar(&sharedFlags.Replace, "replace", false, "replace (I need help with the text)")
 }
 
 func runLoadUnits(args []string) (exit int) {
-	if err := lazyCreateUnits(args); err != nil {
+	if err := lazyCreateUnits(args, sharedFlags.Replace); err != nil {
 		stderr("Error creating units: %v", err)
 		return 1
 	}
