@@ -42,18 +42,18 @@ func TestDynamicClusterNewMemberUnitMigration(t *testing.T) {
 	}
 
 	// Start 3 conflicting units on the 4-node cluster
-	_, _, err = cluster.Fleetctl(m0, "start",
+	stdout, stderr, err := cluster.Fleetctl(m0, "start",
 		"fixtures/units/conflict.0.service",
 		"fixtures/units/conflict.1.service",
 		"fixtures/units/conflict.2.service",
 	)
 	if err != nil {
-		t.Errorf("Failed starting units: %v", err)
+		t.Errorf("Failed starting units: \nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)
 	}
 
 	// All 3 services should be visible immediately, and all of them should
 	// become ACTIVE shortly thereafter
-	stdout, _, err := cluster.Fleetctl(m0, "list-units", "--no-legend")
+	stdout, _, err = cluster.Fleetctl(m0, "list-units", "--no-legend")
 	if err != nil {
 		t.Fatalf("Failed to run list-units: %v", err)
 	}

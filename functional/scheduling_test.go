@@ -346,9 +346,9 @@ MachineID=%s
 		}
 		defer os.Remove(unitFile)
 
-		_, _, err = cluster.Fleetctl(m0, "start", unitFile)
+		stdout, stderr, err := cluster.Fleetctl(m0, "start", unitFile)
 		if err != nil {
-			t.Fatalf("Failed starting unit file %s: %v", unitFile, err)
+			t.Fatalf("Failed starting unit file %s: \nstdout: %s\nstderr: %s\nerr: %v", unitFile, stdout, stderr, err)
 		}
 
 		unit := filepath.Base(unitFile)
@@ -390,7 +390,10 @@ func TestScheduleGlobalUnits(t *testing.T) {
 	}
 
 	// Launch a couple of simple units
-	cluster.Fleetctl(m0, "start", "--no-block", "fixtures/units/hello.service", "fixtures/units/goodbye.service")
+	stdout, stderr, err := cluster.Fleetctl(m0, "start", "--no-block", "fixtures/units/hello.service", "fixtures/units/goodbye.service")
+	if err != nil {
+		t.Fatalf("Failed starting units: \nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)
+	}
 
 	// Both units should show up active
 	_, err = cluster.WaitForNActiveUnits(m0, 2)
@@ -399,7 +402,10 @@ func TestScheduleGlobalUnits(t *testing.T) {
 	}
 
 	// Now add a global unit
-	cluster.Fleetctl(m0, "start", "--no-block", "fixtures/units/global.service")
+	stdout, stderr, err = cluster.Fleetctl(m0, "start", "--no-block", "fixtures/units/global.service")
+	if err != nil {
+		t.Fatalf("Failed starting unit: \nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)
+	}
 
 	// Should see 2 + 3 units
 	states, err := cluster.WaitForNActiveUnits(m0, 5)
