@@ -23,7 +23,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/coreos/fleet/Godeps/_workspace/src/github.com/docker/libcontainer/netlink"
+	"github.com/vishvananda/netlink"
 
 	"github.com/coreos/fleet/log"
 	"github.com/coreos/fleet/unit"
@@ -170,7 +170,7 @@ func usableAddress(ip net.IP) bool {
 func getDefaultGatewayIface() *net.Interface {
 	log.Debug("Attempting to retrieve IP route info from netlink")
 
-	routes, err := netlink.NetworkGetRoutes()
+	routes, err := netlink.RouteList(nil, 0)
 	if err != nil {
 		log.Debugf("Unable to detect default interface: %v", err)
 		return nil
@@ -182,12 +182,15 @@ func getDefaultGatewayIface() *net.Interface {
 	}
 
 	for _, route := range routes {
-		if route.Default {
-			if route.Iface == nil {
+		// a nil Dst means that this is the default route.
+		if route.Dst == nil {
+			i, err := net.InterfaceByIndex(route.LinkIndex)
+			if err != nil {
 				log.Debugf("Found default route but could not determine interface")
+				continue
 			}
-			log.Debugf("Found default route with interface %v", route.Iface.Name)
-			return route.Iface
+			log.Debugf("Found default route with interface %v", i)
+			return i
 		}
 	}
 
