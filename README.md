@@ -5,11 +5,11 @@
 
 fleet ties together [systemd][coreos-systemd] and [etcd][etcd] into a simple distributed init system. Think of it as an extension of systemd that operates at the cluster level instead of the machine level.
 
-**This project is very low level and is designed as a foundation for higher order orchestration.** fleet is oriented around systemd units and is not a container manager or orchestration system. fleet supports very basic scheduling of systemd units in a cluster. Those looking for more complex scheduling requirements or a first-class container orchestration system should check out [Kubernetes][kubernetes]. [fleet vs kubernetes][fleet-vs-k8s] comparison table should help you to make a right decision.
+**This project is quite low-level, and is designed as a foundation for higher order orchestration.** fleet is a cluster-wide elaboration on systemd units, and is not a container manager or orchestration system. fleet supports basic scheduling of systemd units across nodes in a cluster. Those looking for more complex scheduling requirements or a first-class container orchestration system should check out [Kubernetes][kubernetes]. The [fleet and kubernetes comparison table][fleet-vs-k8s] has more information about the two systems.
 
 ## Current status
 
-fleet has seen production use for some time and is largely considered stable. 
+fleet has seen production use for some time and is largely considered stable.
 However, there are known [scalability limitations][fleet-scaling] with its architecture.
 As such, it is not recommended to run fleet clusters larger than 100 nodes or with more than 1000 services.
 The fleet project is being maintained for bug fixes but the existing maintainers do not intend to add additional major features or significantly rework fleet to address these limitations.
@@ -94,7 +94,7 @@ Specific components of fleet use code derivative from software distributed under
 [deploy-and-configure]: Documentation/deployment-and-configuration.md
 [etcd]: https://github.com/coreos/etcd
 [fleet-scaling]: Documentation/fleet-scaling.md
-[fleet-vs-k8s]: Documentation/fleet_vs_kubernetes.md
+[fleet-vs-k8s]: Documentation/fleet-k8s-compared.md
 [kubernetes]: http://kubernetes.io
 [license]: LICENSE
 [maintainers]: MAINTAINERS
