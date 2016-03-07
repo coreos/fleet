@@ -57,9 +57,9 @@ func TestScheduleMachineOf(t *testing.T) {
 	for i := 0; i < 3; i++ {
 		ping := fmt.Sprintf("fixtures/units/ping.%d.service", i)
 		pong := fmt.Sprintf("fixtures/units/pong.%d.service", i)
-		_, _, err := cluster.Fleetctl(m0, "start", "--no-block", ping, pong)
+		stdout, stderr, err := cluster.Fleetctl(m0, "start", "--no-block", ping, pong)
 		if err != nil {
-			t.Errorf("Failed starting units: %v", err)
+			t.Errorf("Failed starting units: \nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)
 		}
 	}
 
@@ -175,9 +175,9 @@ func TestScheduleConflicts(t *testing.T) {
 
 	for i := 0; i < 5; i++ {
 		unit := fmt.Sprintf("fixtures/units/conflict.%d.service", i)
-		_, _, err := cluster.Fleetctl(m0, "start", "--no-block", unit)
+		stdout, stderr, err := cluster.Fleetctl(m0, "start", "--no-block", unit)
 		if err != nil {
-			t.Errorf("Failed starting unit %s: %v", unit, err)
+			t.Errorf("Failed starting unit %s: \nstdout: %s\nstderr: %s\nerr: %v", unit, stdout, stderr, err)
 		}
 	}
 
@@ -234,8 +234,8 @@ func TestScheduleOneWayConflict(t *testing.T) {
 
 	// Start a unit that conflicts with a yet-to-be-scheduled unit
 	name := "fixtures/units/conflicts-with-hello.service"
-	if _, _, err := cluster.Fleetctl(m0, "start", "--no-block", name); err != nil {
-		t.Fatalf("Failed starting unit %s: %v", name, err)
+	if stdout, stderr, err := cluster.Fleetctl(m0, "start", "--no-block", name); err != nil {
+		t.Fatalf("Failed starting unit %s: \nstdout: %s\nstderr: %s\nerr: %v", name, stdout, stderr, err)
 	}
 
 	active, err := cluster.WaitForNActiveUnits(m0, 1)
@@ -249,7 +249,9 @@ func TestScheduleOneWayConflict(t *testing.T) {
 
 	// Start a unit that has not defined conflicts
 	name = "fixtures/units/hello.service"
-	cluster.Fleetctl(m0, "start", "--no-block", name)
+	if stdout, stderr, err := cluster.Fleetctl(m0, "start", "--no-block", name); err != nil {
+		t.Fatalf("Failed starting unit %s: \nstdout: %s\nstderr: %s\nerr: %v", name, stdout, stderr, err)
+	}
 
 	// Both units should show up, but only conflicts-with-hello.service
 	// should report ACTIVE
