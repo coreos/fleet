@@ -20,7 +20,7 @@ PID_FILE=$(mktemp)
 SSH_PORT=2222
 NAME=fleet-tester
 IMAGE=$QEMU_DIR/coreos_production_qemu_image.img
-CHANNEL=stable
+CHANNEL=alpha
 
 if [ ! -f "$IMAGE" ]; then
   curl --progress-bar http://$CHANNEL.release.core-os.net/amd64-usr/current/coreos_production_qemu_image.img.bz2 | bzcat > $IMAGE
