@@ -483,6 +483,51 @@ func getChecker() *ssh.HostKeyChecker {
 	return ssh.NewHostKeyChecker(keyFile)
 }
 
+// getUnitFile attempts to get a UnitFile configuration
+// It takes a unit file name as a parameter and tries first to lookup
+// the unit from the local disk. If it fails, it checks if the provided
+// file name may reference an instance of a template unit, if so, it
+// tries to get the template configuration either from the registry or
+// the local disk.
+// It returns a UnitFile configuration or nil; and any error ecountered
+func getUnitFile(file string) (*unit.UnitFile, error) {
+	var uf *unit.UnitFile
+	name := unitNameMangle(file)
+
+	log.Debugf("Looking for Unit(%s) or its corresponding template", name)
+
+	// Assume that the file references a local unit file on disk and
+	// attempt to load it, if it exists
+	if _, err := os.Stat(file); !os.IsNotExist(err) {
+		uf, err = getUnitFromFile(file)
+		if err != nil {
+			return nil, fmt.Errorf("failed getting Unit(%s) from file: %v", file, err)
+		}
+	} else {
+		// Otherwise (if the unit file does not exist), check if the
+		// name appears to be an instance of a template unit
+		info := unit.NewUnitNameInfo(name)
+		if info == nil {
+			return nil, fmt.Errorf("error extracting information from unit name %s", name)
+		} else if !info.IsInstance() {
+			return nil, fmt.Errorf("unable to find Unit(%s) in Registry or on filesystem", name)
+		}
+
+		// If it is an instance check for a corresponding template
+		// unit in the Registry or disk.
+		// If we found a template unit, later we create a
+		// near-identical instance unit in the Registry - same
+		// unit file as the template, but different name
+		uf, err = getUnitFileFromTemplate(info, file)
+		if err != nil {
+			return nil, fmt.Errorf("failed getting Unit(%s) from template: %v", file, err)
+		}
+	}
+
+	log.Debugf("Found Unit(%s)", name)
+	return uf, nil
+}
+
 // getUnitFromFile attempts to load a Unit from a given filename
 // It returns the Unit or nil, and any error encountered
 func getUnitFromFile(file string) (*unit.UnitFile, error) {
@@ -495,6 +540,39 @@ func getUnitFromFile(file string) (*unit.UnitFile, error) {
 	log.Debugf("Unit(%s) found in local filesystem", unitName)
 
 	return unit.NewUnitFile(string(out))
+}
+
+// getUnitFileFromTemplate attempts to get a Unit from a template unit that
+// is either in the registry or on the file system
+// It takes two arguments, the template information and the unit file name
+// It returns the Unit or nil; and any error encountered
+func getUnitFileFromTemplate(uni *unit.UnitNameInfo, fileName string) (*unit.UnitFile, error) {
+	var uf *unit.UnitFile
+
+	tmpl, err := cAPI.Unit(uni.Template)
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving template Unit(%s) from Registry: %v", uni.Template, err)
+	}
+
+	if tmpl != nil {
+		warnOnDifferentLocalUnit(fileName, tmpl)
+		uf = schema.MapSchemaUnitOptionsToUnitFile(tmpl.Options)
+		log.Debugf("Template Unit(%s) found in registry", uni.Template)
+	} else {
+		// Finally, if we could not find a template unit in the Registry,
+		// check the local disk for one instead
+		filePath := path.Join(path.Dir(fileName), uni.Template)
+		if _, err := os.Stat(filePath); os.IsNotExist(err) {
+			return nil, fmt.Errorf("unable to find template Unit(%s) in Registry or on filesystem", uni.Template)
+		}
+
+		uf, err = getUnitFromFile(filePath)
+		if err != nil {
+			return nil, fmt.Errorf("unable to load template Unit(%s) from file: %v", uni.Template, err)
+		}
+	}
+
+	return uf, nil
 }
 
 func getTunnelFlag() string {
@@ -599,8 +677,6 @@ func lazyCreateUnits(args []string) error {
 	errchan := make(chan error)
 	var wg sync.WaitGroup
 	for _, arg := range args {
-		// TODO(jonboulle): this loop is getting too unwieldy; factor it out
-
 		arg = maybeAppendDefaultUnitType(arg)
 		name := unitNameMangle(arg)
 
@@ -615,45 +691,12 @@ func lazyCreateUnits(args []string) error {
 			continue
 		}
 
-		var uf *unit.UnitFile
-		// Failing that, assume the name references a local unit file on disk, and attempt to load that, if it exists
-		// TODO(mischief): consolidate these two near-identical codepaths
-		if _, err := os.Stat(arg); !os.IsNotExist(err) {
-			uf, err = getUnitFromFile(arg)
-			if err != nil {
-				return fmt.Errorf("failed getting Unit(%s) from file: %v", arg, err)
-			}
-		} else {
-			// Otherwise (if the unit file does not exist), check if the name appears to be an instance unit,
-			// and if so, check for a corresponding template unit in the Registry
-			uni := unit.NewUnitNameInfo(name)
-			if uni == nil {
-				return fmt.Errorf("error extracting information from unit name %s", name)
-			} else if !uni.IsInstance() {
-				return fmt.Errorf("unable to find Unit(%s) in Registry or on filesystem", name)
-			}
-			tmpl, err := cAPI.Unit(uni.Template)
-			if err != nil {
-				return fmt.Errorf("error retrieving template Unit(%s) from Registry: %v", uni.Template, err)
-			}
-
-			// Finally, if we could not find a template unit in the Registry, check the local disk for one instead
-			if tmpl == nil {
-				file := path.Join(path.Dir(arg), uni.Template)
-				if _, err := os.Stat(file); os.IsNotExist(err) {
-					return fmt.Errorf("unable to find Unit(%s) or template Unit(%s) in Registry or on filesystem", name, uni.Template)
-				}
-				uf, err = getUnitFromFile(file)
-				if err != nil {
-					return fmt.Errorf("failed getting template Unit(%s) from file: %v", uni.Template, err)
-				}
-			} else {
-				warnOnDifferentLocalUnit(arg, tmpl)
-				uf = schema.MapSchemaUnitOptionsToUnitFile(tmpl.Options)
-			}
-
-			// If we found a template unit, create a near-identical instance unit in
-			// the Registry - same unit file as the template, but different name
+		// Assume that the name references a local unit file on
+		// disk or if it is an instance unit and if so get its
+		// corresponding unit
+		uf, err := getUnitFile(arg)
+		if err != nil {
+			return err
 		}
 
 		_, err = createUnit(name, uf)
@@ -744,6 +787,54 @@ func setTargetStateOfUnits(units []string, state job.JobState) ([]*schema.Unit, 
 	}
 
 	return triggered, nil
+}
+
+// getBlockAttempts gets the correct value of how many attempts to try
+// before giving up on an operation.
+// It returns a negative value which means do not block, if zero is
+// returned then it means try forever, and if a positive value is
+// returned then try up to that value
+func getBlockAttempts() int {
+	// By default we wait forever
+	var attempts int = 0
+
+	if sharedFlags.BlockAttempts > 0 {
+		attempts = sharedFlags.BlockAttempts
+	}
+
+	if sharedFlags.NoBlock {
+		attempts = -1
+	}
+
+	return attempts
+}
+
+// tryWaitForUnitStates tries to wait for units to reach the desired state.
+// It takes 5 arguments, the units to wait for, the desired state, the
+// desired JobState, how many attempts before timing out and a writer
+// interface.
+// tryWaitForUnitStates polls each of the indicated units until they
+// reach the desired state. If maxAttempts is negative, then it will not
+// wait, it will assume that all units reached their desired state.
+// If maxAttempts is zero tryWaitForUnitStates will retry forever, and
+// if it is greater than zero, it will retry up to the indicated value.
+// It returns 0 on success or 1 on errors.
+func tryWaitForUnitStates(units []string, state string, js job.JobState, maxAttempts int, out io.Writer) (ret int) {
+	// We do not wait just assume we reached the desired state
+	if maxAttempts <= -1 {
+		for _, name := range units {
+			stdout("Triggered unit %s %s", name, state)
+		}
+		return
+	}
+
+	errchan := waitForUnitStates(units, js, maxAttempts, out)
+	for err := range errchan {
+		stderr("Error waiting for units: %v", err)
+		ret = 1
+	}
+
+	return
 }
 
 // waitForUnitStates polls each of the indicated units until each of their
