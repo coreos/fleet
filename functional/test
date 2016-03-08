@@ -31,6 +31,7 @@ fi
 source build-env
 eval $(go env)
 go test github.com/coreos/fleet/functional -ldflags "${GLDFLAGS}" -v "$@" 2>&1 | tee functional/log
+TESTS_RETURN_CODE=${PIPESTATUS[0]}
 
 total=$(grep -E '^--- (PASS|FAIL)' functional/log | wc -l)
 pass=$(grep '^--- PASS' functional/log | wc -l)
@@ -47,3 +48,4 @@ echo "# PASS: $pass"
 echo "# FAIL: $fail"
 echo ""
 echo "See functional/log for the detailed output."
+exit $TESTS_RETURN_CODE
