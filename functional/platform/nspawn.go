@@ -318,10 +318,6 @@ func (nc *nspawnCluster) createMember(id string) (m Member, err error) {
 
 		// set up directory for sshd_config (see below)
 		fmt.Sprintf("mkdir -p %s/etc/ssh", fsdir),
-
-		// create drop-in directory for the setup-nsswitch service to fix systemd-sysusers race condition
-		// https://github.com/coreos/fleet/issues/1441
-		fmt.Sprintf("mkdir -p %s/etc/systemd/system/setup-nsswitch.service.d", fsdir),
 	}
 
 	for _, cmd := range cmds {
@@ -355,15 +351,6 @@ UseDNS no
 	ExecStart=/usr/bin/ssh-keygen -t rsa -f /etc/ssh/ssh_host_rsa_key -N "" -b 1024`
 	if err = ioutil.WriteFile(path.Join(fsdir, "/etc/systemd/system/sshd-keygen.service"), []byte(sshd_keygen), 0644); err != nil {
 		log.Printf("Failed writing sshd-keygen.service: %v", err)
-		return
-	}
-
-	// Workaround for setup-nsswitch and systemd-sysusers race condition
-	// https://github.com/coreos/fleet/issues/1441
-	nsswitch_dropin := `[Unit]
-	Before=systemd-sysusers.service`
-	if err = ioutil.WriteFile(path.Join(fsdir, "/etc/systemd/system/setup-nsswitch.service.d/00-systemd-sysusers-dep.conf"), []byte(nsswitch_dropin), 0644); err != nil {
-		log.Printf("Failed writing 00-systemd-sysusers-dep.conf drop-in: %v", err)
 		return
 	}
 
