@@ -36,27 +36,34 @@ func init() {
 }
 
 func runUnloadUnit(args []string) (exit int) {
-	units, err := findUnits(args)
-	if err != nil {
-		stderr("%v", err)
-		return 1
-	}
-
 	wait := make([]string, 0)
-	for _, s := range units {
-		if !suToGlobal(s) {
-			if job.JobState(s.CurrentState) == job.JobStateInactive {
-				log.Debugf("Target state of Unit(%s) already %s, skipping.", s.Name, job.JobStateInactive)
+
+	for _, arg := range args {
+		name := unitNameMangle(arg)
+		unit, err := cAPI.Unit(name)
+		if err != nil {
+			stderr("Error retrieving unit: %v", err)
+			return 1
+		}
+
+		if unit == nil {
+			stderr("Unit %s does not exist.", name)
+			continue
+		}
+
+		if !suToGlobal(*unit) {
+			if job.JobState(unit.CurrentState) == job.JobStateInactive {
+				log.Debugf("Target state of Unit(%s) already %s, skipping.", unit.Name, job.JobStateInactive)
 				continue
 			}
 		}
 
-		log.Debugf("Setting target state of Unit(%s) to %s", s.Name, job.JobStateInactive)
-		cAPI.SetUnitTargetState(s.Name, string(job.JobStateInactive))
-		if suToGlobal(s) {
-			stdout("Triggered global unit %s unload", s.Name)
+		log.Debugf("Setting target state of Unit(%s) to %s", unit.Name, job.JobStateInactive)
+		cAPI.SetUnitTargetState(unit.Name, string(job.JobStateInactive))
+		if suToGlobal(*unit) {
+			stdout("Triggered global unit %s unload", unit.Name)
 		} else {
-			wait = append(wait, s.Name)
+			wait = append(wait, unit.Name)
 		}
 	}
 
