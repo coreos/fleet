@@ -50,9 +50,12 @@ coreos:
       Address={{.IP}}/16
   - name: fleet.socket
     command: start
+  - name: fleet-tcp.socket
+    command: start
     content: |
      [Socket]
      ListenStream={{printf "%d" .FleetAPIPort}}
+     Service=fleet.service
   - name: fleet.service
     command: start
     content: |

@@ -39,13 +39,22 @@ const (
 )
 
 var fleetdBinPath string
+var fleetctlBinPath string
 
 func init() {
 	fleetdBinPath = os.Getenv("FLEETD_BIN")
+	fleetctlBinPath = os.Getenv("FLEETCTL_BIN")
 	if fleetdBinPath == "" {
 		fmt.Println("FLEETD_BIN environment variable must be set")
 		os.Exit(1)
 	} else if _, err := os.Stat(fleetdBinPath); err != nil {
+		fmt.Printf("%v\n", err)
+		os.Exit(1)
+	}
+	if fleetctlBinPath == "" {
+		fmt.Println("FLEETCTL_BIN environment variable must be set")
+		os.Exit(1)
+	} else if _, err := os.Stat(fleetctlBinPath); err != nil {
 		fmt.Printf("%v\n", err)
 		os.Exit(1)
 	}
@@ -101,6 +110,16 @@ func (nc *nspawnCluster) Fleetctl(m Member, args ...string) (string, string, err
 
 func (nc *nspawnCluster) FleetctlWithInput(m Member, input string, args ...string) (string, string, error) {
 	args = append([]string{"--endpoint=" + m.Endpoint()}, args...)
+	return util.RunFleetctlWithInput(input, args...)
+}
+
+func (nc *nspawnCluster) FleetctlTunnel(m Member, args ...string) (string, string, error) {
+	args = append([]string{"--tunnel=" + m.IP()}, args...)
+	return util.RunFleetctl(args...)
+}
+
+func (nc *nspawnCluster) FleetctlTunnelWithInput(m Member, input string, args ...string) (string, string, error) {
+	args = append([]string{"--tunnel=" + m.IP()}, args...)
 	return util.RunFleetctlWithInput(input, args...)
 }
 
@@ -238,6 +257,16 @@ func (nc *nspawnCluster) insertFleetd(dir string) error {
 	return copyFile(fleetdBinPath, fleetdBinDst, 0755)
 }
 
+func (nc *nspawnCluster) insertFleetctl(dir string) error {
+	cmd := fmt.Sprintf("mkdir -p %s/opt/fleet", dir)
+	if _, _, err := run(cmd); err != nil {
+		return err
+	}
+
+	fleetctlBinDst := path.Join(dir, "opt", "fleet", "fleetctl")
+	return copyFile(fleetctlBinPath, fleetctlBinDst, 0755)
+}
+
 func (nc *nspawnCluster) buildConfigDrive(dir, ip string) error {
 	latest := path.Join(dir, "media/configdrive/openstack/latest")
 	userPath := path.Join(latest, "user_data")
@@ -303,8 +332,6 @@ func (nc *nspawnCluster) createMember(id string) (m Member, err error) {
 		// minimum requirements for running systemd/coreos in a container
 		fmt.Sprintf("mkdir -p %s/usr", fsdir),
 		fmt.Sprintf("cp /etc/os-release %s/etc", fsdir),
-		fmt.Sprintf("echo 'core:x:500:500:CoreOS Admin:/home/core:/bin/bash' > %s/etc/passwd", fsdir),
-		fmt.Sprintf("echo 'core:x:500:' > %s/etc/group", fsdir),
 		fmt.Sprintf("ln -s /proc/self/mounts %s/etc/mtab", fsdir),
 		fmt.Sprintf("ln -s usr/lib64 %s/lib64", fsdir),
 		fmt.Sprintf("ln -s lib64 %s/lib", fsdir),
@@ -354,8 +381,28 @@ UseDNS no
 		return
 	}
 
+	if err = ioutil.WriteFile(path.Join(fsdir, "/etc/passwd"), []byte("core:x:500:500:CoreOS Admin:/home/core:/bin/bash"), 0644); err != nil {
+		log.Printf("Failed writing /etc/passwd: %v", err)
+		return
+	}
+
+	if err = ioutil.WriteFile(path.Join(fsdir, "/etc/group"), []byte("core:x:500:"), 0644); err != nil {
+		log.Printf("Failed writing /etc/group: %v", err)
+		return
+	}
+
+	if err = ioutil.WriteFile(path.Join(fsdir, "/home/core/.bash_profile"), []byte("export PATH=/opt/fleet:$PATH"), 0644); err != nil {
+		log.Printf("Failed writing /home/core/.bash_profile: %v", err)
+		return
+	}
+
 	if err = nc.insertFleetd(fsdir); err != nil {
 		log.Printf("Failed preparing fleetd in filesystem: %v", err)
+		return
+	}
+
+	if err = nc.insertFleetctl(fsdir); err != nil {
+		log.Printf("Failed preparing fleetctl in filesystem: %v", err)
 		return
 	}
 
