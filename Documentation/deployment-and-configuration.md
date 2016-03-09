@@ -21,9 +21,7 @@ If your etcd cluster has [TLS authentication][etcd-security] enabled, you will n
 Environment="FLEET_ETCD_CAFILE=/etc/ssl/etcd/ca.pem"
 Environment="FLEET_ETCD_CERTFILE=/etc/ssl/etcd/client.pem"
 Environment="FLEET_ETCD_KEYFILE=/etc/ssl/etcd/client-key.pem"
-Environment="FLEET_ETCD_SERVERS=https://172.16.0.101:2379,https://172.16.0.102:2379,https://172.16.0.103:2379"
-Environment="FLEET_METADATA=hostname=server1"
-Environment="FLEET_PUBLIC_IP=172.16.0.101"
+Environment="FLEET_ETCD_SERVERS=https://192.0.2.12:2379"
 ```
 
 #### Using CoreOS Cloud Config
