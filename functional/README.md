@@ -10,6 +10,23 @@ Since the tests utilize [`systemd-nspawn`][systemd-nspawn], this needs to be inv
 
 If the tests are aborted partway through, it's currently possible for them to leave residual state as a result of the `systemd-nspawn` operations. This can be cleaned up using the `clean.sh` script.
 
+### Using go flags in functional tests
+
+`fleet/functional` scripts forwards all arguments directly to the `go` binary. This allows you to pass `-run regexp` argument to the `./test` script and run specific test functions. The example below shows how to run only `TestSchedule*` test functions:
+
+```sh
+$ sudo fleet/functional/test -run TestSchedule*
+```
+
+The test functions list could be printed using `grep` command:
+
+```sh
+$ cd fleet/functional
+$ grep -r 'func Test' .
+```
+
+You can find a detailed description of the available test flags in the [Go documentation][golang-test-flags].
+
 ### Run tests in Vagrant
 
 The recommended way to run the tests is to use the provided Vagrantfile, which will set up a single CoreOS instance with a one-member etcd cluster (configuration is applied using `user-data` [Cloud-Config][cloud-config] file located in this directory).
@@ -108,7 +125,8 @@ sudo yum install -y VirtualBox-5.0
 #sudo yum install -y VirtualBox-4.3
 ```
 
-[test-in-vagrant]: #run-tests-in-vagrant
-[configure-vagrant]: #configure-host-environment-to-run-vagrant
-[systemd-nspawn]: https://www.freedesktop.org/software/systemd/man/systemd-nspawn.html
 [cloud-config]: https://github.com/coreos/coreos-cloudinit/blob/master/Documentation/cloud-config.md
+[configure-vagrant]: #configure-host-environment-to-run-vagrant
+[golang-test-flags]: https://golang.org/cmd/go/#hdr-Description_of_testing_flags
+[systemd-nspawn]: https://www.freedesktop.org/software/systemd/man/systemd-nspawn.html
+[test-in-vagrant]: #run-tests-in-vagrant
