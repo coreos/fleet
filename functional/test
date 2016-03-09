@@ -30,15 +30,15 @@ fi
 
 source build-env
 eval $(go env)
-go test github.com/coreos/fleet/functional -ldflags "${GLDFLAGS}" -v "$@" 2>&1 | tee functional/log
+go test github.com/coreos/fleet/functional -ldflags "${GLDFLAGS}" -v "$@" 2>&1 | tee functional/functional-tests.log
 TESTS_RETURN_CODE=${PIPESTATUS[0]}
 
-total=$(grep -E '^--- (PASS|FAIL)' functional/log | wc -l)
-pass=$(grep '^--- PASS' functional/log | wc -l)
-fail=$(grep '^--- FAIL' functional/log | wc -l)
+total=$(grep -E '^--- (PASS|FAIL)' functional/functional-tests.log | wc -l)
+pass=$(grep '^--- PASS' functional/functional-tests.log | wc -l)
+fail=$(grep '^--- FAIL' functional/functional-tests.log | wc -l)
 
 echo ""
-grep -E '^--- (PASS|FAIL)' functional/log
+grep -E '^--- (PASS|FAIL)' functional/functional-tests.log 
 
 echo "==========================================================="
 echo "Functional test summary"
@@ -47,5 +47,5 @@ echo "# TOTAL: $total"
 echo "# PASS: $pass"
 echo "# FAIL: $fail"
 echo ""
-echo "See functional/log for the detailed output."
+echo "See functional/functional-tests.log for the detailed output."
 exit $TESTS_RETURN_CODE
