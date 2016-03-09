@@ -11,9 +11,6 @@ coreos:
   - name: home-core-fleet.mount
     command: start
     content: |
-      [Unit]
-      Requires=systemd-networkd-wait-online.service
-      After=systemd-networkd-wait-online.service
       [Mount]
       What=fleet
       Where=/home/core/fleet
