@@ -2,6 +2,44 @@
 
 BASENAME=$(basename $0)
 
+USAGE="Usage: $0 [options]
+Options:
+    -c|-channel CHANNEL
+                channel name (stable/beta/alpha)               [default: stable]
+    -p|-ssh-port PORT
+                The port on localhost to map to the VM's sshd. [default: 2244]
+    -v          Make verbose
+    -h          this help message
+
+This script is a wrapper around qemu for starting CoreOS virtual machines,
+especially for running functional tests automatically.
+The -c option can be used to specify a channel name: stable, beta, or alpha.
+The -p option may be used to specify a particular ssh port on localhost to
+map to sshd of the VM.
+The channel name can be overridden by environment variable COREOS_CHANNEL,
+and port number can be also overridden by environment variable COREOS_SSH_PORT.
+"
+
+while [ $# -ge 1 ]; do
+    case "$1" in
+        -c|-channel)
+            OPTVAL_CHANNEL="$2"
+            shift 2 ;;
+        -p|-ssh-port)
+            OPTVAL_SSH_PORT="$2"
+            shift 2 ;;
+        -v|-verbose)
+            set -x
+            shift ;;
+        -h|-help|--help)
+            echo "$USAGE"
+            exit ;;
+        *)
+            break ;;
+    esac
+done
+
+
 function print_info {
   echo "$BASENAME: INFO: $@"
 }
@@ -31,13 +69,28 @@ mkdir -p $QEMU_DIR
 MAX_SSH_TRIES=60
 SSH_KEYS=$(cat fixtures/id_rsa.pub)
 PID_FILE=$(mktemp)
-SSH_PORT=2244
 NAME=fleet-tester
-BASE_IMAGE=$QEMU_DIR/coreos_production_qemu_image.img
-IMAGE=$QEMU_DIR/coreos-fleet-test.qcow2
-CHANNEL=stable
-IMG_URL="http://${CHANNEL}.release.core-os.net/amd64-usr/current/coreos_production_qemu_image.img.bz2"
-SIG_URL="http://${CHANNEL}.release.core-os.net/amd64-usr/current/coreos_production_qemu_image.img.bz2.sig"
+
+# The ssh port number is set to 2244, channel is stable by default respectively.
+# They can be overridden by environment variables, e.g.
+#
+#  $ COREOS_SSH_PORT=2245 COREOS_CHANNEL=alpha ./run-in-qemu
+
+: ${COREOS_SSH_PORT:=2244}
+if [ -n "$OPTVAL_SSH_PORT" ]; then
+  COREOS_SSH_PORT=$OPTVAL_SSH_PORT
+fi
+
+: ${COREOS_CHANNEL:=stable}
+if [ -n "$OPTVAL_CHANNEL" ]; then
+  COREOS_CHANNEL=$OPTVAL_CHANNEL
+fi
+
+BASE_IMAGE=$QEMU_DIR/coreos_${COREOS_CHANNEL}_production_qemu_image.img
+IMAGE=$QEMU_DIR/coreos_${COREOS_CHANNEL}_fleet_test.qcow2
+
+IMG_URL="http://${COREOS_CHANNEL}.release.core-os.net/amd64-usr/current/coreos_production_qemu_image.img.bz2"
+SIG_URL="http://${COREOS_CHANNEL}.release.core-os.net/amd64-usr/current/coreos_production_qemu_image.img.bz2.sig"
 GPG_PUB_KEY="https://coreos.com/security/image-signing-key/CoreOS_Image_Signing_Key.asc"
 GPG_PUB_KEY_ID="50E0885593D2DCB4"
 
@@ -78,7 +131,7 @@ qemu-system-x86_64 \
   -name $NAME \
   -m 512 \
   -net nic,vlan=0,model=virtio \
-  -net user,vlan=0,hostfwd=tcp:127.0.0.1:$SSH_PORT-:22,hostname=$NAME \
+  -net user,vlan=0,hostfwd=tcp:127.0.0.1:$COREOS_SSH_PORT-:22,hostname=$NAME \
   -drive if=virtio,file=$IMAGE \
   -fsdev local,id=conf,security_model=none,readonly,path=$CONFIG_DIR \
   -fsdev local,id=fleet,security_model=none,path=$CDIR/../ \
@@ -102,7 +155,7 @@ while true; do
   fi
   print_info "Trying to connect to qemu VM, #${TRY} of #${MAX_SSH_TRIES}..."
   set +e
-  RES=$(LANG=en_US ssh -l core -o ConnectTimeout=1 -o PasswordAuthentication=no -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -p $SSH_PORT -i fixtures/id_rsa 127.0.0.1 "ls ~/fleet/functional/test" 2>&1)
+  RES=$(LANG=en_US ssh -l core -o ConnectTimeout=1 -o PasswordAuthentication=no -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -p $COREOS_SSH_PORT -i fixtures/id_rsa 127.0.0.1 "ls ~/fleet/functional/test" 2>&1)
   RES_CODE=$?
   set -e
   if [ $RES_CODE -eq 0 ]; then
@@ -112,4 +165,4 @@ while true; do
   fi
 done
 
-ssh -l core -o PasswordAuthentication=no -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -p $SSH_PORT -i fixtures/id_rsa 127.0.0.1 "sudo ~/fleet/functional/test $ARGS"
+ssh -l core -o PasswordAuthentication=no -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -p $COREOS_SSH_PORT -i fixtures/id_rsa 127.0.0.1 "sudo ~/fleet/functional/test $ARGS"
