@@ -11,6 +11,7 @@ export PATH=${HOME}/go/bin:${PATH}
 
 if [ ! -S "$SSH_AUTH_SOCK" ]; then
   eval $(ssh-agent)
+  trap "ssh-agent -k > /dev/null" EXIT
 fi
 
 # github doesn't support explicit file permission set, this is workaround
