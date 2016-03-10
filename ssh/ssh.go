@@ -30,10 +30,14 @@ import (
 type SSHForwardingClient struct {
 	agentForwarding bool
 	*gossh.Client
+	agentForwardingEnabled bool
 }
 
 func (s *SSHForwardingClient) ForwardAgentAuthentication(session *gossh.Session) error {
-	if s.agentForwarding {
+	if s.agentForwarding && !s.agentForwardingEnabled {
+		// We are allowed to send "auth-agent-req@openssh.com" request only once per channel
+		// otherwise ssh daemon replies with the "SSH2_MSG_CHANNEL_FAILURE 100"
+		s.agentForwardingEnabled = true
 		return gosshagent.RequestAgentForwarding(session)
 	}
 	return nil
@@ -50,7 +54,7 @@ func newSSHForwardingClient(client *gossh.Client, agentForwarding bool) (*SSHFor
 		return nil, err
 	}
 
-	return &SSHForwardingClient{agentForwarding, client}, nil
+	return &SSHForwardingClient{agentForwarding, client, false}, nil
 }
 
 // makeSession initializes a gossh.Session connected to the invoking process's stdout/stderr/stdout.
