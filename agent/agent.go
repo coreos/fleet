@@ -57,11 +57,11 @@ func (a *Agent) MarshalJSON() ([]byte, error) {
 
 // Heartbeat updates the Registry periodically with an acknowledgement of the
 // Jobs this Agent is expected to be running.
-func (a *Agent) Heartbeat(stop chan bool) {
+func (a *Agent) Heartbeat(stop <-chan struct{}) {
 	a.heartbeatJobs(a.ttl, stop)
 }
 
-func (a *Agent) heartbeatJobs(ttl time.Duration, stop chan bool) {
+func (a *Agent) heartbeatJobs(ttl time.Duration, stop <-chan struct{}) {
 	heartbeat := func() {
 		machID := a.Machine.State().ID
 		launched := a.cache.launchedJobs()

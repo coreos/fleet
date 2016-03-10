@@ -35,6 +35,7 @@ write_files:
     etcd_servers=[{{printf "%q" .EtcdEndpoint}}]
     etcd_key_prefix={{.EtcdKeyPrefix}}
     public_ip={{.IP}}
+    agent_ttl=3s
 
 ssh_authorized_keys:
  - {{printf "%q" .PublicKey}}

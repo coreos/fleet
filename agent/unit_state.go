@@ -70,7 +70,7 @@ type UnitStatePublisher struct {
 // Run caches all of the heartbeat objects from the provided channel, publishing
 // them to the Registry every 5s. Heartbeat objects are also published as they
 // are received on the channel.
-func (p *UnitStatePublisher) Run(beatchan <-chan *unit.UnitStateHeartbeat, stop chan bool) {
+func (p *UnitStatePublisher) Run(beatchan <-chan *unit.UnitStateHeartbeat, stop <-chan struct{}) {
 	go func() {
 		for {
 			select {
