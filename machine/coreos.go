@@ -84,7 +84,7 @@ func (m *CoreOSMachine) Refresh() {
 
 // PeriodicRefresh updates the current state of the CoreOSMachine at the
 // interval indicated. Operation ceases when the provided channel is closed.
-func (m *CoreOSMachine) PeriodicRefresh(interval time.Duration, stop chan bool) {
+func (m *CoreOSMachine) PeriodicRefresh(interval time.Duration, stop <-chan struct{}) {
 	ticker := time.NewTicker(interval)
 	for {
 		select {

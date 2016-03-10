@@ -32,7 +32,7 @@ type EventStream interface {
 }
 
 type PeriodicReconciler interface {
-	Run(stop chan bool)
+	Run(stop <-chan struct{})
 }
 
 // NewPeriodicReconciler creates a PeriodicReconciler that will run recFunc at least every
@@ -53,7 +53,7 @@ type reconciler struct {
 	clock   clockwork.Clock
 }
 
-func (r *reconciler) Run(stop chan bool) {
+func (r *reconciler) Run(stop <-chan struct{}) {
 	trigger := make(chan struct{})
 	go func() {
 		abort := make(chan struct{})
