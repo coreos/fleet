@@ -6,11 +6,6 @@
 	],
 	"Deps": [
 		{
-			"ImportPath": "code.google.com/p/go-uuid/uuid",
-			"Comment": "null-15",
-			"Rev": "35bc42037350f0078e3c974c6ea690f1926603ab"
-		},
-		{
 			"ImportPath": "github.com/coreos/etcd/client",
 			"Comment": "v2.2.0-alpha.1-138-gb2d33e6",
 			"Rev": "b2d33e6dcb24cddc0395f1bbe2213a27aef0fb46"
@@ -59,6 +54,11 @@
 			"Rev": "b473f398c464f1988327f67c9e6aa7fba62f80d2"
 		},
 		{
+			"ImportPath": "github.com/pborman/uuid",
+			"Comment": "v1.0-11-gc55201b03606",
+			"Rev": "c55201b036063326c5b1b89ccfe45a184973d073"
+		},
+		{
 			"ImportPath": "github.com/rakyll/globalconf",
 			"Rev": "fd9ff89130a682478a0c94e893ff4affe570b002"
 		},
@@ -77,10 +77,6 @@
 		{
 			"ImportPath": "golang.org/x/net/context",
 			"Rev": "a8c61998a557a37435f719980da368469c10bfed"
-		},
-		{
-			"ImportPath": "google.golang.org/api/google-api-go-generator",
-			"Rev": "d3edb0282bde692467788c50070a9211afe75cf3"
 		},
 		{
 			"ImportPath": "google.golang.org/api/googleapi",
