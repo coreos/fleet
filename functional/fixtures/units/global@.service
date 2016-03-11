@@ -1,0 +1,5 @@
+[Service]
+ExecStart=/bin/bash -c "while true; do echo 'Hello, Global World (@%i)!'; sleep 1; done"
+
+[X-Fleet]
+Global=true
