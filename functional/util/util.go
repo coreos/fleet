@@ -98,7 +98,7 @@ type UnitState struct {
 
 func ParseUnitStates(units []string) (states []UnitState) {
 	for _, unit := range units {
-		cols := strings.SplitN(unit, "\t", 3)
+		cols := strings.Fields(unit)
 		if len(cols) == 3 {
 			machine := strings.SplitN(cols[2], "/", 2)[0]
 			states = append(states, UnitState{cols[0], cols[1], machine})
