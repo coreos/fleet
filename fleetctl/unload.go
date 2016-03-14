@@ -47,6 +47,11 @@ func runUnloadUnit(args []string) (exit int) {
 		return 1
 	}
 
+	if len(units) == 0 {
+		stderr("Units not found in registry")
+		return 0
+	}
+
 	wait := make([]string, 0)
 	for _, s := range units {
 		if !suToGlobal(s) {

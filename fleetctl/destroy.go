@@ -46,6 +46,11 @@ func runDestroyUnits(args []string) (exit int) {
 		return 1
 	}
 
+	if len(units) == 0 {
+		stderr("Units not found in registry")
+		return 0
+	}
+
 	for _, v := range units {
 		err := cAPI.DestroyUnit(v.Name)
 		if err != nil {

@@ -63,6 +63,11 @@ func runStopUnit(args []string) (exit int) {
 		return 1
 	}
 
+	if len(units) == 0 {
+		stderr("Units not found in registry")
+		return 0
+	}
+
 	stopping := make([]string, 0)
 	for _, u := range units {
 		if !suToGlobal(u) {
