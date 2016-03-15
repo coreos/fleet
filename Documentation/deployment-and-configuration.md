@@ -12,6 +12,40 @@ Each `fleetd` daemon must be configured to talk to the same [etcd cluster][etcd]
 
 [etcd]: https://coreos.com/docs/cluster-management/setup/getting-started-with-etcd
 
+### Basic Authentication
+
+If your etcd cluster has [Basic authentication][etcd-authentication] enabled, you will need to configure fleet to use an username/password combination for a valid user in the system. Also, because [Basic authentication][etcd-authentication] is Base64 encoded and easily deciphered, it is recommended to also use [TLS authentication][etcd-security] for transport level encryption by providing an `etcd_cafile`. *Authentication is only available since etcd 2.1.X and greater.*
+The examples below show how to achieve this:
+
+#### Using systemd Drop-Ins
+
+```ini
+[Service]
+Environment="FLEET_ETCD_SERVERS=https://192.0.2.12:2379"
+Environment="FLEET_ETCD_USERNAME=root"
+Environment="FLEET_ETCD_PASSWORD=coreos"
+```
+
+#### Using CoreOS Cloud Config
+
+```yaml
+#cloud-config
+
+coreos:
+  fleet:
+    etcd_servers: "https://192.0.2.12:2379"
+    etcd_username: root
+    etcd_password: coreos
+```
+
+#### Using fleet configuration file
+
+```ini
+etcd_servers=["https://192.0.2.12:2379"]
+etcd_username=root
+etcd_password=coreos
+```
+
 ## systemd
 
 The `fleetd` daemon communicates with systemd (v207+) running locally on a given machine. It requires D-Bus (v1.6.12+) to do this.
@@ -129,3 +163,7 @@ Default: "30s"
 Interval in seconds at which the engine should reconcile the cluster schedule in etcd.
 
 Default: 2
+
+[etcd]: https://github.com/coreos/etcd/blob/v3.0.4/Documentation/docs.md
+[etcd-security]: https://github.com/coreos/etcd/blob/v3.0.4/Documentation/op-guide/security.md
+[etcd-authentication]: https://github.com/coreos/etcd/blob/v3.0.4/Documentation/v2/authentication.md
