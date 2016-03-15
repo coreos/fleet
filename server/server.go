@@ -94,7 +94,10 @@ func New(cfg config.Config, listeners []net.Listener) (*Server, error) {
 		Transport:               &http.Transport{TLSClientConfig: tlsConfig},
 		Endpoints:               cfg.EtcdServers,
 		HeaderTimeoutPerRequest: (time.Duration(cfg.EtcdRequestTimeout*1000) * time.Millisecond),
+		Username:                cfg.EtcdUsername,
+		Password:                cfg.EtcdPassword,
 	}
+
 	eClient, err := etcd.New(eCfg)
 	if err != nil {
 		return nil, err
