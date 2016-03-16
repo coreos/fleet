@@ -113,16 +113,6 @@ func (nc *nspawnCluster) FleetctlWithInput(m Member, input string, args ...strin
 	return util.RunFleetctlWithInput(input, args...)
 }
 
-func (nc *nspawnCluster) FleetctlTunnel(m Member, args ...string) (string, string, error) {
-	args = append([]string{"--tunnel=" + m.IP()}, args...)
-	return util.RunFleetctl(args...)
-}
-
-func (nc *nspawnCluster) FleetctlTunnelWithInput(m Member, input string, args ...string) (string, string, error) {
-	args = append([]string{"--tunnel=" + m.IP()}, args...)
-	return util.RunFleetctlWithInput(input, args...)
-}
-
 func (nc *nspawnCluster) WaitForNActiveUnits(m Member, count int) (map[string][]util.UnitState, error) {
 	var nactive int
 	states := make(map[string][]util.UnitState)
