@@ -58,7 +58,7 @@ You should avoid public access to etcd and instead run fleet [from your local la
 
 ## Securing fleetd
 
-It is also recommended to run fleetd under separate `fleet` user and group, and set the permissions of the fleetd API's listening Unix socket to `0660`. This will require local user to be in `fleet` group to perform an action with fleetd. Since the fleet daemon uses [D-Bus][d-bus] to communicate with systemd it is necessary to create a [`polkit(8)`][polkit] rule to allow fleetd to communicate with systemd:
+systemd version 216 or later supports [`polkit(8)`][polkit] rules to control access for unprivileged users. It is recommended to run fleetd under its own `fleet` user and group, and to set the permissions of the fleetd API socket to mode `0660`, allowing only that user and group to write to the socket. This configuration will require a login user to be in the `fleet` group to perform actions with fleetd. The polkit rule below grants the the fleetd process running as the unprivileged `fleet` user to communicate with systemd over [D-Bus][d-bus]:
 
 ```js
 polkit.addRule(function(action, subject) {
