@@ -563,7 +563,7 @@ func getUnitFileFromTemplate(uni *unit.UnitNameInfo, fileName string) (*unit.Uni
 	}
 
 	if tmpl != nil {
-		warnOnDifferentLocalUnit(fileName, tmpl)
+		isLocalUnitDifferent(fileName, tmpl, true, false)
 		uf = schema.MapSchemaUnitOptionsToUnitFile(tmpl.Options)
 		log.Debugf("Template Unit(%s) found in registry", uni.Template)
 	} else {
@@ -883,26 +883,6 @@ func isLocalUnitDifferent(file string, su *schema.Unit, warnIfDifferent bool, fa
 	}
 
 	return false, err
-}
-
-func warnOnDifferentLocalUnit(loc string, su *schema.Unit) {
-	suf := schema.MapSchemaUnitOptionsToUnitFile(su.Options)
-	if _, err := os.Stat(loc); !os.IsNotExist(err) {
-		luf, err := getUnitFromFile(loc)
-		if err == nil && luf.Hash() != suf.Hash() {
-			stderr("WARNING: Unit %s in registry differs from local unit file %s", su.Name, loc)
-			return
-		}
-	}
-	if uni := unit.NewUnitNameInfo(path.Base(loc)); uni != nil && uni.IsInstance() {
-		file := path.Join(path.Dir(loc), uni.Template)
-		if _, err := os.Stat(file); !os.IsNotExist(err) {
-			tmpl, err := getUnitFromFile(file)
-			if err == nil && tmpl.Hash() != suf.Hash() {
-				stderr("WARNING: Unit %s in registry differs from local template unit file %s", su.Name, uni.Template)
-			}
-		}
-	}
 }
 
 func lazyLoadUnits(args []string) ([]*schema.Unit, error) {
