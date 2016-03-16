@@ -237,24 +237,14 @@ func (nc *nspawnCluster) prepCluster() (err error) {
 	return nil
 }
 
-func (nc *nspawnCluster) insertFleetd(dir string) error {
-	cmd := fmt.Sprintf("mkdir -p %s/opt/fleet", dir)
+func (nc *nspawnCluster) insertBin(src string, dst string) error {
+	cmd := fmt.Sprintf("mkdir -p %s/opt/fleet", dst)
 	if _, _, err := run(cmd); err != nil {
 		return err
 	}
 
-	fleetdBinDst := path.Join(dir, "opt", "fleet", "fleetd")
-	return copyFile(fleetdBinPath, fleetdBinDst, 0755)
-}
-
-func (nc *nspawnCluster) insertFleetctl(dir string) error {
-	cmd := fmt.Sprintf("mkdir -p %s/opt/fleet", dir)
-	if _, _, err := run(cmd); err != nil {
-		return err
-	}
-
-	fleetctlBinDst := path.Join(dir, "opt", "fleet", "fleetctl")
-	return copyFile(fleetctlBinPath, fleetctlBinDst, 0755)
+	BinDst := path.Join(dst, "opt", "fleet", path.Base(src))
+	return copyFile(src, BinDst, 0755)
 }
 
 func (nc *nspawnCluster) buildConfigDrive(dir, ip string) error {
@@ -386,12 +376,12 @@ UseDNS no
 		return
 	}
 
-	if err = nc.insertFleetd(fsdir); err != nil {
+	if err = nc.insertBin(fleetdBinPath, fsdir); err != nil {
 		log.Printf("Failed preparing fleetd in filesystem: %v", err)
 		return
 	}
 
-	if err = nc.insertFleetctl(fsdir); err != nil {
+	if err = nc.insertBin(fleetctlBinPath, fsdir); err != nil {
 		log.Printf("Failed preparing fleetctl in filesystem: %v", err)
 		return
 	}
