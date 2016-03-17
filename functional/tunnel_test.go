@@ -59,8 +59,19 @@ func TestTunnelScheduleBatchUnits(t *testing.T) {
 		t.Fatalf("Failed to correctly submit unit using ssh tunnel: \nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)
 	}
 
+	// Combine all parameters and units in one args slice
+	args := []string{
+		fmt.Sprintf("--tunnel=%s", m0.IP()),
+		"--strict-host-key-checking=true",
+		fmt.Sprintf("--known-hosts-file=%s", khFile),
+		"start",
+	}
+	for i := 1; i <= 10; i++ {
+		args = append(args, fmt.Sprintf("fixtures/units/hello@%d.service", i))
+	}
+
 	// Launch a batch of units
-	if stdout, stderr, err := cluster.Fleetctl(m0, fmt.Sprintf("--tunnel=%s", m0.IP()), "--strict-host-key-checking=true", fmt.Sprintf("--known-hosts-file=%s", khFile), "start", "fixtures/units/hello@1.service", "fixtures/units/hello@2.service", "fixtures/units/hello@3.service", "fixtures/units/hello@4.service", "fixtures/units/hello@5.service", "fixtures/units/hello@6.service", "fixtures/units/hello@7.service", "fixtures/units/hello@8.service", "fixtures/units/hello@9.service", "fixtures/units/hello@10.service"); err != nil {
+	if stdout, stderr, err := cluster.Fleetctl(m0, args...); err != nil {
 		t.Fatalf("Unable to submit batch of units using ssh tunnel: \nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)
 	} else if strings.Contains(stderr, "Error") {
 		t.Fatalf("Failed to correctly submit batch of units using ssh tunnel: \nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)
