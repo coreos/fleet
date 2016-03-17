@@ -103,13 +103,28 @@ func (nc *nspawnCluster) keyspace() string {
 	return fmt.Sprintf("/fleet_functional/%s", nc.name)
 }
 
+// This function adds --endpoint flag if --tunnel flag is not used
+// Usefull for "fleetctl fd-forward" tests
+func handleEndpointFlag(m Member, args *[]string) {
+	result := true
+	for _, arg := range *args {
+		if strings.Contains(arg, "-- ") || strings.Contains(arg, "--tunnel") {
+			result = false
+			break
+		}
+	}
+	if result {
+		*args = append([]string{"--endpoint=" + m.Endpoint()}, *args...)
+	}
+}
+
 func (nc *nspawnCluster) Fleetctl(m Member, args ...string) (string, string, error) {
-	args = append([]string{"--endpoint=" + m.Endpoint()}, args...)
+	handleEndpointFlag(m, &args)
 	return util.RunFleetctl(args...)
 }
 
 func (nc *nspawnCluster) FleetctlWithInput(m Member, input string, args ...string) (string, string, error) {
-	args = append([]string{"--endpoint=" + m.Endpoint()}, args...)
+	handleEndpointFlag(m, &args)
 	return util.RunFleetctlWithInput(input, args...)
 }
 
