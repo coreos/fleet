@@ -376,19 +376,33 @@ UseDNS no
 		return
 	}
 
-	if err = ioutil.WriteFile(path.Join(fsdir, "/etc/passwd"), []byte("core:x:500:500:CoreOS Admin:/home/core:/bin/bash"), 0644); err != nil {
-		log.Printf("Failed writing /etc/passwd: %v", err)
-		return
+	filesContents := []struct {
+		path     string
+		contents string
+		mode     os.FileMode
+	}{
+		{
+			"/etc/passwd",
+			"core:x:500:500:CoreOS Admin:/home/core:/bin/bash",
+			0644,
+		},
+		{
+			"/etc/group",
+			"core:x:500:",
+			0644,
+		},
+		{
+			"/home/core/.bash_profile",
+			"export PATH=/opt/fleet:$PATH",
+			0644,
+		},
 	}
 
-	if err = ioutil.WriteFile(path.Join(fsdir, "/etc/group"), []byte("core:x:500:"), 0644); err != nil {
-		log.Printf("Failed writing /etc/group: %v", err)
-		return
-	}
-
-	if err = ioutil.WriteFile(path.Join(fsdir, "/home/core/.bash_profile"), []byte("export PATH=/opt/fleet:$PATH"), 0644); err != nil {
-		log.Printf("Failed writing /home/core/.bash_profile: %v", err)
-		return
+	for _, file := range filesContents {
+		if err = ioutil.WriteFile(path.Join(fsdir, file.path), []byte(file.contents), file.mode); err != nil {
+			log.Printf("Failed writing %s: %v", path.Join(fsdir, file.path), err)
+			return
+		}
 	}
 
 	if err = nc.insertBin(fleetdBinPath, fsdir); err != nil {
