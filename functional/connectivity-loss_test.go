@@ -132,19 +132,11 @@ func TestSingleNodeConnectivityLoss(t *testing.T) {
 	}
 
 	// Wait for initial state being reached.
-	timeout := 15 * time.Second
-	alarm := time.After(timeout)
-	ticker := time.Tick(250 * time.Millisecond)
-loop:
-	for {
-		select {
-		case <-alarm:
-			t.Fatalf("Failed to reach expected initial state within %v.", timeout)
-		case <-ticker:
-			if isExpected, _, _ := checkExpectedStates(); isExpected {
-				break loop
-			}
-		}
+	timeout, err := util.WaitForState(
+		func() bool { isExpected, _, _ := checkExpectedStates(); return isExpected },
+	)
+	if err != nil {
+		t.Fatalf("Failed to reach expected initial state within %v.", timeout)
 	}
 
 	// Cut connection to etcd.
