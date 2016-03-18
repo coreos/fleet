@@ -103,10 +103,14 @@ var (
 		Full          bool
 		NoLegend      bool
 		NoBlock       bool
+		Replace       bool
 		BlockAttempts int
 		Fields        string
 		SSHPort       int
 	}{}
+
+	// current command being executed
+	currentCommand string
 
 	// used to cache MachineStates
 	machineStates map[string]*machine.MachineState
@@ -286,6 +290,10 @@ func main() {
 			os.Exit(1)
 		}
 	}
+
+	// We use this to know in which context we are,
+	// submit, load or start
+	currentCommand = cmd.Name
 
 	os.Exit(cmd.Run(cmd.Flags.Args()))
 
