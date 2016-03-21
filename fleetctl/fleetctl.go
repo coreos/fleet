@@ -16,7 +16,6 @@ package main
 
 import (
 	"errors"
-	"flag"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -43,6 +42,8 @@ import (
 	"github.com/coreos/fleet/ssh"
 	"github.com/coreos/fleet/unit"
 	"github.com/coreos/fleet/version"
+
+	"github.com/coreos/fleet/Godeps/_workspace/src/github.com/codegangsta/cli"
 )
 
 const (
