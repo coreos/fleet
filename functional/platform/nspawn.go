@@ -39,13 +39,22 @@ const (
 )
 
 var fleetdBinPath string
+var fleetctlBinPath string
 
 func init() {
 	fleetdBinPath = os.Getenv("FLEETD_BIN")
+	fleetctlBinPath = os.Getenv("FLEETCTL_BIN")
 	if fleetdBinPath == "" {
 		fmt.Println("FLEETD_BIN environment variable must be set")
 		os.Exit(1)
 	} else if _, err := os.Stat(fleetdBinPath); err != nil {
+		fmt.Printf("%v\n", err)
+		os.Exit(1)
+	}
+	if fleetctlBinPath == "" {
+		fmt.Println("FLEETCTL_BIN environment variable must be set")
+		os.Exit(1)
+	} else if _, err := os.Stat(fleetctlBinPath); err != nil {
 		fmt.Printf("%v\n", err)
 		os.Exit(1)
 	}
@@ -94,13 +103,28 @@ func (nc *nspawnCluster) keyspace() string {
 	return fmt.Sprintf("/fleet_functional/%s", nc.name)
 }
 
+// This function adds --endpoint flag if --tunnel flag is not used
+// Usefull for "fleetctl fd-forward" tests
+func handleEndpointFlag(m Member, args *[]string) {
+	result := true
+	for _, arg := range *args {
+		if strings.Contains(arg, "-- ") || strings.Contains(arg, "--tunnel") {
+			result = false
+			break
+		}
+	}
+	if result {
+		*args = append([]string{"--endpoint=" + m.Endpoint()}, *args...)
+	}
+}
+
 func (nc *nspawnCluster) Fleetctl(m Member, args ...string) (string, string, error) {
-	args = append([]string{"--endpoint=" + m.Endpoint()}, args...)
+	handleEndpointFlag(m, &args)
 	return util.RunFleetctl(args...)
 }
 
 func (nc *nspawnCluster) FleetctlWithInput(m Member, input string, args ...string) (string, string, error) {
-	args = append([]string{"--endpoint=" + m.Endpoint()}, args...)
+	handleEndpointFlag(m, &args)
 	return util.RunFleetctlWithInput(input, args...)
 }
 
@@ -228,14 +252,14 @@ func (nc *nspawnCluster) prepCluster() (err error) {
 	return nil
 }
 
-func (nc *nspawnCluster) insertFleetd(dir string) error {
-	cmd := fmt.Sprintf("mkdir -p %s/opt/fleet", dir)
+func (nc *nspawnCluster) insertBin(src string, dst string) error {
+	cmd := fmt.Sprintf("mkdir -p %s/opt/fleet", dst)
 	if _, _, err := run(cmd); err != nil {
 		return err
 	}
 
-	fleetdBinDst := path.Join(dir, "opt", "fleet", "fleetd")
-	return copyFile(fleetdBinPath, fleetdBinDst, 0755)
+	binDst := path.Join(dst, "opt", "fleet", path.Base(src))
+	return copyFile(src, binDst, 0755)
 }
 
 func (nc *nspawnCluster) buildConfigDrive(dir, ip string) error {
@@ -303,8 +327,6 @@ func (nc *nspawnCluster) createMember(id string) (m Member, err error) {
 		// minimum requirements for running systemd/coreos in a container
 		fmt.Sprintf("mkdir -p %s/usr", fsdir),
 		fmt.Sprintf("cp /etc/os-release %s/etc", fsdir),
-		fmt.Sprintf("echo 'core:x:500:500:CoreOS Admin:/home/core:/bin/bash' > %s/etc/passwd", fsdir),
-		fmt.Sprintf("echo 'core:x:500:' > %s/etc/group", fsdir),
 		fmt.Sprintf("ln -s /proc/self/mounts %s/etc/mtab", fsdir),
 		fmt.Sprintf("ln -s usr/lib64 %s/lib64", fsdir),
 		fmt.Sprintf("ln -s lib64 %s/lib", fsdir),
@@ -354,8 +376,42 @@ UseDNS no
 		return
 	}
 
-	if err = nc.insertFleetd(fsdir); err != nil {
+	filesContents := []struct {
+		path     string
+		contents string
+		mode     os.FileMode
+	}{
+		{
+			"/etc/passwd",
+			"core:x:500:500:CoreOS Admin:/home/core:/bin/bash",
+			0644,
+		},
+		{
+			"/etc/group",
+			"core:x:500:",
+			0644,
+		},
+		{
+			"/home/core/.bash_profile",
+			"export PATH=/opt/fleet:$PATH",
+			0644,
+		},
+	}
+
+	for _, file := range filesContents {
+		if err = ioutil.WriteFile(path.Join(fsdir, file.path), []byte(file.contents), file.mode); err != nil {
+			log.Printf("Failed writing %s: %v", path.Join(fsdir, file.path), err)
+			return
+		}
+	}
+
+	if err = nc.insertBin(fleetdBinPath, fsdir); err != nil {
 		log.Printf("Failed preparing fleetd in filesystem: %v", err)
+		return
+	}
+
+	if err = nc.insertBin(fleetctlBinPath, fsdir); err != nil {
+		log.Printf("Failed preparing fleetctl in filesystem: %v", err)
 		return
 	}
 
