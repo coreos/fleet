@@ -53,7 +53,12 @@ func TestTunnelScheduleBatchUnits(t *testing.T) {
 	khFile := tmp.Name()
 
 	// Launch one unit
-	if stdout, stderr, err := cluster.FleetctlWithInput(m0, "yes", fmt.Sprintf("--tunnel=%s", m0.IP()), "--strict-host-key-checking=true", fmt.Sprintf("--known-hosts-file=%s", khFile), "start", "fixtures/units/hello.service"); err != nil {
+	if stdout, stderr, err := cluster.FleetctlWithInput(m0, "yes",
+		fmt.Sprintf("--tunnel=%s", m0.IP()),
+		"--strict-host-key-checking=true",
+		fmt.Sprintf("--known-hosts-file=%s", khFile),
+		"start",
+		"fixtures/units/hello.service"); err != nil {
 		t.Fatalf("Unable to submit one unit using ssh tunnel: \nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)
 	} else if strings.Contains(stderr, "Error") {
 		t.Fatalf("Failed to correctly submit unit using ssh tunnel: \nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)

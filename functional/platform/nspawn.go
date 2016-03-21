@@ -258,8 +258,8 @@ func (nc *nspawnCluster) insertBin(src string, dst string) error {
 		return err
 	}
 
-	BinDst := path.Join(dst, "opt", "fleet", path.Base(src))
-	return copyFile(src, BinDst, 0755)
+	binDst := path.Join(dst, "opt", "fleet", path.Base(src))
+	return copyFile(src, binDst, 0755)
 }
 
 func (nc *nspawnCluster) buildConfigDrive(dir, ip string) error {
