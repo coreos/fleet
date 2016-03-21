@@ -176,6 +176,7 @@ func init() {
 		cmdUnloadUnit,
 		cmdVerifyUnit,
 		cmdVersion,
+		cmdOverwriteUnit,
 	}
 }
 
@@ -726,13 +727,13 @@ func lazyCreateUnits(args []string) error {
 	return nil
 }
 
-func warnOnDifferentLocalUnit(loc string, su *schema.Unit) {
+func warnOnDifferentLocalUnit(loc string, su *schema.Unit) bool {
 	suf := schema.MapSchemaUnitOptionsToUnitFile(su.Options)
 	if _, err := os.Stat(loc); !os.IsNotExist(err) {
 		luf, err := getUnitFromFile(loc)
 		if err == nil && luf.Hash() != suf.Hash() {
 			stderr("WARNING: Unit %s in registry differs from local unit file %s", su.Name, loc)
-			return
+			return true
 		}
 	}
 	if uni := unit.NewUnitNameInfo(path.Base(loc)); uni != nil && uni.IsInstance() {
@@ -741,9 +742,11 @@ func warnOnDifferentLocalUnit(loc string, su *schema.Unit) {
 			tmpl, err := getUnitFromFile(file)
 			if err == nil && tmpl.Hash() != suf.Hash() {
 				stderr("WARNING: Unit %s in registry differs from local template unit file %s", su.Name, uni.Template)
+				return true
 			}
 		}
 	}
+	return false
 }
 
 func lazyLoadUnits(args []string) ([]*schema.Unit, error) {
