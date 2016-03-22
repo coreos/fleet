@@ -59,37 +59,34 @@ func TestTemplatesWithSpecifiersInMetadata(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	stdout, stderr, err := cluster.Fleetctl(m0, "list-units", "--no-legend", "--full", "--fields", "unit,active,machine")
+	if err != nil {
+		t.Fatalf("Unable to get submitted units: \nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)
+	}
+
 	ndesired := 3
-	if stdout, stderr, err := cluster.Fleetctl(m0, "list-units", "--no-legend", "--full", "--fields", "unit,active,machine"); err != nil {
-		t.Fatalf("Unable to get submited units: \nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)
-	} else {
-		stdout = strings.TrimSpace(stdout)
-		if err != nil {
-			t.Fatalf("Failed to parse stdout: \nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)
-		}
+	stdout = strings.TrimSpace(stdout)
+	lines := strings.Split(stdout, "\n")
+	allStates := util.ParseUnitStates(lines)
+	active := util.FilterActiveUnits(allStates)
+	nactive := len(active)
+	if nactive != ndesired {
+		t.Fatalf("Failed to get %d active units: \nstdout: %s\nstderr: %s", ndesired, stdout, stderr)
+	}
 
-		lines := strings.Split(stdout, "\n")
-		allStates := util.ParseUnitStates(lines)
-		active := util.FilterActiveUnits(allStates)
-		nactive := len(active)
-		if nactive != ndesired {
-			t.Fatalf("Failed to get %d active units: \nstdout: %s\nstderr: %s", ndesired, stdout, stderr)
+	for _, state := range active {
+		re := regexp.MustCompile(`@([^.]*)`)
+		desiredMachine := re.FindStringSubmatch(state.Name)
+		if len(desiredMachine) < 2 {
+			t.Fatalf("Cannot parse state.Name (%v): \nstdout: %s\nstderr: %s", state.Name, stdout, stderr)
 		}
-
-		for _, state := range active {
-			re := regexp.MustCompile(`@([^.]*)`)
-			desiredMachine := re.FindStringSubmatch(state.Name)
-			if len(desiredMachine) < 2 {
-				t.Fatalf("Cannot parse state.Name (%v): \nstdout: %s\nstderr: %s", state.Name, stdout, stderr)
-			}
-			currentMachine := fmt.Sprintf("smoke%s", state.Machine)
-			if desiredMachine[1] != currentMachine {
-				t.Fatalf("Template (%s) has been scheduled on wrong machine (%s): \nstdout: %s\nstderr: %s", state.Name, currentMachine, stdout, stderr)
-			}
+		currentMachine := fmt.Sprintf("smoke%s", state.Machine)
+		if desiredMachine[1] != currentMachine {
+			t.Fatalf("Template (%s) has been scheduled on wrong machine (%s): \nstdout: %s\nstderr: %s", state.Name, currentMachine, stdout, stderr)
 		}
 	}
 
 	if stdout, stderr, err := cluster.Fleetctl(m0, "start", "--block-attempts=20", "fixtures/units/metadata@invalid.service"); err == nil {
-		t.Fatalf("metadata@invalid unit should not be scheduled: \nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)
+		t.Fatalf("metadata@invalid unit should not be scheduled: \nstdout: %s\nstderr: %s", stdout, stderr)
 	}
 }
