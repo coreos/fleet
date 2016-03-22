@@ -42,14 +42,6 @@ func TestUnitHash(t *testing.T) {
 	if !eh.Empty() {
 		t.Fatalf("Empty hash check failed: %v", eh.Empty())
 	}
-
-	rehashed, err := HashFromHexString(expectHashString)
-	if err != nil {
-		t.Fatalf("HashFromHexString failed with: %v", err)
-	}
-	if rehashed != gotHash {
-		t.Fatalf("HashFromHexString not equal to original hash")
-	}
 }
 
 func TestRecognizedUnitTypes(t *testing.T) {
