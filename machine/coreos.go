@@ -23,7 +23,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/vishvananda/netlink"
+	"github.com/coreos/fleet/Godeps/_workspace/src/github.com/vishvananda/netlink"
 
 	"github.com/coreos/fleet/log"
 	"github.com/coreos/fleet/unit"
