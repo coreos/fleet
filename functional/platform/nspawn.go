@@ -100,7 +100,7 @@ func (nc *nspawnCluster) nextID() string {
 	return strconv.Itoa(nc.maxID)
 }
 
-func (nc *nspawnCluster) keyspace() string {
+func (nc *nspawnCluster) Keyspace() string {
 	// TODO(jonboulle): generate this dynamically with atomic in order keys?
 	return fmt.Sprintf("/fleet_functional/%s", nc.name)
 }
@@ -367,7 +367,7 @@ func (nc *nspawnCluster) buildConfigDrive(dir, ip string) error {
 	defer userFile.Close()
 
 	etcd := "http://172.18.0.1:4001"
-	return util.BuildCloudConfig(userFile, ip, etcd, nc.keyspace())
+	return util.BuildCloudConfig(userFile, ip, etcd, nc.Keyspace())
 }
 
 func (nc *nspawnCluster) Members() []Member {
@@ -601,7 +601,7 @@ func (nc *nspawnCluster) Destroy(t *testing.T) error {
 	// TODO(bcwaldon): This returns 4 on success, but we can't easily
 	// ignore just that return code. Ignore the returned error
 	// altogether until this is fixed.
-	run("etcdctl rm --recursive " + nc.keyspace())
+	run("etcdctl rm --recursive " + nc.Keyspace())
 
 	run("ip link del fleet0")
 
