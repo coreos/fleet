@@ -44,23 +44,6 @@ func TestUnitHash(t *testing.T) {
 	}
 }
 
-func TestHashFromHexString(t *testing.T) {
-	u, err := NewUnitFile("[Service]\nExecStart=/bin/sleep 100\n")
-	if err != nil {
-		t.Fatalf("Unexpected error encountered creating unit: %v", err)
-	}
-	gotHash := u.Hash()
-
-	expectHashString := "1c6fb6f3684bafb0c173d8b8b957ceff031180c1"
-	rehashed, err := HashFromHexString(expectHashString)
-	if err != nil {
-		t.Fatalf("HashFromHexString failed with: %v", err)
-	}
-	if rehashed != gotHash {
-		t.Fatalf("HashFromHexString not equal to original hash")
-	}
-}
-
 func TestRecognizedUnitTypes(t *testing.T) {
 	tts := []struct {
 		name string

@@ -60,6 +60,7 @@ coreos:
     command: start
     content: |
      [Service]
+     Environment=FLEET_METADATA=hostname=%H
      ExecStart=/opt/fleet/fleetd -config /opt/fleet/fleet.conf
 `
 )
