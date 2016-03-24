@@ -15,6 +15,7 @@
 package functional
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -26,6 +27,7 @@ import (
 
 	"github.com/coreos/fleet/functional/platform"
 	"github.com/coreos/fleet/functional/util"
+	"github.com/coreos/fleet/unit"
 )
 
 const (
@@ -678,3 +680,149 @@ func waitForNUnitsCmd(cl platform.Cluster, m platform.Member, cmd string, nu int
 // frequently than before, it's a huge pain to make it succeed every time.
 // The failure brings a negative impact on productivity. So remove the entire
 // test for now. - dpark 20160829
+
+// TestUnitDestroyFromRegistry() checks for a submitted unit being removed
+// from the etcd registry. It compares a local unit body with the unit in
+// the etcd registry, to verify the body is identical.
+func TestUnitDestroyFromRegistry(t *testing.T) {
+	cluster, err := platform.NewNspawnCluster("smoke")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cluster.Destroy(t)
+
+	m, err := cluster.CreateMember()
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = cluster.WaitForNMachines(m, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// submit a unit and assert it shows up
+	if _, _, err := cluster.Fleetctl(m, "submit", "fixtures/units/hello.service"); err != nil {
+		t.Fatalf("Unable to submit fleet unit: %v", err)
+	}
+	stdout, _, err := cluster.Fleetctl(m, "list-units", "--no-legend")
+	if err != nil {
+		t.Fatalf("Failed to run list-units: %v", err)
+	}
+	units := strings.Split(strings.TrimSpace(stdout), "\n")
+	if len(units) != 1 {
+		t.Fatalf("Did not find 1 unit in cluster: \n%s", stdout)
+	}
+
+	// cat the unit and compare it with the value in etcd registry
+	unitBody, _, err := cluster.Fleetctl(m, "cat", "hello.service")
+	if err != nil {
+		t.Fatalf("Unable to retrieve the fleet unit: %v", err)
+	}
+
+	var hashUnit string
+	if hashUnit, err = retrieveJobObjectHash(cluster, "hello.service"); err != nil {
+		t.Fatalf("Failed to retrieve hash of job object hello.service: %v", err)
+	}
+
+	var regBody string
+	if regBody, err = retrieveUnitBody(cluster, hashUnit); err != nil {
+		t.Fatalf("Failed to retrieve unit body for hello.service: %v", err)
+	}
+
+	// compare it with unitBody
+	if regBody != unitBody {
+		t.Fatalf("Failed to verify fleet unit: %v", err)
+	}
+
+	// destroy the unit again
+	if _, _, err := cluster.Fleetctl(m, "destroy", "hello.service"); err != nil {
+		t.Fatalf("Failed to destroy unit: %v", err)
+	}
+
+	stdout, _, err = cluster.Fleetctl(m, "list-units", "--no-legend")
+	if err != nil {
+		t.Fatalf("Failed to run list-units: %v", err)
+	}
+	units = strings.Split(strings.TrimSpace(stdout), "\n")
+	if len(stdout) != 0 && len(units) != 1 {
+		t.Fatalf("Did not find 1 unit in cluster: \n%s", stdout)
+	}
+
+	// check for the unit being destroyed from the etcd registry,
+	// /fleet_functional/smoke/unit/.
+	// NOTE: do not check error of etcdctl, as it returns 4 on an empty list.
+	etcdUnitPrefix := path.Join(cluster.Keyspace(), "unit")
+	etcdUnitPath := path.Join(etcdUnitPrefix, hashUnit)
+	stdout, _, _ = util.RunEtcdctl("ls", etcdUnitPath)
+	units = strings.Split(strings.TrimSpace(stdout), "\n")
+	if len(stdout) != 0 && len(units) != 1 {
+		t.Fatalf("The unit still remains in the registry: %v")
+	}
+}
+
+// retrieveJobObjectHash fetches the job hash value from
+// /fleet_functional/smoke/job/<jobName>/object in the etcd registry.
+func retrieveJobObjectHash(cluster platform.Cluster, jobName string) (hash string, err error) {
+	etcdJobPrefix := path.Join(cluster.Keyspace(), "job")
+	etcdJobPath := path.Join(etcdJobPrefix, jobName, "object")
+
+	var stdout string
+	if stdout, _, err = util.RunEtcdctl("ls", etcdJobPath); err != nil {
+		return "", fmt.Errorf("Failed to list a unit from the registry: %v", err)
+	}
+	units := strings.Split(strings.TrimSpace(stdout), "\n")
+	if len(stdout) == 0 || len(units) == 0 {
+		return "", fmt.Errorf("No such unit in the registry: %v", err)
+	}
+
+	stdout, _, err = util.RunEtcdctl("get", etcdJobPath)
+	stdout = strings.TrimSpace(stdout)
+	objectBody := strings.Split(stdout, "\n")
+	if err != nil || len(stdout) == 0 || len(objectBody) == 0 {
+		return "", fmt.Errorf("Failed to get unit from the registry: %v", err)
+	}
+
+	type jobModel struct {
+		Name     string
+		UnitHash unit.Hash
+	}
+	var jm jobModel
+	if err = json.Unmarshal([]byte(stdout), &jm); err != nil {
+		return "", fmt.Errorf("Failed to unmarshal fleet unit in the registry: %v", err)
+	}
+
+	return jm.UnitHash.String(), nil
+}
+
+// retrieveUnitBody fetches unit body from /fleet_functional/smoke/unit/<hash>
+// in the etcd registry.
+func retrieveUnitBody(cluster platform.Cluster, hashUnit string) (regBody string, err error) {
+	etcdUnitPrefix := path.Join(cluster.Keyspace(), "unit")
+	etcdUnitPath := path.Join(etcdUnitPrefix, hashUnit)
+
+	var stdout string
+	if stdout, _, err = util.RunEtcdctl("ls", etcdUnitPath); err != nil {
+		return "", fmt.Errorf("Failed to list a unit from the registry: %v", err)
+	}
+
+	units := strings.Split(strings.TrimSpace(stdout), "\n")
+	if len(stdout) == 0 || len(units) == 0 {
+		return "", fmt.Errorf("No such unit in the registry: %v", err)
+	}
+	stdout, _, err = util.RunEtcdctl("get", etcdUnitPath)
+	stdout = strings.TrimSpace(stdout)
+	unitBody := strings.Split(stdout, "\n")
+	if err != nil || len(stdout) == 0 || len(unitBody) == 0 {
+		return "", fmt.Errorf("Failed to get unit from the registry: %v", err)
+	}
+
+	type rawModel struct {
+		Raw string
+	}
+
+	var rm rawModel
+	if err = json.Unmarshal([]byte(stdout), &rm); err != nil {
+		return "", fmt.Errorf("Failed to unmarshal fleet unit in the registry: %v", err)
+	}
+	return rm.Raw, nil
+}
