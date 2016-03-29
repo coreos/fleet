@@ -175,11 +175,14 @@ func (j *Job) requirements() map[string][]string {
 		}
 
 		if uni != nil {
+			processedValues := make([]string, len(values))
 			for i, v := range values {
-				values[i] = unitPrintf(v, *uni)
+				processedValues[i] = unitPrintf(v, *uni)
 			}
+			requirements[key] = processedValues
+		} else {
+			requirements[key] = values
 		}
-		requirements[key] = values
 	}
 
 	return requirements
