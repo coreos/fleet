@@ -195,6 +195,11 @@ Zzz=something
 		}
 	}
 
+	jOrig := NewJob("ssh@2.service", *newUnit(t, contents))
+	// Now ensure that Contents was not modified
+	if !reflect.DeepEqual(jOrig.Unit.Contents, j.Unit.Contents) {
+		t.Errorf("Contents data was eventually modified, want:\n%#v\ngot:\n%#v", jOrig.Unit.Contents, j.Unit.Contents)
+	}
 }
 
 func TestParseRequirementsMissingSection(t *testing.T) {
