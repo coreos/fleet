@@ -143,7 +143,7 @@ diskType=SSD AND (region=us-east-1 OR region=us-west-1)
 
 Grouping metadata pairs onto separate lines has no affect on the matching logic:
 
-```sql
+```ini
 [X-Fleet]
 MachineMetadata="region=us-east-1" "job=foo"
 MachineMetadata="region=us-west-1" "job=bar"
