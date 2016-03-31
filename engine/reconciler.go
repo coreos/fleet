@@ -16,9 +16,11 @@ package engine
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/log"
+	"github.com/coreos/fleet/metrics"
 )
 
 const (
@@ -50,6 +52,8 @@ type Reconciler struct {
 func (r *Reconciler) Reconcile(e *Engine, stop chan struct{}) {
 	log.Debugf("Polling Registry for actionable work")
 
+	start := time.Now()
+
 	clust, err := e.clusterState()
 	if err != nil {
 		log.Errorf("Failed getting current cluster state: %v", err)
@@ -62,6 +66,8 @@ func (r *Reconciler) Reconcile(e *Engine, stop chan struct{}) {
 			log.Errorf("Failed resolving task: task=%s err=%v", t, err)
 		}
 	}
+
+	metrics.ReportEngineReconcileSuccess(start)
 }
 
 func (r *Reconciler) calculateClusterTasks(clust *clusterState, stopchan chan struct{}) (taskchan chan *task) {
@@ -99,6 +105,7 @@ func (r *Reconciler) calculateClusterTasks(clust *clusterState, stopchan chan st
 				if !ok {
 					unschedule = true
 					reason = fmt.Sprintf("target Machine(%s) went away", j.TargetMachineID)
+					metrics.ReportEngineReconcileFailure(metrics.MachineAway)
 					return
 				}
 
@@ -106,6 +113,7 @@ func (r *Reconciler) calculateClusterTasks(clust *clusterState, stopchan chan st
 				if able, reason = as.AbleToRun(j); !able {
 					unschedule = true
 					reason = fmt.Sprintf("target Machine(%s) unable to run unit", j.TargetMachineID)
+					metrics.ReportEngineReconcileFailure(metrics.RunFailure)
 					return
 				}
 
@@ -132,11 +140,13 @@ func (r *Reconciler) calculateClusterTasks(clust *clusterState, stopchan chan st
 			dec, err := r.sched.Decide(clust, j)
 			if err != nil {
 				log.Debugf("Unable to schedule Job(%s): %v", j.Name, err)
+				metrics.ReportEngineReconcileFailure(metrics.ScheduleFailure)
 				continue
 			}
 
 			reason := fmt.Sprintf("target state %s and unit not scheduled", j.TargetState)
 			if !send(taskTypeAttemptScheduleUnit, reason, j.Name, dec.machineID) {
+				metrics.ReportEngineReconcileFailure(metrics.ScheduleFailure)
 				return
 			}
 
@@ -151,14 +161,18 @@ func doTask(t *task, e *Engine) (err error) {
 	switch t.Type {
 	case taskTypeUnscheduleUnit:
 		err = e.unscheduleUnit(t.JobName, t.MachineID)
+		metrics.ReportEngineTask(t.Type)
 	case taskTypeAttemptScheduleUnit:
 		e.attemptScheduleUnit(t.JobName, t.MachineID)
+		metrics.ReportEngineTask(t.Type)
 	default:
 		err = fmt.Errorf("unrecognized task type %q", t.Type)
 	}
 
 	if err == nil {
 		log.Infof("EngineReconciler completed task: %s", t)
+	} else {
+		metrics.ReportEngineTaskFailure(t.Type)
 	}
 
 	return
