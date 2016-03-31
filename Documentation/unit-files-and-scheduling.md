@@ -141,6 +141,20 @@ the logic would be as follows:
 diskType=SSD AND (region=us-east-1 OR region=us-west-1)
 ```
 
+Grouping metadata pairs onto separate lines has no affect on the matching logic:
+
+```sql
+[X-Fleet]
+MachineMetadata="region=us-east-1" "job=foo"
+MachineMetadata="region=us-west-1" "job=bar"
+```
+
+will be interpreted as:
+
+```sql
+(job=foo OR job=bar) AND (region=us-east-1 OR region=us-west-1)
+```
+
 The previous example schedules at most one unit across your cluster, depending on the first satisfied requirement. If you add `Global=true`:
 
 ```ini
