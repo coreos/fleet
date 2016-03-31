@@ -15,6 +15,8 @@
 package registry
 
 import (
+	"strings"
+
 	etcd "github.com/coreos/fleet/Godeps/_workspace/src/github.com/coreos/etcd/client"
 
 	"github.com/coreos/fleet/log"
@@ -61,8 +63,47 @@ func (r *EtcdRegistry) getUnitByHash(hash unit.Hash) *unit.UnitFile {
 		}
 		return nil
 	}
+	return r.unitFromEtcdNode(hash, resp.Node)
+}
+
+// getAllUnitsHashMap retrieves from the Registry all Units and returns a map of hash to UnitFile
+func (r *EtcdRegistry) getAllUnitsHashMap() (map[string]*unit.UnitFile, error) {
+	key := r.prefixed(unitPrefix)
+	opts := &etcd.GetOptions{
+		Recursive: true,
+		Quorum:    true,
+	}
+	hashToUnit := map[string]*unit.UnitFile{}
+	resp, err := r.kAPI.Get(r.ctx(), key, opts)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, node := range resp.Node.Nodes {
+		parts := strings.Split(node.Key, "/")
+		if len(parts) == 0 {
+			log.Errorf("key '%v' doesn't have enough parts", node.Key)
+			continue
+		}
+		stringHash := parts[len(parts)-1]
+		hash, err := unit.HashFromHexString(stringHash)
+		if err != nil {
+			log.Errorf("failed to get Hash for key '%v' with stringHash '%v': %v", node.Key, stringHash, err)
+			continue
+		}
+		unit := r.unitFromEtcdNode(hash, node)
+		if unit == nil {
+			continue
+		}
+		hashToUnit[stringHash] = unit
+	}
+
+	return hashToUnit, nil
+}
+
+func (r *EtcdRegistry) unitFromEtcdNode(hash unit.Hash, etcdNode *etcd.Node) *unit.UnitFile {
 	var um unitModel
-	if err := unmarshal(resp.Node.Value, &um); err != nil {
+	if err := unmarshal(etcdNode.Value, &um); err != nil {
 		log.Errorf("error unmarshaling Unit(%s): %v", hash, err)
 		return nil
 	}

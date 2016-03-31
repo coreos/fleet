@@ -101,9 +101,25 @@ func (r *EtcdRegistry) Units() ([]job.Unit, error) {
 		return nil, err
 	}
 
+	// Fetch all units by hash recursively to avoid sending N requests to Etcd.
+	hashToUnit, err := r.getAllUnitsHashMap()
+	if err != nil {
+		log.Errorf("failed fetching all Units from etcd: %v", err)
+		return nil, err
+	}
+	unitHashLookupFunc := func(hash unit.Hash) *unit.UnitFile {
+		stringHash := hash.String()
+		unit, ok := hashToUnit[stringHash]
+		if !ok {
+			log.Errorf("did not find Unit %v in list of all units", stringHash)
+			return nil
+		}
+		return unit
+	}
+
 	uMap := make(map[string]*job.Unit)
 	for _, dir := range res.Node.Nodes {
-		u, err := r.dirToUnit(dir)
+		u, err := r.dirToUnit(dir, unitHashLookupFunc)
 		if err != nil {
 			log.Errorf("Failed to parse Unit from etcd: %v", err)
 			continue
@@ -143,12 +159,12 @@ func (r *EtcdRegistry) Unit(name string) (*job.Unit, error) {
 		return nil, err
 	}
 
-	return r.dirToUnit(res.Node)
+	return r.dirToUnit(res.Node, r.getUnitByHash)
 }
 
 // dirToUnit takes a Node containing a Job's constituent objects (in child
 // nodes) and returns a *job.Unit, or any error encountered
-func (r *EtcdRegistry) dirToUnit(dir *etcd.Node) (*job.Unit, error) {
+func (r *EtcdRegistry) dirToUnit(dir *etcd.Node, unitHashLookupFunc func(unit.Hash) *unit.UnitFile) (*job.Unit, error) {
 	objKey := path.Join(dir.Key, "object")
 	var objNode *etcd.Node
 	for _, node := range dir.Nodes {
@@ -160,7 +176,7 @@ func (r *EtcdRegistry) dirToUnit(dir *etcd.Node) (*job.Unit, error) {
 	if objNode == nil {
 		return nil, nil
 	}
-	u, err := r.getUnitFromObjectNode(objNode)
+	u, err := r.getUnitFromObjectNode(objNode, unitHashLookupFunc)
 	if err != nil {
 		return nil, err
 	}
@@ -254,7 +270,7 @@ func dirToHeartbeat(dir *etcd.Node) (heartbeat string) {
 // getUnitFromObject takes a *etcd.Node containing a Unit's jobModel, and
 // instantiates and returns a representative *job.Unit, transitively fetching the
 // associated UnitFile as necessary
-func (r *EtcdRegistry) getUnitFromObjectNode(node *etcd.Node) (*job.Unit, error) {
+func (r *EtcdRegistry) getUnitFromObjectNode(node *etcd.Node, unitHashLookupFunc func(unit.Hash) *unit.UnitFile) (*job.Unit, error) {
 	var err error
 	var jm jobModel
 	if err = unmarshal(node.Value, &jm); err != nil {
@@ -263,7 +279,7 @@ func (r *EtcdRegistry) getUnitFromObjectNode(node *etcd.Node) (*job.Unit, error)
 
 	var unit *unit.UnitFile
 
-	unit = r.getUnitByHash(jm.UnitHash)
+	unit = unitHashLookupFunc(jm.UnitHash)
 	if unit == nil {
 		log.Warningf("No Unit found in Registry for Job(%s)", jm.Name)
 		return nil, nil
