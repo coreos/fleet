@@ -44,11 +44,11 @@ func TestShutdown(t *testing.T) {
 	}
 
 	// Check expected state after stop.
-	stdout, _ := cluster.MemberCommand(m0, "sudo", "systemctl", "show", "--property=ActiveState", "fleet")
+	stdout, _ := cluster.MemberCommand(m0, "systemctl", "show", "--property=ActiveState", "fleet")
 	if strings.TrimSpace(stdout) != "ActiveState=inactive" {
 		t.Fatalf("Fleet unit not reported as inactive: %s", stdout)
 	}
-	stdout, _ = cluster.MemberCommand(m0, "sudo", "systemctl", "show", "--property=Result", "fleet")
+	stdout, _ = cluster.MemberCommand(m0, "systemctl", "show", "--property=Result", "fleet")
 	if strings.TrimSpace(stdout) != "Result=success" {
 		t.Fatalf("Result for fleet unit not reported as success: %s", stdout)
 	}
@@ -91,11 +91,11 @@ func TestShutdownVsMonitor(t *testing.T) {
 	}
 
 	// Verify that fleetd was shut down cleanly in spite of the concurrent restart.
-	stdout, _ := cluster.MemberCommand(m0, "sudo", "systemctl", "show", "--property=ActiveState", "fleet")
+	stdout, _ := cluster.MemberCommand(m0, "systemctl", "show", "--property=ActiveState", "fleet")
 	if strings.TrimSpace(stdout) != "ActiveState=inactive" {
 		t.Fatalf("Fleet unit not reported as inactive: %s", stdout)
 	}
-	stdout, _ = cluster.MemberCommand(m0, "sudo", "systemctl", "show", "--property=Result", "fleet")
+	stdout, _ = cluster.MemberCommand(m0, "systemctl", "show", "--property=Result", "fleet")
 	if strings.TrimSpace(stdout) != "Result=success" {
 		t.Fatalf("Result for fleet unit not reported as success: %s", stdout)
 	}
