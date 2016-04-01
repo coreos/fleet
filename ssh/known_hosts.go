@@ -87,6 +87,48 @@ func NewHostKeyChecker(m HostKeyManager) *HostKeyChecker {
 	return &HostKeyChecker{m, askToTrustHost}
 }
 
+// Returns public key algorithms of the remote host that are listed
+// inside known_hosts
+func (kc *HostKeyChecker) GetHostKeyAlgorithms(addr string) []string {
+	var results []string
+	remoteAddr, err := kc.addrToHostPort(addr)
+	if err != nil {
+		log.Errorf("Failed to parse address %v: %v", addr, err)
+		return nil
+	}
+
+	hostKeys, err := kc.m.GetHostKeys()
+
+	_, ok := err.(*os.PathError)
+	if err != nil && !ok {
+		log.Errorf("Failed to read known_hosts file %v: %v", kc.m.String(), err)
+		return nil
+	}
+
+	for pattern, keys := range hostKeys {
+		if !matchHost(remoteAddr, pattern) {
+			remoteIP, err := net.ResolveTCPAddr("tcp", addr)
+			if err != nil {
+				log.Errorf("Failed to resolve TCP address %v: %v", addr, err)
+				continue
+			}
+			ipAddr, err := kc.addrToHostPort(remoteIP.String())
+			if err != nil {
+				log.Errorf("Failed to parse address %v: %v", remoteIP.String(), err)
+				continue
+			}
+			if !matchHost(ipAddr, pattern) {
+				continue
+			}
+		}
+		for _, hostKey := range keys {
+			results = append(results, hostKey.Type())
+		}
+	}
+
+	return results
+}
+
 // Check is called during the handshake to check the server's public key for
 // unexpected changes. The key argument is in SSH wire format. It can be parsed
 // using ssh.ParsePublicKey. The address before DNS resolution is passed in the
