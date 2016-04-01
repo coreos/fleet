@@ -132,20 +132,12 @@ func (nc *nspawnCluster) WaitForNActiveUnits(m Member, count int) (map[string][]
 	var nactive int
 	states := make(map[string][]util.UnitState)
 
-	timeout := 15 * time.Second
-	alarm := time.After(timeout)
-
-	ticker := time.Tick(250 * time.Millisecond)
-loop:
-	for {
-		select {
-		case <-alarm:
-			return nil, fmt.Errorf("failed to find %d active units within %v (last found: %d)", count, timeout, nactive)
-		case <-ticker:
+	timeout, err := util.WaitForState(
+		func() bool {
 			stdout, _, err := nc.Fleetctl(m, "list-units", "--no-legend", "--full", "--fields", "unit,active,machine")
 			stdout = strings.TrimSpace(stdout)
 			if err != nil {
-				continue
+				return false
 			}
 
 			lines := strings.Split(stdout, "\n")
@@ -153,7 +145,7 @@ loop:
 			active := util.FilterActiveUnits(allStates)
 			nactive = len(active)
 			if nactive != count {
-				continue
+				return false
 			}
 
 			for _, state := range active {
@@ -163,8 +155,11 @@ loop:
 				}
 				states[name] = append(states[name], state)
 			}
-			break loop
-		}
+			return true
+		},
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find %d active units within %v (last found: %d)", count, timeout, nactive)
 	}
 
 	return states, nil
