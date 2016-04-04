@@ -77,7 +77,7 @@ func TestNodeShutdown(t *testing.T) {
 	}
 
 	// The member's unit should actually stop running, too
-	stdout, _ = cluster.MemberCommand(m0, "sudo", "systemctl", "status", "hello.service")
+	stdout, _ = cluster.MemberCommand(m0, "systemctl", "status", "hello.service")
 	if !strings.Contains(stdout, "Active: inactive") {
 		t.Fatalf("Unit hello.service not reported as inactive:\n%s\n", stdout)
 	}
