@@ -171,7 +171,7 @@ func SSHAgentClient() (gosshagent.Agent, error) {
 	return gosshagent.NewClient(agent), nil
 }
 
-func sshClientConfig(user string, checker *HostKeyChecker) (*gossh.ClientConfig, error) {
+func sshClientConfig(user string, checker *HostKeyChecker, addr string) (*gossh.ClientConfig, error) {
 	agentClient, err := SSHAgentClient()
 	if err != nil {
 		return nil, err
@@ -191,6 +191,7 @@ func sshClientConfig(user string, checker *HostKeyChecker) (*gossh.ClientConfig,
 
 	if checker != nil {
 		cfg.HostKeyCallback = checker.Check
+		cfg.HostKeyAlgorithms = checker.GetHostKeyAlgorithms(addr)
 	}
 
 	return &cfg, nil
@@ -204,12 +205,12 @@ func maybeAddDefaultPort(addr string) string {
 }
 
 func NewSSHClient(user, addr string, checker *HostKeyChecker, agentForwarding bool, timeout time.Duration) (*SSHForwardingClient, error) {
-	clientConfig, err := sshClientConfig(user, checker)
+	addr = maybeAddDefaultPort(addr)
+
+	clientConfig, err := sshClientConfig(user, checker, addr)
 	if err != nil {
 		return nil, err
 	}
-
-	addr = maybeAddDefaultPort(addr)
 
 	var client *gossh.Client
 	dialFunc := func(echan chan error) {
@@ -226,13 +227,13 @@ func NewSSHClient(user, addr string, checker *HostKeyChecker, agentForwarding bo
 }
 
 func NewTunnelledSSHClient(user, tunaddr, tgtaddr string, checker *HostKeyChecker, agentForwarding bool, timeout time.Duration) (*SSHForwardingClient, error) {
-	clientConfig, err := sshClientConfig(user, checker)
+	tunaddr = maybeAddDefaultPort(tunaddr)
+	tgtaddr = maybeAddDefaultPort(tgtaddr)
+
+	clientConfig, err := sshClientConfig(user, checker, tunaddr)
 	if err != nil {
 		return nil, err
 	}
-
-	tunaddr = maybeAddDefaultPort(tunaddr)
-	tgtaddr = maybeAddDefaultPort(tgtaddr)
 
 	var tunnelClient *gossh.Client
 	dialFunc := func(echan chan error) {
