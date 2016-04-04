@@ -17,6 +17,7 @@ package server
 import (
 	"encoding/json"
 	"errors"
+	"net"
 	"net/http"
 	"sync"
 	"time"
@@ -66,7 +67,7 @@ type Server struct {
 	wg    sync.WaitGroup // used to co-ordinate shutdown
 }
 
-func New(cfg config.Config) (*Server, error) {
+func New(cfg config.Config, listeners []net.Listener) (*Server, error) {
 	agentTTL, err := time.ParseDuration(cfg.AgentTTL)
 	if err != nil {
 		return nil, err
@@ -115,9 +116,11 @@ func New(cfg config.Config) (*Server, error) {
 
 	e := engine.New(reg, lManager, rStream, mach)
 
-	listeners, err := activation.Listeners(false)
-	if err != nil {
-		return nil, err
+	if len(listeners) == 0 {
+		listeners, err = activation.Listeners(false)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	hrt := heart.New(reg, mach)
@@ -259,4 +262,8 @@ func (s *Server) MarshalJSON() ([]byte, error) {
 		UnitStatePublisher: s.usPub,
 		UnitStateGenerator: s.usGen,
 	})
+}
+
+func (s *Server) GetApiServerListeners() []net.Listener {
+	return s.api.GetListeners()
 }
