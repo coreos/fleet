@@ -13,6 +13,7 @@ import (
 	"github.com/coreos/fleet/Godeps/_workspace/src/google.golang.org/grpc/codes"
 	"github.com/coreos/fleet/debug"
 	"github.com/coreos/fleet/log"
+	"github.com/coreos/fleet/machine"
 	pb "github.com/coreos/fleet/protobuf"
 	"github.com/coreos/fleet/registry"
 )
@@ -38,6 +39,8 @@ type rpcserver struct {
 
 	// serverStatus stores the serving status of this service.
 	serverStatus pb.HealthCheckResponse_ServingStatus
+
+	hasNonGRPCAgents bool
 }
 
 func NewRPCServer(reg registry.Registry, addr string) (*rpcserver, error) {
@@ -70,6 +73,18 @@ func NewRPCServer(reg registry.Registry, addr string) (*rpcserver, error) {
 
 	s.SetServingStatus(pb.HealthCheckResponse_NOT_SERVING)
 
+	machineStates, err := s.etcdRegistry.Machines()
+	if err != nil {
+		return nil, err
+	}
+	s.hasNonGRPCAgents = false
+	for _, state := range machineStates {
+		if !state.Capabilities.Has(machine.CapGRPC) {
+			log.Info("Fleet cluster has non gRPC agents!. Enabled unit state storage into etcd!")
+			s.hasNonGRPCAgents = true
+			break
+		}
+	}
 	return s, nil
 }
 
@@ -108,6 +123,7 @@ func (s *rpcserver) GetScheduledUnits(ctx context.Context, unitFilter *pb.UnitFi
 	if debugRPCServer {
 		defer debug.Exit_(debug.Enter_())
 	}
+
 	units, err := s.localRegistry.Schedule()
 
 	return &pb.ScheduledUnits{Units: units}, err
@@ -118,11 +134,9 @@ func (s *rpcserver) GetScheduledUnit(ctx context.Context, name *pb.UnitName) (*p
 		defer debug.Exit_(debug.Enter_(name.Name))
 	}
 
-	su, exists := s.localRegistry.ScheduledUnit(name.Name)
-	if exists {
-		return &pb.MaybeScheduledUnit{IsScheduled: &pb.MaybeScheduledUnit_Unit{Unit: su}}, nil
-	}
-	return &pb.MaybeScheduledUnit{IsScheduled: &pb.MaybeScheduledUnit_Notfound{Notfound: &pb.NotFound{}}}, nil
+	su := s.localRegistry.ScheduledUnit(name.Name)
+
+	return &pb.MaybeScheduledUnit{IsScheduled: &pb.MaybeScheduledUnit_Unit{Unit: su}}, nil
 }
 
 func (s *rpcserver) GetUnit(ctx context.Context, name *pb.UnitName) (*pb.MaybeUnit, error) {
@@ -142,8 +156,28 @@ func (s *rpcserver) GetUnits(ctx context.Context, filter *pb.UnitFilter) (*pb.Un
 	if debugRPCServer {
 		defer debug.Exit_(debug.Enter_())
 	}
+	units := make([]pb.Unit, 0)
+	units = append(units, s.localRegistry.Units()...)
 
-	units := s.localRegistry.Units()
+	// Check if there are etcd fleet-based agents in the cluster to share the state
+	if s.hasNonGRPCAgents {
+		log.Debug("Merging etcd with inmemory units in GetUnits()")
+		etcdUnits, err := s.etcdRegistry.Units()
+		if err != nil {
+			return nil, err
+		}
+
+		unitNames := make(map[string]struct{}, len(units))
+		for _, unit := range units {
+			unitNames[unit.Name] = struct{}{}
+		}
+		for _, unit := range etcdUnits {
+			if _, ok := unitNames[unit.Name]; !ok {
+				units = append(units, unit.ToPB())
+			}
+		}
+	}
+
 	return &pb.Units{Units: units}, nil
 }
 
@@ -151,8 +185,27 @@ func (s *rpcserver) GetUnitStates(ctx context.Context, filter *pb.UnitStateFilte
 	if debugRPCServer {
 		defer debug.Exit_(debug.Enter_())
 	}
+	states := make([]*pb.UnitState, 0)
+	states = append(states, s.localRegistry.UnitStates()...)
 
-	states := s.localRegistry.UnitStates()
+	if s.hasNonGRPCAgents {
+		log.Debug("Merging etcd with inmemory unit states in GetUnitStates()")
+		etcdUnitStates, err := s.etcdRegistry.UnitStates()
+		if err != nil {
+			return nil, err
+		}
+
+		unitStateNames := make(map[string]string, len(states))
+		for _, state := range states {
+			unitStateNames[state.Name] = state.MachineID
+		}
+		for _, state := range etcdUnitStates {
+			machId, ok := unitStateNames[state.UnitName]
+			if !ok || (ok && machId != state.MachineID) {
+				states = append(states, state.ToPB())
+			}
+		}
+	}
 
 	return &pb.UnitStates{states}, nil
 }
@@ -204,6 +257,11 @@ func (s *rpcserver) RemoveUnitState(ctx context.Context, name *pb.UnitName) (*pb
 		defer debug.Exit_(debug.Enter_(name.Name))
 	}
 
+	// Check if there are etcd fleet-based agents in the cluster to share the state
+	if s.hasNonGRPCAgents {
+		s.etcdRegistry.RemoveUnitState(name.Name)
+	}
+
 	s.localRegistry.RemoveUnitState(name.Name)
 	return &pb.GenericReply{}, nil
 }
@@ -211,6 +269,12 @@ func (s *rpcserver) RemoveUnitState(ctx context.Context, name *pb.UnitName) (*pb
 func (s *rpcserver) SaveUnitState(ctx context.Context, req *pb.SaveUnitStateRequest) (*pb.GenericReply, error) {
 	if debugRPCServer {
 		defer debug.Exit_(debug.Enter_(req))
+	}
+
+	// Check if there are etcd fleet-based agents in the cluster to share the state
+	if s.hasNonGRPCAgents {
+		unitState := rpcUnitStateToExtUnitState(req.State)
+		s.etcdRegistry.SaveUnitState(req.Name, unitState, time.Duration(req.TTL)*time.Second)
 	}
 
 	s.localRegistry.SaveUnitState(req.Name, req.State, time.Duration(req.TTL)*time.Second)

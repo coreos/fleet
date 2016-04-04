@@ -85,7 +85,7 @@ func (r *inmemoryRegistry) Schedule() (units []pb.ScheduledUnit, err error) {
 	return units, nil
 }
 
-func (r *inmemoryRegistry) ScheduledUnit(unitName string) (unit *pb.ScheduledUnit, exists bool) {
+func (r *inmemoryRegistry) ScheduledUnit(unitName string) (unit *pb.ScheduledUnit) {
 	if DebugInmemoryRegistry {
 		defer debug.Exit_(debug.Enter_(unitName))
 	}
@@ -95,9 +95,14 @@ func (r *inmemoryRegistry) ScheduledUnit(unitName string) (unit *pb.ScheduledUni
 	if schedUnit, exists := r.scheduledUnits[unitName]; exists {
 		su := &schedUnit
 		su.CurrentState = r.getScheduledUnitState(unitName, schedUnit.MachineID)
-		return su, true
+		return su
 	}
-	return nil, false
+
+	return &pb.ScheduledUnit{
+		Name:         unitName,
+		MachineID:    "",
+		CurrentState: pb.TargetState_INACTIVE,
+	}
 }
 
 func (r *inmemoryRegistry) Unit(name string) (pb.Unit, bool) {

@@ -9,6 +9,7 @@ import (
 
 	"github.com/coreos/fleet/Godeps/_workspace/src/github.com/coreos/go-semver/semver"
 
+	"github.com/coreos/fleet/engine"
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/log"
 	"github.com/coreos/fleet/machine"
@@ -44,16 +45,38 @@ func NewRegistryMux(etcdRegistry *registry.EtcdRegistry, localMachine machine.Ma
 	}
 }
 
-func (r *RegistryMux) ConnectRPCRegistry() {
-	if r.rpcRegistry != nil && r.rpcRegistry.IsRegistryReady() {
-		log.Infof("Reusing gRPC engine, connection is READY\n")
-		r.currentRegistry = r.rpcRegistry
-	} else {
-		log.Infof("New engine supports gRPC, connecting\n")
-		r.rpcRegistry = NewRPCRegistry(r.rpcDialerNoEngine)
-		// connect to rpc registry
-		r.rpcRegistry.Connect()
-		r.currentRegistry = r.rpcRegistry
+// ConnectToRegistry allows to disable_engine fleet agents to adapt its Registry
+// to fleet leader changes regardless of whether is etcd or gRPC based.
+func (r *RegistryMux) ConnectToRegistry(e *engine.Engine) {
+	for {
+		// We have to check if the leader has changed to etcd otherwise keep grpc connection
+		isGrpc, err := e.IsGrpcLeader()
+		// If there is not error then we are able to get the leader state and continue
+		// otherwise we have to wait
+		if err == nil {
+			if isGrpc {
+				if r.rpcRegistry != nil && r.rpcRegistry.IsRegistryReady() {
+					log.Infof("Reusing gRPC engine, connection is READY\n")
+					r.currentRegistry = r.rpcRegistry
+				} else {
+					if r.rpcRegistry != nil {
+						r.rpcRegistry.Close()
+					}
+					log.Infof("New engine supports gRPC, connecting\n")
+					r.rpcRegistry = NewRPCRegistry(r.rpcDialerNoEngine)
+					// connect to rpc registry
+					r.rpcRegistry.Connect()
+					r.currentRegistry = r.rpcRegistry
+				}
+			} else {
+				if r.rpcRegistry != nil {
+					r.rpcRegistry.Close()
+				}
+				// new leader is etcd-based
+				r.currentRegistry = r.etcdRegistry
+			}
+		}
+		time.Sleep(5 * time.Second)
 	}
 }
 
@@ -81,6 +104,11 @@ func (r *RegistryMux) rpcDialerNoEngine(_ string, timeout time.Duration) (net.Co
 					// Update the currentEngine with the new one... otherwise wait until
 					// there is one
 					if s.ID == lease.MachineID() {
+						// New leader has not gRPC capabilities enabled.
+						if !s.Capabilities.Has(machine.CapGRPC) {
+							log.Error("New leader engine has not gRPC enabled!")
+							return nil, errors.New("New leader engine has not gRPC enabled!")
+						}
 						r.currentEngine = s
 						log.Infof("Found a new engine to connect to: %s\n", r.currentEngine.PublicIP)
 						// Restore initial check configuration
@@ -130,10 +158,14 @@ func (r *RegistryMux) EngineChanged(newEngine machine.MachineState) {
 	r.handlingEngineChange.Lock()
 	defer r.handlingEngineChange.Unlock()
 
+	stopServer := false
+	if r.currentEngine.ID != newEngine.ID {
+		stopServer = true
+	}
 	r.currentEngine = newEngine
 	log.Infof("Engine changed, checking capabilities %+v", newEngine)
 	if r.localMachine.State().Capabilities.Has(machine.CapGRPC) {
-		if r.rpcserver != nil && r.rpcRegistry != nil && !r.rpcRegistry.IsRegistryReady() {
+		if r.rpcserver != nil && ((r.rpcRegistry != nil && !r.rpcRegistry.IsRegistryReady()) || stopServer) {
 			// If the engine changed, we need to stop the rpc server
 			r.rpcserver.Stop()
 			r.rpcserver = nil
@@ -170,6 +202,10 @@ func (r *RegistryMux) EngineChanged(newEngine machine.MachineState) {
 			}
 		} else {
 			log.Infof("Falling back to etcd registry\n")
+			if r.rpcserver != nil {
+				// If the engine changed to a non gRPC leader, we need to stop the server
+				r.rpcserver.Stop()
+			}
 			r.currentRegistry = r.etcdRegistry
 		}
 

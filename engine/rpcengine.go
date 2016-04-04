@@ -15,6 +15,7 @@
 package engine
 
 import (
+	"errors"
 	"strings"
 	"time"
 
@@ -23,6 +24,34 @@ import (
 	"github.com/coreos/fleet/pkg/lease"
 	"github.com/coreos/fleet/registry"
 )
+
+// IsGrpcLeader checks if the current leader has gRPC capabilities enabled or error
+// if there is not a elected leader yet.
+func (e *Engine) IsGrpcLeader() (bool, error) {
+	leader, err := e.lManager.GetLease(engineLeaseName)
+	if err != nil {
+		log.Errorf("Unable to determine current lease: %v", err)
+		return false, err
+	}
+	// It can happen that the leader is not yet stored in etcd and nor error (line 122 pkg/lease/etcd.go)
+	if leader == nil {
+		return false, errors.New("Unable to get the current leader")
+	}
+
+	leaderState, err := e.getMachineState(leader.MachineID())
+	if err != nil {
+		log.Errorf("Unable to determine current lease: %v", err)
+		return false, err
+	}
+
+	if leaderState.Capabilities != nil && leaderState.Capabilities.Has(machine.CapGRPC) {
+		return true, nil
+	}
+
+	log.Info("Engine leader has no gRPC capabilities enabled!")
+
+	return false, nil
+}
 
 func (e *Engine) rpcLeadership(leaseTTL time.Duration, machID string) lease.Lease {
 	var previousEngine string

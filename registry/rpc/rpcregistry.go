@@ -86,6 +86,10 @@ func (r *RPCRegistry) Connect() {
 	log.Info("Connected succesfully to fleet-engine via grpc!")
 }
 
+func (r *RPCRegistry) Close() {
+	r.registryConn.Close()
+}
+
 func (r *RPCRegistry) IsRegistryReady() bool {
 	if r.registryConn != nil {
 		st, err := r.registryConn.State()
