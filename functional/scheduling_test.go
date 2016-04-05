@@ -20,7 +20,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/coreos/fleet/functional/platform"
 	"github.com/coreos/fleet/functional/util"
@@ -283,19 +282,28 @@ func TestScheduleOneWayConflict(t *testing.T) {
 	if _, _, err := cluster.Fleetctl(m0, "destroy", name); err != nil {
 		t.Fatalf("Failed destroying %s", name)
 	}
-	// TODO(jonboulle): fix this race. Since we no longer immediately
-	// remove unit state on unit destruction (and instead wait for
-	// UnitStateGenerator/UnitStatePublisher to clean up), the old unit
-	// shows up as active for quite some time.
-	time.Sleep(5 * time.Second)
-	stdout, _, err = cluster.Fleetctl(m0, "list-units", "--no-legend")
+
+	// Wait for the destroyed unit to actually disappear
+	timeout, err := util.WaitForState(
+		func() bool {
+			stdout, _, err := cluster.Fleetctl(m0, "list-units", "--no-legend", "--full", "--fields", "unit,active,machine")
+			if err != nil {
+				return false
+			}
+			lines := strings.Split(strings.TrimSpace(stdout), "\n")
+			states := util.ParseUnitStates(lines)
+			for _, state := range states {
+				if state.Name == name {
+					return false
+				}
+			}
+			return true
+		},
+	)
 	if err != nil {
-		t.Fatalf("Failed to run list-units: %v", err)
+		t.Fatalf("Destroyed unit %s not gone within %v", name, timeout)
 	}
-	units = strings.Split(strings.TrimSpace(stdout), "\n")
-	if len(units) != 1 {
-		t.Fatalf("Did not find one unit in cluster: \n%s", stdout)
-	}
+
 	active, err = cluster.WaitForNActiveUnits(m0, 1)
 	if err != nil {
 		t.Fatal(err)
