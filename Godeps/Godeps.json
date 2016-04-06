@@ -46,13 +46,27 @@
 			"Rev": "9bb9dbf0e53309fa81d26e7230cbb6cff9373cad"
 		},
 		{
-			"ImportPath": "github.com/jonboulle/clockwork",
-			"Rev": "b473f398c464f1988327f67c9e6aa7fba62f80d2"
+			"ImportPath": "github.com/gogo/protobuf/gogoproto",
+			"Comment": "v0.1-78-gd3235f0",
+			"Rev": "d3235f01ecae4901dd9f7ea6af57a352c0189deb"
 		},
 		{
-			"ImportPath": "github.com/pborman/uuid",
-			"Comment": "v1.0-11-gc55201b03606",
-			"Rev": "c55201b036063326c5b1b89ccfe45a184973d073"
+			"ImportPath": "github.com/gogo/protobuf/proto",
+			"Comment": "v0.1-78-gd3235f0",
+			"Rev": "d3235f01ecae4901dd9f7ea6af57a352c0189deb"
+		},
+		{
+			"ImportPath": "github.com/gogo/protobuf/protoc-gen-gogo/descriptor",
+			"Comment": "v0.1-78-gd3235f0",
+			"Rev": "d3235f01ecae4901dd9f7ea6af57a352c0189deb"
+		},
+		{
+			"ImportPath": "github.com/golang/protobuf/proto",
+			"Rev": "221834dcb89c96e4b057ed8bb878bfe569dfacf4"
+		},
+		{
+			"ImportPath": "github.com/jonboulle/clockwork",
+			"Rev": "b473f398c464f1988327f67c9e6aa7fba62f80d2"
 		},
 		{
 			"ImportPath": "github.com/rakyll/globalconf",
@@ -88,11 +102,32 @@
 		},
 		{
 			"ImportPath": "golang.org/x/net/context",
-			"Rev": "a8c61998a557a37435f719980da368469c10bfed"
+			"Rev": "b6d7b1396ec874c3b00f6c84cd4301a17c56c8ed"
+		},
+		{
+			"ImportPath": "golang.org/x/net/http2",
+			"Rev": "b6d7b1396ec874c3b00f6c84cd4301a17c56c8ed"
+		},
+		{
+			"ImportPath": "golang.org/x/net/internal/timeseries",
+			"Rev": "b6d7b1396ec874c3b00f6c84cd4301a17c56c8ed"
+		},
+		{
+			"ImportPath": "golang.org/x/net/trace",
+			"Rev": "b6d7b1396ec874c3b00f6c84cd4301a17c56c8ed"
 		},
 		{
 			"ImportPath": "google.golang.org/api/googleapi",
 			"Rev": "d3edb0282bde692467788c50070a9211afe75cf3"
+		},
+		{
+			"ImportPath": "github.com/pborman/uuid",
+			"Comment": "v1.0-11-gc55201b03606",
+			"Rev": "c55201b036063326c5b1b89ccfe45a184973d073"
+		},
+		{
+			"ImportPath": "google.golang.org/grpc",
+			"Rev": "178b68e2819d3ed711040301c12f3f97b6c270ce"
 		},
 		{
 			"ImportPath": "google.golang.org/api/googleapi/internal/uritemplates",
