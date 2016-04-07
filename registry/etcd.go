@@ -18,8 +18,8 @@ import (
 	"path"
 	"time"
 
-	etcd "github.com/coreos/fleet/Godeps/_workspace/src/github.com/coreos/etcd/client"
-	"github.com/coreos/fleet/Godeps/_workspace/src/golang.org/x/net/context"
+	etcd "github.com/coreos/etcd/client"
+	"golang.org/x/net/context"
 )
 
 const DefaultKeyPrefix = "/_coreos.com/fleet/"

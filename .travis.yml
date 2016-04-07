@@ -1,11 +1,8 @@
 language: go
 matrix:
   include:
-    - go: 1.4.3
-      install:
-        - go get golang.org/x/tools/cmd/cover
-        - go get golang.org/x/tools/cmd/vet
     - go: 1.5.3
+      env: GO15VENDOREXPERIMENT=1
     - go: 1.6
 
 script:

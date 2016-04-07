@@ -18,7 +18,7 @@ import (
 	"io"
 	"net"
 
-	gossh "github.com/coreos/fleet/Godeps/_workspace/src/golang.org/x/crypto/ssh"
+	gossh "golang.org/x/crypto/ssh"
 )
 
 func DialCommand(client *SSHForwardingClient, cmd string) (net.Conn, error) {

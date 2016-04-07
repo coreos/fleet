@@ -17,8 +17,8 @@ package registry
 import (
 	"strconv"
 
-	etcd "github.com/coreos/fleet/Godeps/_workspace/src/github.com/coreos/etcd/client"
-	"github.com/coreos/fleet/Godeps/_workspace/src/github.com/coreos/go-semver/semver"
+	etcd "github.com/coreos/etcd/client"
+	"github.com/coreos/go-semver/semver"
 )
 
 // LatestDaemonVersion attempts to retrieve the latest version of fleetd
