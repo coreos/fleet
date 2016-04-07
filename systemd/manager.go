@@ -106,6 +106,14 @@ func (m *systemdUnitManager) Load(name string, u unit.UnitFile) error {
 	if err != nil {
 		return err
 	}
+	if _, exists := u.Contents["Install"]; exists {
+		log.Debugf("Detected [Install] section in the systemd unit (%s)", name)
+		ok, err := m.enableUnit(name)
+		if err != nil || !ok {
+			m.removeUnit(name)
+			return fmt.Errorf("Failed to enable systemd unit %s: %v", name, err)
+		}
+	}
 	m.hashes[name] = u.Hash()
 	return nil
 }
@@ -253,6 +261,15 @@ func (m *systemdUnitManager) writeUnit(name string, contents string) error {
 
 	_, err = m.systemd.LinkUnitFiles([]string{ufPath}, true, true)
 	return err
+}
+
+func (m *systemdUnitManager) enableUnit(name string) (bool, error) {
+	log.Infof("Enabling systemd unit %s", name)
+
+	ufPath := m.getUnitFilePath(name)
+
+	ok, _, err := m.systemd.EnableUnitFiles([]string{ufPath}, true, true)
+	return ok, err
 }
 
 func (m *systemdUnitManager) removeUnit(name string) {

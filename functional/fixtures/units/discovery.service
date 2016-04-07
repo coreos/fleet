@@ -1,0 +1,11 @@
+[Unit]
+BindsTo=hello.service
+
+[Service]
+ExecStart=/bin/bash -c "while true; do echo discovery.service unit file; sleep 1; done"
+
+[Install]
+WantedBy=hello.service
+
+[X-Fleet]
+MachineOf=hello.service
