@@ -12,6 +12,9 @@
 # Invoke ./cover for HTML output
 COVER=${COVER:-"-cover"}
 
+CDIR=$(cd `dirname $0` && pwd)
+cd $CDIR
+
 source ./build
 
 TESTABLE="agent api config engine fleetctl job machine pkg pkg/lease registry ssh systemd unit"
