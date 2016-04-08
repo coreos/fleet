@@ -29,21 +29,25 @@ func DialCommand(client *SSHForwardingClient, cmd string) (net.Conn, error) {
 
 	stdout, err := session.StdoutPipe()
 	if err != nil {
+		session.Close()
 		return nil, err
 	}
 
 	stdin, err := session.StdinPipe()
 	if err != nil {
+		session.Close()
 		return nil, err
 	}
 
 	err = client.ForwardAgentAuthentication(session)
 	if err != nil {
+		session.Close()
 		return nil, err
 	}
 
 	err = session.Start(cmd)
 	if err != nil {
+		session.Close()
 		return nil, err
 	}
 
