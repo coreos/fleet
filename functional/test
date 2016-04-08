@@ -38,7 +38,7 @@ pass=$(grep '^--- PASS' functional/functional-tests.log | wc -l)
 fail=$(grep '^--- FAIL' functional/functional-tests.log | wc -l)
 
 echo ""
-grep -E '^--- (PASS|FAIL)' functional/functional-tests.log 
+grep -E '^--- (PASS|FAIL)' functional/functional-tests.log
 
 echo "==========================================================="
 echo "Functional test summary"
@@ -47,5 +47,5 @@ echo "# TOTAL: $total"
 echo "# PASS: $pass"
 echo "# FAIL: $fail"
 echo ""
-echo "See functional/functional-tests.log for the detailed output."
+echo "See ${CDIR}/functional-tests.log for the detailed output."
 exit $TESTS_RETURN_CODE

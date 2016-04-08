@@ -1,3 +1,5 @@
 #!/bin/bash -e
 
-docker run -v $PWD:/opt/fleet google/golang:1.4 /bin/bash -c "cd /opt/fleet && ./test"
+CDIR=$(cd `dirname $0` && pwd)
+
+docker run --rm -v $CDIR:/opt/fleet -u $(id -u):$(id -g) google/golang:1.5 /bin/bash -c "cd /opt/fleet && ./test"
