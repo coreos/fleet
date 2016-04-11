@@ -346,36 +346,33 @@ func (nc *nspawnCluster) createMember(id string) (m Member, err error) {
 		}
 	}
 
-	sshd_config := `# Use most defaults for sshd configuration.
-UsePrivilegeSeparation sandbox
-Subsystem sftp internal-sftp
-UseDNS no
-`
-
-	if err = ioutil.WriteFile(path.Join(fsdir, "/etc/ssh/sshd_config"), []byte(sshd_config), 0644); err != nil {
-		log.Printf("Failed writing sshd_config: %v", err)
-		return
-	}
-
-	// For expediency, generate the minimal viable SSH keys for the host, instead of the default set
-	sshd_keygen := `[Unit]
-	Description=Generate sshd host keys
-	Before=sshd.service
-
-	[Service]
-	Type=oneshot
-	RemainAfterExit=yes
-	ExecStart=/usr/bin/ssh-keygen -t rsa -f /etc/ssh/ssh_host_rsa_key -N "" -b 1024`
-	if err = ioutil.WriteFile(path.Join(fsdir, "/etc/systemd/system/sshd-keygen.service"), []byte(sshd_keygen), 0644); err != nil {
-		log.Printf("Failed writing sshd-keygen.service: %v", err)
-		return
-	}
-
 	filesContents := []struct {
 		path     string
 		contents string
 		mode     os.FileMode
 	}{
+		{
+			"/etc/ssh/sshd_config",
+			`# Use most defaults for sshd configuration.
+			UsePrivilegeSeparation sandbox
+			Subsystem sftp internal-sftp
+			UseDNS no
+			`,
+			0644,
+		},
+		// For expediency, generate the minimal viable SSH keys for the host, instead of the default set
+		{
+			"/etc/systemd/system/sshd-keygen.service",
+			`[Unit]
+			Description=Generate sshd host keys
+			Before=sshd.service
+
+			[Service]
+			Type=oneshot
+			RemainAfterExit=yes
+			ExecStart=/usr/bin/ssh-keygen -t rsa -f /etc/ssh/ssh_host_rsa_key -N "" -b 1024`,
+			0644,
+		},
 		{
 			"/etc/passwd",
 			"core:x:500:500:CoreOS Admin:/home/core:/bin/bash",
