@@ -16,11 +16,19 @@ package functional
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"testing"
 
 	"github.com/coreos/fleet/functional/platform"
 	"github.com/coreos/fleet/functional/util"
+)
+
+const (
+	tmpHelloService = "/tmp/hello.service"
+	fxtHelloService = "fixtures/units/hello.service"
+	tmpFixtures     = "/tmp/fixtures"
+	numUnitsSubmit  = 3
 )
 
 // TestUnitRunnable is the simplest test possible, deplying a single-node
@@ -75,6 +83,78 @@ func TestUnitSubmit(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	if err := submitUnitMultiple(cluster, m, numUnitsSubmit); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func submitUnitMultiple(cluster platform.Cluster, m platform.Member, n int) error {
+	cmd := "submit"
+
+	if _, err := os.Stat(tmpFixtures); os.IsNotExist(err) {
+		os.Mkdir(tmpFixtures, 0755)
+	}
+
+	var stdout string
+	var err error
+	for i := 1; i <= n; i++ {
+		tmpHelloFixture := fmt.Sprintf("/tmp/fixtures/hello%d.service", i)
+
+		// copy a file to /tmp
+		err = util.CopyFile(tmpHelloFixture, fxtHelloService)
+		if err != nil {
+			return fmt.Errorf("Failed to copy a temp fleet service: %v", err)
+		}
+
+		// run a command for a unit and assert it shows up
+		if _, _, err := cluster.Fleetctl(m, cmd, tmpHelloFixture); err != nil {
+			return fmt.Errorf("Unable to %s fleet unit: %v", cmd, err)
+		}
+
+		stdout, _, err = cluster.Fleetctl(m, "list-unit-files", "--no-legend")
+		if err != nil {
+			return fmt.Errorf("Failed to run %s: %v", "list-unit-files", err)
+		}
+		units := strings.Split(strings.TrimSpace(stdout), "\n")
+		if len(units) != i {
+			return fmt.Errorf("Did not find %d units in cluster: \n%s", i, stdout)
+		}
+	}
+
+	// All the tests under fixtures are identical, so hash of each unit must be
+	// identical. That means, destroying one of them must result in destroying
+	// all of them.
+	for i := 1; i <= n; i++ {
+		tmpHelloFixture := fmt.Sprintf("/tmp/fixtures/hello%d.service", i)
+
+		// destroy a service file
+		if _, _, err := cluster.Fleetctl(m, "destroy", tmpHelloFixture); err != nil {
+			fmt.Printf("Unable to destroy fleet unit: %v", err)
+			continue
+		}
+		os.Remove(tmpHelloFixture)
+	}
+
+	expectedCount := 0
+	waitForNUnits := func() bool {
+		stdout, _, err := cluster.Fleetctl(m, "list-unit-files", "--no-legend")
+		if err != nil {
+			return false
+		}
+		units := strings.Split(strings.TrimSpace(stdout), "\n")
+		if (expectedCount == 0 && len(stdout) == 0) || len(units) == expectedCount {
+			return true
+		}
+		return false
+	}
+	_, err = util.WaitForState(waitForNUnits)
+	if err != nil {
+		return fmt.Errorf("Failed to get every unit to be cleaned up: %v", err)
+	}
+	os.Remove(tmpFixtures)
+
+	return nil
 }
 
 func submitUnitCommon(cluster platform.Cluster, m platform.Member) error {
