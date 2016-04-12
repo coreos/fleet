@@ -1,5 +1,4 @@
-#!/bin/bash
-set -e
+#!/bin/bash -e
 
 if [ $# -ne 1 ]; then
     echo "Usage: $0 tag" >/dev/stderr
@@ -10,6 +9,9 @@ tag=$1
 
 tgt=$(mktemp -d)
 
+# Cleanup
+trap 'rm -rf "$tgt"' INT TERM EXIT
+
 CDIR=$(cd `dirname $0` && pwd)
 
 # Build fleet inside
@@ -18,7 +20,7 @@ docker run --rm -v $CDIR:/opt/fleet -u $(id -u):$(id -g) google/golang:1.5 /bin/
 # Generate manifest into target tmp dir
 cat <<DF >${tgt}/manifest
 {
-   "acVersion" : "0.5.1",
+   "acVersion" : "0.7.1",
    "acKind" : "ImageManifest",
    "name" : "coreos.com/fleetd",
    "labels" : [
@@ -83,10 +85,7 @@ cp bin/fleetd $tgt/rootfs/bin
 touch $tgt/rootfs/etc/resolv.conf
 
 # Build ACI
-actool build -overwrite $tgt fleetd-${tag}.aci
+actool build --overwrite --owner-root $tgt "fleetd-${tag}.aci"
 
 # Validate ACI
-actool validate fleetd-${tag}.aci
-
-# Cleanup
-rm -rf $tgt
+actool validate "fleetd-${tag}.aci"
