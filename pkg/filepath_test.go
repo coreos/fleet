@@ -16,6 +16,7 @@ package pkg
 
 import (
 	"os"
+	"os/user"
 	"strings"
 	"testing"
 )
@@ -26,11 +27,12 @@ var pathtests = []struct {
 	prefix string
 	suffix string
 	full   string
+	expand bool
 }{
-	{"~/a", "", "/", "/a", ""},
-	{"~", "", "/", "", ""},
-	{"~~", "", "", "", "~~"},
-	{"~/a", "/home/foo", "", "", "/home/foo/a"},
+	{"~/a", "", "/", "/a", "", true},
+	{"~", "", "/", "", "", true},
+	{"~~", "", "", "", "~~", false},
+	{"~/a", "/home/foo", "", "", "/home/foo/a", true},
 }
 
 // TestParseFilepath tests parsing filepath
@@ -41,14 +43,28 @@ func TestParseFilepath(t *testing.T) {
 			t.Fatalf("Failed setting $HOME")
 		}
 		path := ParseFilepath(test.in)
+		if test.full != "" && path != test.full {
+			t.Fatalf("Failed parsing out %v for %v", test.full, test.in)
+		}
+		if path == test.in && test.expand {
+			// ParseFilepath does nothing if there is
+			// nothing to expand, or if User or $HOME
+			// are unknown otherwise it is an error
+			currentHome := os.Getenv("HOME")
+			_, err := user.Current()
+			if currentHome != "" || err == nil {
+				t.Fatalf("Failed parsing %v where $HOME or User are known", test.in)
+			} else {
+				t.Logf("User or $HOME are unknown ignoring test path %v", test.in)
+				continue
+			}
+		}
+
 		if !strings.HasPrefix(path, test.prefix) {
 			t.Errorf("Failed parsing out prefix %v for %v", test.prefix, test.in)
 		}
 		if !strings.HasSuffix(path, test.suffix) {
 			t.Errorf("Failed parsing out suffix %v for %v", test.suffix, test.in)
-		}
-		if test.full != "" && path != test.full {
-			t.Errorf("Failed parsing out %v for %v", test.full, test.in)
 		}
 		if err := os.Setenv("HOME", oldHome); err != nil {
 			t.Fatalf("Failed recovering $HOME")
