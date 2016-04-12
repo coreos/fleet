@@ -13,7 +13,7 @@ tgt=$(mktemp -d)
 CDIR=$(cd `dirname $0` && pwd)
 
 # Build fleet inside
-docker run --rm -v $CDIR:/opt/fleet -u $(id -u):$(id -g) google/golang:1.5 /bin/bash -c "cd /opt/fleet && ./build"
+docker run --rm -v $CDIR:/opt/fleet google/golang:1.5 /bin/bash -c "cd /opt/fleet && ./build"
 
 # Generate manifest into target tmp dir
 cat <<DF >${tgt}/manifest
