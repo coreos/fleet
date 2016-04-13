@@ -49,16 +49,17 @@ const (
 )
 
 type Server struct {
-	agent         *agent.Agent
-	aReconciler   *agent.AgentReconciler
-	usPub         *agent.UnitStatePublisher
-	usGen         *unit.UnitStateGenerator
-	engine        *engine.Engine
-	mach          *machine.CoreOSMachine
-	hrt           heart.Heart
-	mon           *Monitor
-	api           *api.Server
-	disableEngine bool
+	agent          *agent.Agent
+	aReconciler    *agent.AgentReconciler
+	usPub          *agent.UnitStatePublisher
+	usGen          *unit.UnitStateGenerator
+	engine         *engine.Engine
+	mach           *machine.CoreOSMachine
+	hrt            heart.Heart
+	mon            *Monitor
+	api            *api.Server
+	disableEngine  bool
+	reconfigServer bool
 
 	engineReconcileInterval time.Duration
 
@@ -145,6 +146,7 @@ func New(cfg config.Config, listeners []net.Listener) (*Server, error) {
 		stopc:       nil,
 		engineReconcileInterval: eIval,
 		disableEngine:           cfg.DisableEngine,
+		reconfigServer:          false,
 	}
 
 	return &srv, nil
@@ -242,7 +244,9 @@ func (s *Server) Supervise() {
 
 // Kill is used to gracefully terminate the server by triggering the Monitor to shut down
 func (s *Server) Kill() {
-	close(s.killc)
+	if !s.reconfigServer {
+		close(s.killc)
+	}
 }
 
 func (s *Server) Purge() {
@@ -266,4 +270,8 @@ func (s *Server) MarshalJSON() ([]byte, error) {
 
 func (s *Server) GetApiServerListeners() []net.Listener {
 	return s.api.GetListeners()
+}
+
+func (s *Server) SetReconfigServer(isReconfigServer bool) {
+	s.reconfigServer = isReconfigServer
 }

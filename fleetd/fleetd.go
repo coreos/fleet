@@ -119,10 +119,12 @@ func main() {
 		}
 
 		log.Infof("Restarting server components")
+		srv.SetReconfigServer(true)
 
 		// Get Server.listeners[] to keep it for a new server,
 		// before killing the old server.
 		oldListeners := srv.GetApiServerListeners()
+
 		srv.Kill()
 
 		// The new server takes the original listeners.
@@ -132,6 +134,7 @@ func main() {
 		}
 
 		srv.Run()
+		srv.SetReconfigServer(false)
 	}
 
 	shutdown := func() {
