@@ -129,6 +129,81 @@ func TestUnitSubmit(t *testing.T) {
 	}
 }
 
+// TestUnitLoad checks if a unit becomes loaded and unloaded successfully.
+// First it load a unit, and unloads the unit, verifies it's unloaded,
+// finally loads the unit again.
+func TestUnitLoad(t *testing.T) {
+	cluster, err := platform.NewNspawnCluster("smoke")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cluster.Destroy()
+
+	m, err := cluster.CreateMember()
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = cluster.WaitForNMachines(m, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	unitFile := "fixtures/units/hello.service"
+
+	// load a unit and assert it shows up
+	_, _, err = cluster.Fleetctl(m, "load", unitFile)
+	if err != nil {
+		t.Fatalf("Unable to load fleet unit: %v", err)
+	}
+
+	// wait until the unit gets loaded up to 15 seconds
+	listUnitStates, err := cluster.WaitForNUnits(m, 1)
+	if err != nil {
+		t.Fatalf("Failed to run list-units: %v", err)
+	}
+
+	// given unit name must be there in list-units
+	_, found := listUnitStates[path.Base(unitFile)]
+	if len(listUnitStates) != 1 || !found {
+		t.Fatalf("Expected %s to be unit, got %v", path.Base(unitFile), listUnitStates)
+	}
+
+	// unload the unit and ensure it disappears from the unit list
+	_, _, err = cluster.Fleetctl(m, "unload", unitFile)
+	if err != nil {
+		t.Fatalf("Failed to unload unit: %v", err)
+	}
+
+	// wait until the unit gets unloaded up to 15 seconds
+	listUnitStates, err = cluster.WaitForNUnits(m, 0)
+	if err != nil {
+		t.Fatalf("Failed to run list-units: %v", err)
+	}
+
+	// given unit name must be there in list-units
+	if len(listUnitStates) != 0 {
+		t.Fatalf("Expected nil unit list, got %v", listUnitStates)
+	}
+
+	// loading the unit after destruction should succeed
+	_, _, err = cluster.Fleetctl(m, "load", unitFile)
+	if err != nil {
+		t.Fatalf("Unable to load fleet unit: %v", err)
+	}
+
+	// wait until the unit gets loaded up to 15 seconds
+	listUnitStates, err = cluster.WaitForNUnits(m, 1)
+	if err != nil {
+		t.Fatalf("Failed to run list-units: %v", err)
+	}
+
+	// given unit name must be there in list-units
+	_, found = listUnitStates[path.Base(unitFile)]
+	if len(listUnitStates) != 1 || !found {
+		t.Fatalf("Expected %s to be unit, got %v", path.Base(unitFile), listUnitStates)
+	}
+}
+
 func TestUnitRestart(t *testing.T) {
 	cluster, err := platform.NewNspawnCluster("smoke")
 	if err != nil {
