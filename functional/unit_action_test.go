@@ -55,6 +55,9 @@ func TestUnitRunnable(t *testing.T) {
 	}
 }
 
+// TestUnitSubmit checks if a unit becomes submitted and destroyed successfully.
+// First it submits a unit, and destroys the unit, verifies it's destroyed,
+// finally submits the unit again.
 func TestUnitSubmit(t *testing.T) {
 	cluster, err := platform.NewNspawnCluster("smoke")
 	if err != nil {
@@ -71,47 +74,58 @@ func TestUnitSubmit(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	unitFile := "fixtures/units/hello.service"
+
 	// submit a unit and assert it shows up
-	if _, _, err := cluster.Fleetctl(m, "submit", "fixtures/units/hello.service"); err != nil {
+	if _, _, err := cluster.Fleetctl(m, "submit", unitFile); err != nil {
 		t.Fatalf("Unable to submit fleet unit: %v", err)
 	}
-	stdout, _, err := cluster.Fleetctl(m, "list-units", "--no-legend")
+
+	// wait until the unit gets submitted up to 15 seconds
+	listUnitStates, err := cluster.WaitForNUnitFiles(m, 1)
 	if err != nil {
-		t.Fatalf("Failed to run list-units: %v", err)
+		t.Fatalf("Failed to run list-unit-files: %v", err)
 	}
-	units := strings.Split(strings.TrimSpace(stdout), "\n")
-	if len(units) != 1 {
-		t.Fatalf("Did not find 1 unit in cluster: \n%s", stdout)
+
+	// given unit name must be there in list-unit-files
+	_, found := listUnitStates[path.Base(unitFile)]
+	if len(listUnitStates) != 1 || !found {
+		t.Fatalf("Expected %s to be unit file, got %v", path.Base(unitFile), listUnitStates)
 	}
 
 	// submitting the same unit should not fail
-	if _, _, err = cluster.Fleetctl(m, "submit", "fixtures/units/hello.service"); err != nil {
+	if _, _, err = cluster.Fleetctl(m, "submit", unitFile); err != nil {
 		t.Fatalf("Expected no failure when double-submitting unit, got this: %v", err)
 	}
 
 	// destroy the unit and ensure it disappears from the unit list
-	if _, _, err := cluster.Fleetctl(m, "destroy", "fixtures/units/hello.service"); err != nil {
+	if _, _, err := cluster.Fleetctl(m, "destroy", unitFile); err != nil {
 		t.Fatalf("Failed to destroy unit: %v", err)
 	}
-	stdout, _, err = cluster.Fleetctl(m, "list-units", "--no-legend")
+	// wait until the unit gets destroyed up to 15 seconds
+	listUnitStates, err = cluster.WaitForNUnitFiles(m, 0)
 	if err != nil {
-		t.Fatalf("Failed to run list-units: %v", err)
+		t.Fatalf("Failed to run list-unit-files: %v", err)
 	}
-	if strings.TrimSpace(stdout) != "" {
-		t.Fatalf("Did not find 0 units in cluster: \n%s", stdout)
+	if len(listUnitStates) != 0 {
+		t.Fatalf("Expected nil unit file list, got %v", listUnitStates)
 	}
 
 	// submitting the unit after destruction should succeed
-	if _, _, err := cluster.Fleetctl(m, "submit", "fixtures/units/hello.service"); err != nil {
+	if _, _, err := cluster.Fleetctl(m, "submit", unitFile); err != nil {
 		t.Fatalf("Unable to submit fleet unit: %v", err)
 	}
-	stdout, _, err = cluster.Fleetctl(m, "list-units", "--no-legend")
+
+	// wait until the unit gets submitted up to 15 seconds
+	listUnitStates, err = cluster.WaitForNUnitFiles(m, 1)
 	if err != nil {
-		t.Fatalf("Failed to run list-units: %v", err)
+		t.Fatalf("Failed to run list-unit-files: %v", err)
 	}
-	units = strings.Split(strings.TrimSpace(stdout), "\n")
-	if len(units) != 1 {
-		t.Fatalf("Did not find 1 unit in cluster: \n%s", stdout)
+
+	// given unit name must be there in list-unit-files
+	_, found = listUnitStates[path.Base(unitFile)]
+	if len(listUnitStates) != 1 || !found {
+		t.Fatalf("Expected %s to be unit file, got %v", path.Base(unitFile), listUnitStates)
 	}
 }
 
