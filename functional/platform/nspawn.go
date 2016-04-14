@@ -128,6 +128,47 @@ func (nc *nspawnCluster) FleetctlWithInput(m Member, input string, args ...strin
 	return util.RunFleetctlWithInput(input, args...)
 }
 
+// WaitForNUnits runs fleetctl list-units to verify the actual number of units
+// matched with the given expected number. It periodically runs list-units
+// waiting until list-units actually shows the expected units.
+func (nc *nspawnCluster) WaitForNUnits(m Member, expectedUnits int) (map[string][]util.UnitState, error) {
+	var nUnits int
+	retStates := make(map[string][]util.UnitState)
+	checkListUnits := func() bool {
+		outListUnits, _, err := nc.Fleetctl(m, "list-units", "--no-legend", "--full", "--fields", "unit,active,machine")
+		if err != nil {
+			return false
+		}
+		// NOTE: There's no need to check if outListUnits is expected to be empty,
+		// because ParseUnitStates() implicitly filters out such cases.
+		// However, in case of ParseUnitStates() going away, we should not
+		// forget about such special cases.
+		units := strings.Split(strings.TrimSpace(outListUnits), "\n")
+		allStates := util.ParseUnitStates(units)
+		nUnits = len(allStates)
+		if nUnits != expectedUnits {
+			return false
+		}
+
+		for _, state := range allStates {
+			name := state.Name
+			if _, ok := retStates[name]; !ok {
+				retStates[name] = []util.UnitState{}
+			}
+			retStates[name] = append(retStates[name], state)
+		}
+		return true
+	}
+
+	timeout, err := util.WaitForState(checkListUnits)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find %d units within %v (last found: %d)",
+			expectedUnits, timeout, nUnits)
+	}
+
+	return retStates, nil
+}
+
 func (nc *nspawnCluster) WaitForNActiveUnits(m Member, count int) (map[string][]util.UnitState, error) {
 	var nactive int
 	states := make(map[string][]util.UnitState)
@@ -163,6 +204,49 @@ func (nc *nspawnCluster) WaitForNActiveUnits(m Member, count int) (map[string][]
 	}
 
 	return states, nil
+}
+
+// WaitForNUnitFiles runs fleetctl list-unit-files to verify the actual number of units
+// matched with the given expected number. It periodically runs list-unit-files
+// waiting until list-unit-files actually shows the expected units.
+func (nc *nspawnCluster) WaitForNUnitFiles(m Member, expectedUnits int) (map[string][]util.UnitFileState, error) {
+	var nUnits int
+	retStates := make(map[string][]util.UnitFileState)
+
+	checkListUnitFiles := func() bool {
+		outListUnitFiles, _, err := nc.Fleetctl(m, "list-unit-files", "--no-legend", "--full", "--fields", "unit,dstate,state")
+		if err != nil {
+			return false
+		}
+		// NOTE: There's no need to check if outListUnits is expected to be empty,
+		// because ParseUnitFileStates() implicitly filters out such cases.
+		// However, in case of ParseUnitFileStates() going away, we should not
+		// forget about such special cases.
+		units := strings.Split(strings.TrimSpace(outListUnitFiles), "\n")
+		allStates := util.ParseUnitFileStates(units)
+		nUnits = len(allStates)
+		if nUnits != expectedUnits {
+			// retry until number of units matched
+			return false
+		}
+
+		for _, state := range allStates {
+			name := state.Name
+			if _, ok := retStates[name]; !ok {
+				retStates[name] = []util.UnitFileState{}
+			}
+			retStates[name] = append(retStates[name], state)
+		}
+		return true
+	}
+
+	timeout, err := util.WaitForState(checkListUnitFiles)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find %d units within %v (last found: %d)",
+			expectedUnits, timeout, nUnits)
+	}
+
+	return retStates, nil
 }
 
 func (nc *nspawnCluster) WaitForNMachines(m Member, count int) ([]string, error) {
