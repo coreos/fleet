@@ -99,7 +99,7 @@ func main() {
 	}
 
 	log.Debugf("Creating Server")
-	srv, err := server.New(*cfg)
+	srv, err := server.New(*cfg, nil)
 	if err != nil {
 		log.Fatalf("Failed creating Server: %v", err.Error())
 	}
@@ -119,13 +119,22 @@ func main() {
 		}
 
 		log.Infof("Restarting server components")
+		srv.SetReconfigServer(true)
+
+		// Get Server.listeners[] to keep it for a new server,
+		// before killing the old server.
+		oldListeners := srv.GetApiServerListeners()
+
 		srv.Kill()
 
-		srv, err = server.New(*cfg)
+		// The new server takes the original listeners.
+		srv, err = server.New(*cfg, oldListeners)
 		if err != nil {
 			log.Fatalf(err.Error())
 		}
+
 		srv.Run()
+		srv.SetReconfigServer(false)
 	}
 
 	shutdown := func() {

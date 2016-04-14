@@ -17,6 +17,7 @@ package server
 import (
 	"encoding/json"
 	"errors"
+	"net"
 	"net/http"
 	"sync"
 	"time"
@@ -48,16 +49,17 @@ const (
 )
 
 type Server struct {
-	agent         *agent.Agent
-	aReconciler   *agent.AgentReconciler
-	usPub         *agent.UnitStatePublisher
-	usGen         *unit.UnitStateGenerator
-	engine        *engine.Engine
-	mach          *machine.CoreOSMachine
-	hrt           heart.Heart
-	mon           *Monitor
-	api           *api.Server
-	disableEngine bool
+	agent          *agent.Agent
+	aReconciler    *agent.AgentReconciler
+	usPub          *agent.UnitStatePublisher
+	usGen          *unit.UnitStateGenerator
+	engine         *engine.Engine
+	mach           *machine.CoreOSMachine
+	hrt            heart.Heart
+	mon            *Monitor
+	api            *api.Server
+	disableEngine  bool
+	reconfigServer bool
 
 	engineReconcileInterval time.Duration
 
@@ -66,7 +68,7 @@ type Server struct {
 	wg    sync.WaitGroup // used to co-ordinate shutdown
 }
 
-func New(cfg config.Config) (*Server, error) {
+func New(cfg config.Config, listeners []net.Listener) (*Server, error) {
 	agentTTL, err := time.ParseDuration(cfg.AgentTTL)
 	if err != nil {
 		return nil, err
@@ -115,9 +117,11 @@ func New(cfg config.Config) (*Server, error) {
 
 	e := engine.New(reg, lManager, rStream, mach)
 
-	listeners, err := activation.Listeners(false)
-	if err != nil {
-		return nil, err
+	if len(listeners) == 0 {
+		listeners, err = activation.Listeners(false)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	hrt := heart.New(reg, mach)
@@ -142,6 +146,7 @@ func New(cfg config.Config) (*Server, error) {
 		stopc:       nil,
 		engineReconcileInterval: eIval,
 		disableEngine:           cfg.DisableEngine,
+		reconfigServer:          false,
 	}
 
 	return &srv, nil
@@ -239,7 +244,9 @@ func (s *Server) Supervise() {
 
 // Kill is used to gracefully terminate the server by triggering the Monitor to shut down
 func (s *Server) Kill() {
-	close(s.killc)
+	if !s.reconfigServer {
+		close(s.killc)
+	}
 }
 
 func (s *Server) Purge() {
@@ -259,4 +266,12 @@ func (s *Server) MarshalJSON() ([]byte, error) {
 		UnitStatePublisher: s.usPub,
 		UnitStateGenerator: s.usGen,
 	})
+}
+
+func (s *Server) GetApiServerListeners() []net.Listener {
+	return s.api.GetListeners()
+}
+
+func (s *Server) SetReconfigServer(isReconfigServer bool) {
+	s.reconfigServer = isReconfigServer
 }

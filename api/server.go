@@ -38,6 +38,10 @@ type Server struct {
 	cur       http.Handler
 }
 
+func (s *Server) GetListeners() []net.Listener {
+	return s.listeners
+}
+
 func (s *Server) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	s.cur.ServeHTTP(rw, req)
 }
@@ -48,7 +52,7 @@ func (s *Server) Serve() {
 		go func() {
 			err := http.Serve(l, s)
 			if err != nil {
-				log.Errorf("Failed serving HTTP on listener: %v", l.Addr())
+				log.Errorf("Failed serving HTTP on listener: addr: %v, err: %v", l.Addr(), err)
 			}
 		}()
 	}
