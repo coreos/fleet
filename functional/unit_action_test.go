@@ -31,6 +31,8 @@ import (
 const (
 	tmpHelloService = "/tmp/hello.service"
 	fxtHelloService = "fixtures/units/hello.service"
+	tmpFixtures     = "/tmp/fixtures"
+	numUnitsReplace = 9
 )
 
 // TestUnitRunnable is the simplest test possible, deplying a single-node
@@ -140,6 +142,10 @@ func TestUnitSubmitReplace(t *testing.T) {
 	if err := replaceUnitCommon("submit"); err != nil {
 		t.Fatal(err)
 	}
+
+	if err := replaceUnitMultiple("submit", numUnitsReplace); err != nil {
+		t.Fatal(err)
+	}
 }
 
 // TestUnitLoadReplace() tests whether a command "fleetctl load --replace
@@ -148,12 +154,20 @@ func TestUnitLoadReplace(t *testing.T) {
 	if err := replaceUnitCommon("load"); err != nil {
 		t.Fatal(err)
 	}
+
+	if err := replaceUnitMultiple("load", numUnitsReplace); err != nil {
+		t.Fatal(err)
+	}
 }
 
 // TestUnitStartReplace() tests whether a command "fleetctl start --replace
 // hello.service" works or not.
 func TestUnitStartReplace(t *testing.T) {
 	if err := replaceUnitCommon("start"); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := replaceUnitMultiple("start", numUnitsReplace); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -574,6 +588,132 @@ func replaceUnitCommon(cmd string) error {
 	if err := WaitForNUnitsCmd(cmd, 0); err != nil {
 		return fmt.Errorf("Failed to get every unit to be cleaned up: %v", err)
 	}
+
+	return nil
+}
+
+// replaceUnitMultiple() tests whether a command "fleetctl {submit,load,start}
+// --replace hello.service" works or not.
+func replaceUnitMultiple(cmd string, n int) error {
+	// check if cmd is one of the supported commands.
+	listCmds := []string{"submit", "load", "start"}
+	found := false
+	for _, ccmd := range listCmds {
+		if ccmd == cmd {
+			found = true
+		}
+	}
+	if !found {
+		return fmt.Errorf("invalid command %s", cmd)
+	}
+
+	cluster, err := platform.NewNspawnCluster("smoke")
+	if err != nil {
+		return fmt.Errorf("%v", err)
+	}
+	defer cluster.Destroy()
+
+	m, err := cluster.CreateMember()
+	if err != nil {
+		return fmt.Errorf("%v", err)
+	}
+	_, err = cluster.WaitForNMachines(m, 1)
+	if err != nil {
+		return fmt.Errorf("%v", err)
+	}
+
+	WaitForNUnitsCmd := func(cmd string, expectedUnits int) (err error) {
+		if cmd == "submit" {
+			_, err = cluster.WaitForNUnitFiles(m, expectedUnits)
+		} else {
+			_, err = cluster.WaitForNUnits(m, expectedUnits)
+		}
+		return err
+	}
+
+	if _, err := os.Stat(tmpFixtures); os.IsNotExist(err) {
+		os.Mkdir(tmpFixtures, 0755)
+	}
+
+	var stdout string
+	var bodiesOrig []string
+	for i := 1; i <= n; i++ {
+		curHelloService := fmt.Sprintf("/tmp/hello%d.service", i)
+		tmpHelloFixture := fmt.Sprintf("/tmp/fixtures/hello%d.service", i)
+
+		// generate a new service derived by fixtures, and store it under /tmp
+		err = util.CopyFile(tmpHelloFixture, fxtHelloService)
+		if err != nil {
+			return fmt.Errorf("Failed to copy a temp fleet service: %v", err)
+		}
+
+		// run a command for a unit and assert it shows up
+		if _, _, err := cluster.Fleetctl(m, cmd, tmpHelloFixture); err != nil {
+			return fmt.Errorf("Unable to %s fleet unit: %v", cmd, err)
+		}
+		if err := WaitForNUnitsCmd(cmd, i); err != nil {
+			return fmt.Errorf("Did not find %d units in cluster: \n%s", i, stdout)
+		}
+
+		helloFilename := path.Base(curHelloService)
+
+		// retrieve content of hello.service, and append to bodiesOrig[]
+		bodyCur, _, err := cluster.Fleetctl(m, "cat", helloFilename)
+		if err != nil {
+			return fmt.Errorf("Failed to run cat %s: %v", helloFilename, err)
+		}
+
+		bodiesOrig = append(bodiesOrig, bodyCur)
+
+		// generate a new service derived by fixtures, and store it under /tmp
+		err = util.GenNewFleetService(curHelloService, fxtHelloService, "sleep 2", "sleep 1")
+		if err != nil {
+			return fmt.Errorf("Failed to generate a temp fleet service: %v", err)
+		}
+	}
+
+	for i := 1; i <= n; i++ {
+		curHelloService := fmt.Sprintf("/tmp/hello%d.service", i)
+
+		// replace the unit and assert it shows up
+		if _, _, err = cluster.Fleetctl(m, cmd, "--replace", curHelloService); err != nil {
+			return fmt.Errorf("Unable to replace fleet unit: %v", err)
+		}
+		if err := WaitForNUnitsCmd(cmd, n); err != nil {
+			return fmt.Errorf("Did not find %d units in cluster: \n%s", n, stdout)
+		}
+
+		helloFilename := path.Base(curHelloService)
+
+		// retrieve content of hello.service, and compare it with the
+		// correspondent entry in bodiesOrig[]
+		bodyCur, _, err := cluster.Fleetctl(m, "cat", helloFilename)
+		if err != nil {
+			return fmt.Errorf("Failed to run cat %s: %v", helloFilename, err)
+		}
+
+		if bodiesOrig[i-1] == bodyCur {
+			return fmt.Errorf("Error. the unit %s has not been replaced.", helloFilename)
+		}
+	}
+
+	// clean up temp services under /tmp
+	for i := 1; i <= n; i++ {
+		curHelloService := fmt.Sprintf("/tmp/hello%d.service", i)
+
+		if _, _, err := cluster.Fleetctl(m, "destroy", curHelloService); err != nil {
+			fmt.Printf("Failed to destroy unit: %v", err)
+			continue
+		}
+
+		os.Remove(curHelloService)
+	}
+
+	if err := WaitForNUnitsCmd(cmd, 0); err != nil {
+		return fmt.Errorf("Failed to get every unit to be cleaned up: %v", err)
+	}
+
+	os.Remove(tmpFixtures)
 
 	return nil
 }
