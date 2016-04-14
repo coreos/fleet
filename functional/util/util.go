@@ -154,3 +154,15 @@ func WaitForState(stateCheckFunc func() bool) (time.Duration, error) {
 		}
 	}
 }
+
+func CopyFile(newFile, oldFile string) error {
+	input, err := ioutil.ReadFile(oldFile)
+	if err != nil {
+		return err
+	}
+	err = ioutil.WriteFile(newFile, []byte(input), 0644)
+	if err != nil {
+		return err
+	}
+	return nil
+}
