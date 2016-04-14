@@ -275,3 +275,43 @@ func TestUnitCat(t *testing.T) {
 		t.Fatalf("unit body changed across fleetctl cat: \noriginal:%s\nnew:%s", fileBody, catBody)
 	}
 }
+
+// TestUnitStatus simply checks "fleetctl status hello.service" actually works.
+func TestUnitStatus(t *testing.T) {
+	cluster, err := platform.NewNspawnCluster("smoke")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cluster.Destroy()
+
+	m, err := cluster.CreateMember()
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = cluster.WaitForNMachines(m, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	unitFile := "fixtures/units/hello.service"
+
+	// Load a unit and print out status.
+	// Without loading a unit, it's impossible to run fleetctl status
+	_, _, err = cluster.Fleetctl(m, "load", unitFile)
+	if err != nil {
+		t.Fatalf("Unable to load a fleet unit: %v", err)
+	}
+
+	// wait until the unit gets loaded up to 15 seconds
+	_, err = cluster.WaitForNUnits(m, 1)
+	if err != nil {
+		t.Fatalf("Failed to run list-units: %v", err)
+	}
+
+	stdout, stderr, err := cluster.Fleetctl(m,
+		"--strict-host-key-checking=false", "status", path.Base(unitFile))
+	if !strings.Contains(stdout, "Loaded: loaded") {
+		t.Errorf("Could not find expected string in status output:\n%s\nstderr:\n%s",
+			stdout, stderr)
+	}
+}
