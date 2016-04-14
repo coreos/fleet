@@ -197,27 +197,27 @@ func TestUnitSSHActions(t *testing.T) {
 		t.Fatalf("Expected hello.service to be sole active unit, got %v", units)
 	}
 
-	stdout, _, err := cluster.Fleetctl(m, "--strict-host-key-checking=false", "ssh", "hello.service", "echo", "foo")
+	stdout, stderr, err := cluster.Fleetctl(m, "--strict-host-key-checking=false", "ssh", "hello.service", "echo", "foo")
 	if err != nil {
-		t.Errorf("Failure occurred while calling fleetctl ssh: %v", err)
+		t.Errorf("Failure occurred while calling fleetctl ssh: %v\nstdout: %v\nstderr: %v", err, stdout, stderr)
 	}
 
 	if !strings.Contains(stdout, "foo") {
 		t.Errorf("Could not find expected string in command output:\n%s", stdout)
 	}
 
-	stdout, _, err = cluster.Fleetctl(m, "--strict-host-key-checking=false", "status", "hello.service")
+	stdout, stderr, err = cluster.Fleetctl(m, "--strict-host-key-checking=false", "status", "hello.service")
 	if err != nil {
-		t.Errorf("Failure occurred while calling fleetctl status: %v", err)
+		t.Errorf("Failure occurred while calling fleetctl status: %v\nstdout: %v\nstderr: %v", err, stdout, stderr)
 	}
 
 	if !strings.Contains(stdout, "Active: active") {
 		t.Errorf("Could not find expected string in status output:\n%s", stdout)
 	}
 
-	stdout, _, err = cluster.Fleetctl(m, "--strict-host-key-checking=false", "journal", "--sudo", "hello.service")
+	stdout, stderr, err = cluster.Fleetctl(m, "--strict-host-key-checking=false", "journal", "--sudo", "hello.service")
 	if err != nil {
-		t.Errorf("Failure occurred while calling fleetctl journal: %v", err)
+		t.Errorf("Failure occurred while calling fleetctl journal: %v\nstdout: %v\nstderr: %v", err, stdout, stderr)
 	}
 
 	if !strings.Contains(stdout, "Hello, World!") {
