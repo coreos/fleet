@@ -15,6 +15,8 @@
 package functional
 
 import (
+	"io/ioutil"
+	"path"
 	"strings"
 	"testing"
 
@@ -222,5 +224,54 @@ func TestUnitSSHActions(t *testing.T) {
 
 	if !strings.Contains(stdout, "Hello, World!") {
 		t.Errorf("Could not find expected string in journal output:\n%s", stdout)
+	}
+}
+
+// TestUnitCat simply compares body of a unit file with that of a unit fetched
+// from the remote cluster using "fleetctl cat".
+func TestUnitCat(t *testing.T) {
+	cluster, err := platform.NewNspawnCluster("smoke")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cluster.Destroy()
+
+	m, err := cluster.CreateMember()
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = cluster.WaitForNMachines(m, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// read a sample unit file to a buffer
+	unitFile := "fixtures/units/hello.service"
+	fileBuf, err := ioutil.ReadFile(unitFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fileBody := strings.TrimSpace(string(fileBuf))
+
+	// submit a unit and assert it shows up
+	_, _, err = cluster.Fleetctl(m, "submit", unitFile)
+	if err != nil {
+		t.Fatalf("Unable to submit fleet unit: %v", err)
+	}
+	// wait until the unit gets submitted up to 15 seconds
+	_, err = cluster.WaitForNUnitFiles(m, 1)
+	if err != nil {
+		t.Fatalf("Failed to run list-units: %v", err)
+	}
+
+	// cat the unit file and compare it with the original unit body
+	stdout, _, err := cluster.Fleetctl(m, "cat", path.Base(unitFile))
+	if err != nil {
+		t.Fatalf("Unable to submit fleet unit: %v", err)
+	}
+	catBody := strings.TrimSpace(stdout)
+
+	if strings.Compare(catBody, fileBody) != 0 {
+		t.Fatalf("unit body changed across fleetctl cat: \noriginal:%s\nnew:%s", fileBody, catBody)
 	}
 }
