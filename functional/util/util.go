@@ -97,12 +97,28 @@ type UnitState struct {
 	Machine     string
 }
 
+type UnitFileState struct {
+	Name         string
+	DesiredState string
+	State        string
+}
+
 func ParseUnitStates(units []string) (states []UnitState) {
 	for _, unit := range units {
 		cols := strings.Fields(unit)
 		if len(cols) == 3 {
 			machine := strings.SplitN(cols[2], "/", 2)[0]
 			states = append(states, UnitState{cols[0], cols[1], machine})
+		}
+	}
+	return states
+}
+
+func ParseUnitFileStates(units []string) (states []UnitFileState) {
+	for _, unit := range units {
+		cols := strings.Fields(unit)
+		if len(cols) == 3 {
+			states = append(states, UnitFileState{cols[0], cols[1], cols[2]})
 		}
 	}
 	return states
