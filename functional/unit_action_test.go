@@ -15,12 +15,14 @@
 package functional
 
 import (
+	"fmt"
 	"io/ioutil"
 	"path"
 	"strings"
 	"testing"
 
 	"github.com/coreos/fleet/functional/platform"
+	"github.com/coreos/fleet/functional/util"
 )
 
 // TestUnitRunnable is the simplest test possible, deplying a single-node
@@ -74,58 +76,8 @@ func TestUnitSubmit(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	unitFile := "fixtures/units/hello.service"
-
-	// submit a unit and assert it shows up
-	if _, _, err := cluster.Fleetctl(m, "submit", unitFile); err != nil {
-		t.Fatalf("Unable to submit fleet unit: %v", err)
-	}
-
-	// wait until the unit gets submitted up to 15 seconds
-	listUnitStates, err := cluster.WaitForNUnitFiles(m, 1)
-	if err != nil {
-		t.Fatalf("Failed to run list-unit-files: %v", err)
-	}
-
-	// given unit name must be there in list-unit-files
-	_, found := listUnitStates[path.Base(unitFile)]
-	if len(listUnitStates) != 1 || !found {
-		t.Fatalf("Expected %s to be unit file, got %v", path.Base(unitFile), listUnitStates)
-	}
-
-	// submitting the same unit should not fail
-	if _, _, err = cluster.Fleetctl(m, "submit", unitFile); err != nil {
-		t.Fatalf("Expected no failure when double-submitting unit, got this: %v", err)
-	}
-
-	// destroy the unit and ensure it disappears from the unit list
-	if _, _, err := cluster.Fleetctl(m, "destroy", unitFile); err != nil {
-		t.Fatalf("Failed to destroy unit: %v", err)
-	}
-	// wait until the unit gets destroyed up to 15 seconds
-	listUnitStates, err = cluster.WaitForNUnitFiles(m, 0)
-	if err != nil {
-		t.Fatalf("Failed to run list-unit-files: %v", err)
-	}
-	if len(listUnitStates) != 0 {
-		t.Fatalf("Expected nil unit file list, got %v", listUnitStates)
-	}
-
-	// submitting the unit after destruction should succeed
-	if _, _, err := cluster.Fleetctl(m, "submit", unitFile); err != nil {
-		t.Fatalf("Unable to submit fleet unit: %v", err)
-	}
-
-	// wait until the unit gets submitted up to 15 seconds
-	listUnitStates, err = cluster.WaitForNUnitFiles(m, 1)
-	if err != nil {
-		t.Fatalf("Failed to run list-unit-files: %v", err)
-	}
-
-	// given unit name must be there in list-unit-files
-	_, found = listUnitStates[path.Base(unitFile)]
-	if len(listUnitStates) != 1 || !found {
-		t.Fatalf("Expected %s to be unit file, got %v", path.Base(unitFile), listUnitStates)
+	if err := doMultipleUnitsCmd(cluster, m, "submit", 9); err != nil {
+		t.Fatal(err)
 	}
 }
 
@@ -403,4 +355,126 @@ func TestUnitStatus(t *testing.T) {
 		t.Errorf("Could not find expected string in status output:\n%s\nstderr:\n%s",
 			stdout, stderr)
 	}
+}
+
+func doMultipleUnitsCmd(cluster platform.Cluster, m platform.Member, cmd string, numUnits int) error {
+	launchUnitsCmd := func(cmd string, numUnits int) (unitFiles []string, err error) {
+		args := []string{cmd}
+		for i := 0; i < numUnits; i++ {
+			unitFile := fmt.Sprintf("fixtures/units/hello@%d.service", i+1)
+			args = append(args, unitFile)
+			unitFiles = append(unitFiles, path.Base(unitFile))
+		}
+
+		if stdout, stderr, err := cluster.Fleetctl(m, args...); err != nil {
+			return nil,
+				fmt.Errorf("Unable to %s batch of units: \nstdout: %s\nstderr: %s\nerr: %v",
+					cmd, stdout, stderr, err)
+		} else if strings.Contains(stderr, "Error") {
+			return nil,
+				fmt.Errorf("Failed to correctly %s batch of units: \nstdout: %s\nstderr: %s\nerr: %v",
+					cmd, stdout, stderr, err)
+		}
+
+		return unitFiles, nil
+	}
+
+	checkListUnits := func(cmd string, unitFiles []string, inNumUnits int) (err error) {
+		// wait until the unit gets processed up to 15 seconds
+		if cmd == "submit" {
+			listUnitStates, err := cluster.WaitForNUnitFiles(m, inNumUnits)
+			if err != nil {
+				return fmt.Errorf("Failed to run list-unit-files: %v", err)
+			}
+
+			if inNumUnits == 0 && len(listUnitStates) != 0 {
+				return fmt.Errorf("Expected nil unit file list, got %v", listUnitStates)
+			}
+
+			// given unit name must be there in list-unit-files
+			for i := 0; i < inNumUnits; i++ {
+				_, found := listUnitStates[unitFiles[i]]
+				if len(listUnitStates) != inNumUnits || !found {
+					return fmt.Errorf("Expected %s to be unit file, got %v",
+						unitFiles[i], listUnitStates)
+				}
+			}
+		} else {
+			// cmd == "load" or "start"
+			var listUnitStates map[string][]util.UnitState
+			if cmd == "load" {
+				listUnitStates, err = cluster.WaitForNUnits(m, inNumUnits)
+			} else {
+				listUnitStates, err = cluster.WaitForNActiveUnits(m, inNumUnits)
+			}
+			if err != nil {
+				return fmt.Errorf("Failed to run list-unit-files: %v", err)
+			}
+
+			if inNumUnits == 0 && len(listUnitStates) != 0 {
+				return fmt.Errorf("Expected nil unit file list, got %v", listUnitStates)
+			}
+
+			// given unit name must be there in list-unit-files
+			for i := 0; i < inNumUnits; i++ {
+				_, found := listUnitStates[unitFiles[i]]
+				if len(listUnitStates) != inNumUnits || !found {
+					return fmt.Errorf("Expected %s to be unit file, got %v",
+						unitFiles[i], listUnitStates)
+				}
+			}
+		}
+
+		return nil
+	}
+
+	destroyUnits := func(dcmd string, unitFiles []string, numUnits int) (err error) {
+		for i := 0; i < numUnits; i++ {
+			if _, _, err := cluster.Fleetctl(m, dcmd, unitFiles[i]); err != nil {
+				return fmt.Errorf("Failed to %s unit: %v", dcmd, err)
+			}
+		}
+		return nil
+	}
+
+	dcmd := make(map[string]string, 0)
+	dcmd["submit"] = "destroy"
+	dcmd["load"] = "unload"
+	dcmd["start"] = "stop"
+
+	// launch a batch of processing units
+	unitFiles, err := launchUnitsCmd(cmd, numUnits)
+	if err != nil {
+		return err
+	}
+	if err := checkListUnits(cmd, unitFiles, numUnits); err != nil {
+		return err
+	}
+
+	// destroy the unit and ensure it disappears from the unit list
+	if err := destroyUnits(dcmd[cmd], unitFiles, numUnits); err != nil {
+		return err
+	}
+	if err := checkListUnits(cmd, unitFiles, 0); err != nil {
+		return err
+	}
+
+	// launch a batch of processing units
+	unitFiles, err = launchUnitsCmd(cmd, numUnits)
+	if err != nil {
+		return err
+	}
+	if err := checkListUnits(cmd, unitFiles, numUnits); err != nil {
+		return err
+	}
+
+	// destroy the unit again, not to affect the next tests for multiple units
+	if err := destroyUnits(dcmd[cmd], unitFiles, numUnits); err != nil {
+		return err
+	}
+	if err := checkListUnits(cmd, unitFiles, 0); err != nil {
+		return err
+	}
+
+	return nil
 }
