@@ -29,7 +29,7 @@ import (
 	"github.com/coreos/fleet/schema"
 	"github.com/coreos/fleet/unit"
 
-	gsunit "github.com/coreos/fleet/Godeps/_workspace/src/github.com/coreos/go-systemd/unit"
+	gsunit "github.com/coreos/go-systemd/unit"
 )
 
 func wireUpUnitsResource(mux *http.ServeMux, prefix string, tokenLimit int, cAPI client.API) {

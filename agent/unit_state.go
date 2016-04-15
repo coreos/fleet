@@ -20,7 +20,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/coreos/fleet/Godeps/_workspace/src/github.com/jonboulle/clockwork"
+	"github.com/jonboulle/clockwork"
 
 	"github.com/coreos/fleet/log"
 	"github.com/coreos/fleet/machine"

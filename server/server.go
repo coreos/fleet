@@ -22,8 +22,8 @@ import (
 	"sync"
 	"time"
 
-	etcd "github.com/coreos/fleet/Godeps/_workspace/src/github.com/coreos/etcd/client"
-	"github.com/coreos/fleet/Godeps/_workspace/src/github.com/coreos/go-systemd/activation"
+	etcd "github.com/coreos/etcd/client"
+	"github.com/coreos/go-systemd/activation"
 
 	"github.com/coreos/fleet/agent"
 	"github.com/coreos/fleet/api"

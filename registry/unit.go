@@ -17,7 +17,7 @@ package registry
 import (
 	"strings"
 
-	etcd "github.com/coreos/fleet/Godeps/_workspace/src/github.com/coreos/etcd/client"
+	etcd "github.com/coreos/etcd/client"
 
 	"github.com/coreos/fleet/log"
 	"github.com/coreos/fleet/unit"
