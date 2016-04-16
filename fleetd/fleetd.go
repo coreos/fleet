@@ -91,7 +91,7 @@ func main() {
 	cfgset.Bool("disable_watches", false, "Disable the use of etcd watches. Increases scheduling latency")
 	cfgset.Bool("verify_units", false, "DEPRECATED - This option is ignored")
 	cfgset.String("authorized_keys_file", "", "DEPRECATED - This option is ignored")
-	cfgset.Bool("enable_unitstate_cache", true, "Enable an unit state cache to minimize the systemd and dbus communication overhead.")
+	cfgset.Bool("enable_unitstate_cache", false, "Enable an unit state cache to minimize the systemd and dbus communication overhead.")
 
 	globalconf.Register("", cfgset)
 	cfg, err := getConfig(cfgset, *cfgPath)
