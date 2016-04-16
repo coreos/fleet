@@ -265,6 +265,9 @@ func (m *systemdUnitManager) GetUnitStates(filter pkg.Set) (map[string]*unit.Uni
 	}
 
 	unitStates, err = m.inactiveUnitStates(filter, unitStates)
+	if err != nil {
+		return nil, err
+	}
 
 	if m.enableUnitStateCache {
 		m.unitStateCache.unitStates = unitStates
@@ -287,7 +290,7 @@ func (m *systemdUnitManager) inactiveUnitStates(filter pkg.Set, unitStates map[s
 		} else {
 			us, err := m.getUnitState(name)
 			if err != nil {
-				return unitStates, err
+				return nil, err
 			}
 			if h, ok := m.hashes[name]; ok {
 				us.UnitHash = h.String()
