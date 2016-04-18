@@ -104,6 +104,14 @@ Unit goodbye.service loaded on 85c0c595.../172.17.8.102
 
 If the unit does not exist when calling `start`, fleetctl will first search for a local unit file, submit it and schedule it.
 
+### Restart units
+
+`fleetctl` doesn't have a `restart` subcommand. In many cases it is simple to [use the `fleetctl ssh` subcommand][ssh-dynamically] to execute `systemctl restart` directly on the target host:
+
+```sh
+$ fleetctl ssh hello.service sudo systemctl restart hello.service
+```
+
 ### Scheduling units
 
 To schedule a unit into the cluster (i.e. load it on a machine) without starting it, call `fleetctl load`:
@@ -332,3 +340,4 @@ The `ssh-add` command need only be run once for all Vagrant hosts. You will have
 [v]: http://www.vagrantup.com/
 [ssh-tunnel]: #from-an-external-host
 [d]: deployment-and-configuration.md
+[ssh-dynamically]: #ssh-dynamically-to-host
