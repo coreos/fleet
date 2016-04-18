@@ -16,10 +16,12 @@ package registry
 
 import (
 	"strings"
+	"time"
 
 	etcd "github.com/coreos/fleet/Godeps/_workspace/src/github.com/coreos/etcd/client"
 
 	"github.com/coreos/fleet/log"
+	"github.com/coreos/fleet/metrics"
 	"github.com/coreos/fleet/unit"
 )
 
@@ -41,12 +43,18 @@ func (r *EtcdRegistry) storeOrGetUnitFile(u unit.UnitFile) (err error) {
 	opts := &etcd.SetOptions{
 		PrevExist: etcd.PrevNoExist,
 	}
+	start := time.Now()
 	_, err = r.kAPI.Set(r.ctx(), key, val, opts)
 	// unit is already stored
 	if isEtcdError(err, etcd.ErrorCodeNodeExist) {
 		// TODO(jonboulle): verify more here?
 		err = nil
 	}
+	if err != nil {
+		metrics.ReportRegistryOpFailure(metrics.Set)
+		return
+	}
+	metrics.ReportRegistryOpSuccess(metrics.Set, start)
 	return
 }
 
@@ -56,13 +64,16 @@ func (r *EtcdRegistry) getUnitByHash(hash unit.Hash) *unit.UnitFile {
 	opts := &etcd.GetOptions{
 		Recursive: true,
 	}
+	start := time.Now()
 	resp, err := r.kAPI.Get(r.ctx(), key, opts)
 	if err != nil {
 		if isEtcdError(err, etcd.ErrorCodeKeyNotFound) {
 			err = nil
 		}
+		metrics.ReportRegistryOpFailure(metrics.Get)
 		return nil
 	}
+	metrics.ReportRegistryOpSuccess(metrics.Get, start)
 	return r.unitFromEtcdNode(hash, resp.Node)
 }
 
@@ -74,10 +85,13 @@ func (r *EtcdRegistry) getAllUnitsHashMap() (map[string]*unit.UnitFile, error) {
 		Quorum:    true,
 	}
 	hashToUnit := map[string]*unit.UnitFile{}
+	start := time.Now()
 	resp, err := r.kAPI.Get(r.ctx(), key, opts)
 	if err != nil {
+		metrics.ReportRegistryOpFailure(metrics.GetAll)
 		return nil, err
 	}
+	metrics.ReportRegistryOpSuccess(metrics.GetAll, start)
 
 	for _, node := range resp.Node.Nodes {
 		parts := strings.Split(node.Key, "/")
