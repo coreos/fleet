@@ -15,8 +15,11 @@
 package functional
 
 import (
+	"fmt"
 	"io/ioutil"
 	"path"
+	"reflect"
+	"sort"
 	"strings"
 	"testing"
 
@@ -402,5 +405,65 @@ func TestUnitStatus(t *testing.T) {
 	if !strings.Contains(stdout, "Loaded: loaded") {
 		t.Errorf("Could not find expected string in status output:\n%s\nstderr:\n%s",
 			stdout, stderr)
+	}
+}
+
+// TestListUnitFilesOrder simply checks if "fleetctl list-unit-files" returns
+// an ordered list of units
+func TestListUnitFilesOrder(t *testing.T) {
+	cluster, err := platform.NewNspawnCluster("smoke")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cluster.Destroy()
+
+	m, err := cluster.CreateMember()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = cluster.WaitForNMachines(m, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Combine units
+	var units []string
+	for i := 1; i <= 20; i++ {
+		unit := fmt.Sprintf("fixtures/units/hello@%02d.service", i)
+		stdout, stderr, err := cluster.Fleetctl(m, "submit", unit)
+		if err != nil {
+			t.Fatalf("Failed to submit a batch of units: \nstdout: %s\nstder: %s\nerr: %v", stdout, stderr, err)
+		}
+		units = append(units, unit)
+	}
+
+	// make sure that all unit files will show up
+	_, err = cluster.WaitForNUnitFiles(m, 20)
+	if err != nil {
+		t.Fatal("Failed to run list-unit-files: %v", err)
+	}
+
+	stdout, _, err := cluster.Fleetctl(m, "list-unit-files", "--no-legend", "--fields", "unit")
+	if err != nil {
+		t.Fatal("Failed to run list-unit-files: %v", err)
+	}
+
+	outUnits := strings.Split(strings.TrimSpace(stdout), "\n")
+
+	var sortable sort.StringSlice
+	for _, name := range units {
+		n := path.Base(name)
+		sortable = append(sortable, n)
+	}
+	sortable.Sort()
+
+	var inUnits []string
+	for _, name := range sortable {
+		inUnits = append(inUnits, name)
+	}
+
+	if !reflect.DeepEqual(inUnits, outUnits) {
+		t.Fatalf("Failed to get a sorted list of units from list-unit-files")
 	}
 }
