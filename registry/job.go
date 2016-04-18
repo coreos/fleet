@@ -90,6 +90,7 @@ func (r *EtcdRegistry) Schedule() ([]job.ScheduledUnit, error) {
 func (r *EtcdRegistry) Units() ([]job.Unit, error) {
 	key := r.prefixed(jobPrefix)
 	opts := &etcd.GetOptions{
+		// We need Job Units to be sorted
 		Sort:      true,
 		Recursive: true,
 	}
@@ -117,7 +118,7 @@ func (r *EtcdRegistry) Units() ([]job.Unit, error) {
 		return unit
 	}
 
-	uMap := make(map[string]*job.Unit)
+	units := make([]job.Unit, 0)
 	for _, dir := range res.Node.Nodes {
 		u, err := r.dirToUnit(dir, unitHashLookupFunc)
 		if err != nil {
@@ -127,18 +128,8 @@ func (r *EtcdRegistry) Units() ([]job.Unit, error) {
 		if u == nil {
 			continue
 		}
-		uMap[u.Name] = u
-	}
 
-	var sortable sort.StringSlice
-	for name, _ := range uMap {
-		sortable = append(sortable, name)
-	}
-	sortable.Sort()
-
-	units := make([]job.Unit, 0, len(sortable))
-	for _, name := range sortable {
-		units = append(units, *uMap[name])
+		units = append(units, *u)
 	}
 
 	return units, nil
