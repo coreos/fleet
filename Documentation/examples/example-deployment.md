@@ -1,15 +1,15 @@
 # Deploying a Service Using fleet
 
 The following is an example of how one might deploy a load-balanced web service using fleet. 
-This example deploys [subgun](https://github.com/coreos/subgun), a simple subscription tool for [mailgun](https://mailgun.com/). 
+This example deploys [subgun][subgun], a simple subscription tool for [mailgun][mailgun]. 
 
 subgun is deployed in two pieces: an application and a presence daemon. The application simply serves HTTP requests through an AWS load balancer, while the presence daemon updates the load balancer with backend information. The diagram below illustrates this model:
 
-![image](img/subgun.png)
+![image][subgun-img]
 
 ## Containers
 
-Both components are deployed in [docker](https://www.docker.io/) containers running on CoreOS. The following Dockerfiles were each built and their resulting images pushed to the public docker index:
+Both components are deployed in [docker][docker] containers running on CoreOS. The following Dockerfiles were each built and their resulting images pushed to the public docker index:
 
 **coreos/subgun**
 
@@ -41,7 +41,7 @@ CMD /bin/elb-presence
 
 With the docker images available over the public internet, systemd can simply run the containers. 
 
-The following unit files are [templates](https://github.com/coreos/fleet/blob/master/Documentation/unit-files-and-scheduling.md#template-unit-files), which means they can be run multiple times by referencing them with full instance names. You can find these unit files in the [unit-examples](https://github.com/coreos/unit-examples/tree/master/blog-fleet-intro) repository. To save time, clone the repo on the machine from which you are controlling fleet.
+The following unit files are [templates][template-unit-files], which means they can be run multiple times by referencing them with full instance names. You can find these unit files in the [unit-examples][unit-examples] repository. To save time, clone the repo on the machine from which you are controlling fleet.
 
 **`subgun-http@.service`**
 
@@ -112,3 +112,10 @@ subgun-presence@3.service	610a163d.../172.17.8.101	active	running
 ```
 
 At this point, our application is deployed!
+
+[docker]: https://www.docker.io/
+[mailgun]: https://mailgun.com
+[subgun]: https://github.com/coreos/subgun
+[subgun-img]: img/subgun.png
+[template-unit-files]: ../unit-files-and-scheduling.md#template-unit-files
+[unit-examples]: https://github.com/coreos/unit-examples/tree/master/blog-fleet-intro

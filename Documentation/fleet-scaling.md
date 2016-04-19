@@ -25,7 +25,7 @@ CPU usage from parsing all D-Bus messages when interacting with systemd.
 To make fleet scale further in the future we could consider rearchitecting
 fleet to provide per-machine schedules (so that only those `fleetd`s are woken
 up that actually have work for them). This is akin to the [Thundering herd
-problem](https://en.wikipedia.org/wiki/Thundering_herd_problem), but in a
+problem][thundering-herd-problem], but in a
 distributed fashion. Once such a change is in we can also drop the periodic
 wakeups (agent TTLs) that cause fleet wide wake-ups on a regular clock.
 
@@ -49,3 +49,5 @@ RPCs between the engine and agent.
     the entire cluster from walking up whenever a new job is to be scheduled.
     The downside of this change is that fleet's responsiveness is lower.
     *See the `disable_watches` config flag.*
+
+[thundering-herd-problem]: https://en.wikipedia.org/wiki/Thundering_herd_problem
