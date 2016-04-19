@@ -308,12 +308,12 @@ func TestListUnitFilesOrder(t *testing.T) {
 	// make sure that all unit files will show up
 	_, err = cluster.WaitForNUnitFiles(m, 20)
 	if err != nil {
-		t.Fatal("Failed to run list-unit-files: %v", err)
+		t.Fatalf("Failed to run list-unit-files: %v", err)
 	}
 
 	stdout, _, err := cluster.Fleetctl(m, "list-unit-files", "--no-legend", "--fields", "unit")
 	if err != nil {
-		t.Fatal("Failed to run list-unit-files: %v", err)
+		t.Fatalf("Failed to run list-unit-files: %v", err)
 	}
 
 	outUnits := strings.Split(strings.TrimSpace(stdout), "\n")

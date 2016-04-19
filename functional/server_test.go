@@ -16,6 +16,7 @@ package functional
 
 import (
 	"fmt"
+	"log"
 	"strings"
 	"testing"
 
@@ -125,7 +126,7 @@ func waitForReloadConfig(cluster platform.Cluster, m0 platform.Member) (err erro
 			stdout, _ := cluster.MemberCommand(m0, "sudo", "journalctl --priority=info _PID=$(pidof fleetd)")
 			journalfleet := strings.TrimSpace(stdout)
 			if !strings.Contains(journalfleet, "Reloading configuration") {
-				fmt.Errorf("Fleetd is not fully reconfigured, retrying... entire fleet journal:\n%v", journalfleet)
+				log.Printf("Fleetd is not fully reconfigured, retrying... entire fleet journal:\n%v", journalfleet)
 				return false
 			}
 			return true
@@ -145,7 +146,7 @@ func waitForFleetdSocket(cluster platform.Cluster, m0 platform.Member) (err erro
 		func() bool {
 			stdout, _ := cluster.MemberCommand(m0, "test -S /var/run/fleet.sock && echo 1")
 			if strings.TrimSpace(stdout) == "" {
-				fmt.Errorf("Fleetd is not fully started, retrying...")
+				fmt.Error("Fleetd is not fully started, retrying...")
 				return false
 			}
 			return true
