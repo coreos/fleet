@@ -384,14 +384,14 @@ func (nc *nspawnCluster) CreateMember() (m Member, err error) {
 	return nc.createMember(id)
 }
 
-func newMachineID() string {
+func (nc *nspawnCluster) NewMachineID() string {
 	// drop the standard separators to match systemd
 	return strings.Replace(uuid.New(), "-", "", -1)
 }
 
 func (nc *nspawnCluster) createMember(id string) (m Member, err error) {
 	nm := nspawnMember{
-		uuid: newMachineID(),
+		uuid: nc.NewMachineID(),
 		id:   id,
 		ip:   fmt.Sprintf("172.18.1.%s", id),
 	}
