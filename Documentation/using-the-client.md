@@ -55,18 +55,18 @@ FLEETCTL_SSH_USERNAME=elroy fleetctl list-units
 Note: Custom users are not by default part of the `systemd-journal` group which will cause you to see `No journal files were found.`
 To use the `journal` command please add your users to the `systemd-journal` group or use the `--sudo` flag with journal.
 
-Be sure to install one of the [tagged releases](https://github.com/coreos/fleet/releases) of `fleetctl` that matches the version of fleet running on the CoreOS machine.
+Be sure to install one of the [tagged releases][fleet-releases] of `fleetctl` that matches the version of fleet running on the CoreOS machine.
 Find the version on the server with:
 
 ```sh
 fleet --version
 ```
 
-See more about [configuring remote access](#remote-fleet-access).
+See more about [configuring remote access][remote-fleet-access].
 
 ## Interacting with units
 
-For information regarding the additional unit file parameters that modify fleet's behavior, see [this documentation](https://github.com/coreos/fleet/blob/master/Documentation/unit-files-and-scheduling.md).
+For information regarding the additional unit file parameters that modify fleet's behavior, see [this documentation][unit-files-and-scheduling].
 
 ### Explore existing units
 
@@ -271,7 +271,7 @@ This requires two things:
 1. SSH access for a user to at least one host in the cluster
 2. ssh-agent running on a user's machine with the necessary identity
 
-Authorizing a user's SSH key within a cluster is up to the deployer. See the [deployment doc][d] for help doing this.
+Authorizing a user's SSH key within a cluster is up to the deployer. See the [deployment doc][deployment-and-configuration] for help doing this.
 
 Running an ssh-agent is the responsibility of the user. Many unix-based distros conveniently provide the necessary tools on a base install, or in an ssh-related package. For example, Ubuntu provides the `ssh-agent` and `ssh-add` binaries in the `openssh-client` package. If you cannot find the necessary binaries on your system, please consult your distro's documentation.
 
@@ -295,7 +295,7 @@ $ FLEETCTL_TUNNEL=192.0.2.14:2222 fleetctl list-units
 
 ## Vagrant
 
-Things get a bit more complicated when using [vagrant][v], as access to your hosts is abstracted away from the user. This makes it a bit more complicated to run `fleetctl` from your local laptop, but it's still relatively easy to configure.
+Things get a bit more complicated when using [vagrant][vagrant], as access to your hosts is abstracted away from the user. This makes it a bit more complicated to run `fleetctl` from your local laptop, but it's still relatively easy to configure.
 
 First, find the identity file used by vagrant to authenticate access to your hosts. The `vagrant` binary provides a convenient `ssh-config` command to help do this. Running `vagrant ssh-config` from a Vagrant project directory will produce something like this:
 
@@ -337,7 +337,10 @@ $ fleetctl list-machines
 
 The `ssh-add` command need only be run once for all Vagrant hosts. You will have to set `FLEETCTL_TUNNEL` specifically for each vagrant host with which you interact.
 
-[v]: http://www.vagrantup.com/
+[deployment-and-configuration]: deployment-and-configuration.md
+[fleet-releases]: https://github.com/coreos/fleet/releases
+[remote-fleet-access]: #remote-fleet-access
 [ssh-tunnel]: #from-an-external-host
-[d]: deployment-and-configuration.md
+[unit-files-and-scheduling]: unit-files-and-scheduling.md
+[vagrant]: http://www.vagrantup.com/
 [ssh-dynamically]: #ssh-dynamically-to-host
