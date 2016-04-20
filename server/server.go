@@ -172,11 +172,26 @@ func newMachineFromConfig(cfg config.Config, mgr unit.UnitManager) (*machine.Cor
 func (s *Server) Run() {
 	log.Infof("Establishing etcd connectivity")
 
+	// When beating the Heart for the 1st time, call Heart.Register() to avoid
+	// such a case of registering machine with the same ID.
+	// Starting from the next heartbeat, however, call Heart.Beat() to allow
+	// registration with the same ID. That way fleetd can handle the machine
+	// presence in a graceful way. - see also #750, dpark 20160420
 	var err error
+	heartRegistered := false
 	for sleep := time.Second; ; sleep = pkg.ExpBackoff(sleep, time.Minute) {
-		_, err = s.hrt.Beat(s.mon.TTL)
-		if err == nil {
-			break
+		if heartRegistered {
+			_, err = s.hrt.Beat(s.mon.TTL)
+			if err == nil {
+				break
+			}
+		} else {
+			_, err = s.hrt.Register(s.mon.TTL)
+			if err == nil {
+				break
+			}
+			heartRegistered = true
+			log.Errorf("Server register machine failed: %v", err)
 		}
 		time.Sleep(sleep)
 	}

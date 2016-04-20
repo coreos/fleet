@@ -31,6 +31,7 @@ type Cluster interface {
 	Members() []Member
 	MemberCommand(Member, ...string) (string, error)
 	Destroy() error
+	NewMachineID() string
 
 	// client operations
 	Fleetctl(m Member, args ...string) (string, string, error)
