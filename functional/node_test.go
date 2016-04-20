@@ -82,3 +82,119 @@ func TestNodeShutdown(t *testing.T) {
 		t.Fatalf("Unit hello.service not reported as inactive:\n%s\n", stdout)
 	}
 }
+
+// TestDetectMachineId checks for etcd registration failing on a duplicated
+// machine-id on different machines.
+// First it creates a cluster with 2 members, m0 and m1. Then make their
+// machine IDs the same as each other, by explicitly setting the m1's ID to
+// the same as m0's. Test succeeds when an error returns, while test fails
+// when nothing happens.
+func TestDetectMachineId(t *testing.T) {
+	cluster, err := platform.NewNspawnCluster("smoke")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cluster.Destroy()
+
+	members, err := platform.CreateNClusterMembers(cluster, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	m0 := members[0]
+	m1 := members[1]
+	_, err = cluster.WaitForNMachines(m0, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	machineIdFile := "/etc/machine-id"
+
+	// Restart fleet service, and check if its systemd status is still active.
+	restartFleetService := func(m platform.Member) error {
+		stdout, err := cluster.MemberCommand(m, "sudo", "systemctl", "restart", "fleet.service")
+		if err != nil {
+			return fmt.Errorf("Failed to restart fleet service\nstdout: %s\nerr: %v", stdout, err)
+		}
+
+		stdout, _ = cluster.MemberCommand(m, "systemctl", "show", "--property=ActiveState", "fleet")
+		if strings.TrimSpace(stdout) != "ActiveState=active" {
+			return fmt.Errorf("Fleet unit not reported as active: %s", stdout)
+		}
+		stdout, _ = cluster.MemberCommand(m, "systemctl", "show", "--property=Result", "fleet")
+		if strings.TrimSpace(stdout) != "Result=success" {
+			return fmt.Errorf("Result for fleet unit not reported as success: %s", stdout)
+		}
+		return nil
+	}
+
+	stdout, err := cluster.MemberCommand(m0, "cat", machineIdFile)
+	if err != nil {
+		t.Fatalf("Failed to get machine-id\nstdout: %s\nerr: %v", stdout, err)
+	}
+	m0_machine_id := strings.TrimSpace(stdout)
+
+	// If the two machine IDs are different with each other,
+	// set the m1's ID to the same one as m0, to intentionally
+	// trigger an error case of duplication of machine ID.
+	stdout, err = cluster.MemberCommand(m1,
+		"echo", m0_machine_id, "|", "sudo", "tee", machineIdFile)
+	if err != nil {
+		t.Fatalf("Failed to replace machine-id\nstdout: %s\nerr: %v", stdout, err)
+	}
+
+	if err := restartFleetService(m1); err != nil {
+		t.Fatal(err)
+	}
+
+	// fleetd should actually be running, but failing to list machines.
+	// So we should expect a specific error after running fleetctl list-machines,
+	// like "googlapi: Error 503: fleet server unable to communicate with etcd".
+	stdout, stderr, err := cluster.Fleetctl(m1, "list-machines", "--no-legend")
+	if err != nil {
+		if strings.Contains(err.Error(), "exit status 1") &&
+			strings.Contains(stderr, "fleet server unable to communicate with etcd") {
+			// This is an expected error. PASS.
+		} else {
+			t.Fatalf("m1: Failed to get list of machines. err: %v\nstderr: %s", err, stderr)
+		}
+	} else {
+		t.Fatalf("m1: should get an error, but got success.\nstderr: %s", stderr)
+	}
+
+	// Trigger another test case of m0's ID getting different from m1's.
+	// Then it's expected that m0 and m1 would be working properly with distinct
+	// machine IDs, after having restarted fleet.service both on m0 and m1.
+	stdout, err = cluster.MemberCommand(m0,
+		"echo", cluster.NewMachineID(), "|", "sudo", "tee", machineIdFile)
+	if err != nil {
+		t.Fatalf("m0: Failed to replace machine-id\nstdout: %s\nerr: %v", stdout, err)
+	}
+
+	// Restart fleet service on m0.
+	// Even in an error case, m1 should still work.
+	// So destroy m0 and continue testing on m1.
+	m0_destroyed := false
+	if err := restartFleetService(m0); err != nil {
+		t.Logf("m0: Got an error %v, though continue testing with m1.", err)
+		cluster.DestroyMember(m0)
+		m0_destroyed = true
+	}
+
+	// Restart fleet service on m1
+	if err := restartFleetService(m1); err != nil {
+		t.Fatal(err)
+	}
+
+	if !m0_destroyed {
+		stdout, stderr, err = cluster.Fleetctl(m0, "list-machines", "--no-legend")
+		if err != nil {
+			t.Fatalf("m0: error: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
+		}
+	}
+
+	stdout, stderr, err = cluster.Fleetctl(m1, "list-machines", "--no-legend")
+	if err != nil {
+		t.Fatalf("m1: error: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
+	}
+}
