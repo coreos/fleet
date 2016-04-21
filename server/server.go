@@ -60,6 +60,7 @@ type Server struct {
 	api            *api.Server
 	disableEngine  bool
 	reconfigServer bool
+	restartServer  bool
 
 	engineReconcileInterval time.Duration
 
@@ -147,6 +148,7 @@ func New(cfg config.Config, listeners []net.Listener) (*Server, error) {
 		engineReconcileInterval: eIval,
 		disableEngine:           cfg.DisableEngine,
 		reconfigServer:          false,
+		restartServer:           false,
 	}
 
 	return &srv, nil
@@ -174,10 +176,20 @@ func (s *Server) Run() {
 
 	var err error
 	for sleep := time.Second; ; sleep = pkg.ExpBackoff(sleep, time.Minute) {
-		_, err = s.hrt.Beat(s.mon.TTL)
-		if err == nil {
-			break
+		if s.restartServer {
+			_, err = s.hrt.Beat(s.mon.TTL)
+			if err == nil {
+				log.Infof("hrt.Beat() success")
+				break
+			}
+		} else {
+			_, err = s.hrt.Register(s.mon.TTL)
+			if err == nil {
+				log.Infof("hrt.Register() success")
+				break
+			}
 		}
+		log.Errorf("Server register machine failed: %v", err)
 		time.Sleep(sleep)
 	}
 
@@ -238,7 +250,9 @@ func (s *Server) Supervise() {
 	}
 	if !sd {
 		log.Infof("Restarting server")
+		s.SetRestartServer(true)
 		s.Run()
+		s.SetRestartServer(false)
 	}
 }
 
@@ -274,4 +288,8 @@ func (s *Server) GetApiServerListeners() []net.Listener {
 
 func (s *Server) SetReconfigServer(isReconfigServer bool) {
 	s.reconfigServer = isReconfigServer
+}
+
+func (s *Server) SetRestartServer(isRestartServer bool) {
+	s.restartServer = isRestartServer
 }

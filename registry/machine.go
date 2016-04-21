@@ -61,6 +61,25 @@ func (r *EtcdRegistry) Machines() (machines []machine.MachineState, err error) {
 	return
 }
 
+func (r *EtcdRegistry) CreateMachineState(ms machine.MachineState, ttl time.Duration) (uint64, error) {
+	val, err := marshal(ms)
+	if err != nil {
+		return uint64(0), err
+	}
+
+	key := r.prefixed(machinePrefix, ms.ID, "object")
+	opts := &etcd.SetOptions{
+		PrevExist: etcd.PrevNoExist,
+		TTL:       ttl,
+	}
+	resp, err := r.kAPI.Set(r.ctx(), key, val, opts)
+	if err != nil {
+		return uint64(0), err
+	}
+
+	return resp.Node.ModifiedIndex, nil
+}
+
 func (r *EtcdRegistry) SetMachineState(ms machine.MachineState, ttl time.Duration) (uint64, error) {
 	val, err := marshal(ms)
 	if err != nil {
