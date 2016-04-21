@@ -23,6 +23,8 @@ import (
 	"os/exec"
 	"strings"
 	"time"
+
+	"github.com/coreos/fleet/Godeps/_workspace/src/github.com/pborman/uuid"
 )
 
 var fleetctlBinPath string
@@ -169,4 +171,9 @@ func WaitForState(stateCheckFunc func() bool) (time.Duration, error) {
 			}
 		}
 	}
+}
+
+func NewMachineID() string {
+	// drop the standard separators to match systemd
+	return strings.Replace(uuid.New(), "-", "", -1)
 }
