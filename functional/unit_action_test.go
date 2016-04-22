@@ -717,3 +717,113 @@ func replaceUnitMultiple(cmd string, n int) error {
 
 	return nil
 }
+
+// TestReplaceSerialization tests if the ExecStartPre of the new version
+// of the unit when it replaces the old one is excuted after
+// ExecStopPost of the old version.
+// This test is to make sure that two versions of the same unit will not
+// conflict with each other, that the directives are always serialized,
+// and it tries its best to avoid the following scenarios:
+// https://github.com/coreos/fleet/issues/1000
+// https://github.com/systemd/systemd/issues/518
+// Now we can't guarantee that that behaviour will not be triggered by
+// another external operation, but at least from the Unit replace
+// feature context we try to avoid it.
+func TestReplaceSerialization(t *testing.T) {
+	cluster, err := platform.NewNspawnCluster("smoke")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cluster.Destroy()
+
+	m, err := cluster.CreateMember()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = cluster.WaitForNMachines(m, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tmpSyncFile := "/tmp/fleetSyncReplaceFile"
+	syncOld := "echo 'sync'"
+	syncNew := fmt.Sprintf("test -f %s", tmpSyncFile)
+	tmpSyncService := "/tmp/replace-sync.service"
+	syncService := "fixtures/units/replace-sync.service"
+
+	stdout, stderr, err := cluster.Fleetctl(m, "start", syncService)
+	if err != nil {
+		t.Fatalf("Unable to start unit: \nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)
+	}
+
+	_, err = cluster.WaitForNActiveUnits(m, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// replace the unit content, make sure that:
+	// It shows up and it did 'test -f /tmp/fleetSyncReplaceFile' correctly
+	err = util.GenNewFleetService(tmpSyncService, syncService, syncNew, syncOld)
+	if err != nil {
+		t.Fatalf("Failed to generate a temp fleet service: %v", err)
+	}
+
+	stdout, stderr, err = cluster.Fleetctl(m, "start", "--replace", tmpSyncService)
+	if err != nil {
+		t.Fatalf("Failed to replace unit: \nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)
+	}
+
+	_, err = cluster.WaitForNActiveUnits(m, 1)
+	if err != nil {
+		t.Fatalf("Did not find 1 unit in cluster, unit replace failed: %v", err)
+	}
+
+	// Wait for the sync file, if the sync file is not created then
+	// the previous unit failed, if it's created we continue. Here
+	// the new version of the unit is probably already running and
+	// the ExecStartPre is running at the same time, if it failed
+	// then we probably will catch it later when we check its status
+	tmpService := path.Base(tmpSyncService)
+	timeout, err := util.WaitForState(
+		func() bool {
+			_, err = cluster.MemberCommand(m, syncNew)
+			if err != nil {
+				return false
+			}
+			return true
+		},
+	)
+	if err != nil {
+		t.Fatalf("Failed to check if file %s exists within %v", tmpSyncFile, timeout)
+	}
+
+	timeout, err = util.WaitForState(
+		func() bool {
+			stdout, _ = cluster.MemberCommand(m, "systemctl", "show", "--property=ActiveState", tmpService)
+			if strings.TrimSpace(stdout) != "ActiveState=active" {
+				return false
+			}
+			return true
+		},
+	)
+	if err != nil {
+		t.Fatalf("%s unit not reported as active within %v", tmpService, timeout)
+	}
+
+	timeout, err = util.WaitForState(
+		func() bool {
+			stdout, _ = cluster.MemberCommand(m, "systemctl", "show", "--property=Result", tmpService)
+			if strings.TrimSpace(stdout) != "Result=success" {
+				return false
+			}
+			return true
+		},
+	)
+	if err != nil {
+		t.Fatalf("Result for %s unit not reported as success withing %v", tmpService, timeout)
+	}
+
+	os.Remove(tmpSyncFile)
+	os.Remove(tmpSyncService)
+}
