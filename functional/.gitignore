@@ -1,2 +1,3 @@
 .vagrant/
 functional-tests.log
+Test*_smoke*.log

@@ -24,8 +24,11 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
+	"testing"
 	"time"
 
 	"github.com/coreos/fleet/Godeps/_workspace/src/github.com/coreos/go-systemd/dbus"
@@ -406,6 +409,7 @@ func (nc *nspawnCluster) createMember(id string) (m Member, err error) {
 		fmt.Sprintf("ln -s usr/bin %s/bin", fsdir),
 		fmt.Sprintf("ln -s usr/sbin %s/sbin", fsdir),
 		fmt.Sprintf("mkdir -p %s/home/core/.ssh", fsdir),
+		fmt.Sprintf("install -d -o root -g systemd-journal -m 2755 %s/var/log/journal", fsdir),
 		fmt.Sprintf("chown -R 500:500 %s/home/core", fsdir),
 
 		// We don't need this, and it's slow, so mask it
@@ -535,9 +539,36 @@ func (nc *nspawnCluster) createMember(id string) (m Member, err error) {
 	return Member(&nm), nil
 }
 
-func (nc *nspawnCluster) Destroy() error {
+func (nc *nspawnCluster) Destroy(t *testing.T) error {
+	re := regexp.MustCompile(`/functional\.([a-zA-Z0-9]+)$`)
 	for _, m := range nc.Members() {
 		log.Printf("Destroying nspawn machine %s", m.ID())
+		if t.Failed() {
+			log.Printf("Failed tests, fetching logs from %s machine", m.ID())
+			wd, err := os.Getwd()
+			if err != nil {
+				log.Printf("Failed to get working directory, skipping journal logs fetch: %v", err)
+			} else {
+				var logPath string
+				containerDir := path.Join(os.TempDir(), nc.name, m.ID(), "fs")
+				stdout, _, _ := run(fmt.Sprintf("journalctl --directory=%s/var/log/journal --root=%s --no-pager", containerDir, containerDir))
+				pc := make([]uintptr, 10)
+				runtime.Callers(6, pc)
+				f := runtime.FuncForPC(pc[0])
+				match := re.FindStringSubmatch(f.Name())
+				if len(match) == 2 {
+					logPath = fmt.Sprintf("%s/%s_smoke%s.log", wd, match[1], m.ID())
+				} else {
+					logPath = fmt.Sprintf("%s/TestUnknown_smoke%s.log", wd, m.ID())
+				}
+				err = ioutil.WriteFile(logPath, []byte(stdout), 0644)
+				if err != nil {
+					log.Printf("Failed to write journal logs (%s): %v", logPath, err)
+				} else {
+					log.Printf("Wrote smoke%s logs to %s", m.ID(), logPath)
+				}
+			}
+		}
 		nc.DestroyMember(m)
 	}
 

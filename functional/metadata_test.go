@@ -30,7 +30,7 @@ func TestTemplatesWithSpecifiersInMetadata(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer cluster.Destroy()
+	defer cluster.Destroy(t)
 
 	members, err := platform.CreateNClusterMembers(cluster, 3)
 	if err != nil {

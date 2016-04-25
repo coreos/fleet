@@ -29,7 +29,7 @@ func TestDynamicClusterNewMemberUnitMigration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer cluster.Destroy()
+	defer cluster.Destroy(t)
 
 	// Start with a 4-node cluster
 	members, err := platform.CreateNClusterMembers(cluster, 4)
@@ -119,7 +119,7 @@ func TestDynamicClusterMemberReboot(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer cluster.Destroy()
+	defer cluster.Destroy(t)
 
 	// Start with a simple three-node cluster
 	members, err := platform.CreateNClusterMembers(cluster, 3)

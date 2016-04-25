@@ -42,7 +42,7 @@ func TestUnitRunnable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer cluster.Destroy()
+	defer cluster.Destroy(t)
 
 	m0, err := cluster.CreateMember()
 	if err != nil {
@@ -75,7 +75,7 @@ func TestUnitSubmit(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer cluster.Destroy()
+	defer cluster.Destroy(t)
 
 	m, err := cluster.CreateMember()
 	if err != nil {
@@ -99,7 +99,7 @@ func TestUnitLoad(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer cluster.Destroy()
+	defer cluster.Destroy(t)
 
 	m, err := cluster.CreateMember()
 	if err != nil {
@@ -120,7 +120,7 @@ func TestUnitStart(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer cluster.Destroy()
+	defer cluster.Destroy(t)
 
 	m, err := cluster.CreateMember()
 	if err != nil {
@@ -139,11 +139,11 @@ func TestUnitStart(t *testing.T) {
 // TestUnitSubmitReplace() tests whether a command "fleetctl submit --replace
 // hello.service" works or not.
 func TestUnitSubmitReplace(t *testing.T) {
-	if err := replaceUnitCommon("submit"); err != nil {
+	if err := replaceUnitCommon(t, "submit"); err != nil {
 		t.Fatal(err)
 	}
 
-	if err := replaceUnitMultiple("submit", numUnitsReplace); err != nil {
+	if err := replaceUnitMultiple(t, "submit", numUnitsReplace); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -151,11 +151,11 @@ func TestUnitSubmitReplace(t *testing.T) {
 // TestUnitLoadReplace() tests whether a command "fleetctl load --replace
 // hello.service" works or not.
 func TestUnitLoadReplace(t *testing.T) {
-	if err := replaceUnitCommon("load"); err != nil {
+	if err := replaceUnitCommon(t, "load"); err != nil {
 		t.Fatal(err)
 	}
 
-	if err := replaceUnitMultiple("load", numUnitsReplace); err != nil {
+	if err := replaceUnitMultiple(t, "load", numUnitsReplace); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -163,11 +163,11 @@ func TestUnitLoadReplace(t *testing.T) {
 // TestUnitStartReplace() tests whether a command "fleetctl start --replace
 // hello.service" works or not.
 func TestUnitStartReplace(t *testing.T) {
-	if err := replaceUnitCommon("start"); err != nil {
+	if err := replaceUnitCommon(t, "start"); err != nil {
 		t.Fatal(err)
 	}
 
-	if err := replaceUnitMultiple("start", numUnitsReplace); err != nil {
+	if err := replaceUnitMultiple(t, "start", numUnitsReplace); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -177,7 +177,7 @@ func TestUnitSSHActions(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer cluster.Destroy()
+	defer cluster.Destroy(t)
 
 	m, err := cluster.CreateMember()
 	if err != nil {
@@ -237,7 +237,7 @@ func TestUnitCat(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer cluster.Destroy()
+	defer cluster.Destroy(t)
 
 	m, err := cluster.CreateMember()
 	if err != nil {
@@ -285,7 +285,7 @@ func TestUnitStatus(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer cluster.Destroy()
+	defer cluster.Destroy(t)
 
 	m, err := cluster.CreateMember()
 	if err != nil {
@@ -326,7 +326,7 @@ func TestListUnitFilesOrder(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer cluster.Destroy()
+	defer cluster.Destroy(t)
 
 	m, err := cluster.CreateMember()
 	if err != nil {
@@ -505,7 +505,7 @@ func doMultipleUnitsCmd(cluster platform.Cluster, m platform.Member, cmd string,
 
 // replaceUnitCommon() tests whether a command "fleetctl {submit,load,start}
 // --replace hello.service" works or not.
-func replaceUnitCommon(cmd string) error {
+func replaceUnitCommon(t *testing.T, cmd string) error {
 	// check if cmd is one of the supported commands.
 	listCmds := []string{"submit", "load", "start"}
 	found := false
@@ -522,7 +522,7 @@ func replaceUnitCommon(cmd string) error {
 	if err != nil {
 		return fmt.Errorf("%v", err)
 	}
-	defer cluster.Destroy()
+	defer cluster.Destroy(t)
 
 	m, err := cluster.CreateMember()
 	if err != nil {
@@ -594,7 +594,7 @@ func replaceUnitCommon(cmd string) error {
 
 // replaceUnitMultiple() tests whether a command "fleetctl {submit,load,start}
 // --replace hello.service" works or not.
-func replaceUnitMultiple(cmd string, n int) error {
+func replaceUnitMultiple(t *testing.T, cmd string, n int) error {
 	// check if cmd is one of the supported commands.
 	listCmds := []string{"submit", "load", "start"}
 	found := false
@@ -611,7 +611,7 @@ func replaceUnitMultiple(cmd string, n int) error {
 	if err != nil {
 		return fmt.Errorf("%v", err)
 	}
-	defer cluster.Destroy()
+	defer cluster.Destroy(t)
 
 	m, err := cluster.CreateMember()
 	if err != nil {
@@ -734,7 +734,7 @@ func TestReplaceSerialization(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer cluster.Destroy()
+	defer cluster.Destroy(t)
 
 	m, err := cluster.CreateMember()
 	if err != nil {
