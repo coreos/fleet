@@ -1,8 +1,8 @@
 language: go
 matrix:
   include:
-    - go: 1.5.3
-    - go: 1.6
+    - go: 1.5.4
+    - go: 1.6.2
 
 script:
  - ./test
