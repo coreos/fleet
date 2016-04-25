@@ -563,7 +563,7 @@ func getUnitFileFromTemplate(uni *unit.UnitNameInfo, fileName string) (*unit.Uni
 	}
 
 	if tmpl != nil {
-		isLocalUnitDifferent(fileName, tmpl, true, false)
+		isLocalUnitDifferent(fileName, tmpl, false)
 		uf = schema.MapSchemaUnitOptionsToUnitFile(tmpl.Options)
 		log.Debugf("Template Unit(%s) found in registry", uni.Template)
 	} else {
@@ -735,7 +735,7 @@ func checkUnitCreation(arg string) (int, error) {
 
 	// if sharedFlags.Replace is not set then we warn in case
 	// the units differ
-	different, err := isLocalUnitDifferent(arg, unit, !sharedFlags.Replace, false)
+	different, err := isLocalUnitDifferent(arg, unit, false)
 
 	// if sharedFlags.Replace is set then we fail for errors
 	if sharedFlags.Replace {
@@ -838,17 +838,17 @@ func matchLocalFileAndUnit(file string, su *schema.Unit) (bool, error) {
 // fatal was not set, it will check again if that file name is an
 // instance of a template, if so it will load the template Unit and
 // compare it with the provided Unit.
-// It takes four arguments; a path to the local Unit on the file system,
-// the Unit in the registry, a boolean to warn in case the Units differ;
-// and a last boolean to fail in case fatal errors happen.
+// It takes three arguments; a path to the local Unit on the file system,
+// the Unit in the registry, and a last boolean to fail in case fatal errors
+// happen.
 // Returns true if the local Unit on file system is different from the
 // one provided, false otherwise; and any error encountered.
-func isLocalUnitDifferent(file string, su *schema.Unit, warnIfDifferent bool, fatal bool) (bool, error) {
+func isLocalUnitDifferent(file string, su *schema.Unit, fatal bool) (bool, error) {
 	result, err := matchLocalFileAndUnit(file, su)
 	if err == nil {
 		// Warn in case unit differs from local file
-		if result == false && warnIfDifferent {
-			stderr("WARNING: Unit %s in registry differs from local unit file %s", su.Name, file)
+		if result == false && !sharedFlags.Replace {
+			stderr("WARNING: Unit %s in registry differs from local unit file %s. Add --replace to override.", su.Name, file)
 		}
 		return !result, nil
 	} else if fatal {
@@ -866,8 +866,8 @@ func isLocalUnitDifferent(file string, su *schema.Unit, warnIfDifferent bool, fa
 	result, err = matchLocalFileAndUnit(templFile, su)
 	if err == nil {
 		// Warn in case unit differs from local template unit file
-		if result == false && warnIfDifferent {
-			stderr("WARNING: Unit %s in registry differs from local template unit file %s", su.Name, info.Template)
+		if result == false && !sharedFlags.Replace {
+			stderr("WARNING: Unit %s in registry differs from local template unit file %s. Add --replace to override.", su.Name, file)
 		}
 		return !result, nil
 	}
