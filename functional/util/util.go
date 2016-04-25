@@ -177,3 +177,39 @@ func NewMachineID() string {
 	// drop the standard separators to match systemd
 	return strings.Replace(uuid.New(), "-", "", -1)
 }
+
+// CopyFile()
+func CopyFile(newFile, oldFile string) error {
+	input, err := ioutil.ReadFile(oldFile)
+	if err != nil {
+		return err
+	}
+	err = ioutil.WriteFile(newFile, []byte(input), 0644)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// GenNewFleetService() is a helper for generating a temporary fleet service
+// that reads from oldFile, replaces oldVal with newVal, and stores the result
+// to newFile.
+func GenNewFleetService(newFile, oldFile, newVal, oldVal string) error {
+	input, err := ioutil.ReadFile(oldFile)
+	if err != nil {
+		return err
+	}
+	lines := strings.Split(string(input), "\n")
+
+	for i, line := range lines {
+		if strings.Contains(line, oldVal) {
+			lines[i] = strings.Replace(line, oldVal, newVal, len(oldVal))
+		}
+	}
+	output := strings.Join(lines, "\n")
+	err = ioutil.WriteFile(newFile, []byte(output), 0644)
+	if err != nil {
+		return err
+	}
+	return nil
+}

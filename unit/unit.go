@@ -136,6 +136,16 @@ func (u *UnitFile) Hash() Hash {
 	return Hash(sha1.Sum(u.Bytes()))
 }
 
+// MatchUnitFiles compares two unitFiles
+// Returns true if the units match, false otherwise.
+func MatchUnitFiles(a *UnitFile, b *UnitFile) bool {
+	if a.Hash() == b.Hash() {
+		return true
+	}
+
+	return false
+}
+
 // RecognizedUnitType determines whether or not the given unit name represents
 // a recognized unit type.
 func RecognizedUnitType(name string) bool {

@@ -101,15 +101,35 @@ func (ur *unitsResource) set(rw http.ResponseWriter, req *http.Request, item str
 		return
 	}
 
+	newUnit := false
 	if eu == nil {
 		if len(su.Options) == 0 {
 			err := errors.New("unit does not exist and options field empty")
 			sendError(rw, http.StatusConflict, err)
+			return
 		} else if err := ValidateOptions(su.Options); err != nil {
 			sendError(rw, http.StatusBadRequest, err)
+			return
 		} else {
-			ur.create(rw, su.Name, &su)
+			// New valid unit
+			newUnit = true
 		}
+	} else if eu.Name == su.Name && len(su.Options) > 0 {
+		// There is already a unit with the same name that
+		// was submitted before. Check their hashes, if they do
+		// not match then this is probably a new version which
+		// needs its own new unit entry.
+		// In the other case if su.Options == 0 then probably we
+		// don't want to update the Unit options nor its content
+		// but only set the target job state of the
+		// corresponding unit, in this case just ignore.
+		a := schema.MapSchemaUnitOptionsToUnitFile(su.Options)
+		b := schema.MapSchemaUnitOptionsToUnitFile(eu.Options)
+		newUnit = !unit.MatchUnitFiles(a, b)
+	}
+
+	if newUnit {
+		ur.create(rw, su.Name, &su)
 		return
 	}
 
