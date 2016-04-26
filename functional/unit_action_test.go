@@ -35,6 +35,12 @@ const (
 	numUnitsReplace = 9
 )
 
+var cleanCmd = map[string]string{
+	"submit": "destroy",
+	"load":   "unload",
+	"start":  "stop",
+}
+
 // TestUnitRunnable is the simplest test possible, deplying a single-node
 // cluster and ensuring a unit can enter an 'active' state
 func TestUnitRunnable(t *testing.T) {
@@ -86,7 +92,7 @@ func TestUnitSubmit(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := doMultipleUnitsCmd(cluster, m, "submit", 9); err != nil {
+	if err := unitStartCommon(cluster, m, "submit", 9); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -110,7 +116,7 @@ func TestUnitLoad(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := doMultipleUnitsCmd(cluster, m, "load", 6); err != nil {
+	if err := unitStartCommon(cluster, m, "load", 6); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -131,7 +137,7 @@ func TestUnitStart(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := doMultipleUnitsCmd(cluster, m, "start", 3); err != nil {
+	if err := unitStartCommon(cluster, m, "start", 3); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -367,124 +373,38 @@ func TestListUnitFilesOrder(t *testing.T) {
 	}
 }
 
-func doMultipleUnitsCmd(cluster platform.Cluster, m platform.Member, cmd string, numUnits int) error {
-	launchUnitsCmd := func(cmd string, numUnits int) (unitFiles []string, err error) {
-		args := []string{cmd}
-		for i := 0; i < numUnits; i++ {
-			unitFile := fmt.Sprintf("fixtures/units/hello@%d.service", i+1)
-			args = append(args, unitFile)
-			unitFiles = append(unitFiles, path.Base(unitFile))
-		}
-
-		if stdout, stderr, err := cluster.Fleetctl(m, args...); err != nil {
-			return nil,
-				fmt.Errorf("Unable to %s batch of units: \nstdout: %s\nstderr: %s\nerr: %v",
-					cmd, stdout, stderr, err)
-		} else if strings.Contains(stderr, "Error") {
-			return nil,
-				fmt.Errorf("Failed to correctly %s batch of units: \nstdout: %s\nstderr: %s\nerr: %v",
-					cmd, stdout, stderr, err)
-		}
-
-		return unitFiles, nil
-	}
-
-	checkListUnits := func(cmd string, unitFiles []string, inNumUnits int) (err error) {
-		// wait until the unit gets processed up to 15 seconds
-		if cmd == "submit" {
-			listUnitStates, err := cluster.WaitForNUnitFiles(m, inNumUnits)
-			if err != nil {
-				return fmt.Errorf("Failed to run list-unit-files: %v", err)
-			}
-
-			if inNumUnits == 0 && len(listUnitStates) != 0 {
-				return fmt.Errorf("Expected nil unit file list, got %v", listUnitStates)
-			}
-
-			// given unit name must be there in list-unit-files
-			for i := 0; i < inNumUnits; i++ {
-				_, found := listUnitStates[unitFiles[i]]
-				if len(listUnitStates) != inNumUnits || !found {
-					return fmt.Errorf("Expected %s to be unit file, got %v",
-						unitFiles[i], listUnitStates)
-				}
-			}
-		} else {
-			// cmd == "load" or "start"
-			var listUnitStates map[string][]util.UnitState
-			if cmd == "load" {
-				listUnitStates, err = cluster.WaitForNUnits(m, inNumUnits)
-			} else {
-				listUnitStates, err = cluster.WaitForNActiveUnits(m, inNumUnits)
-			}
-			if err != nil {
-				return fmt.Errorf("Failed to run list-units: %v", err)
-			}
-
-			if inNumUnits == 0 && len(listUnitStates) != 0 {
-				return fmt.Errorf("Expected nil unit list, got %v", listUnitStates)
-			}
-
-			// given unit name must be there in list-units
-			for i := 0; i < inNumUnits; i++ {
-				_, found := listUnitStates[unitFiles[i]]
-				if len(listUnitStates) != inNumUnits || !found {
-					return fmt.Errorf("Expected %s to be unit, got %v",
-						unitFiles[i], listUnitStates)
-				}
-			}
-		}
-
-		return nil
-	}
-
-	cleanUnits := func(dcmd string, unitFile string) (err error) {
-		if _, _, err := cluster.Fleetctl(m, dcmd, unitFile); err != nil {
-			return fmt.Errorf("Failed to %s unit: %v", dcmd, err)
-		}
-		return nil
-	}
-
-	dcmd := make(map[string]string, 0)
-	dcmd["submit"] = "destroy"
-	dcmd["load"] = "unload"
-	dcmd["start"] = "stop"
-
+func unitStartCommon(cluster platform.Cluster, m platform.Member, cmd string, numUnits int) error {
 	// launch a batch of processing units
-	unitFiles, err := launchUnitsCmd(cmd, numUnits)
+	unitFiles, err := launchUnitsCmd(cluster, m, cmd, numUnits)
 	if err != nil {
 		return err
 	}
-	if err := checkListUnits(cmd, unitFiles, numUnits); err != nil {
+	if err := checkListUnits(cluster, m, cmd, unitFiles, numUnits); err != nil {
 		return err
 	}
 
-	// destroy the unit and ensure it disappears from the unit list
-	for i := 0; i < numUnits; i++ {
-		if err := cleanUnits(dcmd[cmd], unitFiles[i]); err != nil {
-			return err
-		}
+	// clean up the unit and ensure it disappears from the unit list
+	if err := cleanUnits(cluster, m, cleanCmd[cmd], unitFiles, numUnits); err != nil {
+		return err
 	}
-	if err := checkListUnits(cmd, unitFiles, 0); err != nil {
+	if err := checkListUnits(cluster, m, cmd, unitFiles, 0); err != nil {
 		return err
 	}
 
 	// launch a batch of processing units
-	unitFiles, err = launchUnitsCmd(cmd, numUnits)
+	unitFiles, err = launchUnitsCmd(cluster, m, cmd, numUnits)
 	if err != nil {
 		return err
 	}
-	if err := checkListUnits(cmd, unitFiles, numUnits); err != nil {
+	if err := checkListUnits(cluster, m, cmd, unitFiles, numUnits); err != nil {
 		return err
 	}
 
-	// destroy the unit again, not to affect the next tests for multiple units
-	for i := 0; i < numUnits; i++ {
-		if err := cleanUnits(dcmd[cmd], unitFiles[i]); err != nil {
-			return err
-		}
+	// clean up the unit again, not to affect the next tests for multiple units
+	if err := cleanUnits(cluster, m, cleanCmd[cmd], unitFiles, numUnits); err != nil {
+		return err
 	}
-	if err := checkListUnits(cmd, unitFiles, 0); err != nil {
+	if err := checkListUnits(cluster, m, cmd, unitFiles, 0); err != nil {
 		return err
 	}
 
@@ -525,15 +445,6 @@ func replaceUnitCommon(t *testing.T, cmd string, numRUnits int) error {
 		os.Mkdir(tmpFixtures, 0755)
 	}
 
-	WaitForNUnitsCmd := func(cmd string, expectedUnits int) (err error) {
-		if cmd == "submit" {
-			_, err = cluster.WaitForNUnitFiles(m, expectedUnits)
-		} else {
-			_, err = cluster.WaitForNUnits(m, expectedUnits)
-		}
-		return err
-	}
-
 	prepareReplaceUnits := func(cmd string, unitFiles []string, numUnits int) (bodiesOrig []string, err error) {
 		for i, helloFilename := range unitFiles {
 			tmpHelloFixture := fmt.Sprintf("/tmp/fixtures/hello@%d.service", i)
@@ -567,7 +478,7 @@ func replaceUnitCommon(t *testing.T, cmd string, numRUnits int) error {
 			if _, _, err = cluster.Fleetctl(m, cmd, "--replace", curHelloService); err != nil {
 				return fmt.Errorf("Unable to replace fleet unit: %v", err)
 			}
-			if err := WaitForNUnitsCmd(cmd, numUnits); err != nil {
+			if err := waitForNUnitsCmd(cluster, m, cmd, numUnits); err != nil {
 				return fmt.Errorf("Did not find %d units in cluster", numUnits)
 			}
 
@@ -592,7 +503,7 @@ func replaceUnitCommon(t *testing.T, cmd string, numRUnits int) error {
 	if err != nil {
 		return err
 	}
-	if err := WaitForNUnitsCmd(cmd, numRUnits); err != nil {
+	if err := waitForNUnitsCmd(cluster, m, cmd, numRUnits); err != nil {
 		return fmt.Errorf("Did not find %d units in cluster", numRUnits)
 	}
 
@@ -609,19 +520,17 @@ func replaceUnitCommon(t *testing.T, cmd string, numRUnits int) error {
 		return err
 	}
 
-	// clean up temp services under /tmp
-	for i := 1; i <= numRUnits; i++ {
-		curHelloService := fmt.Sprintf("/tmp/hello@%d.service", i)
-
-		if _, _, err := cluster.Fleetctl(m, "destroy", curHelloService); err != nil {
-			fmt.Printf("Failed to destroy unit: %v", err)
-			continue
-		}
-
-		os.Remove(curHelloService)
+	// clean up units via corresponding destroy commands,
+	// also remove temp files under /tmp.
+	if err := cleanUnits(cluster, m, cleanCmd[cmd], unitFiles, numRUnits); err != nil {
+		return err
 	}
 
-	if err := WaitForNUnitsCmd(cmd, 0); err != nil {
+	for i := 1; i <= numRUnits; i++ {
+		os.Remove(fmt.Sprintf("/tmp/hello@%d.service", i))
+	}
+
+	if err := waitForNUnitsCmd(cluster, m, cmd, 0); err != nil {
 		return fmt.Errorf("Failed to get every unit to be cleaned up: %v", err)
 	}
 
@@ -658,6 +567,88 @@ func cleanUnits(cl platform.Cluster, m platform.Member, cmd string, ufs []string
 		}
 	}
 	return nil
+}
+
+func checkListUnits(cl platform.Cluster, m platform.Member, cmd string, ufs []string, nu int) (err error) {
+	var lufs map[string][]util.UnitFileState
+	var lus map[string][]util.UnitState
+	var lenLists int
+	switch cmd {
+	case "submit":
+		lufs, err = waitForNUnitsSubmit(cl, m, nu)
+		lenLists = len(lufs)
+		break
+	case "load":
+		lus, err = waitForNUnitsLoad(cl, m, nu)
+		lenLists = len(lus)
+		break
+	case "start":
+		lus, err = waitForNUnitsStart(cl, m, nu)
+		lenLists = len(lus)
+		break
+	default:
+		return fmt.Errorf("Failed to run an invalid cmd %s", cmd)
+	}
+
+	if nu == 0 && lenLists != 0 {
+		return fmt.Errorf("Failed to get an empty unit list")
+	}
+
+	// given unit name must be there in list-unit-files
+	for i := 0; i < nu; i++ {
+		found := false
+		if cmd == "submit" {
+			_, found = lufs[ufs[i]]
+		} else {
+			_, found = lus[ufs[i]]
+		}
+		if lenLists != nu || !found {
+			return fmt.Errorf("Expected %s to be unit file", ufs[i])
+		}
+	}
+	return err
+}
+
+func waitForNUnitsSubmit(cl platform.Cluster, m platform.Member, nu int) (map[string][]util.UnitFileState, error) {
+	// wait until the unit gets processed up to 15 seconds
+	listUnitStates, err := cl.WaitForNUnitFiles(m, nu)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to run list-unit-files: %v", err)
+	}
+	return listUnitStates, nil
+}
+
+func waitForNUnitsLoad(cl platform.Cluster, m platform.Member, nu int) (map[string][]util.UnitState, error) {
+	listUnitStates, err := cl.WaitForNUnits(m, nu)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to run list-units: %v", err)
+	}
+	return listUnitStates, nil
+}
+
+func waitForNUnitsStart(cl platform.Cluster, m platform.Member, nu int) (map[string][]util.UnitState, error) {
+	listUnitStates, err := cl.WaitForNActiveUnits(m, nu)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to run list-units: %v", err)
+	}
+	return listUnitStates, nil
+}
+
+func waitForNUnitsCmd(cl platform.Cluster, m platform.Member, cmd string, nu int) (err error) {
+	switch cmd {
+	case "submit":
+		_, err = waitForNUnitsSubmit(cl, m, nu)
+		break
+	case "load":
+		_, err = waitForNUnitsLoad(cl, m, nu)
+		break
+	case "start":
+		_, err = waitForNUnitsStart(cl, m, nu)
+		break
+	default:
+		return fmt.Errorf("Failed to run an invalid cmd %s", cmd)
+	}
+	return err
 }
 
 // TestReplaceSerialization tests if the ExecStartPre of the new version
