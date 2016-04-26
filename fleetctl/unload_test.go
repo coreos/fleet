@@ -19,17 +19,20 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/coreos/fleet/Godeps/_workspace/src/github.com/codegangsta/cli"
+
+	"github.com/coreos/fleet/client"
 	"github.com/coreos/fleet/job"
 )
 
-func doUnloadUnits(r commandTestResults, errchan chan error) {
-	exit := runUnloadUnit(r.units)
+func doUnloadUnits(t *testing.T, r commandTestResults, errchan chan error, cAPI client.API, c *cli.Context) {
+	exit := runUnloadUnit(c, cAPI)
 	if exit != r.expectedExit {
 		errchan <- fmt.Errorf("%s: expected exit code %d but received %d", r.description, r.expectedExit, exit)
 		return
 	}
 
-	real_units, err := findUnits(r.units)
+	real_units, err := findUnits(r.units, cAPI)
 	if err != nil {
 		errchan <- err
 		return
@@ -45,10 +48,6 @@ func doUnloadUnits(r commandTestResults, errchan chan error) {
 
 func TestRunUnloadUnits(t *testing.T) {
 	unitPrefix := "unload"
-	oldNoBlock := sharedFlags.NoBlock
-	defer func() {
-		sharedFlags.NoBlock = oldNoBlock
-	}()
 
 	results := []commandTestResults{
 		{
@@ -73,21 +72,22 @@ func TestRunUnloadUnits(t *testing.T) {
 		},
 	}
 
-	sharedFlags.NoBlock = true
 	for _, r := range results {
 		var wg sync.WaitGroup
 		errchan := make(chan error)
 
-		cAPI = newFakeRegistryForCommands(unitPrefix, len(r.units), false)
+		cAPI := newFakeRegistryForCommands(unitPrefix, len(r.units), false)
+
+		c := createTestContext(t, append([]string{"unload", "--no-block"}, r.units...)...)
 
 		wg.Add(2)
 		go func() {
 			defer wg.Done()
-			doUnloadUnits(r, errchan)
+			doUnloadUnits(t, r, errchan, cAPI, c)
 		}()
 		go func() {
 			defer wg.Done()
-			doUnloadUnits(r, errchan)
+			doUnloadUnits(t, r, errchan, cAPI, c)
 		}()
 
 		go func() {

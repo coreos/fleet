@@ -18,19 +18,24 @@ import (
 	"io"
 	"net"
 	"os"
+
+	"github.com/coreos/fleet/Godeps/_workspace/src/github.com/codegangsta/cli"
+
+	"github.com/coreos/fleet/client"
 )
 
-var (
-	cmdFDForward = &Command{
+func NewFDForwardCommand() cli.Command {
+	return cli.Command{
 		Name:        "fd-forward",
-		Summary:     "Proxy stdin and stdout to a unix domain socket",
-		Usage:       "SOCKET",
+		Usage:       "Proxy stdin and stdout to a unix domain socket",
+		ArgsUsage:   "SOCKET",
 		Description: `fleetctl utilizes fd-forward when --tunnel is used and --endpoint is a unix socket. This command is not intended to be called by users directly.`,
-		Run:         runFDForward,
+		Action:      makeActionWrapper(runFDForward),
 	}
-)
+}
 
-func runFDForward(args []string) (exit int) {
+func runFDForward(c *cli.Context, cAPI client.API) (exit int) {
+	args := c.Args()
 	if len(args) != 1 {
 		stderr("Provide a single argument")
 		return 1

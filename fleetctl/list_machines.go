@@ -19,29 +19,35 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/coreos/fleet/Godeps/_workspace/src/github.com/codegangsta/cli"
+	"github.com/coreos/fleet/client"
 	"github.com/coreos/fleet/machine"
 )
 
-const (
-	defaultListMachinesFields = "machine,ip,metadata"
-)
-
-var (
-	listMachinesFieldsFlag string
-	cmdListMachines        = &Command{
-		Name:    "list-machines",
-		Summary: "Enumerate the current hosts in the cluster",
-		Usage:   "[-l|--full] [--no-legend]",
+func NewListMachinesCommand() cli.Command {
+	return cli.Command{
+		Name:  "list-machines",
+		Usage: "Enumerate the current hosts in the cluster",
 		Description: `Lists all active machines within the cluster. Previously active machines will not appear in this list.
 
 For easily parsable output, you can remove the column headers:
-	fleetctl list-machines --no-legend
+       fleetctl list-machines --no-legend
 
 Output the list without truncation:
-	fleetctl list-machines --full`,
-		Run: runListMachines,
+       fleetctl list-machines --full`,
+		ArgsUsage: "[-l|--full] [--no-legend]",
+		Action:    makeActionWrapper(runListMachines),
+		Flags: []cli.Flag{
+			cli.BoolFlag{Name: "full, l", Usage: "Output the list without truncation"},
+			cli.BoolFlag{Name: "no-legend", Usage: "Remove the column headers"},
+			cli.StringFlag{Name: "fields", Value: defaultListMachinesFields, Usage: fmt.Sprintf("Columns to print for each Machine. Valid fields are %s", defaultListMachinesFields)},
+		},
 	}
+}
 
+var (
+	//listMachinesFieldsFlag string
+	// Update defaultListMachinesFields if you add a new field here
 	listMachinesFields = map[string]machineToField{
 		"machine": func(ms *machine.MachineState, full bool) string {
 			return machineIDLegend(*ms, full)
@@ -61,16 +67,14 @@ Output the list without truncation:
 	}
 )
 
+const (
+	defaultListMachinesFields = "machine,ip,metadata"
+)
+
 type machineToField func(ms *machine.MachineState, full bool) string
 
-func init() {
-	cmdListMachines.Flags.BoolVar(&sharedFlags.Full, "full", false, "Do not ellipsize fields on output")
-	cmdListMachines.Flags.BoolVar(&sharedFlags.Full, "l", false, "Shorthand for --full")
-	cmdListMachines.Flags.BoolVar(&sharedFlags.NoLegend, "no-legend", false, "Do not print a legend (column headers)")
-	cmdListMachines.Flags.StringVar(&listMachinesFieldsFlag, "fields", defaultListMachinesFields, fmt.Sprintf("Columns to print for each Machine. Valid fields are %q", strings.Join(machineToFieldKeys(listMachinesFields), ",")))
-}
-
-func runListMachines(args []string) (exit int) {
+func runListMachines(c *cli.Context, cAPI client.API) (exit int) {
+	listMachinesFieldsFlag := c.String("fields")
 	if listMachinesFieldsFlag == "" {
 		stderr("Must define output format")
 		return 1
@@ -90,20 +94,21 @@ func runListMachines(args []string) (exit int) {
 		return 1
 	}
 
-	if !sharedFlags.NoLegend {
+	if !c.Bool("no-legend") {
 		fmt.Fprintln(out, strings.ToUpper(strings.Join(cols, "\t")))
 	}
 
 	for _, ms := range machines {
 		ms := ms
 		var f []string
-		for _, c := range cols {
-			f = append(f, listMachinesFields[c](&ms, sharedFlags.Full))
+		for _, col := range cols {
+			f = append(f, listMachinesFields[col](&ms, c.Bool("full")))
 		}
 		fmt.Fprintln(out, strings.Join(f, "\t"))
 	}
 
 	out.Flush()
+
 	return
 }
 

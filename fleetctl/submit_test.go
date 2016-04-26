@@ -19,16 +19,19 @@ import (
 	"strings"
 	"sync"
 	"testing"
+
+	"github.com/coreos/fleet/client"
 )
 
-func doSubmitUnits(r commandTestResults, errchan chan error) {
-	exit := runSubmitUnits(r.units)
+func doSubmitUnits(t *testing.T, r commandTestResults, errchan chan error, cAPI client.API) {
+	c := createTestContext(t, append([]string{"submit"}, r.units...)...)
+	exit := runSubmitUnits(c, cAPI)
 	if exit != r.expectedExit {
 		errchan <- fmt.Errorf("%s: expected exit code %d but received %d", r.description, r.expectedExit, exit)
 		return
 	}
 
-	submitted, err := findUnits(r.units)
+	submitted, err := findUnits(r.units, cAPI)
 	if err != nil {
 		errchan <- err
 		return
@@ -67,12 +70,12 @@ func runSubmitUnitsTests(t *testing.T, unitPrefix string, results []commandTestR
 			unitsCount = len(r.units)
 		}
 
-		cAPI = newFakeRegistryForCommands(unitPrefix, unitsCount, template)
+		cAPI := newFakeRegistryForCommands(unitPrefix, unitsCount, template)
 
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			doSubmitUnits(r, errchan)
+			doSubmitUnits(t, r, errchan, cAPI)
 		}()
 
 		go func() {
@@ -88,10 +91,6 @@ func runSubmitUnitsTests(t *testing.T, unitPrefix string, results []commandTestR
 
 func TestRunSubmitUnits(t *testing.T) {
 	unitPrefix := "submit"
-	oldNoBlock := sharedFlags.NoBlock
-	defer func() {
-		sharedFlags.NoBlock = oldNoBlock
-	}()
 
 	results := []commandTestResults{
 		{
@@ -154,7 +153,6 @@ func TestRunSubmitUnits(t *testing.T) {
 		},
 	}
 
-	sharedFlags.NoBlock = true
 	runSubmitUnitsTests(t, unitPrefix, results, false)
 	runSubmitUnitsTests(t, unitPrefix, templateResults, true)
 }
