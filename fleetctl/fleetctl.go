@@ -30,6 +30,8 @@ import (
 	"text/tabwriter"
 	"time"
 
+	"github.com/codegangsta/cli"
+
 	etcd "github.com/coreos/etcd/client"
 
 	"github.com/coreos/fleet/api"
@@ -64,50 +66,10 @@ recommended to upgrade fleetctl to prevent incompatibility issues.
 )
 
 var (
-	out           *tabwriter.Writer
-	globalFlagset = flag.NewFlagSet("fleetctl", flag.ExitOnError)
-
-	// set of top-level commands
-	commands []*Command
+	out *tabwriter.Writer
 
 	// global API client used by commands
-	cAPI client.API
-
-	// flags used by all commands
-	globalFlags = struct {
-		Debug   bool
-		Version bool
-		Help    bool
-
-		ClientDriver    string
-		ExperimentalAPI bool
-		Endpoint        string
-		RequestTimeout  float64
-
-		KeyFile  string
-		CertFile string
-		CAFile   string
-
-		Tunnel                string
-		KnownHostsFile        string
-		StrictHostKeyChecking bool
-		SSHTimeout            float64
-		SSHUserName           string
-
-		EtcdKeyPrefix string
-	}{}
-
-	// flags used by multiple commands
-	sharedFlags = struct {
-		Sign          bool
-		Full          bool
-		NoLegend      bool
-		NoBlock       bool
-		Replace       bool
-		BlockAttempts int
-		Fields        string
-		SSHPort       int
-	}{}
+	//	cAPI client.API
 
 	// current command being executed
 	currentCommand string
@@ -117,82 +79,8 @@ var (
 )
 
 func init() {
-	// call this as early as possible to ensure we always have timestamps
-	// on fleetctl logs
-	log.EnableTimestamps()
-
-	globalFlagset.BoolVar(&globalFlags.Help, "help", false, "Print usage information and exit")
-	globalFlagset.BoolVar(&globalFlags.Help, "h", false, "Print usage information and exit")
-
-	globalFlagset.BoolVar(&globalFlags.Debug, "debug", false, "Print out more debug information to stderr")
-	globalFlagset.BoolVar(&globalFlags.Version, "version", false, "Print the version and exit")
-	globalFlagset.StringVar(&globalFlags.ClientDriver, "driver", clientDriverAPI, fmt.Sprintf("Adapter used to execute fleetctl commands. Options include %q and %q.", clientDriverAPI, clientDriverEtcd))
-	globalFlagset.StringVar(&globalFlags.Endpoint, "endpoint", defaultEndpoint, fmt.Sprintf("Location of the fleet API if --driver=%s. Alternatively, if --driver=%s, location of the etcd API.", clientDriverAPI, clientDriverEtcd))
-	globalFlagset.StringVar(&globalFlags.EtcdKeyPrefix, "etcd-key-prefix", registry.DefaultKeyPrefix, "Keyspace for fleet data in etcd (development use only!)")
-
-	globalFlagset.StringVar(&globalFlags.KeyFile, "key-file", "", "Location of TLS key file used to secure communication with the fleet API or etcd")
-	globalFlagset.StringVar(&globalFlags.CertFile, "cert-file", "", "Location of TLS cert file used to secure communication with the fleet API or etcd")
-	globalFlagset.StringVar(&globalFlags.CAFile, "ca-file", "", "Location of TLS CA file used to secure communication with the fleet API or etcd")
-
-	globalFlagset.StringVar(&globalFlags.KnownHostsFile, "known-hosts-file", ssh.DefaultKnownHostsFile, "File used to store remote machine fingerprints. Ignored if strict host key checking is disabled.")
-	globalFlagset.BoolVar(&globalFlags.StrictHostKeyChecking, "strict-host-key-checking", true, "Verify host keys presented by remote machines before initiating SSH connections.")
-	globalFlagset.Float64Var(&globalFlags.SSHTimeout, "ssh-timeout", 10.0, "Amount of time in seconds to allow for SSH connection initialization before failing.")
-	globalFlagset.StringVar(&globalFlags.Tunnel, "tunnel", "", "Establish an SSH tunnel through the provided address for communication with fleet and etcd.")
-	globalFlagset.Float64Var(&globalFlags.RequestTimeout, "request-timeout", 3.0, "Amount of time in seconds to allow a single request before considering it failed.")
-	globalFlagset.StringVar(&globalFlags.SSHUserName, "ssh-username", "core", "Username to use when connecting to CoreOS instance.")
-
-	// deprecated flags
-	globalFlagset.BoolVar(&globalFlags.ExperimentalAPI, "experimental-api", true, hidden)
-	globalFlagset.StringVar(&globalFlags.KeyFile, "etcd-keyfile", "", hidden)
-	globalFlagset.StringVar(&globalFlags.CertFile, "etcd-certfile", "", hidden)
-	globalFlagset.StringVar(&globalFlags.CAFile, "etcd-cafile", "", hidden)
-}
-
-type Command struct {
-	Name        string       // Name of the Command and the string to use to invoke it
-	Summary     string       // One-sentence summary of what the Command does
-	Usage       string       // Usage options/arguments
-	Description string       // Detailed description of command
-	Flags       flag.FlagSet // Set of flags associated with this command
-
-	Run func(args []string) int // Run a command with the given arguments, return exit status
-
-}
-
-func init() {
 	out = new(tabwriter.Writer)
 	out.Init(os.Stdout, 0, 8, 1, '\t', 0)
-	commands = []*Command{
-		cmdCatUnit,
-		cmdDestroyUnit,
-		cmdFDForward,
-		cmdHelp,
-		cmdJournal,
-		cmdListMachines,
-		cmdListUnitFiles,
-		cmdListUnits,
-		cmdLoadUnits,
-		cmdSSH,
-		cmdStartUnit,
-		cmdStatusUnits,
-		cmdStopUnit,
-		cmdSubmitUnit,
-		cmdUnloadUnit,
-		cmdVerifyUnit,
-		cmdVersion,
-	}
-}
-
-func getAllFlags() (flags []*flag.Flag) {
-	return getFlags(globalFlagset)
-}
-
-func getFlags(flagset *flag.FlagSet) (flags []*flag.Flag) {
-	flags = make([]*flag.Flag, 0)
-	flagset.VisitAll(func(f *flag.Flag) {
-		flags = append(flags, f)
-	})
-	return
 }
 
 func maybeAddNewline(s string) string {
@@ -225,78 +113,108 @@ func checkVersion(cReg registry.ClusterRegistry) (string, bool) {
 	return "", true
 }
 
+var (
+	globalFlags = []cli.Flag{
+		cli.BoolFlag{Name: "debug", Usage: "Print out more debug information to stderr"},
+		cli.StringFlag{Name: "driver", Value: clientDriverAPI, Usage: fmt.Sprintf("Adapter used to execute fleetctl commands. Options include %q and %q.", clientDriverAPI, clientDriverEtcd)},
+		cli.StringFlag{Name: "endpoint", Value: defaultEndpoint, Usage: fmt.Sprintf("Location of the fleet API if --driver=%s. Alternatively, if --driver=%s, location of the etcd API.", clientDriverAPI, clientDriverEtcd)},
+		cli.StringFlag{Name: "etcd-key-prefix", Value: registry.DefaultKeyPrefix, Usage: "Keyspace for fleet data in etcd (development use only!)"},
+		cli.StringFlag{Name: "key-file", Value: "", Usage: "Location of TLS key file used to secure communication with the fleet API or etcd"},
+		cli.StringFlag{Name: "cert-file", Value: "", Usage: "Location of TLS cert file used to secure communication with the fleet API or etcd"},
+		cli.StringFlag{Name: "ca-file", Value: "", Usage: "Location of TLS CA file used to secure communication with the fleet API or etcd"},
+		cli.StringFlag{Name: "known-hosts-file", Value: ssh.DefaultKnownHostsFile, Usage: "File used to store remote machine fingerprints. Ignored if strict host key checking is disabled."},
+		cli.BoolTFlag{Name: "strict-host-key-checking", Usage: "Verify host keys presented by remote machines before initiating SSH connections."},
+		cli.DurationFlag{Name: "ssh-timeout", Value: 10 * time.Second, Usage: "Amount of time in seconds to allow for SSH connection initialization before failing."},
+		cli.StringFlag{Name: "tunnel", Value: "", Usage: "Establish an SSH tunnel through the provided address for communication with fleet and etcd."},
+		cli.DurationFlag{Name: "request-timeout", Value: 3 * time.Second, Usage: "Amount of time in seconds to allow a single request before considering it failed."},
+		cli.StringFlag{Name: "ssh-username", Value: "core", Usage: "Username to use when connecting to CoreOS instance."},
+		// deprecated flags
+		cli.BoolTFlag{Name: "experimental-api", Usage: "DEPRECATED"},
+		cli.StringFlag{Name: "etcd-keyfile", Value: "", Usage: "DEPRECATED"},
+		cli.StringFlag{Name: "etcd-certfile", Value: "", Usage: "DEPRECATED"},
+		cli.StringFlag{Name: "etcd-cafile", Value: "", Usage: "DEPRECATED"},
+	}
+	globalCommands = []cli.Command{
+		NewCatCommand(),
+		NewDestroyCommand(),
+		NewFDForwardCommand(),
+		NewJournalCommand(),
+		NewListMachinesCommand(),
+		NewListUnitFilesCommand(),
+		NewListUnitsCommand(),
+		NewLoadUnitsCommand(),
+		NewSSHCommend(),
+		NewStartCommand(),
+		NewStatusCommand(),
+		NewStopUnitCommand(),
+		NewSubmitUnitCommand(),
+		NewUnloadUnitCommand(),
+		NewVerifyCommand(),
+	}
+)
+
+func createApp() *cli.App {
+	app := cli.NewApp()
+	app.Name = "fleetctl"
+	app.Version = version.Version
+	app.Usage = "command-line interface to fleet."
+
+	app.Flags = globalFlags
+	app.Commands = globalCommands
+
+	return app
+}
+
 func main() {
-	// parse global arguments
-	globalFlagset.Parse(os.Args[1:])
+	app := createApp()
 
-	var args = globalFlagset.Args()
+	// call this as early as possible to ensure we always have timestamps
+	// on fleetctl logs
+	log.EnableTimestamps()
 
-	getFlagsFromEnv(cliName, globalFlagset)
-
-	if globalFlags.Debug {
-		log.EnableDebug()
-	}
-
-	if globalFlags.Version {
-		args = []string{"version"}
-	} else if len(args) < 1 || globalFlags.Help {
-		args = []string{"help"}
-	}
-
-	var cmd *Command
-
-	// determine which Command should be run
-	for _, c := range commands {
-		if c.Name == args[0] {
-			cmd = c
-			if err := c.Flags.Parse(args[1:]); err != nil {
-				stderr("%v", err)
-				os.Exit(2)
-			}
-			break
-		}
-	}
-
-	if cmd == nil {
-		stderr("%v: unknown subcommand: %q", cliName, args[0])
-		stderr("Run '%v help' for usage.", cliName)
-		os.Exit(2)
-	}
-
-	if sharedFlags.Sign {
-		stderr("WARNING: The signed/verified units feature is DEPRECATED and cannot be used.")
-		os.Exit(2)
-	}
-
-	visited := make(map[string]bool, 0)
-	globalFlagset.Visit(func(f *flag.Flag) { visited[f.Name] = true })
-
-	// if --driver is not set, but --endpoint looks like an etcd
-	// server, set the driver to etcd
-	if visited["endpoint"] && !visited["driver"] {
-		if u, err := url.Parse(strings.Split(globalFlags.Endpoint, ",")[0]); err == nil {
-			if _, port, err := net.SplitHostPort(u.Host); err == nil && (port == "4001" || port == "2379") {
-				log.Debugf("Defaulting to --driver=%s as --endpoint appears to be etcd", clientDriverEtcd)
-				globalFlags.ClientDriver = clientDriverEtcd
+	// determine currentCommand. We only need this for --replace and its
+	// functional tests, so just handle those for now in the switch...
+	// "The rest" doesn't care about "currentCommand"
+	//stderr("%d command line arguments", len(os.Args))
+	//stderr("%s", os.Args)
+	if len(os.Args) > 1 {
+		for i := 1; i < len(os.Args); i++ {
+			switch os.Args[i] {
+			case "start":
+				currentCommand = "start"
+			case "load":
+				currentCommand = "load"
+			case "submit":
+				currentCommand = "submit"
+			default:
+				continue
 			}
 		}
+		//	stderr("First: %s", os.Args[1])
 	}
+	app.Run(os.Args)
+}
 
-	if cmd.Name != "help" && cmd.Name != "version" {
-		var err error
-		cAPI, err = getClient()
-		if err != nil {
-			stderr("Unable to initialize client: %v", err)
-			os.Exit(1)
+func getClientAPI(c *cli.Context) client.API {
+	cAPI, err := getClient(c)
+	if err != nil {
+		stderr("Unable to initialize client: %v", err)
+		os.Exit(1)
+	}
+	return cAPI
+}
+
+func makeActionWrapper(action func(context *cli.Context, cAPI client.API) int) func(context *cli.Context) {
+	return func(c *cli.Context) {
+		if c.Bool("sign") {
+			stderr("WARNING: The signed/verified units feature is DEPRECATED and cannot be used.")
+			os.Exit(2)
+		}
+		cAPI := getClientAPI(c)
+		if ret := action(c, cAPI); ret != 0 {
+			os.Exit(ret)
 		}
 	}
-
-	// We use this to know in which context we are,
-	// submit, load or start
-	currentCommand = cmd.Name
-
-	os.Exit(cmd.Run(cmd.Flags.Args()))
-
 }
 
 // getFlagsFromEnv parses all registered flags in the given flagset,
@@ -322,31 +240,44 @@ func getFlagsFromEnv(prefix string, fs *flag.FlagSet) {
 }
 
 // getClient initializes a client of fleet based on CLI flags
-func getClient() (client.API, error) {
+func getClient(c *cli.Context) (client.API, error) {
+	driverFlag := c.GlobalString("driver")
+	// if --driver is not set, but --endpoint looks like an etcd
+	// server, set the driver to etcd
+	if c.GlobalIsSet("endpoint") && !c.GlobalIsSet("driver") {
+		if u, err := url.Parse(strings.Split(c.GlobalString("endpoint"), ",")[0]); err == nil {
+			if _, port, err := net.SplitHostPort(u.Host); err == nil && (port == "4001" || port == "2379") {
+				log.Debugf("Defaulting to --driver=%s as --endpoint appears to be etcd", clientDriverEtcd)
+				driverFlag = clientDriverEtcd
+			}
+		}
+	}
+
+	endpointFlag := c.GlobalString("endpoint")
 	// The user explicitly set --experimental-api=false, so it trumps the
 	// --driver flag. This behavior exists for backwards-compatibilty.
-	if !globalFlags.ExperimentalAPI {
+	if !c.GlobalBool("experimental-api") {
 		// Additionally, if the user set --experimental-api=false and did
 		// not change the value of --endpoint, they likely want to use the
 		// old default value.
-		if globalFlags.Endpoint == defaultEndpoint {
-			globalFlags.Endpoint = "http://127.0.0.1:2379,http://127.0.0.1:4001"
+		if endpointFlag == defaultEndpoint {
+			endpointFlag = "http://127.0.0.1:2379,http://127.0.0.1:4001"
 		}
-		return getRegistryClient()
+		return getRegistryClient(c)
 	}
 
-	switch globalFlags.ClientDriver {
+	switch driverFlag {
 	case clientDriverAPI:
-		return getHTTPClient()
+		return getHTTPClient(c, endpointFlag)
 	case clientDriverEtcd:
-		return getRegistryClient()
+		return getRegistryClient(c)
 	}
 
-	return nil, fmt.Errorf("unrecognized driver %q", globalFlags.ClientDriver)
+	return nil, fmt.Errorf("unrecognized driver %q", driverFlag)
 }
 
-func getHTTPClient() (client.API, error) {
-	endpoints := strings.Split(globalFlags.Endpoint, ",")
+func getHTTPClient(c *cli.Context, endpointFlag string) (client.API, error) {
+	endpoints := strings.Split(endpointFlag, ",")
 	if len(endpoints) > 1 {
 		log.Warningf("multiple endpoints provided but only the first (%s) is used", endpoints[0])
 	}
@@ -360,14 +291,14 @@ func getHTTPClient() (client.API, error) {
 		return nil, errors.New("URL scheme undefined")
 	}
 
-	tun := getTunnelFlag()
+	tun := getTunnelFlag(c)
 	tunneling := tun != ""
 
 	dialUnix := ep.Scheme == "unix" || ep.Scheme == "file"
 
 	tunnelFunc := net.Dial
 	if tunneling {
-		sshClient, err := ssh.NewSSHClient(globalFlags.SSHUserName, tun, getChecker(), true, getSSHTimeoutFlag())
+		sshClient, err := ssh.NewSSHClient(c.GlobalString("ssh-username"), tun, getChecker(c), true, getSSHTimeoutFlag(c))
 		if err != nil {
 			return nil, fmt.Errorf("failed initializing SSH client: %v", err)
 		}
@@ -414,7 +345,7 @@ func getHTTPClient() (client.API, error) {
 		ep.Host = "domain-sock"
 	}
 
-	tlsConfig, err := pkg.ReadTLSConfigFiles(globalFlags.CAFile, globalFlags.CertFile, globalFlags.KeyFile)
+	tlsConfig, err := pkg.ReadTLSConfigFiles(c.GlobalString("ca-file"), c.GlobalString("cert-file"), c.GlobalString("key-file"))
 	if err != nil {
 		return nil, err
 	}
@@ -433,11 +364,11 @@ func getHTTPClient() (client.API, error) {
 	return client.NewHTTPClient(&hc, *ep)
 }
 
-func getRegistryClient() (client.API, error) {
+func getRegistryClient(c *cli.Context) (client.API, error) {
 	var dial func(string, string) (net.Conn, error)
-	tun := getTunnelFlag()
+	tun := getTunnelFlag(c)
 	if tun != "" {
-		sshClient, err := ssh.NewSSHClient(globalFlags.SSHUserName, tun, getChecker(), false, getSSHTimeoutFlag())
+		sshClient, err := ssh.NewSSHClient(c.GlobalString("ssh-username"), tun, getChecker(c), false, getSSHTimeoutFlag(c))
 		if err != nil {
 			return nil, fmt.Errorf("failed initializing SSH client: %v", err)
 		}
@@ -451,7 +382,7 @@ func getRegistryClient() (client.API, error) {
 		}
 	}
 
-	tlsConfig, err := pkg.ReadTLSConfigFiles(globalFlags.CAFile, globalFlags.CertFile, globalFlags.KeyFile)
+	tlsConfig, err := pkg.ReadTLSConfigFiles(c.GlobalString("ca-file"), c.GlobalString("cert-file"), c.GlobalString("key-file"))
 	if err != nil {
 		return nil, err
 	}
@@ -462,7 +393,7 @@ func getRegistryClient() (client.API, error) {
 	}
 
 	eCfg := etcd.Config{
-		Endpoints:               strings.Split(globalFlags.Endpoint, ","),
+		Endpoints:               strings.Split(c.GlobalString("endpoint"), ","),
 		Transport:               trans,
 		HeaderTimeoutPerRequest: getRequestTimeoutFlag(),
 	}
@@ -473,7 +404,7 @@ func getRegistryClient() (client.API, error) {
 	}
 
 	kAPI := etcd.NewKeysAPI(eClient)
-	reg := registry.NewEtcdRegistry(kAPI, globalFlags.EtcdKeyPrefix)
+	reg := registry.NewEtcdRegistry(kAPI, c.GlobalString("etcd-key-prefix"))
 
 	if msg, ok := checkVersion(reg); !ok {
 		stderr(msg)
@@ -483,12 +414,12 @@ func getRegistryClient() (client.API, error) {
 }
 
 // getChecker creates and returns a HostKeyChecker, or nil if any error is encountered
-func getChecker() *ssh.HostKeyChecker {
-	if !globalFlags.StrictHostKeyChecking {
+func getChecker(c *cli.Context) *ssh.HostKeyChecker {
+	if !c.GlobalBool("strict-host-key-checking") {
 		return nil
 	}
 
-	keyFile := ssh.NewHostKeyFile(globalFlags.KnownHostsFile)
+	keyFile := ssh.NewHostKeyFile(c.GlobalString("known-hosts-file"))
 	return ssh.NewHostKeyChecker(keyFile)
 }
 
@@ -499,7 +430,7 @@ func getChecker() *ssh.HostKeyChecker {
 // tries to get the template configuration either from the registry or
 // the local disk.
 // It returns a UnitFile configuration or nil; and any error ecountered
-func getUnitFile(file string) (*unit.UnitFile, error) {
+func getUnitFile(file string, cAPI client.API, c *cli.Context) (*unit.UnitFile, error) {
 	var uf *unit.UnitFile
 	name := unitNameMangle(file)
 
@@ -527,7 +458,7 @@ func getUnitFile(file string) (*unit.UnitFile, error) {
 		// If we found a template unit, later we create a
 		// near-identical instance unit in the Registry - same
 		// unit file as the template, but different name
-		uf, err = getUnitFileFromTemplate(info, file)
+		uf, err = getUnitFileFromTemplate(info, file, cAPI, c)
 		if err != nil {
 			return nil, fmt.Errorf("failed getting Unit(%s) from template: %v", file, err)
 		}
@@ -555,7 +486,7 @@ func getUnitFromFile(file string) (*unit.UnitFile, error) {
 // is either in the registry or on the file system
 // It takes two arguments, the template information and the unit file name
 // It returns the Unit or nil; and any error encountered
-func getUnitFileFromTemplate(uni *unit.UnitNameInfo, fileName string) (*unit.UnitFile, error) {
+func getUnitFileFromTemplate(uni *unit.UnitNameInfo, fileName string, cAPI client.API, c *cli.Context) (*unit.UnitFile, error) {
 	var uf *unit.UnitFile
 
 	tmpl, err := cAPI.Unit(uni.Template)
@@ -564,7 +495,7 @@ func getUnitFileFromTemplate(uni *unit.UnitNameInfo, fileName string) (*unit.Uni
 	}
 
 	if tmpl != nil {
-		isLocalUnitDifferent(fileName, tmpl, false)
+		isLocalUnitDifferent(fileName, tmpl, false, c)
 		uf = schema.MapSchemaUnitOptionsToUnitFile(tmpl.Options)
 		log.Debugf("Template Unit(%s) found in registry", uni.Template)
 	} else {
@@ -584,20 +515,20 @@ func getUnitFileFromTemplate(uni *unit.UnitNameInfo, fileName string) (*unit.Uni
 	return uf, nil
 }
 
-func getTunnelFlag() string {
-	tun := globalFlags.Tunnel
+func getTunnelFlag(c *cli.Context) string {
+	tun := c.GlobalString("tunnel")
 	if tun != "" && !strings.Contains(tun, ":") {
 		tun += ":22"
 	}
 	return tun
 }
 
-func getSSHTimeoutFlag() time.Duration {
-	return time.Duration(globalFlags.SSHTimeout*1000) * time.Millisecond
+func getSSHTimeoutFlag(c *cli.Context) time.Duration {
+	return c.GlobalDuration("ssh-timeout")
 }
 
-func getRequestTimeoutFlag() time.Duration {
-	return time.Duration(globalFlags.RequestTimeout*1000) * time.Millisecond
+func getRequestTimeoutFlag(c *cli.Context) time.Duration {
+	return c.GlobalDuration("request-timeout")
 }
 
 func machineIDLegend(ms machine.MachineState, full bool) string {
@@ -616,7 +547,7 @@ func machineFullLegend(ms machine.MachineState, full bool) string {
 	return legend
 }
 
-func findUnits(args []string) (sus []schema.Unit, err error) {
+func findUnits(args []string, cAPI client.API) (sus []schema.Unit, err error) {
 	units, err := cAPI.Units()
 	if err != nil {
 		return nil, err
@@ -641,7 +572,7 @@ func findUnits(args []string) (sus []schema.Unit, err error) {
 	return filtered, nil
 }
 
-func createUnit(name string, uf *unit.UnitFile) (*schema.Unit, error) {
+func createUnit(name string, uf *unit.UnitFile, cAPI client.API) (*schema.Unit, error) {
 	if uf == nil {
 		return nil, fmt.Errorf("nil unit provided")
 	}
@@ -716,7 +647,7 @@ func checkReplaceUnitState(unit *schema.Unit) (int, error) {
 // It takes a unit file path as a parameter.
 // It returns 0 on success and if the unit should be created, 1 if the
 // unit should not be created; and any error encountered.
-func checkUnitCreation(arg string) (int, error) {
+func checkUnitCreation(arg string, c *cli.Context, cAPI client.API) (int, error) {
 	name := unitNameMangle(arg)
 
 	// First, check if there already exists a Unit by the given name in the Registry
@@ -727,7 +658,7 @@ func checkUnitCreation(arg string) (int, error) {
 
 	// check if the unit is running
 	if unit == nil {
-		if sharedFlags.Replace {
+		if c.Bool("replace") {
 			log.Debugf("Unit(%s) was not found in Registry", name)
 		}
 		// Create a new unit
@@ -736,10 +667,10 @@ func checkUnitCreation(arg string) (int, error) {
 
 	// if sharedFlags.Replace is not set then we warn in case
 	// the units differ
-	different, err := isLocalUnitDifferent(arg, unit, false)
+	different, err := isLocalUnitDifferent(arg, unit, false, c)
 
 	// if sharedFlags.Replace is set then we fail for errors
-	if sharedFlags.Replace {
+	if c.Bool("replace") {
 		if err != nil {
 			return 1, err
 		} else if different {
@@ -764,14 +695,15 @@ func checkUnitCreation(arg string) (int, error) {
 // Any error encountered during these steps is returned immediately (i.e.
 // subsequent Jobs are not acted on). An error is also returned if none of the
 // above conditions match a given Job.
-func lazyCreateUnits(args []string) error {
+func lazyCreateUnits(c *cli.Context, cAPI client.API) error {
+	args := c.Args()
 	errchan := make(chan error)
 	var wg sync.WaitGroup
 	for _, arg := range args {
 		arg = maybeAppendDefaultUnitType(arg)
 		name := unitNameMangle(arg)
 
-		ret, err := checkUnitCreation(arg)
+		ret, err := checkUnitCreation(arg, c, cAPI)
 		if err != nil {
 			return err
 		} else if ret != 0 {
@@ -781,18 +713,18 @@ func lazyCreateUnits(args []string) error {
 		// Assume that the name references a local unit file on
 		// disk or if it is an instance unit and if so get its
 		// corresponding unit
-		uf, err := getUnitFile(arg)
+		uf, err := getUnitFile(arg, cAPI, c)
 		if err != nil {
 			return err
 		}
 
-		_, err = createUnit(name, uf)
+		_, err = createUnit(name, uf, cAPI)
 		if err != nil {
 			return err
 		}
 
 		wg.Add(1)
-		go checkUnitState(name, job.JobStateInactive, sharedFlags.BlockAttempts, os.Stdout, &wg, errchan)
+		go checkUnitState(name, job.JobStateInactive, c.Int("block-attempts"), os.Stdout, &wg, errchan, cAPI)
 	}
 
 	go func() {
@@ -844,11 +776,11 @@ func matchLocalFileAndUnit(file string, su *schema.Unit) (bool, error) {
 // happen.
 // Returns true if the local Unit on file system is different from the
 // one provided, false otherwise; and any error encountered.
-func isLocalUnitDifferent(file string, su *schema.Unit, fatal bool) (bool, error) {
+func isLocalUnitDifferent(file string, su *schema.Unit, fatal bool, c *cli.Context) (bool, error) {
 	result, err := matchLocalFileAndUnit(file, su)
 	if err == nil {
 		// Warn in case unit differs from local file
-		if result == false && !sharedFlags.Replace {
+		if result == false && !c.Bool("replace") {
 			stderr("WARNING: Unit %s in registry differs from local unit file %s. Add --replace to override.", su.Name, file)
 		}
 		return !result, nil
@@ -867,7 +799,7 @@ func isLocalUnitDifferent(file string, su *schema.Unit, fatal bool) (bool, error
 	result, err = matchLocalFileAndUnit(templFile, su)
 	if err == nil {
 		// Warn in case unit differs from local template unit file
-		if result == false && !sharedFlags.Replace {
+		if result == false && !c.Bool("replace") {
 			stderr("WARNING: Unit %s in registry differs from local template unit file %s. Add --replace to override.", su.Name, file)
 		}
 		return !result, nil
@@ -876,27 +808,27 @@ func isLocalUnitDifferent(file string, su *schema.Unit, fatal bool) (bool, error
 	return false, err
 }
 
-func lazyLoadUnits(args []string) ([]*schema.Unit, error) {
+func lazyLoadUnits(args []string, cAPI client.API) ([]*schema.Unit, error) {
 	units := make([]string, 0, len(args))
 	for _, j := range args {
 		units = append(units, unitNameMangle(j))
 	}
-	return setTargetStateOfUnits(units, job.JobStateLoaded)
+	return setTargetStateOfUnits(units, job.JobStateLoaded, cAPI)
 }
 
-func lazyStartUnits(args []string) ([]*schema.Unit, error) {
+func lazyStartUnits(args []string, cAPI client.API) ([]*schema.Unit, error) {
 	units := make([]string, 0, len(args))
 	for _, j := range args {
 		units = append(units, unitNameMangle(j))
 	}
-	return setTargetStateOfUnits(units, job.JobStateLaunched)
+	return setTargetStateOfUnits(units, job.JobStateLaunched, cAPI)
 }
 
 // setTargetStateOfUnits ensures that the target state for the given Units is set
 // to the given state in the Registry.
 // On success, a slice of the Units for which a state change was made is returned.
 // Any error encountered is immediately returned (i.e. this is not a transaction).
-func setTargetStateOfUnits(units []string, state job.JobState) ([]*schema.Unit, error) {
+func setTargetStateOfUnits(units []string, state job.JobState, cAPI client.API) ([]*schema.Unit, error) {
 	triggered := make([]*schema.Unit, 0)
 	for _, name := range units {
 		u, err := cAPI.Unit(name)
@@ -924,15 +856,15 @@ func setTargetStateOfUnits(units []string, state job.JobState) ([]*schema.Unit, 
 // It returns a negative value which means do not block, if zero is
 // returned then it means try forever, and if a positive value is
 // returned then try up to that value
-func getBlockAttempts() int {
+func getBlockAttempts(c *cli.Context) int {
 	// By default we wait forever
 	var attempts int = 0
 
-	if sharedFlags.BlockAttempts > 0 {
-		attempts = sharedFlags.BlockAttempts
+	if c.Int("block-attempts") > 0 {
+		attempts = c.Int("block-attempts")
 	}
 
-	if sharedFlags.NoBlock {
+	if c.Bool("no-block") {
 		attempts = -1
 	}
 
@@ -949,7 +881,7 @@ func getBlockAttempts() int {
 // If maxAttempts is zero tryWaitForUnitStates will retry forever, and
 // if it is greater than zero, it will retry up to the indicated value.
 // It returns 0 on success or 1 on errors.
-func tryWaitForUnitStates(units []string, state string, js job.JobState, maxAttempts int, out io.Writer) (ret int) {
+func tryWaitForUnitStates(units []string, state string, js job.JobState, maxAttempts int, out io.Writer, cAPI client.API) (ret int) {
 	// We do not wait just assume we reached the desired state
 	if maxAttempts <= -1 {
 		for _, name := range units {
@@ -958,7 +890,7 @@ func tryWaitForUnitStates(units []string, state string, js job.JobState, maxAtte
 		return
 	}
 
-	errchan := waitForUnitStates(units, js, maxAttempts, out)
+	errchan := waitForUnitStates(units, js, maxAttempts, out, cAPI)
 	for err := range errchan {
 		stderr("Error waiting for units: %v", err)
 		ret = 1
@@ -974,12 +906,12 @@ func tryWaitForUnitStates(units []string, state string, js job.JobState, maxAtte
 // than zero. Returned is an error channel used to communicate when
 // timeouts occur. The returned error channel will be closed after all
 // polling operation is complete.
-func waitForUnitStates(units []string, js job.JobState, maxAttempts int, out io.Writer) chan error {
+func waitForUnitStates(units []string, js job.JobState, maxAttempts int, out io.Writer, cAPI client.API) chan error {
 	errchan := make(chan error)
 	var wg sync.WaitGroup
 	for _, name := range units {
 		wg.Add(1)
-		go checkUnitState(name, js, maxAttempts, out, &wg, errchan)
+		go checkUnitState(name, js, maxAttempts, out, &wg, errchan, cAPI)
 	}
 
 	go func() {
@@ -990,21 +922,21 @@ func waitForUnitStates(units []string, js job.JobState, maxAttempts int, out io.
 	return errchan
 }
 
-func checkUnitState(name string, js job.JobState, maxAttempts int, out io.Writer, wg *sync.WaitGroup, errchan chan error) {
+func checkUnitState(name string, js job.JobState, maxAttempts int, out io.Writer, wg *sync.WaitGroup, errchan chan error, cAPI client.API) {
 	defer wg.Done()
 
 	sleep := defaultSleepTime
 
 	if maxAttempts < 1 {
 		for {
-			if assertUnitState(name, js, out) {
+			if assertUnitState(name, js, out, cAPI) {
 				return
 			}
 			time.Sleep(sleep)
 		}
 	} else {
 		for attempt := 0; attempt < maxAttempts; attempt++ {
-			if assertUnitState(name, js, out) {
+			if assertUnitState(name, js, out, cAPI) {
 				return
 			}
 			time.Sleep(sleep)
@@ -1013,7 +945,7 @@ func checkUnitState(name string, js job.JobState, maxAttempts int, out io.Writer
 	}
 }
 
-func assertUnitState(name string, js job.JobState, out io.Writer) (ret bool) {
+func assertUnitState(name string, js job.JobState, out io.Writer, cAPI client.API) (ret bool) {
 	var state string
 
 	u, err := cAPI.Unit(name)
@@ -1042,7 +974,7 @@ func assertUnitState(name string, js job.JobState, out io.Writer) (ret bool) {
 	msg := fmt.Sprintf("Unit %s %s", name, u.CurrentState)
 
 	if u.MachineID != "" {
-		ms := cachedMachineState(u.MachineID)
+		ms := cachedMachineState(u.MachineID, cAPI)
 		if ms != nil {
 			msg = fmt.Sprintf("%s on %s", msg, machineFullLegend(*ms, false))
 		}
@@ -1052,7 +984,7 @@ func assertUnitState(name string, js job.JobState, out io.Writer) (ret bool) {
 	return
 }
 
-func machineState(machID string) (*machine.MachineState, error) {
+func machineState(machID string, cAPI client.API) (*machine.MachineState, error) {
 	machines, err := cAPI.Machines()
 	if err != nil {
 		return nil, err
@@ -1068,7 +1000,7 @@ func machineState(machID string) (*machine.MachineState, error) {
 // cachedMachineState makes a best-effort to retrieve the MachineState of the given machine ID.
 // It memoizes MachineState information for the life of a fleetctl invocation.
 // Any error encountered retrieving the list of machines is ignored.
-func cachedMachineState(machID string) (ms *machine.MachineState) {
+func cachedMachineState(machID string, cAPI client.API) (ms *machine.MachineState) {
 	if machineStates == nil {
 		machineStates = make(map[string]*machine.MachineState)
 		ms, err := cAPI.Machines()

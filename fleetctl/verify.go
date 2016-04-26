@@ -14,14 +14,22 @@
 
 package main
 
-var cmdVerifyUnit = &Command{
-	Name:    "verify",
-	Summary: "DEPRECATED - No longer works",
-	Usage:   "UNIT",
-	Run:     runVerifyUnit,
+import (
+	"github.com/codegangsta/cli"
+
+	"github.com/coreos/fleet/client"
+)
+
+func NewVerifyCommand() cli.Command {
+	return cli.Command{
+		Name:      "verify",
+		Usage:     "DEPRECATED - No longer works",
+		ArgsUsage: "UNIT",
+		Action:    makeActionWrapper(runVerifyUnit),
+	}
 }
 
-func runVerifyUnit(args []string) (exit int) {
+func runVerifyUnit(c *cli.Context, cAPI client.API) (exit int) {
 	stderr("WARNING: The signed/verified units feature is DEPRECATED and cannot be used.")
 	return 2
 }

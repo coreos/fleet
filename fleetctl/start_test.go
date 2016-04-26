@@ -19,6 +19,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/coreos/fleet/client"
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/schema"
 )
@@ -35,14 +36,15 @@ func checkStartUnitState(unit schema.Unit, startRet int, errchan chan error) {
 	}
 }
 
-func doStartUnits(r commandTestResults, errchan chan error) {
-	exit := runStartUnit(r.units)
+func doStartUnits(t *testing.T, r commandTestResults, errchan chan error, cAPI client.API) {
+	c := createTestContext(t, append([]string{"start", "--no-block"}, r.units...)...)
+	exit := runStartUnit(c, cAPI)
 	if exit != r.expectedExit {
 		errchan <- fmt.Errorf("%s: expected exit code %d but received %d", r.description, r.expectedExit, exit)
 		return
 	}
 
-	real_units, err := findUnits(r.units)
+	real_units, err := findUnits(r.units, cAPI)
 	if err != nil {
 		errchan <- err
 		return
@@ -55,7 +57,6 @@ func doStartUnits(r commandTestResults, errchan chan error) {
 
 func runStartUnits(t *testing.T, unitPrefix string, results []commandTestResults, template bool) {
 	unitsCount := 0
-	sharedFlags.NoBlock = true
 	for _, r := range results {
 		var wg sync.WaitGroup
 		errchan := make(chan error)
@@ -64,12 +65,11 @@ func runStartUnits(t *testing.T, unitPrefix string, results []commandTestResults
 			unitsCount = len(r.units)
 		}
 
-		cAPI = newFakeRegistryForCommands(unitPrefix, unitsCount, template)
-
+		cAPI := newFakeRegistryForCommands(unitPrefix, unitsCount, template)
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			doStartUnits(r, errchan)
+			doStartUnits(t, r, errchan, cAPI)
 		}()
 
 		go func() {
@@ -85,10 +85,6 @@ func runStartUnits(t *testing.T, unitPrefix string, results []commandTestResults
 
 func TestRunStartUnits(t *testing.T) {
 	unitPrefix := "start"
-	oldNoBlock := sharedFlags.NoBlock
-	defer func() {
-		sharedFlags.NoBlock = oldNoBlock
-	}()
 
 	results := []commandTestResults{
 		{
@@ -136,7 +132,6 @@ func TestRunStartUnits(t *testing.T) {
 		},
 	}
 
-	sharedFlags.NoBlock = true
 	runStartUnits(t, unitPrefix, results, false)
 	runStartUnits(t, unitPrefix, templateResults, true)
 }

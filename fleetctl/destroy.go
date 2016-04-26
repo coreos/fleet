@@ -17,30 +17,35 @@ package main
 import (
 	"time"
 
+	"github.com/codegangsta/cli"
+
 	"github.com/coreos/fleet/client"
 )
 
-var cmdDestroyUnit = &Command{
-	Name:    "destroy",
-	Summary: "Destroy one or more units in the cluster",
-	Usage:   "UNIT...",
-	Description: `Completely remove one or more running or submitted units from the cluster.
+func NewDestroyCommand() cli.Command {
+	return cli.Command{
+		Name:      "destroy",
+		Usage:     "Destroy one or more units in the cluster",
+		ArgsUsage: "UNIT...",
+		Description: `Completely remove one or more running or submitted units from the cluster.
 
 Instructs systemd on the host machine to stop the unit, deferring to systemd
 completely for any custom stop directives (i.e. ExecStop option in the unit
 file).
 
 Destroyed units are impossible to start unless re-submitted.`,
-	Run: runDestroyUnits,
+		Action: makeActionWrapper(runDestroyUnits),
+	}
 }
 
-func runDestroyUnits(args []string) (exit int) {
+func runDestroyUnits(c *cli.Context, cAPI client.API) (exit int) {
+	args := c.Args()
 	if len(args) == 0 {
 		stderr("No units given")
 		return 0
 	}
 
-	units, err := findUnits(args)
+	units, err := findUnits(args, cAPI)
 	if err != nil {
 		stderr("%v", err)
 		return 1
@@ -58,10 +63,10 @@ func runDestroyUnits(args []string) (exit int) {
 			continue
 		}
 
-		if !sharedFlags.NoBlock {
-			attempts := sharedFlags.BlockAttempts
+		if c.Bool("no-block") {
+			attempts := c.Int("block-attempts")
 			retry := func() bool {
-				if sharedFlags.BlockAttempts < 1 {
+				if c.Int("block-attempts") < 1 {
 					return true
 				}
 				attempts--
@@ -88,5 +93,6 @@ func runDestroyUnits(args []string) (exit int) {
 
 		stdout("Destroyed %s", v.Name)
 	}
+
 	return
 }

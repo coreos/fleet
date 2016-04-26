@@ -14,37 +14,45 @@
 
 package main
 
-var cmdSubmitUnit = &Command{
-	Name:    "submit",
-	Summary: "Upload one or more units to the cluster without starting them",
-	Usage:   "UNIT...",
-	Description: `Upload one or more units to the cluster without starting them. Useful
-for validating units before they are started.
+import (
+	"github.com/codegangsta/cli"
+
+	"github.com/coreos/fleet/client"
+)
+
+func NewSubmitUnitCommand() cli.Command {
+	return cli.Command{
+		Name:      "submit",
+		Usage:     "Upload one or more units to the cluster without starting them",
+		ArgsUsage: "UNIT...",
+		Description: `Upload one or more units to the cluster without starting them. Useful for validating units before they are started.
 
 This operation is idempotent; if a named unit already exists in the cluster, it will not be resubmitted.
 
 Submit a single unit:
-	fleetctl submit foo.service
+       fleetctl submit foo.service
 
 Submit a directory of units with glob matching:
-	fleetctl submit myservice/*`,
-	Run: runSubmitUnits,
+       fleetctl submit myservice/*`,
+		Action: makeActionWrapper(runSubmitUnits),
+		Flags: []cli.Flag{
+			cli.BoolFlag{Name: "sign", Usage: "DEPRECATED - this option cannot be used"},
+			cli.BoolFlag{Name: "replace", Usage: "Replace the old submitted units in the cluster with new versions."},
+		},
+	}
 }
 
-func init() {
-	cmdSubmitUnit.Flags.BoolVar(&sharedFlags.Sign, "sign", false, "DEPRECATED - this option cannot be used")
-	cmdSubmitUnit.Flags.BoolVar(&sharedFlags.Replace, "replace", false, "Replace the old submitted units in the cluster with new versions.")
-}
-
-func runSubmitUnits(args []string) (exit int) {
+func runSubmitUnits(c *cli.Context, cAPI client.API) (exit int) {
+	args := c.Args()
 	if len(args) == 0 {
 		stderr("No units given")
 		return 0
 	}
 
-	if err := lazyCreateUnits(args); err != nil {
+	if err := lazyCreateUnits(c, cAPI); err != nil {
 		stderr("Error creating units: %v", err)
 		exit = 1
 	}
+
 	return
 }

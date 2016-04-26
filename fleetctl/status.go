@@ -17,32 +17,37 @@ package main
 import (
 	"fmt"
 
+	"github.com/codegangsta/cli"
+
+	"github.com/coreos/fleet/client"
 	"github.com/coreos/fleet/job"
 )
 
-var cmdStatusUnits = &Command{
-	Name:    "status",
-	Summary: "Output the status of one or more units in the cluster",
-	Usage:   "[--ssh-port=N] UNIT...",
-	Description: `Output the status of one or more units currently running in the cluster.
+func NewStatusCommand() cli.Command {
+	return cli.Command{
+		Name:      "status",
+		Usage:     "Output the status of one or more units in the cluster",
+		ArgsUsage: "[--ssh-port=N] UNIT...",
+		Description: `Output the status of one or more units currently running in the cluster.
 Supports glob matching of units in the current working directory or matches
 previously started units.
 
 Show status of a single unit:
-	fleetctl status foo.service
+       fleetctl status foo.service
 
 Show status of an entire directory with glob matching:
 fleetctl status myservice/*
 
 This command does not work with global units.`,
-	Run: runStatusUnits,
+		Action: makeActionWrapper(runStatusUnits),
+		Flags: []cli.Flag{
+			cli.IntFlag{Name: "ssh-port", Value: 22, Usage: "Connect to remote hosts over SSH using this TCP port."},
+		},
+	}
 }
 
-func init() {
-	cmdStatusUnits.Flags.IntVar(&sharedFlags.SSHPort, "ssh-port", 22, "Connect to remote hosts over SSH using this TCP port.")
-}
-
-func runStatusUnits(args []string) (exit int) {
+func runStatusUnits(c *cli.Context, cAPI client.API) (exit int) {
+	args := c.Args()
 	for i, arg := range args {
 		name := unitNameMangle(arg)
 		unit, err := cAPI.Unit(name)
@@ -67,7 +72,7 @@ func runStatusUnits(args []string) (exit int) {
 			fmt.Printf("\n")
 		}
 
-		if exit = runCommand(unit.MachineID, "systemctl", "status", "-l", unit.Name); exit != 0 {
+		if exit = runCommand(c, cAPI, unit.MachineID, "systemctl", "status", "-l", unit.Name); exit != 0 {
 			break
 		}
 	}

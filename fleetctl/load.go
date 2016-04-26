@@ -17,14 +17,17 @@ package main
 import (
 	"os"
 
+	"github.com/codegangsta/cli"
+
+	"github.com/coreos/fleet/client"
 	"github.com/coreos/fleet/job"
 )
 
-var (
-	cmdLoadUnits = &Command{
-		Name:    "load",
-		Summary: "Schedule one or more units in the cluster, first submitting them if necessary.",
-		Usage:   "[--no-block|--block-attempts=N] UNIT...",
+func NewLoadUnitsCommand() cli.Command {
+	return cli.Command{
+		Name:      "load",
+		Usage:     "Schedule one or more units in the cluster, first submitting them if necessary.",
+		ArgsUsage: "[--no-block|--block-attempts=N] UNIT...",
 		Description: `Load one or many units in the cluster into systemd, but do not start.
 
 Select units to load by glob matching for units in the current working directory 
@@ -35,29 +38,29 @@ which means fleetctl will block until it detects that the unit(s) have
 transitioned to a loaded state. This behaviour can be configured with the
 respective --block-attempts and --no-block options. Load operations on global
 units are always non-blocking.`,
-		Run: runLoadUnits,
+		Action: makeActionWrapper(runLoadUnits),
+		Flags: []cli.Flag{
+			cli.BoolFlag{Name: "sign", Usage: "DEPRECATED - this option cannot be used"},
+			cli.IntFlag{Name: "block-attempts", Value: 0, Usage: "ait until the jobs are loaded, performing up to N attempts before giving up. A value of 0 indicates no limit. Does not apply to global units."},
+			cli.BoolFlag{Name: "no-block", Usage: "Do not wait until the jobs have been loaded before exiting. Always the case for global units."},
+			cli.BoolFlag{Name: "replace", Usage: "Replace the old scheduled units in the cluster with new versions."},
+		},
 	}
-)
-
-func init() {
-	cmdLoadUnits.Flags.BoolVar(&sharedFlags.Sign, "sign", false, "DEPRECATED - this option cannot be used")
-	cmdLoadUnits.Flags.IntVar(&sharedFlags.BlockAttempts, "block-attempts", 0, "Wait until the jobs are loaded, performing up to N attempts before giving up. A value of 0 indicates no limit. Does not apply to global units.")
-	cmdLoadUnits.Flags.BoolVar(&sharedFlags.NoBlock, "no-block", false, "Do not wait until the jobs have been loaded before exiting. Always the case for global units.")
-	cmdLoadUnits.Flags.BoolVar(&sharedFlags.Replace, "replace", false, "Replace the old scheduled units in the cluster with new versions.")
 }
 
-func runLoadUnits(args []string) (exit int) {
+func runLoadUnits(c *cli.Context, cAPI client.API) (exit int) {
+	args := c.Args()
 	if len(args) == 0 {
 		stderr("No units given")
 		return 0
 	}
 
-	if err := lazyCreateUnits(args); err != nil {
+	if err := lazyCreateUnits(c, cAPI); err != nil {
 		stderr("Error creating units: %v", err)
 		return 1
 	}
 
-	triggered, err := lazyLoadUnits(args)
+	triggered, err := lazyLoadUnits(args, cAPI)
 	if err != nil {
 		stderr("Error loading units: %v", err)
 		return 1
@@ -72,7 +75,7 @@ func runLoadUnits(args []string) (exit int) {
 		}
 	}
 
-	exit = tryWaitForUnitStates(loading, "load", job.JobStateLoaded, getBlockAttempts(), os.Stdout)
+	exit = tryWaitForUnitStates(loading, "load", job.JobStateLoaded, getBlockAttempts(c), os.Stdout, cAPI)
 
 	return
 }
