@@ -87,5 +87,10 @@ func runStartUnit(cCmd *cobra.Command, args []string) (exit int) {
 		return exitVal
 	}
 
+	exitVal = tryWaitForSystemdActiveState(starting)
+	if exitVal != 0 {
+		return exitVal
+	}
+
 	return 0
 }
