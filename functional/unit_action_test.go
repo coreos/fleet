@@ -32,7 +32,6 @@ const (
 	tmpHelloService = "/tmp/hello.service"
 	fxtHelloService = "fixtures/units/hello.service"
 	tmpFixtures     = "/tmp/fixtures"
-	numUnitsReplace = 9
 )
 
 var cleanCmd = map[string]string{
@@ -145,7 +144,7 @@ func TestUnitStart(t *testing.T) {
 // TestUnitSubmitReplace() tests whether a command "fleetctl submit --replace
 // hello.service" works or not.
 func TestUnitSubmitReplace(t *testing.T) {
-	if err := replaceUnitCommon(t, "submit", numUnitsReplace); err != nil {
+	if err := replaceUnitCommon(t, "submit", 9); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -153,7 +152,7 @@ func TestUnitSubmitReplace(t *testing.T) {
 // TestUnitLoadReplace() tests whether a command "fleetctl load --replace
 // hello.service" works or not.
 func TestUnitLoadReplace(t *testing.T) {
-	if err := replaceUnitCommon(t, "load", numUnitsReplace); err != nil {
+	if err := replaceUnitCommon(t, "load", 6); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -161,7 +160,7 @@ func TestUnitLoadReplace(t *testing.T) {
 // TestUnitStartReplace() tests whether a command "fleetctl start --replace
 // hello.service" works or not.
 func TestUnitStartReplace(t *testing.T) {
-	if err := replaceUnitCommon(t, "start", numUnitsReplace); err != nil {
+	if err := replaceUnitCommon(t, "start", 3); err != nil {
 		t.Fatal(err)
 	}
 }
