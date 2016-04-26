@@ -139,11 +139,7 @@ func TestUnitStart(t *testing.T) {
 // TestUnitSubmitReplace() tests whether a command "fleetctl submit --replace
 // hello.service" works or not.
 func TestUnitSubmitReplace(t *testing.T) {
-	if err := replaceUnitCommon(t, "submit"); err != nil {
-		t.Fatal(err)
-	}
-
-	if err := replaceUnitMultiple(t, "submit", numUnitsReplace); err != nil {
+	if err := replaceUnitCommon(t, "submit", numUnitsReplace); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -151,11 +147,7 @@ func TestUnitSubmitReplace(t *testing.T) {
 // TestUnitLoadReplace() tests whether a command "fleetctl load --replace
 // hello.service" works or not.
 func TestUnitLoadReplace(t *testing.T) {
-	if err := replaceUnitCommon(t, "load"); err != nil {
-		t.Fatal(err)
-	}
-
-	if err := replaceUnitMultiple(t, "load", numUnitsReplace); err != nil {
+	if err := replaceUnitCommon(t, "load", numUnitsReplace); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -163,11 +155,7 @@ func TestUnitLoadReplace(t *testing.T) {
 // TestUnitStartReplace() tests whether a command "fleetctl start --replace
 // hello.service" works or not.
 func TestUnitStartReplace(t *testing.T) {
-	if err := replaceUnitCommon(t, "start"); err != nil {
-		t.Fatal(err)
-	}
-
-	if err := replaceUnitMultiple(t, "start", numUnitsReplace); err != nil {
+	if err := replaceUnitCommon(t, "start", numUnitsReplace); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -505,96 +493,7 @@ func doMultipleUnitsCmd(cluster platform.Cluster, m platform.Member, cmd string,
 
 // replaceUnitCommon() tests whether a command "fleetctl {submit,load,start}
 // --replace hello.service" works or not.
-func replaceUnitCommon(t *testing.T, cmd string) error {
-	// check if cmd is one of the supported commands.
-	listCmds := []string{"submit", "load", "start"}
-	found := false
-	for _, ccmd := range listCmds {
-		if ccmd == cmd {
-			found = true
-		}
-	}
-	if !found {
-		return fmt.Errorf("invalid command %s", cmd)
-	}
-
-	cluster, err := platform.NewNspawnCluster("smoke")
-	if err != nil {
-		return fmt.Errorf("%v", err)
-	}
-	defer cluster.Destroy(t)
-
-	m, err := cluster.CreateMember()
-	if err != nil {
-		return fmt.Errorf("%v", err)
-	}
-	_, err = cluster.WaitForNMachines(m, 1)
-	if err != nil {
-		return fmt.Errorf("%v", err)
-	}
-
-	WaitForNUnitsCmd := func(cmd string, expectedUnits int) (err error) {
-		if cmd == "submit" {
-			_, err = cluster.WaitForNUnitFiles(m, expectedUnits)
-		} else {
-			_, err = cluster.WaitForNUnits(m, expectedUnits)
-		}
-		return err
-	}
-
-	// run a command for a unit and assert it shows up
-	if _, _, err := cluster.Fleetctl(m, cmd, fxtHelloService); err != nil {
-		return fmt.Errorf("Unable to %s fleet unit: %v", cmd, err)
-	}
-	if err := WaitForNUnitsCmd(cmd, 1); err != nil {
-		return fmt.Errorf("Did not find 1 unit in cluster: %v", err)
-	}
-
-	helloFilename := path.Base(tmpHelloService)
-
-	// store content of hello.service to bodyOrig
-	bodyOrig, _, err := cluster.Fleetctl(m, "cat", helloFilename)
-	if err != nil {
-		return fmt.Errorf("Failed to run cat %s: %v", helloFilename, err)
-	}
-
-	// replace the unit and assert it shows up
-	err = util.GenNewFleetService(tmpHelloService, fxtHelloService, "sleep 2", "sleep 1")
-	if err != nil {
-		return fmt.Errorf("Failed to generate a temp fleet service: %v", err)
-	}
-	if _, _, err := cluster.Fleetctl(m, cmd, "--replace", tmpHelloService); err != nil {
-		return fmt.Errorf("Unable to replace fleet unit: %v", err)
-	}
-	if err := WaitForNUnitsCmd(cmd, 1); err != nil {
-		return fmt.Errorf("Did not find 1 unit in cluster: %v", err)
-	}
-
-	// store content of the replaced unit hello.service to bodyNew
-	bodyNew, _, err := cluster.Fleetctl(m, "cat", helloFilename)
-	if err != nil {
-		return fmt.Errorf("Failed to run cat %s: %v", helloFilename, err)
-	}
-
-	if bodyOrig == bodyNew {
-		return fmt.Errorf("Error. the unit %s has not been replaced.", helloFilename)
-	}
-
-	os.Remove(tmpHelloService)
-
-	if _, _, err := cluster.Fleetctl(m, "destroy", fxtHelloService); err != nil {
-		return fmt.Errorf("Failed to destroy unit: %v", err)
-	}
-	if err := WaitForNUnitsCmd(cmd, 0); err != nil {
-		return fmt.Errorf("Failed to get every unit to be cleaned up: %v", err)
-	}
-
-	return nil
-}
-
-// replaceUnitMultiple() tests whether a command "fleetctl {submit,load,start}
-// --replace hello.service" works or not.
-func replaceUnitMultiple(t *testing.T, cmd string, n int) error {
+func replaceUnitCommon(t *testing.T, cmd string, n int) error {
 	// check if cmd is one of the supported commands.
 	listCmds := []string{"submit", "load", "start"}
 	found := false
