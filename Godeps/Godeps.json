@@ -11,6 +11,11 @@
 			"Rev": "3ac7bf7a47d159a033b107610db8a1b6575507a4"
 		},
 		{
+			"ImportPath": "github.com/codegangsta/cli",
+			"Comment": "1.2.0-227-ga7936f1",
+			"Rev": "a7936f1d21fd8272ce215f3710a799960427c79c"
+		},
+		{
 			"ImportPath": "github.com/coreos/etcd/client",
 			"Comment": "v2.2.0-alpha.1-138-gb2d33e6",
 			"Rev": "b2d33e6dcb24cddc0395f1bbe2213a27aef0fb46"

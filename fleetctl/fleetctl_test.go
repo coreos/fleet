@@ -26,6 +26,7 @@ import (
 	"github.com/coreos/fleet/unit"
 	"github.com/coreos/fleet/version"
 
+	"github.com/coreos/fleet/Godeps/_workspace/src/github.com/codegangsta/cli"
 	"github.com/coreos/fleet/Godeps/_workspace/src/github.com/coreos/go-semver/semver"
 )
 
@@ -139,6 +140,26 @@ func newFakeRegistryForCheckVersion(v string) registry.ClusterRegistry {
 	return registry.NewFakeClusterRegistry(sv, 0)
 }
 
+func createTestContext(t *testing.T, args ...string) *cli.Context {
+	var c *cli.Context
+	app := createApp()
+
+	stderr("args: %v", args)
+	action := func(ctx *cli.Context) {
+		c = ctx
+	}
+	app.Action = action
+	for i := range app.Commands {
+		app.Commands[i].Action = action
+	}
+
+	if err := app.Run(append([]string{"fleetctl"}, args...)); err != nil {
+		t.Fatalf("Run error: %s", err)
+	}
+
+	return c
+}
+
 func TestCheckVersion(t *testing.T) {
 	reg := newFakeRegistryForCheckVersion(version.Version)
 	_, ok := checkVersion(reg)
@@ -222,14 +243,6 @@ func TestUnitNameMangle(t *testing.T) {
 }
 
 func TestGetBlockAttempts(t *testing.T) {
-	oldNoBlock := sharedFlags.NoBlock
-	oldBlockAttempts := sharedFlags.BlockAttempts
-
-	defer func() {
-		sharedFlags.NoBlock = oldNoBlock
-		sharedFlags.BlockAttempts = oldBlockAttempts
-	}()
-
 	var blocktests = []struct {
 		noBlock       bool
 		blockAttempts int
@@ -244,10 +257,14 @@ func TestGetBlockAttempts(t *testing.T) {
 	}
 
 	for _, tt := range blocktests {
-		sharedFlags.NoBlock = tt.noBlock
-		sharedFlags.BlockAttempts = tt.blockAttempts
-		if n := getBlockAttempts(); n != tt.expected {
-			t.Errorf("got %d, want %d", n, tt.expected)
+		var c *cli.Context
+		if tt.noBlock {
+			c = createTestContext(t, "load", "--no-block", "--block-attempts", fmt.Sprintf("%d", tt.blockAttempts), "none")
+		} else {
+			c = createTestContext(t, "load", "--block-attempts", fmt.Sprintf("%d", tt.blockAttempts), "none")
+		}
+		if n := getBlockAttempts(c); n != tt.expected {
+			t.Errorf("got %d, want %d (for --no-block=%t, --block-attempts=%d)", n, tt.expected, tt.noBlock, tt.blockAttempts)
 		}
 	}
 }
@@ -264,7 +281,7 @@ func TestCreateUnitFails(t *testing.T) {
 	type fakeAPI struct {
 		client.API
 	}
-	cAPI = fakeAPI{}
+	cAPI := fakeAPI{}
 	var i int
 	var un string
 	var uf *unit.UnitFile
@@ -331,7 +348,7 @@ Conflicts=bar`),
 	for i, tt = range testCases {
 		un = tt.name
 		uf = tt.uf
-		if _, err := createUnit(un, uf); err == nil {
+		if _, err := createUnit(un, uf, cAPI); err == nil {
 			t.Errorf("case %d did not return error as expected!", i)
 			t.Logf("unit name: %v", un)
 			t.Logf("unit file: %#v", uf)

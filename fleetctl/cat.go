@@ -17,21 +17,24 @@ package main
 import (
 	"fmt"
 
+	"github.com/coreos/fleet/Godeps/_workspace/src/github.com/codegangsta/cli"
+
+	"github.com/coreos/fleet/client"
 	"github.com/coreos/fleet/schema"
 )
 
-var (
-	cmdCatUnit = &Command{
-		Name:    "cat",
-		Summary: "Output the contents of a submitted unit",
-		Usage:   "UNIT",
-		Description: `Outputs the unit file that is currently loaded in the cluster. Useful to verify
-the correct version of a unit is running.`,
-		Run: runCatUnit,
+func NewCatCommand() cli.Command {
+	return cli.Command{
+		Name:        "cat",
+		Usage:       "Output the contents of a submitted unit",
+		ArgsUsage:   "UNIT",
+		Description: `Outputs the unit file that is currently loaded in the cluster. Useful to verify the correct version of a unit is running.`,
+		Action:      makeActionWrapper(runCatUnit),
 	}
-)
+}
 
-func runCatUnit(args []string) (exit int) {
+func runCatUnit(c *cli.Context, cAPI client.API) (exit int) {
+	args := c.Args()
 	if len(args) != 1 {
 		stderr("One unit file must be provided")
 		return 1

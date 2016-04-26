@@ -17,6 +17,7 @@ package main
 import (
 	"testing"
 
+	"github.com/coreos/fleet/client"
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/registry"
@@ -36,9 +37,14 @@ func assertEqual(t *testing.T, name string, want, got interface{}) {
 }
 
 func TestListUnitsFieldsToStrings(t *testing.T) {
+	type fakeAPI struct {
+		client.API
+	}
+	cAPI := fakeAPI{}
+
 	// nil UnitState shouldn't happen, but just in case
 	for _, tt := range []string{"unit", "load", "active", "sub", "machine", "hash"} {
-		f := listUnitsFields[tt](nil, false)
+		f := listUnitsFields[tt](nil, false, cAPI)
 		assertEqual(t, tt, "-", f)
 	}
 
@@ -57,12 +63,12 @@ func TestListUnitsFieldsToStrings(t *testing.T) {
 		"machine": "-",
 		"unit":    "sleep",
 	} {
-		got := listUnitsFields[k](us, false)
+		got := listUnitsFields[k](us, false, cAPI)
 		assertEqual(t, k, want, got)
 	}
 
 	us.MachineID = "some-id"
-	ms := listUnitsFields["machine"](us, true)
+	ms := listUnitsFields["machine"](us, true, cAPI)
 	assertEqual(t, "machine", "some-id", ms)
 
 	us.MachineID = "other-id"
@@ -72,13 +78,13 @@ func TestListUnitsFieldsToStrings(t *testing.T) {
 			PublicIP: "1.2.3.4",
 		},
 	}
-	ms = listUnitsFields["machine"](us, true)
+	ms = listUnitsFields["machine"](us, true, cAPI)
 	assertEqual(t, "machine", "other-id/1.2.3.4", ms)
 
 	uh := "a0f275d46bc6ee0eca06be7c339913c07d99c0c7"
 	us.Hash = uh
-	fuh := listUnitsFields["hash"](us, true)
-	suh := listUnitsFields["hash"](us, false)
+	fuh := listUnitsFields["hash"](us, true, cAPI)
+	suh := listUnitsFields["hash"](us, false, cAPI)
 	assertEqual(t, "hash", uh, fuh)
 	assertEqual(t, "hash", uh[:7], suh)
 }
