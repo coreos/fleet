@@ -141,30 +141,20 @@ func desiredAgentState(a *Agent, reg registry.Registry) (*AgentState, error) {
 
 	for _, u := range units {
 		u := u
-
-		if u.IsGlobal() {
-			continue
-		}
-
-		sUnit, ok := sUnitMap[u.Name]
-		if !ok || sUnit.TargetMachineID == "" || sUnit.TargetMachineID != ms.ID {
-			continue
-		}
-
-		as.Units[u.Name] = &u
-	}
-
-	for _, u := range units {
-		u := u
 		md := u.RequiredTargetMetadata()
 
-		if !u.IsGlobal() {
-			continue
+		if u.IsGlobal() {
+			if !machine.HasMetadata(&ms, md) {
+				log.Debugf("Agent unable to run global unit %s: missing required metadata", u.Name)
+				continue
+			}
 		}
 
-		if !machine.HasMetadata(&ms, md) {
-			log.Debugf("Agent unable to run global unit %s: missing required metadata", u.Name)
-			continue
+		if !u.IsGlobal() {
+			sUnit, ok := sUnitMap[u.Name]
+			if !ok || sUnit.TargetMachineID == "" || sUnit.TargetMachineID != ms.ID {
+				continue
+			}
 		}
 
 		if cExists, _ := as.HasConflict(u.Name, u.Conflicts()); cExists {
