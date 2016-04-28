@@ -33,7 +33,6 @@ func TestRegistryMuxUnitManagement(t *testing.T) {
 	etcdReg := &EtcdRegistry{kAPI: e, keyPrefix: "/fleet/"}
 
 	reg := NewRegistryMux(etcdReg, mach)
-	reg.StartMux()
 
 	contents := `
 [Unit]

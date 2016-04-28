@@ -18,15 +18,22 @@ import (
 	"github.com/coreos/fleet/unit"
 )
 
-const grpcConnectionTimeout = 500 * time.Millisecond
+const (
+	grpcConnectionTimeout = 300 * time.Millisecond
+
+	grpcConnectionStateReady      = "READY"
+	grpcConnectionStateConnecting = "CONNECTING"
+	grpcConnectionStateShutdown   = "SHUTDOWN"
+	grpcConnectionStateFailure    = "TRANSIENT_FAILURE"
+)
 
 var DebugRPCRegistry bool = false
 
 type RPCRegistry struct {
-	registryClient pb.RegistryClient
-	mu             *sync.Mutex
-	connection     *grpc.ClientConn
 	dialer         func(addr string, timeout time.Duration) (net.Conn, error)
+	mu             *sync.Mutex
+	registryClient pb.RegistryClient
+	registryConn   *grpc.ClientConn
 }
 
 func NewRPCRegistry(dialer func(string, time.Duration) (net.Conn, error)) *RPCRegistry {
@@ -43,19 +50,21 @@ func (r *RPCRegistry) ctx() context.Context {
 
 func (r *RPCRegistry) getClient() pb.RegistryClient {
 	for {
-		state := r.connection.State().String()
-		if state == "READY" {
+		state := r.registryConn.State().String()
+		if state == grpcConnectionStateReady {
 			break
-		} else if state == "CONNECTING" {
+		} else if state == grpcConnectionStateConnecting {
 			if DebugRPCRegistry {
-				log.Infof("grpc connection state: %s", state)
+				log.Infof("gRPC connection state: %s", state)
 			}
 			continue
-		} else if state == "TRANSIENT_FAILURE" || state == "SHUTDOWN" {
-			log.Infof("grpc connection state: %s", state)
-			log.Info("reconnecting grpc peer to fleet-engine...")
+		} else if state == grpcConnectionStateFailure || state == grpcConnectionStateShutdown {
+			log.Infof("gRPC connection state '%s' reports an error in the connection", state)
+			log.Info("Reconnecting gRPC peer to fleet-engine...")
 			r.Connect()
 		}
+
+		time.Sleep(grpcConnectionTimeout)
 	}
 
 	return r.registryClient
@@ -63,14 +72,14 @@ func (r *RPCRegistry) getClient() pb.RegistryClient {
 
 func (r *RPCRegistry) Connect() {
 	// We want the connection operation to block and constantly reconnect using grpc backoff
-	log.Info("starting grpc connection to fleet-engine...")
-	registryConn, err := grpc.Dial(":fleet-engine:", grpc.WithInsecure(), grpc.WithDialer(r.dialer), grpc.WithBlock())
+	log.Info("Starting gRPC connection to fleet-engine...")
+	connection, err := grpc.Dial(":fleet-engine:", grpc.WithInsecure(), grpc.WithDialer(r.dialer), grpc.WithBlock())
 	if err != nil {
-		log.Fatalf("unable to dial to registry: %s", err)
+		log.Fatalf("Unable to dial to registry: %s", err)
 	}
-	r.connection = registryConn
-	r.registryClient = pb.NewRegistryClient(registryConn)
-	log.Info("connected succesfully to fleet-engine via grpc!")
+	r.registryConn = connection
+	r.registryClient = pb.NewRegistryClient(r.registryConn)
+	log.Info("Connected succesfully to fleet-engine via grpc!")
 }
 
 func (r *RPCRegistry) ClearUnitHeartbeat(unitName string) {
@@ -114,7 +123,7 @@ func (r *RPCRegistry) UnitHeartbeat(unitName, machID string, ttl time.Duration) 
 }
 
 func (r *RPCRegistry) RemoveMachineState(machID string) error {
-	return errors.New("remove machine state function not implemented")
+	return errors.New("Remove machine state function not implemented")
 }
 
 func (r *RPCRegistry) RemoveUnitState(unitName string) error {
@@ -175,11 +184,11 @@ func (r *RPCRegistry) UnscheduleUnit(unitName, machID string) error {
 }
 
 func (r *RPCRegistry) Machines() ([]machine.MachineState, error) {
-	panic("machines function not implemented")
+	panic("Machines function not implemented")
 }
 
 func (r *RPCRegistry) SetMachineState(ms machine.MachineState, ttl time.Duration) (uint64, error) {
-	panic("set machine state function not implemented")
+	panic("Set machine state function not implemented")
 }
 
 func (r *RPCRegistry) Schedule() ([]job.ScheduledUnit, error) {
@@ -252,7 +261,7 @@ func (r *RPCRegistry) Units() ([]job.Unit, error) {
 
 	units, err := r.getClient().GetUnits(r.ctx(), &pb.UnitFilter{})
 	if err != nil {
-		log.Errorf("rpcregistry failed to get the units %v", err)
+		log.Errorf("RPC registry failed to get the units %v", err)
 		return []job.Unit{}, err
 	}
 
@@ -290,13 +299,13 @@ func (r *RPCRegistry) UnitStates() ([]*unit.UnitState, error) {
 }
 
 func (r *RPCRegistry) EngineVersion() (int, error) {
-	return 0, errors.New("engine version function not implemented")
+	return 0, errors.New("Engine version function not implemented")
 }
 
 func (r *RPCRegistry) UpdateEngineVersion(from, to int) error {
-	return errors.New("update engine version function not implemented")
+	return errors.New("Update engine version function not implemented")
 }
 
 func (r *RPCRegistry) LatestDaemonVersion() (*semver.Version, error) {
-	return nil, errors.New("latest daemon version function not implemented")
+	return nil, errors.New("Latest daemon version function not implemented")
 }

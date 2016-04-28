@@ -50,7 +50,7 @@ func NewRPCServer(reg Registry, addr string) (*rpcserver, error) {
 		if err == nil {
 			break
 		}
-		log.Infof("retrying %d to bind %s address... %v", it, tcpAddr, err)
+		log.Infof("Retrying %d to bind %s address... %v", it, tcpAddr, err)
 		time.Sleep(bindRetryTimeout)
 	}
 	if err != nil {
@@ -230,5 +230,5 @@ func (s *rpcserver) AgentEvents(props *pb.MachineProperties, stream pb.Registry_
 	if debugRPCServer {
 		defer debug.Exit_(debug.Enter_(props.Id))
 	}
-	return errors.New("agent events function not implemented")
+	return errors.New("Agent events function not implemented")
 }

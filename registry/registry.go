@@ -24,7 +24,7 @@ func marshal(obj interface{}) (string, error) {
 	if err == nil {
 		return string(encoded), nil
 	}
-	return "", fmt.Errorf("unable to JSON-serialize object: %s", err)
+	return "", fmt.Errorf("Unable to JSON-serialize object: %s", err)
 }
 
 func unmarshal(val string, obj interface{}) error {
@@ -32,5 +32,5 @@ func unmarshal(val string, obj interface{}) error {
 	if err == nil {
 		return nil
 	}
-	return fmt.Errorf("unable to JSON-deserialize object: %s", err)
+	return fmt.Errorf("Unable to JSON-deserialize object: %s", err)
 }

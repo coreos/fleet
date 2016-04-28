@@ -16,7 +16,6 @@ package engine
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/coreos/fleet/log"
@@ -71,6 +70,7 @@ func New(reg CompleteRegistry, lManager lease.Manager, rStream pkg.EventStream, 
 func (e *Engine) getMachineState(machID string) (*machine.MachineState, error) {
 	machines, err := e.registry.Machines()
 	if err != nil {
+		log.Errorf("Unable to get the list of machines from the registry: %v", err)
 		return nil, err
 	}
 
@@ -93,7 +93,6 @@ func (e *Engine) Run(ival time.Duration, stop <-chan struct{}) {
 
 		var previousEngine string
 		if e.lease != nil {
-			log.Infof("Machine state ID: %s --- Lease Machine ID: %s", machID, e.lease.MachineID())
 			previousEngine = e.lease.MachineID()
 		}
 
@@ -115,7 +114,7 @@ func (e *Engine) Run(ival time.Duration, stop <-chan struct{}) {
 		if e.lease != nil && previousEngine != e.lease.MachineID() {
 			engineState, err := e.getMachineState(e.lease.MachineID())
 			if err != nil {
-				log.Errorf("failed to get machine state for machine %s %v", e.lease.MachineID(), err)
+				log.Errorf("Failed to get machine state for machine %s %v", e.lease.MachineID(), err)
 			}
 			if engineState != nil {
 				log.Infof("Updating engine state...")
@@ -209,7 +208,7 @@ func ensureEngineVersionMatch(cReg registry.ClusterRegistry, expect int) bool {
 func acquireLeadership(lManager lease.Manager, machID string, ver int, ttl time.Duration) lease.Lease {
 	existing, err := lManager.GetLease(engineLeaseName)
 	if err != nil {
-		log.Errorf("Unable to determine current lessee: %v", err)
+		log.Errorf("Unable to determine current lease: %v", err)
 		return nil
 	}
 
@@ -255,21 +254,9 @@ func acquireLeadership(lManager lease.Manager, machID string, ver int, ttl time.
 }
 
 func renewLeadership(l lease.Lease, ttl time.Duration) lease.Lease {
-	var err error
-	for i := 0; i < 5; i++ {
-		//TODO(hector): Only for tests, I added patch to avoid key not found when querying /_coreos.com/fleet/lease/engine-leader .. etcd DoS
-		err = l.Renew(ttl)
-		if err != nil && strings.Contains(err.Error(), "Key not found") {
-			log.Errorf("Retry renew etcd operation that failed due to %v", err)
-			time.Sleep(200 * time.Millisecond)
-		} else if err != nil {
-			log.Errorf("Renew leadership error %v", err.Error())
-		} else {
-			break
-		}
-	}
+	err := l.Renew(ttl)
 	if err != nil {
-		log.Errorf("Engine leadership lost, renewal failed: %v", err.Error())
+		log.Errorf("Engine leadership lost, renewal failed: %v", err)
 		return nil
 	}
 
