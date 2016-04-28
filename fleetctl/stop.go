@@ -48,7 +48,7 @@ Stop an entire directory of units with glob matching, without waiting:
 
 func init() {
 	cmdStopUnit.Flags.IntVar(&sharedFlags.BlockAttempts, "block-attempts", 0, "Wait until the units are stopped, performing up to N attempts before giving up. A value of 0 indicates no limit. Does not apply to global units.")
-	cmdStopUnit.Flags.BoolVar(&sharedFlags.NoBlock, "no-block", true, "Do not wait until the units have stopped before exiting. Always the case for global units.")
+	cmdStopUnit.Flags.BoolVar(&sharedFlags.NoBlock, "no-block", false, "Do not wait until the units have stopped before exiting. Always the case for global units.")
 }
 
 func runStopUnit(args []string) (exit int) {

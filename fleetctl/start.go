@@ -50,7 +50,7 @@ Machine metadata is located in the fleet configuration file.`,
 func init() {
 	cmdStartUnit.Flags.BoolVar(&sharedFlags.Sign, "sign", false, "DEPRECATED - this option cannot be used")
 	cmdStartUnit.Flags.IntVar(&sharedFlags.BlockAttempts, "block-attempts", 0, "Wait until the units are launched, performing up to N attempts before giving up. A value of 0 indicates no limit. Does not apply to global units.")
-	cmdStartUnit.Flags.BoolVar(&sharedFlags.NoBlock, "no-block", true, "Do not wait until the units have launched before exiting. Always the case for global units.")
+	cmdStartUnit.Flags.BoolVar(&sharedFlags.NoBlock, "no-block", false, "Do not wait until the units have launched before exiting. Always the case for global units.")
 }
 
 func runStartUnit(args []string) (exit int) {
