@@ -12,6 +12,7 @@ import (
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/log"
 	"github.com/coreos/fleet/machine"
+	"github.com/coreos/fleet/pkg/lease"
 	"github.com/coreos/fleet/registry"
 	"github.com/coreos/fleet/unit"
 )
@@ -23,17 +24,84 @@ type RegistryMux struct {
 	currentRegistry registry.Registry
 	rpcRegistry     *RPCRegistry
 	currentEngine   machine.MachineState
+	leaseManager    lease.Manager
 
 	handlingEngineChange *sync.RWMutex
 }
 
-const dialRegistryReconnectTimeout = 200 * time.Millisecond
+const (
+	dialRegistryReconnectTimeout = 200 * time.Millisecond
 
-func NewRegistryMux(etcdRegistry *registry.EtcdRegistry, localMachine machine.Machine) *RegistryMux {
+	engineLeaderKeyPath = "engine-leader"
+)
+
+func NewRegistryMux(etcdRegistry *registry.EtcdRegistry, localMachine machine.Machine, leaseManager lease.Manager) *RegistryMux {
 	return &RegistryMux{
 		etcdRegistry:         etcdRegistry,
 		localMachine:         localMachine,
 		handlingEngineChange: new(sync.RWMutex),
+		leaseManager:         leaseManager,
+	}
+}
+
+func (r *RegistryMux) ConnectRPCRegistry() {
+	if r.rpcRegistry != nil && r.rpcRegistry.IsRegistryReady() {
+		log.Infof("Reusing gRPC engine, connection is READY\n")
+		r.currentRegistry = r.rpcRegistry
+	} else {
+		log.Infof("New engine supports gRPC, connecting\n")
+		r.rpcRegistry = NewRPCRegistry(r.rpcDialerNoEngine)
+		// connect to rpc registry
+		r.rpcRegistry.Connect()
+		r.currentRegistry = r.rpcRegistry
+	}
+}
+
+func (r *RegistryMux) rpcDialerNoEngine(_ string, timeout time.Duration) (net.Conn, error) {
+	ticker := time.Tick(dialRegistryReconnectTimeout)
+	// Timeout re-defined to call etcd every 5secs to get the leader
+	timeout = 5 * time.Second
+	check := time.After(timeout)
+
+	for {
+		select {
+		case <-check:
+			log.Errorf("Unable to connect to engine %s\n", r.currentEngine.PublicIP)
+			// Get the new engine leader of the cluster out of etcd
+			lease, err := r.leaseManager.GetLease(engineLeaderKeyPath)
+			// Key found
+			if err == nil && lease != nil {
+				var err error
+				machines, err := r.etcdRegistry.Machines()
+				if err != nil {
+					log.Errorf("Unable to get the machines of the cluster %v\n", err)
+					return nil, errors.New("Unable to get the machines of the cluster")
+				}
+				for _, s := range machines {
+					// Update the currentEngine with the new one... otherwise wait until
+					// there is one
+					if s.ID == lease.MachineID() {
+						r.currentEngine = s
+						log.Infof("Found a new engine to connect to: %s\n", r.currentEngine.PublicIP)
+						// Restore initial check configuration
+						timeout = 5 * time.Second
+						check = time.After(timeout)
+					}
+				}
+			} else {
+				timeout = 2 * time.Second
+				log.Errorf("Unable to get the leader engine, retrying in %v...", timeout)
+				check = time.After(timeout)
+			}
+		case <-ticker:
+			addr := fmt.Sprintf("%s:%d", r.currentEngine.PublicIP, rpcServerPort)
+			conn, err := net.Dial("tcp", addr)
+			if err == nil {
+				log.Infof("Connected to engine on %s\n", r.currentEngine.PublicIP)
+				return conn, nil
+			}
+			log.Errorf("Retry to connect to new engine: %+v", err)
+		}
 	}
 }
 
