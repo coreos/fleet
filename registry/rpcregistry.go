@@ -24,7 +24,6 @@ var DebugRPCRegistry bool = false
 
 type RPCRegistry struct {
 	registryClient pb.RegistryClient
-	registryConn   *grpc.ClientConn
 	mu             *sync.Mutex
 	dialer         func(addr string, timeout time.Duration) (net.Conn, error)
 }
@@ -42,23 +41,13 @@ func (r *RPCRegistry) ctx() context.Context {
 }
 
 func (r *RPCRegistry) Connect() {
-	var err error
-	r.registryConn, err = grpc.Dial(":fleet-engine:", grpc.WithInsecure(), grpc.WithDialer(r.dialer), grpc.WithTimeout(grpcConnectionTimeout), grpc.WithBlock())
+	// We want the connection operation to block and constantly reconnect using grpc backoff
+	registryConn, err := grpc.Dial(":fleet-engine:", grpc.WithInsecure(), grpc.WithDialer(r.dialer), grpc.WithBlock())
 	if err != nil {
 		log.Fatalf("unable to dial to registry: %s", err)
 	}
 
-	r.registryClient = pb.NewRegistryClient(r.registryConn)
-}
-
-func (r *RPCRegistry) getClient() pb.RegistryClient {
-	for ; ; time.Sleep(100 * time.Millisecond) {
-		log.Infof("registry client is not initialized, waiting for the connection...")
-		if r.registryClient != nil {
-			break
-		}
-	}
-	return r.registryClient
+	r.registryClient = pb.NewRegistryClient(registryConn)
 }
 
 func (r *RPCRegistry) ClearUnitHeartbeat(unitName string) {
@@ -66,7 +55,7 @@ func (r *RPCRegistry) ClearUnitHeartbeat(unitName string) {
 		defer debug.Exit_(debug.Enter_(unitName))
 	}
 
-	r.getClient().ClearUnitHeartbeat(r.ctx(), &pb.UnitName{unitName})
+	r.registryClient.ClearUnitHeartbeat(r.ctx(), &pb.UnitName{unitName})
 }
 
 func (r *RPCRegistry) CreateUnit(j *job.Unit) error {
@@ -75,7 +64,7 @@ func (r *RPCRegistry) CreateUnit(j *job.Unit) error {
 	}
 
 	un := j.ToPB()
-	_, err := r.getClient().CreateUnit(r.ctx(), &un)
+	_, err := r.registryClient.CreateUnit(r.ctx(), &un)
 	return err
 }
 
@@ -84,7 +73,7 @@ func (r *RPCRegistry) DestroyUnit(unitName string) error {
 		defer debug.Exit_(debug.Enter_(unitName))
 	}
 
-	_, err := r.getClient().DestroyUnit(r.ctx(), &pb.UnitName{unitName})
+	_, err := r.registryClient.DestroyUnit(r.ctx(), &pb.UnitName{unitName})
 	return err
 }
 
@@ -93,7 +82,7 @@ func (r *RPCRegistry) UnitHeartbeat(unitName, machID string, ttl time.Duration) 
 		defer debug.Exit_(debug.Enter_(unitName, machID))
 	}
 
-	_, err := r.getClient().UnitHeartbeat(r.ctx(), &pb.Heartbeat{
+	_, err := r.registryClient.UnitHeartbeat(r.ctx(), &pb.Heartbeat{
 		Name:      unitName,
 		MachineID: machID,
 		TTL:       int32(ttl.Seconds()),
@@ -106,7 +95,7 @@ func (r *RPCRegistry) RemoveMachineState(machID string) error {
 }
 
 func (r *RPCRegistry) RemoveUnitState(unitName string) error {
-	_, err := r.getClient().RemoveUnitState(r.ctx(), &pb.UnitName{unitName})
+	_, err := r.registryClient.RemoveUnitState(r.ctx(), &pb.UnitName{unitName})
 	return err
 }
 
@@ -119,7 +108,7 @@ func (r *RPCRegistry) SaveUnitState(unitName string, unitState *unit.UnitState, 
 		unitState.UnitName = unitName
 	}
 
-	r.getClient().SaveUnitState(r.ctx(), &pb.SaveUnitStateRequest{
+	r.registryClient.SaveUnitState(r.ctx(), &pb.SaveUnitStateRequest{
 		Name:  unitName,
 		State: unitState.ToPB(),
 		TTL:   int32(ttl.Seconds()),
@@ -131,7 +120,7 @@ func (r *RPCRegistry) ScheduleUnit(unitName, machID string) error {
 		defer debug.Exit_(debug.Enter_(unitName, machID))
 	}
 
-	_, err := r.getClient().ScheduleUnit(r.ctx(), &pb.ScheduleUnitRequest{
+	_, err := r.registryClient.ScheduleUnit(r.ctx(), &pb.ScheduleUnitRequest{
 		Name:      unitName,
 		MachineID: machID,
 	})
@@ -143,7 +132,7 @@ func (r *RPCRegistry) SetUnitTargetState(unitName string, state job.JobState) er
 		defer debug.Exit_(debug.Enter_(unitName, state))
 	}
 
-	_, err := r.getClient().SetUnitTargetState(r.ctx(), &pb.ScheduledUnit{
+	_, err := r.registryClient.SetUnitTargetState(r.ctx(), &pb.ScheduledUnit{
 		Name:         unitName,
 		CurrentState: state.ToPB(),
 	})
@@ -155,7 +144,7 @@ func (r *RPCRegistry) UnscheduleUnit(unitName, machID string) error {
 		defer debug.Exit_(debug.Enter_(unitName, machID))
 	}
 
-	_, err := r.getClient().UnscheduleUnit(r.ctx(), &pb.UnscheduleUnitRequest{
+	_, err := r.registryClient.UnscheduleUnit(r.ctx(), &pb.UnscheduleUnitRequest{
 		Name:      unitName,
 		MachineID: machID,
 	})
@@ -175,7 +164,7 @@ func (r *RPCRegistry) Schedule() ([]job.ScheduledUnit, error) {
 		defer debug.Exit_(debug.Enter_())
 	}
 
-	scheduledUnits, err := r.getClient().GetScheduledUnits(r.ctx(), &pb.UnitFilter{})
+	scheduledUnits, err := r.registryClient.GetScheduledUnits(r.ctx(), &pb.UnitFilter{})
 	if err != nil {
 		return []job.ScheduledUnit{}, err
 	}
@@ -197,7 +186,7 @@ func (r *RPCRegistry) ScheduledUnit(unitName string) (*job.ScheduledUnit, error)
 		defer debug.Exit_(debug.Enter_(unitName))
 	}
 
-	maybeSchedUnit, err := r.getClient().GetScheduledUnit(r.ctx(), &pb.UnitName{unitName})
+	maybeSchedUnit, err := r.registryClient.GetScheduledUnit(r.ctx(), &pb.UnitName{unitName})
 
 	if err != nil {
 		return nil, err
@@ -221,7 +210,7 @@ func (r *RPCRegistry) Unit(unitName string) (*job.Unit, error) {
 		defer debug.Exit_(debug.Enter_(unitName))
 	}
 
-	maybeUnit, err := r.getClient().GetUnit(r.ctx(), &pb.UnitName{unitName})
+	maybeUnit, err := r.registryClient.GetUnit(r.ctx(), &pb.UnitName{unitName})
 	if err != nil {
 		return nil, err
 	}
@@ -238,7 +227,7 @@ func (r *RPCRegistry) Units() ([]job.Unit, error) {
 		defer debug.Exit_(debug.Enter_())
 	}
 
-	units, err := r.getClient().GetUnits(r.ctx(), &pb.UnitFilter{})
+	units, err := r.registryClient.GetUnits(r.ctx(), &pb.UnitFilter{})
 	if err != nil {
 		log.Errorf("rpcregistry failed to get the units %v", err)
 		return []job.Unit{}, err
@@ -257,7 +246,7 @@ func (r *RPCRegistry) UnitStates() ([]*unit.UnitState, error) {
 		defer debug.Exit_(debug.Enter_())
 	}
 
-	unitStates, err := r.getClient().GetUnitStates(r.ctx(), &pb.UnitStateFilter{})
+	unitStates, err := r.registryClient.GetUnitStates(r.ctx(), &pb.UnitStateFilter{})
 	if err != nil {
 		return nil, err
 	}
