@@ -1,6 +1,7 @@
 package registry
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"sync"
@@ -215,7 +216,5 @@ func (s *rpcserver) AgentEvents(props *pb.MachineProperties, stream pb.Registry_
 	if DebugRPCServer {
 		defer debug.Exit_(debug.Enter_(props.Id))
 	}
-	//TODO(htr)
-
-	return nil
+	return errors.New("AgentEvents function not implemented")
 }

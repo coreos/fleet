@@ -281,13 +281,13 @@ func (r *RPCRegistry) UnitStates() ([]*unit.UnitState, error) {
 }
 
 func (r *RPCRegistry) EngineVersion() (int, error) {
-	return 0, errors.New("Engine version not implemented")
+	return 0, errors.New("Engine version function not implemented")
 }
 
 func (r *RPCRegistry) UpdateEngineVersion(from, to int) error {
-	return errors.New("Update engine version not implemented")
+	return errors.New("Update engine version function not implemented")
 }
 
 func (r *RPCRegistry) LatestDaemonVersion() (*semver.Version, error) {
-	return nil, errors.New("Latests daemon version not implemented")
+	return nil, errors.New("Latests daemon version function not implemented")
 }

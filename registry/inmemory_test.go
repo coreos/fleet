@@ -103,4 +103,8 @@ Description = Foo
 		}
 		t.Fatalf("Unexpected error unit expected to be loaded %v", u)
 	}
+
+	if len(inmemoryRegistry.UnitStates()) != 1 {
+		t.Fatalf("Unexpected amount of unit states in the in-memory registry got %d expected 1", len(inmemoryRegistry.UnitStates()))
+	}
 }
