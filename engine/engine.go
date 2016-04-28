@@ -16,6 +16,7 @@ package engine
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/coreos/fleet/log"
@@ -45,7 +46,7 @@ type Engine struct {
 	lease   lease.Lease
 	trigger chan struct{}
 
-	engineChanged chan machine.MachineState
+	updateEngineState func(newEngine machine.MachineState)
 }
 
 type CompleteRegistry interface {
@@ -53,33 +54,32 @@ type CompleteRegistry interface {
 	registry.ClusterRegistry
 }
 
-func New(reg CompleteRegistry, lManager lease.Manager, rStream pkg.EventStream, mach machine.Machine, engineChanged chan machine.MachineState) *Engine {
+func New(reg CompleteRegistry, lManager lease.Manager, rStream pkg.EventStream, mach machine.Machine, updateEngineState func(newEngine machine.MachineState)) *Engine {
 	rec := NewReconciler()
 	return &Engine{
-		rec:           rec,
-		registry:      reg,
-		cRegistry:     reg,
-		lManager:      lManager,
-		rStream:       rStream,
-		machine:       mach,
-		trigger:       make(chan struct{}),
-		engineChanged: engineChanged,
+		rec:               rec,
+		registry:          reg,
+		cRegistry:         reg,
+		lManager:          lManager,
+		rStream:           rStream,
+		machine:           mach,
+		trigger:           make(chan struct{}),
+		updateEngineState: updateEngineState,
 	}
 }
 
-func (e *Engine) getMachineState(machID string) *machine.MachineState {
+func (e *Engine) getMachineState(machID string) (*machine.MachineState, error) {
 	machines, err := e.registry.Machines()
 	if err != nil {
-		// LOG XXX me
-		return nil
+		return nil, err
 	}
 
 	for _, s := range machines {
 		if s.ID == machID {
-			return &s
+			return &s, nil
 		}
 	}
-	return nil
+	return nil, nil
 }
 
 func (e *Engine) Run(ival time.Duration, stop <-chan struct{}) {
@@ -93,6 +93,7 @@ func (e *Engine) Run(ival time.Duration, stop <-chan struct{}) {
 
 		var previousEngine string
 		if e.lease != nil {
+			log.Infof("Machine state ID: %s --- Lease Machine ID: %s", machID, e.lease.MachineID())
 			previousEngine = e.lease.MachineID()
 		}
 
@@ -111,16 +112,14 @@ func (e *Engine) Run(ival time.Duration, stop <-chan struct{}) {
 		}
 
 		e.lease = l
-
-		e.registry.Machines()
-
 		if e.lease != nil && previousEngine != e.lease.MachineID() {
-			engineState := e.getMachineState(e.lease.MachineID())
+			engineState, err := e.getMachineState(e.lease.MachineID())
+			if err != nil {
+				log.Errorf("failed to get machine state for machine %s %v", e.lease.MachineID(), err)
+			}
 			if engineState != nil {
-				go func() {
-					//TODO(htr) XXX synchronous delivery might be too asynchronous here.
-					e.engineChanged <- *engineState
-				}()
+				log.Infof("Updating engine state...")
+				go e.updateEngineState(*engineState)
 			}
 		}
 
@@ -256,9 +255,21 @@ func acquireLeadership(lManager lease.Manager, machID string, ver int, ttl time.
 }
 
 func renewLeadership(l lease.Lease, ttl time.Duration) lease.Lease {
-	err := l.Renew(ttl)
+	var err error
+	for i := 0; i < 5; i++ {
+		//TODO(hector): Only for tests, I added patch to avoid key not found when querying /_coreos.com/fleet/lease/engine-leader .. etcd DoS
+		err = l.Renew(ttl)
+		if err != nil && strings.Contains(err.Error(), "Key not found") {
+			log.Errorf("Retry renew etcd operation that failed due to %v", err)
+			time.Sleep(200 * time.Millisecond)
+		} else if err != nil {
+			log.Errorf("Renew leadership error %v", err.Error())
+		} else {
+			break
+		}
+	}
 	if err != nil {
-		log.Errorf("Engine leadership lost, renewal failed: %v", err)
+		log.Errorf("Engine leadership lost, renewal failed: %v", err.Error())
 		return nil
 	}
 

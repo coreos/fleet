@@ -22,9 +22,7 @@ type inmemoryRegistry struct {
 	unitStatesMu   *sync.RWMutex
 }
 
-//TODO(hector) Why private/public ... I rather go with private by default but what about others
-// NewRegistryMux NewRPCRegistry... let's  get a consensus on this.
-func NewInmemoryRegistry() *inmemoryRegistry {
+func newInmemoryRegistry() *inmemoryRegistry {
 	r := &inmemoryRegistry{
 		unitsCache:     map[string]pb.Unit{},
 		scheduledUnits: map[string]pb.ScheduledUnit{},

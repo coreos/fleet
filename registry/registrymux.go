@@ -7,42 +7,36 @@ import (
 	"time"
 
 	"github.com/coreos/fleet/Godeps/_workspace/src/github.com/coreos/go-semver/semver"
-	"github.com/coreos/fleet/log"
 
 	"github.com/coreos/fleet/job"
+	"github.com/coreos/fleet/log"
 	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/unit"
 )
 
 type RegistryMux struct {
-	etcdRegistry      *EtcdRegistry
-	engineChangedChan chan machine.MachineState
-	localMachine      machine.Machine
-	rpcserver         *rpcserver
-	currentRegistry   Registry
-	rpcRegistry       *RPCRegistry
-	currentEngine     machine.MachineState
+	etcdRegistry    *EtcdRegistry
+	localMachine    machine.Machine
+	rpcserver       *rpcserver
+	currentRegistry Registry
+	rpcRegistry     *RPCRegistry
+	currentEngine   machine.MachineState
 
 	handlingEngineChange *sync.RWMutex
 }
 
 const dialRegistryReconnectTimeout = 200 * time.Millisecond
 
-func NewRegistryMux(etcdRegistry *EtcdRegistry, engineChanged chan machine.MachineState, localMachine machine.Machine) *RegistryMux {
+func NewRegistryMux(etcdRegistry *EtcdRegistry, localMachine machine.Machine) *RegistryMux {
 	return &RegistryMux{
 		etcdRegistry:         etcdRegistry,
-		engineChangedChan:    engineChanged,
 		localMachine:         localMachine,
 		handlingEngineChange: new(sync.RWMutex),
 	}
 }
 
 func (r *RegistryMux) StartMux() {
-	go func() {
-		for newEngine := range r.engineChangedChan {
-			r.EngineChanged(newEngine)
-		}
-	}()
+	r.EngineChanged(r.localMachine.State())
 }
 
 func (r *RegistryMux) rpcDialer(_ string, timeout time.Duration) (net.Conn, error) {
@@ -69,21 +63,27 @@ func (r *RegistryMux) EngineChanged(newEngine machine.MachineState) {
 			r.rpcserver = nil
 		}
 		if newEngine.ID == r.localMachine.State().ID {
-			log.Infof("starting rpc server\n")
 			// start rpc server
-			rpcserver, err := newRPCServer(r.etcdRegistry, newEngine.PublicIP)
+			log.Infof("starting rpc server\n")
+			var err error
+			r.rpcserver, err = NewRPCServer(r.etcdRegistry, newEngine.PublicIP)
 			if err != nil {
-				log.Errorf("unable to create rpc server %+v", err)
+				log.Fatalf("unable to create rpc server %+v", err)
 			}
-			r.rpcserver = rpcserver
-			r.rpcserver.Start()
+
+			go func() {
+				errc := make(chan error, 1)
+				if errc <- r.rpcserver.Start(); <-errc != nil {
+					log.Fatalf("failed to serve grpc requests on listener: %v", <-errc)
+				}
+			}()
 		}
 		if newEngine.Capabilities.Has(machine.CapGRPC) {
 			log.Infof("new engine supports GRPC, connecting\n")
-			if r.rpcRegistry == nil {
-				r.rpcRegistry = NewRPCRegistry(r.rpcDialer)
-				r.rpcRegistry.Connect()
-			}
+
+			r.rpcRegistry = NewRPCRegistry(r.rpcDialer)
+			r.rpcRegistry.Connect()
+
 			r.currentRegistry = r.rpcRegistry
 			// connect to rpc registry
 		} else {

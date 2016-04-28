@@ -55,6 +55,7 @@ func (l *etcdLease) Renew(period time.Duration) error {
 		PrevIndex: l.idx,
 		TTL:       period,
 	}
+
 	resp, err := l.mgr.kAPI.Set(l.mgr.ctx(), l.key, val, opts)
 	if err != nil {
 		return err
