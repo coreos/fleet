@@ -206,7 +206,15 @@ func TestSingleNodeConnectivityLoss(t *testing.T) {
 	time.Sleep(ttl + agentReconcileInterval + slack)
 
 	// Check state after reconnect.
-	if isExpected, expected, actual := checkExpectedStates(); !isExpected {
+	var expected, actual map[string]string
+	var isExpected bool
+	timeout, err = util.WaitForState(
+		func() bool { isExpected, expected, actual = checkExpectedStates(); return isExpected },
+	)
+	if err != nil {
+		t.Fatalf("Failed to reach expected initial state within %v.", timeout)
+	}
+	if !isExpected {
 		t.Fatalf("Units not in expected state after restoring connectivity.\nExpected: %v\nActual: %v", expected, actual)
 	}
 
