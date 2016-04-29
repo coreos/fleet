@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/coreos/fleet/Godeps/_workspace/src/github.com/coreos/go-semver/semver"
+	"github.com/coreos/go-semver/semver"
 )
 
 var (

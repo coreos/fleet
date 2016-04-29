@@ -18,7 +18,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/coreos/fleet/Godeps/_workspace/src/github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 type (
