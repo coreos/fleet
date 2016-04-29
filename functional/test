@@ -3,6 +3,7 @@
 CDIR=$(cd `dirname $0` && pwd)
 USER_ID=${SUDO_UID:-$(id -u)}
 HOME=$(getent passwd "${USER_ID}" | cut -d: -f6)
+TAIL_LOGS=30
 
 cd ${CDIR}/../
 export VERSION=$(git describe --dirty)
@@ -36,8 +37,26 @@ TESTS_RETURN_CODE=${PIPESTATUS[0]}
 total=$(grep -E '^--- (PASS|FAIL)' functional/functional-tests.log | wc -l)
 pass=$(grep '^--- PASS' functional/functional-tests.log | wc -l)
 fail=$(grep '^--- FAIL' functional/functional-tests.log | wc -l)
+smoke_logs=$(awk '/Test.*_smoke.*\.log/{print $NF}' functional/functional-tests.log)
 
-echo ""
+if [ "x$smoke_logs" != "x" ]; then
+  echo
+  echo "==========================================================="
+  echo "Functional test debug logs"
+  echo "==========================================================="
+fi
+
+for smoke_log in $smoke_logs; do
+  echo "# Printing last $TAIL_LOGS of $smoke_log (systemd)"
+  grep 'systemd\[1\]' $smoke_log | tail -$TAIL_LOGS
+  echo "# Printing last $TAIL_LOGS of $smoke_log (fleetd)"
+  grep 'fleetd\[.*\]' $smoke_log | tail -$TAIL_LOGS
+  echo "# Printing last $TAIL_LOGS of $smoke_log excluding fleetd/systemd/sshd"
+  grep -vE 'fleetd\[.*\]|systemd\[1\]|sshd\[.*\]' $smoke_log | tail -$TAIL_LOGS
+  echo "==========================================================="
+done
+
+echo
 grep -E '^--- (PASS|FAIL)' functional/functional-tests.log
 
 echo "==========================================================="
@@ -46,6 +65,7 @@ echo "==========================================================="
 echo "# TOTAL: $total"
 echo "# PASS: $pass"
 echo "# FAIL: $fail"
-echo ""
+echo
 echo "See ${CDIR}/functional-tests.log for the detailed output."
+
 exit $TESTS_RETURN_CODE

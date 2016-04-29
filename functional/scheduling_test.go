@@ -32,7 +32,7 @@ func TestScheduleMachineOf(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer cluster.Destroy()
+	defer cluster.Destroy(t)
 
 	// Start with a simple three-node cluster
 	members, err := platform.CreateNClusterMembers(cluster, 3)
@@ -152,7 +152,7 @@ func TestScheduleConflicts(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer cluster.Destroy()
+	defer cluster.Destroy(t)
 
 	// Start with a simple three-node cluster
 	members, err := platform.CreateNClusterMembers(cluster, 3)
@@ -219,7 +219,7 @@ func TestScheduleOneWayConflict(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer cluster.Destroy()
+	defer cluster.Destroy(t)
 
 	// Start with a simple three-node cluster
 	members, err := platform.CreateNClusterMembers(cluster, 1)
@@ -327,7 +327,7 @@ func TestScheduleConditionMachineID(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer cluster.Destroy()
+	defer cluster.Destroy(t)
 
 	// Start with a simple three-node cluster
 	members, err := platform.CreateNClusterMembers(cluster, 3)
@@ -388,7 +388,7 @@ func TestScheduleGlobalUnits(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer cluster.Destroy()
+	defer cluster.Destroy(t)
 	members, err := platform.CreateNClusterMembers(cluster, 3)
 	if err != nil {
 		t.Fatal(err)

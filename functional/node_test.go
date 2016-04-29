@@ -29,7 +29,7 @@ func TestNodeShutdown(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer cluster.Destroy()
+	defer cluster.Destroy(t)
 
 	// Start with a single node and wait for it to come up
 	m0, err := cluster.CreateMember()
@@ -95,7 +95,7 @@ func TestDetectMachineId(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer cluster.Destroy()
+	defer cluster.Destroy(t)
 
 	members, err := platform.CreateNClusterMembers(cluster, 2)
 	if err != nil {
