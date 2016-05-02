@@ -43,6 +43,51 @@ func mapTargetField(u schema.Unit, full bool) string {
 	return machineFullLegend(*ms, full)
 }
 
+func mapStateField(u schema.Unit, full bool) string {
+	if suToGlobal(u) {
+		states, err := cAPI.UnitStates()
+		if err != nil {
+			return "-"
+		}
+		var (
+			inactive      int
+			loaded        int
+			launched      int
+			currentStates []string
+		)
+		for _, state := range states {
+			if state.Name == u.Name {
+				if (state.SystemdActiveState == "active") || (state.SystemdSubState == "running") {
+					launched++
+					continue
+				}
+				if state.SystemdLoadState == "loaded" {
+					loaded++
+					continue
+				}
+				inactive++
+			}
+		}
+		if launched != 0 {
+			s := fmt.Sprintf("launched(%d)", launched)
+			currentStates = append(currentStates, s)
+		}
+		if loaded != 0 {
+			s := fmt.Sprintf("loaded(%d)", loaded)
+			currentStates = append(currentStates, s)
+		}
+		if inactive != 0 {
+			s := fmt.Sprintf("inactive(%d)", inactive)
+			currentStates = append(currentStates, s)
+		}
+		return strings.Join(currentStates, " ")
+	}
+	if u.CurrentState == "" {
+		return "-"
+	}
+	return u.CurrentState
+}
+
 var (
 	listUnitFilesFieldsFlag string
 	cmdListUnitFiles        = &Command{
@@ -67,12 +112,7 @@ var (
 		},
 		"target":   mapTargetField,
 		"tmachine": mapTargetField,
-		"state": func(u schema.Unit, full bool) string {
-			if suToGlobal(u) || u.CurrentState == "" {
-				return "-"
-			}
-			return u.CurrentState
-		},
+		"state":    mapStateField,
 		"hash": func(u schema.Unit, full bool) string {
 			uf := schema.MapSchemaUnitOptionsToUnitFile(u.Options)
 			if !full {
