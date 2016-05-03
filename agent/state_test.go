@@ -98,6 +98,83 @@ func TestHasConflicts(t *testing.T) {
 	}
 }
 
+func TestHasReplaces(t *testing.T) {
+	tests := []struct {
+		cState  *AgentState
+		job     *job.Job
+		want    bool
+		replace string
+	}{
+		// empty current state causes no replaces
+		{
+			cState: NewAgentState(&machine.MachineState{ID: "XXX"}),
+			job:    &job.Job{Name: "foo.service", Unit: fleetUnit(t, "Replaces=bar.service")},
+			want:   false,
+		},
+
+		// existing Job has replace with new Job
+		{
+			cState: &AgentState{
+				MState: &machine.MachineState{ID: "XXX"},
+				Units: map[string]*job.Unit{
+					"bar.service": &job.Unit{
+						Name: "bar.service",
+						Unit: fleetUnit(t, "Replaces=foo.service"),
+					},
+				},
+			},
+			job:     &job.Job{Name: "foo.service", Unit: unit.UnitFile{}},
+			want:    true,
+			replace: "bar.service",
+		},
+
+		// new Job has replace with existing job
+		{
+			cState: &AgentState{
+				MState: &machine.MachineState{ID: "XXX"},
+				Units: map[string]*job.Unit{
+					"bar.service": &job.Unit{
+						Name: "bar.service",
+						Unit: unit.UnitFile{},
+					},
+				},
+			},
+			job:     &job.Job{Name: "foo.service", Unit: fleetUnit(t, "Replaces=bar.service")},
+			want:    true,
+			replace: "bar.service",
+		},
+
+		// both jobs have replace with each other: it should fail
+		{
+			cState: &AgentState{
+				MState: &machine.MachineState{ID: "XXX"},
+				Units: map[string]*job.Unit{
+					"bar.service": &job.Unit{
+						Name: "bar.service",
+						Unit: fleetUnit(t, "Replaces=foo.service"),
+					},
+				},
+			},
+			job:     &job.Job{Name: "foo.service", Unit: fleetUnit(t, "Replaces=bar.service")},
+			want:    false,
+			replace: "bar.service",
+		},
+	}
+
+	for i, tt := range tests {
+		got, replace := tt.cState.hasReplace(tt.job.Name, tt.job.Replaces())
+		if got != tt.want {
+			var msg string
+			if tt.want == true {
+				msg = fmt.Sprintf("expected no replace, found replace with Job %q", replace)
+			} else {
+				msg = fmt.Sprintf("expected replace with Job %q, got none", replace)
+			}
+			t.Errorf("case %d: %s", i, msg)
+		}
+	}
+}
+
 func TestGlobMatches(t *testing.T) {
 	tests := []struct {
 		pattern  string
