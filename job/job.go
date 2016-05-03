@@ -28,6 +28,8 @@ const (
 	JobStateInactive = JobState("inactive")
 	JobStateLoaded   = JobState("loaded")
 	JobStateLaunched = JobState("launched")
+
+	JobReschedule = "jobreschedule"
 )
 
 // fleet-specific unit file requirement keys.
@@ -42,6 +44,8 @@ const (
 	fleetMachineOf = "MachineOf"
 	// Prevent a unit from being collocated with other units using glob-matching on the other unit names.
 	fleetConflicts = "Conflicts"
+	// Reschedule a unit to another machine
+	fleetReplaces = "Replaces"
 	// Machine metadata key in the unit file
 	fleetMachineMetadata = "MachineMetadata"
 	// Require that the unit be scheduled on every machine in the cluster
@@ -63,6 +67,7 @@ var validRequirements = pkg.NewUnsafeSet(
 	deprecatedXConditionPrefix+fleetMachineMetadata,
 	fleetMachineMetadata,
 	fleetGlobal,
+	fleetReplaces,
 )
 
 func ParseJobState(s string) (JobState, error) {
@@ -138,6 +143,14 @@ func (u *Unit) Conflicts() []string {
 	return j.Conflicts()
 }
 
+func (u *Unit) Replaces() []string {
+	j := &Job{
+		Name: u.Name,
+		Unit: u.Unit,
+	}
+	return j.Replaces()
+}
+
 func (u *Unit) Peers() []string {
 	j := &Job{
 		Name: u.Name,
@@ -207,6 +220,14 @@ func (j *Job) Conflicts() []string {
 	conflicts = append(conflicts, j.requirements()[deprecatedXPrefix+fleetConflicts]...)
 	conflicts = append(conflicts, j.requirements()[fleetConflicts]...)
 	return conflicts
+}
+
+// Replaces returns a list of Job names that should be scheduled to the another
+// machine as this Job.
+func (j *Job) Replaces() []string {
+	replaces := make([]string, 0)
+	replaces = append(replaces, j.requirements()[fleetReplaces]...)
+	return replaces
 }
 
 // Peers returns a list of Job names that must be scheduled to the same

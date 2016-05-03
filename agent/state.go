@@ -66,6 +66,48 @@ func (as *AgentState) hasConflict(pUnitName string, pConflicts []string) (found 
 	return
 }
 
+// hasReplace determines whether there are any known replaces with the given Unit
+func (as *AgentState) hasReplace(pUnitName string, pReplaces []string) (found bool, replace string) {
+	for _, eUnit := range as.Units {
+		foundPrepl := false
+		foundErepl := false
+		retStr := ""
+
+		if pUnitName == eUnit.Name {
+			continue
+		}
+
+		for _, pReplace := range pReplaces {
+			if globMatches(pReplace, eUnit.Name) {
+				foundPrepl = true
+				retStr = eUnit.Name
+				break
+			}
+		}
+
+		for _, eReplace := range eUnit.Replaces() {
+			if globMatches(eReplace, pUnitName) {
+				foundErepl = true
+				retStr = eUnit.Name
+				break
+			}
+		}
+
+		// Only 1 of 2 matches must be found. If both matches are found,
+		// it means it's a circular replace situation, which could result in
+		// an infinite loop. So ignore such replace options.
+		if (foundPrepl && foundErepl) || (!foundPrepl && !foundErepl) {
+			continue
+		} else {
+			found = true
+			replace = retStr
+			return
+		}
+	}
+
+	return
+}
+
 func globMatches(pattern, target string) bool {
 	matched, err := path.Match(pattern, target)
 	if err != nil {
@@ -81,6 +123,7 @@ func globMatches(pattern, target string) bool {
 //   - Agent must have all of the Job's required metadata (if any)
 //   - Agent must have all required Peers of the Job scheduled locally (if any)
 //   - Job must not conflict with any other Units scheduled to the agent
+//   - Job must specially handle replaced units to be rescheduled
 func (as *AgentState) AbleToRun(j *job.Job) (bool, string) {
 	if tgt, ok := j.RequiredTarget(); ok && !as.MState.MatchID(tgt) {
 		return false, fmt.Sprintf("agent ID %q does not match required %q", as.MState.ID, tgt)
@@ -104,6 +147,12 @@ func (as *AgentState) AbleToRun(j *job.Job) (bool, string) {
 
 	if cExists, cJobName := as.hasConflict(j.Name, j.Conflicts()); cExists {
 		return false, fmt.Sprintf("found conflict with locally-scheduled Unit(%s)", cJobName)
+	}
+
+	// Handle Replace option specially, by returning a special string
+	// "jobreschedule" as reason.
+	if cExists, _ := as.hasReplace(j.Name, j.Replaces()); cExists {
+		return false, job.JobReschedule
 	}
 
 	return true, ""

@@ -110,10 +110,15 @@ func (r *Reconciler) calculateClusterTasks(clust *clusterState, stopchan chan st
 				}
 
 				var able bool
-				if able, reason = as.AbleToRun(j); !able {
+				var ableReason string
+				if able, ableReason = as.AbleToRun(j); !able {
 					unschedule = true
-					reason = fmt.Sprintf("target Machine(%s) unable to run unit", j.TargetMachineID)
-					metrics.ReportEngineReconcileFailure(metrics.RunFailure)
+					if ableReason == job.JobReschedule {
+						reason = ableReason
+					} else {
+						reason = fmt.Sprintf("target Machine(%s) unable to run unit", j.TargetMachineID)
+						metrics.ReportEngineReconcileFailure(metrics.RunFailure)
+					}
 					return
 				}
 
