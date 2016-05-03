@@ -89,8 +89,8 @@ fi
 BASE_IMAGE=$QEMU_DIR/coreos_${COREOS_CHANNEL}_production_qemu_image.img
 IMAGE=$QEMU_DIR/coreos_${COREOS_CHANNEL}_fleet_test.qcow2
 
-IMG_URL="http://${COREOS_CHANNEL}.release.core-os.net/amd64-usr/current/coreos_production_qemu_image.img.bz2"
-SIG_URL="http://${COREOS_CHANNEL}.release.core-os.net/amd64-usr/current/coreos_production_qemu_image.img.bz2.sig"
+IMG_URL="https://${COREOS_CHANNEL}.release.core-os.net/amd64-usr/current/coreos_production_qemu_image.img.bz2"
+SIG_URL="https://${COREOS_CHANNEL}.release.core-os.net/amd64-usr/current/coreos_production_qemu_image.img.bz2.sig"
 GPG_PUB_KEY="https://coreos.com/security/image-signing-key/CoreOS_Image_Signing_Key.asc"
 GPG_PUB_KEY_ID="50E0885593D2DCB4"
 
