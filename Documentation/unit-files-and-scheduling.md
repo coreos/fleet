@@ -23,6 +23,7 @@ Note that these requirements are derived directly from systemd, with the only ex
 | `MachineMetadata` | Limit eligible machines to those with this specific metadata. |
 | `Conflicts` | Prevent a unit from being collocated with other units using glob-matching on the other unit names. |
 | `Global` | Schedule this unit on all agents in the cluster. A unit is considered invalid if options other than `MachineMetadata` are provided alongside `Global=true`. |
+| `Replaces` | Schedule a specified unit on another machine. A unit is considered invalid if options `Global` or `Conflicts` are provided alongside `Replaces=`. A circular replacement between multiple units is not allowed. |
 
 See [more information][unit-scheduling] on these parameters and how they impact scheduling decisions.
 
