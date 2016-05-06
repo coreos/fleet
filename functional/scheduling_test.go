@@ -17,6 +17,7 @@ package functional
 import (
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -318,6 +319,145 @@ func TestScheduleOneWayConflict(t *testing.T) {
 		}
 	}
 
+}
+
+// TestScheduleReplace starts 1 unit, followed by starting another unit
+// that replaces the 1st unit. Then it verifies that the 2 units are
+// started on different machines.
+func TestScheduleReplace(t *testing.T) {
+	cluster, err := platform.NewNspawnCluster("smoke")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cluster.Destroy(t)
+
+	// Start with a simple three-node cluster
+	members, err := platform.CreateNClusterMembers(cluster, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	m0 := members[0]
+	if _, err := cluster.WaitForNMachines(m0, 2); err != nil {
+		t.Fatal(err)
+	}
+
+	// Start a unit without Replaces
+	uNames := []string{
+		"fixtures/units/replace.0.service",
+		"fixtures/units/replace.1.service",
+	}
+	if stdout, stderr, err := cluster.Fleetctl(m0, "start", "--no-block", uNames[0]); err != nil {
+		t.Fatalf("Failed starting unit %s: \nstdout: %s\nstderr: %s\nerr: %v", uNames[0], stdout, stderr, err)
+	}
+
+	active, err := cluster.WaitForNActiveUnits(m0, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = util.ActiveToSingleStates(active)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Start a unit that replaces the former one, replace.0.service
+	if stdout, stderr, err := cluster.Fleetctl(m0, "start", "--no-block", uNames[1]); err != nil {
+		t.Fatalf("Failed starting unit %s: \nstdout: %s\nstderr: %s\nerr: %v", uNames[1], stdout, stderr, err)
+	}
+
+	// Check that both units should show up
+	stdout, _, err := cluster.Fleetctl(m0, "list-unit-files", "--no-legend")
+	if err != nil {
+		t.Fatalf("Failed to run list-unit-files: %v", err)
+	}
+	units := strings.Split(strings.TrimSpace(stdout), "\n")
+	if len(units) != 2 {
+		t.Fatalf("Did not find two units in cluster: \n%s", stdout)
+	}
+	active, err = cluster.WaitForNActiveUnits(m0, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	states, err := util.ActiveToSingleStates(active)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Check that the unit 1 is located on a different machine from that of unit 0
+	nUnits := 2
+	uNameBase := make([]string, nUnits)
+	machs := make([]string, nUnits)
+	for i, uName := range uNames {
+		uNameBase[i] = path.Base(uName)
+		machs[i] = states[uNameBase[i]].Machine
+	}
+	if machs[0] == machs[1] {
+		t.Fatalf("machine for %s is %s, the same as that of %s.", uNameBase[0], machs[0], uNameBase[1])
+	}
+
+	// Check that circular replaces end up with 1 launched unit.
+	// First of all, stop the existing unit replace.0.service.
+	if stdout, stderr, err := cluster.Fleetctl(m0, "destroy", uNameBase[0]); err != nil {
+		t.Fatalf("Failed to destroy unit %s: \nstdout: %s\nstderr: %s\nerr: %v",
+			uNameBase[0], stdout, stderr, err)
+	}
+
+	// Generate a new service 0 derived by a fixture, make the new service
+	// replace service 1, and store it under /tmp.
+	uName0tmp := path.Join("/tmp", uNameBase[0])
+	err = util.GenNewFleetService(uName0tmp, uNames[1],
+		"Replaces=replace.1.service", "Replaces=replace.0.service")
+	if err != nil {
+		t.Fatalf("Failed to generate a temp fleet service: %v", err)
+	}
+
+	// Start replace.0 unit that replaces replace.1.service,
+	// then fleetctl list-unit-files should show only return 1 launched unit.
+	// Note that we still need to run list-units once, before doing
+	// list-unit-files, for reliable tests.
+	stdout, stderr, err := cluster.Fleetctl(m0, "start", "--no-block", uName0tmp)
+	if err != nil {
+		t.Fatalf("Failed starting unit %s: \nstdout: %s\nstderr: %s\nerr: %v",
+			uName0tmp, stdout, stderr, err)
+	}
+
+	stdout, _, err = cluster.Fleetctl(m0, "list-unit-files", "--no-legend")
+	if err != nil {
+		t.Fatalf("Failed to run list-unit-files: %v", err)
+	}
+	units = strings.Split(strings.TrimSpace(stdout), "\n")
+	if len(units) != nUnits {
+		t.Fatalf("Did not find two units in cluster: \n%s", stdout)
+	}
+	_, err = cluster.WaitForNActiveUnits(m0, nUnits)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ufs, err := cluster.WaitForNUnitFiles(m0, nUnits)
+	if err != nil {
+		t.Fatalf("Failed to run list-unit-files: %v", err)
+	}
+
+	uStates := make([][]util.UnitFileState, nUnits)
+	var found bool
+	for i, unb := range uNameBase {
+		uStates[i], found = ufs[unb]
+		if len(ufs) != nUnits || !found {
+			t.Fatalf("Did not find %d launched unit as expected: got %d\n", nUnits, len(ufs))
+		}
+	}
+	nLaunched := 0
+	for _, us := range uStates {
+		for _, state := range us {
+			if strings.Contains(state.State, "launched") {
+				nLaunched += 1
+			}
+		}
+	}
+	if nLaunched != 1 {
+		t.Fatalf("Did not find 1 launched unit as expected: got %d", nLaunched)
+	}
+
+	os.Remove(uName0tmp)
 }
 
 // Ensure units can be scheduled directly to a given machine using the
