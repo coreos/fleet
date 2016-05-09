@@ -22,7 +22,7 @@ import (
 	"github.com/coreos/fleet/registry"
 	"github.com/coreos/fleet/version"
 
-	"github.com/coreos/fleet/Godeps/_workspace/src/github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 func NewServeMux(reg registry.Registry, tokenLimit int) http.Handler {
