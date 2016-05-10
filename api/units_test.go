@@ -591,7 +591,7 @@ func TestValidateOptions(t *testing.T) {
 			},
 			true,
 		},
-		// Global with Peers/Conflicts no good
+		// Global with Conflicts is ok
 		{
 			[]*schema.UnitOption{
 				&schema.UnitOption{
@@ -601,7 +601,7 @@ func TestValidateOptions(t *testing.T) {
 				},
 				makeConflictUO("foo.service"),
 			},
-			false,
+			true,
 		},
 		{
 			[]*schema.UnitOption{
@@ -612,8 +612,9 @@ func TestValidateOptions(t *testing.T) {
 				},
 				makeConflictUO("bar.service"),
 			},
-			false,
+			true,
 		},
+		// Global with peer no good
 		{
 			[]*schema.UnitOption{
 				&schema.UnitOption{

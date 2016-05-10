@@ -85,7 +85,7 @@ func TestHasConflicts(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		got, conflict := tt.cState.hasConflict(tt.job.Name, tt.job.Conflicts())
+		got, conflict := tt.cState.HasConflict(tt.job.Name, tt.job.Conflicts())
 		if got != tt.want {
 			var msg string
 			if tt.want == true {

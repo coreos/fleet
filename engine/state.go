@@ -93,9 +93,14 @@ func (cs *clusterState) agents() map[string]*agent.AgentState {
 	for _, gu := range cs.gUnits {
 		gu := gu
 		for _, a := range agents {
-			if machine.HasMetadata(a.MState, gu.RequiredTargetMetadata()) {
-				a.Units[gu.Name] = gu
+			if !machine.HasMetadata(a.MState, gu.RequiredTargetMetadata()) {
+				continue
 			}
+
+			if cExists, _ := a.HasConflict(gu.Name, gu.Conflicts()); cExists {
+				continue
+			}
+			a.Units[gu.Name] = gu
 		}
 	}
 
