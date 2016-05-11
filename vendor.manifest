@@ -3,9 +3,9 @@ github.com/coreos/etcd/client b2d33e6dcb24cddc0395f1bbe2213a27aef0fb46
 github.com/coreos/etcd/pkg/pathutil b2d33e6dcb24cddc0395f1bbe2213a27aef0fb46
 github.com/coreos/etcd/pkg/types b2d33e6dcb24cddc0395f1bbe2213a27aef0fb46
 github.com/coreos/go-semver/semver a9a0c39c7e4a2929f73d4b757d1860fbb8e66d06
-github.com/coreos/go-systemd/activation 1f2251651d199b698a0be8c8bf2283178a2a97ed
-github.com/coreos/go-systemd/dbus 1f2251651d199b698a0be8c8bf2283178a2a97ed
-github.com/coreos/go-systemd/unit 1f2251651d199b698a0be8c8bf2283178a2a97ed
+github.com/coreos/go-systemd/activation 6dc8b843c670f2027cc26b164935635840a40526
+github.com/coreos/go-systemd/dbus 6dc8b843c670f2027cc26b164935635840a40526
+github.com/coreos/go-systemd/unit 6dc8b843c670f2027cc26b164935635840a40526
 github.com/godbus/dbus 9bb9dbf0e53309fa81d26e7230cbb6cff9373cad
 github.com/golang/protobuf/proto dda510ac0fd43b39770f22ac6260eb91d377bce3
 github.com/jonboulle/clockwork b473f398c464f1988327f67c9e6aa7fba62f80d2
