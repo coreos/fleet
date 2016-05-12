@@ -24,6 +24,8 @@ type Config struct {
 	EtcdKeyFile             string
 	EtcdCertFile            string
 	EtcdCAFile              string
+	EtcdUsername            string
+	EtcdPassword            string
 	EtcdRequestTimeout      float64
 	EngineReconcileInterval float64
 	PublicIP                string

@@ -80,6 +80,8 @@ func main() {
 	cfgset.String("etcd_keyfile", "", "SSL key file used to secure etcd communication")
 	cfgset.String("etcd_certfile", "", "SSL certification file used to secure etcd communication")
 	cfgset.String("etcd_cafile", "", "SSL Certificate Authority file used to secure etcd communication")
+	cfgset.String("etcd_username", "", "Username for etcd authentication")
+	cfgset.String("etcd_password", "", "Password for etcd authentication")
 	cfgset.String("etcd_key_prefix", registry.DefaultKeyPrefix, "Keyspace for fleet data in etcd")
 	cfgset.Float64("etcd_request_timeout", 1.0, "Amount of time in seconds to allow a single etcd request before considering it failed.")
 	cfgset.Float64("engine_reconcile_interval", 2.0, "Interval at which the engine should reconcile the cluster schedule in etcd.")
@@ -217,6 +219,8 @@ func getConfig(flagset *flag.FlagSet, userCfgFile string) (*config.Config, error
 		EtcdKeyFile:             (*flagset.Lookup("etcd_keyfile")).Value.(flag.Getter).Get().(string),
 		EtcdCertFile:            (*flagset.Lookup("etcd_certfile")).Value.(flag.Getter).Get().(string),
 		EtcdCAFile:              (*flagset.Lookup("etcd_cafile")).Value.(flag.Getter).Get().(string),
+		EtcdUsername:            (*flagset.Lookup("etcd_username")).Value.(flag.Getter).Get().(string),
+		EtcdPassword:            (*flagset.Lookup("etcd_password")).Value.(flag.Getter).Get().(string),
 		EtcdRequestTimeout:      (*flagset.Lookup("etcd_request_timeout")).Value.(flag.Getter).Get().(float64),
 		EngineReconcileInterval: (*flagset.Lookup("engine_reconcile_interval")).Value.(flag.Getter).Get().(float64),
 		PublicIP:                (*flagset.Lookup("public_ip")).Value.(flag.Getter).Get().(string),

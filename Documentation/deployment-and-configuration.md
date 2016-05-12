@@ -134,6 +134,12 @@ Provide TLS configuration when SSL certificate authentication is enabled in etcd
 
 Default: ""
 
+#### etcd_username, etcd_password
+
+Provide credentials when [authentication](https://github.com/coreos/etcd/blob/master/Documentation/authentication.md) is enabled in etcd endpoints.
+
+Default: ""
+
 #### etcd_key_prefix
 
 Keyspace path for fleet data in etcd.

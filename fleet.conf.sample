@@ -16,6 +16,10 @@
 # etcd_keyfile=/path/to/keyfile
 # etcd_certfile=/path/to/certfile
 
+# Provide credentials when authentication is enabled in etcd endpoints
+# etcd_username=guest
+# etcd_password=p4ssw0rd
+
 # IP address that should be published with any socket information. By default,
 # no IP address is published.
 # public_ip=""

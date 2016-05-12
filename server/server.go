@@ -93,6 +93,8 @@ func New(cfg config.Config, listeners []net.Listener) (*Server, error) {
 	eCfg := etcd.Config{
 		Transport: &http.Transport{TLSClientConfig: tlsConfig},
 		Endpoints: cfg.EtcdServers,
+		Username:  cfg.EtcdUsername,
+		Password:  cfg.EtcdPassword,
 	}
 	eClient, err := etcd.New(eCfg)
 	if err != nil {
