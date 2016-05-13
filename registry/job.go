@@ -297,7 +297,12 @@ func (r *EtcdRegistry) DestroyUnit(name string) error {
 	opts := &etcd.DeleteOptions{
 		Recursive: true,
 	}
-	_, err := r.kAPI.Delete(r.ctx(), key, opts)
+	u, err := r.Unit(name)
+	if err != nil {
+		log.Warningf("r.Unit error, name=%s\n", name)
+		u = nil
+	}
+	_, err = r.kAPI.Delete(r.ctx(), key, opts)
 	if err != nil {
 		if isEtcdError(err, etcd.ErrorCodeKeyNotFound) {
 			err = errors.New("job does not exist")
@@ -307,6 +312,17 @@ func (r *EtcdRegistry) DestroyUnit(name string) error {
 	}
 
 	// TODO(jonboulle): add unit reference counting and actually destroying Units
+	if u != nil { //delete unit
+		path := u.Unit.Hash().String()
+		key = r.prefixed(unitPrefix, path)
+		_, err = r.kAPI.Delete(r.ctx(), key, opts)
+		if err != nil {
+			if isEtcdError(err, etcd.ErrorCodeKeyNotFound) {
+				err = errors.New("unit does not exist")
+			}
+			return err
+		}
+	}
 	return nil
 }
 
