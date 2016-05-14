@@ -113,7 +113,8 @@ func (u *Unit) IsGlobal() bool {
 	}
 	// Last value found wins
 	last := values[len(values)-1]
-	return strings.ToLower(last) == "true"
+	lastLower := strings.ToLower(last)
+	return lastLower == "true" || lastLower == "yes" || lastLower == "1" || lastLower == "on" || lastLower == "t"
 }
 
 // NewJob creates a new Job based on the given name and Unit.

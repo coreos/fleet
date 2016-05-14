@@ -509,6 +509,11 @@ func TestUnitIsGlobal(t *testing.T) {
 		// correct specifications
 		{"[X-Fleet]\nMachineOf=foo\nGlobal=true", true},
 		{"[X-Fleet]\nMachineOf=foo\nGlobal=True", true},
+		{"[X-Fleet]\nMachineOf=foo\nGlobal=Yes", true},
+		{"[X-Fleet]\nMachineOf=foo\nGlobal=On", true},
+		{"[X-Fleet]\nMachineOf=foo\nGlobal=1", true},
+		{"[X-Fleet]\nMachineOf=foo\nGlobal=t", true},
+		{"[X-Fleet]\nMachineOf=foo\nGlobal=12", false},
 		// multiple parameters - last wins
 		{"[X-Fleet]\nGlobal=true\nGlobal=false", false},
 		{"[X-Fleet]\nGlobal=false\nGlobal=true", true},
