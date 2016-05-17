@@ -46,6 +46,8 @@ const (
 	fleetMachineMetadata = "MachineMetadata"
 	// Require that the unit be scheduled on every machine in the cluster
 	fleetGlobal = "Global"
+	// Weight of the instance
+	fleetWeight = "Weight"
 
 	deprecatedXPrefix          = "X-"
 	deprecatedXConditionPrefix = "X-Condition"
@@ -63,6 +65,7 @@ var validRequirements = pkg.NewUnsafeSet(
 	deprecatedXConditionPrefix+fleetMachineMetadata,
 	fleetMachineMetadata,
 	fleetGlobal,
+	fleetWeight,
 )
 
 func ParseJobState(s string) (JobState, error) {
