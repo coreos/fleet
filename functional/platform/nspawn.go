@@ -651,7 +651,7 @@ func (nc *nspawnCluster) DestroyMember(m Member) error {
 	// in time, which can result in subsequent tests failing
 	run(fmt.Sprintf("ip link del vb-%s", label))
 
-	if err := nc.systemdReload(); err != nil {
+	if err := nc.SystemdReload(); err != nil {
 		log.Printf("Failed systemd daemon-reload: %v", err)
 	}
 
@@ -660,7 +660,7 @@ func (nc *nspawnCluster) DestroyMember(m Member) error {
 	return nil
 }
 
-func (nc *nspawnCluster) systemdReload() error {
+func (nc *nspawnCluster) SystemdReload() error {
 	conn, err := dbus.New()
 	if err != nil {
 		return err
