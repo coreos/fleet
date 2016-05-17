@@ -77,6 +77,8 @@ func main() {
 	cfgset := flag.NewFlagSet("fleet", flag.ExitOnError)
 	cfgset.Int("verbosity", 0, "Logging level")
 	cfgset.Var(&pkg.StringSlice{"http://127.0.0.1:2379", "http://127.0.0.1:4001"}, "etcd_servers", "List of etcd endpoints")
+	cfgset.String("etcd_username", "", "username for secure etcd communication")
+	cfgset.String("etcd_password", "", "password for secure etcd communication")
 	cfgset.String("etcd_keyfile", "", "SSL key file used to secure etcd communication")
 	cfgset.String("etcd_certfile", "", "SSL certification file used to secure etcd communication")
 	cfgset.String("etcd_cafile", "", "SSL Certificate Authority file used to secure etcd communication")
@@ -213,6 +215,8 @@ func getConfig(flagset *flag.FlagSet, userCfgFile string) (*config.Config, error
 	cfg := config.Config{
 		Verbosity:               (*flagset.Lookup("verbosity")).Value.(flag.Getter).Get().(int),
 		EtcdServers:             (*flagset.Lookup("etcd_servers")).Value.(flag.Getter).Get().(pkg.StringSlice),
+		EtcdUsername:            (*flagset.Lookup("etcd_username")).Value.(flag.Getter).Get().(string),
+		EtcdPassword:            (*flagset.Lookup("etcd_password")).Value.(flag.Getter).Get().(string),
 		EtcdKeyPrefix:           (*flagset.Lookup("etcd_key_prefix")).Value.(flag.Getter).Get().(string),
 		EtcdKeyFile:             (*flagset.Lookup("etcd_keyfile")).Value.(flag.Getter).Get().(string),
 		EtcdCertFile:            (*flagset.Lookup("etcd_certfile")).Value.(flag.Getter).Get().(string),

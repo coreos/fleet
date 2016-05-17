@@ -46,6 +46,40 @@ etcd_certfile=/etc/ssl/etcd/client.pem
 etcd_keyfile=/etc/ssl/etcd/client-key.pem
 ```
 
+### Basic Authentication
+
+If your etcd cluster has [Basic authentication][etcd-authentication] enabled, you will need to configure fleet to use an username/password combination for a valid user in the system. Also, because [Basic authentication][etcd-authentication] is Base64 encoded and easily deciphered, it is recommended to also use [TLS authentication][etcd-security] for transport level encryption by providing an `etcd_cafile`. *Authentication is only available since etcd 2.1.X and greater.*
+The examples below show how to achieve this:
+
+#### Using systemd Drop-Ins
+
+```ini
+[Service]
+Environment="FLEET_ETCD_SERVERS=https://192.0.2.12:2379"
+Environment="FLEET_ETCD_USERNAME=root"
+Environment="FLEET_ETCD_PASSWORD=coreos"
+```
+
+#### Using CoreOS Cloud Config
+
+```yaml
+#cloud-config
+
+coreos:
+  fleet:
+    etcd_servers: "https://192.0.2.12:2379"
+    etcd_username: root
+    etcd_password: coreos
+```
+
+#### Using fleet configuration file
+
+```ini
+etcd_servers=["https://192.0.2.12:2379"]
+etcd_username=root
+etcd_password=coreos
+```
+
 ## systemd
 
 The `fleetd` daemon communicates with systemd (v207+) running locally on a given machine. It requires D-Bus (v1.6.12+) to do this.
@@ -215,6 +249,7 @@ Default: false
 [config]: /fleet.conf.sample
 [etcd]: https://github.com/coreos/docs/blob/master/etcd/getting-started-with-etcd.md
 [etcd-security]: https://github.com/coreos/etcd/blob/master/Documentation/security.md
+[etcd-authentication]: https://github.com/coreos/etcd/blob/master/Documentation/authentication.md
 [fleet-inject-ssh]: /scripts/fleetctl-inject-ssh.sh
 [fleet-scale]: fleet-scaling.md#implemented-quick-wins
 [socket-unit]: http://www.freedesktop.org/software/systemd/man/systemd.socket.html

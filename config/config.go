@@ -20,6 +20,8 @@ import (
 
 type Config struct {
 	EtcdServers             []string
+	EtcdUsername            string
+	EtcdPassword            string
 	EtcdKeyPrefix           string
 	EtcdKeyFile             string
 	EtcdCertFile            string
