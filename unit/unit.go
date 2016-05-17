@@ -20,10 +20,13 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io/ioutil"
+	"strconv"
 	"strings"
 
 	"github.com/coreos/go-systemd/unit"
 )
+
+const defaultWeight = 1
 
 func NewUnitFile(raw string) (*UnitFile, error) {
 	reader := strings.NewReader(raw)
@@ -111,6 +114,21 @@ type UnitFile struct {
 	Contents map[string]map[string][]string
 
 	Options []*unit.UnitOption
+}
+
+// Weight returns the weight of the Job
+func (u *UnitFile) Weight() int {
+	weightStrings := u.Contents["X-Fleet"]["Weight"]
+
+	if len(weightStrings) == 0 {
+		return defaultWeight
+	}
+
+	if w, err := strconv.Atoi(weightStrings[0]); err != nil {
+		return defaultWeight
+	} else {
+		return w
+	}
 }
 
 // Description returns the first Description option found in the [Unit] section.
