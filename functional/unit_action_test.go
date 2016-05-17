@@ -701,6 +701,11 @@ func TestReplaceSerialization(t *testing.T) {
 		t.Fatalf("Failed to generate a temp fleet service: %v", err)
 	}
 
+	// run once systemctl daemon-reload as its unit file has changed
+	if err := cluster.SystemdReload(); err != nil {
+		t.Fatalf("Failed systemd daemon-reload: %v", err)
+	}
+
 	stdout, stderr, err = cluster.Fleetctl(m, "start", "--replace", tmpSyncService)
 	if err != nil {
 		t.Fatalf("Failed to replace unit: \nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)

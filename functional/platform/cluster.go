@@ -33,6 +33,7 @@ type Cluster interface {
 	Members() []Member
 	MemberCommand(Member, ...string) (string, error)
 	Destroy(t *testing.T) error
+	SystemdReload() error
 
 	// client operations
 	Fleetctl(m Member, args ...string) (string, string, error)
