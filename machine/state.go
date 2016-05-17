@@ -14,8 +14,14 @@
 
 package machine
 
+import "strconv"
+
 const (
+	sharesMetadataName = "shares"
+
 	shortIDLen = 8
+
+	defaultShares = 1024
 )
 
 // MachineState represents a point-in-time snapshot of the
@@ -25,6 +31,16 @@ type MachineState struct {
 	PublicIP string
 	Metadata map[string]string
 	Version  string
+}
+
+func (ms MachineState) Shares() int {
+	if shares, ok := ms.Metadata[sharesMetadataName]; ok {
+		if v, err := strconv.Atoi(shares); err == nil {
+			return v
+		}
+	}
+
+	return defaultShares
 }
 
 func (ms MachineState) ShortID() string {
