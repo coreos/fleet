@@ -80,54 +80,54 @@ func newFakeRegistryForSsh() client.API {
 }
 
 func TestSshUnknownMachine(t *testing.T) {
-	cAPI := newFakeRegistryForSsh()
+	cAPI = newFakeRegistryForSsh()
 
-	_, ok, _ := findAddressInMachineList("asdf", cAPI)
+	_, ok, _ := findAddressInMachineList("asdf")
 	if ok {
 		t.Error("Expected to not find any machine with the machine ID `asdf`")
 	}
 }
 
 func TestSshFindMachine(t *testing.T) {
-	cAPI := newFakeRegistryForSsh()
+	cAPI = newFakeRegistryForSsh()
 
-	ip, _, _ := findAddressInMachineList("c31e44e1-f858-436e-933e-59c642517860", cAPI)
+	ip, _, _ := findAddressInMachineList("c31e44e1-f858-436e-933e-59c642517860")
 	if ip != "1.2.3.4" {
 		t.Errorf("Expected to return the host 1.2.3.4, but it was %s", ip)
 	}
 }
 
 func TestSshFindMachineByUnknownUnitName(t *testing.T) {
-	cAPI := newFakeRegistryForSsh()
+	cAPI = newFakeRegistryForSsh()
 
-	_, ok, _ := findAddressInRunningUnits("asdf", cAPI)
+	_, ok, _ := findAddressInRunningUnits("asdf")
 	if ok {
 		t.Error("Expected to not find any machine with the unit name `asdf`")
 	}
 }
 
 func TestSshFindMachineByUnitName(t *testing.T) {
-	cAPI := newFakeRegistryForSsh()
+	cAPI = newFakeRegistryForSsh()
 
-	ip, _, _ := findAddressInRunningUnits("j1", cAPI)
+	ip, _, _ := findAddressInRunningUnits("j1")
 	if ip != "1.2.3.4" {
 		t.Errorf("Expected to return the host 1.2.3.4, but it was %s", ip)
 	}
 }
 
 func TestGlobalLookupByUnknownArgument(t *testing.T) {
-	cAPI := newFakeRegistryForSsh()
+	cAPI = newFakeRegistryForSsh()
 
-	_, err := globalMachineLookup([]string{"asdf"}, cAPI)
+	_, err := globalMachineLookup([]string{"asdf"})
 	if err == nil {
 		t.Fatal("Expected to receive error, got nil")
 	}
 }
 
 func TestGlobalLookupByMachineID(t *testing.T) {
-	cAPI := newFakeRegistryForSsh()
+	cAPI = newFakeRegistryForSsh()
 
-	ip, err := globalMachineLookup([]string{"c31e44e1-f858-436e-933e-59c642517860"}, cAPI)
+	ip, err := globalMachineLookup([]string{"c31e44e1-f858-436e-933e-59c642517860"})
 	if err != nil {
 		t.Fatal("Expected to not find any error")
 	}
@@ -138,9 +138,9 @@ func TestGlobalLookupByMachineID(t *testing.T) {
 }
 
 func TestGlobalLookupByUnitName(t *testing.T) {
-	cAPI := newFakeRegistryForSsh()
+	cAPI = newFakeRegistryForSsh()
 
-	ip, err := globalMachineLookup([]string{"j1"}, cAPI)
+	ip, err := globalMachineLookup([]string{"j1"})
 	if err != nil {
 		t.Fatal("Expected to not find any error")
 	}
@@ -151,9 +151,9 @@ func TestGlobalLookupByUnitName(t *testing.T) {
 }
 
 func TestGlobalLookupWithAmbiguousArgument(t *testing.T) {
-	cAPI := newFakeRegistryForSsh()
+	cAPI = newFakeRegistryForSsh()
 
-	_, err := globalMachineLookup([]string{"hello.service"}, cAPI)
+	_, err := globalMachineLookup([]string{"hello.service"})
 	if err == nil {
 		t.Fatal("Expected to find an error with an ambiguous argument")
 	}

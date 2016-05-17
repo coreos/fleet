@@ -72,7 +72,7 @@ func runStatusUnits(c *cli.Context, cAPI client.API) (exit int) {
 			fmt.Printf("\n")
 		}
 
-		if exit = runCommand(c, cAPI, unit.MachineID, "systemctl", "status", "-l", unit.Name); exit != 0 {
+		if exit = runCommand(c, unit.MachineID, "systemctl", "status", "-l", unit.Name); exit != 0 {
 			break
 		}
 	}

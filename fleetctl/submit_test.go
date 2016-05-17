@@ -31,7 +31,7 @@ func doSubmitUnits(t *testing.T, r commandTestResults, errchan chan error, cAPI 
 		return
 	}
 
-	submitted, err := findUnits(r.units, cAPI)
+	submitted, err := findUnits(r.units)
 	if err != nil {
 		errchan <- err
 		return

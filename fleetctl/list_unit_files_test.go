@@ -24,13 +24,10 @@ import (
 )
 
 func TestListUnitFilesFieldsToStrings(t *testing.T) {
-	//	c := createTestContext(t)
-	//	stderr("Context: %v",c)
-	//	cAPI := getClientAPI(c)
 	type fakeAPI struct {
 		client.API
 	}
-	cAPI := fakeAPI{}
+	cAPI = fakeAPI{}
 	u := schema.Unit{
 		Name:    "foo.service",
 		Options: []*schema.UnitOption{},
@@ -43,11 +40,11 @@ func TestListUnitFilesFieldsToStrings(t *testing.T) {
 		"tmachine": "-",
 		"state":    "-",
 	} {
-		f := listUnitFilesFields[k](u, false, cAPI)
+		f := listUnitFilesFields[k](u, false)
 		assertEqual(t, k, v, f)
 	}
 
-	f := listUnitFilesFields["unit"](u, false, cAPI)
+	f := listUnitFilesFields["unit"](u, false)
 	assertEqual(t, "unit", u.Name, f)
 
 	u = schema.Unit{
@@ -57,12 +54,12 @@ func TestListUnitFilesFieldsToStrings(t *testing.T) {
 		},
 	}
 
-	d := listUnitFilesFields["desc"](u, false, cAPI)
+	d := listUnitFilesFields["desc"](u, false)
 	assertEqual(t, "desc", "some description", d)
 
 	for _, state := range []job.JobState{job.JobStateLoaded, job.JobStateInactive, job.JobStateLaunched} {
 		u.CurrentState = string(state)
-		f := listUnitFilesFields["state"](u, false, cAPI)
+		f := listUnitFilesFields["state"](u, false)
 		assertEqual(t, "state", string(state), f)
 	}
 
@@ -70,7 +67,7 @@ func TestListUnitFilesFieldsToStrings(t *testing.T) {
 	machineStates = map[string]*machine.MachineState{}
 
 	u.MachineID = "some-id"
-	ms := listUnitFilesFields["tmachine"](u, true, cAPI)
+	ms := listUnitFilesFields["tmachine"](u, true)
 	assertEqual(t, "machine", "some-id", ms)
 
 	u.MachineID = "other-id"
@@ -80,12 +77,12 @@ func TestListUnitFilesFieldsToStrings(t *testing.T) {
 			PublicIP: "1.2.3.4",
 		},
 	}
-	ms = listUnitFilesFields["tmachine"](u, true, cAPI)
+	ms = listUnitFilesFields["tmachine"](u, true)
 	assertEqual(t, "machine", "other-id/1.2.3.4", ms)
 
 	uh := "a0f275d46bc6ee0eca06be7c339913c07d99c0c7"
-	fuh := listUnitFilesFields["hash"](u, true, cAPI)
-	suh := listUnitFilesFields["hash"](u, false, cAPI)
+	fuh := listUnitFilesFields["hash"](u, true)
+	suh := listUnitFilesFields["hash"](u, false)
 	assertEqual(t, "hash", uh, fuh)
 	assertEqual(t, "hash", uh[:7], suh)
 }
@@ -94,7 +91,7 @@ func TestMapTargetField(t *testing.T) {
 	type fakeAPI struct {
 		client.API
 	}
-	cAPI := fakeAPI{}
+	cAPI = fakeAPI{}
 	// seeding the cache for the following test cases
 	machineStates = map[string]*machine.MachineState{
 		"XXX": &machine.MachineState{ID: "XXX"},
@@ -129,7 +126,7 @@ func TestMapTargetField(t *testing.T) {
 
 	for i, tt := range tests {
 		// eliminate the "full" variable from test cases by hard-coding "true" below
-		got := mapTargetField(tt.unit, true, cAPI)
+		got := mapTargetField(tt.unit, true)
 		if tt.want != got {
 			t.Errorf("case %d: want=%q got=%q", i, tt.want, got)
 		}

@@ -81,5 +81,5 @@ func runJournal(c *cli.Context, cAPI client.API) (exit int) {
 		cmd = append(cmd, "-f")
 	}
 
-	return runCommand(c, cAPI, u.MachineID, cmd[0], cmd[1:]...)
+	return runCommand(c, u.MachineID, cmd[0], cmd[1:]...)
 }

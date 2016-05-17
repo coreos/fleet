@@ -55,12 +55,12 @@ func runLoadUnits(c *cli.Context, cAPI client.API) (exit int) {
 		return 0
 	}
 
-	if err := lazyCreateUnits(c, cAPI); err != nil {
+	if err := lazyCreateUnits(c); err != nil {
 		stderr("Error creating units: %v", err)
 		return 1
 	}
 
-	triggered, err := lazyLoadUnits(args, cAPI)
+	triggered, err := lazyLoadUnits(args)
 	if err != nil {
 		stderr("Error loading units: %v", err)
 		return 1
@@ -75,7 +75,7 @@ func runLoadUnits(c *cli.Context, cAPI client.API) (exit int) {
 		}
 	}
 
-	exit = tryWaitForUnitStates(loading, "load", job.JobStateLoaded, getBlockAttempts(c), os.Stdout, cAPI)
+	exit = tryWaitForUnitStates(loading, "load", job.JobStateLoaded, getBlockAttempts(c), os.Stdout)
 
 	return
 }

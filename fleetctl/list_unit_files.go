@@ -31,14 +31,14 @@ const (
 	defaultListUnitFilesFields = "unit,hash,dstate,state,target"
 )
 
-func mapTargetField(u schema.Unit, full bool, cAPI client.API) string {
+func mapTargetField(u schema.Unit, full bool) string {
 	if suToGlobal(u) {
 		return "global"
 	}
 	if u.MachineID == "" {
 		return "-"
 	}
-	ms := cachedMachineState(u.MachineID, cAPI)
+	ms := cachedMachineState(u.MachineID)
 	if ms == nil {
 		ms = &machine.MachineState{ID: u.MachineID}
 	}
@@ -63,13 +63,13 @@ func NewListUnitFilesCommand() cli.Command {
 
 var (
 	listUnitFilesFields = map[string]unitToField{
-		"unit": func(u schema.Unit, full bool, cAPI client.API) string {
+		"unit": func(u schema.Unit, full bool) string {
 			return u.Name
 		},
-		"global": func(u schema.Unit, full bool, cAPI client.API) string {
+		"global": func(u schema.Unit, full bool) string {
 			return strconv.FormatBool(suToGlobal(u))
 		},
-		"dstate": func(u schema.Unit, full bool, cAPI client.API) string {
+		"dstate": func(u schema.Unit, full bool) string {
 			if u.DesiredState == "" {
 				return "-"
 			}
@@ -77,20 +77,20 @@ var (
 		},
 		"target":   mapTargetField,
 		"tmachine": mapTargetField,
-		"state": func(u schema.Unit, full bool, cAPI client.API) string {
+		"state": func(u schema.Unit, full bool) string {
 			if suToGlobal(u) || u.CurrentState == "" {
 				return "-"
 			}
 			return u.CurrentState
 		},
-		"hash": func(u schema.Unit, full bool, cAPI client.API) string {
+		"hash": func(u schema.Unit, full bool) string {
 			uf := schema.MapSchemaUnitOptionsToUnitFile(u.Options)
 			if !full {
 				return uf.Hash().Short()
 			}
 			return uf.Hash().String()
 		},
-		"desc": func(u schema.Unit, full bool, cAPI client.API) string {
+		"desc": func(u schema.Unit, full bool) string {
 			uf := schema.MapSchemaUnitOptionsToUnitFile(u.Options)
 			d := uf.Description()
 			if d == "" {
@@ -101,7 +101,7 @@ var (
 	}
 )
 
-type unitToField func(u schema.Unit, full bool, cAPI client.API) string
+type unitToField func(u schema.Unit, full bool) string
 
 func runListUnitFiles(c *cli.Context, cAPI client.API) (exit int) {
 	listUnitFilesFieldsFlag := c.String("fields")
@@ -134,7 +134,7 @@ func runListUnitFiles(c *cli.Context, cAPI client.API) (exit int) {
 	for _, u := range units {
 		var f []string
 		for _, col := range cols {
-			f = append(f, listUnitFilesFields[col](*u, c.Bool("full"), cAPI))
+			f = append(f, listUnitFilesFields[col](*u, c.Bool("full")))
 		}
 		fmt.Fprintln(out, strings.Join(f, "\t"))
 	}

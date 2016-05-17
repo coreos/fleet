@@ -40,11 +40,11 @@ func TestListUnitsFieldsToStrings(t *testing.T) {
 	type fakeAPI struct {
 		client.API
 	}
-	cAPI := fakeAPI{}
+	cAPI = fakeAPI{}
 
 	// nil UnitState shouldn't happen, but just in case
 	for _, tt := range []string{"unit", "load", "active", "sub", "machine", "hash"} {
-		f := listUnitsFields[tt](nil, false, cAPI)
+		f := listUnitsFields[tt](nil, false)
 		assertEqual(t, tt, "-", f)
 	}
 
@@ -63,12 +63,12 @@ func TestListUnitsFieldsToStrings(t *testing.T) {
 		"machine": "-",
 		"unit":    "sleep",
 	} {
-		got := listUnitsFields[k](us, false, cAPI)
+		got := listUnitsFields[k](us, false)
 		assertEqual(t, k, want, got)
 	}
 
 	us.MachineID = "some-id"
-	ms := listUnitsFields["machine"](us, true, cAPI)
+	ms := listUnitsFields["machine"](us, true)
 	assertEqual(t, "machine", "some-id", ms)
 
 	us.MachineID = "other-id"
@@ -78,13 +78,13 @@ func TestListUnitsFieldsToStrings(t *testing.T) {
 			PublicIP: "1.2.3.4",
 		},
 	}
-	ms = listUnitsFields["machine"](us, true, cAPI)
+	ms = listUnitsFields["machine"](us, true)
 	assertEqual(t, "machine", "other-id/1.2.3.4", ms)
 
 	uh := "a0f275d46bc6ee0eca06be7c339913c07d99c0c7"
 	us.Hash = uh
-	fuh := listUnitsFields["hash"](us, true, cAPI)
-	suh := listUnitsFields["hash"](us, false, cAPI)
+	fuh := listUnitsFields["hash"](us, true)
+	suh := listUnitsFields["hash"](us, false)
 	assertEqual(t, "hash", uh, fuh)
 	assertEqual(t, "hash", uh[:7], suh)
 }

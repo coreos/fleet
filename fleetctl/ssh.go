@@ -80,11 +80,11 @@ func runSSH(c *cli.Context, cAPI client.API) (exit int) {
 
 	switch {
 	case c.String("machine") != "":
-		addr, _, err = findAddressInMachineList(c.String("machine"), cAPI)
+		addr, _, err = findAddressInMachineList(c.String("machine"))
 	case c.String("unit") != "":
-		addr, _, err = findAddressInRunningUnits(c.String("unit"), cAPI)
+		addr, _, err = findAddressInRunningUnits(c.String("unit"))
 	default:
-		addr, err = globalMachineLookup(args, cAPI)
+		addr, err = globalMachineLookup(args)
 		// trim machine/unit name from args
 		if len(args) > 0 {
 			args = args[1:]
@@ -143,15 +143,15 @@ func findSSHPort(addr string, c *cli.Context) string {
 	}
 }
 
-func globalMachineLookup(args []string, cAPI client.API) (string, error) {
+func globalMachineLookup(args []string) (string, error) {
 	if len(args) == 0 {
 		return "", errors.New("one machine or unit must be provided")
 	}
 
 	lookup := args[0]
 
-	machineAddr, machineOk, _ := findAddressInMachineList(lookup, cAPI)
-	unitAddr, unitOk, _ := findAddressInRunningUnits(lookup, cAPI)
+	machineAddr, machineOk, _ := findAddressInMachineList(lookup)
+	unitAddr, unitOk, _ := findAddressInRunningUnits(lookup)
 
 	switch {
 	case machineOk && unitOk:
@@ -165,7 +165,7 @@ func globalMachineLookup(args []string, cAPI client.API) (string, error) {
 	return "", fmt.Errorf("could not find matching unit or machine")
 }
 
-func findAddressInMachineList(lookup string, cAPI client.API) (string, bool, error) {
+func findAddressInMachineList(lookup string) (string, bool, error) {
 	states, err := cAPI.Machines()
 	if err != nil {
 		return "", false, err
@@ -192,7 +192,7 @@ func findAddressInMachineList(lookup string, cAPI client.API) (string, bool, err
 	return match.PublicIP, true, nil
 }
 
-func findAddressInRunningUnits(name string, cAPI client.API) (string, bool, error) {
+func findAddressInRunningUnits(name string) (string, bool, error) {
 	name = unitNameMangle(name)
 	u, err := cAPI.Unit(name)
 	if err != nil {
@@ -203,7 +203,7 @@ func findAddressInRunningUnits(name string, cAPI client.API) (string, bool, erro
 		return "", false, fmt.Errorf("global units unsupported")
 	}
 
-	m := cachedMachineState(u.MachineID, cAPI)
+	m := cachedMachineState(u.MachineID)
 	if m != nil && m.PublicIP != "" {
 		return m.PublicIP, true, nil
 	}
@@ -213,7 +213,7 @@ func findAddressInRunningUnits(name string, cAPI client.API) (string, bool, erro
 
 // runCommand will attempt to run a command on a given machine. It will attempt
 // to SSH to the machine if it is identified as being remote.
-func runCommand(c *cli.Context, cAPI client.API, machID string, cmd string, args ...string) (retcode int) {
+func runCommand(c *cli.Context, machID string, cmd string, args ...string) (retcode int) {
 	var err error
 	if machine.IsLocalMachineID(machID) {
 		err, retcode = runLocalCommand(cmd, args...)
@@ -221,7 +221,7 @@ func runCommand(c *cli.Context, cAPI client.API, machID string, cmd string, args
 			stderr("Error running local command: %v", err)
 		}
 	} else {
-		ms, err := machineState(machID, cAPI)
+		ms, err := machineState(machID)
 		if err != nil || ms == nil {
 			stderr("Error getting machine IP: %v", err)
 		} else {

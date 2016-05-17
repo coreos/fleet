@@ -61,12 +61,12 @@ func runStartUnit(c *cli.Context, cAPI client.API) (exit int) {
 		return 0
 	}
 
-	if err := lazyCreateUnits(c, cAPI); err != nil {
+	if err := lazyCreateUnits(c); err != nil {
 		stderr("Error creating units: %v", err)
 		return 1
 	}
 
-	triggered, err := lazyStartUnits(args, cAPI)
+	triggered, err := lazyStartUnits(args)
 	if err != nil {
 		stderr("Error starting units: %v", err)
 		return 1
@@ -81,6 +81,6 @@ func runStartUnit(c *cli.Context, cAPI client.API) (exit int) {
 		}
 	}
 
-	exit = tryWaitForUnitStates(starting, "start", job.JobStateLaunched, getBlockAttempts(c), os.Stdout, cAPI)
+	exit = tryWaitForUnitStates(starting, "start", job.JobStateLaunched, getBlockAttempts(c), os.Stdout)
 	return
 }

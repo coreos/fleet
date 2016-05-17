@@ -44,7 +44,7 @@ func runUnloadUnit(c *cli.Context, cAPI client.API) (exit int) {
 		return 0
 	}
 
-	units, err := findUnits(args, cAPI)
+	units, err := findUnits(args)
 	if err != nil {
 		stderr("%v", err)
 		return 1
@@ -68,7 +68,7 @@ func runUnloadUnit(c *cli.Context, cAPI client.API) (exit int) {
 		}
 	}
 
-	exit = tryWaitForUnitStates(wait, "unload", job.JobStateInactive, getBlockAttempts(c), os.Stdout, cAPI)
+	exit = tryWaitForUnitStates(wait, "unload", job.JobStateInactive, getBlockAttempts(c), os.Stdout)
 	if exit == 0 {
 		stderr("Successfully unloaded units %v.", wait)
 	} else {

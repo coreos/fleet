@@ -61,7 +61,7 @@ func runStopUnit(c *cli.Context, cAPI client.API) (exit int) {
 		return 0
 	}
 
-	units, err := findUnits(args, cAPI)
+	units, err := findUnits(args)
 	if err != nil {
 		stderr("%v", err)
 		return 1
@@ -88,7 +88,7 @@ func runStopUnit(c *cli.Context, cAPI client.API) (exit int) {
 		}
 	}
 
-	exit = tryWaitForUnitStates(stopping, "stop", job.JobStateLoaded, getBlockAttempts(c), os.Stdout, cAPI)
+	exit = tryWaitForUnitStates(stopping, "stop", job.JobStateLoaded, getBlockAttempts(c), os.Stdout)
 	if exit == 0 {
 		stderr("Successfully stopped units %v.", stopping)
 	} else {

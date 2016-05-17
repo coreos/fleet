@@ -69,7 +69,7 @@ var (
 	out *tabwriter.Writer
 
 	// global API client used by commands
-	//	cAPI client.API
+	cAPI client.API
 
 	// current command being executed
 	currentCommand string
@@ -195,15 +195,6 @@ func main() {
 	app.Run(os.Args)
 }
 
-func getClientAPI(c *cli.Context) client.API {
-	cAPI, err := getClient(c)
-	if err != nil {
-		stderr("Unable to initialize client: %v", err)
-		os.Exit(1)
-	}
-	return cAPI
-}
-
 func makeActionWrapper(action func(context *cli.Context, cAPI client.API) int) func(context *cli.Context) {
 	return func(c *cli.Context) {
 		if c.Bool("sign") {
@@ -237,6 +228,16 @@ func getFlagsFromEnv(prefix string, fs *flag.FlagSet) {
 		}
 
 	})
+}
+
+func getClientAPI(c *cli.Context) client.API {
+	var err error
+	cAPI, err = getClient(c)
+	if err != nil {
+		stderr("Unable to initialize client: %v", err)
+		os.Exit(1)
+	}
+	return cAPI
 }
 
 // getClient initializes a client of fleet based on CLI flags
@@ -430,7 +431,7 @@ func getChecker(c *cli.Context) *ssh.HostKeyChecker {
 // tries to get the template configuration either from the registry or
 // the local disk.
 // It returns a UnitFile configuration or nil; and any error ecountered
-func getUnitFile(file string, cAPI client.API, c *cli.Context) (*unit.UnitFile, error) {
+func getUnitFile(file string, c *cli.Context) (*unit.UnitFile, error) {
 	var uf *unit.UnitFile
 	name := unitNameMangle(file)
 
@@ -458,7 +459,7 @@ func getUnitFile(file string, cAPI client.API, c *cli.Context) (*unit.UnitFile, 
 		// If we found a template unit, later we create a
 		// near-identical instance unit in the Registry - same
 		// unit file as the template, but different name
-		uf, err = getUnitFileFromTemplate(info, file, cAPI, c)
+		uf, err = getUnitFileFromTemplate(info, file, c)
 		if err != nil {
 			return nil, fmt.Errorf("failed getting Unit(%s) from template: %v", file, err)
 		}
@@ -486,7 +487,7 @@ func getUnitFromFile(file string) (*unit.UnitFile, error) {
 // is either in the registry or on the file system
 // It takes two arguments, the template information and the unit file name
 // It returns the Unit or nil; and any error encountered
-func getUnitFileFromTemplate(uni *unit.UnitNameInfo, fileName string, cAPI client.API, c *cli.Context) (*unit.UnitFile, error) {
+func getUnitFileFromTemplate(uni *unit.UnitNameInfo, fileName string, c *cli.Context) (*unit.UnitFile, error) {
 	var uf *unit.UnitFile
 
 	tmpl, err := cAPI.Unit(uni.Template)
@@ -547,7 +548,7 @@ func machineFullLegend(ms machine.MachineState, full bool) string {
 	return legend
 }
 
-func findUnits(args []string, cAPI client.API) (sus []schema.Unit, err error) {
+func findUnits(args []string) (sus []schema.Unit, err error) {
 	units, err := cAPI.Units()
 	if err != nil {
 		return nil, err
@@ -572,7 +573,7 @@ func findUnits(args []string, cAPI client.API) (sus []schema.Unit, err error) {
 	return filtered, nil
 }
 
-func createUnit(name string, uf *unit.UnitFile, cAPI client.API) (*schema.Unit, error) {
+func createUnit(name string, uf *unit.UnitFile) (*schema.Unit, error) {
 	if uf == nil {
 		return nil, fmt.Errorf("nil unit provided")
 	}
@@ -647,7 +648,7 @@ func checkReplaceUnitState(unit *schema.Unit) (int, error) {
 // It takes a unit file path as a parameter.
 // It returns 0 on success and if the unit should be created, 1 if the
 // unit should not be created; and any error encountered.
-func checkUnitCreation(arg string, c *cli.Context, cAPI client.API) (int, error) {
+func checkUnitCreation(arg string, c *cli.Context) (int, error) {
 	name := unitNameMangle(arg)
 
 	// First, check if there already exists a Unit by the given name in the Registry
@@ -695,7 +696,7 @@ func checkUnitCreation(arg string, c *cli.Context, cAPI client.API) (int, error)
 // Any error encountered during these steps is returned immediately (i.e.
 // subsequent Jobs are not acted on). An error is also returned if none of the
 // above conditions match a given Job.
-func lazyCreateUnits(c *cli.Context, cAPI client.API) error {
+func lazyCreateUnits(c *cli.Context) error {
 	args := c.Args()
 	errchan := make(chan error)
 	var wg sync.WaitGroup
@@ -703,7 +704,7 @@ func lazyCreateUnits(c *cli.Context, cAPI client.API) error {
 		arg = maybeAppendDefaultUnitType(arg)
 		name := unitNameMangle(arg)
 
-		ret, err := checkUnitCreation(arg, c, cAPI)
+		ret, err := checkUnitCreation(arg, c)
 		if err != nil {
 			return err
 		} else if ret != 0 {
@@ -713,18 +714,18 @@ func lazyCreateUnits(c *cli.Context, cAPI client.API) error {
 		// Assume that the name references a local unit file on
 		// disk or if it is an instance unit and if so get its
 		// corresponding unit
-		uf, err := getUnitFile(arg, cAPI, c)
+		uf, err := getUnitFile(arg, c)
 		if err != nil {
 			return err
 		}
 
-		_, err = createUnit(name, uf, cAPI)
+		_, err = createUnit(name, uf)
 		if err != nil {
 			return err
 		}
 
 		wg.Add(1)
-		go checkUnitState(name, job.JobStateInactive, c.Int("block-attempts"), os.Stdout, &wg, errchan, cAPI)
+		go checkUnitState(name, job.JobStateInactive, c.Int("block-attempts"), os.Stdout, &wg, errchan)
 	}
 
 	go func() {
@@ -808,27 +809,27 @@ func isLocalUnitDifferent(file string, su *schema.Unit, fatal bool, c *cli.Conte
 	return false, err
 }
 
-func lazyLoadUnits(args []string, cAPI client.API) ([]*schema.Unit, error) {
+func lazyLoadUnits(args []string) ([]*schema.Unit, error) {
 	units := make([]string, 0, len(args))
 	for _, j := range args {
 		units = append(units, unitNameMangle(j))
 	}
-	return setTargetStateOfUnits(units, job.JobStateLoaded, cAPI)
+	return setTargetStateOfUnits(units, job.JobStateLoaded)
 }
 
-func lazyStartUnits(args []string, cAPI client.API) ([]*schema.Unit, error) {
+func lazyStartUnits(args []string) ([]*schema.Unit, error) {
 	units := make([]string, 0, len(args))
 	for _, j := range args {
 		units = append(units, unitNameMangle(j))
 	}
-	return setTargetStateOfUnits(units, job.JobStateLaunched, cAPI)
+	return setTargetStateOfUnits(units, job.JobStateLaunched)
 }
 
 // setTargetStateOfUnits ensures that the target state for the given Units is set
 // to the given state in the Registry.
 // On success, a slice of the Units for which a state change was made is returned.
 // Any error encountered is immediately returned (i.e. this is not a transaction).
-func setTargetStateOfUnits(units []string, state job.JobState, cAPI client.API) ([]*schema.Unit, error) {
+func setTargetStateOfUnits(units []string, state job.JobState) ([]*schema.Unit, error) {
 	triggered := make([]*schema.Unit, 0)
 	for _, name := range units {
 		u, err := cAPI.Unit(name)
@@ -881,7 +882,7 @@ func getBlockAttempts(c *cli.Context) int {
 // If maxAttempts is zero tryWaitForUnitStates will retry forever, and
 // if it is greater than zero, it will retry up to the indicated value.
 // It returns 0 on success or 1 on errors.
-func tryWaitForUnitStates(units []string, state string, js job.JobState, maxAttempts int, out io.Writer, cAPI client.API) (ret int) {
+func tryWaitForUnitStates(units []string, state string, js job.JobState, maxAttempts int, out io.Writer) (ret int) {
 	// We do not wait just assume we reached the desired state
 	if maxAttempts <= -1 {
 		for _, name := range units {
@@ -890,7 +891,7 @@ func tryWaitForUnitStates(units []string, state string, js job.JobState, maxAtte
 		return
 	}
 
-	errchan := waitForUnitStates(units, js, maxAttempts, out, cAPI)
+	errchan := waitForUnitStates(units, js, maxAttempts, out)
 	for err := range errchan {
 		stderr("Error waiting for units: %v", err)
 		ret = 1
@@ -906,12 +907,12 @@ func tryWaitForUnitStates(units []string, state string, js job.JobState, maxAtte
 // than zero. Returned is an error channel used to communicate when
 // timeouts occur. The returned error channel will be closed after all
 // polling operation is complete.
-func waitForUnitStates(units []string, js job.JobState, maxAttempts int, out io.Writer, cAPI client.API) chan error {
+func waitForUnitStates(units []string, js job.JobState, maxAttempts int, out io.Writer) chan error {
 	errchan := make(chan error)
 	var wg sync.WaitGroup
 	for _, name := range units {
 		wg.Add(1)
-		go checkUnitState(name, js, maxAttempts, out, &wg, errchan, cAPI)
+		go checkUnitState(name, js, maxAttempts, out, &wg, errchan)
 	}
 
 	go func() {
@@ -922,21 +923,21 @@ func waitForUnitStates(units []string, js job.JobState, maxAttempts int, out io.
 	return errchan
 }
 
-func checkUnitState(name string, js job.JobState, maxAttempts int, out io.Writer, wg *sync.WaitGroup, errchan chan error, cAPI client.API) {
+func checkUnitState(name string, js job.JobState, maxAttempts int, out io.Writer, wg *sync.WaitGroup, errchan chan error) {
 	defer wg.Done()
 
 	sleep := defaultSleepTime
 
 	if maxAttempts < 1 {
 		for {
-			if assertUnitState(name, js, out, cAPI) {
+			if assertUnitState(name, js, out) {
 				return
 			}
 			time.Sleep(sleep)
 		}
 	} else {
 		for attempt := 0; attempt < maxAttempts; attempt++ {
-			if assertUnitState(name, js, out, cAPI) {
+			if assertUnitState(name, js, out) {
 				return
 			}
 			time.Sleep(sleep)
@@ -945,7 +946,7 @@ func checkUnitState(name string, js job.JobState, maxAttempts int, out io.Writer
 	}
 }
 
-func assertUnitState(name string, js job.JobState, out io.Writer, cAPI client.API) (ret bool) {
+func assertUnitState(name string, js job.JobState, out io.Writer) (ret bool) {
 	var state string
 
 	u, err := cAPI.Unit(name)
@@ -974,7 +975,7 @@ func assertUnitState(name string, js job.JobState, out io.Writer, cAPI client.AP
 	msg := fmt.Sprintf("Unit %s %s", name, u.CurrentState)
 
 	if u.MachineID != "" {
-		ms := cachedMachineState(u.MachineID, cAPI)
+		ms := cachedMachineState(u.MachineID)
 		if ms != nil {
 			msg = fmt.Sprintf("%s on %s", msg, machineFullLegend(*ms, false))
 		}
@@ -984,7 +985,7 @@ func assertUnitState(name string, js job.JobState, out io.Writer, cAPI client.AP
 	return
 }
 
-func machineState(machID string, cAPI client.API) (*machine.MachineState, error) {
+func machineState(machID string) (*machine.MachineState, error) {
 	machines, err := cAPI.Machines()
 	if err != nil {
 		return nil, err
@@ -1000,7 +1001,7 @@ func machineState(machID string, cAPI client.API) (*machine.MachineState, error)
 // cachedMachineState makes a best-effort to retrieve the MachineState of the given machine ID.
 // It memoizes MachineState information for the life of a fleetctl invocation.
 // Any error encountered retrieving the list of machines is ignored.
-func cachedMachineState(machID string, cAPI client.API) (ms *machine.MachineState) {
+func cachedMachineState(machID string) (ms *machine.MachineState) {
 	if machineStates == nil {
 		machineStates = make(map[string]*machine.MachineState)
 		ms, err := cAPI.Machines()

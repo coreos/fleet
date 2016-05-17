@@ -49,7 +49,7 @@ func runSubmitUnits(c *cli.Context, cAPI client.API) (exit int) {
 		return 0
 	}
 
-	if err := lazyCreateUnits(c, cAPI); err != nil {
+	if err := lazyCreateUnits(c); err != nil {
 		stderr("Error creating units: %v", err)
 		exit = 1
 	}

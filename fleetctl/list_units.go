@@ -56,41 +56,41 @@ Or, choose the columns to display:
 
 var (
 	listUnitsFields = map[string]usToField{
-		"unit": func(us *schema.UnitState, full bool, cAPI client.API) string {
+		"unit": func(us *schema.UnitState, full bool) string {
 			if us == nil {
 				return "-"
 			}
 			return us.Name
 		},
-		"load": func(us *schema.UnitState, full bool, cAPI client.API) string {
+		"load": func(us *schema.UnitState, full bool) string {
 			if us == nil {
 				return "-"
 			}
 			return us.SystemdLoadState
 		},
-		"active": func(us *schema.UnitState, full bool, cAPI client.API) string {
+		"active": func(us *schema.UnitState, full bool) string {
 			if us == nil {
 				return "-"
 			}
 			return us.SystemdActiveState
 		},
-		"sub": func(us *schema.UnitState, full bool, cAPI client.API) string {
+		"sub": func(us *schema.UnitState, full bool) string {
 			if us == nil {
 				return "-"
 			}
 			return us.SystemdSubState
 		},
-		"machine": func(us *schema.UnitState, full bool, cAPI client.API) string {
+		"machine": func(us *schema.UnitState, full bool) string {
 			if us == nil || us.MachineID == "" {
 				return "-"
 			}
-			ms := cachedMachineState(us.MachineID, cAPI)
+			ms := cachedMachineState(us.MachineID)
 			if ms == nil {
 				ms = &machine.MachineState{ID: us.MachineID}
 			}
 			return machineFullLegend(*ms, full)
 		},
-		"hash": func(us *schema.UnitState, full bool, cAPI client.API) string {
+		"hash": func(us *schema.UnitState, full bool) string {
 			if us == nil || us.Hash == "" {
 				return "-"
 			}
@@ -102,7 +102,7 @@ var (
 	}
 )
 
-type usToField func(us *schema.UnitState, full bool, cAPI client.API) string
+type usToField func(us *schema.UnitState, full bool) string
 
 func runListUnits(c *cli.Context, cAPI client.API) (exit int) {
 	listUnitsFieldsFlag := c.String("fields")
@@ -132,7 +132,7 @@ func runListUnits(c *cli.Context, cAPI client.API) (exit int) {
 	for _, us := range states {
 		var f []string
 		for _, col := range cols {
-			f = append(f, listUnitsFields[col](us, c.Bool("full"), cAPI))
+			f = append(f, listUnitsFields[col](us, c.Bool("full")))
 		}
 		fmt.Fprintln(out, strings.Join(f, "\t"))
 	}

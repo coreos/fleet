@@ -26,8 +26,8 @@ import (
 	"github.com/coreos/fleet/unit"
 	"github.com/coreos/fleet/version"
 
-	"github.com/coreos/go-semver/semver"
 	"github.com/codegangsta/cli"
+	"github.com/coreos/go-semver/semver"
 )
 
 type commandTestResults struct {
@@ -281,7 +281,7 @@ func TestCreateUnitFails(t *testing.T) {
 	type fakeAPI struct {
 		client.API
 	}
-	cAPI := fakeAPI{}
+	cAPI = fakeAPI{}
 	var i int
 	var un string
 	var uf *unit.UnitFile
@@ -348,7 +348,7 @@ Conflicts=bar`),
 	for i, tt = range testCases {
 		un = tt.name
 		uf = tt.uf
-		if _, err := createUnit(un, uf, cAPI); err == nil {
+		if _, err := createUnit(un, uf); err == nil {
 			t.Errorf("case %d did not return error as expected!", i)
 			t.Logf("unit name: %v", un)
 			t.Logf("unit file: %#v", uf)

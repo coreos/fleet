@@ -44,7 +44,7 @@ func doStartUnits(t *testing.T, r commandTestResults, errchan chan error, cAPI c
 		return
 	}
 
-	real_units, err := findUnits(r.units, cAPI)
+	real_units, err := findUnits(r.units)
 	if err != nil {
 		errchan <- err
 		return
