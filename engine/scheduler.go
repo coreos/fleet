@@ -32,6 +32,16 @@ type Scheduler interface {
 
 type leastLoadedScheduler struct{}
 
+func computeAgentScore(a *agent.AgentState) float64 {
+	weightSum := 0
+
+	for _, u := range a.Units {
+		weightSum += u.Unit.Weight()
+	}
+
+	return float64(weightSum) / float64(a.MState.Shares())
+}
+
 func (lls *leastLoadedScheduler) Decide(clust *clusterState, j *job.Job) (*decision, error) {
 	agents := lls.sortedAgents(clust)
 
@@ -62,7 +72,7 @@ func (lls *leastLoadedScheduler) Decide(clust *clusterState, j *job.Job) (*decis
 }
 
 // sortedAgents returns a list of AgentState objects sorted ascending
-// by the number of scheduled units
+// by the computed score
 func (lls *leastLoadedScheduler) sortedAgents(clust *clusterState) []*agent.AgentState {
 	agents := clust.agents()
 
@@ -81,7 +91,16 @@ func (sas sortableAgentStates) Len() int      { return len(sas) }
 func (sas sortableAgentStates) Swap(i, j int) { sas[i], sas[j] = sas[j], sas[i] }
 
 func (sas sortableAgentStates) Less(i, j int) bool {
-	niUnits := len(sas[i].Units)
-	njUnits := len(sas[j].Units)
-	return niUnits < njUnits || (niUnits == njUnits && sas[i].MState.ID < sas[j].MState.ID)
+	niScore := computeAgentScore(sas[i])
+	njScore := computeAgentScore(sas[j])
+
+	if niScore != njScore {
+		return niScore < njScore
+	}
+
+	if sas[i].MState.Shares() != sas[j].MState.Shares() {
+		return sas[i].MState.Shares() > sas[j].MState.Shares()
+	}
+
+	return sas[i].MState.ID < sas[j].MState.ID
 }

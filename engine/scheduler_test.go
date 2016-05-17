@@ -17,11 +17,13 @@ package engine
 import (
 	"reflect"
 	"sort"
+	"strconv"
 	"testing"
 
 	"github.com/coreos/fleet/agent"
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/machine"
+	"github.com/coreos/fleet/unit"
 )
 
 func TestSchedulerDecisions(t *testing.T) {
@@ -65,7 +67,22 @@ func TestSchedulerDecisions(t *testing.T) {
 	}
 }
 
+func buildUnitWithWeight(shares int) *job.Unit {
+	return &job.Unit{
+		Unit: unit.UnitFile{
+			Contents: map[string]map[string][]string{
+				"X-Fleet": map[string][]string{
+					"Weight": []string{strconv.Itoa(shares)},
+				},
+			},
+		},
+	}
+}
+
 func TestAgentStateSorting(t *testing.T) {
+	Unit6th := buildUnitWithWeight(10)
+	Unit7th := buildUnitWithWeight(20)
+
 	tests := []struct {
 		in  []*agent.AgentState
 		out []*agent.AgentState
@@ -112,6 +129,96 @@ func TestAgentStateSorting(t *testing.T) {
 						"3.service": &job.Unit{},
 						"4.service": &job.Unit{},
 						"5.service": &job.Unit{},
+					},
+				},
+			},
+		},
+
+		// sort by weigth of jobs scheduled to agent
+		{
+			in: []*agent.AgentState{
+				&agent.AgentState{
+					MState: &machine.MachineState{ID: "A"},
+					Units: map[string]*job.Unit{
+						"1.service": &job.Unit{},
+						"2.service": &job.Unit{},
+						"3.service": &job.Unit{},
+						"4.service": &job.Unit{},
+						"5.service": &job.Unit{},
+					},
+				},
+				&agent.AgentState{
+					MState: &machine.MachineState{ID: "B"},
+					Units: map[string]*job.Unit{
+						"6.service": Unit6th,
+						"7.service": Unit7th,
+					},
+				},
+			},
+			out: []*agent.AgentState{
+				&agent.AgentState{
+					MState: &machine.MachineState{ID: "AAA"},
+					Units: map[string]*job.Unit{
+						"1.service": &job.Unit{},
+						"2.service": &job.Unit{},
+						"3.service": &job.Unit{},
+						"4.service": &job.Unit{},
+						"5.service": &job.Unit{},
+					},
+				},
+				&agent.AgentState{
+					MState: &machine.MachineState{ID: "BBB"},
+					Units: map[string]*job.Unit{
+						"6.service": Unit6th,
+						"7.service": Unit7th,
+					},
+				},
+			},
+		},
+
+		// fall back to sorting by shares  when # jobs is equal
+		{
+			in: []*agent.AgentState{
+				&agent.AgentState{
+					MState: &machine.MachineState{
+						ID:       "B",
+						Metadata: map[string]string{"shares": "2"},
+					},
+					Units: map[string]*job.Unit{
+						"1.service": &job.Unit{},
+						"2.service": &job.Unit{},
+					},
+				},
+				&agent.AgentState{
+					MState: &machine.MachineState{
+						ID:       "A",
+						Metadata: map[string]string{"shares": "3"},
+					},
+					Units: map[string]*job.Unit{
+						"3.service": &job.Unit{},
+						"4.service": &job.Unit{},
+					},
+				},
+			},
+			out: []*agent.AgentState{
+				&agent.AgentState{
+					MState: &machine.MachineState{
+						ID:       "A",
+						Metadata: map[string]string{"shares": "3"},
+					},
+					Units: map[string]*job.Unit{
+						"3.service": &job.Unit{},
+						"4.service": &job.Unit{},
+					},
+				},
+				&agent.AgentState{
+					MState: &machine.MachineState{
+						ID:       "B",
+						Metadata: map[string]string{"shares": "2"},
+					},
+					Units: map[string]*job.Unit{
+						"1.service": &job.Unit{},
+						"2.service": &job.Unit{},
 					},
 				},
 			},
