@@ -21,6 +21,7 @@ import (
 	"sort"
 
 	etcd "github.com/coreos/etcd/client"
+	"golang.org/x/net/context"
 
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/log"
@@ -38,7 +39,7 @@ func (r *EtcdRegistry) Schedule() ([]job.ScheduledUnit, error) {
 		Sort:      true,
 		Recursive: true,
 	}
-	res, err := r.kAPI.Get(r.ctx(), key, opts)
+	res, err := r.kAPI.Get(context.Background(), key, opts)
 	if err != nil {
 		if isEtcdError(err, etcd.ErrorCodeKeyNotFound) {
 			err = nil
@@ -94,7 +95,7 @@ func (r *EtcdRegistry) Units() ([]job.Unit, error) {
 		Sort:      true,
 		Recursive: true,
 	}
-	res, err := r.kAPI.Get(r.ctx(), key, opts)
+	res, err := r.kAPI.Get(context.Background(), key, opts)
 	if err != nil {
 		if isEtcdError(err, etcd.ErrorCodeKeyNotFound) {
 			err = nil
@@ -142,7 +143,7 @@ func (r *EtcdRegistry) Unit(name string) (*job.Unit, error) {
 	opts := &etcd.GetOptions{
 		Recursive: true,
 	}
-	res, err := r.kAPI.Get(r.ctx(), key, opts)
+	res, err := r.kAPI.Get(context.Background(), key, opts)
 	if err != nil {
 		if isEtcdError(err, etcd.ErrorCodeKeyNotFound) {
 			err = nil
@@ -192,7 +193,7 @@ func (r *EtcdRegistry) ScheduledUnit(name string) (*job.ScheduledUnit, error) {
 	opts := &etcd.GetOptions{
 		Recursive: true,
 	}
-	res, err := r.kAPI.Get(r.ctx(), key, opts)
+	res, err := r.kAPI.Get(context.Background(), key, opts)
 	if err != nil {
 		if isEtcdError(err, etcd.ErrorCodeKeyNotFound) {
 			err = nil
@@ -224,7 +225,7 @@ func (r *EtcdRegistry) UnscheduleUnit(name, machID string) error {
 	opts := &etcd.DeleteOptions{
 		PrevValue: machID,
 	}
-	_, err := r.kAPI.Delete(r.ctx(), key, opts)
+	_, err := r.kAPI.Delete(context.Background(), key, opts)
 	if isEtcdError(err, etcd.ErrorCodeKeyNotFound) {
 		err = nil
 	}
@@ -297,7 +298,7 @@ func (r *EtcdRegistry) DestroyUnit(name string) error {
 	opts := &etcd.DeleteOptions{
 		Recursive: true,
 	}
-	_, err := r.kAPI.Delete(r.ctx(), key, opts)
+	_, err := r.kAPI.Delete(context.Background(), key, opts)
 	if err != nil {
 		if isEtcdError(err, etcd.ErrorCodeKeyNotFound) {
 			err = errors.New("job does not exist")
@@ -332,7 +333,7 @@ func (r *EtcdRegistry) CreateUnit(u *job.Unit) (err error) {
 		PrevExist: etcd.PrevIgnore,
 	}
 	key := r.prefixed(jobPrefix, u.Name, "object")
-	_, err = r.kAPI.Set(r.ctx(), key, val, opts)
+	_, err = r.kAPI.Set(context.Background(), key, val, opts)
 	if err != nil {
 		return
 	}
@@ -342,7 +343,7 @@ func (r *EtcdRegistry) CreateUnit(u *job.Unit) (err error) {
 
 func (r *EtcdRegistry) SetUnitTargetState(name string, state job.JobState) error {
 	key := r.jobTargetStatePath(name)
-	_, err := r.kAPI.Set(r.ctx(), key, string(state), nil)
+	_, err := r.kAPI.Set(context.Background(), key, string(state), nil)
 	return err
 }
 
@@ -351,7 +352,7 @@ func (r *EtcdRegistry) ScheduleUnit(name string, machID string) error {
 	opts := &etcd.SetOptions{
 		PrevExist: etcd.PrevNoExist,
 	}
-	_, err := r.kAPI.Set(r.ctx(), key, machID, opts)
+	_, err := r.kAPI.Set(context.Background(), key, machID, opts)
 	return err
 }
 

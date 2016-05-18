@@ -16,32 +16,23 @@ package registry
 
 import (
 	"path"
-	"time"
 
 	etcd "github.com/coreos/etcd/client"
-	"golang.org/x/net/context"
 )
 
 const DefaultKeyPrefix = "/_coreos.com/fleet/"
 
-func NewEtcdRegistry(kAPI etcd.KeysAPI, keyPrefix string, reqTimeout time.Duration) *EtcdRegistry {
+func NewEtcdRegistry(kAPI etcd.KeysAPI, keyPrefix string) *EtcdRegistry {
 	return &EtcdRegistry{
-		kAPI:       kAPI,
-		keyPrefix:  keyPrefix,
-		reqTimeout: reqTimeout,
+		kAPI:      kAPI,
+		keyPrefix: keyPrefix,
 	}
 }
 
 // EtcdRegistry fulfils the Registry interface and uses etcd as a backend
 type EtcdRegistry struct {
-	kAPI       etcd.KeysAPI
-	keyPrefix  string
-	reqTimeout time.Duration
-}
-
-func (r *EtcdRegistry) ctx() context.Context {
-	ctx, _ := context.WithTimeout(context.Background(), r.reqTimeout)
-	return ctx
+	kAPI      etcd.KeysAPI
+	keyPrefix string
 }
 
 func (r *EtcdRegistry) prefixed(p ...string) string {

@@ -19,6 +19,7 @@ import (
 
 	etcd "github.com/coreos/etcd/client"
 	"github.com/coreos/go-semver/semver"
+	"golang.org/x/net/context"
 )
 
 // LatestDaemonVersion attempts to retrieve the latest version of fleetd
@@ -46,7 +47,7 @@ func (r *EtcdRegistry) LatestDaemonVersion() (*semver.Version, error) {
 
 // EngineVersion implements the ClusterRegistry interface
 func (r *EtcdRegistry) EngineVersion() (int, error) {
-	res, err := r.kAPI.Get(r.ctx(), r.engineVersionPath(), nil)
+	res, err := r.kAPI.Get(context.Background(), r.engineVersionPath(), nil)
 	if err != nil {
 		// no big deal, either the cluster is new or is just
 		// upgrading from old unversioned code
@@ -69,7 +70,7 @@ func (r *EtcdRegistry) UpdateEngineVersion(from, to int) error {
 	opts := &etcd.SetOptions{
 		PrevValue: strFrom,
 	}
-	_, err := r.kAPI.Set(r.ctx(), key, strTo, opts)
+	_, err := r.kAPI.Set(context.Background(), key, strTo, opts)
 	if err == nil {
 		return nil
 	} else if !isEtcdError(err, etcd.ErrorCodeKeyNotFound) {
@@ -79,7 +80,7 @@ func (r *EtcdRegistry) UpdateEngineVersion(from, to int) error {
 	opts = &etcd.SetOptions{
 		PrevExist: etcd.PrevNoExist,
 	}
-	_, err = r.kAPI.Set(r.ctx(), key, strTo, opts)
+	_, err = r.kAPI.Set(context.Background(), key, strTo, opts)
 	return err
 }
 

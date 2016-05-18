@@ -97,18 +97,16 @@ func serializeLeaseMetadata(machID string, ver int) (string, error) {
 }
 
 type etcdLeaseManager struct {
-	kAPI       etcd.KeysAPI
-	keyPrefix  string
-	reqTimeout time.Duration
+	kAPI      etcd.KeysAPI
+	keyPrefix string
 }
 
-func NewEtcdLeaseManager(kAPI etcd.KeysAPI, keyPrefix string, reqTimeout time.Duration) *etcdLeaseManager {
-	return &etcdLeaseManager{kAPI: kAPI, keyPrefix: keyPrefix, reqTimeout: reqTimeout}
+func NewEtcdLeaseManager(kAPI etcd.KeysAPI, keyPrefix string) *etcdLeaseManager {
+	return &etcdLeaseManager{kAPI: kAPI, keyPrefix: keyPrefix}
 }
 
 func (r *etcdLeaseManager) ctx() context.Context {
-	ctx, _ := context.WithTimeout(context.Background(), r.reqTimeout)
-	return ctx
+	return context.Background()
 }
 
 func (r *etcdLeaseManager) leasePath(name string) string {
