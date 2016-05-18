@@ -37,6 +37,7 @@ write_files:
     etcd_key_prefix={{.EtcdKeyPrefix}}
     public_ip={{.IP}}
     agent_ttl={{.FleetAgentTTL}}
+    {{.FleetExtra}}
 
 ssh_authorized_keys:
  - {{printf "%q" .PublicKey}}
@@ -80,6 +81,7 @@ type configValues struct {
 	EtcdKeyPrefix string
 	FleetAPIPort  int
 	FleetAgentTTL string
+	FleetExtra    string
 }
 
 func init() {
@@ -117,6 +119,7 @@ func BuildCloudConfig(dst io.Writer, ip, etcdEndpoint, etcdKeyPrefix string) err
 		EtcdKeyPrefix: etcdKeyPrefix,
 		FleetAPIPort:  fleetAPIPort,
 		FleetAgentTTL: FleetTTL,
+		FleetExtra:    os.Getenv("FLEETD_TEST_ENV"),
 	}
 
 	return configTemplate.Execute(dst, &values)
