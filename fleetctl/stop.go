@@ -85,6 +85,11 @@ func runStopUnit(args []string) (exit int) {
 	}
 
 	exit = tryWaitForUnitStates(stopping, "stop", job.JobStateLoaded, getBlockAttempts(), os.Stdout)
+	if exit == 0 {
+		stderr("Successfully stopped units %v.", stopping)
+	} else {
+		stderr("Failed to stop units %v. exit == %d.", stopping, exit)
+	}
 
 	return
 }
