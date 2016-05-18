@@ -509,6 +509,11 @@ func TestUnitIsGlobal(t *testing.T) {
 		// correct specifications
 		{"[X-Fleet]\nMachineOf=foo\nGlobal=true", true},
 		{"[X-Fleet]\nMachineOf=foo\nGlobal=True", true},
+		{"[X-Fleet]\nMachineOf=foo\nGlobal=Yes", true},
+		{"[X-Fleet]\nMachineOf=foo\nGlobal=On", true},
+		{"[X-Fleet]\nMachineOf=foo\nGlobal=1", true},
+		{"[X-Fleet]\nMachineOf=foo\nGlobal=t", true},
+		{"[X-Fleet]\nMachineOf=foo\nGlobal=12", false},
 		// multiple parameters - last wins
 		{"[X-Fleet]\nGlobal=true\nGlobal=false", false},
 		{"[X-Fleet]\nGlobal=false\nGlobal=true", true},
@@ -519,6 +524,33 @@ func TestUnitIsGlobal(t *testing.T) {
 		got := u.IsGlobal()
 		if got != tt.want {
 			t.Errorf("case %d: IsGlobal returned %t, want %t", i, got, tt.want)
+		}
+	}
+}
+
+func TestUnitIsTruthy(t *testing.T) {
+	for i, tt := range []struct {
+		contents string
+		want     bool
+	}{
+		// empty string
+		{"", false},
+		// bad values
+		{"false", false},
+		{"no", false},
+		{"0", false},
+		{"off", false},
+		{"f", false},
+		// correct values
+		{"true", true},
+		{"yes", true},
+		{"1", true},
+		{"on", true},
+		{"t", true},
+	} {
+		got := isTruthyValue(tt.contents)
+		if got != tt.want {
+			t.Errorf("case %d: isTruthyValue returned %t, want %t", i, got, tt.want)
 		}
 	}
 }

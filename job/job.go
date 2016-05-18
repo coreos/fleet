@@ -113,7 +113,7 @@ func (u *Unit) IsGlobal() bool {
 	}
 	// Last value found wins
 	last := values[len(values)-1]
-	return strings.ToLower(last) == "true"
+	return isTruthyValue(last)
 }
 
 // NewJob creates a new Job based on the given name and Unit.
@@ -300,4 +300,11 @@ func unitPrintf(s string, nu unit.UnitNameInfo) (out string) {
 	out = strings.Replace(out, "%p", nu.Prefix, -1)
 	out = strings.Replace(out, "%i", nu.Instance, -1)
 	return
+}
+
+// isTruthyValue returns true if a given string is any of "truthy" value,
+// i.e. "true", "yes", "1", "on", or "t".
+func isTruthyValue(s string) bool {
+	chl := strings.ToLower(s)
+	return chl == "true" || chl == "yes" || chl == "1" || chl == "on" || chl == "t"
 }
