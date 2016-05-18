@@ -79,8 +79,12 @@ go test github.com/coreos/fleet/functional -ldflags "${GLDFLAGS}" -v "$@" 2>&1 |
 TESTS_RETURN_CODE_1=${PIPESTATUS[0]}
 
 # Run tests with cache enable on fleetd side
-export FLEETD_TEST_ENV="enable_unitstate_cache=true"
-go test github.com/coreos/fleet/functional -ldflags "${GLDFLAGS}" -v "$@" 2>&1 | sed -r "s/^(---\s+(:?PASS|SKIP|FAIL):\s+Test[^\(]*)/\\1(fleet.conf=\[$FLEETD_TEST_ENV\]) /g;s/^(=== RUN\s+Test.*)/\1 (fleet.conf=\[$FLEETD_TEST_ENV\])/g" | tee -a functional/functional-tests.log
-TESTS_RETURN_CODE_2=${PIPESTATUS[0]}
+# NOTE: this test with unit state cache doesn't need to run, as unit state
+# cache is going to be obsolete. But in the future, we could set $FLEETD_TEST_ENV
+# to an env variable to run another round of tests, if necessary. - 20160518 dpark
+#export FLEETD_TEST_ENV="enable_unitstate_cache=true"
+#go test github.com/coreos/fleet/functional -ldflags "${GLDFLAGS}" -v "$@" 2>&1 | sed -r "s/^(---\s+(:?PASS|SKIP|FAIL):\s+Test[^\(]*)/\\1(fleet.conf=\[$FLEETD_TEST_ENV\]) /g;s/^(=== RUN\s+Test.*)/\1 (fleet.conf=\[$FLEETD_TEST_ENV\])/g" | tee -a functional/functional-tests.log
+#TESTS_RETURN_CODE_2=${PIPESTATUS[0]}
+TESTS_RETURN_CODE_2=0
 
 print_results
