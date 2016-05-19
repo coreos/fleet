@@ -20,6 +20,7 @@ import (
 	"time"
 
 	etcd "github.com/coreos/etcd/client"
+	"golang.org/x/net/context"
 
 	"github.com/coreos/fleet/log"
 	"github.com/coreos/fleet/machine"
@@ -98,7 +99,7 @@ func (r *EtcdRegistry) statesByMUSKey() (map[MUSKey]*unit.UnitState, error) {
 	opts := &etcd.GetOptions{
 		Recursive: true,
 	}
-	res, err := r.kAPI.Get(r.ctx(), key, opts)
+	res, err := r.kAPI.Get(context.Background(), key, opts)
 	if err != nil && !isEtcdError(err, etcd.ErrorCodeKeyNotFound) {
 		return nil, err
 	}
@@ -127,7 +128,7 @@ func (r *EtcdRegistry) statesByMUSKey() (map[MUSKey]*unit.UnitState, error) {
 // given unit that originates from the indicated machine
 func (r *EtcdRegistry) getUnitState(uName, machID string) (*unit.UnitState, error) {
 	key := r.unitStatePath(machID, uName)
-	res, err := r.kAPI.Get(r.ctx(), key, nil)
+	res, err := r.kAPI.Get(context.Background(), key, nil)
 	if err != nil {
 		if isEtcdError(err, etcd.ErrorCodeKeyNotFound) {
 			err = nil
@@ -162,17 +163,17 @@ func (r *EtcdRegistry) SaveUnitState(jobName string, unitState *unit.UnitState, 
 	}
 
 	legacyKey := r.legacyUnitStatePath(jobName)
-	r.kAPI.Set(r.ctx(), legacyKey, val, opts)
+	r.kAPI.Set(context.Background(), legacyKey, val, opts)
 
 	newKey := r.unitStatePath(unitState.MachineID, jobName)
-	r.kAPI.Set(r.ctx(), newKey, val, opts)
+	r.kAPI.Set(context.Background(), newKey, val, opts)
 }
 
 // Delete the state from the Registry for the given Job's Unit
 func (r *EtcdRegistry) RemoveUnitState(jobName string) error {
 	// TODO(jonboulle): consider https://github.com/coreos/fleet/issues/465
 	legacyKey := r.legacyUnitStatePath(jobName)
-	_, err := r.kAPI.Delete(r.ctx(), legacyKey, nil)
+	_, err := r.kAPI.Delete(context.Background(), legacyKey, nil)
 	if err != nil && !isEtcdError(err, etcd.ErrorCodeKeyNotFound) {
 		return err
 	}
@@ -182,7 +183,7 @@ func (r *EtcdRegistry) RemoveUnitState(jobName string) error {
 	opts := &etcd.DeleteOptions{
 		Recursive: true,
 	}
-	_, err = r.kAPI.Delete(r.ctx(), newKey, opts)
+	_, err = r.kAPI.Delete(context.Background(), newKey, opts)
 	if err != nil && !isEtcdError(err, etcd.ErrorCodeKeyNotFound) {
 		return err
 	}

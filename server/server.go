@@ -91,17 +91,17 @@ func New(cfg config.Config, listeners []net.Listener) (*Server, error) {
 	}
 
 	eCfg := etcd.Config{
-		Transport: &http.Transport{TLSClientConfig: tlsConfig},
-		Endpoints: cfg.EtcdServers,
+		Transport:               &http.Transport{TLSClientConfig: tlsConfig},
+		Endpoints:               cfg.EtcdServers,
+		HeaderTimeoutPerRequest: (time.Duration(cfg.EtcdRequestTimeout*1000) * time.Millisecond),
 	}
 	eClient, err := etcd.New(eCfg)
 	if err != nil {
 		return nil, err
 	}
 
-	etcdRequestTimeout := time.Duration(cfg.EtcdRequestTimeout*1000) * time.Millisecond
 	kAPI := etcd.NewKeysAPI(eClient)
-	reg := registry.NewEtcdRegistry(kAPI, cfg.EtcdKeyPrefix, etcdRequestTimeout)
+	reg := registry.NewEtcdRegistry(kAPI, cfg.EtcdKeyPrefix)
 
 	pub := agent.NewUnitStatePublisher(reg, mach, agentTTL)
 	gen := unit.NewUnitStateGenerator(mgr)
@@ -112,7 +112,7 @@ func New(cfg config.Config, listeners []net.Listener) (*Server, error) {
 	if !cfg.DisableWatches {
 		rStream = registry.NewEtcdEventStream(kAPI, cfg.EtcdKeyPrefix)
 	}
-	lManager := lease.NewEtcdLeaseManager(kAPI, cfg.EtcdKeyPrefix, etcdRequestTimeout)
+	lManager := lease.NewEtcdLeaseManager(kAPI, cfg.EtcdKeyPrefix)
 
 	ar := agent.NewReconciler(reg, rStream)
 

@@ -18,6 +18,7 @@ import (
 	"time"
 
 	etcd "github.com/coreos/etcd/client"
+	"golang.org/x/net/context"
 
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/unit"
@@ -51,13 +52,13 @@ func (r *EtcdRegistry) UnitHeartbeat(name, machID string, ttl time.Duration) err
 	opts := &etcd.SetOptions{
 		TTL: ttl,
 	}
-	_, err := r.kAPI.Set(r.ctx(), key, machID, opts)
+	_, err := r.kAPI.Set(context.Background(), key, machID, opts)
 	return err
 }
 
 func (r *EtcdRegistry) ClearUnitHeartbeat(name string) {
 	key := r.jobHeartbeatPath(name)
-	r.kAPI.Delete(r.ctx(), key, nil)
+	r.kAPI.Delete(context.Background(), key, nil)
 }
 
 func (r *EtcdRegistry) jobHeartbeatPath(jobName string) string {

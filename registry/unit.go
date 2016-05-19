@@ -19,6 +19,7 @@ import (
 	"time"
 
 	etcd "github.com/coreos/etcd/client"
+	"golang.org/x/net/context"
 
 	"github.com/coreos/fleet/log"
 	"github.com/coreos/fleet/metrics"
@@ -44,7 +45,7 @@ func (r *EtcdRegistry) storeOrGetUnitFile(u unit.UnitFile) (err error) {
 		PrevExist: etcd.PrevNoExist,
 	}
 	start := time.Now()
-	_, err = r.kAPI.Set(r.ctx(), key, val, opts)
+	_, err = r.kAPI.Set(context.Background(), key, val, opts)
 	// unit is already stored
 	if isEtcdError(err, etcd.ErrorCodeNodeExist) {
 		// TODO(jonboulle): verify more here?
@@ -65,7 +66,7 @@ func (r *EtcdRegistry) getUnitByHash(hash unit.Hash) *unit.UnitFile {
 		Recursive: true,
 	}
 	start := time.Now()
-	resp, err := r.kAPI.Get(r.ctx(), key, opts)
+	resp, err := r.kAPI.Get(context.Background(), key, opts)
 	if err != nil {
 		if isEtcdError(err, etcd.ErrorCodeKeyNotFound) {
 			err = nil
@@ -86,7 +87,7 @@ func (r *EtcdRegistry) getAllUnitsHashMap() (map[string]*unit.UnitFile, error) {
 	}
 	hashToUnit := map[string]*unit.UnitFile{}
 	start := time.Now()
-	resp, err := r.kAPI.Get(r.ctx(), key, opts)
+	resp, err := r.kAPI.Get(context.Background(), key, opts)
 	if err != nil {
 		metrics.ReportRegistryOpFailure(metrics.GetAll)
 		return nil, err

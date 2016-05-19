@@ -462,8 +462,9 @@ func getRegistryClient() (client.API, error) {
 	}
 
 	eCfg := etcd.Config{
-		Endpoints: strings.Split(globalFlags.Endpoint, ","),
-		Transport: trans,
+		Endpoints:               strings.Split(globalFlags.Endpoint, ","),
+		Transport:               trans,
+		HeaderTimeoutPerRequest: getRequestTimeoutFlag(),
 	}
 
 	eClient, err := etcd.New(eCfg)
@@ -472,7 +473,7 @@ func getRegistryClient() (client.API, error) {
 	}
 
 	kAPI := etcd.NewKeysAPI(eClient)
-	reg := registry.NewEtcdRegistry(kAPI, globalFlags.EtcdKeyPrefix, getRequestTimeoutFlag())
+	reg := registry.NewEtcdRegistry(kAPI, globalFlags.EtcdKeyPrefix)
 
 	if msg, ok := checkVersion(reg); !ok {
 		stderr(msg)
