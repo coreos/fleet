@@ -1,5 +1,48 @@
 #!/bin/bash -e
 
+function print_results() {
+  total=$(grep -E '^--- (:?PASS|SKIP|FAIL)' functional/functional-tests.log | wc -l)
+  pass=$(grep '^--- PASS' functional/functional-tests.log | wc -l)
+  skip=$(grep '^--- SKIP' functional/functional-tests.log | wc -l)
+  fail=$(grep '^--- FAIL' functional/functional-tests.log | wc -l)
+  smoke_logs=$(awk '/Test.*_smoke.*\.log/{print $NF}' functional/functional-tests.log)
+
+  if [ "x$smoke_logs" != "x" ]; then
+    echo
+    echo "==========================================================="
+    echo "Functional test debug logs"
+    echo "==========================================================="
+  fi
+
+  for smoke_log in $smoke_logs; do
+    echo "# Printing last $TAIL_LOGS of $smoke_log (systemd)"
+    grep 'systemd\[1\]' $smoke_log | tail -$TAIL_LOGS
+    echo "# Printing last $TAIL_LOGS of $smoke_log (fleetd)"
+    grep 'fleetd\[.*\]' $smoke_log | tail -$TAIL_LOGS
+    echo "# Printing last $TAIL_LOGS of $smoke_log excluding fleetd/systemd/sshd"
+    grep -vE 'fleetd\[.*\]|systemd\[1\]|sshd\[.*\]' $smoke_log | tail -$TAIL_LOGS
+    echo "==========================================================="
+  done
+
+  echo ""
+  grep -E '^--- (:?PASS|FAIL|SKIP)' functional/functional-tests.log
+
+  echo "==========================================================="
+  echo "Functional test summary"
+  echo "==========================================================="
+  echo "# TOTAL: $total"
+  echo "# PASS: $pass"
+  echo "# SKIP: $skip"
+  echo "# FAIL: $fail"
+  echo ""
+  echo "See ${CDIR}/functional-tests.log for the detailed output."
+  if [ "${TESTS_RETURN_CODE_1}" -ne "0" ]; then
+    exit ${TESTS_RETURN_CODE_1}
+  else
+    exit ${TESTS_RETURN_CODE_2}
+  fi
+}
+
 CDIR=$(cd `dirname $0` && pwd)
 USER_ID=${SUDO_UID:-$(id -u)}
 HOME=$(getent passwd "${USER_ID}" | cut -d: -f6)
@@ -10,7 +53,7 @@ export VERSION=$(git describe --dirty)
 export GOROOT=${HOME}/go
 export PATH=${HOME}/go/bin:${PATH}
 
-if [ ! -S "$SSH_AUTH_SOCK" ]; then
+if [ ! -S "${SSH_AUTH_SOCK}" ]; then
   eval $(ssh-agent)
   trap "ssh-agent -k > /dev/null" EXIT
 fi
@@ -25,47 +68,23 @@ fi
 
 if [ ! -x "bin/fleetd" ] || \
    [ ! -x "bin/fleetctl" ] || \
-   [ ! $(bin/fleetctl | grep "$VERSION") ]; then
+   [ ! $(bin/fleetctl | grep "${VERSION}") ]; then
   ./build
 fi
 
 source build-env
 eval $(go env)
+
 go test github.com/coreos/fleet/functional -ldflags "${GLDFLAGS}" -v "$@" 2>&1 | tee functional/functional-tests.log
-TESTS_RETURN_CODE=${PIPESTATUS[0]}
+TESTS_RETURN_CODE_1=${PIPESTATUS[0]}
 
-total=$(grep -E '^--- (PASS|FAIL)' functional/functional-tests.log | wc -l)
-pass=$(grep '^--- PASS' functional/functional-tests.log | wc -l)
-fail=$(grep '^--- FAIL' functional/functional-tests.log | wc -l)
-smoke_logs=$(awk '/Test.*_smoke.*\.log/{print $NF}' functional/functional-tests.log)
+# Run tests with cache enable on fleetd side
+# NOTE: this test with unit state cache doesn't need to run, as unit state
+# cache is going to be obsolete. But in the future, we could set $FLEETD_TEST_ENV
+# to an env variable to run another round of tests, if necessary. - 20160518 dpark
+#export FLEETD_TEST_ENV="enable_unitstate_cache=true"
+#go test github.com/coreos/fleet/functional -ldflags "${GLDFLAGS}" -v "$@" 2>&1 | sed -r "s/^(---\s+(:?PASS|SKIP|FAIL):\s+Test[^\(]*)/\\1(fleet.conf=\[$FLEETD_TEST_ENV\]) /g;s/^(=== RUN\s+Test.*)/\1 (fleet.conf=\[$FLEETD_TEST_ENV\])/g" | tee -a functional/functional-tests.log
+#TESTS_RETURN_CODE_2=${PIPESTATUS[0]}
+TESTS_RETURN_CODE_2=0
 
-if [ "x$smoke_logs" != "x" ]; then
-  echo
-  echo "==========================================================="
-  echo "Functional test debug logs"
-  echo "==========================================================="
-fi
-
-for smoke_log in $smoke_logs; do
-  echo "# Printing last $TAIL_LOGS of $smoke_log (systemd)"
-  grep 'systemd\[1\]' $smoke_log | tail -$TAIL_LOGS
-  echo "# Printing last $TAIL_LOGS of $smoke_log (fleetd)"
-  grep 'fleetd\[.*\]' $smoke_log | tail -$TAIL_LOGS
-  echo "# Printing last $TAIL_LOGS of $smoke_log excluding fleetd/systemd/sshd"
-  grep -vE 'fleetd\[.*\]|systemd\[1\]|sshd\[.*\]' $smoke_log | tail -$TAIL_LOGS
-  echo "==========================================================="
-done
-
-echo
-grep -E '^--- (PASS|FAIL)' functional/functional-tests.log
-
-echo "==========================================================="
-echo "Functional test summary"
-echo "==========================================================="
-echo "# TOTAL: $total"
-echo "# PASS: $pass"
-echo "# FAIL: $fail"
-echo
-echo "See ${CDIR}/functional-tests.log for the detailed output."
-
-exit $TESTS_RETURN_CODE
+print_results
