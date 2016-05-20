@@ -1,10 +1,10 @@
-// Copyright 2014 CoreOS, Inc.
+// Copyright 2016 CoreOS, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//     http://www.apache.org/licenses/LICENSE+2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,19 +16,22 @@ package main
 
 import (
 	"github.com/spf13/cobra"
+
+	"github.com/coreos/fleet/version"
 )
 
-var cmdVerifyUnit = &cobra.Command{
-	Use:        "verify UNIT",
-	Deprecated: "DEPRECATED - No longer works",
-	Run:        runWrapper(runVerifyUnit),
+var cmdVersion = &cobra.Command{
+	Use:   "version",
+	Short: "Print the version and exit",
+	Long:  "Print the version and exit",
+	Run:   runWrapper(runVersion),
 }
 
 func init() {
-	cmdFleet.AddCommand(cmdVerifyUnit)
+	cmdFleet.AddCommand(cmdVersion)
 }
 
-func runVerifyUnit(cCmd *cobra.Command, args []string) (exit int) {
-	stderr("WARNING: The signed/verified units feature is DEPRECATED and cannot be used.")
-	return 2
+func runVersion(cCmd *cobra.Command, args []string) (exit int) {
+	stdout("fleetctl version %s", version.Version)
+	return 0
 }

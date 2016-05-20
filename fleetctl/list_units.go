@@ -19,9 +19,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/codegangsta/cli"
+	"github.com/spf13/cobra"
 
-	"github.com/coreos/fleet/client"
 	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/schema"
 )
@@ -30,32 +29,9 @@ const (
 	defaultListUnitsFields = "unit,machine,active,sub"
 )
 
-func NewListUnitsCommand() cli.Command {
-	return cli.Command{
-		Name:      "list-units",
-		Usage:     "List the current state of units in the cluster",
-		ArgsUsage: "[--no-legend] [-l|--full] [--fields]",
-		Description: `Lists the state of all units in the cluster loaded onto a machine.
-
-For easily parsable output, you can remove the column headers:
-       fleetctl list-units --no-legend
-
-Output the list without ellipses:
-       fleetctl list-units --full
-
-Or, choose the columns to display:
-       fleetctl list-units --fields=unit,machine`,
-		Action: makeActionWrapper(runListUnits),
-		Flags: []cli.Flag{
-			cli.BoolFlag{Name: "full, l", Usage: "Do not ellipsize fields on output"},
-			cli.BoolFlag{Name: "no-legend", Usage: "Do not print a legend (column headers)"},
-			cli.StringFlag{Name: "fields", Value: defaultListUnitsFields, Usage: fmt.Sprintf("Columns to print for each Unit. Valid fields are %q", strings.Join(usToFieldKeys(listUnitsFields), ","))},
-		},
-	}
-}
-
 var (
-	listUnitsFields = map[string]usToField{
+	listUnitsFieldsFlag string
+	listUnitsFields     = map[string]usToField{
 		"unit": func(us *schema.UnitState, full bool) string {
 			if us == nil {
 				return "-"
@@ -104,8 +80,32 @@ var (
 
 type usToField func(us *schema.UnitState, full bool) string
 
-func runListUnits(c *cli.Context, cAPI client.API) (exit int) {
-	listUnitsFieldsFlag := c.String("fields")
+var cmdListUnits = &cobra.Command{
+	Use:   "list-units [--no-legend] [-l|--full] [--fields]",
+	Short: "List the current state of units in the cluster",
+	Long: `Lists the state of all units in the cluster loaded onto a machine.
+
+For easily parsable output, you can remove the column headers:
+fleetctl list-units --no-legend
+
+Output the list without ellipses:
+fleetctl list-units --full
+
+Or, choose the columns to display:
+fleetctl list-units --fields=unit,machine`,
+	Run: runWrapper(runListUnits),
+}
+
+func init() {
+	cmdFleet.AddCommand(cmdListUnits)
+
+	cmdListUnits.Flags().BoolVar(&sharedFlags.Full, "full", false, "Do not ellipsize fields on output")
+	cmdListUnits.Flags().BoolVar(&sharedFlags.Full, "l", false, "Shorthand for --full")
+	cmdListUnits.Flags().BoolVar(&sharedFlags.NoLegend, "no-legend", false, "Do not print a legend (column headers)")
+	cmdListUnits.Flags().StringVar(&listUnitsFieldsFlag, "fields", defaultListUnitsFields, fmt.Sprintf("Columns to print for each Unit. Valid fields are %q", strings.Join(usToFieldKeys(listUnitsFields), ",")))
+}
+
+func runListUnits(cCmd *cobra.Command, args []string) (exit int) {
 	if listUnitsFieldsFlag == "" {
 		stderr("Must define output format")
 		return 1
@@ -125,21 +125,22 @@ func runListUnits(c *cli.Context, cAPI client.API) (exit int) {
 		return 1
 	}
 
-	if !c.Bool("no-legend") {
+	noLegend, _ := cCmd.Flags().GetBool("no-legend")
+	if !noLegend {
 		fmt.Fprintln(out, strings.ToUpper(strings.Join(cols, "\t")))
 	}
 
+	full, _ := cCmd.Flags().GetBool("full")
 	for _, us := range states {
 		var f []string
-		for _, col := range cols {
-			f = append(f, listUnitsFields[col](us, c.Bool("full")))
+		for _, c := range cols {
+			f = append(f, listUnitsFields[c](us, full))
 		}
 		fmt.Fprintln(out, strings.Join(f, "\t"))
 	}
 
 	out.Flush()
-
-	return
+	return 0
 }
 
 func usToFieldKeys(m map[string]usToField) (keys []string) {

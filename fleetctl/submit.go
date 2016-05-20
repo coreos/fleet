@@ -15,44 +15,41 @@
 package main
 
 import (
-	"github.com/codegangsta/cli"
-
-	"github.com/coreos/fleet/client"
+	"github.com/spf13/cobra"
 )
 
-func NewSubmitUnitCommand() cli.Command {
-	return cli.Command{
-		Name:      "submit",
-		Usage:     "Upload one or more units to the cluster without starting them",
-		ArgsUsage: "UNIT...",
-		Description: `Upload one or more units to the cluster without starting them. Useful for validating units before they are started.
+var cmdSubmit = &cobra.Command{
+	Use:   "submit UNIT...",
+	Short: "Upload one or more units to the cluster without starting them",
+	Long: `Upload one or more units to the cluster without starting them. Useful
+for validating units before they are started.
 
 This operation is idempotent; if a named unit already exists in the cluster, it will not be resubmitted.
 
 Submit a single unit:
-       fleetctl submit foo.service
+fleetctl submit foo.service
 
 Submit a directory of units with glob matching:
-       fleetctl submit myservice/*`,
-		Action: makeActionWrapper(runSubmitUnits),
-		Flags: []cli.Flag{
-			cli.BoolFlag{Name: "sign", Usage: "DEPRECATED - this option cannot be used"},
-			cli.BoolFlag{Name: "replace", Usage: "Replace the old submitted units in the cluster with new versions."},
-		},
-	}
+fleetctl submit myservice/*`,
+	Run: runWrapper(runSubmitUnit),
 }
 
-func runSubmitUnits(c *cli.Context, cAPI client.API) (exit int) {
-	args := c.Args()
+func init() {
+	cmdFleet.AddCommand(cmdSubmit)
+
+	cmdSubmit.Flags().BoolVar(&sharedFlags.Sign, "sign", false, "DEPRECATED - this option cannot be used")
+	cmdSubmit.Flags().BoolVar(&sharedFlags.Replace, "replace", false, "Replace the old submitted units in the cluster with new versions.")
+}
+
+func runSubmitUnit(cCmd *cobra.Command, args []string) (exit int) {
 	if len(args) == 0 {
 		stderr("No units given")
 		return 0
 	}
 
-	if err := lazyCreateUnits(c); err != nil {
+	if err := lazyCreateUnits(cCmd, args); err != nil {
 		stderr("Error creating units: %v", err)
-		exit = 1
+		return 1
 	}
-
-	return
+	return 0
 }

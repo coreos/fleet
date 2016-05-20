@@ -20,9 +20,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/codegangsta/cli"
+	"github.com/spf13/cobra"
 
-	"github.com/coreos/fleet/client"
 	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/schema"
 )
@@ -46,23 +45,9 @@ func mapTargetField(u schema.Unit, full bool) string {
 	return machineFullLegend(*ms, full)
 }
 
-func NewListUnitFilesCommand() cli.Command {
-	return cli.Command{
-		Name:        "list-unit-files",
-		Usage:       "List the units that exist in the cluster.",
-		ArgsUsage:   "[--fields]",
-		Description: "Lists all unit files that exist in the cluster (whether or not they are loaded onto a machine)",
-		Action:      makeActionWrapper(runListUnitFiles),
-		Flags: []cli.Flag{
-			cli.BoolFlag{Name: "full", Usage: "Do not ellipsize fields on output"},
-			cli.BoolFlag{Name: "no-legend", Usage: "Do not print a legend (column headers)"},
-			cli.StringFlag{Name: "fields", Value: defaultListUnitFilesFields, Usage: fmt.Sprintf("Columns to print for each Unit file. Valid fields are %q", strings.Join(unitToFieldKeys(listUnitFilesFields), ","))},
-		},
-	}
-}
-
 var (
-	listUnitFilesFields = map[string]unitToField{
+	listUnitFilesFieldsFlag string
+	listUnitFilesFields     = map[string]unitToField{
 		"unit": func(u schema.Unit, full bool) string {
 			return u.Name
 		},
@@ -103,8 +88,22 @@ var (
 
 type unitToField func(u schema.Unit, full bool) string
 
-func runListUnitFiles(c *cli.Context, cAPI client.API) (exit int) {
-	listUnitFilesFieldsFlag := c.String("fields")
+var cmdListUnitFiles = &cobra.Command{
+	Use:   "list-unit-files [--fields]",
+	Short: "List the units that exist in the cluster.",
+	Long:  `Lists all unit files that exist in the cluster (whether or not they are loaded onto a machine).`,
+	Run:   runWrapper(runListUnitFiles),
+}
+
+func init() {
+	cmdFleet.AddCommand(cmdListUnitFiles)
+
+	cmdListUnitFiles.Flags().BoolVar(&sharedFlags.Full, "full", false, "Do not ellipsize fields on output")
+	cmdListUnitFiles.Flags().BoolVar(&sharedFlags.NoLegend, "no-legend", false, "Do not print a legend (column headers)")
+	cmdListUnitFiles.Flags().StringVar(&listUnitFilesFieldsFlag, "fields", defaultListUnitFilesFields, fmt.Sprintf("Columns to print for each Unit file. Valid fields are %q", strings.Join(unitToFieldKeys(listUnitFilesFields), ",")))
+}
+
+func runListUnitFiles(cCmd *cobra.Command, args []string) (exit int) {
 	if listUnitFilesFieldsFlag == "" {
 		stderr("Must define output format")
 		return 1
@@ -127,21 +126,22 @@ func runListUnitFiles(c *cli.Context, cAPI client.API) (exit int) {
 		return 1
 	}
 
-	if !c.Bool("no-legend") {
+	noLegend, _ := cCmd.Flags().GetBool("no-legend")
+	if !noLegend {
 		fmt.Fprintln(out, strings.ToUpper(strings.Join(cols, "\t")))
 	}
 
+	full, _ := cCmd.Flags().GetBool("full")
 	for _, u := range units {
 		var f []string
-		for _, col := range cols {
-			f = append(f, listUnitFilesFields[col](*u, c.Bool("full")))
+		for _, c := range cols {
+			f = append(f, listUnitFilesFields[c](*u, full))
 		}
 		fmt.Fprintln(out, strings.Join(f, "\t"))
 	}
 
 	out.Flush()
-
-	return
+	return 0
 }
 
 func unitToFieldKeys(m map[string]unitToField) (keys []string) {

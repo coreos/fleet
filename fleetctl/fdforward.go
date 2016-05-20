@@ -19,23 +19,21 @@ import (
 	"net"
 	"os"
 
-	"github.com/codegangsta/cli"
-
-	"github.com/coreos/fleet/client"
+	"github.com/spf13/cobra"
 )
 
-func NewFDForwardCommand() cli.Command {
-	return cli.Command{
-		Name:        "fd-forward",
-		Usage:       "Proxy stdin and stdout to a unix domain socket",
-		ArgsUsage:   "SOCKET",
-		Description: `fleetctl utilizes fd-forward when --tunnel is used and --endpoint is a unix socket. This command is not intended to be called by users directly.`,
-		Action:      makeActionWrapper(runFDForward),
-	}
+var cmdFDForward = &cobra.Command{
+	Use:   "fd-forward SOCKET",
+	Short: "Proxy stdin and stdout to a unix domain socket",
+	Long:  `fleetctl utilizes fd-forward when --tunnel is used and --endpoint is a unix socket. This command is not intended to be called by users directly.`,
+	Run:   runWrapper(runFDForward),
 }
 
-func runFDForward(c *cli.Context, cAPI client.API) (exit int) {
-	args := c.Args()
+func init() {
+	cmdFleet.AddCommand(cmdFDForward)
+}
+
+func runFDForward(cCmd *cobra.Command, args []string) (exit int) {
 	if len(args) != 1 {
 		stderr("Provide a single argument")
 		return 1

@@ -17,19 +17,17 @@ package main
 import (
 	"os"
 
-	"github.com/codegangsta/cli"
+	"github.com/spf13/cobra"
 
-	"github.com/coreos/fleet/client"
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/log"
 )
 
-func NewStopUnitCommand() cli.Command {
-	return cli.Command{
-		Name:      "stop",
-		Usage:     "Instruct systemd to stop one or more units in the cluster.",
-		ArgsUsage: "[--no-block|--block-attempts=N] UNIT...",
-		Description: `Stop one or more units from running in the cluster, but allow them to be started again in the future.
+var cmdStop = &cobra.Command{
+	Use:   "stop [--no-block|--block-attempts=N] UNIT...",
+	Short: "Instruct systemd to stop one or more units in the cluster.",
+	Long: `Stop one or more units from running in the cluster, but allow them to be
+started again in the future.
 
 Instructs systemd on the host machine to stop the unit, deferring to systemd
 completely for any custom stop directives (i.e. ExecStop option in the unit
@@ -42,20 +40,21 @@ respective --block-attempts and --no-block options. Stop operations on global
 units are always non-blocking.
 
 Stop a single unit:
-       fleetctl stop foo.service
+fleetctl stop foo.service
 
 Stop an entire directory of units with glob matching, without waiting:
-       fleetctl --no-block stop myservice/*`,
-		Action: makeActionWrapper(runStopUnit),
-		Flags: []cli.Flag{
-			cli.IntFlag{Name: "block-attempts", Value: 22, Usage: "Wait until the units are stopped, performing up to N attempts before giving up. A value of 0 indicates no limit. Does not apply to global units."},
-			cli.BoolFlag{Name: "no-block", Usage: "Do not wait until the units have stopped before exiting. Always the case for global units."},
-		},
-	}
+fleetctl --no-block stop myservice/*`,
+	Run: runWrapper(runStopUnit),
 }
 
-func runStopUnit(c *cli.Context, cAPI client.API) (exit int) {
-	args := c.Args()
+func init() {
+	cmdFleet.AddCommand(cmdStop)
+
+	cmdStop.Flags().IntVar(&sharedFlags.BlockAttempts, "block-attempts", 0, "Wait until the units are stopped, performing up to N attempts before giving up. A value of 0 indicates no limit. Does not apply to global units.")
+	cmdStop.Flags().BoolVar(&sharedFlags.NoBlock, "no-block", false, "Do not wait until the units have stopped before exiting. Always the case for global units.")
+}
+
+func runStopUnit(cCmd *cobra.Command, args []string) (exit int) {
 	if len(args) == 0 {
 		stderr("No units given")
 		return 0
@@ -88,7 +87,7 @@ func runStopUnit(c *cli.Context, cAPI client.API) (exit int) {
 		}
 	}
 
-	exit = tryWaitForUnitStates(stopping, "stop", job.JobStateLoaded, getBlockAttempts(c), os.Stdout)
+	exit = tryWaitForUnitStates(stopping, "stop", job.JobStateLoaded, getBlockAttempts(cCmd), os.Stdout)
 	if exit == 0 {
 		stderr("Successfully stopped units %v.", stopping)
 	} else {
