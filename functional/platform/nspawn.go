@@ -344,7 +344,7 @@ func (nc *nspawnCluster) insertBin(src string, dst string) error {
 }
 
 func (nc *nspawnCluster) buildConfigDrive(dir, ip string) error {
-	latest := path.Join(dir, "media/configdrive/openstack/latest")
+	latest := path.Join(dir, "var/lib/coreos-install")
 	userPath := path.Join(latest, "user_data")
 	if err := os.MkdirAll(latest, 0755); err != nil {
 		return err
