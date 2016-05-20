@@ -19,7 +19,6 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/coreos/fleet/client"
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/schema"
 )
@@ -36,9 +35,9 @@ func checkStartUnitState(unit schema.Unit, startRet int, errchan chan error) {
 	}
 }
 
-func doStartUnits(t *testing.T, r commandTestResults, errchan chan error, cAPI client.API) {
-	c := createTestContext(t, append([]string{"start", "--no-block"}, r.units...)...)
-	exit := runStartUnit(c, cAPI)
+func doStartUnits(t *testing.T, r commandTestResults, errchan chan error) {
+	sharedFlags.NoBlock = true
+	exit := runStartUnit(cmdStart, r.units)
 	if exit != r.expectedExit {
 		errchan <- fmt.Errorf("%s: expected exit code %d but received %d", r.description, r.expectedExit, exit)
 		return
@@ -65,11 +64,11 @@ func runStartUnits(t *testing.T, unitPrefix string, results []commandTestResults
 			unitsCount = len(r.units)
 		}
 
-		cAPI := newFakeRegistryForCommands(unitPrefix, unitsCount, template)
+		cAPI = newFakeRegistryForCommands(unitPrefix, unitsCount, template)
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			doStartUnits(t, r, errchan, cAPI)
+			doStartUnits(t, r, errchan)
 		}()
 
 		go func() {
@@ -85,6 +84,10 @@ func runStartUnits(t *testing.T, unitPrefix string, results []commandTestResults
 
 func TestRunStartUnits(t *testing.T) {
 	unitPrefix := "start"
+	oldNoBlock := sharedFlags.NoBlock
+	defer func() {
+		sharedFlags.NoBlock = oldNoBlock
+	}()
 
 	results := []commandTestResults{
 		{

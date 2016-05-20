@@ -26,7 +26,6 @@ import (
 	"github.com/coreos/fleet/unit"
 	"github.com/coreos/fleet/version"
 
-	"github.com/codegangsta/cli"
 	"github.com/coreos/go-semver/semver"
 )
 
@@ -140,26 +139,6 @@ func newFakeRegistryForCheckVersion(v string) registry.ClusterRegistry {
 	return registry.NewFakeClusterRegistry(sv, 0)
 }
 
-func createTestContext(t *testing.T, args ...string) *cli.Context {
-	var c *cli.Context
-	app := createApp()
-
-	stderr("args: %v", args)
-	action := func(ctx *cli.Context) {
-		c = ctx
-	}
-	app.Action = action
-	for i := range app.Commands {
-		app.Commands[i].Action = action
-	}
-
-	if err := app.Run(append([]string{"fleetctl"}, args...)); err != nil {
-		t.Fatalf("Run error: %s", err)
-	}
-
-	return c
-}
-
 func TestCheckVersion(t *testing.T) {
 	reg := newFakeRegistryForCheckVersion(version.Version)
 	_, ok := checkVersion(reg)
@@ -243,6 +222,14 @@ func TestUnitNameMangle(t *testing.T) {
 }
 
 func TestGetBlockAttempts(t *testing.T) {
+	oldNoBlock := sharedFlags.NoBlock
+	oldBlockAttempts := sharedFlags.BlockAttempts
+
+	defer func() {
+		sharedFlags.NoBlock = oldNoBlock
+		sharedFlags.BlockAttempts = oldBlockAttempts
+	}()
+
 	var blocktests = []struct {
 		noBlock       bool
 		blockAttempts int
@@ -257,13 +244,9 @@ func TestGetBlockAttempts(t *testing.T) {
 	}
 
 	for _, tt := range blocktests {
-		var c *cli.Context
-		if tt.noBlock {
-			c = createTestContext(t, "load", "--no-block", "--block-attempts", fmt.Sprintf("%d", tt.blockAttempts), "none")
-		} else {
-			c = createTestContext(t, "load", "--block-attempts", fmt.Sprintf("%d", tt.blockAttempts), "none")
-		}
-		if n := getBlockAttempts(c); n != tt.expected {
+		sharedFlags.NoBlock = tt.noBlock
+		sharedFlags.BlockAttempts = tt.blockAttempts
+		if n := getBlockAttempts(cmdFleet); n != tt.expected {
 			t.Errorf("got %d, want %d (for --no-block=%t, --block-attempts=%d)", n, tt.expected, tt.noBlock, tt.blockAttempts)
 		}
 	}

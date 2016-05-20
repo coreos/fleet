@@ -19,14 +19,12 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/codegangsta/cli"
-
-	"github.com/coreos/fleet/client"
 	"github.com/coreos/fleet/job"
 )
 
-func doStopUnits(t *testing.T, r commandTestResults, errchan chan error, cAPI client.API, c *cli.Context) {
-	exit := runStopUnit(c, cAPI)
+func doStopUnits(t *testing.T, r commandTestResults, errchan chan error) {
+	sharedFlags.NoBlock = true
+	exit := runStopUnit(cmdStop, r.units)
 	if exit != r.expectedExit {
 		errchan <- fmt.Errorf("%s: expected exit code %d but received %d", r.description, r.expectedExit, exit)
 		return
@@ -48,6 +46,10 @@ func doStopUnits(t *testing.T, r commandTestResults, errchan chan error, cAPI cl
 
 func TestRunStopUnits(t *testing.T) {
 	unitPrefix := "stop"
+	oldNoBlock := sharedFlags.NoBlock
+	defer func() {
+		sharedFlags.NoBlock = oldNoBlock
+	}()
 
 	results := []commandTestResults{
 		{
@@ -76,18 +78,16 @@ func TestRunStopUnits(t *testing.T) {
 		var wg sync.WaitGroup
 		errchan := make(chan error)
 
-		cAPI := newFakeRegistryForCommands(unitPrefix, len(r.units), false)
-
-		c := createTestContext(t, append([]string{"stop", "--no-block"}, r.units...)...)
+		cAPI = newFakeRegistryForCommands(unitPrefix, len(r.units), false)
 
 		wg.Add(2)
 		go func() {
 			defer wg.Done()
-			doStopUnits(t, r, errchan, cAPI, c)
+			doStopUnits(t, r, errchan)
 		}()
 		go func() {
 			defer wg.Done()
-			doStopUnits(t, r, errchan, cAPI, c)
+			doStopUnits(t, r, errchan)
 		}()
 
 		go func() {

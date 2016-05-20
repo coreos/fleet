@@ -18,14 +18,10 @@ import (
 	"fmt"
 	"sync"
 	"testing"
-
-	"github.com/codegangsta/cli"
-
-	"github.com/coreos/fleet/client"
 )
 
-func doDestroyUnits(t *testing.T, r commandTestResults, errchan chan error, cAPI client.API, c *cli.Context) {
-	exit := runDestroyUnits(c, cAPI)
+func doDestroyUnits(t *testing.T, r commandTestResults, errchan chan error) {
+	exit := runDestroyUnit(cmdDestroy, r.units)
 	if exit != r.expectedExit {
 		errchan <- fmt.Errorf("%s: expected exit code %d but received %d", r.description, r.expectedExit, exit)
 		return
@@ -72,18 +68,16 @@ func TestRunDestroyUnits(t *testing.T) {
 		var wg sync.WaitGroup
 		errchan := make(chan error)
 
-		cAPI := newFakeRegistryForCommands(unitPrefix, len(r.units), false)
-
-		c := createTestContext(t, append([]string{"destroy"}, r.units...)...)
+		cAPI = newFakeRegistryForCommands(unitPrefix, len(r.units), false)
 
 		wg.Add(2)
 		go func() {
 			defer wg.Done()
-			doDestroyUnits(t, r, errchan, cAPI, c)
+			doDestroyUnits(t, r, errchan)
 		}()
 		go func() {
 			defer wg.Done()
-			doDestroyUnits(t, r, errchan, cAPI, c)
+			doDestroyUnits(t, r, errchan)
 		}()
 
 		go func() {
