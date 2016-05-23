@@ -591,15 +591,9 @@ func (nc *nspawnCluster) ReplaceMember(m Member) (Member, error) {
 	count := len(nc.members)
 	label := fmt.Sprintf("%s%s", nc.name, m.ID())
 
-	// The `machinectl poweroff` command does not cleanly shut down
-	// the nspawn container, so we must use systemctl
-	cmd := fmt.Sprintf("systemctl -M %s poweroff", label)
-	if _, stderr, _ := run(cmd); !strings.Contains(stderr, "Success") {
-		if strings.Contains(stderr, "Warning! D-Bus connection terminated.") {
-			log.Printf("poweroff failed: %s", stderr)
-		} else {
-			return nil, fmt.Errorf("poweroff failed: %s", stderr)
-		}
+	cmd := fmt.Sprintf("machinectl poweroff %s", label)
+	if _, _, err := run(cmd); err != nil {
+		return nil, fmt.Errorf("poweroff failed: %v", err)
 	}
 
 	var mN Member
