@@ -6,6 +6,9 @@ USAGE="Usage: $0 [options]
 Options:
     -c|--channel CHANNEL
                 channel name (stable/beta/alpha)               [default: stable]
+    -i|--base-image BASE_IMAGE
+                path to base image
+                      [default: ~/.qemu/coreos_stable_production_qemu_image.img]
     -p|--ssh-port PORT
                 The port on localhost to map to the VM's sshd. [default: 2244]
     -v|--verbose  Make verbose
@@ -24,6 +27,9 @@ while [ $# -ge 1 ]; do
     case "$1" in
         -c|--channel)
             OPTVAL_CHANNEL="$2"
+            shift 2 ;;
+        -i|--base-image)
+            OPTVAL_BASE_IMAGE="$2"
             shift 2 ;;
         -p|--ssh-port)
             OPTVAL_SSH_PORT="$2"
@@ -86,7 +92,11 @@ if [ -n "$OPTVAL_CHANNEL" ]; then
   COREOS_CHANNEL=$OPTVAL_CHANNEL
 fi
 
-BASE_IMAGE=$QEMU_DIR/coreos_${COREOS_CHANNEL}_production_qemu_image.img
+: ${BASE_IMAGE:=${QEMU_DIR}/coreos_${COREOS_CHANNEL}_production_qemu_image.img}
+if [ -n "$OPTVAL_BASE_IMAGE" ]; then
+  BASE_IMAGE=$OPTVAL_BASE_IMAGE
+fi
+
 IMAGE=$QEMU_DIR/coreos_${COREOS_CHANNEL}_fleet_test.qcow2
 
 IMG_URL="https://${COREOS_CHANNEL}.release.core-os.net/amd64-usr/current/coreos_production_qemu_image.img.bz2"
