@@ -466,6 +466,11 @@ func (nc *nspawnCluster) createMember(id string) (m Member, err error) {
 			0644,
 		},
 		{
+			"/etc/machine-id",
+			nm.ID(),
+			0644,
+		},
+		{
 			"/home/core/.bash_profile",
 			"export PATH=/opt/fleet:$PATH",
 			0644,
