@@ -54,8 +54,8 @@ func TestSingleNodeConnectivityLoss(t *testing.T) {
 		systemdState     []string
 	}{
 		"inactive": {[]string{"submit"}, "", "", nil},
-		"loaded":   {[]string{"load", "--no-block"}, "inactive", "enabled", nil},
-		"launched": {[]string{"start", "--no-block"}, "active", "enabled", []string{"loaded", "active", "running"}},
+		"loaded":   {[]string{"load", "--no-block"}, "inactive", "linked-runtime", nil},
+		"launched": {[]string{"start", "--no-block"}, "active", "linked-runtime", []string{"loaded", "active", "running"}},
 	}
 	createUnits := map[string][]string{}
 	expectedUnitFiles := map[string]string{}
@@ -158,18 +158,18 @@ func TestSingleNodeConnectivityLoss(t *testing.T) {
 	// Note: we cannot use fleetctl to check the state here,
 	// as fleet is not available to give us this information...
 	// We have to go deeper, and try to obtain the information from systemd directly.
-	stdout, err := cluster.MemberCommand(m0, "systemctl", "list-unit-files", "-t", "service", "--no-legend", "single@*.service", "global@*.service")
-	stdout = strings.TrimSpace(stdout)
-	if err != nil {
-		t.Fatalf("Failed to retrieve systemd unit file states: %v", err)
-	}
 	actualSystemdFiles := map[string]string{}
-	if stdout != "" {
-		for _, line := range strings.Split(stdout, "\n") {
-			fields := strings.Fields(line)
-			actualSystemdFiles[fields[0]] = fields[1]
+	var stdout string
+	for name, _ := range expectedSystemdFiles {
+		stdout, _ := cluster.MemberCommand(m0, "systemctl", "is-enabled", name)
+		// do not check for error, as systemctl is-enabled returns exit status 1 for linked-runtime.
+		stdout = strings.TrimSpace(stdout)
+		if stdout == "" {
+			continue
 		}
+		actualSystemdFiles[name] = strings.Split(stdout, "\n")[0]
 	}
+
 	if !reflect.DeepEqual(actualSystemdFiles, expectedSystemdFiles) {
 		t.Fatalf("Units files not in expected state after losing connectivity.\nExpected: %v\nActual: %v", expectedSystemdFiles, actualSystemdFiles)
 	}
