@@ -400,9 +400,15 @@ func (nc *nspawnCluster) createMember(id string) (m Member, err error) {
 		// set up directory for fleet service
 		fmt.Sprintf("mkdir -p %s/etc/systemd/system", fsdir),
 
-		// minimum requirements for running systemd/coreos in a container
+		// minimum requirements for running systemd/coreos in a container.
+		// NOTE: copying /etc/pam.d is necessary only for such setups with
+		// sys-auth/pambase installed, for example developer image of CoreOS
+		// 1053.2.0. It should be fine also for systems where /etc/pam.d is
+		// empty, because then it should automatically fall back to
+		// /usr/lib64/pam.d, which belongs to sys-libs/pam.
 		fmt.Sprintf("mkdir -p %s/usr", fsdir),
 		fmt.Sprintf("cp /etc/os-release %s/etc", fsdir),
+		fmt.Sprintf("cp -a /etc/pam.d %s/etc", fsdir),
 		fmt.Sprintf("ln -s /proc/self/mounts %s/etc/mtab", fsdir),
 		fmt.Sprintf("ln -s usr/lib64 %s/lib64", fsdir),
 		fmt.Sprintf("ln -s lib64 %s/lib", fsdir),
