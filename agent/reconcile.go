@@ -127,7 +127,13 @@ func desiredAgentState(a *Agent, reg registry.Registry) (*AgentState, error) {
 		return nil, err
 	}
 
-	ms := a.Machine.State()
+	// fetch full machine state from registry instead of
+	// using the local version to allow for dynamic metadata
+	ms, err := reg.MachineState(a.Machine.State().ID)
+	if err != nil {
+		log.Errorf("Failed fetching machine state from Registry: %v", err)
+		return nil, err
+	}
 	as := AgentState{
 		MState: &ms,
 		Units:  make(map[string]*job.Unit),

@@ -314,6 +314,37 @@ func (f *FakeRegistry) UnitHeartbeat(name, machID string, ttl time.Duration) err
 
 func (f *FakeRegistry) ClearUnitHeartbeat(string) {}
 
+func (f *FakeRegistry) SetMachineMetadata(machID string, key string, value string) error {
+	for _, mach := range f.machines {
+		if mach.ID == machID {
+			mach.Metadata[key] = value
+		}
+	}
+	return nil
+}
+
+func (f *FakeRegistry) DeleteMachineMetadata(machID string, key string) error {
+	for _, mach := range f.machines {
+		if mach.ID == machID {
+			delete(mach.Metadata, key)
+		}
+	}
+	return nil
+}
+
+func (f *FakeRegistry) MachineState(machID string) (machine.MachineState, error) {
+	f.RLock()
+	defer f.RUnlock()
+
+	for _, mach := range f.machines {
+		if mach.ID == machID {
+			return mach, nil
+		}
+	}
+
+	return machine.MachineState{}, errors.New("Machine state not found")
+}
+
 func NewFakeClusterRegistry(dVersion *semver.Version, eVersion int) *FakeClusterRegistry {
 	return &FakeClusterRegistry{
 		dVersion: dVersion,

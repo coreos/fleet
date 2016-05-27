@@ -37,7 +37,10 @@ type Registry interface {
 	ScheduleUnit(name, machID string) error
 	SetUnitTargetState(name string, state job.JobState) error
 	SetMachineState(ms machine.MachineState, ttl time.Duration) (uint64, error)
+	MachineState(machID string) (machine.MachineState, error)
 	UnscheduleUnit(name, machID string) error
+	SetMachineMetadata(machID, key, value string) error
+	DeleteMachineMetadata(machID, key string) error
 
 	IsRegistryReady() bool
 	UseEtcdRegistry() bool
