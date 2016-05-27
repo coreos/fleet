@@ -2,4 +2,4 @@
 ExecStartPre=/bin/bash -c "echo 'sync'"
 ExecStart=/bin/bash -c "while true; do echo Hello, World!; sleep 1; done"
 ExecStop=/bin/bash -c "echo 'stopping'"
-ExecStopPost=/bin/bash -c "sleep 3; touch /tmp/fleetSyncReplaceFile"
+ExecStopPost=/bin/bash -c "sleep 1; touch /tmp/fleetSyncReplaceFile"
