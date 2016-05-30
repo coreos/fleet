@@ -454,6 +454,14 @@ func makeConflictUO(name string) *schema.UnitOption {
 	}
 }
 
+func makeReplaceUO(name string) *schema.UnitOption {
+	return &schema.UnitOption{
+		Section: "X-Fleet",
+		Name:    "Replaces",
+		Value:   name,
+	}
+}
+
 func makePeerUO(name string) *schema.UnitOption {
 	return &schema.UnitOption{
 		Section: "X-Fleet",
@@ -543,6 +551,39 @@ func TestValidateOptions(t *testing.T) {
 			},
 			false,
 		},
+		// Replaces
+		// non-overlapping replace is fine
+		{
+			[]*schema.UnitOption{
+				makeReplaceUO("foo.service"),
+				makeReplaceUO("bar.service"),
+			},
+			true,
+		},
+		{
+			[]*schema.UnitOption{
+				makeReplaceUO("foo.service"),
+				makePeerUO("bar.service"),
+			},
+			true,
+		},
+		// replace + conflict is not good
+		{
+			[]*schema.UnitOption{
+				makeReplaceUO("foo.service"),
+				makeConflictUO("bar.service"),
+			},
+			false,
+		},
+		// circular replaces are not good
+		{
+			[]*schema.UnitOption{
+				makeReplaceUO("foo.service"),
+				makeReplaceUO("bar.service"),
+				makePeerUO("bar.service"),
+			},
+			false,
+		},
 		// MachineID is fine by itself
 		{
 			[]*schema.UnitOption{
@@ -576,7 +617,25 @@ func TestValidateOptions(t *testing.T) {
 		},
 		{
 			[]*schema.UnitOption{
-				makeIDUO("zyxwvutsr"), makeConflictUO("foo.service"), makeConflictUO("bar.service"),
+				makeIDUO("zyxwvutsr"),
+				makeConflictUO("foo.service"),
+				makeConflictUO("bar.service"),
+			},
+			false,
+		},
+		// MachineID with Replaces no good
+		{
+			[]*schema.UnitOption{
+				makeIDUO("abcdefghi"),
+				makeReplaceUO("bar.service"),
+			},
+			false,
+		},
+		{
+			[]*schema.UnitOption{
+				makeIDUO("zyxwvutsr"),
+				makeReplaceUO("foo.service"),
+				makeReplaceUO("bar.service"),
 			},
 			false,
 		},
@@ -646,6 +705,18 @@ func TestValidateOptions(t *testing.T) {
 					Name:    "Global",
 					Value:   "true",
 				},
+			},
+			false,
+		},
+		// Global with Replaces no good
+		{
+			[]*schema.UnitOption{
+				&schema.UnitOption{
+					Section: "X-Fleet",
+					Name:    "Global",
+					Value:   "true",
+				},
+				makeReplaceUO("foo.service"),
 			},
 			false,
 		},

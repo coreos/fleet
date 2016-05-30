@@ -327,6 +327,24 @@ MachineOf=zxcvq`),
 Global=true
 Conflicts=bar`),
 		},
+		{
+			"foo.service",
+			newUnitFile(t, `[X-Fleet]
+Global=true
+Replaces=bar`),
+		},
+		{
+			"foo.service",
+			newUnitFile(t, `[X-Fleet]
+Conflicts=bar
+Replaces=bar`),
+		},
+		{
+			"foo.service",
+			newUnitFile(t, `[X-Fleet]
+MachineOf=abcd
+Replaces=abcd`),
+		},
 	}
 	for i, tt = range testCases {
 		un = tt.name

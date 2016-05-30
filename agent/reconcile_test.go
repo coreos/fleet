@@ -386,6 +386,30 @@ func TestAbleToRun(t *testing.T) {
 			job:  newTestJobWithXFleetValues(t, "Conflicts=ping.service"),
 			want: false,
 		},
+
+		// no replaces found
+		{
+			dState: &AgentState{
+				MState: &machine.MachineState{ID: "123"},
+				Units: map[string]*job.Unit{
+					"ping.service": &job.Unit{Name: "ping.service"},
+				},
+			},
+			job:  newTestJobWithXFleetValues(t, "Replaces=pong.service"),
+			want: true,
+		},
+
+		// replaces found
+		{
+			dState: &AgentState{
+				MState: &machine.MachineState{ID: "123"},
+				Units: map[string]*job.Unit{
+					"ping.service": &job.Unit{Name: "ping.service"},
+				},
+			},
+			job:  newTestJobWithXFleetValues(t, "Replaces=ping.service"),
+			want: false,
+		},
 	}
 
 	for i, tt := range tests {

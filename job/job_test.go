@@ -88,6 +88,29 @@ Conflicts=*bar*
 	}
 }
 
+func TestJobReplaces(t *testing.T) {
+	testCases := []struct {
+		contents string
+		replaces []string
+	}{
+		{``, []string{}},
+		{`[Unit]
+Description=Testing
+
+[X-Fleet]
+Replaces=*bar*
+`, []string{"*bar*"}},
+	}
+	for i, tt := range testCases {
+		j := NewJob("echo.service", *newUnit(t, tt.contents))
+		replaces := j.Replaces()
+		if !reflect.DeepEqual(replaces, tt.replaces) {
+			t.Errorf("case %d: unexpected replaces: got %#v, want %#v", i, replaces, tt.replaces)
+		}
+
+	}
+}
+
 func TestParseRequirements(t *testing.T) {
 	testCases := []struct {
 		contents string
@@ -567,6 +590,7 @@ func TestValidateRequirements(t *testing.T) {
 		"X-ConditionMachineMetadata=up=down",
 		"MachineMetadata=true=false",
 		"Global=true",
+		"Replaces=foo",
 	}
 	for i, req := range tests {
 		contents := fmt.Sprintf("[X-Fleet]\n%s", req)
