@@ -1,10 +1,10 @@
-// Copyright 2014 CoreOS, Inc.
+// Copyright 2016 CoreOS, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//     http://www.apache.org/licenses/LICENSE+2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -15,17 +15,23 @@
 package main
 
 import (
+	"github.com/spf13/cobra"
+
 	"github.com/coreos/fleet/version"
 )
 
-var cmdVersion = &Command{
-	Name:        "version",
-	Description: "Print the version and exit",
-	Summary:     "Print the version and exit",
-	Run:         runVersion,
+var cmdVersion = &cobra.Command{
+	Use:   "version",
+	Short: "Print the version and exit",
+	Long:  "Print the version and exit",
+	Run:   runWrapper(runVersion),
 }
 
-func runVersion(args []string) (exit int) {
+func init() {
+	cmdFleet.AddCommand(cmdVersion)
+}
+
+func runVersion(cCmd *cobra.Command, args []string) (exit int) {
 	stdout("fleetctl version %s", version.Version)
-	return
+	return 0
 }

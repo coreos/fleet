@@ -17,6 +17,7 @@ package main
 import (
 	"testing"
 
+	"github.com/coreos/fleet/client"
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/registry"
@@ -36,6 +37,11 @@ func assertEqual(t *testing.T, name string, want, got interface{}) {
 }
 
 func TestListUnitsFieldsToStrings(t *testing.T) {
+	type fakeAPI struct {
+		client.API
+	}
+	cAPI = fakeAPI{}
+
 	// nil UnitState shouldn't happen, but just in case
 	for _, tt := range []string{"unit", "load", "active", "sub", "machine", "hash"} {
 		f := listUnitsFields[tt](nil, false)

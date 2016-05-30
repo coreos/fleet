@@ -246,8 +246,8 @@ func TestGetBlockAttempts(t *testing.T) {
 	for _, tt := range blocktests {
 		sharedFlags.NoBlock = tt.noBlock
 		sharedFlags.BlockAttempts = tt.blockAttempts
-		if n := getBlockAttempts(); n != tt.expected {
-			t.Errorf("got %d, want %d", n, tt.expected)
+		if n := getBlockAttempts(cmdFleet); n != tt.expected {
+			t.Errorf("got %d, want %d (for --no-block=%t, --block-attempts=%d)", n, tt.expected, tt.noBlock, tt.blockAttempts)
 		}
 	}
 }

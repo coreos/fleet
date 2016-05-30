@@ -21,8 +21,8 @@ import (
 	"testing"
 )
 
-func doSubmitUnits(r commandTestResults, errchan chan error) {
-	exit := runSubmitUnits(r.units)
+func doSubmitUnits(t *testing.T, r commandTestResults, errchan chan error) {
+	exit := runSubmitUnit(cmdSubmit, r.units)
 	if exit != r.expectedExit {
 		errchan <- fmt.Errorf("%s: expected exit code %d but received %d", r.description, r.expectedExit, exit)
 		return
@@ -72,7 +72,7 @@ func runSubmitUnitsTests(t *testing.T, unitPrefix string, results []commandTestR
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			doSubmitUnits(r, errchan)
+			doSubmitUnits(t, r, errchan)
 		}()
 
 		go func() {

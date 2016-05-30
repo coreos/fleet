@@ -17,24 +17,29 @@ package main
 import (
 	"time"
 
+	"github.com/spf13/cobra"
+
 	"github.com/coreos/fleet/client"
 )
 
-var cmdDestroyUnit = &Command{
-	Name:    "destroy",
-	Summary: "Destroy one or more units in the cluster",
-	Usage:   "UNIT...",
-	Description: `Completely remove one or more running or submitted units from the cluster.
+var cmdDestroy = &cobra.Command{
+	Use:   "destroy UNIT...",
+	Short: "Destroy one or more units in the cluster",
+	Long: `Completely remove one or more running or submitted units from the cluster.
 
 Instructs systemd on the host machine to stop the unit, deferring to systemd
 completely for any custom stop directives (i.e. ExecStop option in the unit
 file).
 
 Destroyed units are impossible to start unless re-submitted.`,
-	Run: runDestroyUnits,
+	Run: runWrapper(runDestroyUnit),
 }
 
-func runDestroyUnits(args []string) (exit int) {
+func init() {
+	cmdFleet.AddCommand(cmdDestroy)
+}
+
+func runDestroyUnit(cCmd *cobra.Command, args []string) (exit int) {
 	if len(args) == 0 {
 		stderr("No units given")
 		return 0
@@ -58,7 +63,7 @@ func runDestroyUnits(args []string) (exit int) {
 			continue
 		}
 
-		if !sharedFlags.NoBlock {
+		if sharedFlags.NoBlock {
 			attempts := sharedFlags.BlockAttempts
 			retry := func() bool {
 				if sharedFlags.BlockAttempts < 1 {

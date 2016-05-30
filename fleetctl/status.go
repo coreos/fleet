@@ -17,14 +17,15 @@ package main
 import (
 	"fmt"
 
+	"github.com/spf13/cobra"
+
 	"github.com/coreos/fleet/job"
 )
 
-var cmdStatusUnits = &Command{
-	Name:    "status",
-	Summary: "Output the status of one or more units in the cluster",
-	Usage:   "[--ssh-port=N] UNIT...",
-	Description: `Output the status of one or more units currently running in the cluster.
+var cmdStatus = &cobra.Command{
+	Use:   "status [--ssh-port=N] UNIT...",
+	Short: "Output the status of one or more units in the cluster",
+	Long: `Output the status of one or more units currently running in the cluster.
 Supports glob matching of units in the current working directory or matches
 previously started units.
 
@@ -35,14 +36,16 @@ Show status of an entire directory with glob matching:
 fleetctl status myservice/*
 
 This command does not work with global units.`,
-	Run: runStatusUnits,
+	Run: runWrapper(runStatusUnit),
 }
 
 func init() {
-	cmdStatusUnits.Flags.IntVar(&sharedFlags.SSHPort, "ssh-port", 22, "Connect to remote hosts over SSH using this TCP port.")
+	cmdFleet.AddCommand(cmdStatus)
+
+	cmdStatus.Flags().IntVar(&sharedFlags.SSHPort, "ssh-port", 22, "Connect to remote hosts over SSH using this TCP port.")
 }
 
-func runStatusUnits(args []string) (exit int) {
+func runStatusUnit(cCmd *cobra.Command, args []string) (exit int) {
 	for i, arg := range args {
 		name := unitNameMangle(arg)
 		unit, err := cAPI.Unit(name)
@@ -67,7 +70,8 @@ func runStatusUnits(args []string) (exit int) {
 			fmt.Printf("\n")
 		}
 
-		if exit = runCommand(unit.MachineID, "systemctl", "status", "-l", unit.Name); exit != 0 {
+		if exitVal := runCommand(cCmd, unit.MachineID, "systemctl", "status", "-l", unit.Name); exitVal != 0 {
+			exit = exitVal
 			break
 		}
 	}

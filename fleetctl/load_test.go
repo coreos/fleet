@@ -35,8 +35,9 @@ func checkLoadUnitState(unit schema.Unit, loadRet int, errchan chan error) {
 	}
 }
 
-func doLoadUnits(r commandTestResults, errchan chan error) {
-	exit := runLoadUnits(r.units)
+func doLoadUnits(t *testing.T, r commandTestResults, errchan chan error) {
+	sharedFlags.NoBlock = true
+	exit := runLoadUnit(cmdLoad, r.units)
 	if exit != r.expectedExit {
 		errchan <- fmt.Errorf("%s: expected exit code %d but received %d", r.description, r.expectedExit, exit)
 		return
@@ -83,7 +84,6 @@ func TestRunLoadUnits(t *testing.T) {
 		},
 	}
 
-	sharedFlags.NoBlock = true
 	for _, r := range results {
 		var wg sync.WaitGroup
 		errchan := make(chan error)
@@ -93,11 +93,11 @@ func TestRunLoadUnits(t *testing.T) {
 		wg.Add(2)
 		go func() {
 			defer wg.Done()
-			doLoadUnits(r, errchan)
+			doLoadUnits(t, r, errchan)
 		}()
 		go func() {
 			defer wg.Done()
-			doLoadUnits(r, errchan)
+			doLoadUnits(t, r, errchan)
 		}()
 
 		go func() {

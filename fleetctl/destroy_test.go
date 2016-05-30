@@ -20,8 +20,8 @@ import (
 	"testing"
 )
 
-func doDestroyUnits(r commandTestResults, errchan chan error) {
-	exit := runDestroyUnits(r.units)
+func doDestroyUnits(t *testing.T, r commandTestResults, errchan chan error) {
+	exit := runDestroyUnit(cmdDestroy, r.units)
 	if exit != r.expectedExit {
 		errchan <- fmt.Errorf("%s: expected exit code %d but received %d", r.description, r.expectedExit, exit)
 		return
@@ -73,11 +73,11 @@ func TestRunDestroyUnits(t *testing.T) {
 		wg.Add(2)
 		go func() {
 			defer wg.Done()
-			doDestroyUnits(r, errchan)
+			doDestroyUnits(t, r, errchan)
 		}()
 		go func() {
 			defer wg.Done()
-			doDestroyUnits(r, errchan)
+			doDestroyUnits(t, r, errchan)
 		}()
 
 		go func() {

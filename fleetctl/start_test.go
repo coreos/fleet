@@ -35,8 +35,9 @@ func checkStartUnitState(unit schema.Unit, startRet int, errchan chan error) {
 	}
 }
 
-func doStartUnits(r commandTestResults, errchan chan error) {
-	exit := runStartUnit(r.units)
+func doStartUnits(t *testing.T, r commandTestResults, errchan chan error) {
+	sharedFlags.NoBlock = true
+	exit := runStartUnit(cmdStart, r.units)
 	if exit != r.expectedExit {
 		errchan <- fmt.Errorf("%s: expected exit code %d but received %d", r.description, r.expectedExit, exit)
 		return
@@ -55,7 +56,6 @@ func doStartUnits(r commandTestResults, errchan chan error) {
 
 func runStartUnits(t *testing.T, unitPrefix string, results []commandTestResults, template bool) {
 	unitsCount := 0
-	sharedFlags.NoBlock = true
 	for _, r := range results {
 		var wg sync.WaitGroup
 		errchan := make(chan error)
@@ -65,11 +65,10 @@ func runStartUnits(t *testing.T, unitPrefix string, results []commandTestResults
 		}
 
 		cAPI = newFakeRegistryForCommands(unitPrefix, unitsCount, template)
-
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			doStartUnits(r, errchan)
+			doStartUnits(t, r, errchan)
 		}()
 
 		go func() {
@@ -136,7 +135,6 @@ func TestRunStartUnits(t *testing.T) {
 		},
 	}
 
-	sharedFlags.NoBlock = true
 	runStartUnits(t, unitPrefix, results, false)
 	runStartUnits(t, unitPrefix, templateResults, true)
 }

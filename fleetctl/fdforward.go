@@ -18,19 +18,22 @@ import (
 	"io"
 	"net"
 	"os"
+
+	"github.com/spf13/cobra"
 )
 
-var (
-	cmdFDForward = &Command{
-		Name:        "fd-forward",
-		Summary:     "Proxy stdin and stdout to a unix domain socket",
-		Usage:       "SOCKET",
-		Description: `fleetctl utilizes fd-forward when --tunnel is used and --endpoint is a unix socket. This command is not intended to be called by users directly.`,
-		Run:         runFDForward,
-	}
-)
+var cmdFDForward = &cobra.Command{
+	Use:   "fd-forward SOCKET",
+	Short: "Proxy stdin and stdout to a unix domain socket",
+	Long:  `fleetctl utilizes fd-forward when --tunnel is used and --endpoint is a unix socket. This command is not intended to be called by users directly.`,
+	Run:   runWrapper(runFDForward),
+}
 
-func runFDForward(args []string) (exit int) {
+func init() {
+	cmdFleet.AddCommand(cmdFDForward)
+}
+
+func runFDForward(cCmd *cobra.Command, args []string) (exit int) {
 	if len(args) != 1 {
 		stderr("Provide a single argument")
 		return 1

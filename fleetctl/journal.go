@@ -17,6 +17,8 @@ package main
 import (
 	"strconv"
 
+	"github.com/spf13/cobra"
+
 	"github.com/coreos/fleet/job"
 )
 
@@ -25,33 +27,35 @@ var (
 	flagFollow bool
 	flagSudo   bool
 	flagOutput string
-	cmdJournal = &Command{
-		Name:    "journal",
-		Summary: "Print the journal of a unit in the cluster to stdout",
-		Usage:   "[--lines=N] [--ssh-port=N] [-f|--follow] [--output=STRING] <unit>",
-		Run:     runJournal,
-		Description: `Outputs the journal of a unit by connecting to the machine that the unit occupies.
-
-Read the last 10 lines:
-	fleetctl journal foo.service
-
-Read the last 100 lines:
-	fleetctl journal --lines 100 foo.service
-
-This command does not work with global units.`,
-	}
 )
 
-func init() {
-	cmdJournal.Flags.IntVar(&flagLines, "lines", 10, "Number of recent log lines to return")
-	cmdJournal.Flags.BoolVar(&flagFollow, "follow", false, "Continuously print new entries as they are appended to the journal.")
-	cmdJournal.Flags.BoolVar(&flagFollow, "f", false, "Shorthand for --follow")
-	cmdJournal.Flags.IntVar(&sharedFlags.SSHPort, "ssh-port", 22, "Connect to remote hosts over SSH using this TCP port")
-	cmdJournal.Flags.BoolVar(&flagSudo, "sudo", false, "Execute journal command with sudo")
-	cmdJournal.Flags.StringVar(&flagOutput, "output", "short", "Output mode. This will be passed unaltered to journalctl on the remote host, and hence supports the same modes as that command.")
+var cmdJournal = &cobra.Command{
+	Use:   "journal [--lines=N] [--ssh-port=N] [-f|--follow] [--output=STRING] <unit>",
+	Short: "Print the journal of a unit in the cluster to stdout",
+	Long: `Outputs the journal of a unit by connecting to the machine that the unit occupies.
+
+Read the last 10 lines:
+fleetctl journal foo.service
+
+Read the last 100 lines:
+fleetctl journal --lines 100 foo.service
+
+This command does not work with global units.`,
+	Run: runWrapper(runJournal),
 }
 
-func runJournal(args []string) (exit int) {
+func init() {
+	cmdFleet.AddCommand(cmdJournal)
+
+	cmdJournal.Flags().IntVar(&flagLines, "lines", 10, "Number of recent log lines to return")
+	cmdJournal.Flags().BoolVar(&flagFollow, "follow", false, "Continuously print new entries as they are appended to the journal.")
+	cmdJournal.Flags().BoolVar(&flagFollow, "f", false, "Shorthand for --follow")
+	cmdJournal.Flags().IntVar(&sharedFlags.SSHPort, "ssh-port", 22, "Connect to remote hosts over SSH using this TCP port")
+	cmdJournal.Flags().BoolVar(&flagSudo, "sudo", false, "Execute journal command with sudo")
+	cmdJournal.Flags().StringVar(&flagOutput, "output", "short", "Output mode. This will be passed unaltered to journalctl on the remote host, and hence supports the same modes as that command.")
+}
+
+func runJournal(cCmd *cobra.Command, args []string) (exit int) {
 	if len(args) != 1 {
 		stderr("One unit file must be provided.")
 		return 1
@@ -73,7 +77,8 @@ func runJournal(args []string) (exit int) {
 		return 1
 	}
 
-	cmd := []string{"journalctl", "--unit", name, "--no-pager", "-n", strconv.Itoa(flagLines), "--output", flagOutput}
+	lines, _ := cCmd.Flags().GetInt("lines")
+	cmd := []string{"journalctl", "--unit", name, "--no-pager", "-n", strconv.Itoa(lines), "--output", flagOutput}
 
 	if flagSudo {
 		cmd = append([]string{"sudo"}, cmd...)
@@ -83,5 +88,6 @@ func runJournal(args []string) (exit int) {
 		cmd = append(cmd, "-f")
 	}
 
-	return runCommand(u.MachineID, cmd[0], cmd[1:]...)
+	exit = runCommand(cCmd, u.MachineID, cmd[0], cmd[1:]...)
+	return
 }

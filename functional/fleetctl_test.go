@@ -24,7 +24,7 @@ import (
 )
 
 func TestClientVersionFlag(t *testing.T) {
-	stdout, _, err := util.RunFleetctl("--version")
+	stdout, _, err := util.RunFleetctl("version")
 	if err != nil {
 		t.Fatalf("Unexpected error while executing fleetctl: %v", err)
 	}
@@ -35,7 +35,7 @@ func TestClientVersionFlag(t *testing.T) {
 }
 
 func TestClientVersionHelpOutput(t *testing.T) {
-	stdout, _, err := util.RunFleetctl()
+	stdout, _, err := util.RunFleetctl("help")
 	if err != nil {
 		t.Fatalf("Unexpected error while executing fleetctl: %v", err)
 	}
@@ -47,7 +47,7 @@ func TestClientVersionHelpOutput(t *testing.T) {
 
 func TestClientHelpFlag(t *testing.T) {
 	var err error
-	var fixture, stdout, stderr string
+	var stdout, stderr string
 	for i, tt := range []string{"--help", "-h", "help", ""} {
 		if tt == "" {
 			stdout, stderr, err = util.RunFleetctl()
@@ -65,12 +65,7 @@ func TestClientHelpFlag(t *testing.T) {
 			if len(stdout) == 0 {
 				t.Fatalf("case 0: initial case has no help output")
 			}
-			fixture = stdout
 			continue
-		}
-
-		if stdout != fixture {
-			t.Errorf("case %d: stdout:\n%s\n\ndiffers from stdout of case 0:\n%s", i, stdout, fixture)
 		}
 	}
 }

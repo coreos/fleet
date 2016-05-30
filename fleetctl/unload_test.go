@@ -22,8 +22,9 @@ import (
 	"github.com/coreos/fleet/job"
 )
 
-func doUnloadUnits(r commandTestResults, errchan chan error) {
-	exit := runUnloadUnit(r.units)
+func doUnloadUnits(t *testing.T, r commandTestResults, errchan chan error) {
+	sharedFlags.NoBlock = true
+	exit := runUnloadUnit(cmdUnload, r.units)
 	if exit != r.expectedExit {
 		errchan <- fmt.Errorf("%s: expected exit code %d but received %d", r.description, r.expectedExit, exit)
 		return
@@ -73,7 +74,6 @@ func TestRunUnloadUnits(t *testing.T) {
 		},
 	}
 
-	sharedFlags.NoBlock = true
 	for _, r := range results {
 		var wg sync.WaitGroup
 		errchan := make(chan error)
@@ -83,11 +83,11 @@ func TestRunUnloadUnits(t *testing.T) {
 		wg.Add(2)
 		go func() {
 			defer wg.Done()
-			doUnloadUnits(r, errchan)
+			doUnloadUnits(t, r, errchan)
 		}()
 		go func() {
 			defer wg.Done()
-			doUnloadUnits(r, errchan)
+			doUnloadUnits(t, r, errchan)
 		}()
 
 		go func() {

@@ -17,25 +17,26 @@ package main
 import (
 	"os"
 
+	"github.com/spf13/cobra"
+
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/log"
 )
 
-var (
-	cmdUnloadUnit = &Command{
-		Name:    "unload",
-		Summary: "Unschedule one or more units in the cluster.",
-		Usage:   "UNIT...",
-		Run:     runUnloadUnit,
-	}
-)
-
-func init() {
-	cmdUnloadUnit.Flags.IntVar(&sharedFlags.BlockAttempts, "block-attempts", 0, "Wait until the units are inactive, performing up to N attempts before giving up. A value of 0 indicates no limit.")
-	cmdUnloadUnit.Flags.BoolVar(&sharedFlags.NoBlock, "no-block", false, "Do not wait until the units have become inactive before exiting.")
+var cmdUnload = &cobra.Command{
+	Use:   "unload UNIT...",
+	Short: "Unschedule one or more units in the cluster.",
+	Run:   runWrapper(runUnloadUnit),
 }
 
-func runUnloadUnit(args []string) (exit int) {
+func init() {
+	cmdFleet.AddCommand(cmdUnload)
+
+	cmdUnload.Flags().IntVar(&sharedFlags.BlockAttempts, "block-attempts", 0, "Wait until the units are inactive, performing up to N attempts before giving up. A value of 0 indicates no limit.")
+	cmdUnload.Flags().BoolVar(&sharedFlags.NoBlock, "no-block", false, "Do not wait until the units have become inactive before exiting.")
+}
+
+func runUnloadUnit(cCmd *cobra.Command, args []string) (exit int) {
 	if len(args) == 0 {
 		stderr("No units given")
 		return 0
@@ -65,7 +66,7 @@ func runUnloadUnit(args []string) (exit int) {
 		}
 	}
 
-	exit = tryWaitForUnitStates(wait, "unload", job.JobStateInactive, getBlockAttempts(), os.Stdout)
+	exit = tryWaitForUnitStates(wait, "unload", job.JobStateInactive, getBlockAttempts(cCmd), os.Stdout)
 	if exit == 0 {
 		stderr("Successfully unloaded units %v.", wait)
 	} else {

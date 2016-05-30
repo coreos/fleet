@@ -14,14 +14,21 @@
 
 package main
 
-var cmdVerifyUnit = &Command{
-	Name:    "verify",
-	Summary: "DEPRECATED - No longer works",
-	Usage:   "UNIT",
-	Run:     runVerifyUnit,
+import (
+	"github.com/spf13/cobra"
+)
+
+var cmdVerifyUnit = &cobra.Command{
+	Use:        "verify UNIT",
+	Deprecated: "DEPRECATED - No longer works",
+	Run:        runWrapper(runVerifyUnit),
 }
 
-func runVerifyUnit(args []string) (exit int) {
+func init() {
+	cmdFleet.AddCommand(cmdVerifyUnit)
+}
+
+func runVerifyUnit(cCmd *cobra.Command, args []string) (exit int) {
 	stderr("WARNING: The signed/verified units feature is DEPRECATED and cannot be used.")
 	return 2
 }

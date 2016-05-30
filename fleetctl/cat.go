@@ -17,21 +17,24 @@ package main
 import (
 	"fmt"
 
+	"github.com/spf13/cobra"
+
 	"github.com/coreos/fleet/schema"
 )
 
-var (
-	cmdCatUnit = &Command{
-		Name:    "cat",
-		Summary: "Output the contents of a submitted unit",
-		Usage:   "UNIT",
-		Description: `Outputs the unit file that is currently loaded in the cluster. Useful to verify
+var cmdCat = &cobra.Command{
+	Use:   "cat UNIT",
+	Short: "Output the contents of a submitted unit",
+	Long: `Outputs the unit file that is currently loaded in the cluster. Useful to verify
 the correct version of a unit is running.`,
-		Run: runCatUnit,
-	}
-)
+	Run: runWrapper(runCatUnit),
+}
 
-func runCatUnit(args []string) (exit int) {
+func init() {
+	cmdFleet.AddCommand(cmdCat)
+}
+
+func runCatUnit(cCmd *cobra.Command, args []string) (exit int) {
 	if len(args) != 1 {
 		stderr("One unit file must be provided")
 		return 1

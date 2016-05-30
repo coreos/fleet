@@ -17,12 +17,17 @@ package main
 import (
 	"testing"
 
+	"github.com/coreos/fleet/client"
 	"github.com/coreos/fleet/job"
 	"github.com/coreos/fleet/machine"
 	"github.com/coreos/fleet/schema"
 )
 
 func TestListUnitFilesFieldsToStrings(t *testing.T) {
+	type fakeAPI struct {
+		client.API
+	}
+	cAPI = fakeAPI{}
 	u := schema.Unit{
 		Name:    "foo.service",
 		Options: []*schema.UnitOption{},
@@ -83,6 +88,10 @@ func TestListUnitFilesFieldsToStrings(t *testing.T) {
 }
 
 func TestMapTargetField(t *testing.T) {
+	type fakeAPI struct {
+		client.API
+	}
+	cAPI = fakeAPI{}
 	// seeding the cache for the following test cases
 	machineStates = map[string]*machine.MachineState{
 		"XXX": &machine.MachineState{ID: "XXX"},

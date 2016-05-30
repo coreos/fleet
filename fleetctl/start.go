@@ -17,15 +17,15 @@ package main
 import (
 	"os"
 
+	"github.com/spf13/cobra"
+
 	"github.com/coreos/fleet/job"
 )
 
-var (
-	cmdStartUnit = &Command{
-		Name:    "start",
-		Summary: "Instruct systemd to start one or more units in the cluster, first submitting and loading if necessary.",
-		Usage:   "[--no-block|--block-attempts=N] UNIT...",
-		Description: `Start one or many units on the cluster. Select units to start by glob matching
+var cmdStart = &cobra.Command{
+	Use:   "start [--no-block|--block-attempts=N] UNIT...",
+	Short: "Instruct systemd to start one or more units in the cluster, first submitting and loading if necessary.",
+	Long: `Start one or many units on the cluster. Select units to start by glob matching
 for units in the current working directory or matching names of previously
 submitted units.
 
@@ -36,31 +36,32 @@ respective --block-attempts and --no-block options. Start operations on global
 units are always non-blocking.
 
 Start a single unit:
-	fleetctl start foo.service
+fleetctl start foo.service
 
 Start an entire directory of units with glob matching:
-	fleetctl start myservice/*
+fleetctl start myservice/*
 
 You may filter suitable hosts based on metadata provided by the machine.
 Machine metadata is located in the fleet configuration file.`,
-		Run: runStartUnit,
-	}
-)
-
-func init() {
-	cmdStartUnit.Flags.BoolVar(&sharedFlags.Sign, "sign", false, "DEPRECATED - this option cannot be used")
-	cmdStartUnit.Flags.IntVar(&sharedFlags.BlockAttempts, "block-attempts", 0, "Wait until the units are launched, performing up to N attempts before giving up. A value of 0 indicates no limit. Does not apply to global units.")
-	cmdStartUnit.Flags.BoolVar(&sharedFlags.NoBlock, "no-block", false, "Do not wait until the units have launched before exiting. Always the case for global units.")
-	cmdStartUnit.Flags.BoolVar(&sharedFlags.Replace, "replace", false, "Replace the already started units in the cluster with new versions.")
+	Run: runWrapper(runStartUnit),
 }
 
-func runStartUnit(args []string) (exit int) {
+func init() {
+	cmdFleet.AddCommand(cmdStart)
+
+	cmdStart.Flags().BoolVar(&sharedFlags.Sign, "sign", false, "DEPRECATED - this option cannot be used")
+	cmdStart.Flags().IntVar(&sharedFlags.BlockAttempts, "block-attempts", 0, "Wait until the units are launched, performing up to N attempts before giving up. A value of 0 indicates no limit. Does not apply to global units.")
+	cmdStart.Flags().BoolVar(&sharedFlags.NoBlock, "no-block", false, "Do not wait until the units have launched before exiting. Always the case for global units.")
+	cmdStart.Flags().BoolVar(&sharedFlags.Replace, "replace", false, "Replace the already started units in the cluster with new versions.")
+}
+
+func runStartUnit(cCmd *cobra.Command, args []string) (exit int) {
 	if len(args) == 0 {
 		stderr("No units given")
 		return 0
 	}
 
-	if err := lazyCreateUnits(args); err != nil {
+	if err := lazyCreateUnits(cCmd, args); err != nil {
 		stderr("Error creating units: %v", err)
 		return 1
 	}
@@ -80,7 +81,11 @@ func runStartUnit(args []string) (exit int) {
 		}
 	}
 
-	exit = tryWaitForUnitStates(starting, "start", job.JobStateLaunched, getBlockAttempts(), os.Stdout)
+	exitVal := tryWaitForUnitStates(starting, "start", job.JobStateLaunched, getBlockAttempts(cCmd), os.Stdout)
+	if exitVal != 0 {
+		stderr("Error waiting for unit states, exit status: %d", exitVal)
+		return exitVal
+	}
 
-	return
+	return 0
 }

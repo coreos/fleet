@@ -19,6 +19,8 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/spf13/cobra"
+
 	"github.com/coreos/fleet/machine"
 )
 
@@ -28,21 +30,7 @@ const (
 
 var (
 	listMachinesFieldsFlag string
-	cmdListMachines        = &Command{
-		Name:    "list-machines",
-		Summary: "Enumerate the current hosts in the cluster",
-		Usage:   "[-l|--full] [--no-legend]",
-		Description: `Lists all active machines within the cluster. Previously active machines will not appear in this list.
-
-For easily parsable output, you can remove the column headers:
-	fleetctl list-machines --no-legend
-
-Output the list without truncation:
-	fleetctl list-machines --full`,
-		Run: runListMachines,
-	}
-
-	listMachinesFields = map[string]machineToField{
+	listMachinesFields     = map[string]machineToField{
 		"machine": func(ms *machine.MachineState, full bool) string {
 			return machineIDLegend(*ms, full)
 		},
@@ -63,14 +51,29 @@ Output the list without truncation:
 
 type machineToField func(ms *machine.MachineState, full bool) string
 
-func init() {
-	cmdListMachines.Flags.BoolVar(&sharedFlags.Full, "full", false, "Do not ellipsize fields on output")
-	cmdListMachines.Flags.BoolVar(&sharedFlags.Full, "l", false, "Shorthand for --full")
-	cmdListMachines.Flags.BoolVar(&sharedFlags.NoLegend, "no-legend", false, "Do not print a legend (column headers)")
-	cmdListMachines.Flags.StringVar(&listMachinesFieldsFlag, "fields", defaultListMachinesFields, fmt.Sprintf("Columns to print for each Machine. Valid fields are %q", strings.Join(machineToFieldKeys(listMachinesFields), ",")))
+var cmdListMachines = &cobra.Command{
+	Use:   "list-machines [-l|--full] [--no-legend]",
+	Short: "Enumerate the current hosts in the cluster",
+	Long: `Lists all active machines within the cluster. Previously active machines will not appear in this list.
+
+For easily parsable output, you can remove the column headers:
+fleetctl list-machines --no-legend
+
+Output the list without truncation:
+fleetctl list-machines --full`,
+	Run: runWrapper(runListMachines),
 }
 
-func runListMachines(args []string) (exit int) {
+func init() {
+	cmdFleet.AddCommand(cmdListMachines)
+
+	cmdListMachines.Flags().BoolVar(&sharedFlags.Full, "full", false, "Do not ellipsize fields on output")
+	cmdListMachines.Flags().BoolVar(&sharedFlags.Full, "l", false, "Shorthand for --full")
+	cmdListMachines.Flags().BoolVar(&sharedFlags.NoLegend, "no-legend", false, "Do not print a legend (column headers)")
+	cmdListMachines.Flags().StringVar(&listMachinesFieldsFlag, "fields", defaultListMachinesFields, fmt.Sprintf("Columns to print for each Machine. Valid fields are %q", strings.Join(machineToFieldKeys(listMachinesFields), ",")))
+}
+
+func runListMachines(cCmd *cobra.Command, args []string) (exit int) {
 	if listMachinesFieldsFlag == "" {
 		stderr("Must define output format")
 		return 1
@@ -90,21 +93,24 @@ func runListMachines(args []string) (exit int) {
 		return 1
 	}
 
-	if !sharedFlags.NoLegend {
+	noLegend, _ := cCmd.Flags().GetBool("no-legend")
+	if !noLegend {
 		fmt.Fprintln(out, strings.ToUpper(strings.Join(cols, "\t")))
 	}
 
+	full, _ := cCmd.Flags().GetBool("full")
 	for _, ms := range machines {
 		ms := ms
 		var f []string
 		for _, c := range cols {
-			f = append(f, listMachinesFields[c](&ms, sharedFlags.Full))
+			f = append(f, listMachinesFields[c](&ms, full))
 		}
 		fmt.Fprintln(out, strings.Join(f, "\t"))
 	}
 
 	out.Flush()
-	return
+
+	return 0
 }
 
 func formatMetadata(metadata map[string]string) string {
