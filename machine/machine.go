@@ -111,6 +111,14 @@ func HasMetadata(state *MachineState, metadata map[string]pkg.Set) bool {
 						log.Debugf("Local Metadata(%s) does not match requirement", key)
 						return false
 					}
+				} else if index := strings.Index(v, "=="); strings.Contains(v, "==") && (index == 0) {
+					if v[2:] == local {
+						log.Debugf("Local Metadata(%s) meets requirement", key)
+						continue
+					} else {
+						log.Debugf("Local Metadata(%s) does not match requirement", key)
+						return false
+					}
 				} else {
 					log.Debugf("Local Metadata(%s) does not match requirement", key)
 					return false

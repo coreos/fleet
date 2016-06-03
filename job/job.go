@@ -285,7 +285,7 @@ func (j *Job) RequiredTargetMetadata() map[string]pkg.Set {
 	} {
 		for _, valuePair := range j.requirements()[key] {
 			var s []string
-			for _, sep := range []string{"<=", ">=", "!=", "<", ">"} {
+			for _, sep := range []string{"==", "<=", ">=", "!=", "<", ">"} {
 				index := strings.Index(valuePair, sep)
 				if index != -1 {
 					s = []string{valuePair[0:index], valuePair[index:]}
