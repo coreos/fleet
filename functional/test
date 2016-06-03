@@ -49,7 +49,6 @@ HOME=$(getent passwd "${USER_ID}" | cut -d: -f6)
 TAIL_LOGS=30
 
 cd ${CDIR}/../
-export VERSION=$(git describe --dirty)
 export GOROOT=${HOME}/go
 export PATH=${HOME}/go/bin:${PATH}
 
@@ -66,14 +65,14 @@ if [[ ! $(go version 2>/dev/null) ]]; then
   functional/provision/install_go.sh
 fi
 
+source build-env
+eval $(go env)
+
 if [ ! -x "bin/fleetd" ] || \
    [ ! -x "bin/fleetctl" ] || \
    [ ! $(bin/fleetctl | grep "${VERSION}") ]; then
   ./build
 fi
-
-source build-env
-eval $(go env)
 
 go test github.com/coreos/fleet/functional -ldflags "${GLDFLAGS}" -v "$@" 2>&1 | tee functional/functional-tests.log
 TESTS_RETURN_CODE_1=${PIPESTATUS[0]}
