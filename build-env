@@ -11,6 +11,7 @@ fi
 
 export GOBIN=${PWD}/bin
 export GOPATH=${PWD}/gopath
+export VERSION=$(git describe --dirty)
 export GLDFLAGS="-X github.com/coreos/fleet/version.Version=${VERSION}"
 eval $(go env)
 export PATH="${GOROOT}/bin:${PATH}"
