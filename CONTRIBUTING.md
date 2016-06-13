@@ -75,3 +75,16 @@ The first line is the subject and should be no longer than 70 characters, the
 second line is always blank, and other lines should be wrapped at 80 characters.
 This allows the message to be easier to read on GitHub as well as in various
 git tools.
+
+## Adding Tests
+
+Ideally most functionalities should be covered by both unit tests and
+functional tests. This means, every time when you add a new functionality,
+you should also add unit tests, which is stored in *SRC_test.go*, as well as
+a [functional test](./functional/README.md), located under directory
+*./functional/*.
+
+Note that when adding a unit test under a new directory, you need to make sure
+that the new directory must be added to *TESTABLE* in [./test](./test). Without
+doing that, CI cannot run the new unit tests at all. Even build errors cannot
+be automatically detected.
