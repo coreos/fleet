@@ -24,7 +24,7 @@ echo -n '`' >> "${OUT}"
 # Now build google-api-go-generator - we vendor so this is consistently reproducible
 GEN_PATH="bin/google-api-go-generator"
 if [ ! -f ${GEN_PATH} ]; then
-	GOPATH="${PWD}/Godeps/_workspace" go build -o ${GEN_PATH} ${PKG}
+	go build -o ${GEN_PATH} ${PKG}
 fi
 
 # Build the bindings
@@ -34,6 +34,5 @@ GOPATH=${PWD}/gopath ./bin/google-api-go-generator \
     -output "${GEN}"
 
 
-# Finally, fix the import in the bindings to refer to the vendored google-api package
-sed -i -e "s%google.golang.org%github.com/coreos/fleet/Godeps/_workspace/src/google.golang.org%" "${GEN}"
+# Finally, import the bindings
 goimports -w ${GEN}
