@@ -21,6 +21,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/coreos/fleet/functional/platform"
 	"github.com/coreos/fleet/functional/util"
@@ -283,6 +284,15 @@ func TestScheduleOneWayConflict(t *testing.T) {
 	if _, _, err := cluster.Fleetctl(m0, "destroy", name); err != nil {
 		t.Fatalf("Failed destroying %s", name)
 	}
+
+	// NOTE: we need to sleep here shortly to avoid occasional errors of
+	// conflicts-with-hello.service being rescheduled even after being destroyed.
+	// In that case, the conflicts unit remains active, while the original
+	// hello.service remains inactive. Then the test TestScheduleOneWayConflict
+	// fails at the end with a message "Incorrect unit started".
+	// This error seems to occur frequently when enable_grpc turned on.
+	// - dpark 20160615
+	time.Sleep(1 * time.Second)
 
 	// Wait for the destroyed unit to actually disappear
 	timeout, err := util.WaitForState(
