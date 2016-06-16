@@ -23,6 +23,8 @@ import (
 )
 
 func doStopUnits(t *testing.T, r commandTestResults, errchan chan error) {
+	smu.Lock()
+	defer smu.Unlock()
 	sharedFlags.NoBlock = true
 	exit := runStopUnit(cmdStop, r.units)
 	if exit != r.expectedExit {

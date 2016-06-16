@@ -23,6 +23,8 @@ import (
 )
 
 func doUnloadUnits(t *testing.T, r commandTestResults, errchan chan error) {
+	smu.Lock()
+	defer smu.Unlock()
 	sharedFlags.NoBlock = true
 	exit := runUnloadUnit(cmdUnload, r.units)
 	if exit != r.expectedExit {

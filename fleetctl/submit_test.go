@@ -156,6 +156,8 @@ func TestRunSubmitUnits(t *testing.T) {
 		},
 	}
 
+	smu.Lock()
+	defer smu.Unlock()
 	sharedFlags.NoBlock = true
 	runSubmitUnitsTests(t, unitPrefix, results, false)
 	runSubmitUnitsTests(t, unitPrefix, templateResults, true)

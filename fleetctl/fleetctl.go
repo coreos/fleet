@@ -112,6 +112,8 @@ var (
 		SSHPort       int
 	}{}
 
+	smu sync.Mutex
+
 	// current command being executed
 	currentCommand string
 

@@ -36,6 +36,8 @@ func checkLoadUnitState(unit schema.Unit, loadRet int, errchan chan error) {
 }
 
 func doLoadUnits(t *testing.T, r commandTestResults, errchan chan error) {
+	smu.Lock()
+	defer smu.Unlock()
 	sharedFlags.NoBlock = true
 	exit := runLoadUnit(cmdLoad, r.units)
 	if exit != r.expectedExit {
