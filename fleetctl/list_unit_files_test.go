@@ -27,6 +27,8 @@ func TestListUnitFilesFieldsToStrings(t *testing.T) {
 	type fakeAPI struct {
 		client.API
 	}
+	cmu.Lock()
+	defer cmu.Unlock()
 	cAPI = fakeAPI{}
 	u := schema.Unit{
 		Name:    "foo.service",
@@ -91,6 +93,8 @@ func TestMapTargetField(t *testing.T) {
 	type fakeAPI struct {
 		client.API
 	}
+	cmu.Lock()
+	defer cmu.Unlock()
 	cAPI = fakeAPI{}
 	// seeding the cache for the following test cases
 	machineStates = map[string]*machine.MachineState{

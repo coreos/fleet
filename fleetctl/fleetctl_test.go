@@ -264,6 +264,8 @@ func TestCreateUnitFails(t *testing.T) {
 	type fakeAPI struct {
 		client.API
 	}
+	cmu.Lock()
+	defer cmu.Unlock()
 	cAPI = fakeAPI{}
 	var i int
 	var un string

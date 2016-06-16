@@ -88,7 +88,9 @@ func TestRunLoadUnits(t *testing.T) {
 		var wg sync.WaitGroup
 		errchan := make(chan error)
 
+		cmu.Lock()
 		cAPI = newFakeRegistryForCommands(unitPrefix, len(r.units), false)
+		cmu.Unlock()
 
 		wg.Add(2)
 		go func() {
