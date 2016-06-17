@@ -1,7 +1,7 @@
 # Deploying a Service Using fleet
 
-The following is an example of how one might deploy a load-balanced web service using fleet. 
-This example deploys [subgun][subgun], a simple subscription tool for [mailgun][mailgun]. 
+The following is an example of how one might deploy a load-balanced web service using fleet.
+This example deploys [subgun][subgun], a simple subscription tool for [mailgun][mailgun].
 
 subgun is deployed in two pieces: an application and a presence daemon. The application simply serves HTTP requests through an AWS load balancer, while the presence daemon updates the load balancer with backend information. The diagram below illustrates this model:
 
@@ -39,7 +39,7 @@ CMD /bin/elb-presence
 
 ## Service Files
 
-With the docker images available over the public internet, systemd can simply run the containers. 
+With the docker images available over the public internet, systemd can simply run the containers.
 
 The following unit files are [templates][template-unit-files], which means they can be run multiple times by referencing them with full instance names. You can find these unit files in the [unit-examples][unit-examples] repository. To save time, clone the repo on the machine from which you are controlling fleet.
 
@@ -52,7 +52,7 @@ Description=subgun
 [Service]
 ExecStartPre=-/usr/bin/docker kill subgun-%i
 ExecStartPre=-/usr/bin/docker rm subgun-%i
-ExecStart=/usr/bin/docker run --rm --name subgun-%i -e SUBGUN_LISTEN=127.0.0.1:8080 -e SUBGUN_LISTS=recv@sandbox2398.mailgun.org -e SUBGUN_API_KEY=key-779ru4cibbnhfa1qp7a3apyvwkls7ny7 -p 8080:8080 coreos/subgun
+ExecStart=/usr/bin/docker run --rm --name subgun-%i -e SUBGUN_LISTEN=127.0.0.1:8080 -e SUBGUN_LISTS=recv@sandbox2398.mailgun.org -e SUBGUN_API_KEY=<your-sungun-api-key> -p 8080:8080 coreos/subgun
 ExecStop=/usr/bin/docker stop subgun-%i
 
 [X-Fleet]
@@ -69,7 +69,7 @@ BindsTo=subgun-http@%i.service
 [Service]
 ExecStartPre=-/usr/bin/docker kill subgun-presence-%i
 ExecStartPre=-/usr/bin/docker rm subgun-presence-%i
-ExecStart=/usr/bin/docker run --rm --name subgun-presence-%i -e AWS_ACCESS_KEY=AKIAIBC5MW3ONCW6J2XQ -e AWS_SECRET_KEY=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 -e AWS_REGION=us-east-1 -e ELB_NAME=bcwaldon-fleet-lb quay.io/coreos/elb-presence
+ExecStart=/usr/bin/docker run --rm --name subgun-presence-%i -e AWS_ACCESS_KEY=<your-access-key> -e AWS_SECRET_KEY=<your-secret-key> -e AWS_REGION=us-east-1 -e ELB_NAME=bcwaldon-fleet-lb quay.io/coreos/elb-presence
 ExecStop=/usr/bin/docker stop subgun-presence-%i
 
 [X-Fleet]
