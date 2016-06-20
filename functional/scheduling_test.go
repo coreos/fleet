@@ -341,7 +341,6 @@ func TestScheduleReplace(t *testing.T) {
 	}
 	defer cluster.Destroy(t)
 
-	// Start with a simple three-node cluster
 	members, err := platform.CreateNClusterMembers(cluster, 2)
 	if err != nil {
 		t.Fatal(err)
@@ -403,16 +402,39 @@ func TestScheduleReplace(t *testing.T) {
 	if machs[0] == machs[1] {
 		t.Fatalf("machine for %s is %s, the same as that of %s.", uNameBase[0], machs[0], uNameBase[1])
 	}
+}
 
-	// Check that circular replaces end up with 1 launched unit.
-	// First of all, stop the existing unit replace.0.service.
-	if stdout, stderr, err := cluster.Fleetctl(m0, "destroy", uNameBase[0]); err != nil {
-		t.Fatalf("Failed to destroy unit %s: \nstdout: %s\nstderr: %s\nerr: %v",
-			uNameBase[0], stdout, stderr, err)
+// TestScheduleCircularReplace starts 2 units that tries to replace each other.
+// Thus it's expected that only one of the units becomes active.
+func TestScheduleCircularReplace(t *testing.T) {
+	cluster, err := platform.NewNspawnCluster("smoke")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cluster.Destroy(t)
+
+	members, err := platform.CreateNClusterMembers(cluster, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	m0 := members[0]
+	if _, err := cluster.WaitForNMachines(m0, 2); err != nil {
+		t.Fatal(err)
 	}
 
-	// Generate a new service 0 derived by a fixture, make the new service
-	// replace service 1, and store it under /tmp.
+	// Check that circular replaces end up with 1 launched unit.
+	// To do that, generate a new service 0 that replaces service 1, and store
+	// it under /tmp. Also store the original service 1 that replace 0.
+	uNames := []string{
+		"fixtures/units/replace.0.service",
+		"fixtures/units/replace.1.service",
+	}
+	nUnits := 2
+	nActiveUnits := 1
+	uNameBase := make([]string, nUnits)
+	for i, uName := range uNames {
+		uNameBase[i] = path.Base(uName)
+	}
 	uName0tmp := path.Join("/tmp", uNameBase[0])
 	err = util.GenNewFleetService(uName0tmp, uNames[1],
 		"Replaces=replace.1.service", "Replaces=replace.0.service")
@@ -422,8 +444,6 @@ func TestScheduleReplace(t *testing.T) {
 
 	// Start replace.0 unit that replaces replace.1.service,
 	// then fleetctl list-unit-files should show only return 1 launched unit.
-	// Note that we still need to run list-units once, before doing
-	// list-unit-files, for reliable tests.
 	stdout, stderr, err := cluster.Fleetctl(m0, "start", "--no-block", uName0tmp)
 	if err != nil {
 		t.Fatalf("Failed starting unit %s: \nstdout: %s\nstderr: %s\nerr: %v",
@@ -434,26 +454,45 @@ func TestScheduleReplace(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to run list-unit-files: %v", err)
 	}
-	units = strings.Split(strings.TrimSpace(stdout), "\n")
-	if len(units) != nUnits {
+	units := strings.Split(strings.TrimSpace(stdout), "\n")
+	if len(units) != nActiveUnits {
 		t.Fatalf("Did not find two units in cluster: \n%s", stdout)
 	}
-	_, err = cluster.WaitForNActiveUnits(m0, nUnits)
+	_, err = cluster.WaitForNActiveUnits(m0, nActiveUnits)
 	if err != nil {
 		t.Fatal(err)
 	}
-	ufs, err := cluster.WaitForNUnitFiles(m0, nUnits)
+	ufs, err := cluster.WaitForNUnitFiles(m0, nActiveUnits)
 	if err != nil {
 		t.Fatalf("Failed to run list-unit-files: %v", err)
 	}
 
+	// Start replace.1 unit that replaces replace.0.service,
+	// and then check that only 1 unit is active
+	if stdout, stderr, err := cluster.Fleetctl(m0, "start", "--no-block", uNames[1]); err != nil {
+		t.Fatalf("Failed starting unit %s: \nstdout: %s\nstderr: %s\nerr: %v", uNames[1], stdout, stderr, err)
+	}
+	stdout, _, err = cluster.Fleetctl(m0, "list-unit-files", "--no-legend")
+	if err != nil {
+		t.Fatalf("Failed to run list-unit-files: %v", err)
+	}
+	units = strings.Split(strings.TrimSpace(stdout), "\n")
+	if len(units) != nUnits {
+		t.Fatalf("Did not find %d units in cluster: \n%s", nUnits, stdout)
+	}
+
+	active, err := cluster.WaitForNActiveUnits(m0, nActiveUnits)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = util.ActiveToSingleStates(active)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	uStates := make([][]util.UnitFileState, nUnits)
-	var found bool
 	for i, unb := range uNameBase {
-		uStates[i], found = ufs[unb]
-		if len(ufs) != nUnits || !found {
-			t.Fatalf("Did not find %d launched unit as expected: got %d\n", nUnits, len(ufs))
-		}
+		uStates[i], _ = ufs[unb]
 	}
 	nLaunched := 0
 	for _, us := range uStates {
@@ -463,8 +502,8 @@ func TestScheduleReplace(t *testing.T) {
 			}
 		}
 	}
-	if nLaunched != 1 {
-		t.Fatalf("Did not find 1 launched unit as expected: got %d", nLaunched)
+	if nLaunched != nActiveUnits {
+		t.Fatalf("Did not find %d launched unit as expected: got %d", nActiveUnits, nLaunched)
 	}
 
 	os.Remove(uName0tmp)
