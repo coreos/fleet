@@ -1,19 +1,26 @@
-version=$(go version)
-regex="go([0-9]+).([0-9]+)."
-if [[ $version =~ $regex ]]; then
-  if [ ${BASH_REMATCH[1]} -eq "1" -a ${BASH_REMATCH[2]} -eq "5" ]; then
-    export GO${BASH_REMATCH[1]}${BASH_REMATCH[2]}VENDOREXPERIMENT=1
+function check_go15ve() {
+  version=$(go version)
+  regex="go([0-9]+).([0-9]+)."
+  if [[ $version =~ $regex ]]; then
+    if [ ${BASH_REMATCH[1]} -eq "1" -a ${BASH_REMATCH[2]} -eq "5" ]; then
+      export GO${BASH_REMATCH[1]}${BASH_REMATCH[2]}VENDOREXPERIMENT=1
+    else
+      export GO15VENDOREXPERIMENT=0
+    fi
+  else
+    echo "could not determine Go version"
+    exit 1
   fi
-else
-  echo "could not determine Go version"
-  exit 1
-fi
+}
 
 export GOBIN=${PWD}/bin
 export GOPATH=${PWD}/gopath
 export VERSION=$(git describe --dirty)
 export GLDFLAGS="-X github.com/coreos/fleet/version.Version=${VERSION}"
+
 eval $(go env)
+check_go15ve
+
 export PATH="${GOROOT}/bin:${PATH}"
 export FLEETD_BIN="$(pwd)/bin/fleetd"
 export FLEETCTL_BIN="$(pwd)/bin/fleetctl"
