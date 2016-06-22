@@ -1,12 +1,16 @@
 version=$(go version)
-regex="go([0-9]+).([0-9]+)."
-if [[ $version =~ $regex ]]; then
+regex_release="go([0-9]+).([0-9]+)."
+regex_devel="devel\s+\+([a-f0-9]+)\s+"
+if [[ $version =~ $regex_release ]]; then
   if [ ${BASH_REMATCH[1]} -eq "1" -a ${BASH_REMATCH[2]} -eq "5" ]; then
     export GO${BASH_REMATCH[1]}${BASH_REMATCH[2]}VENDOREXPERIMENT=1
   fi
 else
-  echo "could not determine Go version"
-  exit 1
+  if ! [[ $version =~ $regex_devel ]]; then
+    echo "could not determine Go version"
+    echo "version = \"$version\""
+    exit 1
+  fi
 fi
 
 export GOBIN=${PWD}/bin
