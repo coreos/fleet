@@ -1,0 +1,32 @@
+package: github.com/coreos/fleet
+import:
+- package: github.com/coreos/etcd
+  subpackages:
+  - client
+- package: github.com/coreos/go-semver
+  subpackages:
+  - semver
+- package: github.com/coreos/go-systemd
+  subpackages:
+  - activation
+  - dbus
+  - unit
+- package: github.com/jonboulle/clockwork
+- package: github.com/pborman/uuid
+- package: github.com/prometheus/client_golang
+  subpackages:
+  - prometheus
+- package: github.com/rakyll/globalconf
+- package: github.com/spf13/cobra
+- package: github.com/vishvananda/netlink
+- package: golang.org/x/crypto
+  subpackages:
+  - ssh
+  - ssh/agent
+  - ssh/terminal
+- package: golang.org/x/net
+  subpackages:
+  - context
+- package: google.golang.org/api
+  subpackages:
+  - googleapi
