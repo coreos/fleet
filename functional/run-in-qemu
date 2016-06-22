@@ -139,7 +139,7 @@ qemu-img create -f qcow2 -b $BASE_IMAGE $IMAGE || print_error "Failed to create 
 
 qemu-system-x86_64 \
   -name $NAME \
-  -m 512 \
+  -m 1024 \
   -net nic,vlan=0,model=virtio \
   -net user,vlan=0,hostfwd=tcp:127.0.0.1:$COREOS_SSH_PORT-:22,hostname=$NAME \
   -drive if=virtio,file=$IMAGE \
