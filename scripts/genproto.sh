@@ -20,7 +20,7 @@ fi
 DIRS="./protobuf"
 
 # exact version of protoc-gen-gogo to build
-SHA="c3995ae437bb78d1189f4f147dfe5f87ad3596e4"
+GOGO_PROTO_SHA="2752d97bbd91927dd1c43296dbf8700e50e2708c"
 
 # set up self-contained GOPATH for building
 export GOPATH=${PWD}/gopath
@@ -40,7 +40,7 @@ ln -s "${PWD}" "${FLEET_ROOT}"
 go get -u github.com/gogo/protobuf/{proto,protoc-gen-gogo,gogoproto}
 go get -u golang.org/x/tools/cmd/goimports
 pushd "${GOGOPROTO_ROOT}"
-	git reset --hard "${SHA}"
+	git reset --hard "${GOGO_PROTO_SHA}"
 	make install
 popd
 
