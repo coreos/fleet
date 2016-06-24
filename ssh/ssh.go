@@ -16,6 +16,7 @@ package ssh
 
 import (
 	"errors"
+	"io"
 	"net"
 	"os"
 	"strconv"
@@ -72,7 +73,17 @@ func makeSession(client *SSHForwardingClient) (session *gossh.Session, finalize 
 
 	session.Stdout = os.Stdout
 	session.Stderr = os.Stderr
-	session.Stdin = os.Stdin
+
+	// Workaround to not prevent Stdin from returning.
+	inPipe, err := session.StdinPipe()
+	if err != nil {
+		return
+	}
+
+	go func() {
+		io.Copy(inPipe, os.Stdin)
+		inPipe.Close()
+	}()
 
 	modes := gossh.TerminalModes{
 		gossh.ECHO:          1,     // enable echoing
