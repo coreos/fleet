@@ -196,17 +196,25 @@ func (m *systemdUnitManager) GetUnitStates(filter pkg.Set) (map[string]*unit.Uni
 	// operations could mutate the hashes before we've retrieved the state
 	// for every unit in the filter, since they won't necessarily all be
 	// present in the initial ListUnits() call.
+	fallback := false
+
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
-	dbusStatuses, err := m.systemd.ListUnits()
+	dbusStatuses, err := m.systemd.ListUnitsByNames(filter.Values())
 
 	if err != nil {
-		return nil, err
+		fallback = true
+		log.Debugf("ListUnitsByNames is not implemented in your systemd version (requires at least systemd 230), fallback to ListUnits: %v", err)
+		dbusStatuses, err = m.systemd.ListUnits()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	states := make(map[string]*unit.UnitState)
 	for _, dus := range dbusStatuses {
-		if !filter.Contains(dus.Name) {
+		if fallback && !filter.Contains(dus.Name) {
+			// If filter could not be applied on DBus side, we will filter unit files here
 			continue
 		}
 
@@ -221,21 +229,23 @@ func (m *systemdUnitManager) GetUnitStates(filter pkg.Set) (map[string]*unit.Uni
 		states[dus.Name] = us
 	}
 
-	// grab data on subscribed units that didn't show up in ListUnits, most
+	// grab data on subscribed units that didn't show up in ListUnits in fallback mode, most
 	// likely due to being inactive
-	for _, name := range filter.Values() {
-		if _, ok := states[name]; ok {
-			continue
-		}
+	if fallback {
+		for _, name := range filter.Values() {
+			if _, ok := states[name]; ok {
+				continue
+			}
 
-		us, err := m.getUnitState(name)
-		if err != nil {
-			return nil, err
+			us, err := m.getUnitState(name)
+			if err != nil {
+				return nil, err
+			}
+			if h, ok := m.hashes[name]; ok {
+				us.UnitHash = h.String()
+			}
+			states[name] = us
 		}
-		if h, ok := m.hashes[name]; ok {
-			us.UnitHash = h.String()
-		}
-		states[name] = us
 	}
 
 	return states, nil
