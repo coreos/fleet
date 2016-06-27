@@ -40,6 +40,8 @@ func TestListUnitsFieldsToStrings(t *testing.T) {
 	type fakeAPI struct {
 		client.API
 	}
+	cmu.Lock()
+	defer cmu.Unlock()
 	cAPI = fakeAPI{}
 
 	// nil UnitState shouldn't happen, but just in case

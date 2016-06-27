@@ -74,6 +74,8 @@ var (
 	// global API client used by commands
 	cAPI client.API
 
+	cmu sync.Mutex
+
 	// flags used by all commands
 	globalFlags = struct {
 		Debug   bool
@@ -109,6 +111,8 @@ var (
 		Fields        string
 		SSHPort       int
 	}{}
+
+	smu sync.Mutex
 
 	// current command being executed
 	currentCommand string
@@ -299,6 +303,8 @@ func getFlagsFromEnv(prefix string, fs *flag.FlagSet) {
 
 func getClientAPI(cCmd *cobra.Command) client.API {
 	var err error
+	cmu.Lock()
+	defer cmu.Unlock()
 	cAPI, err = getClient(cCmd)
 	if err != nil {
 		stderr("Unable to initialize client: %v", err)
@@ -1024,6 +1030,8 @@ func checkUnitState(name string, js job.JobState, maxAttempts int, out io.Writer
 func assertUnitState(name string, js job.JobState, out io.Writer) (ret bool) {
 	var state string
 
+	cmu.Lock()
+	defer cmu.Unlock()
 	u, err := cAPI.Unit(name)
 	if err != nil {
 		log.Warningf("Error retrieving Unit(%s) from Registry: %v", name, err)

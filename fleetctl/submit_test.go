@@ -67,7 +67,9 @@ func runSubmitUnitsTests(t *testing.T, unitPrefix string, results []commandTestR
 			unitsCount = len(r.units)
 		}
 
+		cmu.Lock()
 		cAPI = newFakeRegistryForCommands(unitPrefix, unitsCount, template)
+		cmu.Unlock()
 
 		wg.Add(1)
 		go func() {
@@ -154,6 +156,8 @@ func TestRunSubmitUnits(t *testing.T) {
 		},
 	}
 
+	smu.Lock()
+	defer smu.Unlock()
 	sharedFlags.NoBlock = true
 	runSubmitUnitsTests(t, unitPrefix, results, false)
 	runSubmitUnitsTests(t, unitPrefix, templateResults, true)

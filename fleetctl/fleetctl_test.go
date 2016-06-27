@@ -243,6 +243,8 @@ func TestGetBlockAttempts(t *testing.T) {
 		{false, 9999, 9999},
 	}
 
+	smu.Lock()
+	defer smu.Unlock()
 	for _, tt := range blocktests {
 		sharedFlags.NoBlock = tt.noBlock
 		sharedFlags.BlockAttempts = tt.blockAttempts
@@ -264,6 +266,8 @@ func TestCreateUnitFails(t *testing.T) {
 	type fakeAPI struct {
 		client.API
 	}
+	cmu.Lock()
+	defer cmu.Unlock()
 	cAPI = fakeAPI{}
 	var i int
 	var un string
