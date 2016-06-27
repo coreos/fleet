@@ -1,3 +1,18 @@
+// Copyright 2013-2015 CoreOS, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Semantic Versions http://semver.org
 package semver
 
 import (
@@ -32,14 +47,14 @@ func splitOff(input *string, delim string) (val string) {
 func NewVersion(version string) (*Version, error) {
 	v := Version{}
 
+	v.Metadata = splitOff(&version, "+")
+	v.PreRelease = PreRelease(splitOff(&version, "-"))
+
 	dotParts := strings.SplitN(version, ".", 3)
 
 	if len(dotParts) != 3 {
 		return nil, errors.New(fmt.Sprintf("%s is not in dotted-tri format", version))
 	}
-
-	v.Metadata = splitOff(&dotParts[2], "+")
-	v.PreRelease = PreRelease(splitOff(&dotParts[2], "-"))
 
 	parsed := make([]int64, 3, 3)
 
@@ -58,25 +73,64 @@ func NewVersion(version string) (*Version, error) {
 	return &v, nil
 }
 
-func (v *Version) String() string {
+func Must(v *Version, err error) *Version {
+	if err != nil {
+		panic(err)
+	}
+	return v
+}
+
+func (v Version) String() string {
 	var buffer bytes.Buffer
 
-	base := fmt.Sprintf("%d.%d.%d", v.Major, v.Minor, v.Patch)
-	buffer.WriteString(base)
+	fmt.Fprintf(&buffer, "%d.%d.%d", v.Major, v.Minor, v.Patch)
 
 	if v.PreRelease != "" {
-		buffer.WriteString(fmt.Sprintf("-%s", v.PreRelease))
+		fmt.Fprintf(&buffer, "-%s", v.PreRelease)
 	}
 
 	if v.Metadata != "" {
-		buffer.WriteString(fmt.Sprintf("+%s", v.Metadata))
+		fmt.Fprintf(&buffer, "+%s", v.Metadata)
 	}
 
 	return buffer.String()
 }
 
-func (v *Version) LessThan(versionB Version) bool {
-	versionA := *v
+func (v *Version) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	var data string
+	if err := unmarshal(&data); err != nil {
+		return err
+	}
+	vv, err := NewVersion(data)
+	if err != nil {
+		return err
+	}
+	*v = *vv
+	return nil
+}
+
+func (v Version) MarshalJSON() ([]byte, error) {
+	return []byte(`"` + v.String() + `"`), nil
+}
+
+func (v *Version) UnmarshalJSON(data []byte) error {
+	l := len(data)
+	if l == 0 || string(data) == `""` {
+		return nil
+	}
+	if l < 2 || data[0] != '"' || data[l-1] != '"' {
+		return errors.New("invalid semver string")
+	}
+	vv, err := NewVersion(string(data[1 : l-1]))
+	if err != nil {
+		return err
+	}
+	*v = *vv
+	return nil
+}
+
+func (v Version) LessThan(versionB Version) bool {
+	versionA := v
 	cmp := recursiveCompare(versionA.Slice(), versionB.Slice())
 
 	if cmp == 0 {
@@ -91,12 +145,12 @@ func (v *Version) LessThan(versionB Version) bool {
 }
 
 /* Slice converts the comparable parts of the semver into a slice of strings */
-func (v *Version) Slice() []int64 {
+func (v Version) Slice() []int64 {
 	return []int64{v.Major, v.Minor, v.Patch}
 }
 
-func (p *PreRelease) Slice() []string {
-	preRelease := string(*p)
+func (p PreRelease) Slice() []string {
+	preRelease := string(p)
 	return strings.Split(preRelease, ".")
 }
 
@@ -146,7 +200,8 @@ func recursivePreReleaseCompare(versionA []string, versionB []string) int {
 	a := versionA[0]
 	b := versionB[0]
 
-	aInt := false; bInt := false
+	aInt := false
+	bInt := false
 
 	aI, err := strconv.Atoi(versionA[0])
 	if err == nil {
@@ -175,4 +230,28 @@ func recursivePreReleaseCompare(versionA []string, versionB []string) int {
 	}
 
 	return recursivePreReleaseCompare(versionA[1:], versionB[1:])
+}
+
+// BumpMajor increments the Major field by 1 and resets all other fields to their default values
+func (v *Version) BumpMajor() {
+	v.Major += 1
+	v.Minor = 0
+	v.Patch = 0
+	v.PreRelease = PreRelease("")
+	v.Metadata = ""
+}
+
+// BumpMinor increments the Minor field by 1 and resets all other fields to their default values
+func (v *Version) BumpMinor() {
+	v.Minor += 1
+	v.Patch = 0
+	v.PreRelease = PreRelease("")
+	v.Metadata = ""
+}
+
+// BumpPatch increments the Patch field by 1 and resets all other fields to their default values
+func (v *Version) BumpPatch() {
+	v.Patch += 1
+	v.PreRelease = PreRelease("")
+	v.Metadata = ""
 }

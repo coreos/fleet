@@ -1,0 +1,92 @@
+hash: 761e443b236a2651920ea60a7ed23e0547842be2e7f61e19fe1fe37ce76486c9
+updated: 2016-06-22T11:56:09.50904802+02:00
+imports:
+- name: github.com/beorn7/perks
+  version: 3ac7bf7a47d159a033b107610db8a1b6575507a4
+  subpackages:
+  - quantile
+- name: github.com/coreos/etcd
+  version: 0b5ea3ec947a649d39b25c96e33ac1c743355be3
+  subpackages:
+  - client
+  - pkg/pathutil
+  - pkg/types
+- name: github.com/coreos/go-semver
+  version: 294930c1e79c64e7dbe360054274fdad492c8cf5
+  subpackages:
+  - semver
+- name: github.com/coreos/go-systemd
+  version: b32b8467dbea18858bfebf65c1a6a761090f2c31
+  subpackages:
+  - activation
+  - dbus
+  - unit
+- name: github.com/godbus/dbus
+  version: 32c6cc29c14570de4cf6d7e7737d68fb2d01ad15
+- name: github.com/golang/protobuf
+  version: 0c1f6d65b5a189c2250d10e71a5506f06f9fa0a0
+  subpackages:
+  - proto
+- name: github.com/inconshreveable/mousetrap
+  version: 76626ae9c91c4f2a10f34cad8ce83ea42c93bb75
+- name: github.com/jonboulle/clockwork
+  version: 2eee05ed794112d45db504eb05aa693efd2b8b09
+- name: github.com/matttproud/golang_protobuf_extensions
+  version: c12348ce28de40eed0136aa2b644d0ee0650e56c
+  subpackages:
+  - pbutil
+- name: github.com/pborman/uuid
+  version: c55201b036063326c5b1b89ccfe45a184973d073
+- name: github.com/prometheus/client_golang
+  version: 488edd04dc224ba64c401747cd0a4b5f05dfb234
+  subpackages:
+  - prometheus
+- name: github.com/prometheus/client_model
+  version: fa8ad6fec33561be4280a8f0514318c79d7f6cb6
+  subpackages:
+  - go
+- name: github.com/prometheus/common
+  version: 3a184ff7dfd46b9091030bf2e56c71112b0ddb0e
+  subpackages:
+  - expfmt
+  - internal/bitbucket.org/ww/goautoneg
+  - model
+- name: github.com/prometheus/procfs
+  version: abf152e5f3e97f2fafac028d2cc06c1feb87ffa5
+- name: github.com/rakyll/globalconf
+  version: 415abc325023f1a00cd2d9fa512e0e71745791a2
+- name: github.com/rakyll/goini
+  version: 907cca0f578a5316fb864ec6992dc3d9730ec58c
+- name: github.com/spf13/cobra
+  version: 6a8bd97bdb1fc0d08a83459940498ea49d3e8c93
+- name: github.com/spf13/pflag
+  version: 367864438f1b1a3c7db4da06a2f55b144e6784e0
+- name: github.com/ugorji/go
+  version: b94837a2404ab90efe9289e77a70694c355739cb
+  subpackages:
+  - codec
+- name: github.com/vishvananda/netlink
+  version: 734d02c3e202f682c74b71314b2c61eec0170fd4
+  subpackages:
+  - nl
+- name: github.com/vishvananda/netns
+  version: 8ba1072b58e0c2a240eb5f6120165c7776c3e7b8
+- name: golang.org/x/crypto
+  version: f3241ce8505855877cc8a9717bd61a0f7c4ea83c
+  subpackages:
+  - ssh
+  - ssh/agent
+  - ssh/terminal
+  - curve25519
+  - ed25519
+  - ed25519/internal/edwards25519
+- name: golang.org/x/net
+  version: bc3663df0ac92f928d419e31e0d2af22e683a5a2
+  subpackages:
+  - context
+- name: google.golang.org/api
+  version: 63ade871fd3aec1225809d496e81ec91ab76ea29
+  subpackages:
+  - googleapi
+  - googleapi/internal/uritemplates
+devImports: []

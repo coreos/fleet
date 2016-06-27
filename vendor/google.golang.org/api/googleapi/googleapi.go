@@ -4,7 +4,7 @@
 
 // Package googleapi contains the common code shared by all Google API
 // libraries.
-package googleapi
+package googleapi // import "google.golang.org/api/googleapi"
 
 import (
 	"bytes"
@@ -12,11 +12,8 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"mime/multipart"
 	"net/http"
-	"net/textproto"
 	"net/url"
-	"os"
 	"strings"
 
 	"google.golang.org/api/googleapi/internal/uritemplates"
@@ -30,7 +27,36 @@ type ContentTyper interface {
 	ContentType() string
 }
 
-const Version = "0.5"
+// A SizeReaderAt is a ReaderAt with a Size method.
+// An io.SectionReader implements SizeReaderAt.
+type SizeReaderAt interface {
+	io.ReaderAt
+	Size() int64
+}
+
+// ServerResponse is embedded in each Do response and
+// provides the HTTP status code and header sent by the server.
+type ServerResponse struct {
+	// HTTPStatusCode is the server's response status code.
+	// When using a resource method's Do call, this will always be in the 2xx range.
+	HTTPStatusCode int
+	// Header contains the response header fields from the server.
+	Header http.Header
+}
+
+const (
+	Version = "0.5"
+
+	// UserAgent is the header string used to identify this package.
+	UserAgent = "google-api-go-client/" + Version
+
+	// The default chunk size to use for resumable uplods if not specified by the user.
+	DefaultUploadChunkSize = 8 * 1024 * 1024
+
+	// The minimum chunk size that can be used for resumable uploads.  All
+	// user-specified chunk sizes must be multiple of this value.
+	MinUploadChunkSize = 256 * 1024
+)
 
 // Error contains an error response from the server.
 type Error struct {
@@ -42,6 +68,8 @@ type Error struct {
 	// Body is the raw response returned by the server.
 	// It is often but not always JSON, depending on how the request fails.
 	Body string
+	// Header contains the response header fields from the server.
+	Header http.Header
 
 	Errors []ErrorItem
 }
@@ -100,6 +128,34 @@ func CheckResponse(res *http.Response) error {
 		}
 	}
 	return &Error{
+		Code:   res.StatusCode,
+		Body:   string(slurp),
+		Header: res.Header,
+	}
+}
+
+// IsNotModified reports whether err is the result of the
+// server replying with http.StatusNotModified.
+// Such error values are sometimes returned by "Do" methods
+// on calls when If-None-Match is used.
+func IsNotModified(err error) bool {
+	if err == nil {
+		return false
+	}
+	ae, ok := err.(*Error)
+	return ok && ae.Code == http.StatusNotModified
+}
+
+// CheckMediaResponse returns an error (of type *Error) if the response
+// status code is not 2xx. Unlike CheckResponse it does not assume the
+// body is a JSON error document.
+func CheckMediaResponse(res *http.Response) error {
+	if res.StatusCode >= 200 && res.StatusCode <= 299 {
+		return nil
+	}
+	slurp, _ := ioutil.ReadAll(io.LimitReader(res.Body, 1<<20))
+	res.Body.Close()
+	return &Error{
 		Code: res.StatusCode,
 		Body: string(slurp),
 	}
@@ -125,27 +181,8 @@ func (wrap MarshalStyle) JSONReader(v interface{}) (io.Reader, error) {
 	return buf, nil
 }
 
-func getMediaType(media io.Reader) (io.Reader, string) {
-	if typer, ok := media.(ContentTyper); ok {
-		return media, typer.ContentType()
-	}
-
-	typ := "application/octet-stream"
-	buf := make([]byte, 1024)
-	n, err := media.Read(buf)
-	buf = buf[:n]
-	if err == nil {
-		typ = http.DetectContentType(buf)
-	}
-	return io.MultiReader(bytes.NewBuffer(buf), media), typ
-}
-
-type Lengther interface {
-	Len() int
-}
-
 // endingWithErrorReader from r until it returns an error.  If the
-// final error from r is os.EOF and e is non-nil, e is used instead.
+// final error from r is io.EOF and e is non-nil, e is used instead.
 type endingWithErrorReader struct {
 	r io.Reader
 	e error
@@ -159,44 +196,6 @@ func (er endingWithErrorReader) Read(p []byte) (n int, err error) {
 	return
 }
 
-func getReaderSize(r io.Reader) (io.Reader, int64) {
-	// Ideal case, the reader knows its own size.
-	if lr, ok := r.(Lengther); ok {
-		return r, int64(lr.Len())
-	}
-
-	// But maybe it's a seeker and we can seek to the end to find its size.
-	if s, ok := r.(io.Seeker); ok {
-		pos0, err := s.Seek(0, os.SEEK_CUR)
-		if err == nil {
-			posend, err := s.Seek(0, os.SEEK_END)
-			if err == nil {
-				_, err = s.Seek(pos0, os.SEEK_SET)
-				if err == nil {
-					return r, posend - pos0
-				} else {
-					// We moved it forward but can't restore it.
-					// Seems unlikely, but can't really restore now.
-					return endingWithErrorReader{strings.NewReader(""), err}, posend - pos0
-				}
-			}
-		}
-	}
-
-	// Otherwise we have to make a copy to calculate how big the reader is.
-	buf := new(bytes.Buffer)
-	// TODO(bradfitz): put a cap on this copy? spill to disk after
-	// a certain point?
-	_, err := io.Copy(buf, r)
-	return endingWithErrorReader{buf, err}, int64(buf.Len())
-}
-
-func typeHeader(contentType string) textproto.MIMEHeader {
-	h := make(textproto.MIMEHeader)
-	h.Set("Content-Type", contentType)
-	return h
-}
-
 // countingWriter counts the number of bytes it receives to write, but
 // discards them.
 type countingWriter struct {
@@ -208,71 +207,65 @@ func (w countingWriter) Write(p []byte) (int, error) {
 	return len(p), nil
 }
 
-// ConditionallyIncludeMedia does nothing if media is nil.
-//
-// bodyp is an in/out parameter.  It should initially point to the
-// reader of the application/json (or whatever) payload to send in the
-// API request.  It's updated to point to the multipart body reader.
-//
-// ctypep is an in/out parameter.  It should initially point to the
-// content type of the bodyp, usually "application/json".  It's updated
-// to the "multipart/related" content type, with random boundary.
-//
-// The return value is the content-length of the entire multpart body.
-func ConditionallyIncludeMedia(media io.Reader, bodyp *io.Reader, ctypep *string) (totalContentLength int64, ok bool) {
-	if media == nil {
-		return
-	}
-	// Get the media type and size. The type check might return a
-	// different reader instance, so do the size check first,
-	// which looks at the specific type of the io.Reader.
-	var mediaType string
-	if typer, ok := media.(ContentTyper); ok {
-		mediaType = typer.ContentType()
-	}
-	media, mediaSize := getReaderSize(media)
-	if mediaType == "" {
-		media, mediaType = getMediaType(media)
-	}
-	body, bodyType := *bodyp, *ctypep
-	body, bodySize := getReaderSize(body)
+// ProgressUpdater is a function that is called upon every progress update of a resumable upload.
+// This is the only part of a resumable upload (from googleapi) that is usable by the developer.
+// The remaining usable pieces of resumable uploads is exposed in each auto-generated API.
+type ProgressUpdater func(current, total int64)
 
-	// Calculate how big the the multipart will be.
-	{
-		totalContentLength = bodySize + mediaSize
-		mpw := multipart.NewWriter(countingWriter{&totalContentLength})
-		mpw.CreatePart(typeHeader(bodyType))
-		mpw.CreatePart(typeHeader(mediaType))
-		mpw.Close()
+type MediaOption interface {
+	setOptions(o *MediaOptions)
+}
+
+type contentTypeOption string
+
+func (ct contentTypeOption) setOptions(o *MediaOptions) {
+	o.ContentType = string(ct)
+	if o.ContentType == "" {
+		o.ForceEmptyContentType = true
 	}
+}
 
-	pr, pw := io.Pipe()
-	mpw := multipart.NewWriter(pw)
-	*bodyp = pr
-	*ctypep = "multipart/related; boundary=" + mpw.Boundary()
-	go func() {
-		defer pw.Close()
-		defer mpw.Close()
+// ContentType returns a MediaOption which sets the Content-Type header for media uploads.
+// If ctype is empty, the Content-Type header will be omitted.
+func ContentType(ctype string) MediaOption {
+	return contentTypeOption(ctype)
+}
 
-		w, err := mpw.CreatePart(typeHeader(bodyType))
-		if err != nil {
-			return
-		}
-		_, err = io.Copy(w, body)
-		if err != nil {
-			return
-		}
+type chunkSizeOption int
 
-		w, err = mpw.CreatePart(typeHeader(mediaType))
-		if err != nil {
-			return
-		}
-		_, err = io.Copy(w, media)
-		if err != nil {
-			return
-		}
-	}()
-	return totalContentLength, true
+func (cs chunkSizeOption) setOptions(o *MediaOptions) {
+	size := int(cs)
+	if size%MinUploadChunkSize != 0 {
+		size += MinUploadChunkSize - (size % MinUploadChunkSize)
+	}
+	o.ChunkSize = size
+}
+
+// ChunkSize returns a MediaOption which sets the chunk size for media uploads.
+// size will be rounded up to the nearest multiple of 256K.
+// Media which contains fewer than size bytes will be uploaded in a single request.
+// Media which contains size bytes or more will be uploaded in separate chunks.
+// If size is zero, media will be uploaded in a single request.
+func ChunkSize(size int) MediaOption {
+	return chunkSizeOption(size)
+}
+
+// MediaOptions stores options for customizing media upload.  It is not used by developers directly.
+type MediaOptions struct {
+	ContentType           string
+	ForceEmptyContentType bool
+
+	ChunkSize int
+}
+
+// ProcessMediaOptions stores options from opts in a MediaOptions.
+// It is not used by developers directly.
+func ProcessMediaOptions(opts []MediaOption) *MediaOptions {
+	mo := &MediaOptions{ChunkSize: DefaultUploadChunkSize}
+	for _, o := range opts {
+		o.setOptions(mo)
+	}
+	return mo
 }
 
 func ResolveRelative(basestr, relstr string) string {
@@ -399,3 +392,41 @@ func CombineFields(s []Field) string {
 	}
 	return strings.Join(r, ",")
 }
+
+// A CallOption is an optional argument to an API call.
+// It should be treated as an opaque value by users of Google APIs.
+//
+// A CallOption is something that configures an API call in a way that is
+// not specific to that API; for instance, controlling the quota user for
+// an API call is common across many APIs, and is thus a CallOption.
+type CallOption interface {
+	Get() (key, value string)
+}
+
+// QuotaUser returns a CallOption that will set the quota user for a call.
+// The quota user can be used by server-side applications to control accounting.
+// It can be an arbitrary string up to 40 characters, and will override UserIP
+// if both are provided.
+func QuotaUser(u string) CallOption { return quotaUser(u) }
+
+type quotaUser string
+
+func (q quotaUser) Get() (string, string) { return "quotaUser", string(q) }
+
+// UserIP returns a CallOption that will set the "userIp" parameter of a call.
+// This should be the IP address of the originating request.
+func UserIP(ip string) CallOption { return userIP(ip) }
+
+type userIP string
+
+func (i userIP) Get() (string, string) { return "userIp", string(i) }
+
+// Trace returns a CallOption that enables diagnostic tracing for a call.
+// traceToken is an ID supplied by Google support.
+func Trace(traceToken string) CallOption { return traceTok(traceToken) }
+
+type traceTok string
+
+func (t traceTok) Get() (string, string) { return "trace", "token:" + string(t) }
+
+// TODO: Fields too
