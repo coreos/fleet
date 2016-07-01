@@ -325,12 +325,6 @@ MachineOf=zxcvq`),
 			"foo.service",
 			newUnitFile(t, `[X-Fleet]
 Global=true
-Conflicts=bar`),
-		},
-		{
-			"foo.service",
-			newUnitFile(t, `[X-Fleet]
-Global=true
 Replaces=bar`),
 		},
 		{

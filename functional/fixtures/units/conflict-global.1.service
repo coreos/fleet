@@ -1,0 +1,9 @@
+[Unit]
+Description=Test Unit
+
+[Service]
+ExecStart=/bin/bash -c "while true; do echo Hello, World!; sleep 1; done"
+
+[X-Fleet]
+Global=true
+Conflicts=conflict-global.*.service

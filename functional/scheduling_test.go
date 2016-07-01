@@ -631,3 +631,83 @@ func TestScheduleGlobalUnits(t *testing.T) {
 		}
 	}
 }
+
+// TestScheduleGlobalConflicts starts 2 global units that conflict with each
+// other, and check if only the first one can be found.
+func TestScheduleGlobalConflicts(t *testing.T) {
+	// Create a three-member cluster
+	cluster, err := platform.NewNspawnCluster("smoke")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cluster.Destroy(t)
+	members, err := platform.CreateNClusterMembers(cluster, 3)
+	if err != nil {
+		t.Fatal(err)
+	}
+	m0 := members[0]
+	machines, err := cluster.WaitForNMachines(m0, 3)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cfGlobal0 := "fixtures/units/conflict-global.0.service"
+	cfGlobal1 := "fixtures/units/conflict-global.1.service"
+
+	// Launch a global unit
+	stdout, stderr, err := cluster.Fleetctl(m0, "start", "--no-block", cfGlobal0)
+	if err != nil {
+		t.Fatalf("Failed starting units: \nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)
+	}
+
+	// the global unit should show up active on 3 machines
+	_, err = cluster.WaitForNActiveUnits(m0, 3)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Now add another global unit, which actually should not be started.
+	stdout, stderr, err = cluster.Fleetctl(m0, "start", "--no-block", cfGlobal1)
+	if err != nil {
+		t.Fatalf("Failed starting unit: \nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)
+	}
+
+	// Should see only 3 units
+	states, err := cluster.WaitForNActiveUnits(m0, 3)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Each machine should have a single global unit conflict-global.0.service,
+	// but not conflict-global.1.service.
+	us0 := states[path.Base(cfGlobal0)]
+	us1 := states[path.Base(cfGlobal1)]
+	for _, mach := range machines {
+		var found bool
+		for _, state := range us0 {
+			if state.Machine == mach {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Fatalf("Did not find global unit on machine %v", mach)
+			t.Logf("Found unit states:")
+			for _, state := range states {
+				t.Logf("%#v", state)
+			}
+		}
+
+		found = false
+		for _, state := range us1 {
+			if state.Machine == mach {
+				found = true
+				break
+			}
+		}
+		if found {
+			t.Fatalf("Did find global unit %s on machine %v", us1, mach)
+			t.Logf("Global units were not conflicted as expected.")
+		}
+	}
+}
