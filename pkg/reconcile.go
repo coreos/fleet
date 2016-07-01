@@ -58,6 +58,9 @@ func (r *reconciler) Run(stop <-chan struct{}) {
 	go func() {
 		abort := make(chan struct{})
 		for {
+			if r.eStream == nil {
+				return
+			}
 			select {
 			case <-stop:
 				close(abort)
