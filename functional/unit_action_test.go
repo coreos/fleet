@@ -35,9 +35,10 @@ const (
 )
 
 var cleanCmd = map[string]string{
-	"submit": "destroy",
-	"load":   "unload",
-	"start":  "stop",
+	"submit":  "destroy",
+	"load":    "unload",
+	"start":   "stop",
+	"restart": "stop",
 }
 
 // TestUnitRunnable is the simplest test possible, deplying a single-node
@@ -161,6 +162,41 @@ func TestUnitLoadReplace(t *testing.T) {
 // hello.service" works or not.
 func TestUnitStartReplace(t *testing.T) {
 	if err := replaceUnitCommon(t, "start", 3); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// TestUnitRestart checks if a unit becomes started and restarted successfully.
+// First it starts a unit, and restarts the unit, verifies it's restarted.
+func TestUnitRestart(t *testing.T) {
+	cluster, err := platform.NewNspawnCluster("smoke")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cluster.Destroy(t)
+
+	m, err := cluster.CreateMember()
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = cluster.WaitForNMachines(m, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	numUnits := 3
+
+	// first start units before restarting them
+	unitFiles, err := launchUnitsCmd(cluster, m, "start", numUnits)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := checkListUnits(cluster, m, "start", unitFiles, numUnits); err != nil {
+		t.Fatal(err)
+	}
+
+	// now restart
+	if err := unitStartCommon(cluster, m, "restart", numUnits); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -582,6 +618,8 @@ func checkListUnits(cl platform.Cluster, m platform.Member, cmd string, ufs []st
 		lenLists = len(lus)
 		break
 	case "start":
+		fallthrough
+	case "restart":
 		lus, err = waitForNUnitsStart(cl, m, nu)
 		lenLists = len(lus)
 		break
@@ -642,6 +680,8 @@ func waitForNUnitsCmd(cl platform.Cluster, m platform.Member, cmd string, nu int
 		_, err = waitForNUnitsLoad(cl, m, nu)
 		break
 	case "start":
+		fallthrough
+	case "restart":
 		_, err = waitForNUnitsStart(cl, m, nu)
 		break
 	default:
