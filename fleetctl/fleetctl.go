@@ -1246,3 +1246,35 @@ func waitForState(stateCheckFunc func() error) (time.Duration, error) {
 		}
 	}
 }
+
+// cmdGlobalMachineState runs a specific fleetctl command on each target machine
+// where global units are started. To avoid unnecessary ssh connections being
+// alive, it filters out the list of machines as much as possible.
+func cmdGlobalMachineState(cCmd *cobra.Command, globalUnits []schema.Unit) (err error) {
+	cmd := cCmd.Name()
+	mapUNs := map[string]string{}
+	for _, unit := range globalUnits {
+		m := cachedMachineState(unit.MachineID)
+		if m == nil || m.ID == "" || m.PublicIP == "" {
+			continue
+		}
+		mapUNs[m.ID] = unit.Name
+	}
+
+	// create a list of unique unit names
+	resultIDs := map[string]string{}
+	for id, name := range mapUNs {
+		resultIDs[id] = name
+	}
+
+	for id, name := range resultIDs {
+		// run a correspondent systemctl command
+		if exitVal := runCommand(cCmd, id, "systemctl", cmd, name); exitVal != 0 {
+			err = fmt.Errorf("Error running systemctl %s. machine id=%v, unit name=%s",
+				cmd, id, name)
+			break
+		}
+	}
+
+	return err
+}
