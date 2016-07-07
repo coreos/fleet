@@ -189,7 +189,7 @@ func (s *Server) Run() {
 				break
 			}
 		}
-		log.Errorf("Server register machine failed: %v", err)
+		log.Warningf("Server register machine failed: %v, retrying in %d sec.", err, sleep)
 		time.Sleep(sleep)
 	}
 
