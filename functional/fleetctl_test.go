@@ -24,9 +24,10 @@ import (
 )
 
 func TestClientVersionFlag(t *testing.T) {
-	stdout, _, err := util.RunFleetctl("version")
+	stdout, stderr, err := util.RunFleetctl("version")
 	if err != nil {
-		t.Fatalf("Unexpected error while executing fleetctl: %v", err)
+		t.Fatalf("Unexpected error while executing fleetctl:\nstdout: %s\nstderr: %s\nerr: %v",
+			stdout, stderr, err)
 	}
 
 	if strings.TrimSpace(stdout) != fmt.Sprintf("fleetctl version %s", version.Version) {
@@ -35,9 +36,10 @@ func TestClientVersionFlag(t *testing.T) {
 }
 
 func TestClientVersionHelpOutput(t *testing.T) {
-	stdout, _, err := util.RunFleetctl("help")
+	stdout, stderr, err := util.RunFleetctl("help")
 	if err != nil {
-		t.Fatalf("Unexpected error while executing fleetctl: %v", err)
+		t.Fatalf("Unexpected error while executing fleetctl:\nstdout: %s\nstderr: %s\nerr: %v",
+			stdout, stderr, err)
 	}
 
 	if !strings.Contains(stdout, fmt.Sprintf("%s", version.Version)) {

@@ -66,9 +66,9 @@ func TestScheduleMachineOf(t *testing.T) {
 
 	// All 6 services should be visible immediately and become ACTIVE
 	// shortly thereafter
-	stdout, _, err := cluster.Fleetctl(m0, "list-unit-files", "--no-legend")
+	stdout, stderr, err := cluster.Fleetctl(m0, "list-unit-files", "--no-legend")
 	if err != nil {
-		t.Fatalf("Failed to run list-unit-files: %v", err)
+		t.Fatalf("Failed to run list-unit-files:\nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)
 	}
 	units := strings.Split(strings.TrimSpace(stdout), "\n")
 	if len(units) != 6 {
@@ -113,8 +113,8 @@ func TestScheduleMachineOf(t *testing.T) {
 
 	// Ensure a pair of units migrate together when their host goes down
 	mach := states["ping.1.service"].Machine
-	if _, _, err = cluster.Fleetctl(m0, "--strict-host-key-checking=false", "ssh", mach, "sudo", "systemctl", "stop", "fleet"); err != nil {
-		t.Fatal(err)
+	if stdout, stderr, err = cluster.Fleetctl(m0, "--strict-host-key-checking=false", "ssh", mach, "sudo", "systemctl", "stop", "fleet"); err != nil {
+		t.Fatalf("Failed to stop fleet service:\nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)
 	}
 
 	var mN platform.Member
@@ -184,9 +184,9 @@ func TestScheduleConflicts(t *testing.T) {
 
 	// All 5 services should be visible immediately and 3 should become
 	// ACTIVE shortly thereafter
-	stdout, _, err := cluster.Fleetctl(m0, "list-unit-files", "--no-legend")
+	stdout, stderr, err := cluster.Fleetctl(m0, "list-unit-files", "--no-legend")
 	if err != nil {
-		t.Fatalf("Failed to run list-unit-files: %v", err)
+		t.Fatalf("Failed to run list-unit-files:\nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)
 	}
 	units := strings.Split(strings.TrimSpace(stdout), "\n")
 	if len(units) != 5 {
@@ -256,9 +256,9 @@ func TestScheduleOneWayConflict(t *testing.T) {
 
 	// Both units should show up, but only conflicts-with-hello.service
 	// should report ACTIVE
-	stdout, _, err := cluster.Fleetctl(m0, "list-unit-files", "--no-legend")
+	stdout, stderr, err := cluster.Fleetctl(m0, "list-unit-files", "--no-legend")
 	if err != nil {
-		t.Fatalf("Failed to run list-unit-files: %v", err)
+		t.Fatalf("Failed to run list-unit-files:\nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)
 	}
 	units := strings.Split(strings.TrimSpace(stdout), "\n")
 	if len(units) != 2 {
@@ -281,8 +281,8 @@ func TestScheduleOneWayConflict(t *testing.T) {
 
 	// Destroying the conflicting unit should allow the other to start
 	name = "conflicts-with-hello.service"
-	if _, _, err := cluster.Fleetctl(m0, "destroy", name); err != nil {
-		t.Fatalf("Failed destroying %s", name)
+	if stdout, stderr, err := cluster.Fleetctl(m0, "destroy", name); err != nil {
+		t.Fatalf("Failed destroying %s:\nstdout: %s\nstderr: %s\nerr: %v", name, stdout, stderr, err)
 	}
 
 	// NOTE: we need to sleep here shortly to avoid occasional errors of
@@ -295,13 +295,14 @@ func TestScheduleOneWayConflict(t *testing.T) {
 	time.Sleep(1 * time.Second)
 
 	// Wait for the destroyed unit to actually disappear
+	var stdoutBuf, stderrBuf string
 	timeout, err := util.WaitForState(
 		func() bool {
-			stdout, _, err := cluster.Fleetctl(m0, "list-units", "--no-legend", "--full", "--fields", "unit,active,machine")
+			stdoutBuf, stderrBuf, err = cluster.Fleetctl(m0, "list-units", "--no-legend", "--full", "--fields", "unit,active,machine")
 			if err != nil {
 				return false
 			}
-			lines := strings.Split(strings.TrimSpace(stdout), "\n")
+			lines := strings.Split(strings.TrimSpace(stdoutBuf), "\n")
 			states := util.ParseUnitStates(lines)
 			for _, state := range states {
 				if state.Name == name {
@@ -312,7 +313,8 @@ func TestScheduleOneWayConflict(t *testing.T) {
 		},
 	)
 	if err != nil {
-		t.Fatalf("Destroyed unit %s not gone within %v", name, timeout)
+		t.Fatalf("Destroyed unit %s not gone within %v\nstdout: %s\nstderr: %s\nerr: %v",
+			name, timeout, stdoutBuf, stderrBuf, err)
 	}
 
 	active, err = cluster.WaitForNActiveUnits(m0, 1)
@@ -374,9 +376,9 @@ func TestScheduleReplace(t *testing.T) {
 	}
 
 	// Check that both units should show up
-	stdout, _, err := cluster.Fleetctl(m0, "list-unit-files", "--no-legend")
+	stdout, stderr, err := cluster.Fleetctl(m0, "list-unit-files", "--no-legend")
 	if err != nil {
-		t.Fatalf("Failed to run list-unit-files: %v", err)
+		t.Fatalf("Failed to run list-unit-files:\nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)
 	}
 	units := strings.Split(strings.TrimSpace(stdout), "\n")
 	if len(units) != 2 {
@@ -450,9 +452,9 @@ func TestScheduleCircularReplace(t *testing.T) {
 			uName0tmp, stdout, stderr, err)
 	}
 
-	stdout, _, err = cluster.Fleetctl(m0, "list-unit-files", "--no-legend")
+	stdout, stderr, err = cluster.Fleetctl(m0, "list-unit-files", "--no-legend")
 	if err != nil {
-		t.Fatalf("Failed to run list-unit-files: %v", err)
+		t.Fatalf("Failed to run list-unit-files:\nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)
 	}
 	units := strings.Split(strings.TrimSpace(stdout), "\n")
 	if len(units) != nActiveUnits {
@@ -472,9 +474,9 @@ func TestScheduleCircularReplace(t *testing.T) {
 	if stdout, stderr, err := cluster.Fleetctl(m0, "start", "--no-block", uNames[1]); err != nil {
 		t.Fatalf("Failed starting unit %s: \nstdout: %s\nstderr: %s\nerr: %v", uNames[1], stdout, stderr, err)
 	}
-	stdout, _, err = cluster.Fleetctl(m0, "list-unit-files", "--no-legend")
+	stdout, stderr, err = cluster.Fleetctl(m0, "list-unit-files", "--no-legend")
 	if err != nil {
-		t.Fatalf("Failed to run list-unit-files: %v", err)
+		t.Fatalf("Failed to run list-unit-files:\nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)
 	}
 	units = strings.Split(strings.TrimSpace(stdout), "\n")
 	if len(units) != nUnits {

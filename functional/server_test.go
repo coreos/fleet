@@ -78,9 +78,10 @@ func TestReconfigureServer(t *testing.T) {
 
 	// check if fleetd is still running correctly, by running fleetctl status
 	// Even if the log message do not show up this test may catch the error.
-	stdout, _, err = cluster.Fleetctl(m0, "list-units")
+	stdout, stderr, err = cluster.Fleetctl(m0, "list-units")
 	if err != nil {
-		t.Fatalf("Unable to check list-units. Please check for fleetd socket. err:%v", err)
+		t.Fatalf("Unable to check list-units. Please check for fleetd socket\nstdout: %s\nstderr: %s\nerr:%v",
+			stdout, stderr, err)
 	}
 
 	// Ensure that fleet received SIGHUP, if not then just skip this test

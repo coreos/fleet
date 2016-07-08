@@ -294,39 +294,39 @@ func (nc *nspawnCluster) prepCluster() (err error) {
 		return
 	}
 
-	stdout, _, err := run("brctl show")
+	stdout, stderr, err := run("brctl show")
 	if err != nil {
-		log.Printf("Failed enumerating bridges: %v", err)
+		log.Printf("Failed enumerating bridges: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
 		return
 	}
 
 	if !strings.Contains(stdout, "fleet0") {
-		_, _, err = run("brctl addbr fleet0")
+		stdout, stderr, err = run("brctl addbr fleet0")
 		if err != nil {
-			log.Printf("Failed adding fleet0 bridge: %v", err)
+			log.Printf("Failed adding fleet0 bridge: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
 			return
 		}
 	} else {
 		log.Printf("Bridge fleet0 already exists")
 	}
 
-	stdout, _, err = run("ip addr list fleet0")
+	stdout, stderr, err = run("ip addr list fleet0")
 	if err != nil {
-		log.Printf("Failed listing fleet0 addresses: %v", err)
+		log.Printf("Failed listing fleet0 addresses: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
 		return
 	}
 
 	if !strings.Contains(stdout, "172.18.0.1/16") {
-		_, _, err = run("ip addr add 172.18.0.1/16 dev fleet0")
+		stdout, stderr, err = run("ip addr add 172.18.0.1/16 dev fleet0")
 		if err != nil {
-			log.Printf("Failed adding 172.18.0.1/16 to fleet0: %v", err)
+			log.Printf("Failed adding 172.18.0.1/16 to fleet0: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
 			return
 		}
 	}
 
-	_, _, err = run("ip link set fleet0 up")
+	stdout, stderr, err = run("ip link set fleet0 up")
 	if err != nil {
-		log.Printf("Failed bringing up fleet0 bridge: %v", err)
+		log.Printf("Failed bringing up fleet0 bridge: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
 		return
 	}
 
@@ -603,8 +603,8 @@ func (nc *nspawnCluster) ReplaceMember(m Member) (Member, error) {
 	label := fmt.Sprintf("%s%s", nc.name, m.ID())
 
 	cmd := fmt.Sprintf("machinectl poweroff %s", label)
-	if _, _, err := run(cmd); err != nil {
-		return nil, fmt.Errorf("poweroff failed: %v", err)
+	if stdout, stderr, err := run(cmd); err != nil {
+		return nil, fmt.Errorf("poweroff failed: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
 	}
 
 	var mN Member
@@ -708,13 +708,13 @@ func (nc *nspawnCluster) systemd(unitName, exec string) error {
 func (nc *nspawnCluster) machinePID(name string) (int, error) {
 	for i := 0; i < 100; i++ {
 		mach := fmt.Sprintf("%s%s", nc.name, name)
-		stdout, _, err := run(fmt.Sprintf("machinectl show -p Leader %s", mach))
+		stdout, stderr, err := run(fmt.Sprintf("machinectl show -p Leader %s", mach))
 		if err != nil {
 			if i != -1 {
 				time.Sleep(100 * time.Millisecond)
 				continue
 			}
-			return -1, fmt.Errorf("failed detecting machine %s status: %v", mach, err)
+			return -1, fmt.Errorf("failed detecting machine %s status: %v\nstdout: %s\nstderr: %s", mach, err, stdout, stderr)
 		}
 
 		out := strings.SplitN(strings.TrimSpace(stdout), "=", 2)
