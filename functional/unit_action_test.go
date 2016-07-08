@@ -250,9 +250,9 @@ func TestUnitCat(t *testing.T) {
 	fileBody := strings.TrimSpace(string(fileBuf))
 
 	// submit a unit and assert it shows up
-	_, _, err = cluster.Fleetctl(m, "submit", unitFile)
+	stdout, stderr, err := cluster.Fleetctl(m, "submit", unitFile)
 	if err != nil {
-		t.Fatalf("Unable to submit fleet unit: %v", err)
+		t.Fatalf("Unable to submit fleet unit:\nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)
 	}
 	// wait until the unit gets submitted up to 15 seconds
 	_, err = cluster.WaitForNUnitFiles(m, 1)
@@ -261,9 +261,9 @@ func TestUnitCat(t *testing.T) {
 	}
 
 	// cat the unit file and compare it with the original unit body
-	stdout, _, err := cluster.Fleetctl(m, "cat", path.Base(unitFile))
+	stdout, stderr, err = cluster.Fleetctl(m, "cat", path.Base(unitFile))
 	if err != nil {
-		t.Fatalf("Unable to submit fleet unit: %v", err)
+		t.Fatalf("Unable to submit fleet unit:\nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)
 	}
 	catBody := strings.TrimSpace(stdout)
 
@@ -293,9 +293,9 @@ func TestUnitStatus(t *testing.T) {
 
 	// Load a unit and print out status.
 	// Without loading a unit, it's impossible to run fleetctl status
-	_, _, err = cluster.Fleetctl(m, "load", unitFile)
+	stdout, stderr, err := cluster.Fleetctl(m, "load", unitFile)
 	if err != nil {
-		t.Fatalf("Unable to load a fleet unit: %v", err)
+		t.Fatalf("Unable to load a fleet unit:\nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)
 	}
 
 	// wait until the unit gets loaded up to 15 seconds
@@ -304,7 +304,7 @@ func TestUnitStatus(t *testing.T) {
 		t.Fatalf("Failed to run list-units: %v", err)
 	}
 
-	stdout, stderr, err := cluster.Fleetctl(m,
+	stdout, stderr, err = cluster.Fleetctl(m,
 		"--strict-host-key-checking=false", "status", path.Base(unitFile))
 	if !strings.Contains(stdout, "Loaded: loaded") {
 		t.Errorf("Could not find expected string in status output:\n%s\nstderr:\n%s",
@@ -348,9 +348,9 @@ func TestListUnitFilesOrder(t *testing.T) {
 		t.Fatal("Failed to run list-unit-files: %v", err)
 	}
 
-	stdout, _, err := cluster.Fleetctl(m, "list-unit-files", "--no-legend", "--fields", "unit")
+	stdout, stderr, err := cluster.Fleetctl(m, "list-unit-files", "--no-legend", "--fields", "unit")
 	if err != nil {
-		t.Fatal("Failed to run list-unit-files: %v", err)
+		t.Fatal("Failed to run list-unit-files:\nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)
 	}
 
 	outUnits := strings.Split(strings.TrimSpace(stdout), "\n")
@@ -453,9 +453,9 @@ func replaceUnitCommon(t *testing.T, cmd string, numRUnits int) error {
 			}
 
 			// retrieve content of hello.service, and append to bodiesOrig[]
-			bodyCur, _, err := cluster.Fleetctl(m, "cat", helloFilename)
+			bodyCur, stderr, err := cluster.Fleetctl(m, "cat", helloFilename)
 			if err != nil {
-				return nil, fmt.Errorf("Failed to run cat %s: %v", helloFilename, err)
+				return nil, fmt.Errorf("Failed to run cat %s: %v\nstderr: %s", helloFilename, err, stderr)
 			}
 			bodiesOrig = append(bodiesOrig, bodyCur)
 
@@ -474,8 +474,8 @@ func replaceUnitCommon(t *testing.T, cmd string, numRUnits int) error {
 			curHelloService := path.Join("/tmp", helloFilename)
 
 			// replace the unit and assert it shows up
-			if _, _, err = cluster.Fleetctl(m, cmd, "--replace", curHelloService); err != nil {
-				return fmt.Errorf("Unable to replace fleet unit: %v", err)
+			if stdout, stderr, err := cluster.Fleetctl(m, cmd, "--replace", curHelloService); err != nil {
+				return fmt.Errorf("Unable to replace fleet unit: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
 			}
 			if err := waitForNUnitsCmd(cluster, m, cmd, numUnits); err != nil {
 				return fmt.Errorf("Did not find %d units in cluster", numUnits)
@@ -483,9 +483,9 @@ func replaceUnitCommon(t *testing.T, cmd string, numRUnits int) error {
 
 			// retrieve content of hello.service, and compare it with the
 			// correspondent entry in bodiesOrig[]
-			bodyCur, _, err := cluster.Fleetctl(m, "cat", helloFilename)
+			bodyCur, stderr, err := cluster.Fleetctl(m, "cat", helloFilename)
 			if err != nil {
-				return fmt.Errorf("Failed to run cat %s: %v", helloFilename, err)
+				return fmt.Errorf("Failed to run cat %s: %v\nstderr: %s", helloFilename, err, stderr)
 			}
 
 			if bodiesOrig[i] == bodyCur {
@@ -561,8 +561,8 @@ func launchUnitsCmd(cluster platform.Cluster, m platform.Member, cmd string, num
 
 func cleanUnits(cl platform.Cluster, m platform.Member, cmd string, ufs []string, nu int) (err error) {
 	for i := 0; i < nu; i++ {
-		if _, _, err := cl.Fleetctl(m, cmd, ufs[i]); err != nil {
-			return fmt.Errorf("Failed to %s unit: %v", cmd, err)
+		if stdout, stderr, err := cl.Fleetctl(m, cmd, ufs[i]); err != nil {
+			return fmt.Errorf("Failed to %s unit: %v\nstdout: %s\nstderr: %s", cmd, err, stdout, stderr)
 		}
 	}
 	return nil
@@ -717,9 +717,10 @@ func TestReplaceSerialization(t *testing.T) {
 	// the ExecStartPre is running at the same time, if it failed
 	// then we probably will catch it later when we check its status
 	tmpService := path.Base(tmpSyncService)
+	var stdoutBuf string
 	timeout, err := util.WaitForState(
 		func() bool {
-			_, err = cluster.MemberCommand(m, syncNew)
+			stdoutBuf, err = cluster.MemberCommand(m, syncNew)
 			if err != nil {
 				return false
 			}
@@ -727,7 +728,7 @@ func TestReplaceSerialization(t *testing.T) {
 		},
 	)
 	if err != nil {
-		t.Fatalf("Failed to check if file %s exists within %v", tmpSyncFile, timeout)
+		t.Fatalf("Failed to check if file %s exists within %v\nerr: %v\nstdout: %s", tmpSyncFile, timeout, err, stdoutBuf)
 	}
 
 	timeout, err = util.WaitForState(

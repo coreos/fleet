@@ -66,8 +66,8 @@ func TestKnownHostsVerification(t *testing.T) {
 	}
 
 	// SSH'ing to the cluster member should now fail with a host key mismatch
-	if _, _, err := cluster.Fleetctl(m0, "--strict-host-key-checking=true", fmt.Sprintf("--known-hosts-file=%s", khFile), "ssh", m1.ID(), "uptime"); err == nil {
-		t.Errorf("Expected error while SSH'ing to fleet machine")
+	if stdout, stderr, err := cluster.Fleetctl(m0, "--strict-host-key-checking=true", fmt.Sprintf("--known-hosts-file=%s", khFile), "ssh", m1.ID(), "uptime"); err == nil {
+		t.Errorf("Expected error while SSH'ing to fleet machine\nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)
 	}
 
 	// Overwrite the known-hosts file to simulate removing the old host key

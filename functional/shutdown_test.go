@@ -74,24 +74,27 @@ func TestShutdownVsMonitor(t *testing.T) {
 	// Cut connection to etcd.
 	//
 	// This will result in a failed health check, and consequently the monitor will attempt a restart.
-	if _, err = cluster.MemberCommand(m0, "sudo", "iptables", "-I", "OUTPUT", "-p", "tcp", "-m", "multiport", "--dports=2379,4001", "-j", "DROP"); err != nil {
-		t.Fatal(err)
+	stdout, err := cluster.MemberCommand(m0, "sudo", "iptables", "-I", "OUTPUT", "-p", "tcp", "-m", "multiport", "--dports=2379,4001", "-j", "DROP")
+	if err != nil {
+		t.Fatalf("Failed inserting iptables rule:\nstdout: %s\nerr: %v", stdout, err)
 	}
 
 	// Wait for the monitor to trigger the restart.
 	//
 	// This will never complete, as long as there is no connectivity.
-	if _, err = cluster.MemberCommand(m0, "sudo", "sh", "-c", `'until journalctl -u fleet | grep -q "Server monitor triggered: Monitor timed out before successful heartbeat"; do sleep 1; done'`); err != nil {
-		t.Fatal(err)
+	stdout, err = cluster.MemberCommand(m0, "sudo", "sh", "-c", `'until journalctl -u fleet | grep -q "Server monitor triggered: Monitor timed out before successful heartbeat"; do sleep 1; done'`)
+	if err != nil {
+		t.Fatalf("Failed checking journal message:\nstdout: %s\nerr: %v", stdout, err)
 	}
 
 	// Stop fleetd while the restart is still in progress.
-	if _, err = cluster.MemberCommand(m0, "sudo", "systemctl", "stop", "fleet"); err != nil {
-		t.Fatal(err)
+	stdout, err = cluster.MemberCommand(m0, "sudo", "systemctl", "stop", "fleet")
+	if err != nil {
+		t.Fatalf("Failed stopping fleet service:\nstdout: %s\nerr: %v", stdout, err)
 	}
 
 	// Verify that fleetd was shut down cleanly in spite of the concurrent restart.
-	stdout, _ := cluster.MemberCommand(m0, "systemctl", "show", "--property=ActiveState", "fleet")
+	stdout, _ = cluster.MemberCommand(m0, "systemctl", "show", "--property=ActiveState", "fleet")
 	if strings.TrimSpace(stdout) != "ActiveState=inactive" {
 		t.Fatalf("Fleet unit not reported as inactive: %s", stdout)
 	}

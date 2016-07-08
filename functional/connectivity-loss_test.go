@@ -93,9 +93,9 @@ func TestSingleNodeConnectivityLoss(t *testing.T) {
 	checkExpectedStates := func() (isExpected bool, expected, actual map[string]string) {
 		// First check unit files.
 		// These shouldn't change at all after intital submit -- but better safe than sorry...
-		stdout, _, err := cluster.Fleetctl(m0, "list-unit-files", "--no-legend", "--full", "--fields", "unit,dstate")
+		stdout, stderr, err := cluster.Fleetctl(m0, "list-unit-files", "--no-legend", "--full", "--fields", "unit,dstate")
 		if err != nil {
-			t.Errorf("Failed listing unit files: %v", err)
+			t.Errorf("Failed listing unit files:\nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)
 		}
 		stdout = strings.TrimSpace(stdout)
 
@@ -113,9 +113,9 @@ func TestSingleNodeConnectivityLoss(t *testing.T) {
 		}
 
 		// Now check the actual unit states.
-		stdout, _, err = cluster.Fleetctl(m0, "list-units", "--no-legend", "--full", "--fields", "unit,active")
+		stdout, stderr, err = cluster.Fleetctl(m0, "list-units", "--no-legend", "--full", "--fields", "unit,active")
 		if err != nil {
-			t.Errorf("Failed listing units: %v", err)
+			t.Errorf("Failed listing units:\nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)
 		}
 		stdout = strings.TrimSpace(stdout)
 

@@ -62,8 +62,8 @@ func TestNodeShutdown(t *testing.T) {
 	}
 
 	// Stop the fleet process on the first member
-	if _, err = cluster.MemberCommand(m0, "sudo", "systemctl", "stop", "fleet"); err != nil {
-		t.Fatal(err)
+	if stdout, err = cluster.MemberCommand(m0, "sudo", "systemctl", "stop", "fleet"); err != nil {
+		t.Fatalf("Failed stopping fleet service: %v\nstdout: %s\n", err, stdout)
 	}
 
 	// The first member should quickly remove itself from the published
@@ -118,13 +118,13 @@ func TestDetectMachineId(t *testing.T) {
 			return fmt.Errorf("Failed to restart fleet service\nstdout: %s\nerr: %v", stdout, err)
 		}
 
-		stdout, _ = cluster.MemberCommand(m, "systemctl", "show", "--property=ActiveState", "fleet")
+		stdout, err = cluster.MemberCommand(m, "systemctl", "show", "--property=ActiveState", "fleet")
 		if strings.TrimSpace(stdout) != "ActiveState=active" {
-			return fmt.Errorf("Fleet unit not reported as active: %s", stdout)
+			return fmt.Errorf("Fleet unit not reported as active:\nstdout:%s\nerr: %v", stdout, err)
 		}
-		stdout, _ = cluster.MemberCommand(m, "systemctl", "show", "--property=Result", "fleet")
+		stdout, err = cluster.MemberCommand(m, "systemctl", "show", "--property=Result", "fleet")
 		if strings.TrimSpace(stdout) != "Result=success" {
-			return fmt.Errorf("Result for fleet unit not reported as success: %s", stdout)
+			return fmt.Errorf("Result for fleet unit not reported as success:\nstdout:%s\nerr: %v", stdout, err)
 		}
 		return nil
 	}
@@ -155,12 +155,12 @@ func TestDetectMachineId(t *testing.T) {
 	if err != nil {
 		if !strings.Contains(err.Error(), "exit status 1") ||
 			!strings.Contains(stderr, "fleet server unable to communicate with etcd") {
-			t.Fatalf("m1: Failed to get list of machines. err: %v\nstderr: %s", err, stderr)
+			t.Fatalf("m1: Failed to get list of machines. err: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
 		}
 		// If both conditions are satisfied, "exit status 1" and
 		// "...unable to communicate...", then it's an expected error. PASS.
 	} else {
-		t.Fatalf("m1: should get an error, but got success.\nstderr: %s", stderr)
+		t.Fatalf("m1: should get an error, but got success.\nstdout: %s\nstderr: %s", stdout, stderr)
 	}
 
 	// Trigger another test case of m0's ID getting different from m1's.
