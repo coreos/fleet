@@ -87,6 +87,7 @@ func main() {
 	cfgset.String("metadata", "", "List of key-value metadata to assign to the fleet machine")
 	cfgset.String("agent_ttl", agent.DefaultTTL, "TTL in seconds of fleet machine state in etcd")
 	cfgset.String("units_directory", "/run/fleet/units/", "Path to the fleet units directory")
+	cfgset.Bool("systemd_user", false, "When true use systemd --user)")
 	cfgset.Int("token_limit", 100, "Maximum number of entries per page returned from API requests")
 	cfgset.Bool("disable_engine", false, "Disable the engine entirely, use with care")
 	cfgset.Bool("disable_watches", false, "Disable the use of etcd watches. Increases scheduling latency")
@@ -227,6 +228,7 @@ func getConfig(flagset *flag.FlagSet, userCfgFile string) (*config.Config, error
 		DisableWatches:          (*flagset.Lookup("disable_watches")).Value.(flag.Getter).Get().(bool),
 		VerifyUnits:             (*flagset.Lookup("verify_units")).Value.(flag.Getter).Get().(bool),
 		UnitsDirectory:          (*flagset.Lookup("units_directory")).Value.(flag.Getter).Get().(string),
+		SystemdUser:             (*flagset.Lookup("systemd_user")).Value.(flag.Getter).Get().(bool),
 		TokenLimit:              (*flagset.Lookup("token_limit")).Value.(flag.Getter).Get().(int),
 		AuthorizedKeysFile:      (*flagset.Lookup("authorized_keys_file")).Value.(flag.Getter).Get().(string),
 	}

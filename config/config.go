@@ -35,6 +35,7 @@ type Config struct {
 	DisableWatches          bool
 	VerifyUnits             bool
 	UnitsDirectory          string
+	SystemdUser             bool
 	AuthorizedKeysFile      string
 }
 
