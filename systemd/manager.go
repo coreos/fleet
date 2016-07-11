@@ -28,10 +28,6 @@ import (
 	"github.com/coreos/fleet/unit"
 )
 
-const (
-	DefaultUnitsDirectory = "/run/fleet/units/"
-)
-
 type systemdUnitManager struct {
 	systemd  *dbus.Conn
 	unitsDir string
@@ -40,8 +36,8 @@ type systemdUnitManager struct {
 	mutex  sync.RWMutex
 }
 
-func NewSystemdUnitManager(uDir string) (*systemdUnitManager, error) {
-	systemd, err := dbus.New()
+func NewSystemdUnitManager(uDir string, systemdUser bool) (*systemdUnitManager, error) {
+	systemd, err := createDbusConnection(systemdUser)
 	if err != nil {
 		return nil, err
 	}
@@ -62,6 +58,13 @@ func NewSystemdUnitManager(uDir string) (*systemdUnitManager, error) {
 		mutex:    sync.RWMutex{},
 	}
 	return &mgr, nil
+}
+
+func createDbusConnection(systemdUser bool) (*dbus.Conn, error) {
+	if systemdUser {
+		return dbus.NewUserConnection()
+	}
+	return dbus.New()
 }
 
 func hashUnitFiles(dir string) (map[string]unit.Hash, error) {

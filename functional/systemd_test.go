@@ -35,7 +35,7 @@ func TestSystemdUnitFlow(t *testing.T) {
 	}
 	defer os.RemoveAll(uDir)
 
-	mgr, err := systemd.NewSystemdUnitManager(uDir)
+	mgr, err := systemd.NewSystemdUnitManager(uDir, false)
 	if err != nil {
 		t.Fatalf("Failed initializing SystemdUnitManager: %v", err)
 	}

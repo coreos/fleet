@@ -75,7 +75,7 @@ func New(cfg config.Config, listeners []net.Listener) (*Server, error) {
 		return nil, err
 	}
 
-	mgr, err := systemd.NewSystemdUnitManager(systemd.DefaultUnitsDirectory)
+	mgr, err := systemd.NewSystemdUnitManager(cfg.UnitsDirectory, cfg.SystemdUser)
 	if err != nil {
 		return nil, err
 	}
