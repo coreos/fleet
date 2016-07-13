@@ -123,7 +123,11 @@ func formatMetadata(metadata map[string]string) string {
 	sorted.Sort()
 	for _, key := range sorted {
 		value := metadata[key]
-		pairs[idx] = fmt.Sprintf("%s=%s", key, value)
+		if hasMetadataOperator(value) {
+			pairs[idx] = fmt.Sprintf("%s%s", key, value)
+		} else {
+			pairs[idx] = fmt.Sprintf("%s=%s", key, value)
+		}
 		idx++
 	}
 	return strings.Join(pairs, ",")
@@ -134,4 +138,13 @@ func machineToFieldKeys(m map[string]machineToField) (keys []string) {
 		keys = append(keys, k)
 	}
 	return
+}
+
+func hasMetadataOperator(instr string) bool {
+	for _, op := range []string{"<=", ">=", "!=", "==", "<", ">"} {
+		if strings.HasPrefix(instr, op) {
+			return true
+		}
+	}
+	return false
 }
