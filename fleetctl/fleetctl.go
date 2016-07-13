@@ -31,6 +31,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 
 	etcd "github.com/coreos/etcd/client"
 
@@ -214,6 +215,8 @@ func checkVersion(cReg registry.ClusterRegistry) (string, bool) {
 }
 
 func main() {
+	getFlagsFromEnv(cliName, cmdFleet.PersistentFlags())
+
 	if globalFlags.Debug {
 		log.EnableDebug()
 	}
@@ -280,12 +283,12 @@ func main() {
 // environment variables. Environment variables take the name of the flag but
 // are UPPERCASE, have the given prefix, and any dashes are replaced by
 // underscores - for example: some-flag => PREFIX_SOME_FLAG
-func getFlagsFromEnv(prefix string, fs *flag.FlagSet) {
+func getFlagsFromEnv(prefix string, fs *pflag.FlagSet) {
 	alreadySet := make(map[string]bool)
-	fs.Visit(func(f *flag.Flag) {
+	fs.Visit(func(f *pflag.Flag) {
 		alreadySet[f.Name] = true
 	})
-	fs.VisitAll(func(f *flag.Flag) {
+	fs.VisitAll(func(f *pflag.Flag) {
 		if !alreadySet[f.Name] {
 			key := strings.ToUpper(prefix + "_" + strings.Replace(f.Name, "-", "_", -1))
 			val := os.Getenv(key)
