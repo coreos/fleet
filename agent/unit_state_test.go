@@ -792,7 +792,7 @@ func TestMarshalJSON(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error marshalling: %v", err)
 	}
-	want = `{"Cache":{"bar.service":{"LoadState":"","ActiveState":"inactive","SubState":"","MachineID":"asdf","UnitHash":"","UnitName":"bar.service"},"foo.service":{"LoadState":"","ActiveState":"active","SubState":"","MachineID":"asdf","UnitHash":"","UnitName":"foo.service"}},"ToPublish":{"woof.service":{"LoadState":"","ActiveState":"active","SubState":"","MachineID":"asdf","UnitHash":"","UnitName":"woof.service"}}}`
+	want = `{"Cache":{"bar.service":{"LoadState":"","ActiveState":"inactive","SubState":"","MachineID":"asdf","UnitHash":"","UnitName":"bar.service","ActiveEnterTimestamp":0},"foo.service":{"LoadState":"","ActiveState":"active","SubState":"","MachineID":"asdf","UnitHash":"","UnitName":"foo.service","ActiveEnterTimestamp":0}},"ToPublish":{"woof.service":{"LoadState":"","ActiveState":"active","SubState":"","MachineID":"asdf","UnitHash":"","UnitName":"woof.service","ActiveEnterTimestamp":0}}}`
 	if string(got) != want {
 		t.Fatalf("Bad JSON representation: got\n%s\n\nwant\n%s", string(got), want)
 	}

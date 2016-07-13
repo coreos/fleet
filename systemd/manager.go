@@ -251,6 +251,17 @@ func (m *systemdUnitManager) GetUnitStates(filter pkg.Set) (map[string]*unit.Uni
 		}
 	}
 
+	// add Active enter time to UnitState
+	for name, us := range states {
+		prop, err := m.systemd.GetUnitProperty(name, "ActiveEnterTimestamp")
+		if err != nil {
+			return nil, err
+		}
+
+		us.ActiveEnterTimestamp = prop.Value.Value().(uint64)
+		states[name] = us
+	}
+
 	return states, nil
 }
 

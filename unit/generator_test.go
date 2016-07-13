@@ -49,7 +49,7 @@ func TestUnitStateGeneratorSubscribeLifecycle(t *testing.T) {
 
 	// subscribed to foo.service so we should get a heartbeat
 	expect := []UnitStateHeartbeat{
-		UnitStateHeartbeat{Name: "foo.service", State: &UnitState{"loaded", "active", "running", "", "", "foo.service"}},
+		UnitStateHeartbeat{Name: "foo.service", State: &UnitState{"loaded", "active", "running", "", "", "foo.service", 0}},
 	}
 	assertGenerateUnitStateHeartbeats(t, um, gen, expect)
 
