@@ -23,6 +23,12 @@ FLEETCTL_ENDPOINT=http://<IP:[PORT]> fleetctl list-units
 
 *It is not recommended to listen fleet API TCP socket over public and even private networks.* Fleet API socket doesn't support encryption and authorization so it could cause full root access to your machine. Please use [ssh tunnel][ssh-tunnel] to access remote fleet API.
 
+### Using etcd Authentication
+
+If your `etcd` cluster is configured with authentication enabled, set `etcd_username` and `etcd_password` options in fleet.conf to provide credentials. It is not possible to provide credentials to the command-line tool.
+
+*It is not recommended to use Authentication without also using TLS Transport by also providing the `--ca-file` flag*
+
 ### From an External Host
 
 If you prefer to execute fleetctl from an external host (i.e. your laptop), the `--tunnel` flag can be used to tunnel communication with your fleet cluster over SSH:
@@ -37,7 +43,7 @@ One can also provide `--tunnel` through the environment variable `FLEETCTL_TUNNE
 FLEETCTL_TUNNEL=<IP[:PORT]> fleetctl list-units
 ```
 
-When using `--tunnel` and `--endpoint` together, it is important to note that all etcd requests will be made through the SSH tunnel. 
+When using `--tunnel` and `--endpoint` together, it is important to note that all etcd requests will be made through the SSH tunnel.
 The address in the `--endpoint` flag must be routable from the server hosting the tunnel.
 
 If the external host requires a username other than `core`, the `--ssh-username` flag can be used to set an alternative username.
@@ -158,7 +164,7 @@ hello.service	ping.service	pong.service
 $ fleetctl submit examples/*
 ```
 
-Submission of units to a fleet cluster does not cause them to be scheduled. 
+Submission of units to a fleet cluster does not cause them to be scheduled.
 The unit will be visible in a `fleetctl list-unit-files` command, but have no reported state in `fleetctl list-units`.
 
 A unit can be removed from a cluster with the `destroy` command:
