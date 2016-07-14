@@ -26,6 +26,7 @@ import (
 
 const (
 	fleetAPIPort = 54728
+	fleetRAM     = 1024 // in MiB
 	FleetTTL     = "3s"
 	cloudConfig  = `#cloud-config
 
@@ -62,7 +63,7 @@ coreos:
     command: start
     content: |
      [Service]
-     Environment=FLEET_METADATA=hostname=%H
+     Environment=FLEET_METADATA=hostname=%H,ram={{printf "%d" .FleetRAM}}
      ExecStart=/opt/fleet/fleetd -config /opt/fleet/fleet.conf
 `
 )
@@ -80,6 +81,7 @@ type configValues struct {
 	EtcdEndpoint  string
 	EtcdKeyPrefix string
 	FleetAPIPort  int
+	FleetRAM      int
 	FleetAgentTTL string
 	FleetExtra    string
 }
@@ -118,6 +120,7 @@ func BuildCloudConfig(dst io.Writer, ip, etcdEndpoint, etcdKeyPrefix string) err
 		EtcdEndpoint:  etcdEndpoint,
 		EtcdKeyPrefix: etcdKeyPrefix,
 		FleetAPIPort:  fleetAPIPort,
+		FleetRAM:      fleetRAM,
 		FleetAgentTTL: FleetTTL,
 		FleetExtra:    os.Getenv("FLEETD_TEST_ENV"),
 	}

@@ -16,6 +16,7 @@ package functional
 
 import (
 	"fmt"
+	"path"
 	"regexp"
 	"strings"
 	"testing"
@@ -89,4 +90,88 @@ func TestTemplatesWithSpecifiersInMetadata(t *testing.T) {
 	if stdout, stderr, err := cluster.Fleetctl(m0, "start", "--block-attempts=20", "fixtures/units/metadata@invalid.service"); err == nil {
 		t.Fatalf("metadata@invalid unit should not be scheduled: \nstdout: %s\nstderr: %s", stdout, stderr)
 	}
+}
+
+// TestMetadataOperator ensures that metadata operators work also for
+// extended operators such as ">=", "<=", "<", ">", "!=", or "==".
+func TestMetadataOperator(t *testing.T) {
+	cluster, err := platform.NewNspawnCluster("smoke")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cluster.Destroy(t)
+
+	members, err := platform.CreateNClusterMembers(cluster, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	m0 := members[0]
+	_, err = cluster.WaitForNMachines(m0, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	stdout, stderr, err := cluster.Fleetctl(m0, "list-machines", "--fields", "machine,metadata")
+	if err != nil {
+		t.Fatalf("Unable to get machine metadata\nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)
+	}
+
+	runMetaOp := func(ramEq string, expectSuccess bool) {
+		tmpMdOpService := "/tmp/metadata-op.service"
+		MdOpService := "fixtures/units/metadata-op.service"
+		MdOpBaseName := path.Base(MdOpService)
+		var nUnits int
+
+		if expectSuccess {
+			t.Logf("Testing %s expecting success...", ramEq)
+			nUnits = 1
+		} else {
+			t.Logf("Testing %s expecting failure...", ramEq)
+			nUnits = 0
+		}
+
+		err = util.GenNewFleetService(tmpMdOpService, MdOpService, ramEq, "ram>=1024")
+		if err != nil {
+			t.Fatalf("Failed to generate a temp fleet service: %v", err)
+		}
+
+		stdout, stderr, err = cluster.Fleetctl(m0, "start", "--no-block", tmpMdOpService)
+		if err != nil {
+			t.Fatalf("starting unit %s returned error:\nstdout: %s\nstderr: %s\nerr: %v",
+				tmpMdOpService, stdout, stderr, err)
+		}
+
+		_, err = cluster.WaitForNActiveUnits(m0, nUnits)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		stdout, stderr, err = cluster.Fleetctl(m0, "destroy", MdOpBaseName)
+		if err != nil {
+			t.Fatalf("unit %s cannot be stopped: \nstdout: %s\nstderr: %s\nerr: %v",
+				MdOpBaseName, stdout, stderr, err)
+		}
+
+		_, err = cluster.WaitForNUnitFiles(m0, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+	}
+
+	// run tests for success cases
+	runMetaOp("ram>=1024", true)
+	runMetaOp("ram<=1024", true)
+	runMetaOp("ram>1023", true)
+	runMetaOp("ram<1025", true)
+	runMetaOp("ram!=1025", true)
+	runMetaOp("ram==1024", true)
+
+	// run tests for failure cases
+	runMetaOp("ram>=1025", false)
+	runMetaOp("ram<=1023", false)
+	runMetaOp("ram>1024", false)
+	runMetaOp("ram<1024", false)
+	runMetaOp("ram!=1024", false)
+	runMetaOp("ram==1025", false)
 }
