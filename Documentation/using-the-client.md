@@ -25,7 +25,7 @@ FLEETCTL_ENDPOINT=http://<IP:[PORT]> fleetctl list-units
 
 ### Using etcd Authentication
 
-If your `etcd` cluster is configured with authentication enabled, use the `--etcd-username` and `--etc-password` flags to provide credentials to the command-line tool.
+If your `etcd` cluster is configured with authentication enabled, set `etcd_username` and `etcd_password` options in fleet.conf to provide credentials. It is not possible to provide credentials to the command-line tool.
 
 *It is not recommended to use Authentication without also using TLS Transport by also providing the `--ca-file` flag*
 
