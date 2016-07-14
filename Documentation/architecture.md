@@ -69,7 +69,7 @@ polkit.addRule(function(action, subject) {
 });
 ```
 
-[etcd-security]: https://github.com/coreos/etcd/blob/master/Documentation/security.md
+[etcd-security]: https://github.com/coreos/etcd/blob/master/Documentation/v2/security.md
 [d-bus]: https://www.freedesktop.org/wiki/Software/dbus/
 [fleet-tls]: deployment-and-configuration.md#tls-authentication
 [polkit]: https://www.freedesktop.org/software/polkit/docs/latest/polkit.8.html
