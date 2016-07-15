@@ -207,12 +207,9 @@ func newPublisher(reg registry.Registry, ttl time.Duration) publishFunc {
 			// Sanity check - don't want to publish incomplete UnitStates
 			// TODO(jonboulle): consider teasing apart a separate UnitState-like struct
 			// so we can rely on a UnitState always being fully hydrated?
-
-			// See https://github.com/coreos/fleet/issues/720
-			//if len(us.UnitHash) == 0 {
-			//	log.Errorf("Refusing to push UnitState(%s), no UnitHash: %#v", name, us)
-
-			if len(us.MachineID) == 0 {
+			if len(us.UnitHash) == 0 {
+				log.Errorf("Refusing to push UnitState(%s), no UnitHash: %#v", name, us)
+			} else if len(us.MachineID) == 0 {
 				log.Errorf("Refusing to push UnitState(%s), no MachineID: %#v", name, us)
 			} else {
 				log.Debugf("Pushing UnitState(%s) to Registry: %#v", name, us)

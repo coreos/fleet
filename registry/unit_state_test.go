@@ -111,14 +111,13 @@ func TestSaveUnitState(t *testing.T) {
 		t.Fatalf("SaveUnitState of nil state should fail but acted unexpectedly!")
 	}
 
-	// Saving unit state with no hash should succeed for now, but should fail
-	// in the future. See https://github.com/coreos/fleet/issues/720.
-	//r.SaveUnitState(j, us, time.Second)
-	//if len(e.sets) != 1 || e.deletes == nil {
-	//	t.Logf("sets: %#v", e.sets)
-	//	t.Logf("deletes: %#v", e.deletes)
-	//	t.Fatalf("SaveUnitState on UnitState with no hash acted unexpectedly!")
-	//}
+	// Saving unit state with no hash should should fail.
+	r.SaveUnitState(j, us, time.Second)
+	if len(e.sets) != 0 || e.deletes != nil {
+		t.Logf("sets: %#v", e.sets)
+		t.Logf("deletes: %#v", e.deletes)
+		t.Fatalf("SaveUnitState on UnitState with no hash acted unexpectedly!")
+	}
 
 	us.UnitHash = "quickbrownfox"
 	r.SaveUnitState(j, us, time.Second)
@@ -195,8 +194,7 @@ func TestUnitStateToModel(t *testing.T) {
 			want: nil,
 		},
 		{
-			// Unit state with no hash and no machineID is OK
-			// See https://github.com/coreos/fleet/issues/720
+			// Unit state with no hash and no machineID is not OK
 			in: &unit.UnitState{
 				LoadState:   "foo",
 				ActiveState: "bar",
@@ -205,13 +203,7 @@ func TestUnitStateToModel(t *testing.T) {
 				UnitHash:    "",
 				UnitName:    "name",
 			},
-			want: &unitStateModel{
-				LoadState:    "foo",
-				ActiveState:  "bar",
-				SubState:     "baz",
-				MachineState: nil,
-				UnitHash:     "",
-			},
+			want: nil,
 		},
 		{
 			// Unit state with hash but no machineID is OK
