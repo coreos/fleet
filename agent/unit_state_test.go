@@ -227,6 +227,7 @@ func TestDefaultPublisher(t *testing.T) {
 				UnitName:    "foo.service",
 				ActiveState: "active",
 				MachineID:   "xyz",
+				UnitHash:    "quickbrownfox",
 			},
 			nil,
 			[]*unit.UnitState{
@@ -234,6 +235,7 @@ func TestDefaultPublisher(t *testing.T) {
 					UnitName:    "foo.service",
 					ActiveState: "active",
 					MachineID:   "xyz",
+					UnitHash:    "quickbrownfox",
 				},
 			},
 		},
@@ -243,6 +245,7 @@ func TestDefaultPublisher(t *testing.T) {
 			&unit.UnitState{
 				UnitName:    "foo.service",
 				ActiveState: "active",
+				UnitHash:    "quickbrownfox",
 			},
 			nil,
 			[]*unit.UnitState{},
@@ -255,6 +258,7 @@ func TestDefaultPublisher(t *testing.T) {
 				unit.UnitState{
 					UnitName:    "foo.service",
 					ActiveState: "active",
+					UnitHash:    "quickbrownfox",
 				},
 			},
 			[]*unit.UnitState{},
