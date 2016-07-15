@@ -37,7 +37,13 @@ type systemdUnitManager struct {
 }
 
 func NewSystemdUnitManager(uDir string, systemdUser bool) (*systemdUnitManager, error) {
-	systemd, err := createDbusConnection(systemdUser)
+	var systemd *dbus.Conn
+	var err error
+	if systemdUser {
+		systemd, err = dbus.NewUserConnection()
+	} else {
+		systemd, err = dbus.New()
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -58,13 +64,6 @@ func NewSystemdUnitManager(uDir string, systemdUser bool) (*systemdUnitManager, 
 		mutex:    sync.RWMutex{},
 	}
 	return &mgr, nil
-}
-
-func createDbusConnection(systemdUser bool) (*dbus.Conn, error) {
-	if systemdUser {
-		return dbus.NewUserConnection()
-	}
-	return dbus.New()
 }
 
 func hashUnitFiles(dir string) (map[string]unit.Hash, error) {
