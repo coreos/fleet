@@ -105,9 +105,10 @@ func (nc *nspawnCluster) keyspace() string {
 	return fmt.Sprintf("/fleet_functional/%s", nc.name)
 }
 
-// This function adds --endpoint flag if --tunnel flag is not used
-// Usefull for "fleetctl fd-forward" tests
-func handleEndpointFlag(m Member, args *[]string) {
+// This function either adds --endpoint flag or set env variable
+// FLEETCTL_ENDPOINT, if --tunnel flag is not used.
+// Useful for "fleetctl fd-forward" tests
+func handleEndpointFlag(m Member, useEnv bool, args *[]string) {
 	result := true
 	for _, arg := range *args {
 		if strings.Contains(arg, "-- ") || strings.Contains(arg, "--tunnel") {
@@ -116,18 +117,27 @@ func handleEndpointFlag(m Member, args *[]string) {
 		}
 	}
 	if result {
-		*args = append([]string{"--endpoint=" + m.Endpoint()}, *args...)
+		if useEnv {
+			os.Setenv("FLEETCTL_ENDPOINT", m.Endpoint())
+		} else {
+			*args = append([]string{"--endpoint=" + m.Endpoint()}, *args...)
+		}
 	}
 }
 
 func (nc *nspawnCluster) Fleetctl(m Member, args ...string) (string, string, error) {
-	handleEndpointFlag(m, &args)
+	handleEndpointFlag(m, false, &args)
 	return util.RunFleetctl(args...)
 }
 
 func (nc *nspawnCluster) FleetctlWithInput(m Member, input string, args ...string) (string, string, error) {
-	handleEndpointFlag(m, &args)
+	handleEndpointFlag(m, false, &args)
 	return util.RunFleetctlWithInput(input, args...)
+}
+
+func (nc *nspawnCluster) FleetctlWithEnv(m Member, args ...string) (string, string, error) {
+	handleEndpointFlag(m, true, &args)
+	return util.RunFleetctl(args...)
 }
 
 // WaitForNUnits runs fleetctl list-units to verify the actual number of units

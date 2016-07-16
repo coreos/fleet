@@ -81,3 +81,30 @@ func TestKnownHostsVerification(t *testing.T) {
 	}
 
 }
+
+// TestFleetctlWithEnv runs simply fleetctl list-machines, but by setting an
+// environment variable FLEETCTL_ENDPOINT, instead of the cmdline option
+// '--endpoint'.
+func TestFleetctlWithEnv(t *testing.T) {
+	cluster, err := platform.NewNspawnCluster("smoke")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cluster.Destroy(t)
+
+	m, err := cluster.CreateMember()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = cluster.WaitForNMachines(m, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	stdout, stderr, err := cluster.FleetctlWithEnv(m, "list-machines")
+	if err != nil {
+		t.Fatalf("Failed to run with env var FLEETCTL_ENDPOINT:\nstdout: %s\nstderr: %s\nerr: %v",
+			stdout, stderr, err)
+	}
+}
