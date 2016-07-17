@@ -1,6 +1,6 @@
 #!/bin/bash -e
 
-CDIR=$(cd `dirname $0` && pwd)
+CDIR=$(cd `dirname "$0"` && pwd)
 USER_ID=${SUDO_UID:-$(id -u)}
 HOME=$(getent passwd "${USER_ID}" | cut -d: -f6)
 

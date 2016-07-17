@@ -63,8 +63,8 @@ if ! qemu-system-x86_64 --version > /dev/null 2>&1; then
   print_error "Please install QEMU first"
 fi
 
-CDIR=$(cd `dirname $0` && pwd)
-cd $CDIR
+CDIR=$(cd `dirname "$0"` && pwd)
+cd "$CDIR"
 
 ARGS=`for i in "$@"; do printf '%q ' "$i"; done`
 

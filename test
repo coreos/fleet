@@ -12,8 +12,8 @@
 # Invoke ./cover for HTML output
 COVER=${COVER:-"-cover"}
 
-CDIR=$(cd `dirname $0` && pwd)
-cd $CDIR
+CDIR=$(cd `dirname "$0"` && pwd)
+cd "$CDIR"
 
 source ./build
 
