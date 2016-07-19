@@ -8,7 +8,7 @@ import (
 	"path"
 	"strings"
 
-	ini "github.com/rakyll/goini"
+	ini "github.com/glacjay/goini"
 )
 
 const (
