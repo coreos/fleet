@@ -12,7 +12,7 @@ tgt=$(mktemp -d)
 # Cleanup
 trap 'rm -rf "$tgt"' INT TERM EXIT
 
-CDIR=$(cd `dirname $0` && pwd)
+CDIR=$(cd `dirname "$0"` && pwd)
 
 # Build fleet inside
 docker run --rm -v $CDIR:/opt/fleet -u $(id -u):$(id -g) golang:1.6 /bin/bash -c "cd /opt/fleet && ./build"

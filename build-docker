@@ -1,5 +1,5 @@
 #!/bin/bash -e
 
-CDIR=$(cd `dirname $0` && pwd)
+CDIR=$(cd `dirname "$0"` && pwd)
 
-docker run --rm -v $CDIR:/opt/fleet -u $(id -u):$(id -g) golang:1.6 /bin/bash -c "cd /opt/fleet && ./build"
+docker run --rm -v "$CDIR":/opt/fleet -u $(id -u):$(id -g) golang:1.6 /bin/bash -c "cd /opt/fleet && ./build"

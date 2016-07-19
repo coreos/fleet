@@ -13,11 +13,13 @@ else
   fi
 fi
 
-export GOBIN=${PWD}/bin
-export GOPATH=${PWD}/gopath
+: ${CDIR:=${PWD}}
+
+export GOBIN="${CDIR}/bin"
+export GOPATH="${CDIR}/gopath"
 export VERSION=$(git describe --dirty)
 export GLDFLAGS="-X github.com/coreos/fleet/version.Version=${VERSION}"
 eval $(go env)
 export PATH="${GOROOT}/bin:${PATH}"
-export FLEETD_BIN="$(pwd)/bin/fleetd"
-export FLEETCTL_BIN="$(pwd)/bin/fleetctl"
+export FLEETD_BIN="${CDIR}/bin/fleetd"
+export FLEETCTL_BIN="${CDIR}/bin/fleetctl"

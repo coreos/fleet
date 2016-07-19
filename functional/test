@@ -35,7 +35,7 @@ function print_results() {
   echo "# SKIP: $skip"
   echo "# FAIL: $fail"
   echo ""
-  echo "See ${CDIR}/functional-tests.log for the detailed output."
+  echo "See ${CDIR}/functional/functional-tests.log for the detailed output."
   if [ "${TESTS_RETURN_CODE_1}" -ne "0" ]; then
     exit ${TESTS_RETURN_CODE_1}
   else
@@ -43,12 +43,12 @@ function print_results() {
   fi
 }
 
-CDIR=$(cd `dirname $0` && pwd)
+CDIR=$(cd `dirname "$0"`/.. && pwd)
 USER_ID=${SUDO_UID:-$(id -u)}
 HOME=$(getent passwd "${USER_ID}" | cut -d: -f6)
 TAIL_LOGS=30
 
-cd ${CDIR}/../
+cd ${CDIR}
 export GOROOT=${HOME}/go
 export PATH=${HOME}/go/bin:${PATH}
 
