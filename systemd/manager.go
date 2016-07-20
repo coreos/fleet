@@ -123,24 +123,26 @@ func (m *systemdUnitManager) Unload(name string) {
 
 // TriggerStart asynchronously starts the unit identified by the given name.
 // This function does not block for the underlying unit to actually start.
-func (m *systemdUnitManager) TriggerStart(name string) {
+func (m *systemdUnitManager) TriggerStart(name string) error {
 	jobID, err := m.systemd.StartUnit(name, "replace", nil)
-	if err == nil {
-		log.Infof("Triggered systemd unit %s start: job=%d", name, jobID)
-	} else {
+	if err != nil {
 		log.Errorf("Failed to trigger systemd unit %s start: %v", name, err)
+		return err
 	}
+	log.Infof("Triggered systemd unit %s start: job=%d", name, jobID)
+	return nil
 }
 
 // TriggerStop asynchronously starts the unit identified by the given name.
 // This function does not block for the underlying unit to actually stop.
-func (m *systemdUnitManager) TriggerStop(name string) {
+func (m *systemdUnitManager) TriggerStop(name string) error {
 	jobID, err := m.systemd.StopUnit(name, "replace", nil)
-	if err == nil {
-		log.Infof("Triggered systemd unit %s stop: job=%d", name, jobID)
-	} else {
+	if err != nil {
 		log.Errorf("Failed to trigger systemd unit %s stop: %v", name, err)
+		return err
 	}
+	log.Infof("Triggered systemd unit %s stop: job=%d", name, jobID)
+	return nil
 }
 
 // GetUnitState generates a UnitState object representing the
