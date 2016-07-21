@@ -226,7 +226,7 @@ func main() {
 	log.EnableTimestamps()
 
 	if len(os.Args) == 1 {
-		cmdFleet.Help()
+		cmdFleet.HelpFunc()(cmdFleet, os.Args)
 		os.Exit(0)
 	}
 

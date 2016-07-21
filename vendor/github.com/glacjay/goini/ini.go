@@ -23,15 +23,24 @@ var (
 	regNoValue     = regexp.MustCompile("^([^= \t]+)[ \t]*=[ \t]*([#;].*)?")
 )
 
-func Load(filename string) (dict Dict, err error) {
-	file, err := os.Open(filename)
+func MustLoadReader(reader *bufio.Reader) Dict {
+	dict, err := LoadReader(reader)
 	if err != nil {
-		return nil, err
+		panic(err)
 	}
-	defer file.Close()
+	return dict
+}
 
+func MustLoad(filename string) Dict {
+	dict, err := Load(filename)
+	if err != nil {
+		panic(err)
+	}
+	return dict
+}
+
+func LoadReader(reader *bufio.Reader) (dict Dict, err error) {
 	dict = make(map[string]map[string]string)
-	reader := bufio.NewReader(file)
 	lineno := 0
 	section := ""
 	dict[section] = make(map[string]string)
@@ -59,11 +68,22 @@ func Load(filename string) (dict Dict, err error) {
 		section, err = dict.parseLine(section, line)
 		if err != nil {
 			return nil, newError(
-				err.Error() + fmt.Sprintf("'%s:%d'.", filename, lineno))
+				err.Error() + fmt.Sprintf("':%d'.", lineno))
 		}
 	}
 
 	return
+}
+
+func Load(filename string) (Dict, error) {
+	file, err := os.Open(filename)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	reader := bufio.NewReader(file)
+	return LoadReader(reader)
 }
 
 func Write(filename string, dict *Dict) error {
@@ -224,10 +244,15 @@ func (dict Dict) String() string {
 
 func (dict Dict) format() *bytes.Buffer {
 	var buffer bytes.Buffer
+	for key, val := range dict[""] {
+		buffer.WriteString(fmt.Sprintf("%s = %s\n", key, val))
+	}
+	buffer.WriteString("\n")
 	for section, vals := range dict {
-		if section != "" {
-			buffer.WriteString(fmt.Sprintf("[%s]\n", section))
+		if section == "" {
+			continue
 		}
+		buffer.WriteString(fmt.Sprintf("[%s]\n", section))
 		for key, val := range vals {
 			buffer.WriteString(fmt.Sprintf("%s = %s\n", key, val))
 		}
