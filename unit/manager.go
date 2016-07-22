@@ -23,8 +23,8 @@ type UnitManager interface {
 	Unload(string)
 	ReloadUnitFiles() error
 
-	TriggerStart(string)
-	TriggerStop(string)
+	TriggerStart(string) error
+	TriggerStop(string) error
 
 	Units() ([]string, error)
 	GetUnitStates(pkg.Set) (map[string]*UnitState, error)

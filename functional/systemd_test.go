@@ -78,14 +78,20 @@ ExecStart=/usr/bin/sleep 3000
 		t.Error(err.Error())
 	}
 
-	mgr.TriggerStart(name)
+	err = mgr.TriggerStart(name)
+	if err != nil {
+		t.Error(err.Error())
+	}
 
 	err = waitForUnitState(mgr, name, unit.UnitState{"loaded", "active", "running", "", hash, ""})
 	if err != nil {
 		t.Error(err.Error())
 	}
 
-	mgr.TriggerStop(name)
+	err = mgr.TriggerStop(name)
+	if err != nil {
+		t.Error(err.Error())
+	}
 
 	mgr.Unload(name)
 

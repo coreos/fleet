@@ -98,11 +98,22 @@ func (a *Agent) unloadUnit(unitName string) {
 	a.registry.ClearUnitHeartbeat(unitName)
 	a.cache.dropTargetState(unitName)
 
-	a.um.TriggerStop(unitName)
+	errStop := a.um.TriggerStop(unitName)
+	if errStop != nil {
+		log.Warningf("Failed stopping unit(%s): %v", unitName, errStop)
+	} else {
+		log.Infof("Stopped unit(%s)", unitName)
+	}
 
 	a.uGen.Unsubscribe(unitName)
 
-	a.um.Unload(unitName)
+	// unit should be unloaded and unit file should be removed, only if the unit
+	// could be successfully stopped. Otherwise the unit could get into a state
+	// where the unit cannot be stopped via fleet, because the unit file was
+	// already removed. See also https://github.com/coreos/fleet/issues/1216.
+	if errStop == nil {
+		a.um.Unload(unitName)
+	}
 }
 
 func (a *Agent) startUnit(unitName string) {
