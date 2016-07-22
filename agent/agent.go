@@ -119,20 +119,20 @@ func (a *Agent) unloadUnit(unitName string) error {
 	return errUnload
 }
 
-func (a *Agent) startUnit(unitName string) {
+func (a *Agent) startUnit(unitName string) error {
 	a.cache.setTargetState(unitName, job.JobStateLaunched)
 
 	machID := a.Machine.State().ID
 	a.registry.UnitHeartbeat(unitName, machID, a.ttl)
 
-	a.um.TriggerStart(unitName)
+	return a.um.TriggerStart(unitName)
 }
 
-func (a *Agent) stopUnit(unitName string) {
+func (a *Agent) stopUnit(unitName string) error {
 	a.cache.setTargetState(unitName, job.JobStateLoaded)
 	a.registry.ClearUnitHeartbeat(unitName)
 
-	a.um.TriggerStop(unitName)
+	return a.um.TriggerStop(unitName)
 }
 
 type unitState struct {

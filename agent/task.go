@@ -106,9 +106,9 @@ func mapTaskToFunc(t task, a *Agent) (fn func() error, err error) {
 	case taskTypeUnloadUnit:
 		fn = func() error { return a.unloadUnit(t.unit.Name) }
 	case taskTypeStartUnit:
-		fn = func() error { a.startUnit(t.unit.Name); return nil }
+		fn = func() error { return a.startUnit(t.unit.Name) }
 	case taskTypeStopUnit:
-		fn = func() error { a.stopUnit(t.unit.Name); return nil }
+		fn = func() error { return a.stopUnit(t.unit.Name) }
 	case taskTypeReloadUnitFiles:
 		fn = func() error { return a.reloadUnitFiles() }
 	default:
