@@ -235,7 +235,7 @@ func runCommand(cCmd *cobra.Command, machID string, cmd string, args ...string) 
 			addr := findSSHPort(cCmd, ms.PublicIP)
 			err, retcode = runRemoteCommand(cCmd, addr, cmd, args...)
 			if err != nil {
-				stderr("Error running remote command: %v", err)
+				stderr("Unable to SSH to remote host: %v", err)
 			}
 		}
 	}
