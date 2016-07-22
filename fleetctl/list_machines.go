@@ -89,7 +89,10 @@ func runListMachines(cCmd *cobra.Command, args []string) (exit int) {
 
 	machines, err := cAPI.Machines()
 	if err != nil {
-		stderr("Error retrieving list of active machines: %v", err)
+		stderr("Error retrieving list of active machines from fleet API (%v)", err)
+		stderr("Possible issues:")
+		stderr("  etcd is unhealthy and/or lost quorum")
+		stderr("  connection cannot be established to any etcd servers")
 		return 1
 	}
 
