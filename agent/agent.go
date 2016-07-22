@@ -94,7 +94,7 @@ func (a *Agent) loadUnit(u *job.Unit) error {
 	return a.um.Load(u.Name, u.Unit)
 }
 
-func (a *Agent) unloadUnit(unitName string) {
+func (a *Agent) unloadUnit(unitName string) error {
 	a.registry.ClearUnitHeartbeat(unitName)
 	a.cache.dropTargetState(unitName)
 
@@ -111,9 +111,12 @@ func (a *Agent) unloadUnit(unitName string) {
 	// could be successfully stopped. Otherwise the unit could get into a state
 	// where the unit cannot be stopped via fleet, because the unit file was
 	// already removed. See also https://github.com/coreos/fleet/issues/1216.
+	var errUnload error
 	if errStop == nil {
-		a.um.Unload(unitName)
+		errUnload = a.um.Unload(unitName)
 	}
+
+	return errUnload
 }
 
 func (a *Agent) startUnit(unitName string) {

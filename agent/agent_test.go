@@ -87,7 +87,10 @@ func TestAgentLoadUnloadUnit(t *testing.T) {
 		t.Fatalf("Received unexpected collection of Units: %#v\nExpected: %#v", units, expectUnits)
 	}
 
-	a.unloadUnit("foo.service")
+	err = a.unloadUnit("foo.service")
+	if err != nil {
+		t.Fatalf("Failed calling Agent.unloadUnit: %v", err)
+	}
 
 	units, err = a.units()
 	if err != nil {

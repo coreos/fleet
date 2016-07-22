@@ -114,11 +114,11 @@ func (m *systemdUnitManager) Load(name string, u unit.UnitFile) error {
 
 // Unload removes the indicated unit from the filesystem, deletes its
 // associated Hash from the cache and clears its unit status in systemd
-func (m *systemdUnitManager) Unload(name string) {
+func (m *systemdUnitManager) Unload(name string) error {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 	delete(m.hashes, name)
-	m.removeUnit(name)
+	return m.removeUnit(name)
 }
 
 // TriggerStart asynchronously starts the unit identified by the given name.
@@ -269,14 +269,31 @@ func (m *systemdUnitManager) writeUnit(name string, contents string) error {
 	return err
 }
 
-func (m *systemdUnitManager) removeUnit(name string) {
+func (m *systemdUnitManager) removeUnit(name string) (err error) {
 	log.Infof("Removing systemd unit %s", name)
 
-	m.systemd.DisableUnitFiles([]string{name}, true)
-	m.systemd.ResetFailedUnit(name)
+	// both DisableUnitFiles() and ResetFailedUnit() must be followed by
+	// removing the unit file. Otherwise "systemctl stop fleet" could end up
+	// hanging forever.
+	var errf error
+	func(name string) {
+		_, errf = m.systemd.DisableUnitFiles([]string{name}, true)
+		if errf != nil {
+			err = fmt.Errorf("%v, %v", err, errf)
+		}
+	}(name)
+
+	func(name string) {
+		errf = m.systemd.ResetFailedUnit(name)
+		if errf != nil {
+			err = fmt.Errorf("%v, %v", err, errf)
+		}
+	}(name)
 
 	ufPath := m.getUnitFilePath(name)
 	os.Remove(ufPath)
+
+	return err
 }
 
 func (m *systemdUnitManager) getUnitFilePath(name string) string {

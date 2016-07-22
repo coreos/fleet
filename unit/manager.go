@@ -20,7 +20,7 @@ import (
 
 type UnitManager interface {
 	Load(string, UnitFile) error
-	Unload(string)
+	Unload(string) error
 	ReloadUnitFiles() error
 
 	TriggerStart(string) error

@@ -65,7 +65,10 @@ func TestFakeUnitManagerLoadUnload(t *testing.T) {
 		t.Fatalf("Expected UnitState %v, got %v", eus, *us)
 	}
 
-	fum.Unload("hello.service")
+	err = fum.Unload("hello.service")
+	if err != nil {
+		t.Fatalf("Expected no error from Unload(), got %v", err)
+	}
 
 	units, err = fum.Units()
 	if err != nil {

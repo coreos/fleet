@@ -41,11 +41,12 @@ func (fum *FakeUnitManager) ReloadUnitFiles() error {
 	return nil
 }
 
-func (fum *FakeUnitManager) Unload(name string) {
+func (fum *FakeUnitManager) Unload(name string) error {
 	fum.Lock()
 	defer fum.Unlock()
 
 	delete(fum.u, name)
+	return nil
 }
 
 func (fum *FakeUnitManager) TriggerStart(string) error { return nil }
