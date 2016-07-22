@@ -224,10 +224,9 @@ func unitStateToModel(us *unit.UnitState) *unitStateModel {
 	}
 
 	// Refuse to create a UnitState without a Hash
-	// See https://github.com/coreos/fleet/issues/720
-	//if len(us.UnitHash) == 0 {
-	//	return nil
-	//}
+	if len(us.UnitHash) == 0 {
+		return nil
+	}
 
 	usm := unitStateModel{
 		LoadState:   us.LoadState,
