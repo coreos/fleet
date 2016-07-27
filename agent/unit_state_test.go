@@ -625,13 +625,36 @@ func TestUnitStatePublisherRunWithDelays(t *testing.T) {
 		)
 	}
 
+	waitUnitToPublish := func(uName string) {
+		select {
+		case name := <-usp.toPublish:
+			if name != uName {
+				t.Errorf("unexpected name on toPublish channel: %v", name)
+			}
+		case <-time.After(time.Second):
+			t.Fatal("did not receive on toPublish channel as expected")
+		}
+	}
+
 	// now queue some more unit states for publishing - expect them to hang
-	go usp.queueForPublish("foo.service", &unit.UnitState{UnitName: "foo.service", ActiveState: "active"})
+	go usp.queueForPublish("foo.service", &unit.UnitState{
+		UnitName:    "foo.service",
+		ActiveState: "active",
+	})
+	waitUnitToPublish("foo.service")
+
 	go usp.queueForPublish("bar.service", &unit.UnitState{})
+	waitUnitToPublish("bar.service")
+
 	go usp.queueForPublish("baz.service", &unit.UnitState{})
+	waitUnitToPublish("baz.service")
 
 	// re-queue one of the states; this should replace the above
-	go usp.queueForPublish("foo.service", &unit.UnitState{UnitName: "foo.service", ActiveState: "inactive"})
+	go usp.queueForPublish("foo.service", &unit.UnitState{
+		UnitName:    "foo.service",
+		ActiveState: "inactive",
+	})
+	waitUnitToPublish("foo.service")
 
 	// wait for all publish workers to start
 	wgs.Wait()
