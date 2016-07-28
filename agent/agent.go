@@ -100,7 +100,7 @@ func (a *Agent) unloadUnit(unitName string) {
 
 	errStop := a.um.TriggerStop(unitName)
 	if errStop != nil {
-		log.Warningf("Failed stopping unit(%s): %v", unitName, errStop)
+		log.Warningf("TriggerStop on systemd unit %s returned: %v", unitName, errStop)
 	} else {
 		log.Infof("Stopped unit(%s)", unitName)
 	}
