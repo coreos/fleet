@@ -1104,25 +1104,21 @@ func tryWaitForSystemdActiveState(units []string) (ret int) {
 // active, retrying periodically until the unit gets active. It will retry
 // up to maxAttempts.
 func waitForSystemdActiveState(conn *sd_dbus.Conn, unitName string) (found bool, err error) {
-	found = false
-	var errAssert error
-	sleep := defaultSleepTime
-	maxAttempts := 3
-	for attempt := 0; attempt < maxAttempts; attempt++ {
-		found, errAssert = assertSystemdActiveState(conn, unitName)
-		if found && errAssert == nil {
-			break
+	return func() (found bool, errWait error) {
+		timeout := 15 * time.Second
+		alarm := time.After(timeout)
+		ticker := time.Tick(250 * time.Millisecond)
+		for {
+			select {
+			case <-alarm:
+				return false, fmt.Errorf("Failed to reach expected state within %v.", timeout)
+			case <-ticker:
+				if found, errA := assertSystemdActiveState(conn, unitName); found && errA == nil {
+					return found, nil
+				}
+			}
 		}
-		time.Sleep(sleep)
-	}
-
-	if found {
-		err = nil
-	} else {
-		err = fmt.Errorf("%v", errAssert)
-	}
-
-	return found, err
+	}()
 }
 
 // assertSystemdActiveState determines if a given systemd unit is actually
