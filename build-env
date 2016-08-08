@@ -23,3 +23,4 @@ eval $(go env)
 export PATH="${GOROOT}/bin:${PATH}"
 export FLEETD_BIN="${CDIR}/bin/fleetd"
 export FLEETCTL_BIN="${CDIR}/bin/fleetctl"
+export FLEETD_TEST_ENV="enable_grpc=false"
