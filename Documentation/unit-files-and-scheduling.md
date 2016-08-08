@@ -10,7 +10,8 @@ The unit name must be of the form `string.suffix` or `string@instance.suffix`, w
 
 * `string` must not be an empty string and can only contain alphanumeric characters and any of `:_.@-`. Formally, it must match the regular expression `[a-zA-Z0-9:_.@-]+`
 * `instance` can be empty, and can only contain the same characters as are valid for `string`. Formally, it must match the regular expression `[a-zA-Z0-9:_.@-]*`
-* `suffix` must be one of the following unit types: `service`, `socket`, `device`, `mount`, `automount`, `timer`, `path`
+* `suffix` must be one of the following unit types: `automount`, `busname`, `device`, `mount`, `path`, `scope`, `service`, `slice`, `snapshot`, `socket`, `swap`, `target`, `timer`
+* `suffix` of templates must be one of the following unit types: `path`, `service`, `socket`, `target`, `timer`. Other types such as `mount` are not allowed to be used for templates.
 
 Note that these requirements are derived directly from systemd, with the only exception that the unit types are a subset of those supported by systemd.
 
