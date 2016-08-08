@@ -759,6 +759,15 @@ func TestValidateName(t *testing.T) {
 		// cannot start in "@"
 		"@foo.service",
 		"@this.mount",
+		// template cannot be used for particular types
+		"foo@1.automount",
+		"foo@1.busname",
+		"foo@1.device",
+		"foo@1.mount",
+		"foo@1.scope",
+		"foo@1.slice",
+		"foo@1.snapshot",
+		"foo@1.swap",
 	}
 	for _, name := range badTestCases {
 		if err := ValidateName(name); err == nil {
@@ -779,6 +788,12 @@ func TestValidateName(t *testing.T) {
 		"jalapano_chips.service",
 		// generate a name the exact length of unitNameMax
 		fmt.Sprintf("%0"+strconv.Itoa(unitNameMax)+"s", ".service"),
+		// template can be used for particular types
+		"foo@1.path",
+		"foo@1.service",
+		"foo@1.socket",
+		"foo@1.target",
+		"foo@1.timer",
 	}
 	for _, name := range goodTestCases {
 		if err := ValidateName(name); err != nil {
