@@ -104,22 +104,21 @@ func New(cfg config.Config, listeners []net.Listener) (*Server, error) {
 		return nil, err
 	}
 
-	etcdRequestTimeout := time.Duration(cfg.EtcdRequestTimeout*1000) * time.Millisecond
 	kAPI := etcd.NewKeysAPI(eClient)
 
 	var (
 		reg        engine.CompleteRegistry
 		genericReg interface{}
 	)
-	lManager := lease.NewEtcdLeaseManager(kAPI, cfg.EtcdKeyPrefix, etcdRequestTimeout)
+	lManager := lease.NewEtcdLeaseManager(kAPI, cfg.EtcdKeyPrefix)
 
 	if !cfg.EnableGRPC {
-		genericReg = registry.NewEtcdRegistry(kAPI, cfg.EtcdKeyPrefix, etcdRequestTimeout)
+		genericReg = registry.NewEtcdRegistry(kAPI, cfg.EtcdKeyPrefix)
 		if obj, ok := genericReg.(engine.CompleteRegistry); ok {
 			reg = obj
 		}
 	} else {
-		etcdReg := registry.NewEtcdRegistry(kAPI, cfg.EtcdKeyPrefix, etcdRequestTimeout)
+		etcdReg := registry.NewEtcdRegistry(kAPI, cfg.EtcdKeyPrefix)
 		genericReg = rpc.NewRegistryMux(etcdReg, mach, lManager)
 		if obj, ok := genericReg.(engine.CompleteRegistry); ok {
 			reg = obj
@@ -135,7 +134,6 @@ func New(cfg config.Config, listeners []net.Listener) (*Server, error) {
 	if !cfg.DisableWatches {
 		rStream = registry.NewEtcdEventStream(kAPI, cfg.EtcdKeyPrefix)
 	}
-	lManager := lease.NewEtcdLeaseManager(kAPI, cfg.EtcdKeyPrefix)
 
 	ar := agent.NewReconciler(reg, rStream)
 
