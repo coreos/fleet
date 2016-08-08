@@ -67,9 +67,15 @@ func New(reg CompleteRegistry, lManager lease.Manager, rStream pkg.EventStream, 
 	}
 }
 
-
 func (e *Engine) Run(ival time.Duration, stop <-chan struct{}) {
 	leaseTTL := ival * 5
+	if e.machine.State().Capabilities.Has(machine.CapGRPC) {
+		// With grpc it doesn't make sense to set to 5secs the TTL of the etcd key.
+		// This has a special impact whenever we have high worload in the cluster, cause
+		// it'd provoke constant leader re-elections.
+		// TODO: IMHO, this should be configurable via a flag to disable the TTL.
+		leaseTTL = ival * 500000
+	}
 	machID := e.machine.State().ID
 
 	reconcile := func() {
