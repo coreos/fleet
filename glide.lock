@@ -84,9 +84,22 @@ imports:
   version: 4a8dce34cb7176d68b9031857e7a0b94e1413421
   subpackages:
   - context
+  - http2
+  - trace
+  - http2/hpack
 - name: google.golang.org/api
   version: 4a8dce34cb7176d68b9031857e7a0b94e1413421
   subpackages:
   - googleapi
   - googleapi/internal/uritemplates
+- name: google.golang.org/grpc
+  version: 178b68e2819d3ed711040301c12f3f97b6c270ce
+  subpackages:
+  - codes
+  - credentials
+  - grpclog
+  - metadata
+  - naming
+  - transport
+  - peer
 testImports: []
