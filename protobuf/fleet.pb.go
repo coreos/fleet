@@ -33,21 +33,21 @@
 */
 package rpc
 
-import proto "github.com/coreos/fleet/Godeps/_workspace/src/github.com/gogo/protobuf/proto"
+import proto "github.com/gogo/protobuf/proto"
 import fmt "fmt"
 import math "math"
-import _ "github.com/coreos/fleet/Godeps/_workspace/src/github.com/gogo/protobuf/gogoproto"
+import _ "github.com/gogo/protobuf/gogoproto"
 
 import strconv "strconv"
 
 import strings "strings"
-import github_com_gogo_protobuf_proto "github.com/coreos/fleet/Godeps/_workspace/src/github.com/gogo/protobuf/proto"
+import github_com_gogo_protobuf_proto "github.com/gogo/protobuf/proto"
 import sort "sort"
 import reflect "reflect"
 
 import (
-	context "github.com/coreos/fleet/Godeps/_workspace/src/golang.org/x/net/context"
-	grpc "github.com/coreos/fleet/Godeps/_workspace/src/google.golang.org/grpc"
+	context "golang.org/x/net/context"
+	grpc "google.golang.org/grpc"
 )
 
 import io "io"

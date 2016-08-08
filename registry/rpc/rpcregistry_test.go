@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/fleet/Godeps/_workspace/src/google.golang.org/grpc"
+	"google.golang.org/grpc"
 
 	pb "github.com/coreos/fleet/protobuf"
 )

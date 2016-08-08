@@ -6,9 +6,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/coreos/fleet/Godeps/_workspace/src/github.com/coreos/go-semver/semver"
-	"github.com/coreos/fleet/Godeps/_workspace/src/golang.org/x/net/context"
-	"github.com/coreos/fleet/Godeps/_workspace/src/google.golang.org/grpc"
+	"github.com/coreos/go-semver/semver"
+	"golang.org/x/net/context"
+	"google.golang.org/grpc"
 
 	"github.com/coreos/fleet/debug"
 	"github.com/coreos/fleet/job"
@@ -235,6 +235,10 @@ func (r *RPCRegistry) Machines() ([]machine.MachineState, error) {
 }
 
 func (r *RPCRegistry) SetMachineState(ms machine.MachineState, ttl time.Duration) (uint64, error) {
+	panic("Set machine state function not implemented")
+}
+
+func (r *RPCRegistry) CreateMachineState(ms machine.MachineState, ttl time.Duration) (uint64, error) {
 	panic("Set machine state function not implemented")
 }
 

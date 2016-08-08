@@ -7,10 +7,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/coreos/fleet/Godeps/_workspace/src/golang.org/x/net/context"
+	"golang.org/x/net/context"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 
-	"github.com/coreos/fleet/Godeps/_workspace/src/google.golang.org/grpc"
-	"github.com/coreos/fleet/Godeps/_workspace/src/google.golang.org/grpc/codes"
 	"github.com/coreos/fleet/debug"
 	"github.com/coreos/fleet/log"
 	"github.com/coreos/fleet/machine"

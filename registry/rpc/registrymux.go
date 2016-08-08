@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/coreos/fleet/Godeps/_workspace/src/github.com/coreos/go-semver/semver"
+	"github.com/coreos/go-semver/semver"
 
 	"github.com/coreos/fleet/engine"
 	"github.com/coreos/fleet/job"
@@ -238,6 +238,10 @@ func (r *RegistryMux) ClearUnitHeartbeat(name string) {
 
 func (r *RegistryMux) CreateUnit(unit *job.Unit) error {
 	return r.getRegistry().CreateUnit(unit)
+}
+
+func (r *RegistryMux) CreateMachineState(ms machine.MachineState, ttl time.Duration) (uint64, error) {
+	return r.getRegistry().CreateMachineState(ms, ttl)
 }
 
 func (r *RegistryMux) DestroyUnit(unit string) error {

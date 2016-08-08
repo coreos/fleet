@@ -1,7 +1,7 @@
 package rpc
 
 import (
-	sdunit "github.com/coreos/fleet/Godeps/_workspace/src/github.com/coreos/go-systemd/unit"
+	sdunit "github.com/coreos/go-systemd/unit"
 
 	"github.com/coreos/fleet/job"
 	pb "github.com/coreos/fleet/protobuf"
