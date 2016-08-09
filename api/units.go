@@ -160,19 +160,27 @@ const (
 )
 
 var validUnitTypes = pkg.NewUnsafeSet(
-	"service",
-	"socket",
+	"automount",
 	"busname",
-	"target",
-	"snapshot",
 	"device",
 	"mount",
-	"automount",
-	"swap",
-	"timer",
 	"path",
-	"slice",
 	"scope",
+	"service",
+	"slice",
+	"snapshot",
+	"socket",
+	"swap",
+	"target",
+	"timer",
+)
+
+var validTemplateTypes = pkg.NewUnsafeSet(
+	"path",
+	"service",
+	"socket",
+	"target",
+	"timer",
 )
 
 // ValidateName ensures that a given unit name is valid; if not, an error is
@@ -193,8 +201,12 @@ func ValidateName(name string) error {
 	if dot == length-1 {
 		return errors.New(`unit name cannot end in "."`)
 	}
-	if suffix := name[dot+1:]; !validUnitTypes.Contains(suffix) {
+	suffix := name[dot+1:]
+	if !validUnitTypes.Contains(suffix) {
 		return fmt.Errorf("invalid unit type: %q", suffix)
+	}
+	if strings.Contains(name, "@") && !validTemplateTypes.Contains(suffix) {
+		return fmt.Errorf("invalid unit type for template: %q", suffix)
 	}
 	for _, char := range name[:dot] {
 		if !strings.ContainsRune(validChars, char) {
