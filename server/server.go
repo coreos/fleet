@@ -35,6 +35,7 @@ import (
 	"github.com/coreos/fleet/pkg"
 	"github.com/coreos/fleet/pkg/lease"
 	"github.com/coreos/fleet/registry"
+	"github.com/coreos/fleet/registry/rpc"
 	"github.com/coreos/fleet/systemd"
 	"github.com/coreos/fleet/unit"
 	"github.com/coreos/fleet/version"
@@ -104,7 +105,25 @@ func New(cfg config.Config, listeners []net.Listener) (*Server, error) {
 	}
 
 	kAPI := etcd.NewKeysAPI(eClient)
-	reg := registry.NewEtcdRegistry(kAPI, cfg.EtcdKeyPrefix)
+
+	var (
+		reg        engine.CompleteRegistry
+		genericReg interface{}
+	)
+	lManager := lease.NewEtcdLeaseManager(kAPI, cfg.EtcdKeyPrefix)
+
+	if !cfg.EnableGRPC {
+		genericReg = registry.NewEtcdRegistry(kAPI, cfg.EtcdKeyPrefix)
+		if obj, ok := genericReg.(engine.CompleteRegistry); ok {
+			reg = obj
+		}
+	} else {
+		etcdReg := registry.NewEtcdRegistry(kAPI, cfg.EtcdKeyPrefix)
+		genericReg = rpc.NewRegistryMux(etcdReg, mach, lManager)
+		if obj, ok := genericReg.(engine.CompleteRegistry); ok {
+			reg = obj
+		}
+	}
 
 	pub := agent.NewUnitStatePublisher(reg, mach, agentTTL)
 	gen := unit.NewUnitStateGenerator(mgr)
@@ -115,11 +134,19 @@ func New(cfg config.Config, listeners []net.Listener) (*Server, error) {
 	if !cfg.DisableWatches {
 		rStream = registry.NewEtcdEventStream(kAPI, cfg.EtcdKeyPrefix)
 	}
-	lManager := lease.NewEtcdLeaseManager(kAPI, cfg.EtcdKeyPrefix)
 
 	ar := agent.NewReconciler(reg, rStream)
 
-	e := engine.New(reg, lManager, rStream, mach)
+	var e *engine.Engine
+	if !cfg.EnableGRPC {
+		e = engine.New(reg, lManager, rStream, mach, nil)
+	} else {
+		regMux := genericReg.(*rpc.RegistryMux)
+		e = engine.New(reg, lManager, rStream, mach, regMux.EngineChanged)
+		if cfg.DisableEngine {
+			go regMux.ConnectToRegistry(e)
+		}
+	}
 
 	if len(listeners) == 0 {
 		listeners, err = activation.Listeners(false)
@@ -159,9 +186,10 @@ func New(cfg config.Config, listeners []net.Listener) (*Server, error) {
 
 func newMachineFromConfig(cfg config.Config, mgr unit.UnitManager) (*machine.CoreOSMachine, error) {
 	state := machine.MachineState{
-		PublicIP: cfg.PublicIP,
-		Metadata: cfg.Metadata(),
-		Version:  version.Version,
+		PublicIP:     cfg.PublicIP,
+		Metadata:     cfg.Metadata(),
+		Capabilities: cfg.Capabilities(),
+		Version:      version.Version,
 	}
 
 	mach := machine.NewCoreOSMachine(state, mgr)

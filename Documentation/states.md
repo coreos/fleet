@@ -30,7 +30,7 @@ For example:
 
 ## systemd states
 
-The other state associated with units in fleet is their systemd unit state. This will only exist for units which are assigned to a machine and known by systemd on that machine; i.e., they are in state `loaded` or `launched`. 
+The other state associated with units in fleet is their systemd unit state. This will only exist for units which are assigned to a machine and known by systemd on that machine; i.e., they are in state `loaded` or `launched`.
 
 The systemd state is composed of three subcomponents, exposed in `fleetctl list-units`. fleet retrieves this state directly from systemd and performs no manipulation before presenting it to the user; they correspond exactly to the respective output columns from the `systemctl list-units` command.
 

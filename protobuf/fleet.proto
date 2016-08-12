@@ -1,0 +1,172 @@
+syntax = "proto3";
+
+package rpc;
+
+import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+
+option (gogoproto.goproto_enum_prefix_all) = true;
+
+service Registry {
+// agents should request only the locally scheduled jobs
+	rpc GetScheduledUnits(UnitFilter) returns (ScheduledUnits);
+	// should _never_ be used? fleetctl only ?
+	rpc GetScheduledUnit(UnitName) returns (MaybeScheduledUnit);
+	// should _never_ be used ?
+	rpc GetUnit(UnitName) returns (MaybeUnit);
+	rpc GetUnits(UnitFilter) returns (Units); // => global status ?
+	// global status <= pretty much like list-unit-files
+	rpc GetUnitStates(UnitStateFilter) returns (UnitStates);
+	rpc ClearUnitHeartbeat(UnitName) returns (GenericReply);
+	rpc CreateUnit(Unit) returns (GenericReply);
+	rpc DestroyUnit(UnitName) returns (GenericReply);
+	rpc UnitHeartbeat(Heartbeat) returns (GenericReply);
+	// mix heartbeat with *ttl''
+	rpc RemoveUnitState(UnitName) returns (GenericReply);
+	rpc SaveUnitState(SaveUnitStateRequest) returns (GenericReply);
+	rpc ScheduleUnit(ScheduleUnitRequest) returns (GenericReply);
+	rpc SetUnitTargetState(ScheduledUnit) returns (GenericReply);
+	rpc UnscheduleUnit(UnscheduleUnitRequest) returns (GenericReply);
+
+	rpc AgentEvents(MachineProperties) returns (stream UpdatedState);
+
+	// Health check
+	rpc Status(HealthCheckRequest) returns (HealthCheckResponse);
+
+	// list-unit-files
+	// 2 rtt, async status acq
+}
+
+message HealthCheckRequest {
+  string service = 1;
+}
+
+message HealthCheckResponse {
+  enum ServingStatus {
+ 	UNKNOWN = 0;
+	SERVING = 1;
+	NOT_SERVING = 2;
+  }
+  ServingStatus status = 1;
+}
+
+enum TargetState {
+	INACTIVE = 0;
+	LOADED   = 1;
+	LAUNCHED = 2;
+}
+
+message MachineProperties {
+	string id = 1;
+}
+
+message UpdatedState {
+	repeated string unit_ids = 1;
+}
+
+
+message UnitStateFilter {
+	string name         = 1;
+	string hash         = 2;
+	string load_state   = 3;
+	string active_state = 4;
+	string sub_state    = 5;
+	string machine_id   = 6 [(gogoproto.customname) = "MachineID"];
+}
+
+message UnitFilter {
+	string machine_id = 1 [(gogoproto.customname) = "MachineID"];
+}
+
+message ScheduleUnitRequest {
+	string name       = 1;
+	string machine_id = 2 [(gogoproto.customname) = "MachineID"];
+}
+
+message UnscheduleUnitRequest {
+	string name       = 1;
+	string machine_id = 2 [(gogoproto.customname) = "MachineID"];
+}
+
+message SaveUnitStateRequest {
+	string    name  = 1;
+	UnitState state = 2;
+	int32     ttl   = 3 [(gogoproto.customname) = "TTL"];
+	// machine
+}
+
+message Heartbeat {
+	string name       = 1;
+	string machine_id = 2 [(gogoproto.customname) = "MachineID"];
+	int32  ttl        = 3 [(gogoproto.customname) = "TTL"];
+}
+
+message GenericReply {
+// XXX error enum
+// XXX error detail
+}
+
+message Units {
+	repeated Unit units = 1 [(gogoproto.nullable) = false];
+}
+
+message UnitStates {
+	repeated UnitState unit_states = 1;
+}
+
+message UnitState {
+	string name         = 1;
+	string hash         = 2;
+	string load_state   = 3; // enum => err should be handled by fleet. sync ?
+	string active_state = 4; // enum
+	string sub_state    = 5; // enum
+	string machine_id   = 6 [(gogoproto.customname) = "MachineID"];
+}
+
+message ScheduledUnits {
+	repeated ScheduledUnit units = 1 [(gogoproto.nullable) = false];
+}
+
+message ScheduledUnit {
+	string      name          = 1;
+	TargetState current_state = 2;
+	string machine_id         = 3 [(gogoproto.customname) = "MachineID"];
+}
+
+message UnitName {
+	string name = 1;
+}
+
+message Unit {
+	string      name         = 1;
+	UnitFile    unit         = 2 [(gogoproto.nullable) = false];
+	TargetState desired_state = 3 ;
+}
+
+message MaybeScheduledUnit {
+	oneof is_scheduled {
+		ScheduledUnit unit = 1;
+		NotFound notfound  = 2;
+	}
+
+}
+
+message MaybeUnit {
+	oneof has_unit {
+		Unit unit         = 1;
+		NotFound notfound = 2;
+	}
+}
+
+message NotFound {
+
+}
+
+message UnitFile {
+	repeated UnitOption unit_options = 1 [(gogoproto.nullable) = false];
+}
+
+message UnitOption {
+	string section = 1;
+	string name    = 2;
+	string value   = 3;
+}

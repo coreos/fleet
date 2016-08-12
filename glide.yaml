@@ -27,6 +27,9 @@ import:
 - package: golang.org/x/net
   subpackages:
   - context
+  - http2
+  - internal
+  - trace
 - package: google.golang.org/api
   subpackages:
   - googleapi

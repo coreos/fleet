@@ -44,23 +44,38 @@ type Engine struct {
 
 	lease   lease.Lease
 	trigger chan struct{}
+
+	updateEngineState func(newEngine machine.MachineState)
 }
 
-func New(reg *registry.EtcdRegistry, lManager lease.Manager, rStream pkg.EventStream, mach machine.Machine) *Engine {
+type CompleteRegistry interface {
+	registry.Registry
+	registry.ClusterRegistry
+}
+
+func New(reg CompleteRegistry, lManager lease.Manager, rStream pkg.EventStream, mach machine.Machine, updateEngineState func(newEngine machine.MachineState)) *Engine {
 	rec := NewReconciler()
 	return &Engine{
-		rec:       rec,
-		registry:  reg,
-		cRegistry: reg,
-		lManager:  lManager,
-		rStream:   rStream,
-		machine:   mach,
-		trigger:   make(chan struct{}),
+		rec:               rec,
+		registry:          reg,
+		cRegistry:         reg,
+		lManager:          lManager,
+		rStream:           rStream,
+		machine:           mach,
+		trigger:           make(chan struct{}),
+		updateEngineState: updateEngineState,
 	}
 }
 
 func (e *Engine) Run(ival time.Duration, stop <-chan struct{}) {
 	leaseTTL := ival * 5
+	if e.machine.State().Capabilities.Has(machine.CapGRPC) {
+		// With grpc it doesn't make sense to set to 5secs the TTL of the etcd key.
+		// This has a special impact whenever we have high worload in the cluster, cause
+		// it'd provoke constant leader re-elections.
+		// TODO: IMHO, this should be configurable via a flag to disable the TTL.
+		leaseTTL = ival * 500000
+	}
 	machID := e.machine.State().ID
 
 	reconcile := func() {
@@ -68,21 +83,26 @@ func (e *Engine) Run(ival time.Duration, stop <-chan struct{}) {
 			return
 		}
 
-		var l lease.Lease
-		if isLeader(e.lease, machID) {
-			l = renewLeadership(e.lease, leaseTTL)
+		if e.machine.State().Capabilities.Has(machine.CapGRPC) {
+			// rpcLeadership gets the lease (leader), and apply changes to the engine state if need it.
+			e.lease = e.rpcLeadership(leaseTTL, machID)
 		} else {
-			l = acquireLeadership(e.lManager, machID, engineVersion, leaseTTL)
-		}
+			var l lease.Lease
+			if isLeader(e.lease, machID) {
+				l = renewLeadership(e.lease, leaseTTL)
+			} else {
+				l = acquireLeadership(e.lManager, machID, engineVersion, leaseTTL)
+			}
 
-		// log all leadership changes
-		if l != nil && e.lease == nil && l.MachineID() != machID {
-			log.Infof("Engine leader is %s", l.MachineID())
-		} else if l != nil && e.lease != nil && l.MachineID() != e.lease.MachineID() {
-			log.Infof("Engine leadership changed from %s to %s", e.lease.MachineID(), l.MachineID())
-		}
+			// log all leadership changes
+			if l != nil && e.lease == nil && l.MachineID() != machID {
+				log.Infof("Engine leader is %s", l.MachineID())
+			} else if l != nil && e.lease != nil && l.MachineID() != e.lease.MachineID() {
+				log.Infof("Engine leadership changed from %s to %s", e.lease.MachineID(), l.MachineID())
+			}
 
-		e.lease = l
+			e.lease = l
+		}
 
 		if !isLeader(e.lease, machID) {
 			return
@@ -170,7 +190,7 @@ func ensureEngineVersionMatch(cReg registry.ClusterRegistry, expect int) bool {
 func acquireLeadership(lManager lease.Manager, machID string, ver int, ttl time.Duration) lease.Lease {
 	existing, err := lManager.GetLease(engineLeaseName)
 	if err != nil {
-		log.Errorf("Unable to determine current lessee: %v", err)
+		log.Errorf("Unable to determine current lease: %v", err)
 		return nil
 	}
 

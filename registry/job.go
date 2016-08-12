@@ -71,8 +71,8 @@ func (r *EtcdRegistry) Schedule() ([]job.ScheduledUnit, error) {
 	for name, su := range uMap {
 		sortable = append(sortable, name)
 		key := MUSKey{
-			machID: su.TargetMachineID,
-			name:   name,
+			MachID: su.TargetMachineID,
+			Name:   name,
 		}
 		us := states[key]
 		js := determineJobState(heartbeats[name], su.TargetMachineID, us)

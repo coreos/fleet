@@ -43,3 +43,12 @@ func isEtcdError(err error, code int) bool {
 	eerr, ok := err.(etcd.Error)
 	return ok && eerr.Code == code
 }
+
+func (r *EtcdRegistry) IsRegistryReady() bool {
+	// TODO(hector):
+	return true
+}
+
+func (r *EtcdRegistry) UseEtcdRegistry() bool {
+	return true
+}
