@@ -20,4 +20,7 @@ if [ -z "$(command -v glide-vc)" ]; then
 fi
 
 glide update --strip-vcs --strip-vendor --update-vendored --delete
-glide vc --only-code --no-tests
+glide vc --only-code --no-tests --no-legal-files
+# NOTE: we cannot remove vendor/golang.org/x/net/internal to avoid build errors
+#       that internal packages cannot be imported.
+git checkout vendor/golang.org/x/net/internal
