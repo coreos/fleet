@@ -38,9 +38,9 @@ type Cluster interface {
 	Fleetctl(m Member, args ...string) (string, string, error)
 	FleetctlWithInput(m Member, input string, args ...string) (string, string, error)
 	FleetctlWithEnv(m Member, args ...string) (string, string, error)
-	WaitForNUnits(Member, int) (map[string][]util.UnitState, error)
-	WaitForNActiveUnits(Member, int) (map[string][]util.UnitState, error)
-	WaitForNUnitFiles(Member, int) (map[string][]util.UnitFileState, error)
+	WaitForNUnits(Member, int, ...string) (map[string][]util.UnitState, error)
+	WaitForNActiveUnits(Member, int, ...string) (map[string][]util.UnitState, error)
+	WaitForNUnitFiles(Member, int, ...string) (map[string][]util.UnitFileState, error)
 	WaitForNMachines(Member, int) ([]string, error)
 }
 
