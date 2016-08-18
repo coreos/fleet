@@ -40,6 +40,7 @@ func init() {
 
 	cmdDestroy.Flags().IntVar(&sharedFlags.BlockAttempts, "block-attempts", 0, "Wait until the units are destroyed, performing up to N attempts before giving up. A value of 0 indicates no limit. Does not apply to global units.")
 	cmdDestroy.Flags().BoolVar(&sharedFlags.NoBlock, "no-block", false, "Do not wait until the units are destroyed before exiting. Always the case for global units.")
+	cmdDestroy.Flags().IntVar(&sharedFlags.MaxPrintUnits, "max-print-units", 0, "Set maximum number of units to be printed")
 }
 
 func runDestroyUnit(cCmd *cobra.Command, args []string) (exit int) {
@@ -59,6 +60,7 @@ func runDestroyUnit(cCmd *cobra.Command, args []string) (exit int) {
 		return 0
 	}
 
+	allUnits := make([]string, 0)
 	for _, v := range units {
 		err := cAPI.DestroyUnit(v.Name)
 		if err != nil {
@@ -98,8 +100,13 @@ func runDestroyUnit(cCmd *cobra.Command, args []string) (exit int) {
 				time.Sleep(defaultSleepTime)
 			}
 		}
-
-		stdout("Destroyed %s", v.Name)
+		allUnits = append(allUnits, v.Name)
 	}
+
+	oUnits := omitUnits(allUnits, sharedFlags.MaxPrintUnits)
+	for _, u := range oUnits {
+		stdout("Destroyed %s", u)
+	}
+
 	return
 }
