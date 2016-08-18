@@ -23,6 +23,7 @@ import (
 	"sort"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/coreos/fleet/functional/platform"
 	"github.com/coreos/fleet/functional/util"
@@ -771,4 +772,87 @@ func TestReplaceSerialization(t *testing.T) {
 
 	os.Remove(tmpSyncFile)
 	os.Remove(tmpSyncService)
+}
+
+// TestMaxPrintUnits checks if the option "--max-print-units" works correctly,
+// for "submit", "load", and "start" commands.
+func TestMaxPrintUnits(t *testing.T) {
+	cluster, err := platform.NewNspawnCluster("smoke")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cluster.Destroy(t)
+
+	m, err := cluster.CreateMember()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = cluster.WaitForNMachines(m, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := runPrintMUOpt(cluster, m, "submit"); err != nil {
+		t.Fatal(err)
+	}
+	if err := runPrintMUOpt(cluster, m, "load"); err != nil {
+		t.Fatal(err)
+	}
+	if err := runPrintMUOpt(cluster, m, "start"); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// For a given cmd, launch 5 units, wait for 3 of them to be visible,
+// and clean up all units with "--max-print-units=3".
+func runPrintMUOpt(cluster platform.Cluster, m platform.Member, cmd string) error {
+	var nUnits int
+	numUnits := 5
+	expectedUnits := 3
+	_, err := launchUnitsCmd(cluster, m, cmd, numUnits)
+	if err != nil {
+		return err
+	}
+
+	mpuOpt := fmt.Sprintf("--max-print-units=%d", expectedUnits)
+
+	var timeout time.Duration
+	var errWait error
+	switch cmd {
+	case "submit":
+		_, errWait = cluster.WaitForNUnitFiles(m, expectedUnits, mpuOpt)
+		break
+	case "load":
+		_, errWait = cluster.WaitForNUnits(m, expectedUnits, mpuOpt)
+		break
+	case "start":
+		_, errWait = cluster.WaitForNActiveUnits(m, expectedUnits, mpuOpt)
+		break
+	default:
+		break
+	}
+	if errWait != nil {
+		return fmt.Errorf("failed to find %d units within %v (last found: %d)",
+			expectedUnits, timeout, nUnits)
+	}
+
+	cleanupUnits := func(cmd string, expectedUnits int) bool {
+		mpuOpt := fmt.Sprintf("--max-print-units=%d", expectedUnits)
+		stdout, _, err := cluster.Fleetctl(m, cmd, "--no-legend", mpuOpt)
+		if err != nil {
+			return false
+		}
+		units := strings.Split(strings.TrimSpace(stdout), "\n")
+		allStates := util.ParseUnitStates(units)
+		nUnits = len(allStates)
+		if nUnits != expectedUnits {
+			return false
+		}
+		return true
+	}
+
+	cleanupUnits(cleanCmd[cmd], expectedUnits)
+
+	return nil
 }
