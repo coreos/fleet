@@ -87,9 +87,9 @@ func runStartUnit(cCmd *cobra.Command, args []string) (exit int) {
 		return exitVal
 	}
 
-	exitVal = tryWaitForSystemdActiveState(starting)
-	if exitVal != 0 {
-		return exitVal
+	if err := tryWaitForSystemdActiveState(starting, getBlockAttempts(cCmd)); err != nil {
+		stderr("Error waiting for systemd unit states, err: %v", err)
+		return 1
 	}
 
 	return 0

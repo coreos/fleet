@@ -1067,22 +1067,25 @@ func assertUnitState(name string, js job.JobState, out io.Writer) (ret bool) {
 // tryWaitForSystemdActiveState tries to wait for systemd units to reach an
 // active state, making use of the systemd's DBUS interface. First it takes one
 // or more units as input, and ensures that every unit in the []units must be
-// in the active state. If yes, return 0. Otherwise return 1.
+// in the active state. If yes, return nil. Otherwise return error.
 //
 // NOTE: To avoid unnecessary conflicts with unit tests in start_test.go, we
-// should return 0 for the case of sd_dbus.New() returning error. In that case,
+// should return nil for the case of sd_dbus.New() returning error. In that case,
 // it just means that the unit test environment based on Travis is not capable
 // of setting up a DBUS connection of systemd, which would actually work fine
 // for production systems or functional tests.
-func tryWaitForSystemdActiveState(units []string) (ret int) {
+func tryWaitForSystemdActiveState(units []string, maxAttempts int) (err error) {
+	if maxAttempts <= -1 {
+		for _, name := range units {
+			stdout("Triggered unit %s start", name)
+		}
+		return nil
+	}
+
 	conn, err := sd_dbus.New()
 	if err != nil {
 		stderr("Failed to get systemd-dbus conn: %v", err)
-		return 0
-	}
-	if conn == nil {
-		stderr("Got a nil connection")
-		return 0
+		return nil
 	}
 	defer conn.Close()
 
@@ -1090,31 +1093,31 @@ func tryWaitForSystemdActiveState(units []string) (ret int) {
 	// If any unit in []units cannot be found, then return an error.
 	// That should be the only case of returning 1.
 	for _, uName := range units {
-		found, err := waitForSystemdActiveState(conn, uName)
-		if !found || err != nil {
+		err := waitForSystemdActiveState(conn, uName)
+		if err != nil {
 			stderr("cannot find an active unit: %v", err)
-			return 1
+			return err
 		}
 	}
 
-	return 0
+	return nil
 }
 
 // waitForSystemdActiveState tries to assert that the given unit becomes
 // active, retrying periodically until the unit gets active. It will retry
-// up to maxAttempts.
-func waitForSystemdActiveState(conn *sd_dbus.Conn, unitName string) (found bool, err error) {
-	return func() (found bool, errWait error) {
+// up to 15 seconds.
+func waitForSystemdActiveState(conn *sd_dbus.Conn, unitName string) (err error) {
+	return func() error {
 		timeout := 15 * time.Second
 		alarm := time.After(timeout)
 		ticker := time.Tick(250 * time.Millisecond)
 		for {
 			select {
 			case <-alarm:
-				return false, fmt.Errorf("Failed to reach expected state within %v.", timeout)
+				return fmt.Errorf("Failed to reach expected state within %v.", timeout)
 			case <-ticker:
-				if found, errA := assertSystemdActiveState(conn, unitName); found && errA == nil {
-					return found, nil
+				if errA := assertSystemdActiveState(conn, unitName); errA == nil {
+					return nil
 				}
 			}
 		}
@@ -1123,22 +1126,22 @@ func waitForSystemdActiveState(conn *sd_dbus.Conn, unitName string) (found bool,
 
 // assertSystemdActiveState determines if a given systemd unit is actually
 // in the active state, making use of systemd's DBUS connection.
-func assertSystemdActiveState(conn *sd_dbus.Conn, unitName string) (found bool, err error) {
+func assertSystemdActiveState(conn *sd_dbus.Conn, unitName string) (err error) {
 	listUnits, err := conn.ListUnits()
 	if err != nil {
-		return false, fmt.Errorf("Failed to list systemd unit: %v", err)
+		return fmt.Errorf("Failed to list systemd unit: %v", err)
 	}
 
 	for _, u := range listUnits {
-		if strings.Compare(u.Name, unitName) != 0 {
+		if u.Name != unitName {
 			continue
 		}
 		if u.ActiveState != "active" || u.LoadState != "loaded" {
-			return false, fmt.Errorf("Failed to find an active unit %s", unitName)
+			return fmt.Errorf("Failed to find an active unit %s", unitName)
 		}
 	}
 
-	return true, nil
+	return nil
 }
 
 func machineState(machID string) (*machine.MachineState, error) {
