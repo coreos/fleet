@@ -960,23 +960,23 @@ func getBlockAttempts(cCmd *cobra.Command) int {
 // wait, it will assume that all units reached their desired state.
 // If maxAttempts is zero tryWaitForUnitStates will retry forever, and
 // if it is greater than zero, it will retry up to the indicated value.
-// It returns 0 on success or 1 on errors.
-func tryWaitForUnitStates(units []string, state string, js job.JobState, maxAttempts int, out io.Writer) (ret int) {
+// It returns nil on success or error on failure.
+func tryWaitForUnitStates(units []string, state string, js job.JobState, maxAttempts int, out io.Writer) error {
 	// We do not wait just assume we reached the desired state
 	if maxAttempts <= -1 {
 		for _, name := range units {
 			stdout("Triggered unit %s %s", name, state)
 		}
-		return
+		return nil
 	}
 
 	errchan := waitForUnitStates(units, js, maxAttempts, out)
 	for err := range errchan {
 		stderr("Error waiting for units: %v", err)
-		ret = 1
+		return err
 	}
 
-	return
+	return nil
 }
 
 // waitForUnitStates polls each of the indicated units until each of their

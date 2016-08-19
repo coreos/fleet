@@ -81,10 +81,9 @@ func runStartUnit(cCmd *cobra.Command, args []string) (exit int) {
 		}
 	}
 
-	exitVal := tryWaitForUnitStates(starting, "start", job.JobStateLaunched, getBlockAttempts(cCmd), os.Stdout)
-	if exitVal != 0 {
-		stderr("Error waiting for unit states, exit status: %d", exitVal)
-		return exitVal
+	if err := tryWaitForUnitStates(starting, "start", job.JobStateLaunched, getBlockAttempts(cCmd), os.Stdout); err != nil {
+		stderr("Error waiting for unit states, exit status: %v", err)
+		return 1
 	}
 
 	if err := tryWaitForSystemdActiveState(starting, getBlockAttempts(cCmd)); err != nil {
