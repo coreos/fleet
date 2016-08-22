@@ -96,12 +96,7 @@ func TestRegistryMuxUnitManagement(t *testing.T) {
 	}
 	mgr, err := systemd.NewSystemdUnitManager(uDir, false)
 	if err != nil {
-		// NOTE: ideally we should fail with t.Fatalf(), but then it would always
-		// fail on travis CI, because apparently systemd dbus socket is not
-		// available there. So let's just skip the test for now.
-		// In the long run, we should find a way to test it correctly on travis.
-		// - dpark 20160812
-		t.Skipf("unexpected error creating systemd unit manager: %v", err)
+		t.Fatalf("unexpected error creating systemd unit manager: %v", err)
 	}
 
 	mach := machine.NewCoreOSMachine(*state, mgr)
