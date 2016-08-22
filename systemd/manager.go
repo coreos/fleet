@@ -43,6 +43,12 @@ func NewSystemdUnitManager(uDir string, systemdUser bool) (*systemdUnitManager, 
 		systemd, err = dbus.NewUserConnection()
 	} else {
 		systemd, err = dbus.New()
+		if err != nil {
+			systemd, err = dbus.NewSystemdConnection()
+			if systemd == nil || err != nil {
+				return nil, fmt.Errorf("Failed to get conn via neither systemd-dbus nor private: %v", err)
+			}
+		}
 	}
 	if err != nil {
 		return nil, err

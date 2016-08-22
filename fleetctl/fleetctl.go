@@ -1075,14 +1075,15 @@ func assertUnitState(name string, js job.JobState, out io.Writer) (ret bool) {
 // of setting up a DBUS connection of systemd, which would actually work fine
 // for production systems or functional tests.
 func tryWaitForSystemdActiveState(units []string) (ret int) {
-	conn, err := sd_dbus.New()
+	var conn *sd_dbus.Conn
+	var err error
+	conn, err = sd_dbus.New()
 	if err != nil {
-		stderr("Failed to get systemd-dbus conn: %v", err)
-		return 0
-	}
-	if conn == nil {
-		stderr("Got a nil connection")
-		return 0
+		conn, err = sd_dbus.NewSystemdConnection()
+		if conn == nil || err != nil {
+			stderr("Failed to get conn via neither systemd-dbus nor private: %v", err)
+			return 1
+		}
 	}
 	defer conn.Close()
 
