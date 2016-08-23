@@ -174,9 +174,10 @@ func (m *systemdUnitManager) getUnitState(name string) (*unit.UnitState, error) 
 		return nil, err
 	}
 	us := unit.UnitState{
-		LoadState:   info["LoadState"].(string),
-		ActiveState: info["ActiveState"].(string),
-		SubState:    info["SubState"].(string),
+		LoadState:            info["LoadState"].(string),
+		ActiveState:          info["ActiveState"].(string),
+		SubState:             info["SubState"].(string),
+		ActiveEnterTimestamp: info["ActiveEnterTimestamp"].(uint64),
 	}
 	return &us, nil
 }
@@ -238,6 +239,9 @@ func (m *systemdUnitManager) GetUnitStates(filter pkg.Set) (map[string]*unit.Uni
 		if h, ok := m.hashes[dus.Name]; ok {
 			us.UnitHash = h.String()
 		}
+
+		us.ActiveEnterTimestamp = m.getActiveEnterTimestamp(dus.Name)
+
 		states[dus.Name] = us
 	}
 
@@ -256,19 +260,11 @@ func (m *systemdUnitManager) GetUnitStates(filter pkg.Set) (map[string]*unit.Uni
 			if h, ok := m.hashes[name]; ok {
 				us.UnitHash = h.String()
 			}
+
+			us.ActiveEnterTimestamp = m.getActiveEnterTimestamp(name)
+
 			states[name] = us
 		}
-	}
-
-	// add Active enter time to UnitState
-	for name, us := range states {
-		prop, err := m.systemd.GetUnitProperty(name, "ActiveEnterTimestamp")
-		if err != nil {
-			return nil, err
-		}
-
-		us.ActiveEnterTimestamp = prop.Value.Value().(uint64)
-		states[name] = us
 	}
 
 	return states, nil
@@ -326,6 +322,14 @@ func (m *systemdUnitManager) removeUnit(name string) (err error) {
 
 func (m *systemdUnitManager) getUnitFilePath(name string) string {
 	return path.Join(m.unitsDir, name)
+}
+
+func (m *systemdUnitManager) getActiveEnterTimestamp(name string) (aTimestamp uint64) {
+	prop, err := m.systemd.GetUnitProperty(name, "ActiveEnterTimestamp")
+	if err != nil {
+		return 0
+	}
+	return prop.Value.Value().(uint64)
 }
 
 func lsUnitsDir(dir string) ([]string, error) {
