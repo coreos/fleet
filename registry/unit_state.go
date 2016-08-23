@@ -244,7 +244,7 @@ type unitStateModel struct {
 	SubState             string                `json:"subState"`
 	MachineState         *machine.MachineState `json:"machineState"`
 	UnitHash             string                `json:"unitHash"`
-	ActiveEnterTimestamp uint64                `json:"ActiveEnterTimestamp"`
+	ActiveEnterTimestamp uint64                `json:"activeEnterTimestamp"`
 }
 
 func modelToUnitState(usm *unitStateModel, name string) *unit.UnitState {

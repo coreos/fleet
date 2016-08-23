@@ -15,6 +15,8 @@
 package schema
 
 import (
+	"strconv"
+
 	gsunit "github.com/coreos/go-systemd/unit"
 
 	"github.com/coreos/fleet/job"
@@ -135,7 +137,7 @@ func MapUnitStateToSchemaUnitState(entity *unit.UnitState) *UnitState {
 		SystemdLoadState:            entity.LoadState,
 		SystemdActiveState:          entity.ActiveState,
 		SystemdSubState:             entity.SubState,
-		SystemdActiveEnterTimestamp: entity.ActiveEnterTimestamp,
+		SystemdActiveEnterTimestamp: strconv.Itoa(int(entity.ActiveEnterTimestamp)),
 	}
 
 	return &us
@@ -144,6 +146,7 @@ func MapUnitStateToSchemaUnitState(entity *unit.UnitState) *UnitState {
 func MapSchemaUnitStatesToUnitStates(entities []*UnitState) []*unit.UnitState {
 	us := make([]*unit.UnitState, len(entities))
 	for i, e := range entities {
+		ts, _ := strconv.Atoi(e.SystemdActiveEnterTimestamp)
 		us[i] = &unit.UnitState{
 			UnitName:             e.Name,
 			UnitHash:             e.Hash,
@@ -151,7 +154,7 @@ func MapSchemaUnitStatesToUnitStates(entities []*UnitState) []*unit.UnitState {
 			LoadState:            e.SystemdLoadState,
 			ActiveState:          e.SystemdActiveState,
 			SubState:             e.SystemdSubState,
-			ActiveEnterTimestamp: e.SystemdActiveEnterTimestamp,
+			ActiveEnterTimestamp: uint64(ts),
 		}
 	}
 

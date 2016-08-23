@@ -17,6 +17,7 @@ package main
 import (
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -83,7 +84,8 @@ var (
 			}
 			// SystemdActiveEnterTimestamp is in microseconds, while time.Unix
 			// requires the 2nd parameter as value in nanoseconds.
-			tm := time.Unix(0, int64(us.SystemdActiveEnterTimestamp)*1000)
+			ts, _ := strconv.Atoi(us.SystemdActiveEnterTimestamp)
+			tm := time.Unix(0, int64(ts)*1000)
 			duration := time.Now().Sub(tm)
 			return fmt.Sprintf("%s, Since %ss", tm.Format(tmFormatString), strings.Split(duration.String(), ".")[0])
 		},

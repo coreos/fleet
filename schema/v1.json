@@ -141,6 +141,9 @@
         },
         "systemdSubState": {
           "type": "string"
+        },
+        "systemdActiveEnterTimestamp": {
+          "type": "string"
         }
       }
     },
