@@ -27,7 +27,7 @@ var cmdDestroy = &cobra.Command{
 	Short: "Destroy one or more units in the cluster",
 	Long: `Completely remove one or more running or submitted units from the cluster.
 
-Instructs systemd on the host machine to stop the unit, deferring to systemd
+Instructs systemd on the host machine to destroy the unit, deferring to systemd
 completely for any custom stop directives (i.e. ExecStop option in the unit
 file).
 
@@ -37,6 +37,9 @@ Destroyed units are impossible to start unless re-submitted.`,
 
 func init() {
 	cmdFleet.AddCommand(cmdDestroy)
+
+	cmdDestroy.Flags().IntVar(&sharedFlags.BlockAttempts, "block-attempts", 0, "Wait until the units are destroyed, performing up to N attempts before giving up. A value of 0 indicates no limit. Does not apply to global units.")
+	cmdDestroy.Flags().BoolVar(&sharedFlags.NoBlock, "no-block", false, "Do not wait until the units are destroyed before exiting. Always the case for global units.")
 }
 
 func runDestroyUnit(cCmd *cobra.Command, args []string) (exit int) {
