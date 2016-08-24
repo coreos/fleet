@@ -25,7 +25,7 @@ import (
 func TestHashUnitFile(t *testing.T) {
 	f, err := ioutil.TempFile("", "fleet-testing-")
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err)
 	}
 
 	defer os.Remove(f.Name())
@@ -36,16 +36,16 @@ ExecStart=/usr/bin/sleep infinity
 `
 
 	if _, err := f.Write([]byte(contents)); err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err)
 	}
 
 	if err := f.Close(); err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err)
 	}
 
 	hash, err := hashUnitFile(f.Name())
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err)
 	}
 
 	want := "40ea6646945809f4b420a50475ee68503088f127"
@@ -58,7 +58,7 @@ ExecStart=/usr/bin/sleep infinity
 func TestHashUnitFileDirectory(t *testing.T) {
 	dir, err := ioutil.TempDir("", "fleet-testing-")
 	if err != nil {
-		t.Fatal(err.Error())
+		t.Fatal(err)
 	}
 
 	defer os.RemoveAll(dir)
@@ -88,13 +88,13 @@ func TestHashUnitFileDirectory(t *testing.T) {
 	for _, f := range fixtures {
 		err := ioutil.WriteFile(path.Join(dir, f.name), []byte(f.contents), 0400)
 		if err != nil {
-			t.Fatal(err.Error())
+			t.Fatal(err)
 		}
 	}
 
 	hashes, err := hashUnitFiles(dir)
 	if err != nil {
-		t.Fatal(err.Error())
+		t.Fatal(err)
 	}
 
 	got := make(map[string]string, len(hashes))

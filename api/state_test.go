@@ -189,7 +189,7 @@ func TestUnitStateListBadNextPageToken(t *testing.T) {
 
 	err = assertErrorResponse(rw, http.StatusBadRequest)
 	if err != nil {
-		t.Error(err.Error())
+		t.Error(err)
 	}
 }
 

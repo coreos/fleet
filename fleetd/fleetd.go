@@ -100,13 +100,13 @@ func main() {
 	globalconf.Register("", cfgset)
 	cfg, err := getConfig(cfgset, *cfgPath)
 	if err != nil {
-		log.Fatalf(err.Error())
+		log.Fatal(err)
 	}
 
 	log.Debugf("Creating Server")
 	srv, err := server.New(*cfg, nil)
 	if err != nil {
-		log.Fatalf("Failed creating Server: %v", err.Error())
+		log.Fatalf("Failed creating Server: %v", err)
 	}
 	srv.Run()
 
@@ -120,7 +120,7 @@ func main() {
 
 		cfg, err := getConfig(cfgset, *cfgPath)
 		if err != nil {
-			log.Fatalf(err.Error())
+			log.Fatal(err)
 		}
 
 		log.Infof("Restarting server components")
@@ -135,7 +135,7 @@ func main() {
 		// The new server takes the original listeners.
 		srv, err = server.New(*cfg, oldListeners)
 		if err != nil {
-			log.Fatalf(err.Error())
+			log.Fatal(err)
 		}
 
 		srv.Run()
