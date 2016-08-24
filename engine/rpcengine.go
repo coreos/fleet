@@ -1,4 +1,4 @@
-// Copyright 2014 CoreOS, Inc.
+// Copyright 2016 The fleet Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,8 +16,9 @@ package engine
 
 import (
 	"errors"
-	"strings"
 	"time"
+
+	etcdErr "github.com/coreos/etcd/error"
 
 	"github.com/coreos/fleet/log"
 	"github.com/coreos/fleet/machine"
@@ -145,22 +146,23 @@ func rpcAcquireLeadership(reg registry.Registry, lManager lease.Manager, machID 
 
 func rpcRenewLeadership(lManager lease.Manager, l lease.Lease, ver int, ttl time.Duration) lease.Lease {
 	err := l.Renew(ttl)
-	if err != nil && strings.Contains(err.Error(), "Key not found") {
-		log.Errorf("Retry renew etcd operation that failed due to %v", err)
-		l, err = lManager.AcquireLease(engineLeaseName, l.MachineID(), ver, ttl)
-		if err != nil {
-			log.Errorf("Engine leadership re-acquisition failed: %v", err)
-			return nil
-		} else if l == nil {
-			log.Infof("Unable to re-acquire engine leadership")
+	if err != nil {
+		if eerr, ok := err.(*etcdErr.Error); ok && eerr.ErrorCode == etcdErr.EcodeKeyNotFound {
+			log.Errorf("Retry renew etcd operation that failed due to %v", err)
+			l, err = lManager.AcquireLease(engineLeaseName, l.MachineID(), ver, ttl)
+			if err != nil {
+				log.Errorf("Engine leadership re-acquisition failed: %v", err)
+				return nil
+			} else if l == nil {
+				log.Infof("Unable to re-acquire engine leadership")
+				return nil
+			}
+			log.Infof("Engine leadership re-acquired")
+			return l
+		} else {
+			log.Errorf("Engine leadership lost, renewal failed: %v", err)
 			return nil
 		}
-		log.Infof("Engine leadership re-acquired")
-		return l
-
-	} else if err != nil {
-		log.Errorf("Engine leadership lost, renewal failed: %v", err)
-		return nil
 	}
 
 	log.Debugf("Engine leadership renewed")
