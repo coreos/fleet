@@ -31,6 +31,7 @@ type LinkAttrs struct {
 	Namespace    interface{} // nil | NsPid | NsFd
 	Alias        string
 	Statistics   *LinkStatistics
+	Promisc      int
 }
 
 // NewLinkAttrs returns LinkAttrs structure filled with default values
@@ -171,11 +172,13 @@ func (macvtap Macvtap) Type() string {
 }
 
 type TuntapMode uint16
+type TuntapFlag uint16
 
 // Tuntap links created via /dev/tun/tap, but can be destroyed via netlink
 type Tuntap struct {
 	LinkAttrs
-	Mode TuntapMode
+	Mode  TuntapMode
+	Flags TuntapFlag
 }
 
 func (tuntap *Tuntap) Attrs() *LinkAttrs {
