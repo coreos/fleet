@@ -290,6 +290,10 @@ func (r *RegistryMux) SetUnitTargetState(name string, state job.JobState) error 
 	return r.getRegistry().SetUnitTargetState(name, state)
 }
 
+func (r *RegistryMux) MachineState(machID string) (machine.MachineState, error) {
+	return r.getRegistry().MachineState(machID)
+}
+
 func (r *RegistryMux) SetMachineState(ms machine.MachineState, ttl time.Duration) (uint64, error) {
 	return r.etcdRegistry.SetMachineState(ms, ttl)
 }
@@ -332,4 +336,12 @@ func (r *RegistryMux) EngineVersion() (int, error) {
 
 func (r *RegistryMux) UpdateEngineVersion(from int, to int) error {
 	return r.etcdRegistry.UpdateEngineVersion(from, to)
+}
+
+func (r *RegistryMux) SetMachineMetadata(machID string, key string, value string) error {
+	return r.etcdRegistry.SetMachineMetadata(machID, key, value)
+}
+
+func (r *RegistryMux) DeleteMachineMetadata(machID string, key string) error {
+	return r.etcdRegistry.DeleteMachineMetadata(machID, key)
 }

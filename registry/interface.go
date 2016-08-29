@@ -39,8 +39,8 @@ type Registry interface {
 	SetMachineState(ms machine.MachineState, ttl time.Duration) (uint64, error)
 	MachineState(machID string) (machine.MachineState, error)
 	UnscheduleUnit(name, machID string) error
-	SetMachineMetadata(machID, key, value string) error
-	DeleteMachineMetadata(machID, key string) error
+	SetMachineMetadata(machID string, key string, value string) error
+	DeleteMachineMetadata(machID string, key string) error
 
 	IsRegistryReady() bool
 	UseEtcdRegistry() bool
