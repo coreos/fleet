@@ -143,11 +143,13 @@ func (nc *nspawnCluster) FleetctlWithEnv(m Member, args ...string) (string, stri
 // WaitForNUnits runs fleetctl list-units to verify the actual number of units
 // matched with the given expected number. It periodically runs list-units
 // waiting until list-units actually shows the expected units.
-func (nc *nspawnCluster) WaitForNUnits(m Member, expectedUnits int) (map[string][]util.UnitState, error) {
+func (nc *nspawnCluster) WaitForNUnits(m Member, expectedUnits int, opts ...string) (map[string][]util.UnitState, error) {
 	var nUnits int
 	retStates := make(map[string][]util.UnitState)
 	checkListUnits := func() bool {
-		outListUnits, _, err := nc.Fleetctl(m, "list-units", "--no-legend", "--full", "--fields", "unit,active,machine")
+		outListUnits, _, err := nc.Fleetctl(m,
+			"list-units", "--no-legend", "--full", "--fields", "unit,active,machine",
+			strings.Join(opts, " "))
 		if err != nil {
 			return false
 		}
@@ -181,13 +183,15 @@ func (nc *nspawnCluster) WaitForNUnits(m Member, expectedUnits int) (map[string]
 	return retStates, nil
 }
 
-func (nc *nspawnCluster) WaitForNActiveUnits(m Member, count int) (map[string][]util.UnitState, error) {
+func (nc *nspawnCluster) WaitForNActiveUnits(m Member, count int, opts ...string) (map[string][]util.UnitState, error) {
 	var nactive int
 	states := make(map[string][]util.UnitState)
 
 	timeout, err := util.WaitForState(
 		func() bool {
-			stdout, _, err := nc.Fleetctl(m, "list-units", "--no-legend", "--full", "--fields", "unit,active,machine")
+			stdout, _, err := nc.Fleetctl(m,
+				"list-units", "--no-legend", "--full", "--fields", "unit,active,machine",
+				strings.Join(opts, " "))
 			stdout = strings.TrimSpace(stdout)
 			if err != nil {
 				return false
@@ -221,12 +225,14 @@ func (nc *nspawnCluster) WaitForNActiveUnits(m Member, count int) (map[string][]
 // WaitForNUnitFiles runs fleetctl list-unit-files to verify the actual number of units
 // matched with the given expected number. It periodically runs list-unit-files
 // waiting until list-unit-files actually shows the expected units.
-func (nc *nspawnCluster) WaitForNUnitFiles(m Member, expectedUnits int) (map[string][]util.UnitFileState, error) {
+func (nc *nspawnCluster) WaitForNUnitFiles(m Member, expectedUnits int, opts ...string) (map[string][]util.UnitFileState, error) {
 	var nUnits int
 	retStates := make(map[string][]util.UnitFileState)
 
 	checkListUnitFiles := func() bool {
-		outListUnitFiles, _, err := nc.Fleetctl(m, "list-unit-files", "--no-legend", "--full", "--fields", "unit,dstate,state")
+		outListUnitFiles, _, err := nc.Fleetctl(m,
+			"list-unit-files", "--no-legend", "--full", "--fields", "unit,dstate,state",
+			strings.Join(opts, " "))
 		if err != nil {
 			return false
 		}

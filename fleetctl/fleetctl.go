@@ -110,6 +110,7 @@ var (
 		BlockAttempts int
 		Fields        string
 		SSHPort       int
+		MaxPrintUnits int
 	}{}
 
 	// current command being executed
@@ -1205,4 +1206,18 @@ func runWrapper(cf func(cCmd *cobra.Command, args []string) (exit int)) func(cCm
 		cAPI = getClientAPI(cCmd)
 		cmdExitCode = cf(cCmd, args)
 	}
+}
+
+// omitUnits cuts out from a unit slice starting form its maxUnits-th entry,
+// only when the size of input slice exceeds the max number of units.
+func omitUnits(units []string, maxUnits int) []string {
+	if maxUnits == 0 {
+		return units
+	}
+
+	if len(units) > maxUnits {
+		return units[0:maxUnits]
+	}
+
+	return units
 }

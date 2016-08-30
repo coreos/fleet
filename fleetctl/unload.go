@@ -34,6 +34,7 @@ func init() {
 
 	cmdUnload.Flags().IntVar(&sharedFlags.BlockAttempts, "block-attempts", 0, "Wait until the units are inactive, performing up to N attempts before giving up. A value of 0 indicates no limit.")
 	cmdUnload.Flags().BoolVar(&sharedFlags.NoBlock, "no-block", false, "Do not wait until the units have become inactive before exiting.")
+	cmdUnload.Flags().IntVar(&sharedFlags.MaxPrintUnits, "max-print-units", 0, "Set maximum number of units to be printed")
 }
 
 func runUnloadUnit(cCmd *cobra.Command, args []string) (exit int) {
@@ -73,9 +74,9 @@ func runUnloadUnit(cCmd *cobra.Command, args []string) (exit int) {
 
 	exit = tryWaitForUnitStates(wait, "unload", job.JobStateInactive, getBlockAttempts(cCmd), os.Stdout)
 	if exit == 0 {
-		stderr("Successfully unloaded units %v.", wait)
+		stderr("Successfully unloaded units %v.", omitUnits(wait, sharedFlags.MaxPrintUnits))
 	} else {
-		stderr("Failed to unload units %v. exit == %d.", wait, exit)
+		stderr("Failed to unload units %v. exit == %d.", omitUnits(wait, sharedFlags.MaxPrintUnits), exit)
 	}
 
 	return

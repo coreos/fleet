@@ -103,6 +103,7 @@ func init() {
 	cmdListUnits.Flags().BoolVar(&sharedFlags.Full, "l", false, "Shorthand for --full")
 	cmdListUnits.Flags().BoolVar(&sharedFlags.NoLegend, "no-legend", false, "Do not print a legend (column headers)")
 	cmdListUnits.Flags().StringVar(&listUnitsFieldsFlag, "fields", defaultListUnitsFields, fmt.Sprintf("Columns to print for each Unit. Valid fields are %q", strings.Join(usToFieldKeys(listUnitsFields), ",")))
+	cmdListUnits.Flags().IntVar(&sharedFlags.MaxPrintUnits, "max-print-units", 0, "Set maximum number of units to be printed")
 }
 
 func runListUnits(cCmd *cobra.Command, args []string) (exit int) {
@@ -131,10 +132,15 @@ func runListUnits(cCmd *cobra.Command, args []string) (exit int) {
 	}
 
 	full, _ := cCmd.Flags().GetBool("full")
-	for _, us := range states {
+	maxUnits := sharedFlags.MaxPrintUnits
+	for i, us := range states {
 		var f []string
 		for _, c := range cols {
 			f = append(f, listUnitsFields[c](us, full))
+		}
+		if maxUnits > 0 && i >= maxUnits {
+			stderr("Further units after %d-th are omitted", maxUnits)
+			break
 		}
 		fmt.Fprintln(out, strings.Join(f, "\t"))
 	}

@@ -52,6 +52,7 @@ func init() {
 
 	cmdStop.Flags().IntVar(&sharedFlags.BlockAttempts, "block-attempts", 0, "Wait until the units are stopped, performing up to N attempts before giving up. A value of 0 indicates no limit. Does not apply to global units.")
 	cmdStop.Flags().BoolVar(&sharedFlags.NoBlock, "no-block", false, "Do not wait until the units have stopped before exiting. Always the case for global units.")
+	cmdStop.Flags().IntVar(&sharedFlags.MaxPrintUnits, "max-print-units", 0, "Set maximum number of units to be printed")
 }
 
 func runStopUnit(cCmd *cobra.Command, args []string) (exit int) {
@@ -94,9 +95,9 @@ func runStopUnit(cCmd *cobra.Command, args []string) (exit int) {
 
 	exit = tryWaitForUnitStates(stopping, "stop", job.JobStateLoaded, getBlockAttempts(cCmd), os.Stdout)
 	if exit == 0 {
-		stderr("Successfully stopped units %v.", stopping)
+		stderr("Successfully stopped units %v.", omitUnits(stopping, sharedFlags.MaxPrintUnits))
 	} else {
-		stderr("Failed to stop units %v. exit == %d.", stopping, exit)
+		stderr("Failed to stop units %v. exit == %d.", omitUnits(stopping, sharedFlags.MaxPrintUnits), exit)
 	}
 
 	return
