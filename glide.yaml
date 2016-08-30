@@ -3,6 +3,7 @@ import:
 - package: github.com/coreos/etcd
   subpackages:
   - client
+  - error
 - package: github.com/coreos/go-semver
   subpackages:
   - semver

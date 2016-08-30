@@ -9,6 +9,7 @@ imports:
   version: 488ae52a5190fbf24539e281f13b461b1ac35df4
   subpackages:
   - client
+  - error
   - pkg/pathutil
   - pkg/types
 - name: github.com/coreos/go-semver
