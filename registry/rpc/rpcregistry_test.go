@@ -34,7 +34,9 @@ func TestRPCRegistryClientCreation(t *testing.T) {
 		t.Fatalf("failed to parse listener address: %v", err)
 	}
 	addr := "localhost:" + port
-	conn, err := grpc.Dial(addr, grpc.WithInsecure(), grpc.WithTimeout(5*time.Second), grpc.WithBlock())
+	b := newSimpleBalancer([]string{addr})
+	conn, err := grpc.Dial(addr, grpc.WithInsecure(), grpc.WithTimeout(5*time.Second),
+		grpc.WithBlock(), grpc.WithBalancer(b))
 	if err != nil {
 		t.Fatalf("failed to dial to the server %q: %v", addr, err)
 	}
