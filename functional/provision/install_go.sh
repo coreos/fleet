@@ -6,7 +6,7 @@ HOME=$(getent passwd "${USER_ID}" | cut -d: -f6)
 export GOROOT=${HOME}/go
 export PATH=${HOME}/go/bin:${PATH}
 
-gover=1.7
+gover=1.7.1
 gotar=go${gover}.linux-amd64.tar.gz
 if [ ! -f ${HOME}/${gotar} ]; then
   # Remove unfinished archive when you press Ctrl+C
