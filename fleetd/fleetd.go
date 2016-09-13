@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package fleetd
 
 import (
 	"encoding/json"
@@ -39,7 +39,7 @@ const (
 	FleetdDescription = "fleetd is the server component of fleet, a simple orchestration system for scheduling systemd units in a cluster."
 )
 
-func main() {
+func Main() {
 	userset := flag.NewFlagSet("fleet", flag.ExitOnError)
 	printVersion := userset.Bool("version", false, "Print the version and exit")
 	cfgPath := userset.String("config", "", fmt.Sprintf("Path to config file. Fleet will look for a config at %s by default.", DefaultConfigFile))
