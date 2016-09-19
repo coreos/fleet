@@ -42,8 +42,7 @@ type Engine struct {
 	rStream   pkg.EventStream
 	machine   machine.Machine
 
-	lease   lease.Lease
-	trigger chan struct{}
+	lease lease.Lease
 
 	updateEngineState func(newEngine machine.MachineState)
 }
@@ -62,7 +61,6 @@ func New(reg CompleteRegistry, lManager lease.Manager, rStream pkg.EventStream, 
 		lManager:          lManager,
 		rStream:           rStream,
 		machine:           mach,
-		trigger:           make(chan struct{}),
 		updateEngineState: updateEngineState,
 	}
 }
@@ -244,10 +242,6 @@ func renewLeadership(l lease.Lease, ttl time.Duration) lease.Lease {
 
 	log.Debugf("Engine leadership renewed")
 	return l
-}
-
-func (e *Engine) Trigger() {
-	e.trigger <- struct{}{}
 }
 
 func (e *Engine) clusterState() (*clusterState, error) {
