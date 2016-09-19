@@ -73,9 +73,9 @@ func runLoadUnit(cCmd *cobra.Command, args []string) (exit int) {
 		}
 	}
 
-	exitVal := tryWaitForUnitStates(loading, "load", job.JobStateLoaded, getBlockAttempts(cCmd), os.Stdout)
-	if exitVal != 0 {
-		stderr("Error waiting for unit states, exit status: %d", exitVal)
+	err = tryWaitForUnitStates(loading, "load", job.JobStateLoaded, getBlockAttempts(cCmd), os.Stdout)
+	if err != nil {
+		stderr("Error waiting for unit states, exit status: %v", err)
 		return 1
 	}
 

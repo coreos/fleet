@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"math"
 	"net"
 	"net/http"
 	"net/url"
@@ -34,7 +35,6 @@ import (
 	"github.com/spf13/pflag"
 
 	etcd "github.com/coreos/etcd/client"
-	sd_dbus "github.com/coreos/go-systemd/dbus"
 
 	"github.com/coreos/fleet/api"
 	"github.com/coreos/fleet/client"
@@ -175,6 +175,12 @@ type Command struct {
 
 	Run func(args []string) int // Run a command with the given arguments, return exit status
 
+}
+
+type suState struct {
+	LoadState   string
+	ActiveState string
+	SubState    string
 }
 
 func getFlags(flagset *flag.FlagSet) (flags []*flag.Flag) {
@@ -960,23 +966,23 @@ func getBlockAttempts(cCmd *cobra.Command) int {
 // wait, it will assume that all units reached their desired state.
 // If maxAttempts is zero tryWaitForUnitStates will retry forever, and
 // if it is greater than zero, it will retry up to the indicated value.
-// It returns 0 on success or 1 on errors.
-func tryWaitForUnitStates(units []string, state string, js job.JobState, maxAttempts int, out io.Writer) (ret int) {
+// It returns nil on success or error on failure.
+func tryWaitForUnitStates(units []string, state string, js job.JobState, maxAttempts int, out io.Writer) error {
 	// We do not wait just assume we reached the desired state
 	if maxAttempts <= -1 {
 		for _, name := range units {
 			stdout("Triggered unit %s %s", name, state)
 		}
-		return
+		return nil
 	}
 
 	errchan := waitForUnitStates(units, js, maxAttempts, out)
 	for err := range errchan {
 		stderr("Error waiting for units: %v", err)
-		ret = 1
+		return err
 	}
 
-	return
+	return nil
 }
 
 // waitForUnitStates polls each of the indicated units until each of their
@@ -1065,80 +1071,130 @@ func assertUnitState(name string, js job.JobState, out io.Writer) (ret bool) {
 }
 
 // tryWaitForSystemdActiveState tries to wait for systemd units to reach an
-// active state, making use of the systemd's DBUS interface. First it takes one
-// or more units as input, and ensures that every unit in the []units must be
-// in the active state. If yes, return 0. Otherwise return 1.
-//
-// NOTE: To avoid unnecessary conflicts with unit tests in start_test.go, we
-// should return 0 for the case of sd_dbus.New() returning error. In that case,
-// it just means that the unit test environment based on Travis is not capable
-// of setting up a DBUS connection of systemd, which would actually work fine
-// for production systems or functional tests.
-func tryWaitForSystemdActiveState(units []string) (ret int) {
-	conn, err := sd_dbus.New()
-	if err != nil {
-		stderr("Failed to get systemd-dbus conn: %v", err)
-		return 0
-	}
-	if conn == nil {
-		stderr("Got a nil connection")
-		return 0
-	}
-	defer conn.Close()
-
-	// Get systemd state and check the state is active & loaded.
-	// If any unit in []units cannot be found, then return an error.
-	// That should be the only case of returning 1.
-	for _, uName := range units {
-		found, err := waitForSystemdActiveState(conn, uName)
-		if !found || err != nil {
-			stderr("cannot find an active unit: %v", err)
-			return 1
+// active state, making use of cAPI. It takes one or more units as input, and
+// ensures that every unit in the []units must be in the active state.
+// If yes, return nil. Otherwise return error.
+func tryWaitForSystemdActiveState(units []string, maxAttempts int) (err error) {
+	if maxAttempts <= -1 {
+		for _, name := range units {
+			stdout("Triggered unit %s start", name)
 		}
+		return nil
 	}
 
-	return 0
+	errchan := waitForSystemdActiveState(units, maxAttempts)
+	for err := range errchan {
+		stderr("Error waiting for units: %v", err)
+		return err
+	}
+
+	return nil
 }
 
 // waitForSystemdActiveState tries to assert that the given unit becomes
-// active, retrying periodically until the unit gets active. It will retry
-// up to maxAttempts.
-func waitForSystemdActiveState(conn *sd_dbus.Conn, unitName string) (found bool, err error) {
-	return func() (found bool, errWait error) {
-		timeout := 15 * time.Second
-		alarm := time.After(timeout)
-		ticker := time.Tick(250 * time.Millisecond)
-		for {
-			select {
-			case <-alarm:
-				return false, fmt.Errorf("Failed to reach expected state within %v.", timeout)
-			case <-ticker:
-				if found, errA := assertSystemdActiveState(conn, unitName); found && errA == nil {
-					return found, nil
-				}
-			}
-		}
+// active, making use of multiple goroutines that check unit states.
+func waitForSystemdActiveState(units []string, maxAttempts int) (errch chan error) {
+	apiStates, err := cAPI.UnitStates()
+	if err != nil {
+		errch <- fmt.Errorf("Error retrieving list of units: %v", err)
+		return
+	}
+
+	errchan := make(chan error)
+	var wg sync.WaitGroup
+	for _, name := range units {
+		wg.Add(1)
+		go checkSystemdActiveState(apiStates, name, maxAttempts, &wg, errchan)
+	}
+
+	go func() {
+		wg.Wait()
+		close(errchan)
 	}()
+
+	return errchan
+}
+
+func checkSystemdActiveState(apiStates []*schema.UnitState, name string, maxAttempts int, wg *sync.WaitGroup, errchan chan error) {
+	defer wg.Done()
+
+	// "isInf == true" means "blocking forever until it succeeded".
+	// In that case, maxAttempts is set to an arbitrary large integer number.
+	var isInf bool
+	if maxAttempts < 1 {
+		isInf = true
+		maxAttempts = math.MaxInt32
+	}
+
+	for attempt := 0; attempt < maxAttempts; attempt++ {
+		if err := assertFetchSystemdActiveState(apiStates, name); err == nil {
+			return
+		} else {
+			errchan <- err
+		}
+
+		if !isInf {
+			errchan <- fmt.Errorf("timed out waiting for unit %s to report active state", name)
+		}
+	}
+}
+
+func assertFetchSystemdActiveState(apiStates []*schema.UnitState, name string) error {
+	if err := assertSystemdActiveState(apiStates, name); err == nil {
+		return nil
+	}
+
+	// If the assertion failed, we again need to get unit states via cAPI,
+	// to retry the assertion repeatedly.
+	//
+	// NOTE: Ideally we should be able to fetch the state only for a single
+	// unit. However, we cannot do that for now, because cAPI.UnitState()
+	// is not available. In the future we need to implement cAPI.UnitState()
+	// and all dependendent parts all over the tree in fleet, (schema,
+	// etcdRegistry, rpcRegistry, etc) to replace UnitStates() in this place
+	// with the new method UnitState(). In practice, calling UnitStates() here
+	// is not as badly inefficient as it looks, because it will be anyway
+	// rarely called only when the assertion failed. - dpark 20160907
+
+	time.Sleep(defaultSleepTime)
+
+	var errU error
+	apiStates, errU = cAPI.UnitStates()
+	if errU != nil {
+		return fmt.Errorf("Error retrieving list of units: %v", errU)
+	}
+	return nil
 }
 
 // assertSystemdActiveState determines if a given systemd unit is actually
-// in the active state, making use of systemd's DBUS connection.
-func assertSystemdActiveState(conn *sd_dbus.Conn, unitName string) (found bool, err error) {
-	listUnits, err := conn.ListUnits()
+// in the active state, making use of cAPI
+func assertSystemdActiveState(apiStates []*schema.UnitState, unitName string) error {
+	uState, err := getSingleUnitState(apiStates, unitName)
 	if err != nil {
-		return false, fmt.Errorf("Failed to list systemd unit: %v", err)
+		return err
 	}
 
-	for _, u := range listUnits {
-		if strings.Compare(u.Name, unitName) != 0 {
-			continue
-		}
-		if u.ActiveState != "active" || u.LoadState != "loaded" {
-			return false, fmt.Errorf("Failed to find an active unit %s", unitName)
-		}
+	// Get systemd state and check the state is active & loaded.
+	if uState.ActiveState != "active" || uState.LoadState != "loaded" {
+		return fmt.Errorf("Failed to find an active unit %s", unitName)
 	}
 
-	return true, nil
+	return nil
+}
+
+// getSingleUnitState returns a single uState of type suState, which consists
+// of necessary systemd states, only for a given unit name.
+func getSingleUnitState(apiStates []*schema.UnitState, unitName string) (suState, error) {
+	for _, us := range apiStates {
+		if us.Name == unitName {
+			return suState{
+				us.SystemdLoadState,
+				us.SystemdActiveState,
+				us.SystemdSubState,
+			}, nil
+		}
+	}
+	return suState{}, fmt.Errorf("unit %s not found", unitName)
 }
 
 func machineState(machID string) (*machine.MachineState, error) {

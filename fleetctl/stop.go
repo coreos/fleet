@@ -92,12 +92,12 @@ func runStopUnit(cCmd *cobra.Command, args []string) (exit int) {
 		}
 	}
 
-	exit = tryWaitForUnitStates(stopping, "stop", job.JobStateLoaded, getBlockAttempts(cCmd), os.Stdout)
-	if exit == 0 {
-		stderr("Successfully stopped units %v.", stopping)
-	} else {
-		stderr("Failed to stop units %v. exit == %d.", stopping, exit)
+	err = tryWaitForUnitStates(stopping, "stop", job.JobStateLoaded, getBlockAttempts(cCmd), os.Stdout)
+	if err != nil {
+		stderr("Failed to stop units %v. err: %v", stopping, err)
+		return 1
 	}
 
-	return
+	stderr("Successfully stopped units %v.", stopping)
+	return 0
 }

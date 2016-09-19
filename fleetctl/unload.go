@@ -71,12 +71,12 @@ func runUnloadUnit(cCmd *cobra.Command, args []string) (exit int) {
 		}
 	}
 
-	exit = tryWaitForUnitStates(wait, "unload", job.JobStateInactive, getBlockAttempts(cCmd), os.Stdout)
-	if exit == 0 {
-		stderr("Successfully unloaded units %v.", wait)
-	} else {
-		stderr("Failed to unload units %v. exit == %d.", wait, exit)
+	err = tryWaitForUnitStates(wait, "unload", job.JobStateInactive, getBlockAttempts(cCmd), os.Stdout)
+	if err != nil {
+		stderr("Failed to unload units %v. err: %v", wait, err)
+		return 1
 	}
 
-	return
+	stderr("Successfully unloaded units %v.", wait)
+	return 0
 }
