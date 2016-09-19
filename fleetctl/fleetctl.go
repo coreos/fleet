@@ -833,18 +833,19 @@ func lazyCreateUnits(cCmd *cobra.Command, args []string) error {
 // Returns true if the contents of the file matches the unit one, false
 // otherwise; and any error encountered.
 func matchLocalFileAndUnit(file string, su *schema.Unit) (bool, error) {
-	result := false
 	a := schema.MapSchemaUnitOptionsToUnitFile(su.Options)
 
 	_, err := os.Stat(file)
-	if err == nil {
-		b, err := getUnitFromFile(file)
-		if err == nil {
-			result = unit.MatchUnitFiles(a, b)
-		}
+	if err != nil {
+		return false, err
 	}
 
-	return result, err
+	b, err := getUnitFromFile(file)
+	if err != nil {
+		return false, err
+	}
+
+	return unit.MatchUnitFiles(a, b), nil
 }
 
 // isLocalUnitDifferent compares a Unit on the file system with a one
