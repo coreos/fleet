@@ -1,0 +1,74 @@
+#!/bin/bash -e
+
+if [ $# -ne 1 ]; then
+    echo "Usage: $0 tag" >/dev/stderr
+    exit 1
+fi
+
+tag=$1
+
+tgt=$(mktemp -d)
+
+# Cleanup
+acbuildEnd() {
+    export EXIT=$?
+    rm -rf "$tgt"
+    acbuild end
+    exit $EXIT
+}
+trap acbuildEnd INT TERM EXIT
+
+CDIR=$(cd `dirname "$0"` && pwd)
+
+# Build fleet
+./build
+
+# Create dirs and links
+mkdir -p $tgt/bin
+mkdir -p $tgt/etc/fleet
+mkdir -p $tgt/run/dbus
+mkdir -p $tgt/var
+ln -s /run $tgt/var/run
+
+# Create resolv.conf file
+touch $tgt/etc/resolv.conf
+
+# Generate minimal hosts file
+cat <<DF >${tgt}/etc/hosts
+127.0.0.1       localhost
+::1             localhost ip6-localhost ip6-loopback
+DF
+
+acbuild begin
+
+acbuild set-name coreos.com/fleet
+acbuild label add version "$tag"
+
+acbuild copy-to-dir $tgt/* /
+
+# Copy fleet binary, config
+acbuild copy bin/fleetd /bin/fleetd
+acbuild set-exec -- /bin/fleetd
+
+# Copy documents
+acbuild copy README.md /README.md
+
+# Allow TCP ports for etcd
+acbuild port add etcdpeer1 tcp 2379
+acbuild port add etcdpeer2 tcp 4001
+
+# Mount
+acbuild mount add dbus-socket /run/dbus/system_bus_socket
+acbuild mount add fleet-units /run/fleet/units
+acbuild mount add machine-id /etc/machine-id
+acbuild mount add etc-fleet /etc/fleet
+
+# Build ACI
+echo "Creating image fleetd-${tag}.aci ..."
+acbuild write --overwrite "fleetd-${tag}.aci"
+
+# Validate ACI
+echo "Validating..."
+actool validate "fleetd-${tag}.aci"
+
+echo "Done."
