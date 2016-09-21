@@ -312,7 +312,7 @@ func (r *EtcdRegistry) DestroyUnit(name string) error {
 }
 
 // CreateUnit attempts to store a Unit and its associated unit file in the registry
-func (r *EtcdRegistry) CreateUnit(u *job.Unit) (err error) {
+func (r *EtcdRegistry) CreateUnit(u *job.Unit) error {
 	if err := r.storeOrGetUnitFile(u.Unit); err != nil {
 		return err
 	}
@@ -323,7 +323,7 @@ func (r *EtcdRegistry) CreateUnit(u *job.Unit) (err error) {
 	}
 	val, err := marshal(jm)
 	if err != nil {
-		return
+		return err
 	}
 
 	opts := &etcd.SetOptions{
@@ -335,7 +335,7 @@ func (r *EtcdRegistry) CreateUnit(u *job.Unit) (err error) {
 	key := r.prefixed(jobPrefix, u.Name, "object")
 	_, err = r.kAPI.Set(context.Background(), key, val, opts)
 	if err != nil {
-		return
+		return err
 	}
 
 	return r.SetUnitTargetState(u.Name, u.TargetState)
