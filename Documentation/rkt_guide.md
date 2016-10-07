@@ -42,5 +42,5 @@ Restart=always
 RestartSec=10s
 ```
 
-[build-aci]: /build-aci
+[build-aci]: /scripts/build-aci
 [deployment-and-configuration]: deployment-and-configuration.md
