@@ -177,12 +177,6 @@ type Command struct {
 
 }
 
-type suState struct {
-	LoadState   string
-	ActiveState string
-	SubState    string
-}
-
 func getFlags(flagset *flag.FlagSet) (flags []*flag.Flag) {
 	flags = make([]*flag.Flag, 0)
 	flagset.VisitAll(func(f *flag.Flag) {
@@ -1095,17 +1089,11 @@ func tryWaitForSystemdActiveState(units []string, maxAttempts int) (err error) {
 // waitForSystemdActiveState tries to assert that the given unit becomes
 // active, making use of multiple goroutines that check unit states.
 func waitForSystemdActiveState(units []string, maxAttempts int) (errch chan error) {
-	apiStates, err := cAPI.UnitStates()
-	if err != nil {
-		errch <- fmt.Errorf("Error retrieving list of units: %v", err)
-		return
-	}
-
 	errchan := make(chan error)
 	var wg sync.WaitGroup
 	for _, name := range units {
 		wg.Add(1)
-		go checkSystemdActiveState(apiStates, name, maxAttempts, &wg, errchan)
+		go checkSystemdActiveState(name, maxAttempts, &wg, errchan)
 	}
 
 	go func() {
@@ -1116,7 +1104,7 @@ func waitForSystemdActiveState(units []string, maxAttempts int) (errch chan erro
 	return errchan
 }
 
-func checkSystemdActiveState(apiStates []*schema.UnitState, name string, maxAttempts int, wg *sync.WaitGroup, errchan chan error) {
+func checkSystemdActiveState(name string, maxAttempts int, wg *sync.WaitGroup, errchan chan error) {
 	defer wg.Done()
 
 	// "isInf == true" means "blocking forever until it succeeded".
@@ -1128,7 +1116,7 @@ func checkSystemdActiveState(apiStates []*schema.UnitState, name string, maxAtte
 	}
 
 	for attempt := 0; attempt < maxAttempts; attempt++ {
-		if err := assertFetchSystemdActiveState(apiStates, name); err == nil {
+		if err := assertFetchSystemdActiveState(name); err == nil {
 			return
 		} else {
 			errchan <- err
@@ -1140,62 +1128,32 @@ func checkSystemdActiveState(apiStates []*schema.UnitState, name string, maxAtte
 	}
 }
 
-func assertFetchSystemdActiveState(apiStates []*schema.UnitState, name string) error {
-	if err := assertSystemdActiveState(apiStates, name); err == nil {
+func assertFetchSystemdActiveState(name string) error {
+	if err := assertSystemdActiveState(name); err == nil {
 		return nil
 	}
-
-	// If the assertion failed, we again need to get unit states via cAPI,
-	// to retry the assertion repeatedly.
-	//
-	// NOTE: Ideally we should be able to fetch the state only for a single
-	// unit. However, we cannot do that for now, because cAPI.UnitState()
-	// is not available. In the future we need to implement cAPI.UnitState()
-	// and all dependendent parts all over the tree in fleet, (schema,
-	// etcdRegistry, rpcRegistry, etc) to replace UnitStates() in this place
-	// with the new method UnitState(). In practice, calling UnitStates() here
-	// is not as badly inefficient as it looks, because it will be anyway
-	// rarely called only when the assertion failed. - dpark 20160907
-
 	time.Sleep(defaultSleepTime)
-
-	var errU error
-	apiStates, errU = cAPI.UnitStates()
-	if errU != nil {
-		return fmt.Errorf("Error retrieving list of units: %v", errU)
+	if _, err := cAPI.UnitState(name); err != nil {
+		return err
 	}
 	return nil
 }
 
 // assertSystemdActiveState determines if a given systemd unit is actually
-// in the active state, making use of cAPI
-func assertSystemdActiveState(apiStates []*schema.UnitState, unitName string) error {
-	uState, err := getSingleUnitState(apiStates, unitName)
+// in the active state, making use of cAPI. It returns true if ActiveState
+// of the given unit is active and LoadState of the given unit is loaded.
+func assertSystemdActiveState(unitName string) error {
+	us, err := cAPI.UnitState(unitName)
 	if err != nil {
-		return err
+		return fmt.Errorf("Error retrieving list of units: %v", err)
 	}
 
 	// Get systemd state and check the state is active & loaded.
-	if uState.ActiveState != "active" || uState.LoadState != "loaded" {
+	if us.SystemdActiveState != "active" || us.SystemdLoadState != "loaded" {
 		return fmt.Errorf("Failed to find an active unit %s", unitName)
 	}
 
 	return nil
-}
-
-// getSingleUnitState returns a single uState of type suState, which consists
-// of necessary systemd states, only for a given unit name.
-func getSingleUnitState(apiStates []*schema.UnitState, unitName string) (suState, error) {
-	for _, us := range apiStates {
-		if us.Name == unitName {
-			return suState{
-				us.SystemdLoadState,
-				us.SystemdActiveState,
-				us.SystemdSubState,
-			}, nil
-		}
-	}
-	return suState{}, fmt.Errorf("unit %s not found", unitName)
 }
 
 func machineState(machID string) (*machine.MachineState, error) {
