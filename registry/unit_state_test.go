@@ -495,6 +495,82 @@ func TestUnitStates(t *testing.T) {
 	}
 }
 
+func TestUnitState(t *testing.T) {
+	fus1 := unit.UnitState{
+		LoadState:   "abc",
+		ActiveState: "def",
+		SubState:    "ghi",
+		MachineID:   "mID1",
+		UnitHash:    "zzz",
+		UnitName:    "foo",
+	}
+	// Multiple new unit states reported for the same unit
+	foo := &etcd.Node{
+		Key: "/fleet/states/foo",
+		Nodes: []*etcd.Node{
+			&etcd.Node{
+				Key:   "/fleet/states/foo/mID1",
+				Value: usToJson(t, &fus1),
+			},
+		},
+	}
+	// Bogus new unit state which we won't expect to see in results
+	bar := &etcd.Node{
+		Key: "/fleet/states/bar",
+		Nodes: []*etcd.Node{
+			&etcd.Node{
+				Key:   "/fleet/states/bar/asdf",
+				Value: `total garbage`,
+			},
+		},
+	}
+	// Response from crawling the new "states" namespace
+	res2 := &etcd.Response{
+		Node: &etcd.Node{
+			Key:   "/fleet/states",
+			Nodes: []*etcd.Node{foo, bar},
+		},
+	}
+	e := &testEtcdKeysAPI{
+		res: []*etcd.Response{res2},
+	}
+	r := &EtcdRegistry{kAPI: e, keyPrefix: "/fleet/"}
+
+	got, err := r.UnitState(fus1.UnitName)
+	if err != nil {
+		t.Errorf("unexpected error calling UnitState(%s): %v", fus1.UnitName, err)
+	}
+
+	want := &fus1
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("UnitState() returned unexpected result")
+		t.Log("got:")
+		t.Logf("%#v", got)
+		t.Log("want:")
+		t.Logf("%#v", want)
+	}
+
+	// Ensure UnitState handles different error scenarios appropriately
+	for i, tt := range []struct {
+		errs []error
+		fail bool
+	}{
+		{[]error{etcd.Error{Code: etcd.ErrorCodeKeyNotFound}}, false},
+		{[]error{etcd.Error{Code: etcd.ErrorCodeKeyNotFound}}, false},
+		{[]error{nil}, false}, // No errors, no responses should succeed
+		{[]error{errors.New("ur registry don't work")}, true},
+		{[]error{errors.New("ur registry don't work")}, true},
+	} {
+		e = &testEtcdKeysAPI{err: tt.errs}
+		r = &EtcdRegistry{kAPI: e, keyPrefix: "/fleet"}
+		got, err = r.UnitState(fus1.UnitName)
+		if (err != nil) != tt.fail {
+			t.Errorf("case %d: unexpected error state calling UnitState(%s): got %v, want %v",
+				i, fus1.UnitName, err, tt.fail)
+		}
+	}
+}
+
 func TestMUSKeys(t *testing.T) {
 	equal := func(a MUSKeys, b []MUSKey) bool {
 		if len(a) != len(b) {

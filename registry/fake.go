@@ -16,6 +16,7 @@ package registry
 
 import (
 	"errors"
+	"fmt"
 	"sort"
 	"sync"
 	"time"
@@ -279,6 +280,32 @@ func (f *FakeRegistry) UnitStates() ([]*unit.UnitState, error) {
 		}
 	}
 	return states, nil
+}
+
+func (f *FakeRegistry) UnitState(unitName string) (*unit.UnitState, error) {
+	f.Lock()
+	defer f.Unlock()
+
+	var us *unit.UnitState
+	for name := range f.jobStates {
+		sMIDs := make([]string, 0)
+		for machineID := range f.jobStates[name] {
+			sMIDs = append(sMIDs, machineID)
+		}
+		for _, mID := range sMIDs {
+			js := f.jobStates[name][mID]
+			if name == js.UnitName {
+				us = js
+				break
+			}
+		}
+	}
+
+	if us == nil {
+		return nil, fmt.Errorf("Cannot find unit(%s) from fakeRegistry", unitName)
+	}
+
+	return us, nil
 }
 
 func (f *FakeRegistry) UnitHeartbeat(name, machID string, ttl time.Duration) error {
