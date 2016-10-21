@@ -28,6 +28,7 @@ func wireUpStateResource(mux *http.ServeMux, prefix string, tokenLimit int, cAPI
 	base := path.Join(prefix, "state")
 	sr := stateResource{cAPI, base, uint16(tokenLimit)}
 	mux.Handle(base, &sr)
+	mux.Handle(base+"/", &sr)
 }
 
 type stateResource struct {
@@ -37,12 +38,23 @@ type stateResource struct {
 }
 
 func (sr *stateResource) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
-	if req.Method != "GET" {
-		sendError(rw, http.StatusMethodNotAllowed, errors.New("only GET supported against this resource"))
-		return
+	if isCollectionPath(sr.basePath, req.URL.Path) {
+		switch req.Method {
+		case "GET":
+			sr.list(rw, req)
+		default:
+			sendError(rw, http.StatusMethodNotAllowed, errors.New("only GET supported against this resource"))
+		}
+	} else if item, ok := isItemPath(sr.basePath, req.URL.Path); ok {
+		switch req.Method {
+		case "GET":
+			sr.get(rw, req, item)
+		default:
+			sendError(rw, http.StatusMethodNotAllowed, errors.New("only GET supported against this resource"))
+		}
+	} else {
+		sendError(rw, http.StatusNotFound, nil)
 	}
-
-	sr.list(rw, req)
 }
 
 func (sr *stateResource) list(rw http.ResponseWriter, req *http.Request) {
@@ -75,6 +87,22 @@ func (sr *stateResource) list(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	sendResponse(rw, http.StatusOK, &page)
+}
+
+func (sr *stateResource) get(rw http.ResponseWriter, req *http.Request, item string) {
+	us, err := sr.cAPI.UnitState(item)
+	if err != nil {
+		log.Errorf("Failed fetching UnitState(%s) from Registry: %v", item, err)
+		sendError(rw, http.StatusInternalServerError, nil)
+		return
+	}
+
+	if us == nil {
+		sendError(rw, http.StatusNotFound, errors.New("unit state does not exist"))
+		return
+	}
+
+	sendResponse(rw, http.StatusOK, *us)
 }
 
 func getUnitStatePage(cAPI client.API, machineID, unitName string, tok PageToken) (*schema.UnitStatePage, error) {
