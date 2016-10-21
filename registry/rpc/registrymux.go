@@ -314,6 +314,10 @@ func (r *RegistryMux) Units() ([]job.Unit, error) {
 	return r.getRegistry().Units()
 }
 
+func (r *RegistryMux) UnitState(name string) (*unit.UnitState, error) {
+	return r.getRegistry().UnitState(name)
+}
+
 func (r *RegistryMux) UnitStates() ([]*unit.UnitState, error) {
 	return r.getRegistry().UnitStates()
 }

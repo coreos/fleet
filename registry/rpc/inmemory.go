@@ -151,6 +151,16 @@ func (r *inmemoryRegistry) Units() []pb.Unit {
 	return units
 }
 
+func (r *inmemoryRegistry) UnitState(name string) *pb.UnitState {
+	if DebugInmemoryRegistry {
+		defer debug.Exit_(debug.Enter_())
+	}
+	r.unitStatesMu.Lock()
+	defer r.unitStatesMu.Unlock()
+
+	return r.stateByMUSKey(name)
+}
+
 func (r *inmemoryRegistry) UnitStates() []*pb.UnitState {
 	if DebugInmemoryRegistry {
 		defer debug.Exit_(debug.Enter_())
@@ -311,6 +321,25 @@ func (r *inmemoryRegistry) CreateUnit(u *pb.Unit) {
 	defer r.mu.Unlock()
 
 	r.unitsCache[u.Name] = *u
+}
+
+func (r *inmemoryRegistry) stateByMUSKey(name string) *pb.UnitState {
+	state := pb.UnitState{}
+
+	for unitname, unitStates := range r.unitStates {
+		if name != unitname {
+			continue
+		}
+		for _, heartbeat := range unitStates {
+			if heartbeat.isValid() {
+				s := *heartbeat.state
+				state = s
+				break
+			}
+		}
+	}
+
+	return &state
 }
 
 func (r *inmemoryRegistry) statesByMUSKey() map[registry.MUSKey]*pb.UnitState {
