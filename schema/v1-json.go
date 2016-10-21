@@ -276,6 +276,25 @@ const DiscoveryJSON = `{
     },
     "UnitState": {
       "methods": {
+        "Get": {
+          "id": "fleet.UnitState.Get",
+          "description": "Retrieve a page of a single UnitState object.",
+          "httpMethod": "GET",
+          "path": "state/{unitName}",
+          "parameters": {
+            "unitName": {
+              "type": "string",
+              "location": "path",
+              "required": true
+            }
+          },
+          "parameterOrder": [
+            "unitName"
+          ],
+          "response": {
+            "$ref": "UnitState"
+          }
+        },
         "List": {
           "id": "fleet.UnitState.List",
           "description": "Retrieve a page of UnitState objects.",
