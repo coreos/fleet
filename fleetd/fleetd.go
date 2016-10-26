@@ -96,6 +96,7 @@ func Main() {
 	cfgset.Bool("disable_watches", false, "Disable the use of etcd watches. Increases scheduling latency")
 	cfgset.Bool("verify_units", false, "DEPRECATED - This option is ignored")
 	cfgset.String("authorized_keys_file", "", "DEPRECATED - This option is ignored")
+	cfgset.Bool("systemd_link_unit_force", false, "When true, turn on force flag for LinkUnitFiles)")
 
 	globalconf.Register("", cfgset)
 	cfg, err := getConfig(cfgset, *cfgPath)
@@ -237,6 +238,7 @@ func getConfig(flagset *flag.FlagSet, userCfgFile string) (*config.Config, error
 		SystemdUser:             (*flagset.Lookup("systemd_user")).Value.(flag.Getter).Get().(bool),
 		TokenLimit:              (*flagset.Lookup("token_limit")).Value.(flag.Getter).Get().(int),
 		AuthorizedKeysFile:      (*flagset.Lookup("authorized_keys_file")).Value.(flag.Getter).Get().(string),
+		SystemdLinkUnitForce:    (*flagset.Lookup("systemd_link_unit_force")).Value.(flag.Getter).Get().(bool),
 	}
 
 	if cfg.VerifyUnits {

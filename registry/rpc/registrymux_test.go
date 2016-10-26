@@ -94,7 +94,7 @@ func TestRegistryMuxUnitManagement(t *testing.T) {
 		PublicIP: "127.0.0.1",
 		Metadata: make(map[string]string, 0),
 	}
-	mgr, err := systemd.NewSystemdUnitManager(uDir, false)
+	mgr, err := systemd.NewSystemdUnitManager(uDir, false, false)
 	if err != nil {
 		// NOTE: ideally we should fail with t.Fatalf(), but then it would always
 		// fail on travis CI, because apparently systemd dbus socket is not

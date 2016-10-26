@@ -42,6 +42,7 @@ type Config struct {
 	UnitsDirectory          string
 	SystemdUser             bool
 	AuthorizedKeysFile      string
+	SystemdLinkUnitForce    bool
 }
 
 func (c *Config) Capabilities() machine.Capabilities {
