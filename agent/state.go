@@ -39,31 +39,42 @@ func (as *AgentState) unitScheduled(name string) bool {
 	return as.Units[name] != nil
 }
 
+func hasStringInSlice(inSlice []string, unitName string) bool {
+	for _, elem := range inSlice {
+		if globMatches(elem, unitName) {
+			return true
+		}
+	}
+	return false
+}
+
 // HasConflict determines whether there are any known conflicts with the given Unit
-func (as *AgentState) HasConflict(pUnitName string, pConflicts []string) (found bool, conflict string) {
+func (as *AgentState) HasConflict(pUnitName string, pConflicts []string) (bool, []string) {
+	found := false
+	conflicts := []string{}
+
 	for _, eUnit := range as.Units {
 		if pUnitName == eUnit.Name {
 			continue
 		}
 
-		for _, pConflict := range pConflicts {
-			if globMatches(pConflict, eUnit.Name) {
-				found = true
-				conflict = eUnit.Name
-				return
-			}
+		if hasStringInSlice(eUnit.Conflicts(), pUnitName) {
+			conflicts = append(conflicts, pUnitName)
+			found = true
+			break
 		}
-
-		for _, eConflict := range eUnit.Conflicts() {
-			if globMatches(eConflict, pUnitName) {
-				found = true
-				conflict = eUnit.Name
-				return
-			}
+		if hasStringInSlice(pConflicts, eUnit.Name) {
+			conflicts = append(conflicts, eUnit.Name)
+			found = true
+			break
 		}
 	}
 
-	return
+	if !found {
+		return false, []string{}
+	}
+
+	return true, conflicts
 }
 
 // hasReplace determines whether there are any known replaces with the given Unit
