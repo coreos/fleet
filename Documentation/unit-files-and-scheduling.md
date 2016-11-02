@@ -59,6 +59,35 @@ To use instance units, simply create a unit file whose name matches the `<name>@
 
 When working with instance units, it is strongly recommended that all units be _entirely homogenous_. This means that any unit created as, say, `foo@1.service`, should be created only from the unit named `foo@.service`. This homogeneity will be enforced by the fleet API in future.
 
+## Definition of the Install Section
+
+Unit files which have an `[Install]` section will be automatically enabled by fleet. This means that the states of such unit files cannot be tracked by fleet. For example, assume we have loaded this `my.service` unit file:
+
+```ini
+[Service]
+ExecStart=/bin/bash -c "while true; do echo my.service unit file; sleep 1; done"
+```
+
+and then loaded an additional [sidekick][sidekick] discovery unit `my_discovery.service`:
+
+```ini
+[Unit]
+BindsTo=my.service
+
+[Service]
+ExecStart=/bin/bash -c "while true; do echo my_discovery.service unit file; sleep 1; done"
+
+[Install]
+WantedBy=my.service
+
+[X-Fleet]
+MachineOf=my.service
+```
+
+fleet will load and enable the `my_discovery.service` unit above because it contains an `[Install]` section. When `my.service` is started, systemd will also start `my_discovery.service`, independent of the desired state defined for `my_discovery.service` in fleet. This can cause confusion between the output of `fleetctl list-units` and `systemctl list-units`, which will not match in this scenario. Use `fleetctl status my_discovery.service` to explicitly identify the service and get its actual unit status.
+
+If systemd can not enable the unit which has `[Install]` section, fleet will interrupt load process and return an error.
+
 ## systemd specifiers
 
 When evaluating the `[X-Fleet]` section, fleet supports a subset of systemd's [specifiers][systemd specifiers] to perform variable substitution. The following specifiers are currently supported:
@@ -90,7 +119,7 @@ For more details on the specific behavior of the engine, read more about [fleet'
 
 For non-global units, several different directives are available to control the engine's scheduling decision.
 
-##### Schedule unit to specific machine
+## Schedule unit to specific machine
 
 The `MachineID` option of a unit file causes the system to schedule a unit to a machine identified by the option's value.
 
@@ -100,7 +129,7 @@ One must use the entire ID when setting `MachineID` - the shortened ID returned 
 fleet depends on its host to generate an identifier at `/etc/machine-id`, which is handled today by systemd.
 Read more about machine IDs in the [official systemd documentation][machine-id].
 
-##### Schedule unit to machine with specific metadata
+## Schedule unit to machine with specific metadata
 
 The `MachineMetadata` option of a unit file allows you to set conditional metadata required for a machine to be elegible.
 
@@ -183,7 +212,7 @@ app.service     fd1d3e94.../10.0.0.1    active  running
 A machine is not automatically configured with metadata.
 A deployer may define machine metadata using the `metadata` [config option][config-option].
 
-##### Schedule unit next to another unit
+## Schedule unit next to another unit
 
 In order for a unit to be scheduled to the same machine as another unit, a unit file can define `MachineOf`.
 The value of this option is the exact name of another unit in the system, which we'll call the target unit.
@@ -195,13 +224,13 @@ Follower units will reschedule themselves around the cluster to ensure their `Ma
 
 Note that currently `MachineOf` _cannot_ be a bidirectional dependency: i.e., if unit `foo.service` has `MachineOf=bar.service`, then `bar.service` must not have a `MachineOf=foo.service`, or fleet will be unable to schedule the units.
 
-##### Schedule unit away from other unit(s)
+## Schedule unit away from other unit(s)
 
 The value of the `Conflicts` option is a [glob pattern][glob-pattern] defining which other units next to which a given unit must not be scheduled. A unit may have multiple `Conflicts` options.
 
 If a unit is scheduled to the system without an `Conflicts` option, other units' conflicts still take effect and prevent the new unit from being scheduled to machines where conflicts exist.
 
-##### Dynamic requirements
+## Dynamic requirements
 
 fleet supports several [systemd specifiers][systemd-specifiers] to allow requirements to be dynamically determined based on a Unit's name. This means that the same unit can be used for multiple Units and the requirements are dynamically substituted when the Unit is scheduled.
 
@@ -223,4 +252,5 @@ would result in an effective `MachineOf` of `foo.socket`. Using the same unit sn
 [glob-pattern]: http://golang.org/pkg/path/#Match
 [unit-scheduling]: #unit-scheduling
 [example-deployment]: examples/example-deployment.md#service-files
+[sidekick]: examples/service-discovery.md
 [systemd-specifiers]: #systemd-specifiers
