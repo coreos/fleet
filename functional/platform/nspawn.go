@@ -390,6 +390,28 @@ func (nc *nspawnCluster) MemberCommand(m Member, args ...string) (string, error)
 	return stdoutBytes.String(), err
 }
 
+// MemberCommandStderr() is like MemberCommand(), except that it returns
+// both stdout and stderr from the running command. This is definitely useful
+// for most cases, especially when the caller needs to check for both stdout
+// and stderr.
+//
+// NOTE: Ideally we should remove MemberCommand() above, and rename
+// MemberCommandStderr() to MemberCommand(). For doing that, however, we need
+// to change every call site to replace MemberCommand() with MemberCommandStderr().
+// Of course that would be a lot of work. I'll leave that to future work.
+// - dpark 20161102
+func (nc *nspawnCluster) MemberCommandStderr(m Member, args ...string) (string, string, error) {
+	baseArgs := []string{"-o", "UserKnownHostsFile=/dev/null", "-o", "StrictHostKeyChecking=no", fmt.Sprintf("core@%s", m.IP())}
+	args = append(baseArgs, args...)
+	log.Printf("ssh %s", strings.Join(args, " "))
+	var stdoutBytes, stderrBytes bytes.Buffer
+	cmd := exec.Command("ssh", args...)
+	cmd.Stdout = &stdoutBytes
+	cmd.Stderr = &stderrBytes
+	err := cmd.Run()
+	return stdoutBytes.String(), stderrBytes.String(), err
+}
+
 func (nc *nspawnCluster) CreateMember() (m Member, err error) {
 	id := nc.nextID()
 	log.Printf("Creating nspawn machine %s in cluster %s", id, nc.name)

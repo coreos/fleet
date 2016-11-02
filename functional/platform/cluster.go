@@ -32,6 +32,7 @@ type Cluster interface {
 	ReplaceMember(Member) (Member, error)
 	Members() []Member
 	MemberCommand(Member, ...string) (string, error)
+	MemberCommandStderr(Member, ...string) (string, string, error)
 	Destroy(t *testing.T) error
 
 	// client operations

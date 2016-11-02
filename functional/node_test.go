@@ -77,9 +77,14 @@ func TestNodeShutdown(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// The member's unit should actually stop running, too
-	stdout, _ = cluster.MemberCommand(m0, "systemctl", "status", "hello.service")
-	if !strings.Contains(stdout, "Active: inactive") {
+	// The member's unit should actually stop running, too.
+	// NOTE: In case of no units, systemd v230 or older prints out
+	// "Active: inactive" to stdout, while systemd v231 or newer prints out
+	// "Unit NAME could not be found" to stderr. So we need to check for
+	// both cases. Use MemberCommandStderr() to retrieve both stdout and stderr,
+	// and check for each case.
+	stdout, stderr, err = cluster.MemberCommandStderr(m0, "systemctl", "status", "hello.service")
+	if !strings.Contains(stdout, "Active: inactive") && !strings.Contains(stderr, "could not be found") {
 		t.Fatalf("Unit hello.service not reported as inactive:\n%s\n", stdout)
 	}
 }
