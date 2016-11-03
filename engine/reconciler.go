@@ -84,49 +84,38 @@ func (r *Reconciler) calculateClusterTasks(clust *clusterState, stopchan chan st
 		return true
 	}
 
-	go func() {
-		defer close(taskchan)
+	decide := func(j *job.Job) (jobAction job.JobAction, reason string) {
+		if j.TargetState == job.JobStateInactive {
+			return job.JobActionUnschedule, "target state inactive"
+		}
 
 		agents := clust.agents()
+
+		as, ok := agents[j.TargetMachineID]
+		if !ok {
+			metrics.ReportEngineReconcileFailure(metrics.MachineAway)
+			return job.JobActionUnschedule, fmt.Sprintf("target Machine(%s) went away", j.TargetMachineID)
+		}
+
+		if act, ableReason := as.AbleToRun(j); act != job.JobActionSchedule {
+			metrics.ReportEngineReconcileFailure(metrics.RunFailure)
+			return act, fmt.Sprintf("target Machine(%s) unable to run unit: %v",
+				j.TargetMachineID, ableReason)
+		}
+
+		return job.JobActionSchedule, ""
+	}
+
+	go func() {
+		defer close(taskchan)
 
 		for _, j := range clust.jobs {
 			if !j.Scheduled() {
 				continue
 			}
 
-			decide := func() (unschedule bool, reason string) {
-				if j.TargetState == job.JobStateInactive {
-					unschedule = true
-					reason = "target state inactive"
-					return
-				}
-
-				as, ok := agents[j.TargetMachineID]
-				if !ok {
-					unschedule = true
-					reason = fmt.Sprintf("target Machine(%s) went away", j.TargetMachineID)
-					metrics.ReportEngineReconcileFailure(metrics.MachineAway)
-					return
-				}
-
-				var able bool
-				var ableReason string
-				if able, ableReason = as.AbleToRun(j); !able {
-					unschedule = true
-					if ableReason == job.JobReschedule {
-						reason = ableReason
-					} else {
-						reason = fmt.Sprintf("target Machine(%s) unable to run unit", j.TargetMachineID)
-						metrics.ReportEngineReconcileFailure(metrics.RunFailure)
-					}
-					return
-				}
-
-				return
-			}
-
-			unschedule, reason := decide()
-			if !unschedule {
+			act, reason := decide(j)
+			if act != job.JobActionUnschedule {
 				continue
 			}
 

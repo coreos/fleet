@@ -41,7 +41,7 @@ func (lls *leastLoadedScheduler) Decide(clust *clusterState, j *job.Job) (*decis
 
 	var target *agent.AgentState
 	for _, as := range agents {
-		if able, _ := as.AbleToRun(j); !able {
+		if act, _ := as.AbleToRun(j); act != job.JobActionSchedule {
 			continue
 		}
 
