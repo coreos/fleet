@@ -333,9 +333,9 @@ func TestScheduleOneWayConflict(t *testing.T) {
 
 }
 
-// TestScheduleReplace starts 1 unit, followed by starting another unit
-// that replaces the 1st unit. Then it verifies that the 2 units are
-// started on different machines.
+// TestScheduleReplace starts 3 units, followed by starting another unit
+// that replaces the 1st unit. Then it verifies that the original unit
+// got rescheduled on a different machine.
 func TestScheduleReplace(t *testing.T) {
 	cluster, err := platform.NewNspawnCluster("smoke")
 	if err != nil {
@@ -348,43 +348,30 @@ func TestScheduleReplace(t *testing.T) {
 		t.Fatal(err)
 	}
 	m0 := members[0]
+	m1 := members[1]
 	if _, err := cluster.WaitForNMachines(m0, 2); err != nil {
 		t.Fatal(err)
 	}
 
-	// Start a unit without Replaces
+	// Start 3 units without Replaces, replace.0.service on m0, while both 1 and 2 on m1.
+	// That's possible as replace.2.service has an option "MachineOf=replace.1.service".
 	uNames := []string{
 		"fixtures/units/replace.0.service",
 		"fixtures/units/replace.1.service",
+		"fixtures/units/replace.2.service",
+		"fixtures/units/replace-kick0.service",
 	}
 	if stdout, stderr, err := cluster.Fleetctl(m0, "start", "--no-block", uNames[0]); err != nil {
 		t.Fatalf("Failed starting unit %s: \nstdout: %s\nstderr: %s\nerr: %v", uNames[0], stdout, stderr, err)
 	}
-
-	active, err := cluster.WaitForNActiveUnits(m0, 1)
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, err = util.ActiveToSingleStates(active)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Start a unit that replaces the former one, replace.0.service
-	if stdout, stderr, err := cluster.Fleetctl(m0, "start", "--no-block", uNames[1]); err != nil {
+	if stdout, stderr, err := cluster.Fleetctl(m1, "start", "--no-block", uNames[1]); err != nil {
 		t.Fatalf("Failed starting unit %s: \nstdout: %s\nstderr: %s\nerr: %v", uNames[1], stdout, stderr, err)
 	}
+	if stdout, stderr, err := cluster.Fleetctl(m1, "start", "--no-block", uNames[2]); err != nil {
+		t.Fatalf("Failed starting unit %s: \nstdout: %s\nstderr: %s\nerr: %v", uNames[2], stdout, stderr, err)
+	}
 
-	// Check that both units should show up
-	stdout, stderr, err := cluster.Fleetctl(m0, "list-unit-files", "--no-legend")
-	if err != nil {
-		t.Fatalf("Failed to run list-unit-files:\nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)
-	}
-	units := strings.Split(strings.TrimSpace(stdout), "\n")
-	if len(units) != 2 {
-		t.Fatalf("Did not find two units in cluster: \n%s", stdout)
-	}
-	active, err = cluster.WaitForNActiveUnits(m0, 2)
+	active, err := cluster.WaitForNActiveUnits(m0, 3)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -393,16 +380,66 @@ func TestScheduleReplace(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Check that the unit 1 is located on a different machine from that of unit 0
-	nUnits := 2
-	uNameBase := make([]string, nUnits)
-	machs := make([]string, nUnits)
-	for i, uName := range uNames {
-		uNameBase[i] = path.Base(uName)
-		machs[i] = states[uNameBase[i]].Machine
+	oldMach := states[path.Base(uNames[0])].Machine
+
+	// Start a unit replace-kick0.service that replaces replace.0.service
+	// Then the kick0 unit will be scheduled to m0, as m0 is least loaded than m1.
+	// So it's possible to trigger a situation where kick0 could kick the original unit 0.
+	if stdout, stderr, err := cluster.Fleetctl(m0, "start", "--no-block", uNames[3]); err != nil {
+		t.Fatalf("Failed starting unit %s: \nstdout: %s\nstderr: %s\nerr: %v", uNames[3], stdout, stderr, err)
 	}
-	if machs[0] == machs[1] {
-		t.Fatalf("machine for %s is %s, the same as that of %s.", uNameBase[0], machs[0], uNameBase[1])
+
+	// Here we need to wait up to 15 seconds, to avoid races, because the unit state
+	// publisher could otherwise report unit states with old machine IDs to registry.
+	checkReplacedMachines := func() bool {
+		// Check that 4 units show up
+		nUnits := 4
+		stdout, stderr, err := cluster.Fleetctl(m0, "list-unit-files", "--no-legend")
+		if err != nil {
+			t.Logf("Failed to run list-unit-files:\nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)
+			return false
+		}
+		units := strings.Split(strings.TrimSpace(stdout), "\n")
+		if len(units) != nUnits {
+			t.Logf("Did not find two units in cluster: \n%s", stdout)
+			return false
+		}
+		active, err = cluster.WaitForNActiveUnits(m0, nUnits)
+		if err != nil {
+			t.Log(err)
+			return false
+		}
+		states, err = util.ActiveToSingleStates(active)
+		if err != nil {
+			t.Log(err)
+			return false
+		}
+
+		// Check that replace.0.service is located on a different machine from
+		// that of replace-kick0.service.
+		uNameBase := make([]string, nUnits)
+		machs := make([]string, nUnits)
+		for i, uName := range uNames {
+			uNameBase[i] = path.Base(uName)
+			machs[i] = states[uNameBase[i]].Machine
+		}
+		if machs[0] == machs[3] {
+			t.Logf("machine for %s is %s, the same as that of %s.", uNameBase[0], machs[0], uNameBase[3])
+			return false
+		}
+		if machs[3] != oldMach {
+			t.Logf("machine for %s is %s, different from old machine %s.", uNameBase[3], machs[3], oldMach)
+			return false
+		}
+		if machs[0] == oldMach {
+			t.Logf("machine for %s is %s, the same as that of %s.", uNameBase[0], machs[0], oldMach)
+			return false
+		}
+
+		return true
+	}
+	if timeout, err := util.WaitForState(checkReplacedMachines); err != nil {
+		t.Fatalf("Cannot verify replaced units within %v\nerr: %v", timeout, err)
 	}
 }
 
@@ -429,7 +466,7 @@ func TestScheduleCircularReplace(t *testing.T) {
 	// it under /tmp. Also store the original service 1 that replace 0.
 	uNames := []string{
 		"fixtures/units/replace.0.service",
-		"fixtures/units/replace.1.service",
+		"fixtures/units/replace-kick0.service",
 	}
 	nUnits := 2
 	nActiveUnits := 1
@@ -439,12 +476,12 @@ func TestScheduleCircularReplace(t *testing.T) {
 	}
 	uName0tmp := path.Join("/tmp", uNameBase[0])
 	err = util.GenNewFleetService(uName0tmp, uNames[1],
-		"Replaces=replace.1.service", "Replaces=replace.0.service")
+		"Replaces=replace-kick0.service", "Replaces=replace.0.service")
 	if err != nil {
 		t.Fatalf("Failed to generate a temp fleet service: %v", err)
 	}
 
-	// Start replace.0 unit that replaces replace.1.service,
+	// Start replace.0 unit that replaces replace-kick0.service,
 	// then fleetctl list-unit-files should show only return 1 launched unit.
 	stdout, stderr, err := cluster.Fleetctl(m0, "start", "--no-block", uName0tmp)
 	if err != nil {
@@ -469,7 +506,7 @@ func TestScheduleCircularReplace(t *testing.T) {
 		t.Fatalf("Failed to run list-unit-files: %v", err)
 	}
 
-	// Start replace.1 unit that replaces replace.0.service,
+	// Start replace-kick0 unit that replaces replace.0.service,
 	// and then check that only 1 unit is active
 	if stdout, stderr, err := cluster.Fleetctl(m0, "start", "--no-block", uNames[1]); err != nil {
 		t.Fatalf("Failed starting unit %s: \nstdout: %s\nstderr: %s\nerr: %v", uNames[1], stdout, stderr, err)
