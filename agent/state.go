@@ -156,3 +156,11 @@ func (as *AgentState) AbleToRun(j *job.Job) (jobAction job.JobAction, errstr str
 
 	return job.JobActionSchedule, ""
 }
+
+func (as *AgentState) GetReplacedUnit(j *job.Job) (string, error) {
+	cExists, replaced := as.hasReplace(j.Name, j.Replaces())
+	if !cExists {
+		return "", fmt.Errorf("cannot find units to be replaced for Unit(%s)", j.Name)
+	}
+	return replaced, nil
+}
