@@ -84,56 +84,111 @@ func (r *Reconciler) calculateClusterTasks(clust *clusterState, stopchan chan st
 		return true
 	}
 
-	go func() {
-		defer close(taskchan)
+	decide := func(j *job.Job) (jobAction job.JobAction, reason string) {
+		if j.TargetState == job.JobStateInactive {
+			return job.JobActionUnschedule, "target state inactive"
+		}
 
 		agents := clust.agents()
+
+		as, ok := agents[j.TargetMachineID]
+		if !ok {
+			metrics.ReportEngineReconcileFailure(metrics.MachineAway)
+			return job.JobActionUnschedule, fmt.Sprintf("target Machine(%s) went away", j.TargetMachineID)
+		}
+
+		if act, ableReason := as.AbleToRun(j); act != job.JobActionSchedule {
+			metrics.ReportEngineReconcileFailure(metrics.RunFailure)
+			return act, fmt.Sprintf("target Machine(%s) unable to run unit: %v",
+				j.TargetMachineID, ableReason)
+		}
+
+		return job.JobActionSchedule, ""
+	}
+
+	handle_reschedule := func(j *job.Job, reason string) bool {
+		isRescheduled := false
+
+		agents := clust.agents()
+
+		as, ok := agents[j.TargetMachineID]
+		if !ok {
+			metrics.ReportEngineReconcileFailure(metrics.MachineAway)
+			return false
+		}
+
+		for _, cj := range clust.jobs {
+			if !cj.Scheduled() {
+				continue
+			}
+			if j.Name != cj.Name {
+				continue
+			}
+
+			replacedUnit, err := as.GetReplacedUnit(j)
+			if err != nil {
+				log.Debugf("No unit to reschedule: %v", err)
+				metrics.ReportEngineReconcileFailure(metrics.ScheduleFailure)
+				continue
+			}
+
+			if !send(taskTypeUnscheduleUnit, reason, replacedUnit, j.TargetMachineID) {
+				log.Infof("Job(%s) unschedule send failed", replacedUnit)
+				metrics.ReportEngineReconcileFailure(metrics.ScheduleFailure)
+				continue
+			}
+
+			dec, err := r.sched.DecideReschedule(clust, j)
+			if err != nil {
+				log.Debugf("Unable to schedule Job(%s): %v", j.Name, err)
+				metrics.ReportEngineReconcileFailure(metrics.ScheduleFailure)
+				continue
+			}
+
+			if !send(taskTypeAttemptScheduleUnit, reason, replacedUnit, dec.machineID) {
+				log.Infof("Job(%s) attemptschedule send failed", replacedUnit)
+				metrics.ReportEngineReconcileFailure(metrics.ScheduleFailure)
+				continue
+			}
+			clust.schedule(replacedUnit, dec.machineID)
+			log.Debugf("rescheduling unit %s to machine %s", replacedUnit, dec.machineID)
+
+			clust.schedule(j.Name, j.TargetMachineID)
+			log.Debugf("scheduling unit %s to machine %s", j.Name, j.TargetMachineID)
+
+			isRescheduled = true
+		}
+
+		return isRescheduled
+	}
+
+	go func() {
+		defer close(taskchan)
 
 		for _, j := range clust.jobs {
 			if !j.Scheduled() {
 				continue
 			}
 
-			decide := func() (unschedule bool, reason string) {
-				if j.TargetState == job.JobStateInactive {
-					unschedule = true
-					reason = "target state inactive"
-					return
-				}
-
-				as, ok := agents[j.TargetMachineID]
-				if !ok {
-					unschedule = true
-					reason = fmt.Sprintf("target Machine(%s) went away", j.TargetMachineID)
-					metrics.ReportEngineReconcileFailure(metrics.MachineAway)
-					return
-				}
-
-				var able bool
-				var ableReason string
-				if able, ableReason = as.AbleToRun(j); !able {
-					unschedule = true
-					if ableReason == job.JobReschedule {
-						reason = ableReason
-					} else {
-						reason = fmt.Sprintf("target Machine(%s) unable to run unit", j.TargetMachineID)
-						metrics.ReportEngineReconcileFailure(metrics.RunFailure)
-					}
-					return
-				}
-
-				return
+			act, reason := decide(j)
+			if act == job.JobActionReschedule && handle_reschedule(j, reason) {
+				log.Debugf("Job(%s) is rescheduled: %v", j.Name, reason)
+				continue
 			}
 
-			unschedule, reason := decide()
-			if !unschedule {
+			if act != job.JobActionUnschedule {
+				log.Debugf("Job(%s) is not to be unscheduled, reason: %v", j.Name, reason)
+				metrics.ReportEngineReconcileFailure(metrics.ScheduleFailure)
 				continue
 			}
 
 			if !send(taskTypeUnscheduleUnit, reason, j.Name, j.TargetMachineID) {
+				log.Infof("Job(%s) send failed.", j.Name)
+				metrics.ReportEngineReconcileFailure(metrics.ScheduleFailure)
 				return
 			}
 
+			log.Debugf("Job(%s) unscheduling.", j.Name)
 			clust.unschedule(j.Name)
 		}
 

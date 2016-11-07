@@ -28,6 +28,7 @@ type decision struct {
 
 type Scheduler interface {
 	Decide(*clusterState, *job.Job) (*decision, error)
+	DecideReschedule(*clusterState, *job.Job) (*decision, error)
 }
 
 type leastLoadedScheduler struct{}
@@ -41,7 +42,7 @@ func (lls *leastLoadedScheduler) Decide(clust *clusterState, j *job.Job) (*decis
 
 	var target *agent.AgentState
 	for _, as := range agents {
-		if able, _ := as.AbleToRun(j); !able {
+		if act, _ := as.AbleToRun(j); act == job.JobActionUnschedule {
 			continue
 		}
 
@@ -51,6 +52,42 @@ func (lls *leastLoadedScheduler) Decide(clust *clusterState, j *job.Job) (*decis
 	}
 
 	if target == nil {
+		return nil, fmt.Errorf("no agents able to run job")
+	}
+
+	dec := decision{
+		machineID: target.MState.ID,
+	}
+
+	return &dec, nil
+}
+
+// DecideReschedule() decides scheduling in a much simpler way than
+// Decide(). It just tries to find out another free machine to be scheduled,
+// except for the current target machine. It does not have to run
+// as.AbleToRun(), because its job action must have been already decided
+// before getting into the function.
+func (lls *leastLoadedScheduler) DecideReschedule(clust *clusterState, j *job.Job) (*decision, error) {
+	agents := lls.sortedAgents(clust)
+
+	if len(agents) == 0 {
+		return nil, fmt.Errorf("zero agents available")
+	}
+
+	found := false
+	var target *agent.AgentState
+	for _, as := range agents {
+		if as.MState.ID == j.TargetMachineID {
+			continue
+		}
+
+		as := as
+		target = as
+		found = true
+		break
+	}
+
+	if !found {
 		return nil, fmt.Errorf("no agents able to run job")
 	}
 

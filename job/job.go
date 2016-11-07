@@ -23,13 +23,16 @@ import (
 )
 
 type JobState string
+type JobAction string
 
 const (
 	JobStateInactive = JobState("inactive")
 	JobStateLoaded   = JobState("loaded")
 	JobStateLaunched = JobState("launched")
 
-	JobReschedule = "jobreschedule"
+	JobActionSchedule   = JobAction("job_action_schedule")
+	JobActionUnschedule = JobAction("job_action_unschedule")
+	JobActionReschedule = JobAction("job_action_reschedule")
 )
 
 // fleet-specific unit file requirement keys.

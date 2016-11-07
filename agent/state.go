@@ -124,15 +124,15 @@ func globMatches(pattern, target string) bool {
 //   - Agent must have all required Peers of the Job scheduled locally (if any)
 //   - Job must not conflict with any other Units scheduled to the agent
 //   - Job must specially handle replaced units to be rescheduled
-func (as *AgentState) AbleToRun(j *job.Job) (bool, string) {
+func (as *AgentState) AbleToRun(j *job.Job) (jobAction job.JobAction, errstr string) {
 	if tgt, ok := j.RequiredTarget(); ok && !as.MState.MatchID(tgt) {
-		return false, fmt.Sprintf("agent ID %q does not match required %q", as.MState.ID, tgt)
+		return job.JobActionUnschedule, fmt.Sprintf("agent ID %q does not match required %q", as.MState.ID, tgt)
 	}
 
 	metadata := j.RequiredTargetMetadata()
 	if len(metadata) != 0 {
 		if !machine.HasMetadata(as.MState, metadata) {
-			return false, "local Machine metadata insufficient"
+			return job.JobActionUnschedule, "local Machine metadata insufficient"
 		}
 	}
 
@@ -140,20 +140,27 @@ func (as *AgentState) AbleToRun(j *job.Job) (bool, string) {
 	if len(peers) != 0 {
 		for _, peer := range peers {
 			if !as.unitScheduled(peer) {
-				return false, fmt.Sprintf("required peer Unit(%s) is not scheduled locally", peer)
+				return job.JobActionUnschedule, fmt.Sprintf("required peer Unit(%s) is not scheduled locally", peer)
 			}
 		}
 	}
 
 	if cExists, cJobName := as.HasConflict(j.Name, j.Conflicts()); cExists {
-		return false, fmt.Sprintf("found conflict with locally-scheduled Unit(%s)", cJobName)
+		return job.JobActionUnschedule, fmt.Sprintf("found conflict with locally-scheduled Unit(%s)", cJobName)
 	}
 
-	// Handle Replace option specially, by returning a special string
-	// "jobreschedule" as reason.
-	if cExists, _ := as.hasReplace(j.Name, j.Replaces()); cExists {
-		return false, job.JobReschedule
+	// Handle Replace option specially for rescheduling the unit
+	if cExists, cJobName := as.hasReplace(j.Name, j.Replaces()); cExists {
+		return job.JobActionReschedule, fmt.Sprintf("found replace with locally-scheduled Unit(%s)", cJobName)
 	}
 
-	return true, ""
+	return job.JobActionSchedule, ""
+}
+
+func (as *AgentState) GetReplacedUnit(j *job.Job) (string, error) {
+	cExists, replaced := as.hasReplace(j.Name, j.Replaces())
+	if !cExists {
+		return "", fmt.Errorf("cannot find units to be replaced for Unit(%s)", j.Name)
+	}
+	return replaced, nil
 }
