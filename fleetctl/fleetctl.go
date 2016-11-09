@@ -1006,63 +1006,64 @@ func waitForUnitStates(units []string, js job.JobState, maxAttempts int, out io.
 func checkUnitState(name string, js job.JobState, maxAttempts int, out io.Writer, wg *sync.WaitGroup, errchan chan error) {
 	defer wg.Done()
 
-	sleep := defaultSleepTime
-
 	if maxAttempts < 1 {
 		for {
 			if assertUnitState(name, js, out) {
 				return
 			}
-			time.Sleep(sleep)
 		}
 	} else {
 		for attempt := 0; attempt < maxAttempts; attempt++ {
 			if assertUnitState(name, js, out) {
 				return
 			}
-			time.Sleep(sleep)
 		}
 		errchan <- fmt.Errorf("timed out waiting for unit %s to report state %s", name, js)
 	}
 }
 
-func assertUnitState(name string, js job.JobState, out io.Writer) (ret bool) {
-	var state string
+func assertUnitState(name string, js job.JobState, out io.Writer) bool {
+	fetchUnitState := func() error {
+		var state string
 
-	u, err := cAPI.Unit(name)
-	if err != nil {
-		log.Warningf("Error retrieving Unit(%s) from Registry: %v", name, err)
-		return
-	}
-	if u == nil {
-		log.Warningf("Unit %s not found", name)
-		return
-	}
-
-	// If this is a global unit, CurrentState will never be set. Instead, wait for DesiredState.
-	if suToGlobal(*u) {
-		state = u.DesiredState
-	} else {
-		state = u.CurrentState
-	}
-
-	if job.JobState(state) != js {
-		log.Debugf("Waiting for Unit(%s) state(%s) to be %s", name, job.JobState(state), js)
-		return
-	}
-
-	ret = true
-	msg := fmt.Sprintf("Unit %s %s", name, u.CurrentState)
-
-	if u.MachineID != "" {
-		ms := cachedMachineState(u.MachineID)
-		if ms != nil {
-			msg = fmt.Sprintf("%s on %s", msg, machineFullLegend(*ms, false))
+		u, err := cAPI.Unit(name)
+		if err != nil {
+			return fmt.Errorf("Error retrieving Unit(%s) from Registry: %v", name, err)
 		}
+		if u == nil {
+			return fmt.Errorf("Unit %s not found", name)
+		}
+
+		// If this is a global unit, CurrentState will never be set. Instead, wait for DesiredState.
+		if suToGlobal(*u) {
+			state = u.DesiredState
+		} else {
+			state = u.CurrentState
+		}
+
+		if job.JobState(state) != js {
+			return fmt.Errorf("Waiting for Unit(%s) state(%s) to be %s", name, job.JobState(state), js)
+		}
+
+		msg := fmt.Sprintf("Unit %s %s", name, u.CurrentState)
+
+		if u.MachineID != "" {
+			ms := cachedMachineState(u.MachineID)
+			if ms != nil {
+				msg = fmt.Sprintf("%s on %s", msg, machineFullLegend(*ms, false))
+			}
+		}
+
+		fmt.Fprintln(out, msg)
+		return nil
+	}
+	timeout, err := waitForState(fetchUnitState)
+	if err != nil {
+		log.Errorf("Failed to find unit %s within %v, err: %v", name, timeout, err)
+		return false
 	}
 
-	fmt.Fprintln(out, msg)
-	return
+	return true
 }
 
 // tryWaitForSystemdActiveState tries to wait for systemd units to reach an
