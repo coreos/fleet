@@ -64,7 +64,7 @@ recommended to upgrade fleetctl to prevent incompatibility issues.
 	clientDriverEtcd = "etcd"
 
 	defaultEndpoint  = "unix:///var/run/fleet.sock"
-	defaultSleepTime = 500 * time.Millisecond
+	defaultSleepTime = 2000 * time.Millisecond
 )
 
 var (
@@ -1116,7 +1116,7 @@ func checkSystemdActiveState(name string, maxAttempts int, wg *sync.WaitGroup, e
 	}
 
 	for attempt := 0; attempt < maxAttempts; attempt++ {
-		if err := assertFetchSystemdActiveState(name); err == nil {
+		if err := assertSystemdActiveState(name); err == nil {
 			return
 		} else {
 			errchan <- err
@@ -1128,29 +1128,29 @@ func checkSystemdActiveState(name string, maxAttempts int, wg *sync.WaitGroup, e
 	}
 }
 
-func assertFetchSystemdActiveState(name string) error {
-	if err := assertSystemdActiveState(name); err == nil {
+// assertSystemdActiveState determines if a given systemd unit is actually
+// in the active state, making use of cAPI.
+// It repeatedly checks up to defaultSleepTimeout. If ActiveState of the given
+// unit is active and LoadState of the given unit is loaded.
+// If it cannot get the expected states within the period, return error.
+func assertSystemdActiveState(unitName string) error {
+	fetchSystemdActiveState := func() error {
+		us, err := cAPI.UnitState(unitName)
+		if err != nil {
+			return fmt.Errorf("Error getting unit state of %s: %v", unitName, err)
+		}
+
+		// Get systemd state and check the state is active & loaded.
+		if us.SystemdActiveState != "active" || us.SystemdLoadState != "loaded" {
+			return fmt.Errorf("Failed to find an active unit %s", unitName)
+		}
 		return nil
 	}
-	time.Sleep(defaultSleepTime)
-	if _, err := cAPI.UnitState(name); err != nil {
-		return err
-	}
-	return nil
-}
 
-// assertSystemdActiveState determines if a given systemd unit is actually
-// in the active state, making use of cAPI. It returns true if ActiveState
-// of the given unit is active and LoadState of the given unit is loaded.
-func assertSystemdActiveState(unitName string) error {
-	us, err := cAPI.UnitState(unitName)
+	timeout, err := waitForState(fetchSystemdActiveState)
 	if err != nil {
-		return fmt.Errorf("Error retrieving list of units: %v", err)
-	}
-
-	// Get systemd state and check the state is active & loaded.
-	if us.SystemdActiveState != "active" || us.SystemdLoadState != "loaded" {
-		return fmt.Errorf("Failed to find an active unit %s", unitName)
+		return fmt.Errorf("Failed to find an active unit %s within %v, err: %v",
+			unitName, timeout, err)
 	}
 
 	return nil
@@ -1219,5 +1219,28 @@ func runWrapper(cf func(cCmd *cobra.Command, args []string) (exit int)) func(cCm
 	return func(cCmd *cobra.Command, args []string) {
 		cAPI = getClientAPI(cCmd)
 		cmdExitCode = cf(cCmd, args)
+	}
+}
+
+// waitForState is a generic helper for repeatedly checking the status.
+// It gets a generic function stateCheckFunc() to be checked, which returns
+// nil on success, error otherwise. In case of failure, waitForState
+// retries to run stateCheckFunc, once in 250 msec, up to defaultSleepTime.
+func waitForState(stateCheckFunc func() error) (time.Duration, error) {
+	timeout := defaultSleepTime
+	alarm := time.After(timeout)
+	ticker := time.Tick(250 * time.Millisecond)
+
+	for {
+		select {
+		case <-alarm:
+			return timeout, fmt.Errorf("Failed to fetch systemd active states within %v", timeout)
+		case <-ticker:
+			err := stateCheckFunc()
+			if err == nil {
+				return timeout, nil
+			}
+			log.Debug("Retrying assertion of systemd active states. err: %v", err)
+		}
 	}
 }
