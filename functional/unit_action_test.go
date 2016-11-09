@@ -307,8 +307,8 @@ func TestUnitStatus(t *testing.T) {
 	stdout, stderr, err = cluster.Fleetctl(m,
 		"--strict-host-key-checking=false", "status", path.Base(unitFile))
 	if !strings.Contains(stdout, "Loaded: loaded") {
-		t.Errorf("Could not find expected string in status output:\n%s\nstderr:\n%s",
-			stdout, stderr)
+		t.Errorf("Could not find expected string in status output:\nstdout: %s\nstderr:\nerr: %s",
+			stdout, stderr, err)
 	}
 }
 
@@ -345,12 +345,12 @@ func TestListUnitFilesOrder(t *testing.T) {
 	// make sure that all unit files will show up
 	_, err = cluster.WaitForNUnitFiles(m, 20)
 	if err != nil {
-		t.Fatal("Failed to run list-unit-files: %v", err)
+		t.Fatalf("Failed to run list-unit-files: %v", err)
 	}
 
 	stdout, stderr, err := cluster.Fleetctl(m, "list-unit-files", "--no-legend", "--fields", "unit")
 	if err != nil {
-		t.Fatal("Failed to run list-unit-files:\nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)
+		t.Fatalf("Failed to run list-unit-files:\nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)
 	}
 
 	outUnits := strings.Split(strings.TrimSpace(stdout), "\n")
@@ -607,13 +607,13 @@ func checkListUnits(cl platform.Cluster, m platform.Member, cmd string, ufs []st
 
 		if cmd == "start" {
 			// Check expected systemd state after starting units
-			stdout, _ := cl.MemberCommand(m, "systemctl", "show", "--property=ActiveState", ufs[i])
+			stdout, stderr, err := cl.MemberCommand(m, "systemctl", "show", "--property=ActiveState", ufs[i])
 			if strings.TrimSpace(stdout) != "ActiveState=active" {
-				return fmt.Errorf("Fleet unit not reported as active: %s", stdout)
+				return fmt.Errorf("Fleet unit not reported as active:\nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)
 			}
-			stdout, _ = cl.MemberCommand(m, "systemctl", "show", "--property=Result", ufs[i])
+			stdout, stderr, err = cl.MemberCommand(m, "systemctl", "show", "--property=Result", ufs[i])
 			if strings.TrimSpace(stdout) != "Result=success" {
-				return fmt.Errorf("Result for fleet unit not reported as success: %s", stdout)
+				return fmt.Errorf("Result for fleet unit not reported as success:\nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)
 			}
 		}
 	}
