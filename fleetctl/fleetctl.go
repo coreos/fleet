@@ -64,7 +64,7 @@ recommended to upgrade fleetctl to prevent incompatibility issues.
 	clientDriverEtcd = "etcd"
 
 	defaultEndpoint  = "unix:///var/run/fleet.sock"
-	defaultSleepTime = 500 * time.Millisecond
+	defaultSleepTime = 2000 * time.Millisecond
 )
 
 var (
@@ -175,12 +175,6 @@ type Command struct {
 
 	Run func(args []string) int // Run a command with the given arguments, return exit status
 
-}
-
-type suState struct {
-	LoadState   string
-	ActiveState string
-	SubState    string
 }
 
 func getFlags(flagset *flag.FlagSet) (flags []*flag.Flag) {
@@ -1012,63 +1006,64 @@ func waitForUnitStates(units []string, js job.JobState, maxAttempts int, out io.
 func checkUnitState(name string, js job.JobState, maxAttempts int, out io.Writer, wg *sync.WaitGroup, errchan chan error) {
 	defer wg.Done()
 
-	sleep := defaultSleepTime
-
 	if maxAttempts < 1 {
 		for {
 			if assertUnitState(name, js, out) {
 				return
 			}
-			time.Sleep(sleep)
 		}
 	} else {
 		for attempt := 0; attempt < maxAttempts; attempt++ {
 			if assertUnitState(name, js, out) {
 				return
 			}
-			time.Sleep(sleep)
 		}
 		errchan <- fmt.Errorf("timed out waiting for unit %s to report state %s", name, js)
 	}
 }
 
-func assertUnitState(name string, js job.JobState, out io.Writer) (ret bool) {
-	var state string
+func assertUnitState(name string, js job.JobState, out io.Writer) bool {
+	fetchUnitState := func() error {
+		var state string
 
-	u, err := cAPI.Unit(name)
-	if err != nil {
-		log.Warningf("Error retrieving Unit(%s) from Registry: %v", name, err)
-		return
-	}
-	if u == nil {
-		log.Warningf("Unit %s not found", name)
-		return
-	}
-
-	// If this is a global unit, CurrentState will never be set. Instead, wait for DesiredState.
-	if suToGlobal(*u) {
-		state = u.DesiredState
-	} else {
-		state = u.CurrentState
-	}
-
-	if job.JobState(state) != js {
-		log.Debugf("Waiting for Unit(%s) state(%s) to be %s", name, job.JobState(state), js)
-		return
-	}
-
-	ret = true
-	msg := fmt.Sprintf("Unit %s %s", name, u.CurrentState)
-
-	if u.MachineID != "" {
-		ms := cachedMachineState(u.MachineID)
-		if ms != nil {
-			msg = fmt.Sprintf("%s on %s", msg, machineFullLegend(*ms, false))
+		u, err := cAPI.Unit(name)
+		if err != nil {
+			return fmt.Errorf("Error retrieving Unit(%s) from Registry: %v", name, err)
 		}
+		if u == nil {
+			return fmt.Errorf("Unit %s not found", name)
+		}
+
+		// If this is a global unit, CurrentState will never be set. Instead, wait for DesiredState.
+		if suToGlobal(*u) {
+			state = u.DesiredState
+		} else {
+			state = u.CurrentState
+		}
+
+		if job.JobState(state) != js {
+			return fmt.Errorf("Waiting for Unit(%s) state(%s) to be %s", name, job.JobState(state), js)
+		}
+
+		msg := fmt.Sprintf("Unit %s %s", name, u.CurrentState)
+
+		if u.MachineID != "" {
+			ms := cachedMachineState(u.MachineID)
+			if ms != nil {
+				msg = fmt.Sprintf("%s on %s", msg, machineFullLegend(*ms, false))
+			}
+		}
+
+		fmt.Fprintln(out, msg)
+		return nil
+	}
+	timeout, err := waitForState(fetchUnitState)
+	if err != nil {
+		log.Errorf("Failed to find unit %s within %v, err: %v", name, timeout, err)
+		return false
 	}
 
-	fmt.Fprintln(out, msg)
-	return
+	return true
 }
 
 // tryWaitForSystemdActiveState tries to wait for systemd units to reach an
@@ -1095,17 +1090,11 @@ func tryWaitForSystemdActiveState(units []string, maxAttempts int) (err error) {
 // waitForSystemdActiveState tries to assert that the given unit becomes
 // active, making use of multiple goroutines that check unit states.
 func waitForSystemdActiveState(units []string, maxAttempts int) (errch chan error) {
-	apiStates, err := cAPI.UnitStates()
-	if err != nil {
-		errch <- fmt.Errorf("Error retrieving list of units: %v", err)
-		return
-	}
-
 	errchan := make(chan error)
 	var wg sync.WaitGroup
 	for _, name := range units {
 		wg.Add(1)
-		go checkSystemdActiveState(apiStates, name, maxAttempts, &wg, errchan)
+		go checkSystemdActiveState(name, maxAttempts, &wg, errchan)
 	}
 
 	go func() {
@@ -1116,7 +1105,7 @@ func waitForSystemdActiveState(units []string, maxAttempts int) (errch chan erro
 	return errchan
 }
 
-func checkSystemdActiveState(apiStates []*schema.UnitState, name string, maxAttempts int, wg *sync.WaitGroup, errchan chan error) {
+func checkSystemdActiveState(name string, maxAttempts int, wg *sync.WaitGroup, errchan chan error) {
 	defer wg.Done()
 
 	// "isInf == true" means "blocking forever until it succeeded".
@@ -1128,7 +1117,7 @@ func checkSystemdActiveState(apiStates []*schema.UnitState, name string, maxAtte
 	}
 
 	for attempt := 0; attempt < maxAttempts; attempt++ {
-		if err := assertFetchSystemdActiveState(apiStates, name); err == nil {
+		if err := assertSystemdActiveState(name); err == nil {
 			return
 		} else {
 			errchan <- err
@@ -1140,62 +1129,32 @@ func checkSystemdActiveState(apiStates []*schema.UnitState, name string, maxAtte
 	}
 }
 
-func assertFetchSystemdActiveState(apiStates []*schema.UnitState, name string) error {
-	if err := assertSystemdActiveState(apiStates, name); err == nil {
+// assertSystemdActiveState determines if a given systemd unit is actually
+// in the active state, making use of cAPI.
+// It repeatedly checks up to defaultSleepTimeout. If ActiveState of the given
+// unit is active and LoadState of the given unit is loaded.
+// If it cannot get the expected states within the period, return error.
+func assertSystemdActiveState(unitName string) error {
+	fetchSystemdActiveState := func() error {
+		us, err := cAPI.UnitState(unitName)
+		if err != nil {
+			return fmt.Errorf("Error getting unit state of %s: %v", unitName, err)
+		}
+
+		// Get systemd state and check the state is active & loaded.
+		if us.SystemdActiveState != "active" || us.SystemdLoadState != "loaded" {
+			return fmt.Errorf("Failed to find an active unit %s", unitName)
+		}
 		return nil
 	}
 
-	// If the assertion failed, we again need to get unit states via cAPI,
-	// to retry the assertion repeatedly.
-	//
-	// NOTE: Ideally we should be able to fetch the state only for a single
-	// unit. However, we cannot do that for now, because cAPI.UnitState()
-	// is not available. In the future we need to implement cAPI.UnitState()
-	// and all dependendent parts all over the tree in fleet, (schema,
-	// etcdRegistry, rpcRegistry, etc) to replace UnitStates() in this place
-	// with the new method UnitState(). In practice, calling UnitStates() here
-	// is not as badly inefficient as it looks, because it will be anyway
-	// rarely called only when the assertion failed. - dpark 20160907
-
-	time.Sleep(defaultSleepTime)
-
-	var errU error
-	apiStates, errU = cAPI.UnitStates()
-	if errU != nil {
-		return fmt.Errorf("Error retrieving list of units: %v", errU)
-	}
-	return nil
-}
-
-// assertSystemdActiveState determines if a given systemd unit is actually
-// in the active state, making use of cAPI
-func assertSystemdActiveState(apiStates []*schema.UnitState, unitName string) error {
-	uState, err := getSingleUnitState(apiStates, unitName)
+	timeout, err := waitForState(fetchSystemdActiveState)
 	if err != nil {
-		return err
-	}
-
-	// Get systemd state and check the state is active & loaded.
-	if uState.ActiveState != "active" || uState.LoadState != "loaded" {
-		return fmt.Errorf("Failed to find an active unit %s", unitName)
+		return fmt.Errorf("Failed to find an active unit %s within %v, err: %v",
+			unitName, timeout, err)
 	}
 
 	return nil
-}
-
-// getSingleUnitState returns a single uState of type suState, which consists
-// of necessary systemd states, only for a given unit name.
-func getSingleUnitState(apiStates []*schema.UnitState, unitName string) (suState, error) {
-	for _, us := range apiStates {
-		if us.Name == unitName {
-			return suState{
-				us.SystemdLoadState,
-				us.SystemdActiveState,
-				us.SystemdSubState,
-			}, nil
-		}
-	}
-	return suState{}, fmt.Errorf("unit %s not found", unitName)
 }
 
 func machineState(machID string) (*machine.MachineState, error) {
@@ -1261,5 +1220,28 @@ func runWrapper(cf func(cCmd *cobra.Command, args []string) (exit int)) func(cCm
 	return func(cCmd *cobra.Command, args []string) {
 		cAPI = getClientAPI(cCmd)
 		cmdExitCode = cf(cCmd, args)
+	}
+}
+
+// waitForState is a generic helper for repeatedly checking the status.
+// It gets a generic function stateCheckFunc() to be checked, which returns
+// nil on success, error otherwise. In case of failure, waitForState
+// retries to run stateCheckFunc, once in 250 msec, up to defaultSleepTime.
+func waitForState(stateCheckFunc func() error) (time.Duration, error) {
+	timeout := defaultSleepTime
+	alarm := time.After(timeout)
+	ticker := time.Tick(250 * time.Millisecond)
+
+	for {
+		select {
+		case <-alarm:
+			return timeout, fmt.Errorf("Failed to fetch systemd active states within %v", timeout)
+		case <-ticker:
+			err := stateCheckFunc()
+			if err == nil {
+				return timeout, nil
+			}
+			log.Debug("Retrying assertion of systemd active states. err: %v", err)
+		}
 	}
 }

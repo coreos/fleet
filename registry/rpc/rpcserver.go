@@ -195,6 +195,16 @@ func (s *rpcserver) GetUnits(ctx context.Context, filter *pb.UnitFilter) (*pb.Un
 	return &pb.Units{Units: units}, nil
 }
 
+func (s *rpcserver) GetUnitState(ctx context.Context, name *pb.UnitName) (*pb.UnitState, error) {
+	if debugRPCServer {
+		defer debug.Exit_(debug.Enter_(name.Name))
+	}
+
+	state := s.localRegistry.UnitState(name.Name)
+
+	return state, nil
+}
+
 func (s *rpcserver) GetUnitStates(ctx context.Context, filter *pb.UnitStateFilter) (*pb.UnitStates, error) {
 	if debugRPCServer {
 		defer debug.Exit_(debug.Enter_())

@@ -15,6 +15,7 @@ service Registry {
 	rpc GetUnit(UnitName) returns (MaybeUnit);
 	rpc GetUnits(UnitFilter) returns (Units); // => global status ?
 	// global status <= pretty much like list-unit-files
+	rpc GetUnitState(UnitName) returns (UnitState);
 	rpc GetUnitStates(UnitStateFilter) returns (UnitStates);
 	rpc ClearUnitHeartbeat(UnitName) returns (GenericReply);
 	rpc CreateUnit(Unit) returns (GenericReply);

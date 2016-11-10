@@ -236,6 +236,78 @@ func (c *MachinesListCall) Do() (*MachinePage, error) {
 
 }
 
+// method id "fleet.UnitState.Get":
+
+type UnitStateGetCall struct {
+	s        *Service
+	unitName string
+	opt_     map[string]interface{}
+}
+
+// Get: Retrieve a page of a single UnitState object.
+func (r *UnitStateService) Get(unitName string) *UnitStateGetCall {
+	c := &UnitStateGetCall{s: r.s, opt_: make(map[string]interface{})}
+	c.unitName = unitName
+	return c
+}
+
+// Fields allows partial responses to be retrieved.
+// See https://developers.google.com/gdata/docs/2.0/basics#PartialResponse
+// for more information.
+func (c *UnitStateGetCall) Fields(s ...googleapi.Field) *UnitStateGetCall {
+	c.opt_["fields"] = googleapi.CombineFields(s)
+	return c
+}
+
+func (c *UnitStateGetCall) Do() (*UnitState, error) {
+	var body io.Reader = nil
+	params := make(url.Values)
+	params.Set("alt", "json")
+	if v, ok := c.opt_["fields"]; ok {
+		params.Set("fields", fmt.Sprintf("%v", v))
+	}
+	urls := googleapi.ResolveRelative(c.s.BasePath, "state/{unitName}")
+	urls += "?" + params.Encode()
+	req, _ := http.NewRequest("GET", urls, body)
+	googleapi.Expand(req.URL, map[string]string{
+		"unitName": c.unitName,
+	})
+	req.Header.Set("User-Agent", "google-api-go-client/0.5")
+	res, err := c.s.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer googleapi.CloseBody(res)
+	if err := googleapi.CheckResponse(res); err != nil {
+		return nil, err
+	}
+	var ret *UnitState
+	if err := json.NewDecoder(res.Body).Decode(&ret); err != nil {
+		return nil, err
+	}
+	return ret, nil
+	// {
+	//   "description": "Retrieve a page of a single UnitState object.",
+	//   "httpMethod": "GET",
+	//   "id": "fleet.UnitState.Get",
+	//   "parameterOrder": [
+	//     "unitName"
+	//   ],
+	//   "parameters": {
+	//     "unitName": {
+	//       "location": "path",
+	//       "required": true,
+	//       "type": "string"
+	//     }
+	//   },
+	//   "path": "state/{unitName}",
+	//   "response": {
+	//     "$ref": "UnitState"
+	//   }
+	// }
+
+}
+
 // method id "fleet.UnitState.List":
 
 type UnitStateListCall struct {

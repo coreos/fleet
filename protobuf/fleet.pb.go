@@ -1592,6 +1592,7 @@ type RegistryClient interface {
 	GetUnit(ctx context.Context, in *UnitName, opts ...grpc.CallOption) (*MaybeUnit, error)
 	GetUnits(ctx context.Context, in *UnitFilter, opts ...grpc.CallOption) (*Units, error)
 	// global status <= pretty much like list-unit-files
+	GetUnitState(ctx context.Context, in *UnitName, opts ...grpc.CallOption) (*UnitState, error)
 	GetUnitStates(ctx context.Context, in *UnitStateFilter, opts ...grpc.CallOption) (*UnitStates, error)
 	ClearUnitHeartbeat(ctx context.Context, in *UnitName, opts ...grpc.CallOption) (*GenericReply, error)
 	CreateUnit(ctx context.Context, in *Unit, opts ...grpc.CallOption) (*GenericReply, error)
@@ -1646,6 +1647,15 @@ func (c *registryClient) GetUnit(ctx context.Context, in *UnitName, opts ...grpc
 func (c *registryClient) GetUnits(ctx context.Context, in *UnitFilter, opts ...grpc.CallOption) (*Units, error) {
 	out := new(Units)
 	err := grpc.Invoke(ctx, "/rpc.Registry/GetUnits", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *registryClient) GetUnitState(ctx context.Context, in *UnitName, opts ...grpc.CallOption) (*UnitState, error) {
+	out := new(UnitState)
+	err := grpc.Invoke(ctx, "/rpc.Registry/GetUnitState", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1794,6 +1804,7 @@ type RegistryServer interface {
 	GetUnit(context.Context, *UnitName) (*MaybeUnit, error)
 	GetUnits(context.Context, *UnitFilter) (*Units, error)
 	// global status <= pretty much like list-unit-files
+	GetUnitState(context.Context, *UnitName) (*UnitState, error)
 	GetUnitStates(context.Context, *UnitStateFilter) (*UnitStates, error)
 	ClearUnitHeartbeat(context.Context, *UnitName) (*GenericReply, error)
 	CreateUnit(context.Context, *Unit) (*GenericReply, error)
@@ -1856,6 +1867,18 @@ func _Registry_GetUnits_Handler(srv interface{}, ctx context.Context, dec func(i
 		return nil, err
 	}
 	out, err := srv.(RegistryServer).GetUnits(ctx, in)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func _Registry_GetUnitState_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+	in := new(UnitName)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	out, err := srv.(RegistryServer).GetUnitState(ctx, in)
 	if err != nil {
 		return nil, err
 	}
@@ -2034,6 +2057,10 @@ var _Registry_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetUnits",
 			Handler:    _Registry_GetUnits_Handler,
+		},
+		{
+			MethodName: "GetUnitState",
+			Handler:    _Registry_GetUnitState_Handler,
 		},
 		{
 			MethodName: "GetUnitStates",

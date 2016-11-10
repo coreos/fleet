@@ -338,6 +338,26 @@ func (r *RPCRegistry) Units() ([]job.Unit, error) {
 	return jobUnits, nil
 }
 
+func (r *RPCRegistry) UnitState(unitName string) (*unit.UnitState, error) {
+	if DebugRPCRegistry {
+		defer debug.Exit_(debug.Enter_(unitName))
+	}
+
+	state, err := r.getClient().GetUnitState(r.ctx(), &pb.UnitName{unitName})
+	if err != nil {
+		return nil, err
+	}
+
+	return &unit.UnitState{
+		UnitName:    state.Name,
+		MachineID:   state.MachineID,
+		UnitHash:    state.Hash,
+		LoadState:   state.LoadState,
+		ActiveState: state.ActiveState,
+		SubState:    state.SubState,
+	}, nil
+}
+
 func (r *RPCRegistry) UnitStates() ([]*unit.UnitState, error) {
 	if DebugRPCRegistry {
 		defer debug.Exit_(debug.Enter_())

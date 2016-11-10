@@ -86,6 +86,15 @@ func (rc *RegistryClient) CreateUnit(u *schema.Unit) error {
 	return rc.Registry.CreateUnit(&rUnit)
 }
 
+func (rc *RegistryClient) UnitState(name string) (*schema.UnitState, error) {
+	rUnitState, err := rc.Registry.UnitState(name)
+	if err != nil {
+		return nil, err
+	}
+
+	return schema.MapUnitStateToSchemaUnitState(rUnitState), nil
+}
+
 func (rc *RegistryClient) UnitStates() ([]*schema.UnitState, error) {
 	rUnitStates, err := rc.Registry.UnitStates()
 	if err != nil {

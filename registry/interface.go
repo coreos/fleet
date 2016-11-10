@@ -49,6 +49,7 @@ type UnitRegistry interface {
 	ScheduledUnit(name string) (*job.ScheduledUnit, error)
 	Unit(name string) (*job.Unit, error)
 	Units() ([]job.Unit, error)
+	UnitState(name string) (*unit.UnitState, error)
 	UnitStates() ([]*unit.UnitState, error)
 }
 

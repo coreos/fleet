@@ -122,3 +122,54 @@ Description = Foo
 		t.Fatalf("unexpected amount of unit states in the in-memory registry got %d expected 1", len(inmemoryRegistry.UnitStates()))
 	}
 }
+
+func TestInMemoryUnitState(t *testing.T) {
+	inmemoryRegistry := newInmemoryRegistry()
+
+	scheduleUnit := &pb.ScheduledUnit{
+		Name:         "foo",
+		CurrentState: pb.TargetState_INACTIVE,
+		MachineID:    "machine1",
+	}
+	inmemoryRegistry.scheduledUnits[scheduleUnit.Name] = *scheduleUnit
+	contents := `
+[Unit]
+Description = Foo
+`
+	unitFile, err := unit.NewUnitFile(contents)
+	if err != nil {
+		t.Fatalf("unexpected error parsing unit %q: %v", contents, err)
+	}
+	unit := &pb.Unit{
+		Name:         "foo",
+		Unit:         unitFile.ToPB(),
+		DesiredState: pb.TargetState_LOADED,
+	}
+	machineID := "testMachine"
+	ttl := 2 * time.Second
+	inmemoryRegistry.CreateUnit(unit)
+	inmemoryRegistry.ScheduleUnit(unit.Name, machineID)
+
+	stateLoaded := &pb.UnitState{
+		Name:        unit.Name,
+		Hash:        "heh",
+		LoadState:   "active",
+		ActiveState: "loaded",
+		SubState:    "active",
+		MachineID:   machineID,
+	}
+
+	inmemoryRegistry.SaveUnitState(unit.Name, stateLoaded, ttl)
+	if !inmemoryRegistry.isUnitLoaded(unit.Name, machineID) {
+		u, ok := inmemoryRegistry.Unit(unit.Name)
+		if !ok {
+			t.Fatalf("unexpected error unit not found %s", unit.Name)
+		}
+		t.Fatalf("unexpected error unit expected to be loaded %v", u)
+	}
+
+	resUs := inmemoryRegistry.UnitState(unit.Name)
+	if resUs == nil || len(resUs.Name) == 0 {
+		t.Fatal("Invalid unit state in the in-memory registry")
+	}
+}

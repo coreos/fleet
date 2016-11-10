@@ -24,6 +24,7 @@ type API interface {
 
 	Unit(string) (*schema.Unit, error)
 	Units() ([]*schema.Unit, error)
+	UnitState(string) (*schema.UnitState, error)
 	UnitStates() ([]*schema.UnitState, error)
 
 	SetUnitTargetState(name, target string) error

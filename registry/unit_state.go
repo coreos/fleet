@@ -53,6 +53,18 @@ func (r *EtcdRegistry) unitStatePath(machID, jobName string) string {
 	return path.Join(r.unitStatesNamespace(jobName), machID)
 }
 
+// UnitState returns a single UnitState stored in the registry for a given unit
+// name.
+func (r *EtcdRegistry) UnitState(name string) (state *unit.UnitState, err error) {
+	var us *unit.UnitState
+	us, err = r.stateByMUSKey(name)
+	if err != nil {
+		return nil, err
+	}
+
+	return us, nil
+}
+
 // UnitStates returns a list of all UnitStates stored in the registry, sorted
 // by unit name and then machine ID.
 func (r *EtcdRegistry) UnitStates() (states []*unit.UnitState, err error) {
@@ -122,6 +134,42 @@ func (r *EtcdRegistry) statesByMUSKey() (map[MUSKey]*unit.UnitState, error) {
 		}
 	}
 	return mus, nil
+}
+
+// stateByMUSKey returns a single UnitState stored in the registry indexed by MUSKey
+// that matches with the given unit name
+func (r *EtcdRegistry) stateByMUSKey(uName string) (*unit.UnitState, error) {
+	key := r.prefixed(statesPrefix)
+	opts := &etcd.GetOptions{
+		Recursive: true,
+	}
+	res, err := r.kAPI.Get(context.Background(), key, opts)
+	if err != nil && !isEtcdError(err, etcd.ErrorCodeKeyNotFound) {
+		return nil, err
+	}
+	if res == nil {
+		return nil, nil
+	}
+
+	for _, dir := range res.Node.Nodes {
+		_, name := path.Split(dir.Key)
+		if name != uName {
+			continue
+		}
+		for _, node := range dir.Nodes {
+			_, machID := path.Split(node.Key)
+			var usm unitStateModel
+			if err := unmarshal(node.Value, &usm); err != nil {
+				log.Errorf("Error unmarshalling UnitState(%s) from Machine(%s): %v", name, machID, err)
+				continue
+			}
+			us := modelToUnitState(&usm, name)
+			if us != nil {
+				return us, nil
+			}
+		}
+	}
+	return nil, nil
 }
 
 // getUnitState retrieves the current UnitState, if any exists, for the

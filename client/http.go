@@ -117,6 +117,14 @@ func (c *HTTPClient) UnitStates() ([]*schema.UnitState, error) {
 	return states, nil
 }
 
+func (c *HTTPClient) UnitState(name string) (*schema.UnitState, error) {
+	u, err := c.svc.UnitState.Get(name).Do()
+	if err != nil && !is404(err) {
+		return nil, err
+	}
+	return u, nil
+}
+
 func (c *HTTPClient) DestroyUnit(name string) error {
 	return c.svc.Units.Delete(name).Do()
 }
