@@ -313,20 +313,7 @@ func getClientAPI(cCmd *cobra.Command) client.API {
 
 // getClient initializes a client of fleet based on CLI flags
 func getClient(cCmd *cobra.Command) (client.API, error) {
-	// The user explicitly set --experimental-api=false, so it trumps the
-	// --driver flag. This behavior exists for backwards-compatibilty.
-	experimentalAPI, _ := cmdFleet.PersistentFlags().GetBool("experimental-api")
-	endPoint, _ := cmdFleet.PersistentFlags().GetString("endpoint")
 	clientDriver, _ := cmdFleet.PersistentFlags().GetString("driver")
-	if !experimentalAPI {
-		// Additionally, if the user set --experimental-api=false and did
-		// not change the value of --endpoint, they likely want to use the
-		// old default value.
-		if endPoint == defaultEndpoint {
-			endPoint = "http://127.0.0.1:2379,http://127.0.0.1:4001"
-		}
-		return getRegistryClient(cCmd)
-	}
 
 	switch clientDriver {
 	case clientDriverAPI:
@@ -431,6 +418,22 @@ func getHTTPClient(cCmd *cobra.Command) (client.API, error) {
 	return client.NewHTTPClient(&hc, *ep)
 }
 
+func getEndpoint() string {
+	// The user explicitly set --experimental-api=false, so it trumps the
+	// --driver flag. This behavior exists for backwards-compatibilty.
+	experimentalAPI, _ := cmdFleet.PersistentFlags().GetBool("experimental-api")
+	endPoint, _ := cmdFleet.PersistentFlags().GetString("endpoint")
+	if !experimentalAPI {
+		// Additionally, if the user set --experimental-api=false and did
+		// not change the value of --endpoint, they likely want to use the
+		// old default value.
+		if endPoint == defaultEndpoint {
+			endPoint = "http://127.0.0.1:2379,http://127.0.0.1:4001"
+		}
+	}
+	return endPoint
+}
+
 func getRegistryClient(cCmd *cobra.Command) (client.API, error) {
 	var dial func(string, string) (net.Conn, error)
 	SSHUserName, _ := cmdFleet.PersistentFlags().GetString("ssh-username")
@@ -463,9 +466,8 @@ func getRegistryClient(cCmd *cobra.Command) (client.API, error) {
 		TLSClientConfig: tlsConfig,
 	}
 
-	endPoint, _ := cmdFleet.PersistentFlags().GetString("endpoint")
 	eCfg := etcd.Config{
-		Endpoints:               strings.Split(endPoint, ","),
+		Endpoints:               strings.Split(getEndpoint(), ","),
 		Transport:               trans,
 		HeaderTimeoutPerRequest: getRequestTimeoutFlag(cCmd),
 	}
