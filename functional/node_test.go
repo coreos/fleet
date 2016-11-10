@@ -62,8 +62,8 @@ func TestNodeShutdown(t *testing.T) {
 	}
 
 	// Stop the fleet process on the first member
-	if stdout, err = cluster.MemberCommand(m0, "sudo", "systemctl", "stop", "fleet"); err != nil {
-		t.Fatalf("Failed stopping fleet service: %v\nstdout: %s\n", err, stdout)
+	if stdout, stderr, err = cluster.MemberCommand(m0, "sudo", "systemctl", "stop", "fleet"); err != nil {
+		t.Fatalf("Failed stopping fleet service:\nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)
 	}
 
 	// The first member should quickly remove itself from the published
@@ -81,11 +81,10 @@ func TestNodeShutdown(t *testing.T) {
 	// NOTE: In case of no units, systemd v230 or older prints out
 	// "Active: inactive" to stdout, while systemd v231 or newer prints out
 	// "Unit NAME could not be found" to stderr. So we need to check for
-	// both cases. Use MemberCommandStderr() to retrieve both stdout and stderr,
-	// and check for each case.
-	stdout, stderr, err = cluster.MemberCommandStderr(m0, "systemctl", "status", "hello.service")
+	// both cases.
+	stdout, stderr, err = cluster.MemberCommand(m0, "systemctl", "status", "hello.service")
 	if !strings.Contains(stdout, "Active: inactive") && !strings.Contains(stderr, "could not be found") {
-		t.Fatalf("Unit hello.service not reported as inactive:\n%s\n", stdout)
+		t.Fatalf("Unit hello.service not reported as inactive:\nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)
 	}
 }
 
@@ -118,35 +117,35 @@ func TestDetectMachineId(t *testing.T) {
 
 	// Restart fleet service, and check if its systemd status is still active.
 	restartFleetService := func(m platform.Member) error {
-		stdout, err := cluster.MemberCommand(m, "sudo", "systemctl", "restart", "fleet.service")
+		stdout, stderr, err := cluster.MemberCommand(m, "sudo", "systemctl", "restart", "fleet.service")
 		if err != nil {
-			return fmt.Errorf("Failed to restart fleet service\nstdout: %s\nerr: %v", stdout, err)
+			return fmt.Errorf("Failed to restart fleet service\nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)
 		}
 
-		stdout, err = cluster.MemberCommand(m, "systemctl", "show", "--property=ActiveState", "fleet")
+		stdout, stderr, err = cluster.MemberCommand(m, "systemctl", "show", "--property=ActiveState", "fleet")
 		if strings.TrimSpace(stdout) != "ActiveState=active" {
-			return fmt.Errorf("Fleet unit not reported as active:\nstdout:%s\nerr: %v", stdout, err)
+			return fmt.Errorf("Fleet unit not reported as active:\nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)
 		}
-		stdout, err = cluster.MemberCommand(m, "systemctl", "show", "--property=Result", "fleet")
+		stdout, stderr, err = cluster.MemberCommand(m, "systemctl", "show", "--property=Result", "fleet")
 		if strings.TrimSpace(stdout) != "Result=success" {
-			return fmt.Errorf("Result for fleet unit not reported as success:\nstdout:%s\nerr: %v", stdout, err)
+			return fmt.Errorf("Result for fleet unit not reported as success:\nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)
 		}
 		return nil
 	}
 
-	stdout, err := cluster.MemberCommand(m0, "cat", machineIdFile)
+	stdout, stderr, err := cluster.MemberCommand(m0, "cat", machineIdFile)
 	if err != nil {
-		t.Fatalf("Failed to get machine-id\nstdout: %s\nerr: %v", stdout, err)
+		t.Fatalf("Failed to get machine-id\nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)
 	}
 	m0_machine_id := strings.TrimSpace(stdout)
 
 	// If the two machine IDs are different with each other,
 	// set the m1's ID to the same one as m0, to intentionally
 	// trigger an error case of duplication of machine ID.
-	stdout, err = cluster.MemberCommand(m1,
+	stdout, stderr, err = cluster.MemberCommand(m1,
 		"echo", m0_machine_id, "|", "sudo", "tee", machineIdFile)
 	if err != nil {
-		t.Fatalf("Failed to replace machine-id\nstdout: %s\nerr: %v", stdout, err)
+		t.Fatalf("Failed to replace machine-id\nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)
 	}
 
 	if err := restartFleetService(m1); err != nil {
@@ -156,7 +155,7 @@ func TestDetectMachineId(t *testing.T) {
 	// fleetd should actually be running, but failing to list machines.
 	// So we should expect a specific error after running fleetctl list-machines,
 	// like "googlapi: Error 503: fleet server unable to communicate with etcd".
-	stdout, stderr, err := cluster.Fleetctl(m1, "list-machines", "--no-legend")
+	stdout, stderr, err = cluster.Fleetctl(m1, "list-machines", "--no-legend")
 	if err != nil {
 		if !strings.Contains(err.Error(), "exit status 1") ||
 			!strings.Contains(stderr, "fleet server unable to communicate with etcd") {
@@ -171,10 +170,10 @@ func TestDetectMachineId(t *testing.T) {
 	// Trigger another test case of m0's ID getting different from m1's.
 	// Then it's expected that m0 and m1 would be working properly with distinct
 	// machine IDs, after having restarted fleet.service both on m0 and m1.
-	stdout, err = cluster.MemberCommand(m0,
+	stdout, stderr, err = cluster.MemberCommand(m0,
 		"echo", util.NewMachineID(), "|", "sudo", "tee", machineIdFile)
 	if err != nil {
-		t.Fatalf("m0: Failed to replace machine-id\nstdout: %s\nerr: %v", stdout, err)
+		t.Fatalf("m0: Failed to replace machine-id\nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)
 	}
 
 	// Restart fleet service on m0, and see that it's still working.

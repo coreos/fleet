@@ -39,18 +39,19 @@ func TestShutdown(t *testing.T) {
 	}
 
 	// Stop the fleet process.
-	if _, err = cluster.MemberCommand(m0, "sudo", "systemctl", "stop", "fleet"); err != nil {
-		t.Fatal(err)
+	stdout, stderr, err := cluster.MemberCommand(m0, "sudo", "systemctl", "stop", "fleet")
+	if err != nil {
+		t.Fatalf("Failed to stop fleet process.\nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)
 	}
 
 	// Check expected state after stop.
-	stdout, _ := cluster.MemberCommand(m0, "systemctl", "show", "--property=ActiveState", "fleet")
+	stdout, stderr, err = cluster.MemberCommand(m0, "systemctl", "show", "--property=ActiveState", "fleet")
 	if strings.TrimSpace(stdout) != "ActiveState=inactive" {
-		t.Fatalf("Fleet unit not reported as inactive: %s", stdout)
+		t.Fatalf("Fleet unit not reported as inactive.\nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)
 	}
-	stdout, _ = cluster.MemberCommand(m0, "systemctl", "show", "--property=Result", "fleet")
+	stdout, stderr, err = cluster.MemberCommand(m0, "systemctl", "show", "--property=Result", "fleet")
 	if strings.TrimSpace(stdout) != "Result=success" {
-		t.Fatalf("Result for fleet unit not reported as success: %s", stdout)
+		t.Fatalf("Result for fleet unit not reported as success.\nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)
 	}
 }
 
@@ -74,32 +75,32 @@ func TestShutdownVsMonitor(t *testing.T) {
 	// Cut connection to etcd.
 	//
 	// This will result in a failed health check, and consequently the monitor will attempt a restart.
-	stdout, err := cluster.MemberCommand(m0, "sudo", "iptables", "-I", "OUTPUT", "-p", "tcp", "-m", "multiport", "--dports=2379,4001", "-j", "DROP")
+	stdout, stderr, err := cluster.MemberCommand(m0, "sudo", "iptables", "-I", "OUTPUT", "-p", "tcp", "-m", "multiport", "--dports=2379,4001", "-j", "DROP")
 	if err != nil {
-		t.Fatalf("Failed inserting iptables rule:\nstdout: %s\nerr: %v", stdout, err)
+		t.Fatalf("Failed inserting iptables rule:\nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)
 	}
 
 	// Wait for the monitor to trigger the restart.
 	//
 	// This will never complete, as long as there is no connectivity.
-	stdout, err = cluster.MemberCommand(m0, "sudo", "sh", "-c", `'until journalctl -u fleet | grep -q "Server monitor triggered: Monitor timed out before successful heartbeat"; do sleep 1; done'`)
+	stdout, stderr, err = cluster.MemberCommand(m0, "sudo", "sh", "-c", `'until journalctl -u fleet | grep -q "Server monitor triggered: Monitor timed out before successful heartbeat"; do sleep 1; done'`)
 	if err != nil {
-		t.Fatalf("Failed checking journal message:\nstdout: %s\nerr: %v", stdout, err)
+		t.Fatalf("Failed checking journal message:\nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)
 	}
 
 	// Stop fleetd while the restart is still in progress.
-	stdout, err = cluster.MemberCommand(m0, "sudo", "systemctl", "stop", "fleet")
+	stdout, stderr, err = cluster.MemberCommand(m0, "sudo", "systemctl", "stop", "fleet")
 	if err != nil {
-		t.Fatalf("Failed stopping fleet service:\nstdout: %s\nerr: %v", stdout, err)
+		t.Fatalf("Failed stopping fleet service:\nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)
 	}
 
 	// Verify that fleetd was shut down cleanly in spite of the concurrent restart.
-	stdout, _ = cluster.MemberCommand(m0, "systemctl", "show", "--property=ActiveState", "fleet")
+	stdout, stderr, err = cluster.MemberCommand(m0, "systemctl", "show", "--property=ActiveState", "fleet")
 	if strings.TrimSpace(stdout) != "ActiveState=inactive" {
-		t.Fatalf("Fleet unit not reported as inactive: %s", stdout)
+		t.Fatalf("Fleet unit not reported as inactive:\nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)
 	}
-	stdout, _ = cluster.MemberCommand(m0, "systemctl", "show", "--property=Result", "fleet")
+	stdout, stderr, err = cluster.MemberCommand(m0, "systemctl", "show", "--property=Result", "fleet")
 	if strings.TrimSpace(stdout) != "Result=success" {
-		t.Fatalf("Result for fleet unit not reported as success: %s", stdout)
+		t.Fatalf("Result for fleet unit not reported as success:\nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)
 	}
 }

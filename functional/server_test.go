@@ -65,9 +65,9 @@ func TestReconfigureServer(t *testing.T) {
 
 	// Send a SIGHUP to fleetd, and periodically checks if a message
 	// "Reloading configuration" appears in fleet's journal, up to timeout (15) seconds.
-	stdout, _ = cluster.MemberCommand(m0, "sudo", "systemctl", "kill", "-s", "SIGHUP", "fleet")
+	stdout, stderr, err = cluster.MemberCommand(m0, "sudo", "systemctl", "kill", "-s", "SIGHUP", "fleet")
 	if strings.TrimSpace(stdout) != "" {
-		t.Fatalf("Sending SIGHUP to fleetd returned: %s", stdout)
+		t.Fatalf("Sending SIGHUP to fleetd returned.\nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)
 	}
 
 	// Watch the logs if fleet was correctly reloaded
@@ -97,19 +97,19 @@ func TestReconfigureServer(t *testing.T) {
 	}
 
 	// Check for HTTP listener error looking into the fleetd journal
-	stdout, _ = cluster.MemberCommand(m0, "journalctl _PID=$(pidof fleetd)")
+	stdout, stderr, err = cluster.MemberCommand(m0, "journalctl _PID=$(pidof fleetd)")
 	if strings.Contains(strings.TrimSpace(stdout), "Failed serving HTTP on listener:") {
-		t.Fatalf("Fleetd log returned error on HTTP listeners: %s", stdout)
+		t.Fatalf("Fleetd log returned error on HTTP listeners.\nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)
 	}
 
 	// Check expected state after reconfiguring fleetd
-	stdout, _ = cluster.MemberCommand(m0, "systemctl", "show", "--property=ActiveState", "fleet")
+	stdout, stderr, err = cluster.MemberCommand(m0, "systemctl", "show", "--property=ActiveState", "fleet")
 	if strings.TrimSpace(stdout) != "ActiveState=active" {
-		t.Fatalf("Fleet unit not reported as active: %s", stdout)
+		t.Fatalf("Fleet unit not reported as active.\nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)
 	}
-	stdout, _ = cluster.MemberCommand(m0, "systemctl", "show", "--property=Result", "fleet")
+	stdout, stderr, err = cluster.MemberCommand(m0, "systemctl", "show", "--property=Result", "fleet")
 	if strings.TrimSpace(stdout) != "Result=success" {
-		t.Fatalf("Result for fleet unit not reported as success: %s", stdout)
+		t.Fatalf("Result for fleet unit not reported as success.\nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)
 	}
 }
 
@@ -123,7 +123,7 @@ func waitForReloadConfig(cluster platform.Cluster, m0 platform.Member) (err erro
 			// "journalctl -u fleet | grep \"Reloading configuration\"" is racy
 			// in a subtle way, so that it sometimes fails only on semaphoreci.
 			// - dpark 20160408
-			stdout, _ := cluster.MemberCommand(m0, "sudo", "journalctl --priority=info _PID=$(pidof fleetd)")
+			stdout, _, _ := cluster.MemberCommand(m0, "sudo", "journalctl --priority=info _PID=$(pidof fleetd)")
 			journalfleet := strings.TrimSpace(stdout)
 			if !strings.Contains(journalfleet, "Reloading configuration") {
 				fmt.Errorf("Fleetd is not fully reconfigured, retrying... entire fleet journal:\n%v", journalfleet)
@@ -144,7 +144,7 @@ func waitForReloadConfig(cluster platform.Cluster, m0 platform.Member) (err erro
 func waitForFleetdSocket(cluster platform.Cluster, m0 platform.Member) (err error) {
 	_, err = util.WaitForState(
 		func() bool {
-			stdout, _ := cluster.MemberCommand(m0, "test -S /var/run/fleet.sock && echo 1")
+			stdout, _, _ := cluster.MemberCommand(m0, "test -S /var/run/fleet.sock && echo 1")
 			if strings.TrimSpace(stdout) == "" {
 				fmt.Errorf("Fleetd is not fully started, retrying...")
 				return false
