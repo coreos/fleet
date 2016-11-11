@@ -146,8 +146,8 @@ func TestExtractMachinePage(t *testing.T) {
 
 func TestMachinesPatchAddModify(t *testing.T) {
 	reqBody := `
-	[{"op": "add", "path": "/XXX/metadata/foo", "value": "bar"},
-	 {"op": "replace", "path": "/YYY/metadata/ping", "value": "splat"}]
+	[{"op": "add", "path": "/XXX/metadata/foo", "value": { "value": "bar" }},
+	{"op": "replace", "path": "/YYY/metadata/ping", "value": { "value": "splat" }}]
 	`
 
 	resource, rw := fakeMachinesSetup()
@@ -218,7 +218,7 @@ func TestMachinesPatchDelete(t *testing.T) {
 
 func TestMachinesPatchBadOp(t *testing.T) {
 	reqBody := `
-	[{"op": "noop", "path": "/XXX/metadata/foo", "value": "bar"}]
+	[{"op": "noop", "path": "/XXX/metadata/foo", "value": { "value": "bar" }}]
 	`
 
 	resource, rw := fakeMachinesSetup()
@@ -235,7 +235,7 @@ func TestMachinesPatchBadOp(t *testing.T) {
 
 func TestMachinesPatchBadPath(t *testing.T) {
 	reqBody := `
-	[{"op": "add", "path": "/XXX/foo", "value": "bar"}]
+	[{"op": "add", "path": "/XXX/foo", "value": { "value": "bar" }}]
 	`
 
 	resource, rw := fakeMachinesSetup()
