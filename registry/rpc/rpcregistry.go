@@ -244,12 +244,24 @@ func (r *RPCRegistry) UnscheduleUnit(unitName, machID string) error {
 	return err
 }
 
+func (r *RPCRegistry) SetMachineMetadata(machID string, key string, value string) error {
+	panic("Set machine metadata function not implemented")
+}
+
+func (r *RPCRegistry) DeleteMachineMetadata(machID string, key string) error {
+	panic("Delete machine metadata function not implemented")
+}
+
 func (r *RPCRegistry) Machines() ([]machine.MachineState, error) {
 	panic("Machines function not implemented")
 }
 
 func (r *RPCRegistry) SetMachineState(ms machine.MachineState, ttl time.Duration) (uint64, error) {
 	panic("Set machine state function not implemented")
+}
+
+func (r *RPCRegistry) MachineState(machID string) (machine.MachineState, error) {
+	panic("Machine state function not implemented")
 }
 
 func (r *RPCRegistry) CreateMachineState(ms machine.MachineState, ttl time.Duration) (uint64, error) {

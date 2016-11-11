@@ -210,7 +210,7 @@ app.service     fd1d3e94.../10.0.0.1    active  running
 ```
 
 A machine is not automatically configured with metadata.
-A deployer may define machine metadata using the `metadata` [config option][config-option].
+A deployer may define machine metadata using the `metadata` [config option][config-option] or via the [HTTP api][http-api].
 
 ## Schedule unit next to another unit
 
@@ -244,6 +244,7 @@ MachineOf=%p.socket
 would result in an effective `MachineOf` of `foo.socket`. Using the same unit snippet with a Unit called `bar.service`, on the other hand, would result in an effective `MachineOf` of `bar.socket`.
 
 [config-option]: deployment-and-configuration.md#metadata
+[http-api]: api-v1.md#edit-machine-metadata
 [systemd-guide]: https://github.com/coreos/docs/blob/master/os/getting-started-with-systemd.md
 [systemd instances]: http://0pointer.de/blog/projects/instances.html
 [systemd specifiers]: http://www.freedesktop.org/software/systemd/man/systemd.unit.html#Specifiers

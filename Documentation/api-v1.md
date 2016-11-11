@@ -202,6 +202,30 @@ The request must not have a body.
 
 A successful response will contain a page of zero or more Machine entities.
 
+### Edit Machine Metadata
+
+Add, change, or remove metadata from one or more machines.
+
+#### Request
+
+```
+PATCH /machines HTTP/1.1
+
+[
+  { "op": "add", "path": "/<machine_id>/metadata/<name>", "value": <new value> },
+  { "op": "remove", "path": "/<machine_id>/metadata/<name>" },
+  { "op": "replace", "path": "/<machine_id>/metadata/<name>", "value": <new value> }
+]
+```
+
+The request body must contain a JSON document in [JSONPatch](http://jsonpatch.com) format. Supported operations are "add", "remove" and "replace". Any number of operations for any number of machines, including machines not currently registered with the cluster, may be included in a single request. All operations will be processed in-order, top to bottom after validation. Modified metadata will persist across a machine leaving and rejoining the cluster.
+
+
+#### Response
+
+A success in indicated by a `204 No Content`.
+Invalid operations, missing values, or improperly formatted paths will result in a `400 Bad Request`.
+
 ## Capability Discovery
 
 The v1 fleet API is described by a [discovery document][disco]. Users should generate their client bindings from this document using the appropriate language generator.
