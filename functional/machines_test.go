@@ -90,25 +90,11 @@ func TestMachinesList(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	testMachinesListBadNextPageToken(t, m)
 }
 
-func TestMachinesListBadNextPageToken(t *testing.T) {
-	cluster, err := platform.NewNspawnCluster("smoke")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer cluster.Destroy(t)
-
-	m, err := cluster.CreateMember()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	_, err = cluster.WaitForNMachines(m, 1)
-	if err != nil {
-		t.Fatal(err)
-	}
-
+func testMachinesListBadNextPageToken(t *testing.T, m platform.Member) {
 	// Send an invalid GET request, should return failure
 	resp, err := getHTTPResponse("GET", m.Endpoint()+"/fleet/v1/machines?nextPageToken=EwBMLg==", "")
 	if err != nil {
@@ -239,29 +225,11 @@ func TestMachinesPatchAddModify(t *testing.T) {
 			}
 		}
 	}
+
+	testMachinesPatchDelete(t, m0, m1)
 }
 
-func TestMachinesPatchDelete(t *testing.T) {
-	cluster, err := platform.NewNspawnCluster("smoke")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer cluster.Destroy(t)
-
-	m0, err := cluster.CreateMember()
-	if err != nil {
-		t.Fatal(err)
-	}
-	m1, err := cluster.CreateMember()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	_, err = cluster.WaitForNMachines(m0, 2)
-	if err != nil {
-		t.Fatal(err)
-	}
-
+func testMachinesPatchDelete(t *testing.T, m0 platform.Member, m1 platform.Member) {
 	sm0 := &fxSchemaMachine{
 		Id: m0.ID(),
 		Metadata: map[string]string{

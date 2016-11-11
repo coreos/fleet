@@ -72,10 +72,14 @@ func TestUnitRunnable(t *testing.T) {
 	}
 }
 
-// TestUnitSubmit checks if a unit becomes submitted and destroyed successfully.
-// First it submits a unit, and destroys the unit, verifies it's destroyed,
-// finally submits the unit again.
-func TestUnitSubmit(t *testing.T) {
+// TestUnitLaunch runs 3 tests: submit, load and start
+// - checks whether a command "fleetctl submit hello.service" works or not.
+// - checks whether a command "fleetctl load hello.service" works or not.
+// - checks whether a command "fleetctl start hello.service" works or not.
+// Each one also checks if a unit becomes destroyed successfully.
+// For example, first it submits a unit, and destroys the unit, verifies
+// it's destroyed, finally submits the unit again.
+func TestUnitLaunch(t *testing.T) {
 	cluster, err := platform.NewNspawnCluster("smoke")
 	if err != nil {
 		t.Fatal(err)
@@ -91,76 +95,29 @@ func TestUnitSubmit(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := unitStartCommon(cluster, m, "submit", 9); err != nil {
+	if err := unitStartCommon(cluster, m, "submit", 2); err != nil {
+		t.Fatal(err)
+	}
+	if err := unitStartCommon(cluster, m, "load", 2); err != nil {
+		t.Fatal(err)
+	}
+	if err := unitStartCommon(cluster, m, "start", 1); err != nil {
 		t.Fatal(err)
 	}
 }
 
-// TestUnitLoad checks if a unit becomes loaded and unloaded successfully.
-// First it load a unit, and unloads the unit, verifies it's unloaded,
-// finally loads the unit again.
-func TestUnitLoad(t *testing.T) {
-	cluster, err := platform.NewNspawnCluster("smoke")
-	if err != nil {
+// TestUnitLaunchReplace() runs 3 tests: submit, load, and start.
+// - checks whether a command "fleetctl submit --replace hello.service" works or not.
+// - checks whether a command "fleetctl load --replace hello.service" works or not.
+// - checks whether a command "fleetctl start --replace hello.service" works or not.
+func TestUnitLaunchReplace(t *testing.T) {
+	if err := replaceUnitCommon(t, "submit", 2); err != nil {
 		t.Fatal(err)
 	}
-	defer cluster.Destroy(t)
-
-	m, err := cluster.CreateMember()
-	if err != nil {
+	if err := replaceUnitCommon(t, "load", 2); err != nil {
 		t.Fatal(err)
 	}
-	_, err = cluster.WaitForNMachines(m, 1)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if err := unitStartCommon(cluster, m, "load", 6); err != nil {
-		t.Fatal(err)
-	}
-}
-
-func TestUnitStart(t *testing.T) {
-	cluster, err := platform.NewNspawnCluster("smoke")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer cluster.Destroy(t)
-
-	m, err := cluster.CreateMember()
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, err = cluster.WaitForNMachines(m, 1)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if err := unitStartCommon(cluster, m, "start", 3); err != nil {
-		t.Fatal(err)
-	}
-}
-
-// TestUnitSubmitReplace() tests whether a command "fleetctl submit --replace
-// hello.service" works or not.
-func TestUnitSubmitReplace(t *testing.T) {
-	if err := replaceUnitCommon(t, "submit", 9); err != nil {
-		t.Fatal(err)
-	}
-}
-
-// TestUnitLoadReplace() tests whether a command "fleetctl load --replace
-// hello.service" works or not.
-func TestUnitLoadReplace(t *testing.T) {
-	if err := replaceUnitCommon(t, "load", 6); err != nil {
-		t.Fatal(err)
-	}
-}
-
-// TestUnitStartReplace() tests whether a command "fleetctl start --replace
-// hello.service" works or not.
-func TestUnitStartReplace(t *testing.T) {
-	if err := replaceUnitCommon(t, "start", 3); err != nil {
+	if err := replaceUnitCommon(t, "start", 1); err != nil {
 		t.Fatal(err)
 	}
 }
