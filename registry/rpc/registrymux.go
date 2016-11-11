@@ -255,7 +255,7 @@ func (r *RegistryMux) CreateUnit(unit *job.Unit) error {
 }
 
 func (r *RegistryMux) CreateMachineState(ms machine.MachineState, ttl time.Duration) (uint64, error) {
-	return r.getRegistry().CreateMachineState(ms, ttl)
+	return r.etcdRegistry.CreateMachineState(ms, ttl)
 }
 
 func (r *RegistryMux) DestroyUnit(unit string) error {
@@ -291,7 +291,7 @@ func (r *RegistryMux) SetUnitTargetState(name string, state job.JobState) error 
 }
 
 func (r *RegistryMux) MachineState(machID string) (machine.MachineState, error) {
-	return r.getRegistry().MachineState(machID)
+	return r.etcdRegistry.MachineState(machID)
 }
 
 func (r *RegistryMux) SetMachineState(ms machine.MachineState, ttl time.Duration) (uint64, error) {
