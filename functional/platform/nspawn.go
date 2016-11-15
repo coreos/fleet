@@ -681,6 +681,7 @@ func (nc *nspawnCluster) systemdReload() error {
 	if err != nil {
 		return err
 	}
+	defer conn.Close()
 	conn.Reload()
 	return nil
 }
@@ -690,6 +691,7 @@ func (nc *nspawnCluster) systemd(unitName, exec string) error {
 	if err != nil {
 		return err
 	}
+	defer conn.Close()
 
 	props := []dbus.Property{
 		dbus.PropExecStart(strings.Split(exec, " "), false),
