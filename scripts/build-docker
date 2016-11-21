@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+#
+# Build a docker image to be published to quay.io.
+# Run with a version parameter:
+#
+#  $ ./scripts/build-docker v0.13
+#
+# or just run without the version number, then it will simply take the current version.
+#
+#  $ ./scripts/build-docker
+
+VERSION=${1}
+if [ -z "$VERSION" ]; then
+	VERSION=$(git describe)
+	if [ -z "$VERSION" ]; then
+		VERSION="latest"
+	fi
+fi
+
+BINARYDIR=${BINARYDIR:-release/fleet-${VERSION}-linux-amd64}
+BUILDDIR=${BUILDDIR:-release}
+
+IMAGEDIR=${BUILDDIR}/image-docker
+
+mkdir -p ${IMAGEDIR} ${BINARYDIR}
+cp ${BINARYDIR}/fleetd ${BINARYDIR}/fleetctl ${IMAGEDIR}
+
+cp ./Dockerfile ${IMAGEDIR}/Dockerfile
+
+docker build -t quay.io/coreos/fleet:${VERSION} --build-arg FLEET_IMG_VER=${VERSION} ${IMAGEDIR}
