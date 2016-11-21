@@ -209,7 +209,7 @@ Add, change, or remove metadata from one or more machines.
 #### Request
 
 ```
-PATCH /machines HTTP/1.1
+PATCH /fleet/v1/machines HTTP/1.1
 
 [
   { "op": "add", "path": "/<machine_id>/metadata/<name>", "value": <new value> },
