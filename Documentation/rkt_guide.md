@@ -14,11 +14,15 @@ Then you can run fleet under rkt:
 
 ```
 # rkt --insecure-options=image run --inherit-env \
+  --volume etc-fleet,kind=host,source=/etc/fleet \
   --volume machine-id,kind=host,source=/etc/machine-id \
   --volume dbus-socket,kind=host,source=/run/dbus/system_bus_socket \
   --volume fleet-units,kind=host,source=/run/fleet/units \
-  --volume etc-fleet,kind=host,source=/etc/fleet \
-  fleetd-0.9.0.aci
+  --mount volume=etc-fleet,target=/etc/fleet \
+  --mount volume=machine-id,target=/etc/machine-id \
+  --mount volume=dbus-socket,target=/run/dbus/system_bus_socket \
+  --mount volume=fleet-units,target=/run/fleet/units \
+  fleetd-0.13.0.aci
 ```
 
 You can configure it modifying the file `/etc/fleet/fleet.conf` in your host and with enviroment variables as described in [deployment-and-configuration.md][deployment-and-configuration].
@@ -37,7 +41,7 @@ After=fleet.socket
 
 [Service]
 ExecStartPre=/usr/bin/mkdir -p /run/fleet/units
-ExecStart=/usr/bin/rkt --insecure-options=image run --inherit-env --volume machine-id,kind=host,source=/etc/machine-id --volume dbus-socket,kind=host,source=/run/dbus/system_bus_socket --volume fleet-units,kind=host,source=/run/fleet/units --volume etc-fleet,kind=host,source=/etc/fleet /usr/images/fleetd-0.9.0.aci
+ExecStart=/usr/bin/rkt --insecure-options=image run --inherit-env --volume etc-fleet,kind=host,source=/etc/fleet --volume machine-id,kind=host,source=/etc/machine-id --volume dbus-socket,kind=host,source=/run/dbus/system_bus_socket --volume fleet-units,kind=host,source=/run/fleet/units --mount volume=etc-fleet,target=/etc/fleet --mount volume=machine-id,target=/etc/machine-id --mount volume=dbus-socket,target=/run/dbus/system_bus_socket --mount volume=fleet-units,target=/run/fleet/units /usr/images/fleetd-0.13.0.aci
 Restart=always
 RestartSec=10s
 ```
