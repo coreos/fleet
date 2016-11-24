@@ -35,3 +35,4 @@ import:
 - package: google.golang.org/api
   subpackages:
   - googleapi
+- package: github.com/spf13/viper

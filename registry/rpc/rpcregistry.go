@@ -32,15 +32,6 @@ import (
 	"github.com/coreos/fleet/unit"
 )
 
-const (
-	grpcConnectionTimeout = 5000 * time.Millisecond
-
-	grpcConnectionStateReady      = "READY"
-	grpcConnectionStateConnecting = "CONNECTING"
-	grpcConnectionStateShutdown   = "SHUTDOWN"
-	grpcConnectionStateFailure    = "TRANSIENT_FAILURE"
-)
-
 var DebugRPCRegistry bool = false
 
 type RPCRegistry struct {
@@ -48,6 +39,7 @@ type RPCRegistry struct {
 	mu             *sync.Mutex
 	registryClient pb.RegistryClient
 	registryConn   *grpc.ClientConn
+	balancer       *simpleBalancer
 }
 
 func NewRPCRegistry(dialer func(string, time.Duration) (net.Conn, error)) *RPCRegistry {
@@ -63,35 +55,17 @@ func (r *RPCRegistry) ctx() context.Context {
 }
 
 func (r *RPCRegistry) getClient() pb.RegistryClient {
-	for {
-		st, err := r.registryConn.State()
-		if err != nil {
-			log.Fatalf("Unable to get the state of rpc connection: %v", err)
-		}
-		state := st.String()
-		if state == grpcConnectionStateReady {
-			break
-		} else if state == grpcConnectionStateConnecting {
-			if DebugRPCRegistry {
-				log.Infof("gRPC connection state: %s", state)
-			}
-			continue
-		} else if state == grpcConnectionStateFailure || state == grpcConnectionStateShutdown {
-			log.Infof("gRPC connection state '%s' reports an error in the connection", state)
-			log.Info("Reconnecting gRPC peer to fleet-engine...")
-			r.Connect()
-		}
-
-		time.Sleep(grpcConnectionTimeout)
-	}
-
 	return r.registryClient
 }
 
 func (r *RPCRegistry) Connect() {
 	// We want the connection operation to block and constantly reconnect using grpc backoff
 	log.Info("Starting gRPC connection to fleet-engine...")
-	connection, err := grpc.Dial(":fleet-engine:", grpc.WithTimeout(12*time.Second), grpc.WithInsecure(), grpc.WithDialer(r.dialer), grpc.WithBlock())
+	ep_engines := []string{":fleet-engine:"}
+	r.balancer = newSimpleBalancer(ep_engines)
+	connection, err := grpc.Dial(ep_engines[0],
+		grpc.WithTimeout(12*time.Second), grpc.WithInsecure(),
+		grpc.WithDialer(r.dialer), grpc.WithBlock(), grpc.WithBalancer(r.balancer))
 	if err != nil {
 		log.Fatalf("Unable to dial to registry: %s", err)
 	}
@@ -106,24 +80,22 @@ func (r *RPCRegistry) Close() {
 
 func (r *RPCRegistry) IsRegistryReady() bool {
 	if r.registryConn != nil {
-		st, err := r.registryConn.State()
-		if err != nil {
-			log.Fatalf("Unable to get the state of rpc connection: %v", err)
+		hasConn := false
+		if r.balancer != nil {
+			select {
+			case <-r.balancer.readyc:
+				hasConn = true
+			}
 		}
-		connState := st.String()
-		log.Infof("Registry connection state: %s", connState)
-		if connState != grpcConnectionStateReady {
-			log.Errorf("unable to connect to registry connection state: %s", connState)
-			return false
-		}
-		log.Infof("Getting server status...")
+
 		status, err := r.Status()
 		if err != nil {
 			log.Errorf("unable to get the status of the registry service %v", err)
 			return false
 		}
-		log.Infof("Status of rpc service: %d, connection state: %s", status, connState)
-		return status == pb.HealthCheckResponse_SERVING && err == nil
+		log.Infof("Status of rpc service: %d, balancer has a connection: %t", status, hasConn)
+
+		return hasConn && status == pb.HealthCheckResponse_SERVING && err == nil
 	}
 	return false
 }

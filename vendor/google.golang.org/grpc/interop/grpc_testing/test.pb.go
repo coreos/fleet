@@ -37,7 +37,9 @@ var _ = math.Inf
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the proto package it is being compiled against.
-const _ = proto.ProtoPackageIsVersion1
+// A compilation error at this line likely means your copy of the
+// proto package needs to be updated.
+const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 
 // The type of payload that should be returned.
 type PayloadType int32
@@ -121,16 +123,16 @@ func (m *Payload) GetBody() []byte {
 type SimpleRequest struct {
 	// Desired payload type in the response from the server.
 	// If response_type is RANDOM, server randomly chooses one from other formats.
-	ResponseType *PayloadType `protobuf:"varint,1,opt,name=response_type,enum=grpc.testing.PayloadType" json:"response_type,omitempty"`
+	ResponseType *PayloadType `protobuf:"varint,1,opt,name=response_type,json=responseType,enum=grpc.testing.PayloadType" json:"response_type,omitempty"`
 	// Desired payload size in the response from the server.
 	// If response_type is COMPRESSABLE, this denotes the size before compression.
-	ResponseSize *int32 `protobuf:"varint,2,opt,name=response_size" json:"response_size,omitempty"`
+	ResponseSize *int32 `protobuf:"varint,2,opt,name=response_size,json=responseSize" json:"response_size,omitempty"`
 	// Optional input payload sent along with the request.
 	Payload *Payload `protobuf:"bytes,3,opt,name=payload" json:"payload,omitempty"`
 	// Whether SimpleResponse should include username.
-	FillUsername *bool `protobuf:"varint,4,opt,name=fill_username" json:"fill_username,omitempty"`
+	FillUsername *bool `protobuf:"varint,4,opt,name=fill_username,json=fillUsername" json:"fill_username,omitempty"`
 	// Whether SimpleResponse should include OAuth scope.
-	FillOauthScope   *bool  `protobuf:"varint,5,opt,name=fill_oauth_scope" json:"fill_oauth_scope,omitempty"`
+	FillOauthScope   *bool  `protobuf:"varint,5,opt,name=fill_oauth_scope,json=fillOauthScope" json:"fill_oauth_scope,omitempty"`
 	XXX_unrecognized []byte `json:"-"`
 }
 
@@ -182,7 +184,7 @@ type SimpleResponse struct {
 	// successful when the client expected it.
 	Username *string `protobuf:"bytes,2,opt,name=username" json:"username,omitempty"`
 	// OAuth scope.
-	OauthScope       *string `protobuf:"bytes,3,opt,name=oauth_scope" json:"oauth_scope,omitempty"`
+	OauthScope       *string `protobuf:"bytes,3,opt,name=oauth_scope,json=oauthScope" json:"oauth_scope,omitempty"`
 	XXX_unrecognized []byte  `json:"-"`
 }
 
@@ -234,7 +236,7 @@ func (m *StreamingInputCallRequest) GetPayload() *Payload {
 // Client-streaming response.
 type StreamingInputCallResponse struct {
 	// Aggregated size of payloads received from the client.
-	AggregatedPayloadSize *int32 `protobuf:"varint,1,opt,name=aggregated_payload_size" json:"aggregated_payload_size,omitempty"`
+	AggregatedPayloadSize *int32 `protobuf:"varint,1,opt,name=aggregated_payload_size,json=aggregatedPayloadSize" json:"aggregated_payload_size,omitempty"`
 	XXX_unrecognized      []byte `json:"-"`
 }
 
@@ -257,7 +259,7 @@ type ResponseParameters struct {
 	Size *int32 `protobuf:"varint,1,opt,name=size" json:"size,omitempty"`
 	// Desired interval between consecutive responses in the response stream in
 	// microseconds.
-	IntervalUs       *int32 `protobuf:"varint,2,opt,name=interval_us" json:"interval_us,omitempty"`
+	IntervalUs       *int32 `protobuf:"varint,2,opt,name=interval_us,json=intervalUs" json:"interval_us,omitempty"`
 	XXX_unrecognized []byte `json:"-"`
 }
 
@@ -286,9 +288,9 @@ type StreamingOutputCallRequest struct {
 	// If response_type is RANDOM, the payload from each response in the stream
 	// might be of different types. This is to simulate a mixed type of payload
 	// stream.
-	ResponseType *PayloadType `protobuf:"varint,1,opt,name=response_type,enum=grpc.testing.PayloadType" json:"response_type,omitempty"`
+	ResponseType *PayloadType `protobuf:"varint,1,opt,name=response_type,json=responseType,enum=grpc.testing.PayloadType" json:"response_type,omitempty"`
 	// Configuration for each expected response message.
-	ResponseParameters []*ResponseParameters `protobuf:"bytes,2,rep,name=response_parameters" json:"response_parameters,omitempty"`
+	ResponseParameters []*ResponseParameters `protobuf:"bytes,2,rep,name=response_parameters,json=responseParameters" json:"response_parameters,omitempty"`
 	// Optional input payload sent along with the request.
 	Payload          *Payload `protobuf:"bytes,3,opt,name=payload" json:"payload,omitempty"`
 	XXX_unrecognized []byte   `json:"-"`
@@ -355,6 +357,10 @@ func init() {
 // Reference imports to suppress errors if they are not otherwise used.
 var _ context.Context
 var _ grpc.ClientConn
+
+// This is a compile-time assertion to ensure that this generated file
+// is compatible with the grpc package it is being compiled against.
+const _ = grpc.SupportPackageIsVersion3
 
 // Client API for TestService service
 
@@ -564,28 +570,40 @@ func RegisterTestServiceServer(s *grpc.Server, srv TestServiceServer) {
 	s.RegisterService(&_TestService_serviceDesc, srv)
 }
 
-func _TestService_EmptyCall_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _TestService_EmptyCall_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(Empty)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(TestServiceServer).EmptyCall(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(TestServiceServer).EmptyCall(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/grpc.testing.TestService/EmptyCall",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TestServiceServer).EmptyCall(ctx, req.(*Empty))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-func _TestService_UnaryCall_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _TestService_UnaryCall_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(SimpleRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(TestServiceServer).UnaryCall(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(TestServiceServer).UnaryCall(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/grpc.testing.TestService/UnaryCall",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TestServiceServer).UnaryCall(ctx, req.(*SimpleRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _TestService_StreamingOutputCall_Handler(srv interface{}, stream grpc.ServerStream) error {
@@ -724,7 +742,10 @@ var _TestService_serviceDesc = grpc.ServiceDesc{
 			ClientStreams: true,
 		},
 	},
+	Metadata: fileDescriptor0,
 }
+
+func init() { proto.RegisterFile("test.proto", fileDescriptor0) }
 
 var fileDescriptor0 = []byte{
 	// 567 bytes of a gzipped FileDescriptorProto
