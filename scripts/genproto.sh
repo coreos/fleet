@@ -20,7 +20,7 @@ fi
 DIRS="./protobuf"
 
 # exact version of protoc-gen-gogo to build
-GOGO_PROTO_SHA="2752d97bbd91927dd1c43296dbf8700e50e2708c"
+GOGO_PROTO_SHA="8d70fb3182befc465c4a1eac8ad4d38ff49778e2"
 
 # set up self-contained GOPATH for building
 export GOPATH=${PWD}/gopath
