@@ -58,7 +58,7 @@ func newSimpleBalancer(eps []string) *simpleBalancer {
 	}
 }
 
-func (b *simpleBalancer) Start(target string) error { return nil }
+func (b *simpleBalancer) Start(target string, config grpc.BalancerConfig) error { return nil }
 
 func (b *simpleBalancer) Up(addr grpc.Address) func(error) {
 	b.readyOnce.Do(func() { close(b.readyc) })
