@@ -139,12 +139,20 @@ type Cohort struct {
 	// server regardless of whether the field is empty or not. This may be
 	// used to include empty fields in Patch requests.
 	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "DateRange") to include in
+	// API requests with the JSON null value. By default, fields with empty
+	// values are omitted from API requests. However, any field with an
+	// empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
 }
 
 func (s *Cohort) MarshalJSON() ([]byte, error) {
 	type noMethod Cohort
 	raw := noMethod(*s)
-	return gensupport.MarshalJSON(raw, s.ForceSendFields)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
 // CohortGroup: Defines a cohort group.
@@ -163,7 +171,6 @@ func (s *Cohort) MarshalJSON() ([]byte, error) {
 // "2015-07-01" }
 //       }]
 //     }
-//
 type CohortGroup struct {
 	// Cohorts: The definition for the cohort.
 	Cohorts []*Cohort `json:"cohorts,omitempty"`
@@ -221,12 +228,20 @@ type CohortGroup struct {
 	// server regardless of whether the field is empty or not. This may be
 	// used to include empty fields in Patch requests.
 	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "Cohorts") to include in
+	// API requests with the JSON null value. By default, fields with empty
+	// values are omitted from API requests. However, any field with an
+	// empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
 }
 
 func (s *CohortGroup) MarshalJSON() ([]byte, error) {
 	type noMethod CohortGroup
 	raw := noMethod(*s)
-	return gensupport.MarshalJSON(raw, s.ForceSendFields)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
 // ColumnHeader: Column headers.
@@ -244,12 +259,20 @@ type ColumnHeader struct {
 	// server regardless of whether the field is empty or not. This may be
 	// used to include empty fields in Patch requests.
 	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "Dimensions") to include in
+	// API requests with the JSON null value. By default, fields with empty
+	// values are omitted from API requests. However, any field with an
+	// empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
 }
 
 func (s *ColumnHeader) MarshalJSON() ([]byte, error) {
 	type noMethod ColumnHeader
 	raw := noMethod(*s)
-	return gensupport.MarshalJSON(raw, s.ForceSendFields)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
 // DateRange: A contiguous set of days: startDate, startDate + 1 day,
@@ -272,12 +295,20 @@ type DateRange struct {
 	// server regardless of whether the field is empty or not. This may be
 	// used to include empty fields in Patch requests.
 	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "EndDate") to include in
+	// API requests with the JSON null value. By default, fields with empty
+	// values are omitted from API requests. However, any field with an
+	// empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
 }
 
 func (s *DateRange) MarshalJSON() ([]byte, error) {
 	type noMethod DateRange
 	raw := noMethod(*s)
-	return gensupport.MarshalJSON(raw, s.ForceSendFields)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
 // DateRangeValues: Used to return a list of metrics for a single
@@ -297,15 +328,29 @@ type DateRangeValues struct {
 	// server regardless of whether the field is empty or not. This may be
 	// used to include empty fields in Patch requests.
 	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "PivotValueRegions") to
+	// include in API requests with the JSON null value. By default, fields
+	// with empty values are omitted from API requests. However, any field
+	// with an empty value appearing in NullFields will be sent to the
+	// server as null. It is an error if a field in this list has a
+	// non-empty value. This may be used to include null fields in Patch
+	// requests.
+	NullFields []string `json:"-"`
 }
 
 func (s *DateRangeValues) MarshalJSON() ([]byte, error) {
 	type noMethod DateRangeValues
 	raw := noMethod(*s)
-	return gensupport.MarshalJSON(raw, s.ForceSendFields)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
-// Dimension: A dimension in the request.
+// Dimension:
+// [Dimensions](https://support.google.com/analytics/answer/1033861)
+// are attributes of your data. For example, the dimension
+// `ga:city`
+// indicates the city, for example, "Paris" or "New York", from which
+// a session originates.
 type Dimension struct {
 	// HistogramBuckets: If non-empty, we place dimension values into
 	// buckets after string to
@@ -363,12 +408,21 @@ type Dimension struct {
 	// server regardless of whether the field is empty or not. This may be
 	// used to include empty fields in Patch requests.
 	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "HistogramBuckets") to
+	// include in API requests with the JSON null value. By default, fields
+	// with empty values are omitted from API requests. However, any field
+	// with an empty value appearing in NullFields will be sent to the
+	// server as null. It is an error if a field in this list has a
+	// non-empty value. This may be used to include null fields in Patch
+	// requests.
+	NullFields []string `json:"-"`
 }
 
 func (s *Dimension) MarshalJSON() ([]byte, error) {
 	type noMethod Dimension
 	raw := noMethod(*s)
-	return gensupport.MarshalJSON(raw, s.ForceSendFields)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
 // DimensionFilter: Dimension filter specifies the filtering options on
@@ -449,12 +503,20 @@ type DimensionFilter struct {
 	// server regardless of whether the field is empty or not. This may be
 	// used to include empty fields in Patch requests.
 	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "CaseSensitive") to include
+	// in API requests with the JSON null value. By default, fields with
+	// empty values are omitted from API requests. However, any field with
+	// an empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
 }
 
 func (s *DimensionFilter) MarshalJSON() ([]byte, error) {
 	type noMethod DimensionFilter
 	raw := noMethod(*s)
-	return gensupport.MarshalJSON(raw, s.ForceSendFields)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
 // DimensionFilterClause: A group of dimension filters. Set the operator
@@ -484,12 +546,20 @@ type DimensionFilterClause struct {
 	// server regardless of whether the field is empty or not. This may be
 	// used to include empty fields in Patch requests.
 	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "Filters") to include in
+	// API requests with the JSON null value. By default, fields with empty
+	// values are omitted from API requests. However, any field with an
+	// empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
 }
 
 func (s *DimensionFilterClause) MarshalJSON() ([]byte, error) {
 	type noMethod DimensionFilterClause
 	raw := noMethod(*s)
-	return gensupport.MarshalJSON(raw, s.ForceSendFields)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
 // DynamicSegment: Dynamic segment definition for defining the segment
@@ -513,12 +583,20 @@ type DynamicSegment struct {
 	// server regardless of whether the field is empty or not. This may be
 	// used to include empty fields in Patch requests.
 	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "Name") to include in API
+	// requests with the JSON null value. By default, fields with empty
+	// values are omitted from API requests. However, any field with an
+	// empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
 }
 
 func (s *DynamicSegment) MarshalJSON() ([]byte, error) {
 	type noMethod DynamicSegment
 	raw := noMethod(*s)
-	return gensupport.MarshalJSON(raw, s.ForceSendFields)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
 // GetReportsRequest: The batch request containing multiple report
@@ -528,7 +606,7 @@ type GetReportsRequest struct {
 	// response.
 	// There can be a maximum of 5 requests. All requests should have the
 	// same
-	// `dateRange`, `viewId`, `segments`, `samplingLevel`, and
+	// `dateRanges`, `viewId`, `segments`, `samplingLevel`, and
 	// `cohortGroup`.
 	ReportRequests []*ReportRequest `json:"reportRequests,omitempty"`
 
@@ -539,12 +617,21 @@ type GetReportsRequest struct {
 	// server regardless of whether the field is empty or not. This may be
 	// used to include empty fields in Patch requests.
 	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "ReportRequests") to
+	// include in API requests with the JSON null value. By default, fields
+	// with empty values are omitted from API requests. However, any field
+	// with an empty value appearing in NullFields will be sent to the
+	// server as null. It is an error if a field in this list has a
+	// non-empty value. This may be used to include null fields in Patch
+	// requests.
+	NullFields []string `json:"-"`
 }
 
 func (s *GetReportsRequest) MarshalJSON() ([]byte, error) {
 	type noMethod GetReportsRequest
 	raw := noMethod(*s)
-	return gensupport.MarshalJSON(raw, s.ForceSendFields)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
 // GetReportsResponse: The main response class which holds the reports
@@ -565,15 +652,27 @@ type GetReportsResponse struct {
 	// server regardless of whether the field is empty or not. This may be
 	// used to include empty fields in Patch requests.
 	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "Reports") to include in
+	// API requests with the JSON null value. By default, fields with empty
+	// values are omitted from API requests. However, any field with an
+	// empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
 }
 
 func (s *GetReportsResponse) MarshalJSON() ([]byte, error) {
 	type noMethod GetReportsResponse
 	raw := noMethod(*s)
-	return gensupport.MarshalJSON(raw, s.ForceSendFields)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
-// Metric: A metric in the request.
+// Metric:
+// [Metrics](https://support.google.com/analytics/answer/1033861)
+// are the quantitative measurements. For example, the metric
+// `ga:users`
+// indicates the total number of users for the requested time period.
 type Metric struct {
 	// Alias: An alias for the metric expression is an alternate name for
 	// the
@@ -623,12 +722,20 @@ type Metric struct {
 	// server regardless of whether the field is empty or not. This may be
 	// used to include empty fields in Patch requests.
 	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "Alias") to include in API
+	// requests with the JSON null value. By default, fields with empty
+	// values are omitted from API requests. However, any field with an
+	// empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
 }
 
 func (s *Metric) MarshalJSON() ([]byte, error) {
 	type noMethod Metric
 	raw := noMethod(*s)
-	return gensupport.MarshalJSON(raw, s.ForceSendFields)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
 // MetricFilter: MetricFilter specifies the filter on a metric.
@@ -676,12 +783,21 @@ type MetricFilter struct {
 	// server regardless of whether the field is empty or not. This may be
 	// used to include empty fields in Patch requests.
 	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "ComparisonValue") to
+	// include in API requests with the JSON null value. By default, fields
+	// with empty values are omitted from API requests. However, any field
+	// with an empty value appearing in NullFields will be sent to the
+	// server as null. It is an error if a field in this list has a
+	// non-empty value. This may be used to include null fields in Patch
+	// requests.
+	NullFields []string `json:"-"`
 }
 
 func (s *MetricFilter) MarshalJSON() ([]byte, error) {
 	type noMethod MetricFilter
 	raw := noMethod(*s)
-	return gensupport.MarshalJSON(raw, s.ForceSendFields)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
 // MetricFilterClause: Represents a group of metric filters.
@@ -711,12 +827,20 @@ type MetricFilterClause struct {
 	// server regardless of whether the field is empty or not. This may be
 	// used to include empty fields in Patch requests.
 	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "Filters") to include in
+	// API requests with the JSON null value. By default, fields with empty
+	// values are omitted from API requests. However, any field with an
+	// empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
 }
 
 func (s *MetricFilterClause) MarshalJSON() ([]byte, error) {
 	type noMethod MetricFilterClause
 	raw := noMethod(*s)
-	return gensupport.MarshalJSON(raw, s.ForceSendFields)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
 // MetricHeader: The headers for the metrics.
@@ -734,12 +858,21 @@ type MetricHeader struct {
 	// server regardless of whether the field is empty or not. This may be
 	// used to include empty fields in Patch requests.
 	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "MetricHeaderEntries") to
+	// include in API requests with the JSON null value. By default, fields
+	// with empty values are omitted from API requests. However, any field
+	// with an empty value appearing in NullFields will be sent to the
+	// server as null. It is an error if a field in this list has a
+	// non-empty value. This may be used to include null fields in Patch
+	// requests.
+	NullFields []string `json:"-"`
 }
 
 func (s *MetricHeader) MarshalJSON() ([]byte, error) {
 	type noMethod MetricHeader
 	raw := noMethod(*s)
-	return gensupport.MarshalJSON(raw, s.ForceSendFields)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
 // MetricHeaderEntry: Header for the metrics.
@@ -765,12 +898,20 @@ type MetricHeaderEntry struct {
 	// server regardless of whether the field is empty or not. This may be
 	// used to include empty fields in Patch requests.
 	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "Name") to include in API
+	// requests with the JSON null value. By default, fields with empty
+	// values are omitted from API requests. However, any field with an
+	// empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
 }
 
 func (s *MetricHeaderEntry) MarshalJSON() ([]byte, error) {
 	type noMethod MetricHeaderEntry
 	raw := noMethod(*s)
-	return gensupport.MarshalJSON(raw, s.ForceSendFields)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
 // OrFiltersForSegment: A list of segment filters in the `OR` group are
@@ -789,12 +930,21 @@ type OrFiltersForSegment struct {
 	// field is empty or not. This may be used to include empty fields in
 	// Patch requests.
 	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "SegmentFilterClauses") to
+	// include in API requests with the JSON null value. By default, fields
+	// with empty values are omitted from API requests. However, any field
+	// with an empty value appearing in NullFields will be sent to the
+	// server as null. It is an error if a field in this list has a
+	// non-empty value. This may be used to include null fields in Patch
+	// requests.
+	NullFields []string `json:"-"`
 }
 
 func (s *OrFiltersForSegment) MarshalJSON() ([]byte, error) {
 	type noMethod OrFiltersForSegment
 	raw := noMethod(*s)
-	return gensupport.MarshalJSON(raw, s.ForceSendFields)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
 // OrderBy: Specifies the sorting options.
@@ -814,7 +964,7 @@ type OrderBy struct {
 	// as sort based on value.
 	//   "VALUE" - The sort order is based on the value of the chosen
 	// column; looks only at
-	// the first date range
+	// the first date range.
 	//   "DELTA" - The sort order is based on the difference of the values
 	// of the chosen
 	// column between the first two date ranges.  Usable only if there
@@ -854,12 +1004,20 @@ type OrderBy struct {
 	// server regardless of whether the field is empty or not. This may be
 	// used to include empty fields in Patch requests.
 	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "FieldName") to include in
+	// API requests with the JSON null value. By default, fields with empty
+	// values are omitted from API requests. However, any field with an
+	// empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
 }
 
 func (s *OrderBy) MarshalJSON() ([]byte, error) {
 	type noMethod OrderBy
 	raw := noMethod(*s)
-	return gensupport.MarshalJSON(raw, s.ForceSendFields)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
 // Pivot: The Pivot describes the pivot section in the request.
@@ -882,14 +1040,19 @@ type Pivot struct {
 	// then only those two browsers would show up as columns.
 	DimensionFilterClauses []*DimensionFilterClause `json:"dimensionFilterClauses,omitempty"`
 
-	// Dimensions: A list of dimensions to show as pivot columns.
+	// Dimensions: A list of dimensions to show as pivot columns. A Pivot
+	// can have a maximum
+	// of 4 dimensions. Pivot dimensions are part of the restriction on
+	// the
+	// total number of dimensions allowed in the request.
 	Dimensions []*Dimension `json:"dimensions,omitempty"`
 
 	// MaxGroupCount: Specifies the maximum number of groups to return.
 	// The default value is 10, also the maximum value is 1,000.
 	MaxGroupCount int64 `json:"maxGroupCount,omitempty"`
 
-	// Metrics: Metrics to aggregate and return.
+	// Metrics: The pivot metrics. Pivot metrics are part of the
+	// restriction on total number of metrics allowed in the request.
 	Metrics []*Metric `json:"metrics,omitempty"`
 
 	// StartGroup: If k metrics were requested, then the response will
@@ -925,12 +1088,21 @@ type Pivot struct {
 	// field is empty or not. This may be used to include empty fields in
 	// Patch requests.
 	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "DimensionFilterClauses")
+	// to include in API requests with the JSON null value. By default,
+	// fields with empty values are omitted from API requests. However, any
+	// field with an empty value appearing in NullFields will be sent to the
+	// server as null. It is an error if a field in this list has a
+	// non-empty value. This may be used to include null fields in Patch
+	// requests.
+	NullFields []string `json:"-"`
 }
 
 func (s *Pivot) MarshalJSON() ([]byte, error) {
 	type noMethod Pivot
 	raw := noMethod(*s)
-	return gensupport.MarshalJSON(raw, s.ForceSendFields)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
 // PivotHeader: The headers for each of the pivot sections defined in
@@ -949,21 +1121,28 @@ type PivotHeader struct {
 	// server regardless of whether the field is empty or not. This may be
 	// used to include empty fields in Patch requests.
 	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "PivotHeaderEntries") to
+	// include in API requests with the JSON null value. By default, fields
+	// with empty values are omitted from API requests. However, any field
+	// with an empty value appearing in NullFields will be sent to the
+	// server as null. It is an error if a field in this list has a
+	// non-empty value. This may be used to include null fields in Patch
+	// requests.
+	NullFields []string `json:"-"`
 }
 
 func (s *PivotHeader) MarshalJSON() ([]byte, error) {
 	type noMethod PivotHeader
 	raw := noMethod(*s)
-	return gensupport.MarshalJSON(raw, s.ForceSendFields)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
 // PivotHeaderEntry: The headers for the each of the metric column
 // corresponding to the metrics
 // requested in the pivots section of the response.
 type PivotHeaderEntry struct {
-	// DimensionNames: The name of the dimensions in the
-	// pivotDimensionValues field in the
-	// response.
+	// DimensionNames: The name of the dimensions in the pivot response.
 	DimensionNames []string `json:"dimensionNames,omitempty"`
 
 	// DimensionValues: The values for the dimensions in the pivot.
@@ -979,12 +1158,21 @@ type PivotHeaderEntry struct {
 	// server regardless of whether the field is empty or not. This may be
 	// used to include empty fields in Patch requests.
 	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "DimensionNames") to
+	// include in API requests with the JSON null value. By default, fields
+	// with empty values are omitted from API requests. However, any field
+	// with an empty value appearing in NullFields will be sent to the
+	// server as null. It is an error if a field in this list has a
+	// non-empty value. This may be used to include null fields in Patch
+	// requests.
+	NullFields []string `json:"-"`
 }
 
 func (s *PivotHeaderEntry) MarshalJSON() ([]byte, error) {
 	type noMethod PivotHeaderEntry
 	raw := noMethod(*s)
-	return gensupport.MarshalJSON(raw, s.ForceSendFields)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
 // PivotValueRegion: The metric values in the pivot region.
@@ -999,12 +1187,20 @@ type PivotValueRegion struct {
 	// server regardless of whether the field is empty or not. This may be
 	// used to include empty fields in Patch requests.
 	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "Values") to include in API
+	// requests with the JSON null value. By default, fields with empty
+	// values are omitted from API requests. However, any field with an
+	// empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
 }
 
 func (s *PivotValueRegion) MarshalJSON() ([]byte, error) {
 	type noMethod PivotValueRegion
 	raw := noMethod(*s)
-	return gensupport.MarshalJSON(raw, s.ForceSendFields)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
 // Report: The data response corresponding to the request.
@@ -1026,12 +1222,20 @@ type Report struct {
 	// server regardless of whether the field is empty or not. This may be
 	// used to include empty fields in Patch requests.
 	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "ColumnHeader") to include
+	// in API requests with the JSON null value. By default, fields with
+	// empty values are omitted from API requests. However, any field with
+	// an empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
 }
 
 func (s *Report) MarshalJSON() ([]byte, error) {
 	type noMethod Report
 	raw := noMethod(*s)
-	return gensupport.MarshalJSON(raw, s.ForceSendFields)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
 // ReportData: The data part of the report.
@@ -1064,14 +1268,30 @@ type ReportData struct {
 	// dimensions.
 	Rows []*ReportRow `json:"rows,omitempty"`
 
-	// SamplesReadCounts: If sampling was enabled, this returns the total
-	// number of samples
-	// read, one entry per date range
+	// SamplesReadCounts: If the results
+	// are
+	// [sampled](https://support.google.com/analytics/answer/2637192),
+	// th
+	// is returns the total number of samples read, one entry per date
+	// range.
+	// If the results are not sampled this field will not be defined.
+	// See
+	// [developer
+	// guide](/analytics/devguides/reporting/core/v4/basics#sampling)
+	// for details.
 	SamplesReadCounts googleapi.Int64s `json:"samplesReadCounts,omitempty"`
 
-	// SamplingSpaceSizes: If sampling was enabled, this returns the total
-	// number of samples
-	// present, one entry per date range.
+	// SamplingSpaceSizes: If the results
+	// are
+	// [sampled](https://support.google.com/analytics/answer/2637192),
+	// th
+	// is returns the total number of
+	// samples present, one entry per date range. If the results are not
+	// sampled
+	// this field will not be defined. See
+	// [developer
+	// guide](/analytics/devguides/reporting/core/v4/basics#sampling)
+	// for details.
 	SamplingSpaceSizes googleapi.Int64s `json:"samplingSpaceSizes,omitempty"`
 
 	// Totals: For each requested date range, for the set of all rows that
@@ -1093,12 +1313,20 @@ type ReportData struct {
 	// server regardless of whether the field is empty or not. This may be
 	// used to include empty fields in Patch requests.
 	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "IsDataGolden") to include
+	// in API requests with the JSON null value. By default, fields with
+	// empty values are omitted from API requests. However, any field with
+	// an empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
 }
 
 func (s *ReportData) MarshalJSON() ([]byte, error) {
 	type noMethod ReportData
 	raw := noMethod(*s)
-	return gensupport.MarshalJSON(raw, s.ForceSendFields)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
 // ReportRequest: The main request class which specifies the Reporting
@@ -1106,9 +1334,10 @@ func (s *ReportData) MarshalJSON() ([]byte, error) {
 type ReportRequest struct {
 	// CohortGroup: Cohort group associated with this request. If there is a
 	// cohort group
-	// in the request the `ga:cohort` dimension must be present. All
-	// requests
-	// should have the same cohort definitions.
+	// in the request the `ga:cohort` dimension must be present.
+	// Every [ReportRequest](#ReportRequest) within a `batchGet` method
+	// must
+	// contain the same `cohortGroup` definition.
 	CohortGroup *CohortGroup `json:"cohortGroup,omitempty"`
 
 	// DateRanges: Date ranges in the request. The request can have a
@@ -1125,7 +1354,11 @@ type ReportRequest struct {
 	// or Lifetime value requests.
 	// If a date range is not provided, the default date range is
 	// (startDate:
-	// current date - 7 days, endDate: current date - 1 day)
+	// current date - 7 days, endDate: current date - 1 day).
+	// Every
+	// [ReportRequest](#ReportRequest) within a `batchGet` method
+	// must
+	// contain the same `dateRanges` definition.
 	DateRanges []*DateRange `json:"dateRanges,omitempty"`
 
 	// DimensionFilterClauses: The dimension filter clauses for filtering
@@ -1137,7 +1370,8 @@ type ReportRequest struct {
 	// represent the total for only the relevant dimensions.
 	DimensionFilterClauses []*DimensionFilterClause `json:"dimensionFilterClauses,omitempty"`
 
-	// Dimensions: Dimensions requested in the request.
+	// Dimensions: The dimensions requested.
+	// Requests can have a total of 7 dimensions.
 	Dimensions []*Dimension `json:"dimensions,omitempty"`
 
 	// FiltersExpression: Dimension or metric filters that restrict the data
@@ -1182,9 +1416,9 @@ type ReportRequest struct {
 	// metrics are aggregated.
 	MetricFilterClauses []*MetricFilterClause `json:"metricFilterClauses,omitempty"`
 
-	// Metrics: Metrics, the quantitative measurements, requested in the
-	// request.
-	// Requests must specify at least one metric.
+	// Metrics: The metrics requested.
+	// Requests must specify at least one metric. Requests can have a
+	// total of 10 metrics.
 	Metrics []*Metric `json:"metrics,omitempty"`
 
 	// OrderBys: Sort order on output rows. To compare two rows, the
@@ -1220,18 +1454,28 @@ type ReportRequest struct {
 	// the GetReports request.
 	PageToken string `json:"pageToken,omitempty"`
 
-	// Pivots: The pivot definitions.
+	// Pivots: The pivot definitions. Requests can have a maximum of 2
+	// pivots.
 	Pivots []*Pivot `json:"pivots,omitempty"`
 
-	// SamplingLevel: The desired sampling level. If the sampling level is
-	// not specified the
-	// DEFAULT sampling level will be used. All requests should have
-	// same
-	// `samplingLevel`.
+	// SamplingLevel: The desired
+	// report
+	// [sample](https://support.google.com/analytics/answer/2637192)
+	// size.
+	// If the the `samplingLevel` field is unspecified the `DEFAULT`
+	// sampling
+	// level is used. Every [ReportRequest](#ReportRequest) within
+	// a
+	// `batchGet` method must contain the same `samplingLevel` definition.
+	// See
+	// [developer
+	// guide](/analytics/devguides/reporting/core/v4/basics#sampling)
+	//  for details.
 	//
 	// Possible values:
-	//   "SAMPLING_UNSPECIFIED" - If sampling level is unspecified the
-	// default sampling level is used.
+	//   "SAMPLING_UNSPECIFIED" - If the `samplingLevel` field is
+	// unspecified the `DEFAULT` sampling level
+	// is used.
 	//   "DEFAULT" - Returns response with a sample size that balances speed
 	// and
 	// accuracy.
@@ -1245,12 +1489,17 @@ type ReportRequest struct {
 	// definition helps look
 	// at a subset of the segment request. A request can contain up to
 	// four
-	// segments. All requests should have the same segment definitions.
+	// segments. Every [ReportRequest](#ReportRequest) within a
+	// `batchGet` method must contain the same `segments` definition.
 	// Requests
 	// with segments must have the `ga:segment` dimension.
 	Segments []*Segment `json:"segments,omitempty"`
 
-	// ViewId: Unique View Id for retrieving Analytics data.
+	// ViewId: The Analytics
+	// [view ID](https://support.google.com/analytics/answer/1009618)
+	// from which to retrieve data. Every
+	// [ReportRequest](#ReportRequest)
+	// within a `batchGet` method must contain the same `viewId`.
 	ViewId string `json:"viewId,omitempty"`
 
 	// ForceSendFields is a list of field names (e.g. "CohortGroup") to
@@ -1260,12 +1509,20 @@ type ReportRequest struct {
 	// server regardless of whether the field is empty or not. This may be
 	// used to include empty fields in Patch requests.
 	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "CohortGroup") to include
+	// in API requests with the JSON null value. By default, fields with
+	// empty values are omitted from API requests. However, any field with
+	// an empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
 }
 
 func (s *ReportRequest) MarshalJSON() ([]byte, error) {
 	type noMethod ReportRequest
 	raw := noMethod(*s)
-	return gensupport.MarshalJSON(raw, s.ForceSendFields)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
 // ReportRow: A row in the report.
@@ -1273,7 +1530,7 @@ type ReportRow struct {
 	// Dimensions: List of requested dimensions.
 	Dimensions []string `json:"dimensions,omitempty"`
 
-	// Metrics: List of metrics for each requested DateRange
+	// Metrics: List of metrics for each requested DateRange.
 	Metrics []*DateRangeValues `json:"metrics,omitempty"`
 
 	// ForceSendFields is a list of field names (e.g. "Dimensions") to
@@ -1283,12 +1540,20 @@ type ReportRow struct {
 	// server regardless of whether the field is empty or not. This may be
 	// used to include empty fields in Patch requests.
 	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "Dimensions") to include in
+	// API requests with the JSON null value. By default, fields with empty
+	// values are omitted from API requests. However, any field with an
+	// empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
 }
 
 func (s *ReportRow) MarshalJSON() ([]byte, error) {
 	type noMethod ReportRow
 	raw := noMethod(*s)
-	return gensupport.MarshalJSON(raw, s.ForceSendFields)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
 // Segment: The segment definition, if the report needs to be
@@ -1312,12 +1577,21 @@ type Segment struct {
 	// server regardless of whether the field is empty or not. This may be
 	// used to include empty fields in Patch requests.
 	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "DynamicSegment") to
+	// include in API requests with the JSON null value. By default, fields
+	// with empty values are omitted from API requests. However, any field
+	// with an empty value appearing in NullFields will be sent to the
+	// server as null. It is an error if a field in this list has a
+	// non-empty value. This may be used to include null fields in Patch
+	// requests.
+	NullFields []string `json:"-"`
 }
 
 func (s *Segment) MarshalJSON() ([]byte, error) {
 	type noMethod Segment
 	raw := noMethod(*s)
-	return gensupport.MarshalJSON(raw, s.ForceSendFields)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
 // SegmentDefinition: SegmentDefinition defines the segment to be a set
@@ -1336,12 +1610,21 @@ type SegmentDefinition struct {
 	// server regardless of whether the field is empty or not. This may be
 	// used to include empty fields in Patch requests.
 	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "SegmentFilters") to
+	// include in API requests with the JSON null value. By default, fields
+	// with empty values are omitted from API requests. However, any field
+	// with an empty value appearing in NullFields will be sent to the
+	// server as null. It is an error if a field in this list has a
+	// non-empty value. This may be used to include null fields in Patch
+	// requests.
+	NullFields []string `json:"-"`
 }
 
 func (s *SegmentDefinition) MarshalJSON() ([]byte, error) {
 	type noMethod SegmentDefinition
 	raw := noMethod(*s)
-	return gensupport.MarshalJSON(raw, s.ForceSendFields)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
 // SegmentDimensionFilter: Dimension filter specifies the filtering
@@ -1423,12 +1706,20 @@ type SegmentDimensionFilter struct {
 	// server regardless of whether the field is empty or not. This may be
 	// used to include empty fields in Patch requests.
 	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "CaseSensitive") to include
+	// in API requests with the JSON null value. By default, fields with
+	// empty values are omitted from API requests. However, any field with
+	// an empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
 }
 
 func (s *SegmentDimensionFilter) MarshalJSON() ([]byte, error) {
 	type noMethod SegmentDimensionFilter
 	raw := noMethod(*s)
-	return gensupport.MarshalJSON(raw, s.ForceSendFields)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
 // SegmentFilter: SegmentFilter defines the segment to be either a
@@ -1480,12 +1771,20 @@ type SegmentFilter struct {
 	// server regardless of whether the field is empty or not. This may be
 	// used to include empty fields in Patch requests.
 	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "Not") to include in API
+	// requests with the JSON null value. By default, fields with empty
+	// values are omitted from API requests. However, any field with an
+	// empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
 }
 
 func (s *SegmentFilter) MarshalJSON() ([]byte, error) {
 	type noMethod SegmentFilter
 	raw := noMethod(*s)
-	return gensupport.MarshalJSON(raw, s.ForceSendFields)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
 // SegmentFilterClause: Filter Clause to be used in a segment
@@ -1508,12 +1807,21 @@ type SegmentFilterClause struct {
 	// server regardless of whether the field is empty or not. This may be
 	// used to include empty fields in Patch requests.
 	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "DimensionFilter") to
+	// include in API requests with the JSON null value. By default, fields
+	// with empty values are omitted from API requests. However, any field
+	// with an empty value appearing in NullFields will be sent to the
+	// server as null. It is an error if a field in this list has a
+	// non-empty value. This may be used to include null fields in Patch
+	// requests.
+	NullFields []string `json:"-"`
 }
 
 func (s *SegmentFilterClause) MarshalJSON() ([]byte, error) {
 	type noMethod SegmentFilterClause
 	raw := noMethod(*s)
-	return gensupport.MarshalJSON(raw, s.ForceSendFields)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
 // SegmentMetricFilter: Metric filter to be used in a segment filter
@@ -1577,12 +1885,21 @@ type SegmentMetricFilter struct {
 	// server regardless of whether the field is empty or not. This may be
 	// used to include empty fields in Patch requests.
 	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "ComparisonValue") to
+	// include in API requests with the JSON null value. By default, fields
+	// with empty values are omitted from API requests. However, any field
+	// with an empty value appearing in NullFields will be sent to the
+	// server as null. It is an error if a field in this list has a
+	// non-empty value. This may be used to include null fields in Patch
+	// requests.
+	NullFields []string `json:"-"`
 }
 
 func (s *SegmentMetricFilter) MarshalJSON() ([]byte, error) {
 	type noMethod SegmentMetricFilter
 	raw := noMethod(*s)
-	return gensupport.MarshalJSON(raw, s.ForceSendFields)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
 // SegmentSequenceStep: A segment sequence definition.
@@ -1613,12 +1930,20 @@ type SegmentSequenceStep struct {
 	// server regardless of whether the field is empty or not. This may be
 	// used to include empty fields in Patch requests.
 	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "MatchType") to include in
+	// API requests with the JSON null value. By default, fields with empty
+	// values are omitted from API requests. However, any field with an
+	// empty value appearing in NullFields will be sent to the server as
+	// null. It is an error if a field in this list has a non-empty value.
+	// This may be used to include null fields in Patch requests.
+	NullFields []string `json:"-"`
 }
 
 func (s *SegmentSequenceStep) MarshalJSON() ([]byte, error) {
 	type noMethod SegmentSequenceStep
 	raw := noMethod(*s)
-	return gensupport.MarshalJSON(raw, s.ForceSendFields)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
 // SequenceSegment: Sequence conditions consist of one or more steps,
@@ -1643,12 +1968,21 @@ type SequenceSegment struct {
 	// field is empty or not. This may be used to include empty fields in
 	// Patch requests.
 	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g.
+	// "FirstStepShouldMatchFirstHit") to include in API requests with the
+	// JSON null value. By default, fields with empty values are omitted
+	// from API requests. However, any field with an empty value appearing
+	// in NullFields will be sent to the server as null. It is an error if a
+	// field in this list has a non-empty value. This may be used to include
+	// null fields in Patch requests.
+	NullFields []string `json:"-"`
 }
 
 func (s *SequenceSegment) MarshalJSON() ([]byte, error) {
 	type noMethod SequenceSegment
 	raw := noMethod(*s)
-	return gensupport.MarshalJSON(raw, s.ForceSendFields)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
 // SimpleSegment: A Simple segment conditions consist of one or more
@@ -1667,12 +2001,21 @@ type SimpleSegment struct {
 	// server regardless of whether the field is empty or not. This may be
 	// used to include empty fields in Patch requests.
 	ForceSendFields []string `json:"-"`
+
+	// NullFields is a list of field names (e.g. "OrFiltersForSegment") to
+	// include in API requests with the JSON null value. By default, fields
+	// with empty values are omitted from API requests. However, any field
+	// with an empty value appearing in NullFields will be sent to the
+	// server as null. It is an error if a field in this list has a
+	// non-empty value. This may be used to include null fields in Patch
+	// requests.
+	NullFields []string `json:"-"`
 }
 
 func (s *SimpleSegment) MarshalJSON() ([]byte, error) {
 	type noMethod SimpleSegment
 	raw := noMethod(*s)
-	return gensupport.MarshalJSON(raw, s.ForceSendFields)
+	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
 // method id "analyticsreporting.reports.batchGet":
@@ -1682,6 +2025,7 @@ type ReportsBatchGetCall struct {
 	getreportsrequest *GetReportsRequest
 	urlParams_        gensupport.URLParams
 	ctx_              context.Context
+	header_           http.Header
 }
 
 // BatchGet: Returns the Analytics data.
@@ -1707,8 +2051,20 @@ func (c *ReportsBatchGetCall) Context(ctx context.Context) *ReportsBatchGetCall 
 	return c
 }
 
+// Header returns an http.Header that can be modified by the caller to
+// add HTTP headers to the request.
+func (c *ReportsBatchGetCall) Header() http.Header {
+	if c.header_ == nil {
+		c.header_ = make(http.Header)
+	}
+	return c.header_
+}
+
 func (c *ReportsBatchGetCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := make(http.Header)
+	for k, v := range c.header_ {
+		reqHeaders[k] = v
+	}
 	reqHeaders.Set("User-Agent", c.s.userAgent())
 	var body io.Reader = nil
 	body, err := googleapi.WithoutDataWrapper.JSONReader(c.getreportsrequest)
@@ -1721,11 +2077,7 @@ func (c *ReportsBatchGetCall) doRequest(alt string) (*http.Response, error) {
 	urls += "?" + c.urlParams_.Encode()
 	req, _ := http.NewRequest("POST", urls, body)
 	req.Header = reqHeaders
-	googleapi.SetOpaque(req.URL)
-	if c.ctx_ != nil {
-		return ctxhttp.Do(c.ctx_, c.s.client, req)
-	}
-	return c.s.client.Do(req)
+	return gensupport.SendRequest(c.ctx_, c.s.client, req)
 }
 
 // Do executes the "analyticsreporting.reports.batchGet" call.

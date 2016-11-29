@@ -98,14 +98,13 @@ func (g *GlobalConf) Delete(flagSetName, flagName string) error {
 	return nil
 }
 
-// Parses the config file for the provided flag set.
+// ParseSet parses the config file for the provided flag set.
 // If the flags are already set, values are overwritten
 // by the values in the config file. Defaults are not set
 // if the flag is not in the file.
 func (g *GlobalConf) ParseSet(flagSetName string, set *flag.FlagSet) {
 	set.VisitAll(func(f *flag.Flag) {
-		val := getEnv(g.EnvPrefix, flagSetName, f.Name)
-		if val != "" {
+		if val, ok := getEnv(g.EnvPrefix, flagSetName, f.Name); ok {
 			set.Set(f.Name, val)
 			return
 		}
@@ -117,7 +116,7 @@ func (g *GlobalConf) ParseSet(flagSetName string, set *flag.FlagSet) {
 	})
 }
 
-// Parses all the registered flag sets, including the command
+// Parse parses all the registered flag sets, including the command
 // line set and sets values from the config file if they are
 // not already set.
 func (g *GlobalConf) Parse() {
@@ -127,13 +126,12 @@ func (g *GlobalConf) Parse() {
 			alreadySet[f.Name] = true
 		})
 		set.VisitAll(func(f *flag.Flag) {
-			// if not already set, set it from dict if exists
+			// if not already set, set it from dict if ok
 			if alreadySet[f.Name] {
 				return
 			}
 
-			val := getEnv(g.EnvPrefix, name, f.Name)
-			if val != "" {
+			if val, ok := getEnv(g.EnvPrefix, name, f.Name); ok {
 				set.Set(f.Name, val)
 				return
 			}
@@ -156,10 +154,10 @@ func (g *GlobalConf) ParseAll() {
 }
 
 // Looks up variable in environment
-func getEnv(envPrefix, flagSetName, flagName string) string {
+func getEnv(envPrefix, flagSetName, flagName string) (string, bool) {
 	// If we haven't set an EnvPrefix, don't lookup vals in the ENV
 	if envPrefix == "" {
-		return ""
+		return "", false
 	}
 	// Append a _ to flagSetName if it exists.
 	if flagSetName != "" {
@@ -168,10 +166,10 @@ func getEnv(envPrefix, flagSetName, flagName string) string {
 	flagName = strings.Replace(flagName, ".", "_", -1)
 	flagName = strings.Replace(flagName, "-", "_", -1)
 	envKey := strings.ToUpper(envPrefix + flagSetName + flagName)
-	return os.Getenv(envKey)
+	return os.LookupEnv(envKey)
 }
 
-// Registers a flag set to be parsed. Register all flag sets
+// Register registers a flag set to be parsed. Register all flag sets
 // before calling this function. flag.CommandLine is automatically
 // registered.
 func Register(flagSetName string, set *flag.FlagSet) {

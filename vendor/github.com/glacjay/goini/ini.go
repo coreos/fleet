@@ -51,11 +51,12 @@ func LoadReader(reader *bufio.Reader) (dict Dict, err error) {
 			break
 		}
 		lineno++
-		if len(l) == 0 {
+		
+		line := strings.TrimFunc(string(l), unicode.IsSpace)
+		if len(line) == 0 {
 			continue
 		}
-		line := strings.TrimFunc(string(l), unicode.IsSpace)
-
+		
 		for line[len(line)-1] == '\\' {
 			line = line[:len(line)-1]
 			l, _, err := reader.ReadLine()
