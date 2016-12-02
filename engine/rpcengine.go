@@ -110,12 +110,7 @@ func rpcAcquireLeadership(reg registry.Registry, lManager lease.Manager, machID 
 		return l
 	}
 
-	// If reg is not ready, we have to give it an opportunity to steal lease
-	// below. Otherwise it could be blocked forever by the existing engine leader,
-	// which could cause gRPC registry to always fail when a leader already exists.
-	// Thus we return the existing leader, only if reg.IsRegistryReady() == true.
-	// TODO(dpark): refactor the entire function for better readability. - 20160908
-	if (existing != nil && existing.Version() >= ver) && reg.IsRegistryReady() {
+	if existing != nil && existing.Version() >= ver {
 		log.Debugf("Lease already held by Machine(%s) operating at acceptable version %d", existing.MachineID(), existing.Version())
 		return existing
 	}
