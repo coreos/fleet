@@ -91,7 +91,7 @@ func TestUnitSubmit(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := unitStartCommon(cluster, m, "submit", 9); err != nil {
+	if err := unitStartCommon(cluster, m, "submit", 2); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -115,7 +115,7 @@ func TestUnitLoad(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := unitStartCommon(cluster, m, "load", 6); err != nil {
+	if err := unitStartCommon(cluster, m, "load", 2); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -136,7 +136,7 @@ func TestUnitStart(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := unitStartCommon(cluster, m, "start", 3); err != nil {
+	if err := unitStartCommon(cluster, m, "start", 2); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -144,7 +144,7 @@ func TestUnitStart(t *testing.T) {
 // TestUnitSubmitReplace() tests whether a command "fleetctl submit --replace
 // hello.service" works or not.
 func TestUnitSubmitReplace(t *testing.T) {
-	if err := replaceUnitCommon(t, "submit", 9); err != nil {
+	if err := replaceUnitCommon(t, "submit", 2); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -152,7 +152,7 @@ func TestUnitSubmitReplace(t *testing.T) {
 // TestUnitLoadReplace() tests whether a command "fleetctl load --replace
 // hello.service" works or not.
 func TestUnitLoadReplace(t *testing.T) {
-	if err := replaceUnitCommon(t, "load", 6); err != nil {
+	if err := replaceUnitCommon(t, "load", 2); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -160,7 +160,7 @@ func TestUnitLoadReplace(t *testing.T) {
 // TestUnitStartReplace() tests whether a command "fleetctl start --replace
 // hello.service" works or not.
 func TestUnitStartReplace(t *testing.T) {
-	if err := replaceUnitCommon(t, "start", 3); err != nil {
+	if err := replaceUnitCommon(t, "start", 2); err != nil {
 		t.Fatal(err)
 	}
 }

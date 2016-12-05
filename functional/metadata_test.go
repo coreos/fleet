@@ -86,7 +86,7 @@ func TestTemplatesWithSpecifiersInMetadata(t *testing.T) {
 		}
 	}
 
-	if stdout, stderr, err := cluster.Fleetctl(m0, "start", "--block-attempts=20", "fixtures/units/metadata@invalid.service"); err == nil {
+	if stdout, stderr, err := cluster.Fleetctl(m0, "start", "--block-attempts=10", "fixtures/units/metadata@invalid.service"); err == nil {
 		t.Fatalf("metadata@invalid unit should not be scheduled: \nstdout: %s\nstderr: %s", stdout, stderr)
 	}
 }
