@@ -81,6 +81,10 @@ func (a *API) sortedSchemaNames() (names []string) {
 	return
 }
 
+func (a *API) Schema(name string) *Schema {
+	return a.schemas[name]
+}
+
 type AllAPIs struct {
 	Items []*API `json:"items"`
 }
@@ -367,6 +371,17 @@ func (a *API) Target() string {
 	return fmt.Sprintf("%s/%s/%s", *apiPackageBase, a.Package(), renameVersion(a.Version))
 }
 
+// ServiceType returns the name of the type to use for the root API struct
+// (typically "Service").
+func (a *API) ServiceType() string {
+	switch a.Name {
+	case "appengine", "content", "servicemanagement":
+		return "APIService"
+	default:
+		return "Service"
+	}
+}
+
 // GetName returns a free top-level function/type identifier in the package.
 // It tries to return your preferred match if it's free.
 func (a *API) GetName(preferred string) string {
@@ -548,18 +563,22 @@ func (a *API) GenerateCode() ([]byte, error) {
 
 	a.generateScopeConstants()
 
-	a.GetName("New") // ignore return value; we're the first caller
-	pn("func New(client *http.Client) (*Service, error) {")
+	service := a.ServiceType()
+
+	// Reserve names (ignore return value; we're the first caller).
+	a.GetName("New")
+	a.GetName(service)
+
+	pn("func New(client *http.Client) (*%s, error) {", service)
 	pn("if client == nil { return nil, errors.New(\"client is nil\") }")
-	pn("s := &Service{client: client, BasePath: basePath}")
+	pn("s := &%s{client: client, BasePath: basePath}", service)
 	for _, res := range reslist { // add top level resources.
 		pn("s.%s = New%s(s)", res.GoField(), res.GoType())
 	}
 	pn("return s, nil")
 	pn("}")
 
-	a.GetName("Service") // ignore return value; no user-defined names yet
-	pn("\ntype Service struct {")
+	pn("\ntype %s struct {", service)
 	pn(" client *http.Client")
 	pn(" BasePath string // API endpoint base URL")
 	pn(" UserAgent string // optional additional User-Agent fragment")
@@ -568,7 +587,7 @@ func (a *API) GenerateCode() ([]byte, error) {
 		pn("\n\t%s\t*%s", res.GoField(), res.GoType())
 	}
 	pn("}")
-	pn("\nfunc (s *Service) userAgent() string {")
+	pn("\nfunc (s *%s) userAgent() string {", service)
 	pn(` if s.UserAgent == "" { return googleapi.UserAgent }`)
 	pn(` return googleapi.UserAgent + " " + s.UserAgent`)
 	pn("}\n")
@@ -752,7 +771,21 @@ var pointerFields = []fieldName{
 	{api: "datastore:v1beta2", schema: "Property", field: "Indexed"},
 	{api: "datastore:v1beta2", schema: "Property", field: "IntegerValue"},
 	{api: "datastore:v1beta2", schema: "Property", field: "StringValue"},
+	{api: "datastore:v1beta3", schema: "Value", field: "BlobValue"},
+	{api: "datastore:v1beta3", schema: "Value", field: "BooleanValue"},
+	{api: "datastore:v1beta3", schema: "Value", field: "DoubleValue"},
+	{api: "datastore:v1beta3", schema: "Value", field: "IntegerValue"},
+	{api: "datastore:v1beta3", schema: "Value", field: "StringValue"},
+	{api: "datastore:v1beta3", schema: "Value", field: "TimestampValue"},
 	{api: "genomics:v1beta2", schema: "Dataset", field: "IsPublic"},
+	{api: "monitoring:v3", schema: "TypedValue", field: "BoolValue"},
+	{api: "monitoring:v3", schema: "TypedValue", field: "DoubleValue"},
+	{api: "monitoring:v3", schema: "TypedValue", field: "Int64Value"},
+	{api: "monitoring:v3", schema: "TypedValue", field: "StringValue"},
+	{api: "servicecontrol:v1", schema: "MetricValue", field: "BoolValue"},
+	{api: "servicecontrol:v1", schema: "MetricValue", field: "DoubleValue"},
+	{api: "servicecontrol:v1", schema: "MetricValue", field: "Int64Value"},
+	{api: "servicecontrol:v1", schema: "MetricValue", field: "StringValue"},
 	{api: "tasks:v1", schema: "Task", field: "Completed"},
 	{api: "youtube:v3", schema: "ChannelSectionSnippet", field: "Position"},
 }
@@ -947,50 +980,98 @@ func (t *Type) IsMap() bool {
 
 // MapType checks if the current node is a map and if true, it returns the Go type for the map, such as map[string]string.
 func (t *Type) MapType() (typ string, ok bool) {
-	props := jobj(t.m, "additionalProperties")
-	if props == nil {
+	if t.IsAny() {
+		// "Any" types -- those which would otherwise be treated as map[string]interface{} --
+		// are given their own named types, e.g. type LogEntryJsonPayload interface{}
 		return "", false
 	}
-	s := jstr(props, "type")
-	if s == "any" {
-		return "", false
-	}
-	if s == "string" {
-		return "map[string]string", true
-	}
-	if s != "array" {
-		if s == "" { // Check for reference
-			s = jstr(props, "$ref")
-			if s != "" {
-				return "map[string]" + s, true
-			}
-		}
-		if s == "any" {
-			return "map[string]interface{}", true
-		}
-		log.Printf("Warning: found map to type %q which is not implemented yet.", s)
-		return "", false
-	}
-	items := jobj(props, "items")
-	if items == nil {
-		return "", false
-	}
-	s = jstr(items, "type")
-	if s != "string" {
-		if s == "" { // Check for reference
-			s = jstr(items, "$ref")
-			if s != "" {
-				return "map[string][]" + s, true
-			}
-		}
-		if s == "any" {
-			return "map[string][]interface{}", true
-		}
 
-		log.Printf("Warning: found map of arrays of type %q which is not implemented yet.", s)
+	if isSimpleObject(t.m) {
 		return "", false
 	}
-	return "map[string][]string", true
+
+	ty, err := getType(t.m)
+
+	if err == nil {
+		return ty, strings.HasPrefix(ty, "map[string]")
+	}
+
+	log.Printf("Warning: found map to type which is not implemented yet: %v", err)
+	return "", false
+}
+
+// Returns whether m is a non-map object.
+// This is a helper function for MapType.
+func isSimpleObject(m map[string]interface{}) bool {
+	return jstr(m, "type") == "object" && jobj(m, "additionalProperties") == nil
+}
+
+// getType returns a Go type given a JSON map containing type information.
+// m is a JSON map containing key "type" and maybe "items", "properties".
+//
+// This is a helper function for MapType.
+// Note: we only support maps to a subset of possible types. If getType
+// encounters one of the unsupported types it will return an error. The
+// archetypal unsupported type is a simple non-top-level object (i.e. a
+// synthetic schema generated by populateSubSchemas)
+func getType(m map[string]interface{}) (string, error) {
+	// getType is able to return type strings for valtype, where
+	// valtype may be one of
+	//  * map to valtype
+	//  * array of valtype
+	//  * $ref schema
+	//  * simple type.
+	//
+	// Note: valtype here does not include "object" i.e. we cannot handle
+	// anything which involves a synthetic schema.
+	//
+	// If this code is to be extended to support maps to simple objects,
+	// populateSubSchemas must first be modified.  The current
+	// populateSubSchemas code (which generates all of the synthetic
+	// schemas) stops processing as soon as it hits a map.  So any objects
+	// that appear below a map in the discovery doc have no corresponding
+	// generated schema. So we can't return types involving those schema
+	// names here, because it won't be defined anywhere in the generator
+	// output.
+	//
+	// Example: in pagespeedonline:v1, the
+	// ResultFormattedResults.RuleResults field should really be of type
+	// map[string]*ResultFormattedResultsRuleResults, where
+	// ResultFormattedResultsRuleResults is a struct containing
+	// LocalizedRuleName, RuleImpact, UrlBlocks fields.  Instead, the
+	// generator outputs a ResultFormattedResults.RuleResults field of type
+	// *ResultFormattedResultsRuleResults, which is an empty struct.  This
+	// is because we can't handle a map to
+	// ResultFormattedResultsRuleResults.
+	if isSimpleObject(m) {
+		return "", fmt.Errorf("unsupported object type")
+	}
+
+	apitype := jstr(m, "type")
+	switch apitype {
+	case "object": // map
+		if ty, err := getType(jobj(m, "additionalProperties")); err == nil {
+			return "map[string]" + ty, nil
+		} else {
+			return "", fmt.Errorf("map to: %v", err)
+		}
+	case "array": // slice
+		if ty, err := getType(jobj(m, "items")); err == nil {
+			return "[]" + ty, nil
+		} else {
+			return "", fmt.Errorf("array: %v", err)
+		}
+	case "": // Check for reference
+		if ref := jstr(m, "$ref"); ref != "" {
+			return ref, nil
+		}
+	}
+
+	if gotype, ok := simpleTypeConvert(apitype, jstr(m, "format")); ok {
+		return gotype, nil
+	}
+
+	return "", fmt.Errorf("unsupported type: %s", apitype)
 }
 
 func (t *Type) IsReference() bool {
@@ -1044,6 +1125,15 @@ func (s *Schema) properties() []*Property {
 		})
 	}
 	return pl
+}
+
+func (s *Schema) HasContentType() bool {
+	for _, p := range s.properties() {
+		if p.GoName() == "ContentType" && p.Type().AsGo() == "string" {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *Schema) populateSubSchemas() (outerr error) {
@@ -1147,11 +1237,12 @@ func (s *Schema) GoName() string {
 			s.goName = name
 		} else {
 			base := initialCap(s.apiName)
-			if s.api.Name == "appengine" && s.apiName == "Service" {
-				// Avoid getting "Service1".
-				base = "Module"
-			}
 			s.goName = s.api.GetName(base)
+			if base == "Service" && s.goName != "Service" {
+				// Detect the case where a resource is going to clash with the
+				// root service object.
+				panicf("Clash on name Service")
+			}
 		}
 	}
 	return s.goName
@@ -1261,6 +1352,7 @@ func (s *Schema) writeSchemaStruct(api *API) {
 
 	np := new(namePool)
 	forceSendName := np.Get("ForceSendFields")
+	nullFieldsName := np.Get("NullFields")
 	if s.isResponseType() {
 		np.Get("ServerResponse") // reserve the name
 	}
@@ -1320,20 +1412,33 @@ func (s *Schema) writeSchemaStruct(api *API) {
 	s.api.p("%s", asComment("\t", comment))
 
 	s.api.pn("\t%s []string `json:\"-\"`", forceSendName)
+
+	commentFmtStr = "%s is a list of field names (e.g. %q) to " +
+		"include in API requests with the JSON null value. " +
+		"By default, fields with empty values are omitted from API requests. However, " +
+		"any field with an empty value appearing in %s will be sent to the server as null. " +
+		"It is an error if a field in this list has a non-empty value. This may be used to " +
+		"include null fields in Patch requests."
+	comment = fmt.Sprintf(commentFmtStr, nullFieldsName, firstFieldName, nullFieldsName)
+	s.api.p("\n")
+	s.api.p("%s", asComment("\t", comment))
+
+	s.api.pn("\t%s []string `json:\"-\"`", nullFieldsName)
+
 	s.api.pn("}")
-	s.writeSchemaMarshal(forceSendName)
-	return
+	s.writeSchemaMarshal(forceSendName, nullFieldsName)
 }
 
 // writeSchemaMarshal writes a custom MarshalJSON function for s, which allows
 // fields to be explicitly transmitted by listing them in the field identified
-// by forceSendFieldName.
-func (s *Schema) writeSchemaMarshal(forceSendFieldName string) {
+// by forceSendFieldName, and allows fields to be transmitted with the null value
+// by listing them in the field identified by nullFieldsName.
+func (s *Schema) writeSchemaMarshal(forceSendFieldName, nullFieldsName string) {
 	s.api.pn("func (s *%s) MarshalJSON() ([]byte, error) {", s.GoName())
 	s.api.pn("\ttype noMethod %s", s.GoName())
 	// pass schema as methodless type to prevent subsequent calls to MarshalJSON from recursing indefinitely.
 	s.api.pn("\traw := noMethod(*s)")
-	s.api.pn("\treturn gensupport.MarshalJSON(raw, s.%s)", forceSendFieldName)
+	s.api.pn("\treturn gensupport.MarshalJSON(raw, s.%s, s.%s)", forceSendFieldName, nullFieldsName)
 	s.api.pn("}")
 }
 
@@ -1388,7 +1493,7 @@ type Resource struct {
 func (r *Resource) generateType() {
 	pn := r.api.pn
 	t := r.GoType()
-	pn(fmt.Sprintf("func New%s(s *Service) *%s {", t, t))
+	pn(fmt.Sprintf("func New%s(s *%s) *%s {", t, r.api.ServiceType(), t))
 	pn("rs := &%s{s : s}", t)
 	for _, res := range r.resources {
 		pn("rs.%s = New%s(s)", res.GoField(), res.GoType())
@@ -1397,7 +1502,7 @@ func (r *Resource) generateType() {
 	pn("}")
 
 	pn("\ntype %s struct {", t)
-	pn(" s *Service")
+	pn(" s *%s", r.api.ServiceType())
 	for _, res := range r.resources {
 		pn("\n\t%s\t*%s", res.GoField(), res.GoType())
 	}
@@ -1611,7 +1716,7 @@ func (meth *Method) generateCode() {
 	callName := a.GetName(prefix + methodName + "Call")
 
 	pn("\ntype %s struct {", callName)
-	pn(" s *Service")
+	pn(" s *%s", a.ServiceType())
 	for _, arg := range args.l {
 		if arg.location != "query" {
 			pn(" %s %s", arg.goname, arg.gotype)
@@ -1632,6 +1737,7 @@ func (meth *Method) generateCode() {
 		pn(" progressUpdater_  googleapi.ProgressUpdater")
 	}
 	pn(" ctx_ context.Context")
+	pn(" header_ http.Header")
 	pn("}")
 
 	p("\n%s", asComment("", methodName+": "+jstr(meth.m, "description")))
@@ -1726,6 +1832,17 @@ func (meth *Method) generateCode() {
 		// See comments on https://code-review.googlesource.com/#/c/3970/
 		p("\n%s", asComment("", comment))
 		pn("func (c *%s) Media(r io.Reader, options ...googleapi.MediaOption) *%s {", callName, callName)
+		// We check if the body arg, if any, has a content type and apply it here.
+		// In practice, this only happens for the storage API today.
+		// TODO(djd): check if we can cope with the developer setting the body's Content-Type field
+		// after they've made this call.
+		if ba := args.bodyArg(); ba != nil {
+			if ba.schema.HasContentType() {
+				pn("  if ct := c.%s.ContentType; ct != \"\" {", ba.goname)
+				pn("   options = append([]googleapi.MediaOption{googleapi.ContentType(ct)}, options...)")
+				pn("  }")
+			}
+		}
 		pn(" opts := googleapi.ProcessMediaOptions(options)")
 		pn(" chunkSize := opts.ChunkSize")
 		pn(" if !opts.ForceEmptyContentType {")
@@ -1802,8 +1919,21 @@ func (meth *Method) generateCode() {
 	pn("return c")
 	pn("}")
 
+	comment = "Header returns an http.Header that can be modified by the caller to add " +
+		"HTTP headers to the request."
+	p("\n%s", asComment("", comment))
+	pn("func (c *%s) Header() http.Header {", callName)
+	pn(" if c.header_ == nil {")
+	pn("  c.header_ = make(http.Header)")
+	pn(" }")
+	pn(" return c.header_")
+	pn("}")
+
 	pn("\nfunc (c *%s) doRequest(alt string) (*http.Response, error) {", callName)
 	pn(`reqHeaders := make(http.Header)`)
+	pn("for k, v := range c.header_ {")
+	pn(" reqHeaders[k] = v")
+	pn("}")
 	pn(`reqHeaders.Set("User-Agent",c.s.userAgent())`)
 	if httpMethod == "GET" {
 		pn(`if c.ifNoneMatch_ != "" {`)
@@ -1863,15 +1993,9 @@ func (meth *Method) generateCode() {
 			pn(`"%s": %s,`, arg.apiname, arg.exprAsString("c."))
 		}
 		pn(`})`)
-	} else {
-		// Just call SetOpaque since we aren't calling Expand
-		pn(`googleapi.SetOpaque(req.URL)`)
 	}
 
-	pn("if c.ctx_ != nil {")
-	pn(" return ctxhttp.Do(c.ctx_, c.s.client, req)")
-	pn("}")
-	pn("return c.s.client.Do(req)")
+	pn("return gensupport.SendRequest(c.ctx_, c.s.client, req)")
 	pn("}")
 
 	if meth.supportsMediaDownload() {
@@ -2128,12 +2252,17 @@ func (meth *Method) NewArguments() (args *arguments) {
 
 func (meth *Method) NewBodyArg(m map[string]interface{}) *argument {
 	reftype := jstr(m, "$ref")
+	schem := meth.api.Schema(reftype)
+	if schem == nil {
+		panicf("unable to find schema for type %q", reftype)
+	}
 	return &argument{
 		goname:   validGoIdentifer(strings.ToLower(reftype)),
 		apiname:  "REQUEST",
-		gotype:   "*" + reftype,
+		gotype:   "*" + schem.GoName(),
 		apitype:  reftype,
 		location: "body",
+		schema:   schem,
 	}
 }
 
@@ -2161,6 +2290,7 @@ func (meth *Method) NewArg(apiname string, p *Param) *argument {
 
 type argument struct {
 	method           *Method
+	schema           *Schema // Set if location == "body".
 	apiname, apitype string
 	goname, gotype   string
 	location         string // "path", "query", "body"

@@ -56,8 +56,8 @@ type command struct {
 }
 
 var commands = map[string]command{
-	"ping": {run: (*h2i).cmdPing},
-	"settings": {
+	"ping": command{run: (*h2i).cmdPing},
+	"settings": command{
 		run: (*h2i).cmdSettings,
 		complete: func() []string {
 			return []string{
@@ -71,8 +71,8 @@ var commands = map[string]command{
 			}
 		},
 	},
-	"quit":    {run: (*h2i).cmdQuit},
-	"headers": {run: (*h2i).cmdHeaders},
+	"quit":    command{run: (*h2i).cmdQuit},
+	"headers": command{run: (*h2i).cmdHeaders},
 }
 
 func usage() {

@@ -31,8 +31,10 @@ import:
   - http2
   - internal
   - trace
-  - lex/httplex
 - package: google.golang.org/api
   subpackages:
   - googleapi
 - package: github.com/spf13/viper
+- package: google.golang.org/genproto
+  subpackages:
+  - googleapis
