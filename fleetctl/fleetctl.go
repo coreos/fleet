@@ -1059,9 +1059,8 @@ func assertUnitState(name string, js job.JobState, out io.Writer) bool {
 		fmt.Fprintln(out, msg)
 		return nil
 	}
-	timeout, err := waitForState(fetchUnitState)
+	_, err := waitForState(fetchUnitState)
 	if err != nil {
-		log.Errorf("Failed to find unit %s within %v, err: %v", name, timeout, err)
 		return false
 	}
 
@@ -1237,13 +1236,13 @@ func waitForState(stateCheckFunc func() error) (time.Duration, error) {
 	for {
 		select {
 		case <-alarm:
-			return timeout, fmt.Errorf("Failed to fetch systemd active states within %v", timeout)
+			return timeout, fmt.Errorf("Failed to fetch states within %v", timeout)
 		case <-ticker:
 			err := stateCheckFunc()
 			if err == nil {
 				return timeout, nil
 			}
-			log.Debug("Retrying assertion of systemd active states. err: %v", err)
+			log.Debugf("Retrying assertion of states. err: %v", err)
 		}
 	}
 }
