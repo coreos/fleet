@@ -19,6 +19,7 @@ import (
 	"errors"
 	"net"
 	"net/http"
+	"os"
 	"sync"
 	"time"
 
@@ -245,7 +246,8 @@ func (s *Server) Supervise() {
 	select {
 	case <-done:
 	case <-time.After(shutdownTimeout):
-		log.Errorf("Timed out waiting for server to shut down")
+		log.Errorf("Timed out waiting for server to shut down, shutting down server *hard*")
+		os.Exit(1)
 		sd = true
 	}
 	if !sd {
