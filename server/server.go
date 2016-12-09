@@ -246,7 +246,7 @@ func (s *Server) Supervise() {
 	select {
 	case <-done:
 	case <-time.After(shutdownTimeout):
-		log.Errorf("Timed out waiting for server to shut down, shutting down server *hard*")
+		log.Errorf("Timed out waiting for server to shut down, shutting down server without cleanup.")
 		os.Exit(1)
 		sd = true
 	}
