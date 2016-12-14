@@ -604,18 +604,6 @@ func checkListUnits(cl platform.Cluster, m platform.Member, cmd string, ufs []st
 		if lenLists != nu || !found {
 			return fmt.Errorf("Expected %s to be unit file", ufs[i])
 		}
-
-		if cmd == "start" {
-			// Check expected systemd state after starting units
-			stdout, stderr, err := cl.MemberCommand(m, "systemctl", "show", "--property=ActiveState", ufs[i])
-			if strings.TrimSpace(stdout) != "ActiveState=active" {
-				return fmt.Errorf("Fleet unit not reported as active:\nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)
-			}
-			stdout, stderr, err = cl.MemberCommand(m, "systemctl", "show", "--property=Result", ufs[i])
-			if strings.TrimSpace(stdout) != "Result=success" {
-				return fmt.Errorf("Result for fleet unit not reported as success:\nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)
-			}
-		}
 	}
 	return err
 }
