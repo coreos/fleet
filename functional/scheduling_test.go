@@ -333,6 +333,74 @@ func TestScheduleOneWayConflict(t *testing.T) {
 
 }
 
+// Start 3 services that conflict with one another.
+func TestScheduleMultipleConflicts(t *testing.T) {
+	cluster, err := platform.NewNspawnCluster("smoke")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cluster.Destroy(t)
+
+	// Start with a simple three-node cluster
+	members, err := platform.CreateNClusterMembers(cluster, 3)
+	if err != nil {
+		t.Fatal(err)
+	}
+	m0 := members[0]
+	machines, err := cluster.WaitForNMachines(m0, 3)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Ensure we can SSH into each machine using fleetctl
+	for _, machine := range machines {
+		if stdout, stderr, err := cluster.Fleetctl(m0, "--strict-host-key-checking=false", "ssh", machine, "uptime"); err != nil {
+			t.Errorf("Unable to SSH into fleet machine: \nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)
+		}
+	}
+
+	for i := 0; i < 3; i++ {
+		unit := fmt.Sprintf("fixtures/units/conflict.multiple.%d.service", i)
+		stdout, stderr, err := cluster.Fleetctl(m0, "start", "--no-block", unit)
+		if err != nil {
+			t.Errorf("Failed starting unit %s: \nstdout: %s\nstderr: %s\nerr: %v", unit, stdout, stderr, err)
+		}
+	}
+
+	// All 3 services should be visible immediately and 3 should become
+	// ACTIVE shortly thereafter
+	stdout, stderr, err := cluster.Fleetctl(m0, "list-unit-files", "--no-legend")
+	if err != nil {
+		t.Fatalf("Failed to run list-unit-files:\nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)
+	}
+	units := strings.Split(strings.TrimSpace(stdout), "\n")
+	if len(units) != 3 {
+		t.Fatalf("Did not find five units in cluster: \n%s", stdout)
+	}
+	active, err := cluster.WaitForNActiveUnits(m0, 3)
+	if err != nil {
+		t.Fatal(err)
+	}
+	states, err := util.ActiveToSingleStates(active)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	machineSet := make(map[string]bool)
+
+	for unit, unitState := range states {
+		if len(unitState.Machine) == 0 {
+			t.Errorf("Unit %s is not reporting machine", unit)
+		}
+
+		machineSet[unitState.Machine] = true
+	}
+
+	if len(machineSet) != 3 {
+		t.Errorf("3 active units not running on 3 unique machines")
+	}
+}
+
 // TestScheduleReplace starts 3 units, followed by starting another unit
 // that replaces the 1st unit. Then it verifies that the original unit
 // got rescheduled on a different machine.

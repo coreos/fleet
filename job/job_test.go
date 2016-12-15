@@ -77,6 +77,21 @@ Description=Testing
 [X-Fleet]
 Conflicts=*bar*
 `, []string{"*bar*"}},
+		{``, []string{}},
+		{`[Unit]
+Description=Testing
+
+[X-Fleet]
+Conflicts=*bar* *foo*
+`, []string{"*bar*", "*foo*"}},
+		{``, []string{}},
+		{`[Unit]
+Description=Testing
+
+[X-Fleet]
+Conflicts=*bar*
+Conflicts=*foo*
+`, []string{"*bar*", "*foo*"}},
 	}
 	for i, tt := range testCases {
 		j := NewJob("echo.service", *newUnit(t, tt.contents))

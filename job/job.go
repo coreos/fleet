@@ -220,8 +220,13 @@ func (j *Job) ValidateRequirements() error {
 // machine as this Job.
 func (j *Job) Conflicts() []string {
 	conflicts := make([]string, 0)
-	conflicts = append(conflicts, j.requirements()[deprecatedXPrefix+fleetConflicts]...)
-	conflicts = append(conflicts, j.requirements()[fleetConflicts]...)
+
+	ldConflicts := splitCombine(j.requirements()[deprecatedXPrefix+fleetConflicts])
+	conflicts = append(conflicts, ldConflicts...)
+
+	dConflicts := splitCombine(j.requirements()[fleetConflicts])
+	conflicts = append(conflicts, dConflicts...)
+
 	return conflicts
 }
 
@@ -331,4 +336,15 @@ func unitPrintf(s string, nu unit.UnitNameInfo) (out string) {
 func isTruthyValue(s string) bool {
 	chl := strings.ToLower(s)
 	return chl == "true" || chl == "yes" || chl == "1" || chl == "on" || chl == "t"
+}
+
+// splitCombine retrieves each word from an input string slice, to put each
+// one again into a single slice.
+func splitCombine(inStrs []string) []string {
+	outStrs := make([]string, 0)
+	for _, str := range inStrs {
+		inStrs := strings.Fields(str)
+		outStrs = append(outStrs, inStrs...)
+	}
+	return outStrs
 }

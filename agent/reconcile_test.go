@@ -388,6 +388,30 @@ func TestAbleToRun(t *testing.T) {
 			want: job.JobActionUnschedule,
 		},
 
+		// conflicts found
+		{
+			dState: &AgentState{
+				MState: &machine.MachineState{ID: "123"},
+				Units: map[string]*job.Unit{
+					"ping.service": &job.Unit{Name: "ping.service"},
+				},
+			},
+			job:  newTestJobWithXFleetValues(t, "Conflicts=pong.service\nConflicts=ping.service"),
+			want: job.JobActionUnschedule,
+		},
+
+		// conflicts found
+		{
+			dState: &AgentState{
+				MState: &machine.MachineState{ID: "123"},
+				Units: map[string]*job.Unit{
+					"ping.service": &job.Unit{Name: "ping.service"},
+				},
+			},
+			job:  newTestJobWithXFleetValues(t, "Conflicts=pong.service ping.service"),
+			want: job.JobActionUnschedule,
+		},
+
 		// no replaces found
 		{
 			dState: &AgentState{
