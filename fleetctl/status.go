@@ -20,6 +20,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/coreos/fleet/job"
+	"github.com/coreos/fleet/schema"
 )
 
 var cmdStatus = &cobra.Command{
@@ -46,6 +47,7 @@ func init() {
 }
 
 func runStatusUnit(cCmd *cobra.Command, args []string) (exit int) {
+	globalUnits := make([]schema.Unit, 0)
 	for i, arg := range args {
 		name := unitNameMangle(arg)
 		unit, err := cAPI.Unit(name)
@@ -58,8 +60,8 @@ func runStatusUnit(cCmd *cobra.Command, args []string) (exit int) {
 			stderr("Unit %s does not exist.", name)
 			return 1
 		} else if suToGlobal(*unit) {
-			stderr("Unable to determine status of global unit %s.", unit.Name)
-			return 1
+			globalUnits = append(globalUnits, *unit)
+			continue
 		} else if job.JobState(unit.CurrentState) == job.JobStateInactive {
 			stderr("Unit %s does not appear to be loaded.", unit.Name)
 			return 1
@@ -74,6 +76,11 @@ func runStatusUnit(cCmd *cobra.Command, args []string) (exit int) {
 			exit = exitVal
 			break
 		}
+	}
+
+	if err := cmdGlobalMachineState(cCmd, globalUnits); err != nil {
+		stderr("Error retrieving machine state for global units: %v", err)
+		return 1
 	}
 
 	return

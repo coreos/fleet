@@ -685,12 +685,14 @@ func TestScheduleGlobalUnits(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer cluster.Destroy(t)
-	members, err := platform.CreateNClusterMembers(cluster, 3)
+	numGUnits := 3
+	numAllUnits := 5
+	members, err := platform.CreateNClusterMembers(cluster, numGUnits)
 	if err != nil {
 		t.Fatal(err)
 	}
 	m0 := members[0]
-	machines, err := cluster.WaitForNMachines(m0, 3)
+	machines, err := cluster.WaitForNMachines(m0, numGUnits)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -708,19 +710,21 @@ func TestScheduleGlobalUnits(t *testing.T) {
 	}
 
 	// Now add a global unit
-	stdout, stderr, err = cluster.Fleetctl(m0, "start", "--no-block", "fixtures/units/global.service")
+	globalLongPath := "fixtures/units/global.service"
+	stdout, stderr, err = cluster.Fleetctl(m0, "start", "--no-block", globalLongPath)
 	if err != nil {
 		t.Fatalf("Failed starting unit: \nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)
 	}
 
 	// Should see 2 + 3 units
-	states, err := cluster.WaitForNActiveUnits(m0, 5)
+	states, err := cluster.WaitForNActiveUnits(m0, numAllUnits)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Each machine should have a single global unit
-	us := states["global.service"]
+	globalBase := path.Base(globalLongPath)
+	us := states[globalBase]
 	for _, mach := range machines {
 		var found bool
 		for _, state := range us {
@@ -736,6 +740,27 @@ func TestScheduleGlobalUnits(t *testing.T) {
 				t.Logf("%#v", state)
 			}
 		}
+	}
+
+	stdout, stderr, err = cluster.Fleetctl(m0, "status", "--no-block", globalBase)
+	if err != nil {
+		t.Fatalf("Failed getting unit status: \nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)
+	}
+
+	// restarting global units
+	cmd := "restart"
+	stdout, stderr, err = cluster.Fleetctl(m0, cmd, globalBase)
+	if err != nil {
+		t.Fatalf("Failed restarting global unit: \nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)
+	}
+
+	outmap, err := waitForNUnitsStart(cluster, m0, numAllUnits)
+	if err != nil {
+		t.Fatalf("Failed listing global units: %v", err)
+	}
+	glist, _ := outmap[globalBase]
+	if len(glist) != numGUnits {
+		t.Fatalf("Did not find %d global units: got %d", numGUnits, len(glist))
 	}
 }
 
