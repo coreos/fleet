@@ -31,7 +31,7 @@ All releases version numbers follow the format of [semantic versioning 2.0.0](ht
 - Manually check fleet is buildable in Linux, Darwin.
 - Manually check upgrade fleet cluster of previous minor version works well.
 - Manually check new features work well.
-- Add an annotated tag through `git tag -a ${VERSION}`.
+- Add a signed tag through `git tag -s ${VERSION} -u 3F1B2C87`.
 - Sanity check tag correctness through `git show tags/$VERSION`.
 - Push the tag to GitHub through `git push origin tags/$VERSION`. This assumes `origin` corresponds to "https://github.com/coreos/fleet".
 
@@ -48,11 +48,24 @@ Run release script in root directory:
 
 It generates all release binaries and images under directory `./release`.
 
+## Sign Binaries and Images
+
+Choose appropriate private key to sign the generated binaries and images.
+
+The following commands are used for public release sign:
+
+```
+cd release
+gpg --sign -u 3F1B2C87 fleet-${VERSION}.tar.gz
+# use `CoreOS ACI Builder <release@coreos.com>` secret key
+gpg -u 3F1B2C87 -a --output fleetd-${VERSION}-linux-amd64.aci.asc --detach-sig fleetd-${VERSION}-linux-amd64.aci
+```
+
 ## Publish Release Page in GitHub
 
 - Set release title as the version name.
 - Follow the format of previous release pages.
-- Attach the generated binaries and aci image.
+- Attach the generated binaries, aci image and signatures.
 - Publish the release!
 
 ## Publish Docker Image in Quay.io
