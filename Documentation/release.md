@@ -61,7 +61,7 @@ The following commands are used for public release sign:
 
 ```
 cd release
-gpg --sign -u $SUBKEYID fleet-${VERSION}.tar.gz
+gpg --sign -u $SUBKEYID --detach-sig fleet-${VERSION}.tar.gz
 gpg -u $SUBKEYID -a --output fleetd-${VERSION}-linux-amd64.aci.asc --detach-sig fleetd-${VERSION}-linux-amd64.aci
 ```
 
