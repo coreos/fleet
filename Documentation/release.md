@@ -56,7 +56,7 @@ The following commands are used for public release sign:
 
 ```
 cd release
-for i in fleet-*.tar.gz; do gpg --sign ${i}; done
+gpg --sign -u 3F1B2C87 fleet-${VERSION}.tar.gz
 # use `CoreOS ACI Builder <release@coreos.com>` secret key
 gpg -u 3F1B2C87 -a --output fleetd-${VERSION}-linux-amd64.aci.asc --detach-sig fleetd-${VERSION}-linux-amd64.aci
 ```
