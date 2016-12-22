@@ -31,7 +31,7 @@ All releases version numbers follow the format of [semantic versioning 2.0.0](ht
 - Manually check fleet is buildable in Linux, Darwin.
 - Manually check upgrade fleet cluster of previous minor version works well.
 - Manually check new features work well.
-- Add a signed tag through `git tag -s ${VERSION}`.
+- Add a signed tag through `git tag -s ${VERSION} -u 3F1B2C87`.
 - Sanity check tag correctness through `git show tags/$VERSION`.
 - Push the tag to GitHub through `git push origin tags/$VERSION`. This assumes `origin` corresponds to "https://github.com/coreos/fleet".
 
@@ -56,9 +56,9 @@ The following commands are used for public release sign:
 
 ```
 cd release
-for i in fleet-*{.zip,.tar.gz}; do gpg --sign ${i}; done
+for i in fleet-*.tar.gz; do gpg --sign ${i}; done
 # use `CoreOS ACI Builder <release@coreos.com>` secret key
-gpg -u 88182190 -a --output fleetd-${VERSION}-linux-amd64.aci.asc --detach-sig fleetd-${VERSION}-linux-amd64.aci
+gpg -u 3F1B2C87 -a --output fleetd-${VERSION}-linux-amd64.aci.asc --detach-sig fleetd-${VERSION}-linux-amd64.aci
 ```
 
 ## Publish Release Page in GitHub
