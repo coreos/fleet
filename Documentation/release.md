@@ -12,6 +12,11 @@ Set desired version as environment variable for following steps. Here is an exam
 export VERSION=v0.13.0
 ```
 
+Set the subkey ID for the appropriate signing key:
+```
+export SUBKEYID=3F1B2C87
+```
+
 All releases version numbers follow the format of [semantic versioning 2.0.0](http://semver.org/).
 
 ### Major, Minor Version Release, or its Pre-release
@@ -31,7 +36,7 @@ All releases version numbers follow the format of [semantic versioning 2.0.0](ht
 - Manually check fleet is buildable in Linux, Darwin.
 - Manually check upgrade fleet cluster of previous minor version works well.
 - Manually check new features work well.
-- Add a signed tag through `git tag -s ${VERSION} -u 3F1B2C87`.
+- Add a signed tag through `GIT_COMMITTER_NAME="CoreOS Application Signing Key" GIT_COMMITTER_EMAIL="security@coreos.com" git tag -s ${VERSION} -u $SUBKEYID`.
 - Sanity check tag correctness through `git show tags/$VERSION`.
 - Push the tag to GitHub through `git push origin tags/$VERSION`. This assumes `origin` corresponds to "https://github.com/coreos/fleet".
 
@@ -56,9 +61,8 @@ The following commands are used for public release sign:
 
 ```
 cd release
-gpg --sign -u 3F1B2C87 fleet-${VERSION}.tar.gz
-# use `CoreOS ACI Builder <release@coreos.com>` secret key
-gpg -u 3F1B2C87 -a --output fleetd-${VERSION}-linux-amd64.aci.asc --detach-sig fleetd-${VERSION}-linux-amd64.aci
+gpg --sign -u $SUBKEYID fleet-${VERSION}.tar.gz
+gpg -u $SUBKEYID -a --output fleetd-${VERSION}-linux-amd64.aci.asc --detach-sig fleetd-${VERSION}-linux-amd64.aci
 ```
 
 ## Publish Release Page in GitHub
