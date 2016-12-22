@@ -17,7 +17,7 @@ CPU usage from parsing all D-Bus messages when interacting with systemd.
   - a) parsing the JSON-encoded representations (stored in etcd)
   - b) parsing the unit file itself (using go-systemd)
 
-- The agent deals very poorly with inconsistent read/write latencies with etcdal
+- The agent deals very poorly with inconsistent read/write latencies with etcd
   (*what is the actual behaviour?*)
 
 ## Improvements

@@ -1,3 +1,7 @@
+## <img src="Documentation/achtung.png" alt="WARNING" width="30" height="30"><img src="Documentation/achtung.png" alt="WARNING" width="30" height="30"><img src="Documentation/achtung.png" alt="WARNING" width="30" height="30"> Deprecation warning <img src="Documentation/achtung.png" alt="WARNING" width="30" height="30"><img src="Documentation/achtung.png" alt="WARNING" width="30" height="30"><img src="Documentation/achtung.png" alt="WARNING" width="30" height="30"><a name="deprecation-warning"></a>
+fleet is no longer developed or maintained by CoreOS. CoreOS instead recommends Kubernetes for all clustering needs.
+The project exists here for historical reference. If you are interested in the future of the project and taking over stewardship, please contact fleet@coreos.com
+
 # fleet - a distributed init system
 
 [![Build Status](https://travis-ci.org/coreos/fleet.png?branch=master)](https://travis-ci.org/coreos/fleet)
@@ -9,12 +13,11 @@ fleet ties together [systemd][coreos-systemd] and [etcd][etcd] into a simple dis
 
 ## Current status
 
-fleet has seen production use for some time and is largely considered stable.
-However, there are known [scalability limitations][fleet-scaling] with its architecture.
-As such, it is not recommended to run fleet clusters larger than 100 nodes or with more than 1000 services.
-The fleet project is being maintained for bug fixes but the existing maintainers do not intend to add additional major features or significantly rework fleet to address these limitations.
+The fleet project is [no longer maintained](#deprecation-warning).
 
-If you are a developer and wish to help maintain fleet and improve its scalability, please email the [maintainers][maintainers].
+As of v1.0.0, fleet has seen production use for some time and is largely considered stable.
+However, there are [various known and unresolved issues](https://github.com/coreos/fleet/issues), including [scalability limitations][fleet-scaling] with its architecture.
+As such, it is not recommended to run fleet clusters larger than 100 nodes or with more than 1000 services.
 
 ## Using fleet
 
@@ -63,9 +66,9 @@ After you have machines configured (check `fleetctl list-machines`), get to work
 
 ### Building
 
-fleet must be built with Go 1.4+ on a Linux machine. Simply run `./build` and then copy the binaries out of `bin/` directory onto each of your machines. The tests can similarly be run by simply invoking `./test`.
+fleet must be built with Go 1.5+ on a Linux machine. Simply run `./build` and then copy the binaries out of `bin/` directory onto each of your machines. The tests can similarly be run by simply invoking `./test`.
 
-If you're on a machine without Go 1.4+ but you have Docker installed, run `./build-docker` to compile the binaries instead.
+If you're on a machine without Go 1.5+ but you have Docker installed, run `./build-docker` to compile the binaries instead.
 
 ## Project Details
 
@@ -77,10 +80,6 @@ See the [API documentation][api-doc] for more information.
 ### Release Notes
 
 See the [releases tab][releases] for more information on each release.
-
-### Contributing
-
-See [CONTRIBUTING][contributing] for details on submitting patches and contacting developers via IRC and mailing lists.
 
 ### License
 
