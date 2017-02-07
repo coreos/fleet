@@ -1,5 +1,7 @@
 # Service Discovery
 
+**Fleet is no longer under active development, and receives only critical security fixes. After 2/1/2018, fleet will no longer be included in CoreOS Container Linux. New clusters should use [Kubernetes](CoreOS.com/kubernetes/docs/latest). Legacy fleet clusters should [run fleet in a container](CoreOS.com/fleet/docs/latest/launching-containers-fleet.html#running-fleet-with-ignition).**
+
 Since applications and networking environments vary widely between customer deployments, fleet does not provide a generalized, integrated solution for service discovery. However, there are a number of patterns available which can easily be implemented on top of fleet to provide automated and reliable service discovery. One such pattern, the _sidekick model_, is described below.
 
 ## Sidekick model

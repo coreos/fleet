@@ -1,5 +1,7 @@
 # Architecture
 
+**Fleet is no longer under active development, and receives only critical security fixes. After 2/1/2018, fleet will no longer be included in CoreOS Container Linux. New clusters should use [Kubernetes](CoreOS.com/kubernetes/docs/latest). Legacy fleet clusters should [run fleet in a container](CoreOS.com/fleet/docs/latest/launching-containers-fleet.html#running-fleet-with-ignition).**
+
 ## fleetd
 
 Every system in the fleet cluster runs a single `fleetd` daemon. Each daemon encapsulates two roles: the *engine* and the *agent*. An engine primarily makes scheduling decisions while an agent executes units. Both the engine and agent use the _reconciliation model_, periodically generating a snapshot of "current state" and "desired state" and doing the necessary work to mutate the former towards the latter.
