@@ -1,5 +1,7 @@
 # Unit Files
 
+**[fleet is no longer actively developed or maintained by CoreOS](https://coreos.com/blog/migrating-from-fleet-to-kubernetes.html). CoreOS instead recommends [Kubernetes](https://coreos.com/kubernetes/docs/latest/) for cluster orchestration.**
+
 Unit files are the primary means of interacting with fleet. They define what you want to do, and how fleet should do it.
 
 fleet will schedule any valid service, socket, path or timer systemd unit to a machine in the cluster, taking into account a few special properties in the `[X-Fleet]` section. If you're new to using systemd unit files, check out the [Getting Started with systemd guide][systemd-guide].

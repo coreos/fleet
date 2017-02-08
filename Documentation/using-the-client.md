@@ -1,5 +1,7 @@
 # Using the Client
 
+**[fleet is no longer actively developed or maintained by CoreOS](https://coreos.com/blog/migrating-from-fleet-to-kubernetes.html). CoreOS instead recommends [Kubernetes](https://coreos.com/kubernetes/docs/latest/) for cluster orchestration.**
+
 fleet provides a command-line tool called `fleetctl`. The commands provided by
 `fleetctl` are analogous to those of systemd's CLI, `systemctl`.
 

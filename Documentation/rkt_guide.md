@@ -1,5 +1,7 @@
 # Running fleetd under rkt
 
+**[fleet is no longer actively developed or maintained by CoreOS](https://coreos.com/blog/migrating-from-fleet-to-kubernetes.html). CoreOS instead recommends [Kubernetes](https://coreos.com/kubernetes/docs/latest/) for cluster orchestration.**
+
 The following guide will show you how to run fleetd under rkt.
 
 ## Building fleet ACI

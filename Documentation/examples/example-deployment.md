@@ -1,5 +1,7 @@
 # Deploying a Service Using fleet
 
+**[fleet is no longer actively developed or maintained by CoreOS](https://coreos.com/blog/migrating-from-fleet-to-kubernetes.html). CoreOS instead recommends [Kubernetes](https://coreos.com/kubernetes/docs/latest/) for cluster orchestration.**
+
 The following is an example of how one might deploy a load-balanced web service using fleet.
 This example deploys [subgun][subgun], a simple subscription tool for [mailgun][mailgun].
 

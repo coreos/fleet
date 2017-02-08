@@ -1,5 +1,7 @@
 # Deploying fleet
 
+**[fleet is no longer actively developed or maintained by CoreOS](https://coreos.com/blog/migrating-from-fleet-to-kubernetes.html). CoreOS instead recommends [Kubernetes](https://coreos.com/kubernetes/docs/latest/) for cluster orchestration.**
+
 Deploying `fleet` is as simple as dropping the `fleetd` binary on a machine with access to etcd and starting it.
 
 Deploying `fleet` on CoreOS is even simpler: just run `systemctl start fleet`. The built-in configuration assumes each of your hosts is serving an etcd endpoint at one of the default locations (http://127.0.0.1:2379 or http://127.0.0.1:4001). However, if your etcd cluster differs, you must make the corresponding configuration changes.

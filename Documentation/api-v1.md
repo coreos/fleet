@@ -1,5 +1,7 @@
 # fleet API v1
 
+**[fleet is no longer actively developed or maintained by CoreOS](https://coreos.com/blog/migrating-from-fleet-to-kubernetes.html). CoreOS instead recommends [Kubernetes](https://coreos.com/kubernetes/docs/latest/) for cluster orchestration.**
+
 The fleet API allows you to manage the state of the cluster using JSON over HTTP.
 
 ## Managing Units

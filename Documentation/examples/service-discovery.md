@@ -1,5 +1,7 @@
 # Service Discovery
 
+**[fleet is no longer actively developed or maintained by CoreOS](https://coreos.com/blog/migrating-from-fleet-to-kubernetes.html). CoreOS instead recommends [Kubernetes](https://coreos.com/kubernetes/docs/latest/) for cluster orchestration.**
+
 Since applications and networking environments vary widely between customer deployments, fleet does not provide a generalized, integrated solution for service discovery. However, there are a number of patterns available which can easily be implemented on top of fleet to provide automated and reliable service discovery. One such pattern, the _sidekick model_, is described below.
 
 ## Sidekick model
