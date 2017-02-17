@@ -64,7 +64,7 @@ recommended to upgrade fleetctl to prevent incompatibility issues.
 	clientDriverEtcd = "etcd"
 
 	defaultEndpoint  = "unix:///var/run/fleet.sock"
-	defaultSleepTime = 2000 * time.Millisecond
+	defaultSleepTime = 4000 * time.Millisecond
 )
 
 var (
