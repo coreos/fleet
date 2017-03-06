@@ -269,6 +269,7 @@ If a machine presents a fingerprint that differs from that found in the known_ho
 
 Disable the storage of fingerprints with `--strict-host-key-checking=false`, or change the location of your fingerprints with the `--known-hosts-file=<LOCATION>` flag.
 
+Alternatively you can export the environment variable `FLEETCTL_STRICT_HOST_KEY_CHECKING=false`.
 
 # Remote fleet Access
 
