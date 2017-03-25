@@ -46,6 +46,7 @@ func NewEtcdEventStream(kAPI etcd.KeysAPI, rootPrefix string) pkg.EventStream {
 func (es *etcdEventStream) Next(stop chan struct{}) chan pkg.Event {
 	evchan := make(chan pkg.Event)
 	go func() {
+		var afterIndex uint64 = 0
 		for {
 			select {
 			case <-stop:
@@ -53,7 +54,8 @@ func (es *etcdEventStream) Next(stop chan struct{}) chan pkg.Event {
 			default:
 			}
 
-			res := watch(es.kAPI, path.Join(es.rootPrefix, jobPrefix), stop)
+			res := watch(es.kAPI, path.Join(es.rootPrefix, jobPrefix), stop, afterIndex)
+			afterIndex = res.Node.ModifiedIndex
 			if ev, ok := parse(res, es.rootPrefix); ok {
 				evchan <- ev
 				return
@@ -86,7 +88,7 @@ func parse(res *etcd.Response, prefix string) (ev pkg.Event, ok bool) {
 	return
 }
 
-func watch(kAPI etcd.KeysAPI, key string, stop chan struct{}) (res *etcd.Response) {
+func watch(kAPI etcd.KeysAPI, key string, stop chan struct{}, afterIndex uint64) (res *etcd.Response) {
 	for res == nil {
 		select {
 		case <-stop:
@@ -94,7 +96,7 @@ func watch(kAPI etcd.KeysAPI, key string, stop chan struct{}) (res *etcd.Respons
 			return
 		default:
 			opts := &etcd.WatcherOptions{
-				AfterIndex: 0,
+				AfterIndex: afterIndex,
 				Recursive:  true,
 			}
 			watcher := kAPI.Watcher(key, opts)
