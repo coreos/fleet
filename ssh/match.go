@@ -18,7 +18,6 @@ import (
 	"crypto/hmac"
 	"crypto/sha1"
 	"encoding/base64"
-	"fmt"
 	"strings"
 )
 
@@ -38,7 +37,6 @@ func matchHost(host, pattern string) bool {
 		sum := hmacSha1.Sum(nil)
 
 		encodedSum := base64.StdEncoding.EncodeToString(sum)
-		fmt.Printf("%s, %s\n", pattern, encodedSum == hostHash[1])
 		return encodedSum == hostHash[1]
 	}
 
