@@ -14,7 +14,13 @@
 
 package ssh
 
-import "strings"
+import (
+	"crypto/hmac"
+	"crypto/sha1"
+	"encoding/base64"
+	"fmt"
+	"strings"
+)
 
 // matchHost tries to match the given host name against a comma-separated
 // sequence of subpatterns s (each possibly preceded by ! to indicate negation).
@@ -22,6 +28,20 @@ import "strings"
 // Any matched negations take precedence over any other possible matches in the
 // pattern.
 func matchHost(host, pattern string) bool {
+	// Check for hashed host names.
+	if strings.HasPrefix(pattern, sshHashDelim) {
+		hostHash := strings.Split(strings.Split(pattern, "|1|")[1], sshHashDelim)
+		decodedSalt, _ := base64.StdEncoding.DecodeString(hostHash[0])
+
+		hmacSha1 := hmac.New(sha1.New, decodedSalt)
+		hmacSha1.Write([]byte(host))
+		sum := hmacSha1.Sum(nil)
+
+		encodedSum := base64.StdEncoding.EncodeToString(sum)
+		fmt.Printf("%s, %s\n", pattern, encodedSum == hostHash[1])
+		return encodedSum == hostHash[1]
+	}
+
 	subpatterns := strings.Split(pattern, ",")
 	found := false
 	for _, s := range subpatterns {

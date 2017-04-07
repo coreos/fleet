@@ -308,11 +308,6 @@ func parseKnownHostsLine(line []byte) (string, gossh.PublicKey, error) {
 	hosts := string(line[:end])
 	keyBytes := line[end+1:]
 
-	// Check for hashed host names.
-	if strings.HasPrefix(hosts, sshHashDelim) {
-		return "", nil, errors.New("hashed hosts not implemented")
-	}
-
 	// Finally, actually try to extract the key.
 	key, _, _, _, err := gossh.ParseAuthorizedKey(keyBytes)
 	if err != nil {
