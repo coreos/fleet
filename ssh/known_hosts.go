@@ -124,6 +124,8 @@ func (kc *HostKeyChecker) GetHostKeyAlgorithms(addr string) []string {
 		for _, hostKey := range keys {
 			results = append(results, hostKey.Type())
 		}
+		// If we get here, it means we found a match, so break out of loop
+		break
 	}
 
 	return results
@@ -165,6 +167,8 @@ func (kc *HostKeyChecker) Check(addr string, remote net.Addr, key gossh.PublicKe
 			// and note exactly which key failed (file + line number)
 			mismatched = true
 		}
+		// If we get here, it means we found a match, so break out of loop
+		break
 	}
 
 	if mismatched {
