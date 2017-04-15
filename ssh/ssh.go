@@ -70,10 +70,6 @@ func makeSession(client *SSHForwardingClient) (session *gossh.Session, finalize 
 		return
 	}
 
-	session.Stdout = os.Stdout
-	session.Stderr = os.Stderr
-	session.Stdin = os.Stdin
-
 	modes := gossh.TerminalModes{
 		gossh.ECHO:          1,     // enable echoing
 		gossh.TTY_OP_ISPEED: 14400, // input speed = 14.4kbaud
@@ -120,6 +116,9 @@ func Execute(client *SSHForwardingClient, cmd string) (error, int) {
 		return err, -1
 	}
 
+	session.Stdout = os.Stdout
+	session.Stderr = os.Stderr
+
 	defer finalize()
 
 	session.Start(cmd)
@@ -145,6 +144,10 @@ func Shell(client *SSHForwardingClient) error {
 	if err != nil {
 		return err
 	}
+
+	session.Stdout = os.Stdout
+	session.Stderr = os.Stderr
+	session.Stdin = os.Stdin
 
 	defer finalize()
 
