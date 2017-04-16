@@ -55,7 +55,7 @@ name in the PUT /units/<name> request.
 
 #### Response
 
-A success is indicated by a `201 Created` status code, but no response body.
+A success is indicated by a `204 Created` status code, but no response body.
 
 Attempting to create an entity without options will return a `409 Conflict` status code.
 
