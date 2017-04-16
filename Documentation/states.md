@@ -1,3 +1,5 @@
+<i>Note: this document closely tracks the *master* branch of fleet. For information most accurate to the version of fleet you are running, please browse the documentation at a particular tagged release. Recent releases: [v0.6.2](https://github.com/coreos/fleet/tree/v0.6.2/Documentation) [v0.7.1](https://github.com/coreos/fleet/tree/v0.7.1/Documentation) [v0.8.0](https://github.com/coreos/fleet/tree/v0.8.0/Documentation)</i>
+
 ## Unit states
 
 fleet uses a _declarative model_ to evaluate unit state. This means that operations to change the state of units (e.g. `fleetctl` commands, or calls to the fleet API) change the desired state, rather than directly performing any state change. There are currently three cluster-level states for a unit:
