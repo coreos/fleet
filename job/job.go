@@ -292,7 +292,17 @@ func (j *Job) RequiredTargetMetadata() map[string]pkg.Set {
 		fleetMachineMetadata,
 	} {
 		for _, valuePair := range j.requirements()[key] {
-			s := strings.Split(valuePair, "=")
+			var s []string
+			for _, sep := range []string{"<=", ">=", "!=", "<", ">"} {
+				index := strings.Index(valuePair, sep)
+				if index != -1 {
+					s = []string{valuePair[0:index], valuePair[index:]}
+					break
+				}
+			}
+			if s == nil {
+				s = strings.Split(valuePair, "=")
+			}
 
 			if len(s) != 2 {
 				continue
