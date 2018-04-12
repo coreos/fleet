@@ -15,15 +15,15 @@ This table briefly compares key features of `fleet` to those in Kubernetes:
 | Labels / metadata | Both Kubernetes and Fleet can schedule units depending on hosts' [labels][k8s-node-label] or basic [metadata][metadata]. | x | x |
 
 
-[compute-resources]: https://github.com/kubernetes/kubernetes/blob/master/docs/user-guide/compute-resources.md
+[compute-resources]: https://github.com/kubernetes/kubernetes/blob/release-1.6.3/docs/user-guide/compute-resources.md
 [docker-api]: https://docs.docker.com/engine/reference/api/docker_remote_api/
 [fleet-ui]: https://github.com/purpleworks/fleet-ui
 [fleet-unit-types]: unit-files-and-scheduling.md#unit-requirements
-[k8s-dashboard]: https://github.com/kubernetes/kubernetes/tree/master/cluster/addons/dashboard
-[k8s-node-label]: https://github.com/kubernetes/kubernetes/tree/master/docs/user-guide/node-selection
-[k8s-roles]: https://github.com/kubernetes/kubernetes/blob/master/docs/design/security.md#roles
-[k8s-rolling-update]: https://github.com/kubernetes/kubernetes/blob/master/docs/user-guide/kubectl/kubectl_rolling-update.md
-[k8s-skydns]: https://github.com/kubernetes/kubernetes/tree/master/cluster/addons/dns
+[k8s-dashboard]: https://github.com/kubernetes/kubernetes/tree/release-1.6.3/cluster/addons/dashboard
+[k8s-node-label]: https://github.com/kubernetes/kubernetes/tree/release-1.6.3/docs/user-guide/node-selection
+[k8s-roles]: https://github.com/kubernetes/kubernetes/blob/release-1.6.3/docs/design/security.md#roles
+[k8s-rolling-update]: https://github.com/kubernetes/kubernetes/blob/release-1.6.3/docs/user-guide/kubectl/kubectl_rolling-update.md
+[k8s-skydns]: https://github.com/kubernetes/kubernetes/tree/release-1.6.3/cluster/addons/dns
 [metadata]: unit-files-and-scheduling.md#user-defined-requirements
 [security]: architecture.md#security
 [service-discovery]: examples/service-discovery.md
