@@ -7,8 +7,6 @@ fleet provides a command-line tool called `fleetctl`. The commands provided by
 
 ## Get up and running
 
-The `fleetctl` binary is included in all CoreOS distributions, so it is as simple as SSH'ing in to your CoreOS machine and executing `fleetctl`.
-
 ### Custom API Endpoint
 
 `fleetctl` communicates directly with an HTTP API hosted by the fleet cluster. Use the `--endpoint` flag to override the default of `unix:///var/run/fleet.sock`:
@@ -63,7 +61,7 @@ FLEETCTL_SSH_USERNAME=elroy fleetctl list-units
 Note: Custom users are not by default part of the `systemd-journal` group which will cause you to see `No journal files were found.`
 To use the `journal` command please add your users to the `systemd-journal` group or use the `--sudo` flag with journal.
 
-Be sure to install one of the [tagged releases][fleet-releases] of `fleetctl` that matches the version of fleet running on the CoreOS machine.
+Be sure to install one of the [tagged releases][fleet-releases] of `fleetctl` that matches the version of fleet running on the machine.
 Find the version on the server with:
 
 ```sh

@@ -4,8 +4,6 @@
 
 Deploying `fleet` is as simple as dropping the `fleetd` binary on a machine with access to etcd and starting it.
 
-Deploying `fleet` on CoreOS is even simpler: just run `systemctl start fleet`. The built-in configuration assumes each of your hosts is serving an etcd endpoint at one of the default locations (http://127.0.0.1:2379 or http://127.0.0.1:4001). However, if your etcd cluster differs, you must make the corresponding configuration changes.
-
 ## etcd
 
 Each `fleetd` daemon must be configured to talk to the same [etcd cluster][etcd]. By default, the `fleetd` daemon will connect to either http://127.0.0.1:2379 or http://127.0.0.1:4001, depending on which endpoint responds. Refer to the configuration documentation below for customization help.
@@ -24,19 +22,6 @@ Environment="FLEET_ETCD_CAFILE=/etc/ssl/etcd/ca.pem"
 Environment="FLEET_ETCD_CERTFILE=/etc/ssl/etcd/client.pem"
 Environment="FLEET_ETCD_KEYFILE=/etc/ssl/etcd/client-key.pem"
 Environment="FLEET_ETCD_SERVERS=https://192.0.2.12:2379"
-```
-
-#### Using CoreOS Cloud Config
-
-```yaml
-#cloud-config
-
-coreos:
-  fleet:
-    etcd_servers: "https://192.0.2.12:2379"
-    etcd_cafile: /etc/ssl/etcd/ca.pem
-    etcd_certfile: /etc/ssl/etcd/client.pem
-    etcd_keyfile: /etc/ssl/etcd/client-key.pem
 ```
 
 #### Using fleet configuration file
@@ -60,18 +45,6 @@ The examples below show how to achieve this:
 Environment="FLEET_ETCD_SERVERS=https://192.0.2.12:2379"
 Environment="FLEET_ETCD_USERNAME=root"
 Environment="FLEET_ETCD_PASSWORD=coreos"
-```
-
-#### Using CoreOS Cloud Config
-
-```yaml
-#cloud-config
-
-coreos:
-  fleet:
-    etcd_servers: "https://192.0.2.12:2379"
-    etcd_username: root
-    etcd_password: coreos
 ```
 
 #### Using fleet configuration file
@@ -109,15 +82,6 @@ cat ~/.ssh/id_rsa.pub | ./fleetctl-inject-ssh.sh simon --tunnel 19.12.0.33
 fleet's API is served using systemd socket activation.
 At service startup, systemd passes fleet a set of file descriptors, preventing fleet from having to care on which interfaces it's serving the API.
 The configuration of these interfaces is managed through a [systemd socket unit][socket-unit].
-
-CoreOS ships a socket unit for fleet (`fleet.socket`) which binds to a Unix domain socket, `/var/run/fleet.sock`. Unix socket is accessible using tool such as curl (v7.40 or greater): `curl --unix-socket /var/run/fleet.sock http:/fleet/v1/units`.
-To serve the fleet API over a network address, simply extend or replace this socket unit.
-For example, writing the following [drop-in][drop-in] to `/etc/systemd/system/fleet.socket.d/30-ListenStream.conf` would enable fleet to be reached over the local port `49153` in addition to `/var/run/fleet.sock`:
-
-```ini
-[Socket]
-ListenStream=127.0.0.1:49153
-```
 
 After you've written the file, call `systemctl daemon-reload` to load the new [drop-in][drop-in], followed by `systemctl stop fleet.service; systemctl restart fleet.socket; systemctl start fleet.service`.
 
