@@ -212,13 +212,12 @@ Disable the use of etcd watches. Increases scheduling latency. You can find more
 Default: false
 
 [api-doc]: api-v1.md
-[config]: /fleet.conf.sample
+[config]: ../fleet.conf.sample
 [etcd]: https://github.com/coreos/docs/blob/master/etcd/getting-started-with-etcd.md
 [etcd-security]: https://github.com/coreos/etcd/blob/master/Documentation/v2/security.md
 [etcd-authentication]: https://github.com/coreos/etcd/blob/master/Documentation/v2/authentication.md
-[fleet-inject-ssh]: /scripts/fleetctl-inject-ssh.sh
+[fleet-inject-ssh]: ../scripts/fleetctl-inject-ssh.sh
 [fleet-scale]: fleet-scaling.md#implemented-quick-wins
 [socket-unit]: http://www.freedesktop.org/software/systemd/man/systemd.socket.html
-[config]: /fleet.conf.sample
 [drop-in]: https://github.com/coreos/docs/blob/master/os/using-systemd-drop-in-units.md
 [ssh-tunnel]: using-the-client.md#from-an-external-host

@@ -300,5 +300,5 @@ Content-Length: 80
 
 [systemd-machine-id]: http://www.freedesktop.org/software/systemd/man/machine-id.html
 [disco]: https://developers.google.com/discovery/v1/reference/apis
-[schema]: /schema/v1.json
+[schema]: ../schema/v1.json
 [example]: examples/api.py
