@@ -211,6 +211,14 @@ app.service     282f949f.../10.10.20.1  active  running
 app.service     fd1d3e94.../10.0.0.1    active  running
 ```
 
+`MachineMetadata` also support relational operators, including `<=`, `>=`, `<`, `>`, `==` and `!=`:
+
+```
+[X-Fleet]
+MachineMetadata=ram<1024
+```
+This requires an eligible machine to have the `ram` less than 1024. The value must be numeral when using `<=`, `>=`, `<` or `>`.
+
 A machine is not automatically configured with metadata.
 A deployer may define machine metadata using the `metadata` [config option][config-option] or via the [HTTP api][http-api].
 

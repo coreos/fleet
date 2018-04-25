@@ -15,6 +15,9 @@
 package machine
 
 import (
+	"strconv"
+	"strings"
+
 	"github.com/coreos/fleet/log"
 	"github.com/coreos/fleet/pkg"
 )
@@ -38,8 +41,89 @@ func HasMetadata(state *MachineState, metadata map[string]pkg.Set) bool {
 		if values.Contains(local) {
 			log.Debugf("Local Metadata(%s) meets requirement", key)
 		} else {
-			log.Debugf("Local Metadata(%s) does not match requirement", key)
-			return false
+			vs := values.Values()
+			for _, v := range vs {
+				if index := strings.Index(v, "<="); strings.Contains(v, "<=") && (index == 0) {
+					need, err1 := strconv.Atoi(v[2:])
+					have, err2 := strconv.Atoi(local)
+					if err1 == nil && err2 == nil {
+						if have <= need {
+							log.Debugf("Local Metadata(%s) meets requirement", key)
+							continue
+						} else {
+							log.Debugf("Local Metadata(%s) does not match requirement", key)
+							return false
+						}
+					} else {
+						log.Debugf("Local Metadata(%s) does not match requirement", key)
+						return false
+					}
+				} else if index := strings.Index(v, ">="); strings.Contains(v, ">=") && (index == 0) {
+					need, err1 := strconv.Atoi(v[2:])
+					have, err2 := strconv.Atoi(local)
+					if err1 == nil && err2 == nil {
+						if have >= need {
+							log.Debugf("Local Metadata(%s) meets requirement", key)
+							continue
+						} else {
+							log.Debugf("Local Metadata(%s) does not match requirement", key)
+							return false
+						}
+					} else {
+						log.Debugf("Local Metadata(%s) does not match requirement", key)
+						return false
+					}
+				} else if index := strings.Index(v, ">"); strings.Contains(v, ">") && (index == 0) {
+					need, err1 := strconv.Atoi(v[1:])
+					have, err2 := strconv.Atoi(local)
+					if err1 == nil && err2 == nil {
+						if have > need {
+							log.Debugf("Local Metadata(%s) meets requirement", key)
+							continue
+						} else {
+							log.Debugf("Local Metadata(%s) does not match requirement", key)
+							return false
+						}
+					} else {
+						log.Debugf("Local Metadata(%s) does not match requirement", key)
+						return false
+					}
+				} else if index := strings.Index(v, "<"); strings.Contains(v, "<") && (index == 0) {
+					need, err1 := strconv.Atoi(v[1:])
+					have, err2 := strconv.Atoi(local)
+					if err1 == nil && err2 == nil {
+						if have < need {
+							log.Debugf("Local Metadata(%s) meets requirement", key)
+							continue
+						} else {
+							log.Debugf("Local Metadata(%s) does not match requirement", key)
+							return false
+						}
+					} else {
+						log.Debugf("Local Metadata(%s) does not match requirement", key)
+						return false
+					}
+				} else if index := strings.Index(v, "!="); strings.Contains(v, "!=") && (index == 0) {
+					if v[2:] != local {
+						log.Debugf("Local Metadata(%s) meets requirement", key)
+						continue
+					} else {
+						log.Debugf("Local Metadata(%s) does not match requirement", key)
+						return false
+					}
+				} else if index := strings.Index(v, "=="); strings.Contains(v, "==") && (index == 0) {
+					if v[2:] == local {
+						log.Debugf("Local Metadata(%s) meets requirement", key)
+						continue
+					} else {
+						log.Debugf("Local Metadata(%s) does not match requirement", key)
+						return false
+					}
+				} else {
+					log.Debugf("Local Metadata(%s) does not match requirement", key)
+					return false
+				}
+			}
 		}
 	}
 

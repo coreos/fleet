@@ -71,6 +71,120 @@ func TestHasMetadata(t *testing.T) {
 			},
 			false,
 		},
+		// operator '<='
+		{
+			map[string]string{
+				"ram": "1024",
+			},
+			map[string]pkg.Set{
+				"ram": pkg.NewUnsafeSet("<=1024"),
+			},
+			true,
+		},
+		{
+			map[string]string{
+				"ram": "1025",
+			},
+			map[string]pkg.Set{
+				"ram": pkg.NewUnsafeSet("<=1024"),
+			},
+			false,
+		},
+		// operator '>='
+		{
+			map[string]string{
+				"ram": "1024",
+			},
+			map[string]pkg.Set{
+				"ram": pkg.NewUnsafeSet(">=1024"),
+			},
+			true,
+		},
+		{
+			map[string]string{
+				"ram": "1023",
+			},
+			map[string]pkg.Set{
+				"ram": pkg.NewUnsafeSet(">=1024"),
+			},
+			false,
+		},
+		// operator '!='
+		{
+			map[string]string{
+				"ram": "1024",
+			},
+			map[string]pkg.Set{
+				"ram": pkg.NewUnsafeSet("!=1024"),
+			},
+			false,
+		},
+		{
+			map[string]string{
+				"ram": "1023",
+			},
+			map[string]pkg.Set{
+				"ram": pkg.NewUnsafeSet("!=1024"),
+			},
+			true,
+		},
+		// operator '<'
+		{
+			map[string]string{
+				"ram": "1023",
+			},
+			map[string]pkg.Set{
+				"ram": pkg.NewUnsafeSet("<1024"),
+			},
+			true,
+		},
+		{
+			map[string]string{
+				"ram": "1024",
+			},
+			map[string]pkg.Set{
+				"ram": pkg.NewUnsafeSet("<1024"),
+			},
+			false,
+		},
+		// operator '>'
+		{
+			map[string]string{
+				"ram": "1025",
+			},
+			map[string]pkg.Set{
+				"ram": pkg.NewUnsafeSet(">1024"),
+			},
+			true,
+		},
+		{
+			map[string]string{
+				"ram": "1024",
+			},
+			map[string]pkg.Set{
+				"ram": pkg.NewUnsafeSet(">1024"),
+			},
+			false,
+		},
+		// operator '=='
+		{
+			map[string]string{
+				"ram": "1025",
+			},
+			map[string]pkg.Set{
+				"ram": pkg.NewUnsafeSet("==1024"),
+			},
+			false,
+		},
+		{
+			map[string]string{
+				"ram": "1024",
+			},
+			map[string]pkg.Set{
+				"ram": pkg.NewUnsafeSet("==1024"),
+			},
+			true,
+		},
 	}
 
 	for i, tt := range testCases {
