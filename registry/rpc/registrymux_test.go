@@ -111,7 +111,7 @@ func TestRegistryMuxUnitManagement(t *testing.T) {
 	e := &testEtcdKeysAPI{}
 	etcdReg := registry.NewEtcdRegistry(e, "/fleet/")
 
-	lManager := lease.NewEtcdLeaseManager(e, "/fleet/")
+	lManager := lease.NewEtcdLeaseManager(e, "/fleet/", false)
 	reg := NewRegistryMux(etcdReg, mach, lManager)
 
 	contents := `
