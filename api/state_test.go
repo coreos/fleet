@@ -33,10 +33,10 @@ func TestUnitStateList(t *testing.T) {
 	us2 := unit.UnitState{UnitName: "BBB", ActiveState: "inactive", MachineID: "XXX"}
 	us3 := unit.UnitState{UnitName: "CCC", ActiveState: "active", MachineID: "XXX"}
 	us4 := unit.UnitState{UnitName: "CCC", ActiveState: "inactive", MachineID: "YYY"}
-	sus1 := &schema.UnitState{Name: "AAA", SystemdActiveState: "active"}
-	sus2 := &schema.UnitState{Name: "BBB", SystemdActiveState: "inactive", MachineID: "XXX"}
-	sus3 := &schema.UnitState{Name: "CCC", SystemdActiveState: "active", MachineID: "XXX"}
-	sus4 := &schema.UnitState{Name: "CCC", SystemdActiveState: "inactive", MachineID: "YYY"}
+	sus1 := &schema.UnitState{Name: "AAA", SystemdActiveState: "active", SystemdActiveEnterTimestamp: "0"}
+	sus2 := &schema.UnitState{Name: "BBB", SystemdActiveState: "inactive", MachineID: "XXX", SystemdActiveEnterTimestamp: "0"}
+	sus3 := &schema.UnitState{Name: "CCC", SystemdActiveState: "active", MachineID: "XXX", SystemdActiveEnterTimestamp: "0"}
+	sus4 := &schema.UnitState{Name: "CCC", SystemdActiveState: "inactive", MachineID: "YYY", SystemdActiveEnterTimestamp: "0"}
 
 	for i, tt := range []struct {
 		url      string
@@ -163,12 +163,12 @@ func TestUnitStateList(t *testing.T) {
 			return
 		}
 
-		expect1 := &schema.UnitState{Name: "XXX", SystemdActiveState: "active"}
+		expect1 := &schema.UnitState{Name: "XXX", SystemdActiveState: "active", SystemdActiveEnterTimestamp: "0"}
 		if !reflect.DeepEqual(expect1, page.States[0]) {
 			t.Errorf("expected first entity %#v, got %#v", expect1, page.States[0])
 		}
 
-		expect2 := &schema.UnitState{Name: "YYY", SystemdActiveState: "inactive"}
+		expect2 := &schema.UnitState{Name: "YYY", SystemdActiveState: "inactive", SystemdActiveEnterTimestamp: "0"}
 		if !reflect.DeepEqual(expect2, page.States[1]) {
 			t.Errorf("expected first entity %#v, got %#v", expect2, page.States[1])
 		}

@@ -17,7 +17,9 @@ package main
 import (
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -26,7 +28,8 @@ import (
 )
 
 const (
-	defaultListUnitsFields = "unit,machine,active,sub"
+	defaultListUnitsFields = "unit,machine,active,sub,uptime"
+	tmFormatString         = "2006-01-02 03:04:05 PM MST"
 )
 
 var (
@@ -74,6 +77,17 @@ var (
 				return us.Hash[:7]
 			}
 			return us.Hash
+		},
+		"uptime": func(us *schema.UnitState, full bool) string {
+			if us == nil || us.SystemdActiveState != "active" {
+				return "-"
+			}
+			// SystemdActiveEnterTimestamp is in microseconds, while time.Unix
+			// requires the 2nd parameter as value in nanoseconds.
+			ts, _ := strconv.Atoi(us.SystemdActiveEnterTimestamp)
+			tm := time.Unix(0, int64(ts)*1000)
+			duration := time.Now().Sub(tm)
+			return fmt.Sprintf("%s, Since %ss", tm.Format(tmFormatString), strings.Split(duration.String(), ".")[0])
 		},
 	}
 )

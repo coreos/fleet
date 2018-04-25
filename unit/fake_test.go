@@ -60,7 +60,7 @@ func TestFakeUnitManagerLoadUnload(t *testing.T) {
 		t.Fatalf("Expected non-nil UnitState")
 	}
 
-	eus := NewUnitState("loaded", "active", "running", "")
+	eus := NewUnitState("loaded", "active", "running", "", 0)
 	if !reflect.DeepEqual(*us, *eus) {
 		t.Fatalf("Expected UnitState %v, got %v", eus, *us)
 	}

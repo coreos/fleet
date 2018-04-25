@@ -73,7 +73,7 @@ ExecStart=/usr/bin/sleep 3000
 		t.Fatalf("Expected [hello.service], got %v", units)
 	}
 
-	err = waitForUnitState(mgr, name, unit.UnitState{"loaded", "inactive", "dead", "", hash, ""})
+	err = waitForUnitState(mgr, name, unit.UnitState{"loaded", "inactive", "dead", "", hash, "", 0})
 	if err != nil {
 		t.Error(err)
 	}
@@ -83,7 +83,7 @@ ExecStart=/usr/bin/sleep 3000
 		t.Error(err)
 	}
 
-	err = waitForUnitState(mgr, name, unit.UnitState{"loaded", "active", "running", "", hash, ""})
+	err = waitForUnitState(mgr, name, unit.UnitState{"loaded", "active", "running", "", hash, "", 0})
 	if err != nil {
 		t.Error(err)
 	}
@@ -119,8 +119,19 @@ func waitForUnitState(mgr unit.UnitManager, name string, want unit.UnitState) er
 			return err
 		}
 
-		if reflect.DeepEqual(want, *got) {
+		if isEqualUnitState(want, *got) {
 			return nil
 		}
 	}
+}
+
+// isEqualUnitState checks if both units are the same,
+// excluding ActiveEnterTimestamp field of each unit state.
+func isEqualUnitState(src, dst unit.UnitState) bool {
+	return src.LoadState == dst.LoadState &&
+		src.ActiveState == dst.ActiveState &&
+		src.SubState == dst.SubState &&
+		src.MachineID == dst.MachineID &&
+		src.UnitHash == dst.UnitHash &&
+		src.UnitName == dst.UnitName
 }

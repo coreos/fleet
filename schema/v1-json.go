@@ -162,6 +162,9 @@ const DiscoveryJSON = `{
         },
         "systemdSubState": {
           "type": "string"
+        },
+        "systemdActiveEnterTimestamp": {
+          "type": "string"
         }
       }
     },
