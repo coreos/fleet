@@ -28,6 +28,7 @@ import (
 )
 
 var fleetctlBinPath string
+var etcdctlBinPath string
 
 func init() {
 	fleetctlBinPath = os.Getenv("FLEETCTL_BIN")
@@ -35,6 +36,15 @@ func init() {
 		fmt.Println("FLEETCTL_BIN environment variable must be set")
 		os.Exit(1)
 	} else if _, err := os.Stat(fleetctlBinPath); err != nil {
+		fmt.Printf("%v\n", err)
+		os.Exit(1)
+	}
+
+	etcdctlBinPath = os.Getenv("ETCDCTL_BIN")
+	if etcdctlBinPath == "" {
+		fmt.Println("ETCDCTL_BIN environment variable must be set")
+		os.Exit(1)
+	} else if _, err := os.Stat(etcdctlBinPath); err != nil {
 		fmt.Printf("%v\n", err)
 		os.Exit(1)
 	}
@@ -61,6 +71,38 @@ func RunFleetctlWithInput(input string, args ...string) (string, string, error) 
 	log.Printf("%s %s", fleetctlBinPath, strings.Join(args, " "))
 	var stdoutBytes, stderrBytes bytes.Buffer
 	cmd := exec.Command(fleetctlBinPath, args...)
+	cmd.Stdout = &stdoutBytes
+	cmd.Stderr = &stderrBytes
+	stdin, err := cmd.StdinPipe()
+	if err != nil {
+		return "", "", err
+	}
+
+	if err = cmd.Start(); err != nil {
+		return "", "", err
+	}
+
+	stdin.Write([]byte(input))
+	stdin.Close()
+	err = cmd.Wait()
+
+	return stdoutBytes.String(), stderrBytes.String(), err
+}
+
+func RunEtcdctl(args ...string) (string, string, error) {
+	log.Printf("%s %s", etcdctlBinPath, strings.Join(args, " "))
+	var stdoutBytes, stderrBytes bytes.Buffer
+	cmd := exec.Command(etcdctlBinPath, args...)
+	cmd.Stdout = &stdoutBytes
+	cmd.Stderr = &stderrBytes
+	err := cmd.Run()
+	return stdoutBytes.String(), stderrBytes.String(), err
+}
+
+func RunEtcdctlWithInput(input string, args ...string) (string, string, error) {
+	log.Printf("%s %s", etcdctlBinPath, strings.Join(args, " "))
+	var stdoutBytes, stderrBytes bytes.Buffer
+	cmd := exec.Command(etcdctlBinPath, args...)
 	cmd.Stdout = &stdoutBytes
 	cmd.Stderr = &stderrBytes
 	stdin, err := cmd.StdinPipe()

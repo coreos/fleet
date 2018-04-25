@@ -42,6 +42,8 @@ type Cluster interface {
 	WaitForNActiveUnits(Member, int) (map[string][]util.UnitState, error)
 	WaitForNUnitFiles(Member, int) (map[string][]util.UnitFileState, error)
 	WaitForNMachines(Member, int) ([]string, error)
+
+	Keyspace() string
 }
 
 func CreateNClusterMembers(cl Cluster, count int) ([]Member, error) {
