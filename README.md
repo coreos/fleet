@@ -7,6 +7,7 @@ The project exists here for historical reference. If you are interested in the f
 
 [![Build Status](https://travis-ci.org/coreos/fleet.png?branch=master)](https://travis-ci.org/coreos/fleet)
 [![Build Status](https://semaphoreci.com/api/v1/coreos/fleet/branches/master/badge.svg)](https://semaphoreci.com/coreos/fleet)
+[![codebeat](https://codebeat.co/badges/16512202-9758-4e2e-b0b8-4121724680b8)](https://codebeat.co/projects/github-com-coreos-fleet)
 
 fleet ties together [systemd][coreos-systemd] and [etcd][etcd] into a simple distributed init system. Think of it as an extension of systemd that operates at the cluster level instead of the machine level.
 
