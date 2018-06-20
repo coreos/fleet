@@ -124,6 +124,8 @@ func (kc *HostKeyChecker) GetHostKeyAlgorithms(addr string) []string {
 		for _, hostKey := range keys {
 			results = append(results, hostKey.Type())
 		}
+		// If we get here, it means we found a match, so break out of loop
+		break
 	}
 
 	return results
@@ -165,6 +167,8 @@ func (kc *HostKeyChecker) Check(addr string, remote net.Addr, key gossh.PublicKe
 			// and note exactly which key failed (file + line number)
 			mismatched = true
 		}
+		// If we get here, it means we found a match, so break out of loop
+		break
 	}
 
 	if mismatched {
@@ -303,11 +307,6 @@ func parseKnownHostsLine(line []byte) (string, gossh.PublicKey, error) {
 	}
 	hosts := string(line[:end])
 	keyBytes := line[end+1:]
-
-	// Check for hashed host names.
-	if strings.HasPrefix(hosts, sshHashDelim) {
-		return "", nil, errors.New("hashed hosts not implemented")
-	}
 
 	// Finally, actually try to extract the key.
 	key, _, _, _, err := gossh.ParseAuthorizedKey(keyBytes)
