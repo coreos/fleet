@@ -120,7 +120,7 @@ func (r *RPCRegistry) ClearUnitHeartbeat(unitName string) {
 		defer debug.Exit_(debug.Enter_(unitName))
 	}
 
-	r.getClient().ClearUnitHeartbeat(r.ctx(), &pb.UnitName{unitName})
+	r.getClient().ClearUnitHeartbeat(r.ctx(), &pb.UnitName{Name: unitName})
 }
 
 func (r *RPCRegistry) CreateUnit(j *job.Unit) error {
@@ -138,7 +138,7 @@ func (r *RPCRegistry) DestroyUnit(unitName string) error {
 		defer debug.Exit_(debug.Enter_(unitName))
 	}
 
-	_, err := r.getClient().DestroyUnit(r.ctx(), &pb.UnitName{unitName})
+	_, err := r.getClient().DestroyUnit(r.ctx(), &pb.UnitName{Name: unitName})
 	return err
 }
 
@@ -160,7 +160,7 @@ func (r *RPCRegistry) RemoveMachineState(machID string) error {
 }
 
 func (r *RPCRegistry) RemoveUnitState(unitName string) error {
-	_, err := r.getClient().RemoveUnitState(r.ctx(), &pb.UnitName{unitName})
+	_, err := r.getClient().RemoveUnitState(r.ctx(), &pb.UnitName{Name: unitName})
 	return err
 }
 
@@ -267,7 +267,7 @@ func (r *RPCRegistry) ScheduledUnit(unitName string) (*job.ScheduledUnit, error)
 		defer debug.Exit_(debug.Enter_(unitName))
 	}
 
-	maybeSchedUnit, err := r.getClient().GetScheduledUnit(r.ctx(), &pb.UnitName{unitName})
+	maybeSchedUnit, err := r.getClient().GetScheduledUnit(r.ctx(), &pb.UnitName{Name: unitName})
 
 	if err != nil {
 		return nil, err
@@ -291,7 +291,7 @@ func (r *RPCRegistry) Unit(unitName string) (*job.Unit, error) {
 		defer debug.Exit_(debug.Enter_(unitName))
 	}
 
-	maybeUnit, err := r.getClient().GetUnit(r.ctx(), &pb.UnitName{unitName})
+	maybeUnit, err := r.getClient().GetUnit(r.ctx(), &pb.UnitName{Name: unitName})
 	if err != nil {
 		return nil, err
 	}
@@ -327,7 +327,7 @@ func (r *RPCRegistry) UnitState(unitName string) (*unit.UnitState, error) {
 		defer debug.Exit_(debug.Enter_(unitName))
 	}
 
-	state, err := r.getClient().GetUnitState(r.ctx(), &pb.UnitName{unitName})
+	state, err := r.getClient().GetUnitState(r.ctx(), &pb.UnitName{Name: unitName})
 	if err != nil {
 		return nil, err
 	}

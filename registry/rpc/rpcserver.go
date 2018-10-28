@@ -231,7 +231,7 @@ func (s *rpcserver) GetUnitStates(ctx context.Context, filter *pb.UnitStateFilte
 		}
 	}
 
-	return &pb.UnitStates{states}, nil
+	return &pb.UnitStates{UnitStates: states}, nil
 }
 
 func (s *rpcserver) ClearUnitHeartbeat(ctx context.Context, name *pb.UnitName) (*pb.GenericReply, error) {

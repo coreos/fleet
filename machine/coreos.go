@@ -34,7 +34,7 @@ const (
 )
 
 func NewCoreOSMachine(static MachineState, um unit.UnitManager) *CoreOSMachine {
-	log.Debugf("Created CoreOSMachine with static state %s", static)
+	log.Debugf("Created CoreOSMachine with static state: %#v", static)
 	m := &CoreOSMachine{
 		staticState: static,
 		um:          um,

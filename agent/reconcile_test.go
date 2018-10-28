@@ -440,7 +440,7 @@ func TestAbleToRun(t *testing.T) {
 	for i, tt := range tests {
 		got, _ := tt.dState.AbleToRun(tt.job)
 		if got != tt.want {
-			t.Errorf("case %d: expected %t, got %t", i, tt.want, got)
+			t.Errorf("case %d: expected %q, got %q", i, tt.want, got)
 		}
 	}
 }
