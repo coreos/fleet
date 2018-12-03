@@ -102,7 +102,7 @@ func TestRegistryMuxUnitManagement(t *testing.T) {
 		PublicIP: "127.0.0.1",
 		Metadata: make(map[string]string, 0),
 	}
-	mgr, err := systemd.NewSystemdUnitManager(uDir, false)
+	mgr, err := systemd.NewSystemdUnitManager(uDir, false, false)
 	if err != nil {
 		t.Fatalf("unexpected error creating systemd unit manager: %v", err)
 	}

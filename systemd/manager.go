@@ -31,12 +31,13 @@ import (
 type systemdUnitManager struct {
 	systemd  *dbus.Conn
 	unitsDir string
+	luForce  bool
 
 	hashes map[string]unit.Hash
 	mutex  sync.RWMutex
 }
 
-func NewSystemdUnitManager(uDir string, systemdUser bool) (*systemdUnitManager, error) {
+func NewSystemdUnitManager(uDir string, systemdUser bool, systemdLUForce bool) (*systemdUnitManager, error) {
 	var systemd *dbus.Conn
 	var err error
 	if systemdUser {
@@ -60,6 +61,7 @@ func NewSystemdUnitManager(uDir string, systemdUser bool) (*systemdUnitManager, 
 	mgr := systemdUnitManager{
 		systemd:  systemd,
 		unitsDir: uDir,
+		luForce:  systemdLUForce,
 		hashes:   hashes,
 		mutex:    sync.RWMutex{},
 	}
@@ -273,7 +275,7 @@ func (m *systemdUnitManager) writeUnit(name string, contents string) error {
 		return err
 	}
 
-	_, err = m.systemd.LinkUnitFiles([]string{ufPath}, true, true)
+	_, err = m.systemd.LinkUnitFiles([]string{ufPath}, true, m.luForce)
 	return err
 }
 
