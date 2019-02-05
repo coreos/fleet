@@ -126,14 +126,14 @@ func waitForReloadConfig(cluster platform.Cluster, m0 platform.Member) (err erro
 			stdout, _, _ := cluster.MemberCommand(m0, "sudo", "journalctl --priority=info _PID=$(pidof fleetd)")
 			journalfleet := strings.TrimSpace(stdout)
 			if !strings.Contains(journalfleet, "Reloading configuration") {
-				fmt.Errorf("Fleetd is not fully reconfigured, retrying... entire fleet journal:\n%v", journalfleet)
+				fmt.Errorf("fleetd is not fully reconfigured, retrying... entire fleet journal:\n%v", journalfleet)
 				return false
 			}
 			return true
 		},
 	)
 	if err != nil {
-		return fmt.Errorf("Reloading configuration log not found: %v", err)
+		return fmt.Errorf("reloading configuration log not found: %v", err)
 	}
 
 	return nil
@@ -146,14 +146,14 @@ func waitForFleetdSocket(cluster platform.Cluster, m0 platform.Member) (err erro
 		func() bool {
 			stdout, _, _ := cluster.MemberCommand(m0, "test -S /var/run/fleet.sock && echo 1")
 			if strings.TrimSpace(stdout) == "" {
-				fmt.Errorf("Fleetd is not fully started, retrying...")
+				fmt.Errorf("fleetd is not fully started, retrying")
 				return false
 			}
 			return true
 		},
 	)
 	if err != nil {
-		return fmt.Errorf("Fleetd socket not found: %v", err)
+		return fmt.Errorf("fleetd socket not found: %v", err)
 	}
 
 	return nil

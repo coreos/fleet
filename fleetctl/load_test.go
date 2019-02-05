@@ -26,12 +26,12 @@ import (
 func checkLoadUnitState(unit schema.Unit, loadRet int, errchan chan error) {
 	if loadRet == 0 {
 		if job.JobState(unit.DesiredState) != job.JobStateLoaded {
-			errchan <- fmt.Errorf("Error: unit %s was not loaded as requested", unit.Name)
+			errchan <- fmt.Errorf("error: unit %s was not loaded as requested", unit.Name)
 		}
 	} else if unit.DesiredState != "" {
 		// if the whole load operation failed, then no unit
 		// should have a DesiredState set
-		errchan <- fmt.Errorf("Error: Unit(%s) DesiredState was set to (%s)", unit.Name, unit.DesiredState)
+		errchan <- fmt.Errorf("error: Unit(%s) DesiredState was set to (%s)", unit.Name, unit.DesiredState)
 	}
 }
 

@@ -544,7 +544,7 @@ func (nc *nspawnCluster) createMember(id string) (m Member, err error) {
 	for {
 		select {
 		case <-alarm:
-			err = fmt.Errorf("Timed out waiting for machine to start")
+			err = fmt.Errorf("timed out waiting for machine to start")
 			log.Printf("Starting %s%s failed: %v", nc.name, nm.ID(), err)
 			return
 		default:

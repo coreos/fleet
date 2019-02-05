@@ -110,7 +110,7 @@ func waitForUnitState(mgr unit.UnitManager, name string, want unit.UnitState) er
 	for {
 		select {
 		case <-timeout:
-			return fmt.Errorf("Timed out waiting for state of %s to match %#v", name, want)
+			return fmt.Errorf("timed out waiting for state of %s to match %#v", name, want)
 		default:
 		}
 

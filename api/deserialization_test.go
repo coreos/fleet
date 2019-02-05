@@ -29,7 +29,7 @@ func assertErrorResponse(rr *httptest.ResponseRecorder, code int) error {
 	ctypes := rr.HeaderMap["Content-Type"]
 	expect := []string{"application/json"}
 	if !reflect.DeepEqual(expect, ctypes) {
-		return fmt.Errorf("Expected Content-Type %v, got %v", expect, ctypes)
+		return fmt.Errorf("expected Content-Type %v, got %v", expect, ctypes)
 	}
 
 	var eresp errorResponse

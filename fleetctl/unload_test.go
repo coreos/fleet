@@ -39,7 +39,7 @@ func doUnloadUnits(t *testing.T, r commandTestResults, errchan chan error) {
 	// We assume that we reached the desired state
 	for _, v := range real_units {
 		if job.JobState(v.DesiredState) != job.JobStateInactive {
-			errchan <- fmt.Errorf("Error: unit %s was not unloaded as requested", v.Name)
+			errchan <- fmt.Errorf("error: unit %s was not unloaded as requested", v.Name)
 		}
 	}
 }

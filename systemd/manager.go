@@ -113,7 +113,7 @@ func (m *systemdUnitManager) Load(name string, u unit.UnitFile) error {
 		ok, err := m.enableUnit(name)
 		if err != nil || !ok {
 			m.removeUnit(name)
-			return fmt.Errorf("Failed to enable systemd unit %s: %v", name, err)
+			return fmt.Errorf("failed to enable systemd unit %s: %v", name, err)
 		}
 	}
 	m.hashes[name] = u.Hash()
