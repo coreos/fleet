@@ -302,7 +302,7 @@ func (f *FakeRegistry) UnitState(unitName string) (*unit.UnitState, error) {
 	}
 
 	if us == nil {
-		return nil, fmt.Errorf("Cannot find unit(%s) from fakeRegistry", unitName)
+		return nil, fmt.Errorf("cannot find unit(%s) from fakeRegistry", unitName)
 	}
 
 	return us, nil

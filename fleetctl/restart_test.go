@@ -26,7 +26,7 @@ func checkRestartUnitState(unit schema.Unit, restartRet int, errchan chan error)
 	if restartRet != 0 && unit.DesiredState != "" {
 		// if the whole restart operation failed, then no unit
 		// should have a DesiredState set
-		errchan <- fmt.Errorf("Error: Unit(%s) DesiredState was set to (%s)", unit.Name, unit.DesiredState)
+		errchan <- fmt.Errorf("error: Unit(%s) DesiredState was set to (%s)", unit.Name, unit.DesiredState)
 	}
 }
 

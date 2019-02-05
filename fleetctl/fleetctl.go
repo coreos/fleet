@@ -819,7 +819,7 @@ func lazyCreateUnits(cCmd *cobra.Command, args []string) error {
 	}
 
 	if haserr {
-		return fmt.Errorf("One or more errors creating units")
+		return fmt.Errorf("one or more errors creating units")
 	}
 
 	return nil
@@ -1030,10 +1030,10 @@ func assertUnitState(name string, js job.JobState, out io.Writer) bool {
 
 		u, err := cAPI.Unit(name)
 		if err != nil {
-			return fmt.Errorf("Error retrieving Unit(%s) from Registry: %v", name, err)
+			return fmt.Errorf("error retrieving Unit(%s) from Registry: %v", name, err)
 		}
 		if u == nil {
-			return fmt.Errorf("Unit %s not found", name)
+			return fmt.Errorf("unit %s not found", name)
 		}
 
 		// If this is a global unit, CurrentState will never be set. Instead, wait for DesiredState.
@@ -1044,7 +1044,7 @@ func assertUnitState(name string, js job.JobState, out io.Writer) bool {
 		}
 
 		if job.JobState(state) != js {
-			return fmt.Errorf("Waiting for Unit(%s) state(%s) to be %s", name, job.JobState(state), js)
+			return fmt.Errorf("waiting for Unit(%s) state(%s) to be %s", name, job.JobState(state), js)
 		}
 
 		msg := fmt.Sprintf("Unit %s %s", name, u.CurrentState)
@@ -1139,19 +1139,19 @@ func assertSystemdActiveState(unitName string) error {
 	fetchSystemdActiveState := func() error {
 		us, err := cAPI.UnitState(unitName)
 		if err != nil {
-			return fmt.Errorf("Error getting unit state of %s: %v", unitName, err)
+			return fmt.Errorf("error getting unit state of %s: %v", unitName, err)
 		}
 
 		// Get systemd state and check the state is active & loaded.
 		if us.SystemdActiveState != "active" || us.SystemdLoadState != "loaded" {
-			return fmt.Errorf("Failed to find an active unit %s", unitName)
+			return fmt.Errorf("failed to find an active unit %s", unitName)
 		}
 		return nil
 	}
 
 	timeout, err := waitForState(fetchSystemdActiveState)
 	if err != nil {
-		return fmt.Errorf("Failed to find an active unit %s within %v, err: %v",
+		return fmt.Errorf("failed to find an active unit %s within %v, err: %v",
 			unitName, timeout, err)
 	}
 
@@ -1236,7 +1236,7 @@ func waitForState(stateCheckFunc func() error) (time.Duration, error) {
 	for {
 		select {
 		case <-alarm:
-			return timeout, fmt.Errorf("Failed to fetch states within %v", timeout)
+			return timeout, fmt.Errorf("failed to fetch states within %v", timeout)
 		case <-ticker:
 			err := stateCheckFunc()
 			if err == nil {
@@ -1270,7 +1270,7 @@ func cmdGlobalMachineState(cCmd *cobra.Command, globalUnits []schema.Unit) (err 
 	for id, name := range resultIDs {
 		// run a correspondent systemctl command
 		if exitVal := runCommand(cCmd, id, "systemctl", cmd, name); exitVal != 0 {
-			err = fmt.Errorf("Error running systemctl %s. machine id=%v, unit name=%s",
+			err = fmt.Errorf("error running systemctl %s. machine id=%v, unit name=%s",
 				cmd, id, name)
 			break
 		}

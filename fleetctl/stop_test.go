@@ -39,7 +39,7 @@ func doStopUnits(t *testing.T, r commandTestResults, errchan chan error) {
 	// We assume that we reached the desired state
 	for _, v := range real_units {
 		if job.JobState(v.DesiredState) != job.JobStateLoaded {
-			errchan <- fmt.Errorf("Error: unit %s was not stopped as requested", v.Name)
+			errchan <- fmt.Errorf("error: unit %s was not stopped as requested", v.Name)
 		}
 	}
 }

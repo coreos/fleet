@@ -164,7 +164,7 @@ func WaitForState(stateCheckFunc func() bool) (time.Duration, error) {
 		select {
 		case <-alarm:
 			// Generic message. Callers can build more specific ones using the returned timeout value.
-			return timeout, fmt.Errorf("Failed to reach expected state within %v.", timeout)
+			return timeout, fmt.Errorf("failed to reach expected state within %v", timeout)
 		case <-ticker:
 			if stateCheckFunc() {
 				return timeout, nil

@@ -453,16 +453,16 @@ func TestMachinesPatchBad(t *testing.T) {
 func getHTTPResponse(method string, urlPath string, val string) (*http.Response, error) {
 	req, err := http.NewRequest(method, urlPath, strings.NewReader(val))
 	if err != nil {
-		return nil, fmt.Errorf("Failed creating http.Request: %v", err)
+		return nil, fmt.Errorf("failed creating http.Request: %v", err)
 	}
 
 	cl := http.Client{}
 	resp, err := cl.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to run client.Do: %v", err)
+		return nil, fmt.Errorf("failed to run client.Do: %v", err)
 	}
 	if resp.Body == nil {
-		return nil, fmt.Errorf("Got HTTP response nil body")
+		return nil, fmt.Errorf("got HTTP response nil body")
 	}
 
 	return resp, nil
@@ -471,9 +471,9 @@ func getHTTPResponse(method string, urlPath string, val string) (*http.Response,
 func checkContentType(resp *http.Response) error {
 	ct := resp.Header.Get("Content-Type")
 	if len(ct) == 0 {
-		return fmt.Errorf("Response has wrong number of Content-Type values: %v", ct)
+		return fmt.Errorf("response has wrong number of Content-Type values: %v", ct)
 	} else if !strings.Contains(ct, "application/json") {
-		return fmt.Errorf("Expected application/json, got %v", ct)
+		return fmt.Errorf("expected application/json, got %v", ct)
 	}
 	return nil
 }

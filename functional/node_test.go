@@ -119,16 +119,16 @@ func TestDetectMachineId(t *testing.T) {
 	restartFleetService := func(m platform.Member) error {
 		stdout, stderr, err := cluster.MemberCommand(m, "sudo", "systemctl", "restart", "fleet.service")
 		if err != nil {
-			return fmt.Errorf("Failed to restart fleet service\nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)
+			return fmt.Errorf("failed to restart fleet service\nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)
 		}
 
 		stdout, stderr, err = cluster.MemberCommand(m, "systemctl", "show", "--property=ActiveState", "fleet")
 		if strings.TrimSpace(stdout) != "ActiveState=active" {
-			return fmt.Errorf("Fleet unit not reported as active:\nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)
+			return fmt.Errorf("fleet unit not reported as active:\nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)
 		}
 		stdout, stderr, err = cluster.MemberCommand(m, "systemctl", "show", "--property=Result", "fleet")
 		if strings.TrimSpace(stdout) != "Result=success" {
-			return fmt.Errorf("Result for fleet unit not reported as success:\nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)
+			return fmt.Errorf("result for fleet unit not reported as success:\nstdout: %s\nstderr: %s\nerr: %v", stdout, stderr, err)
 		}
 		return nil
 	}

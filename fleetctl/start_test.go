@@ -26,12 +26,12 @@ import (
 func checkStartUnitState(unit schema.Unit, startRet int, errchan chan error) {
 	if startRet == 0 {
 		if job.JobState(unit.DesiredState) != job.JobStateLaunched {
-			errchan <- fmt.Errorf("Error: unit %s was not started as requested", unit.Name)
+			errchan <- fmt.Errorf("error: unit %s was not started as requested", unit.Name)
 		}
 	} else if unit.DesiredState != "" {
 		// if the whole start operation failed, then no unit
 		// should have a DesiredState set
-		errchan <- fmt.Errorf("Error: Unit(%s) DesiredState was set to (%s)", unit.Name, unit.DesiredState)
+		errchan <- fmt.Errorf("error: Unit(%s) DesiredState was set to (%s)", unit.Name, unit.DesiredState)
 	}
 }
 
